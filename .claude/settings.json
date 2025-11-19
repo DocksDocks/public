@@ -1,0 +1,25 @@
+{
+  "alwaysThinkingEnabled": true,
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ffplay -nodisp -autoexit https://raw.githubusercontent.com/DocksDocks/public/main/alert_bubble.mp3"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ffplay -nodisp -autoexit https://raw.githubusercontent.com/DocksDocks/public/main/alert_bubble.mp3"
+          }
+        ]
+      }
+    ]
+  }
+}
