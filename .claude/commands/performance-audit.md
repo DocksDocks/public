@@ -116,6 +116,35 @@ Adapt performance analysis based on detected stack.
 - Pool exhaustion under load
 - No connection timeouts
 
+### If Drizzle ORM Detected
+
+#### Query Optimization
+- Use prepared statements for repeated queries
+- Avoid `db.query.*` for complex joins (use `db.select()`)
+- Use `limit()` and `offset()` for pagination
+- Select only needed columns: `db.select({ id, name })`
+- Use `exists()` instead of counting for checks
+- Batch inserts with `values([...])` not loops
+
+#### Relation Loading
+- Use `with` for eager loading relations
+- Avoid nested `with` queries when joins suffice
+- Consider `extras` for computed columns
+
+```typescript
+// Instead of N+1
+for (const user of users) {
+  const posts = await db.query.posts.findMany({
+    where: eq(posts.userId, user.id)
+  })
+}
+
+// Use relation query
+const usersWithPosts = await db.query.users.findMany({
+  with: { posts: true }
+})
+```
+
 ### If Redis Detected
 
 #### Caching Strategy

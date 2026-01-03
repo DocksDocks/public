@@ -119,6 +119,16 @@ Adapt bug detection based on detected stack.
 - Data type mismatches
 - Timezone handling errors
 
+### If Drizzle ORM Detected
+- Missing `await` on query execution
+- Incorrect `eq()`, `and()`, `or()` usage
+- Wrong column references in queries
+- Transaction not using same `tx` instance
+- Relation queries missing `with` clause
+- `returning()` not called when needed
+- Schema/migration out of sync
+- Prepared statement parameter mismatches
+
 ### If Expo/React Native Detected
 - Platform-specific code not handled
 - Navigation state bugs

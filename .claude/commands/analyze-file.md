@@ -85,6 +85,15 @@ First, understand the file context:
 - Error handling
 - Type safety with ORM
 
+### If Drizzle Schema/Query File
+- Schema organization (tables, relations, indexes)
+- Proper use of `relations()` for type-safe joins
+- Column type appropriateness
+- Index definitions for queried columns
+- `$inferSelect` and `$inferInsert` type exports
+- Prepared statement efficiency
+- Transaction usage patterns
+
 ### If Test File
 - Test coverage completeness
 - Test naming clarity

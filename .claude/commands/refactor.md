@@ -106,6 +106,26 @@ Adapt refactoring suggestions based on detected stack.
 - Create data transfer objects (DTOs)
 - Separate entity models from domain models
 
+### If Drizzle ORM Detected
+- Organize schemas by domain (users.ts, posts.ts)
+- Extract common query patterns to repository functions
+- Use prepared statements for frequently used queries
+- Create type-safe DTOs from schema types
+- Separate schema definitions from query logic
+```typescript
+// Extract to repository
+export const userRepository = {
+  findById: (id: string) =>
+    db.query.users.findFirst({
+      where: eq(users.id, id),
+      with: { profile: true }
+    }),
+
+  create: (data: NewUser) =>
+    db.insert(users).values(data).returning()
+}
+```
+
 ---
 
 ## Clean Code Opportunities

@@ -124,6 +124,27 @@ Adapt security checks based on detected stack.
 - Row-level security
 - Prepared statements
 
+### If Drizzle ORM Detected
+- Always use Drizzle's query builders (inherently parameterized)
+- Never use `sql.raw()` with user input
+- Use `sql.placeholder()` for dynamic prepared statements
+- Validate input before passing to `eq()`, `like()`, etc.
+- Check `inArray()` for empty arrays (SQL error)
+- Secure connection string in environment variables
+```typescript
+// UNSAFE - SQL injection risk
+sql.raw(`SELECT * FROM users WHERE name = '${userInput}'`)
+
+// SAFE - Parameterized
+db.select().from(users).where(eq(users.name, userInput))
+
+// SAFE - Dynamic with placeholder
+const prepared = db.select().from(users)
+  .where(eq(users.id, sql.placeholder('id')))
+  .prepare()
+await prepared.execute({ id: userInput })
+```
+
 ### If Redis Detected
 - AUTH enabled
 - No sensitive data without encryption

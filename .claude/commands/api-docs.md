@@ -57,6 +57,27 @@ fastify.get('/users', {
 - Document plugin configurations
 - Note lifecycle hooks affecting routes
 
+### If Drizzle ORM Detected
+- Document database schema and relations
+- Include entity relationship diagram
+- Document type exports for API contracts
+```typescript
+// Use Drizzle types for API documentation
+import { users } from './schema'
+type User = typeof users.$inferSelect
+type NewUser = typeof users.$inferInsert
+
+// Document query patterns
+/**
+ * @returns User with related posts
+ */
+const getUserWithPosts = (id: string) =>
+  db.query.users.findFirst({
+    where: eq(users.id, id),
+    with: { posts: true }
+  })
+```
+
 ### If Next.js API Routes Detected
 
 ```typescript

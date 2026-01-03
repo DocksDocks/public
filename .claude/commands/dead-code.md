@@ -99,6 +99,15 @@ Adapt detection based on detected stack.
 - Unused repository methods
 - Unused seeders
 
+### If Drizzle ORM Detected
+- Unused table schemas
+- Unused relation definitions
+- Unused prepared statements
+- Unused enum definitions
+- Unused index definitions
+- Old migration files after squash
+- Unused schema type exports (`$inferSelect`, `$inferInsert`)
+
 ---
 
 ## Files Analysis

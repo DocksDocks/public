@@ -103,6 +103,14 @@ Document detected stack before analysis.
 - Connection pooling
 - Repository pattern usage
 
+### If Drizzle ORM Detected
+- Schema file organization (tables, relations, enums)
+- Drizzle-kit migration workflow
+- Type-safe query patterns
+- Prepared statements usage
+- Transaction handling with `db.transaction()`
+- Relation queries vs joins
+
 ### If Docker Detected
 - Service composition
 - Network configuration

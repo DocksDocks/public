@@ -174,6 +174,58 @@ describe('Repository', () => {
 - Test transactions
 - Test constraints and validations
 
+### If Drizzle ORM Detected
+
+```typescript
+// Drizzle testing pattern
+import { drizzle } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import postgres from 'postgres'
+import * as schema from './schema'
+
+describe('Database Operations', () => {
+  const client = postgres(process.env.TEST_DATABASE_URL!)
+  const db = drizzle(client, { schema })
+
+  beforeAll(async () => {
+    await migrate(db, { migrationsFolder: './drizzle' })
+  })
+
+  beforeEach(async () => {
+    await db.delete(schema.users)
+  })
+
+  afterAll(async () => {
+    await client.end()
+  })
+
+  it('should insert and query with relations', async () => {
+    const [user] = await db.insert(schema.users)
+      .values({ name: 'Test' })
+      .returning()
+
+    const result = await db.query.users.findFirst({
+      where: eq(schema.users.id, user.id),
+      with: { posts: true }
+    })
+
+    expect(result?.name).toBe('Test')
+  })
+
+  it('should handle transactions', async () => {
+    await db.transaction(async (tx) => {
+      await tx.insert(schema.users).values({ name: 'A' })
+      await tx.insert(schema.users).values({ name: 'B' })
+    })
+  })
+})
+```
+
+- Test schema relations with `with` queries
+- Test `returning()` for inserts/updates
+- Test transaction rollbacks
+- Test prepared statements
+
 ---
 
 ## Edge Cases to Cover

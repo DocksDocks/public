@@ -119,6 +119,15 @@ Adapt review criteria based on detected stack.
 - [ ] Proper connection handling
 - [ ] Migrations are reversible
 
+### If Drizzle ORM Detected
+- [ ] Using query builders, not raw SQL with user input
+- [ ] `returning()` called when insert/update result needed
+- [ ] Transactions use same `tx` instance throughout
+- [ ] Relations loaded with `with` to avoid N+1
+- [ ] Schema types used for type safety
+- [ ] Migrations generated with `drizzle-kit generate`
+- [ ] No `sql.raw()` with unsanitized input
+
 ### If Docker Detected
 - [ ] No secrets in Dockerfile
 - [ ] Multi-stage builds for production
