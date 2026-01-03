@@ -1,21 +1,26 @@
 ---
 allowed-tools: Read, Grep, Glob, Bash(wc:*), Bash(find:*)
-description: Performance audit and optimization recommendations
+description: Performance audit with stack-specific optimizations
 ---
 
 # Performance Analysis & Optimization
 
-Conduct a comprehensive performance review covering all layers of the application.
+Conduct a comprehensive performance review with stack-specific optimization recommendations.
 
-## Areas to Analyze
+## Phase 0: Project Detection
 
-### Database & Data Access
-- N+1 query problems and missing eager loading
-- Lack of database indexes on frequently queried columns
-- Inefficient joins or subqueries
-- Missing pagination on large result sets
-- Absence of query result caching
-- Connection pooling issues
+First, identify the project stack:
+1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
+2. Check for bundler config (next.config.js, vite.config.ts, etc.)
+3. Check for database/ORM (Prisma, Drizzle, pg, etc.)
+4. Check for caching (Redis, in-memory, etc.)
+5. Check for Docker configuration
+
+Adapt performance analysis based on detected stack.
+
+---
+
+## Universal Performance Checks
 
 ### Algorithm Efficiency
 - Time complexity issues (O(n²) or worse when better exists)
@@ -29,33 +34,145 @@ Conduct a comprehensive performance review covering all layers of the applicatio
 - Loading entire datasets when streaming is possible
 - Excessive object instantiation in loops
 - Large data structures kept in memory unnecessarily
+- Closures capturing more than needed
 
 ### Async & Concurrency
-- Blocking I/O operations that should be async
+- Blocking operations that should be async
 - Sequential operations that could run in parallel
 - Missing Promise.all() or concurrent execution
 - Unnecessary awaits
 - Event loop blocking operations
 
-### Network & I/O
-- Missing HTTP caching headers
-- Uncompressed responses
-- Too many round-trips (chatty APIs)
-- Large payload transfers
-- Missing connection reuse
+---
 
-### Frontend Performance (if applicable)
-- Large bundle sizes
-- Missing code splitting
-- Render-blocking resources
-- Unoptimized images
-- Missing lazy loading
-- Excessive re-renders
+## Stack-Specific Performance
+
+### If Next.js Detected
+
+#### Rendering Performance
+- Unnecessary client components (should be server)
+- Missing Suspense boundaries
+- Large JavaScript bundles
+- Missing dynamic imports / code splitting
+- Unoptimized images (use next/image)
+- Missing static generation where possible
+
+#### Data Fetching
+- Waterfall requests (should be parallel)
+- Missing request deduplication
+- Over-fetching data
+- No caching strategy (revalidate, cache tags)
+- Blocking data fetches in layout
+
+#### Bundle Optimization
+- Large dependencies that could be smaller
+- Missing tree shaking
+- Unused exports in bundles
+- Server-only code in client bundle
+
+### If Fastify/Express Detected
+
+#### Request Handling
+- Slow middleware chain
+- Missing response compression
+- No request/response streaming
+- Synchronous operations in handlers
+- Missing request timeouts
+
+#### Serialization
+- Slow JSON serialization (use fast-json-stringify)
+- Large response payloads
+- Missing pagination
+- No response caching
+
+### If React Detected
+
+#### Rendering Optimization
+- Unnecessary re-renders (use React DevTools)
+- Missing React.memo() for expensive components
+- Missing useMemo/useCallback where needed
+- Large component trees without boundaries
+- State updates causing full tree re-renders
+
+#### State Management
+- Selectors not memoized
+- Over-subscribing to store updates
+- Large state objects without normalization
+- Missing selector composition
+
+### If Database Detected (PostgreSQL/etc.)
+
+#### Query Performance
+- N+1 query problems
+- Missing database indexes
+- Full table scans
+- Inefficient JOINs
+- Missing EXPLAIN ANALYZE on slow queries
+- No query result caching
+
+#### Connection Management
+- Missing connection pooling
+- Connection leaks
+- Pool exhaustion under load
+- No connection timeouts
+
+### If Redis Detected
+
+#### Caching Strategy
+- Cache miss rate too high
+- Missing cache invalidation
+- TTL too short/long
+- Key design inefficiencies
+- Missing pipelining for multiple ops
+
+#### Memory Usage
+- Large values without compression
+- No eviction policy
+- Memory fragmentation
+
+### If Docker Detected
+
+#### Build Performance
+- No layer caching optimization
+- Large base images
+- Missing multi-stage builds
+- .dockerignore not optimized
+- Unnecessary files in image
+
+#### Runtime Performance
+- No resource limits set
+- Missing health checks
+- Inefficient restart policies
+
+### If Expo/React Native Detected
+
+#### Rendering
+- FlatList not optimized (missing keyExtractor, getItemLayout)
+- Large images not cached
+- Missing skeleton loaders
+- Heavy computations on JS thread
+
+#### Bundle Size
+- Unused native modules
+- Large assets bundled
+- Missing OTA update strategy
+
+---
 
 ## Output Format
-For each issue:
+
+For each performance issue:
+
 1. **Location**: File and line
-2. **Current**: What's happening now
-3. **Impact**: Estimated performance cost
-4. **Optimized**: Recommended solution with code
-5. **Benefit**: Expected improvement
+2. **Category**: Algorithm / Memory / Network / Rendering / Database
+3. **Current**: What's happening now
+4. **Impact**: Estimated performance cost (ms, memory, etc.)
+5. **Optimized**: Recommended solution with code
+6. **Benefit**: Expected improvement
+7. **Priority**: Critical / High / Medium / Low
+
+**Prioritize by**:
+1. User-facing latency issues
+2. Resource exhaustion risks
+3. Scalability blockers
+4. General optimizations
