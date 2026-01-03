@@ -13,12 +13,15 @@ First, identify the project stack:
 1. Check `tsconfig.json` for:
    - Path aliases (`@/*`, `~/*`) - needed to trace imports
    - Base URL configuration
+   - Project references (monorepo)
 2. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
-3. Check for build/bundle config (to understand tree-shaking)
-4. Identify testing patterns (to avoid flagging test-only code)
-5. Check for monorepo structure
+3. Check `pnpm-workspace.yaml` for monorepo packages
+4. Check for build/bundle config (to understand tree-shaking)
+5. Identify testing patterns (to avoid flagging test-only code)
+6. Check for scripts (`scripts/`, `*.sh`) - identify unused scripts
 
 Adapt detection based on detected stack. Use path aliases when tracing imports.
+For monorepos, check cross-package usage.
 
 ---
 
@@ -119,6 +122,8 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 - Assets not referenced
 - Config files for removed features
 - Storybook stories for removed components
+- Unused scripts in `scripts/` directory
+- Unused workspace packages (monorepo)
 
 ### Partial File Usage
 - Files with mostly dead code

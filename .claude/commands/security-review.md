@@ -11,11 +11,13 @@ Analyze the codebase for security vulnerabilities following OWASP guidelines and
 
 First, identify the project stack for targeted analysis:
 1. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo)
-2. Check `tsconfig.json` for path aliases to trace imports correctly
-3. Check for authentication libraries (next-auth, passport, etc.)
-4. Check for database/ORM (Prisma, Drizzle, pg, etc.)
-5. Check for Docker configuration
-6. Check for environment variable handling
+2. Check `pnpm-workspace.yaml` for monorepo structure
+3. Check `tsconfig.json` for path aliases to trace imports correctly
+4. Check for authentication libraries (next-auth, passport, etc.)
+5. Check for database/ORM (Prisma, Drizzle, pg, etc.)
+6. Check for Docker configuration
+7. Check for scripts (`scripts/`, `*.sh`) - review for security
+8. Check for environment variable handling
 
 Adapt security checks based on detected stack.
 
@@ -157,6 +159,15 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 - Secrets management (Docker secrets, env files)
 - Base image vulnerabilities
 - .dockerignore completeness
+
+### If Scripts Detected (*.sh)
+- No hardcoded credentials or secrets
+- Proper input validation
+- Use of `set -e` for error handling
+- No unsafe command substitution
+- Environment variables properly quoted
+- No world-writable files created
+- Secure temporary file handling
 
 ---
 

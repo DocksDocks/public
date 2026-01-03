@@ -10,17 +10,21 @@ Analyze project architecture, evaluate SOLID principles adherence, and provide i
 ## Phase 0: Project Detection
 
 First, identify the project stack and structure:
-1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
-2. Check `tsconfig.json` for:
+1. Check `package.json` for:
+   - Frameworks (Next.js, Fastify, Expo, etc.)
+   - Workspaces configuration (pnpm/npm/yarn workspaces)
+2. Check `pnpm-workspace.yaml` for monorepo packages
+3. Check `tsconfig.json` for:
    - Path aliases (`@/*`, `~/*`, `@components/*`, etc.)
    - Base URL and paths configuration
-   - Strict mode and compiler options
-3. Check directory structure for architecture patterns
-4. Check `docker-compose.yml` / `Dockerfile` for infrastructure
-5. Check for ORM/database configurations
-6. Check for state management setup
+   - Project references (monorepo)
+4. Check directory structure for architecture patterns
+5. Check `docker-compose.yml` / `Dockerfile` for infrastructure
+6. Check for ORM/database configurations
+7. Check for scripts (`scripts/`, `*.sh` files)
+8. Check for state management setup
 
-Document detected stack and path aliases before analysis.
+Document detected stack, workspaces, and path aliases before analysis.
 
 ---
 
@@ -122,6 +126,22 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queri
 - Volume management
 - Multi-stage build efficiency
 - Development vs production configs
+
+### If Monorepo/Workspaces Detected
+- Package organization (apps/, packages/, libs/)
+- Shared package dependencies
+- Build order and dependencies
+- Workspace protocol usage (`workspace:*`)
+- Turborepo/Nx configuration (if present)
+- Shared tsconfig and path aliases
+- Cross-package imports
+
+### If Scripts Detected (scripts/, *.sh)
+- Script organization and purpose
+- Environment variable handling
+- Error handling in scripts
+- Documentation of scripts
+- CI/CD script integration
 
 ---
 

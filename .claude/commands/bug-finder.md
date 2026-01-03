@@ -15,9 +15,11 @@ First, identify the project stack:
    - Strict mode settings
    - Module resolution
 2. Check `package.json` for frameworks and libraries
-3. Check for testing setup (to understand coverage)
-4. Check for state management (Zustand, Redux, etc.)
-5. Check for database/ORM configuration
+3. Check `pnpm-workspace.yaml` for monorepo structure
+4. Check for testing setup (to understand coverage)
+5. Check for state management (Zustand, Redux, etc.)
+6. Check for database/ORM configuration
+7. Check for scripts (`scripts/`, `*.sh`)
 
 Adapt bug detection based on detected stack.
 
@@ -149,6 +151,19 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queri
 - Gesture handler conflicts
 - Native module crashes
 - Memory leaks in event listeners
+
+### If Monorepo/Workspaces Detected
+- Cross-package import resolution errors
+- Version mismatches between packages
+- Circular dependencies between workspaces
+- Build order issues
+- Shared config not applied
+
+### If Scripts Detected (*.sh)
+- Missing error handling (no `set -e`)
+- Unquoted variables causing word splitting
+- Missing command existence checks
+- Race conditions in parallel operations
 
 ---
 

@@ -14,10 +14,12 @@ First, identify the project stack:
    - Path aliases (`@/*`, `~/*`, etc.) - verify imports use them
    - Strict mode compliance requirements
    - Compiler options
-2. Check `package.json` for frameworks and dependencies
-3. Check lock files for package manager
-4. Check for testing frameworks (Jest, Vitest, etc.)
-5. Check for linting/formatting configs (ESLint, Prettier, Biome)
+2. Check `package.json` for frameworks, dependencies, and workspaces
+3. Check `pnpm-workspace.yaml` for monorepo structure
+4. Check lock files for package manager
+5. Check for testing frameworks (Jest, Vitest, etc.)
+6. Check for linting/formatting configs (ESLint, Prettier, Biome)
+7. Check for scripts (`scripts/`, `*.sh`)
 
 Adapt review criteria based on detected stack.
 
@@ -138,6 +140,18 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 - [ ] Multi-stage builds for production
 - [ ] Non-root user specified
 - [ ] Proper .dockerignore
+
+### If Monorepo/Workspaces Detected
+- [ ] Using `workspace:*` for internal package deps
+- [ ] Cross-package imports use correct aliases
+- [ ] Shared configs properly extended
+- [ ] No circular workspace dependencies
+
+### If Scripts Detected (*.sh)
+- [ ] Scripts have proper error handling (`set -e`)
+- [ ] Environment variables validated
+- [ ] Scripts are documented
+- [ ] No hardcoded secrets
 
 ---
 

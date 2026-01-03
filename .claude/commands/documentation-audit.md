@@ -10,12 +10,14 @@ Analyze the codebase, identify documentation gaps, and propose improvements.
 ## Phase 0: Project Detection
 
 First, identify the project stack and existing docs:
-1. Check `package.json` for project type and scripts
-2. Check `tsconfig.json` for path aliases (document in CLAUDE.md)
-3. Check for existing docs (README.md, CLAUDE.md, docs/, etc.)
-4. Identify documentation tools (Storybook, TypeDoc, Swagger, etc.)
-5. Check for TypeScript (enables JSDoc/TSDoc)
-6. Check for API framework (for API documentation)
+1. Check `package.json` for project type, scripts, and workspaces
+2. Check `pnpm-workspace.yaml` for monorepo structure
+3. Check `tsconfig.json` for path aliases (document in CLAUDE.md)
+4. Check for existing docs (README.md, CLAUDE.md, docs/, etc.)
+5. Identify documentation tools (Storybook, TypeDoc, Swagger, etc.)
+6. Check for TypeScript (enables JSDoc/TSDoc)
+7. Check for API framework (for API documentation)
+8. Check for scripts (`scripts/`, `*.sh`) that need documentation
 
 Document detected setup before analysis.
 
@@ -57,6 +59,8 @@ Document detected setup before analysis.
 - [ ] Testing instructions
 - [ ] Deployment procedures
 - [ ] Contributing guidelines
+- [ ] Monorepo structure (if applicable)
+- [ ] Script documentation (scripts/*.sh)
 
 ### Stack-Specific Documentation
 

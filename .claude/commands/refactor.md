@@ -13,10 +13,13 @@ First, analyze the project to identify the tech stack:
 1. Check `tsconfig.json` / `jsconfig.json` for:
    - Path aliases (`@/*`, `~/*`, `@lib/*`, `@components/*`)
    - Compiler options and strict mode
+   - Project references (monorepo)
 2. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo, etc.)
-3. Check lock files for package manager (pnpm-lock.yaml, yarn.lock, package-lock.json)
-4. Check for state management (Zustand, Redux, MobX, Jotai, etc.)
-5. Check for ORM (Prisma, Drizzle, TypeORM, etc.)
+3. Check `pnpm-workspace.yaml` for monorepo structure
+4. Check lock files for package manager (pnpm-lock.yaml, yarn.lock, package-lock.json)
+5. Check for state management (Zustand, Redux, MobX, Jotai, etc.)
+6. Check for ORM (Prisma, Drizzle, TypeORM, etc.)
+7. Check for scripts (`scripts/`, `*.sh`) that could be improved
 
 Adapt refactoring suggestions based on detected stack and use project's path aliases in examples.
 

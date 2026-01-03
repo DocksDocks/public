@@ -14,10 +14,14 @@ First, identify the package manager and project type:
    - `pnpm-lock.yaml` → pnpm
    - `yarn.lock` → yarn
    - `package-lock.json` → npm
-2. Check `package.json` for frameworks (Next.js, Expo, Fastify, etc.)
-3. Check for monorepo setup (workspaces, turborepo, nx)
+2. Check `package.json` for:
+   - Frameworks (Next.js, Expo, Fastify, etc.)
+   - Workspaces configuration
+3. Check `pnpm-workspace.yaml` for monorepo packages
+4. Check for monorepo tools (Turborepo, Nx, Lerna)
+5. Check for shared packages in workspace
 
-Use detected package manager for all commands.
+Use detected package manager for all commands. For monorepos, audit each workspace.
 
 ---
 
@@ -107,6 +111,13 @@ Run dependency check:
 - Different versions of same package
 - Peer dependency conflicts
 - Hoisting issues in monorepos
+
+### If Monorepo/Workspaces Detected
+- Check each workspace for vulnerabilities
+- Verify `workspace:*` protocol usage for internal deps
+- Check for version mismatches across workspaces
+- Identify shared vs workspace-specific deps
+- Run: `pnpm -r audit` for recursive audit
 
 ### Bundle Impact
 For frontend projects:
