@@ -101,30 +101,32 @@ Adapt refactoring suggestions based on detected stack.
 - Colocate related state and actions
 
 ### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
+
+**Universal Refactoring:**
 - Extract queries to repository layer
-- Implement unit of work pattern
+- Implement unit of work pattern for transactions
 - Create data transfer objects (DTOs)
 - Separate entity models from domain models
+- Organize schemas/models by domain
 
-### If Drizzle ORM Detected
-- Organize schemas by domain (users.ts, posts.ts)
-- Extract common query patterns to repository functions
-- Use prepared statements for frequently used queries
-- Create type-safe DTOs from schema types
-- Separate schema definitions from query logic
+**Repository Pattern (works with any ORM):**
 ```typescript
-// Extract to repository
-export const userRepository = {
-  findById: (id: string) =>
-    db.query.users.findFirst({
-      where: eq(users.id, id),
-      with: { profile: true }
-    }),
-
-  create: (data: NewUser) =>
-    db.insert(users).values(data).returning()
+// Generic repository interface
+interface UserRepository {
+  findById(id: string): Promise<User | null>
+  create(data: CreateUserDTO): Promise<User>
+  update(id: string, data: UpdateUserDTO): Promise<User>
+  delete(id: string): Promise<void>
 }
+
+// Implement with your ORM
+// - Drizzle: db.query.users.findFirst(), db.insert()
+// - Prisma: prisma.user.findUnique(), prisma.user.create()
+// - TypeORM: repo.findOne(), repo.save()
 ```
+
+This allows swapping ORMs without changing business logic.
 
 ---
 

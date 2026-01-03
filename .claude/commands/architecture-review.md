@@ -97,19 +97,21 @@ Document detected stack before analysis.
 - Persistence strategy
 - DevTools integration
 
-### If Database Detected (PostgreSQL/etc.)
-- Schema organization
-- Migration strategy
-- Connection pooling
-- Repository pattern usage
+### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queries.
 
-### If Drizzle ORM Detected
-- Schema file organization (tables, relations, enums)
-- Drizzle-kit migration workflow
-- Type-safe query patterns
-- Prepared statements usage
-- Transaction handling with `db.transaction()`
-- Relation queries vs joins
+**Universal Checks:**
+- Schema/model organization
+- Migration strategy and tooling
+- Connection pooling configuration
+- Repository pattern usage
+- Transaction handling patterns
+
+**ORM-Specific:**
+- **Drizzle**: Schema files, drizzle-kit migrations, `relations()`, prepared statements
+- **Prisma**: Schema.prisma organization, prisma migrate, client generation
+- **TypeORM**: Entity decorators, migration generation, repository pattern
+- **Knex**: Migration files, query builder patterns, seed files
 
 ### If Docker Detected
 - Service composition

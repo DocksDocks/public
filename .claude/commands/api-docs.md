@@ -57,25 +57,24 @@ fastify.get('/users', {
 - Document plugin configurations
 - Note lifecycle hooks affecting routes
 
-### If Drizzle ORM Detected
-- Document database schema and relations
-- Include entity relationship diagram
-- Document type exports for API contracts
-```typescript
-// Use Drizzle types for API documentation
-import { users } from './schema'
-type User = typeof users.$inferSelect
-type NewUser = typeof users.$inferInsert
+### If Database/ORM Detected
+First, identify the ORM and document accordingly:
 
-// Document query patterns
-/**
- * @returns User with related posts
- */
-const getUserWithPosts = (id: string) =>
-  db.query.users.findFirst({
-    where: eq(users.id, id),
-    with: { posts: true }
-  })
+- Document database schema and relations
+- Include entity relationship diagram (Mermaid)
+- Document type exports for API contracts
+
+```typescript
+// Use ORM types for API documentation
+
+// Drizzle
+type User = typeof users.$inferSelect
+
+// Prisma
+import { User } from '@prisma/client'
+
+// TypeORM
+import { User } from './entities/User'
 ```
 
 ### If Next.js API Routes Detected

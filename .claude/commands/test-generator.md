@@ -142,23 +142,21 @@ describe('Store', () => {
 - Test middleware
 
 ### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
+**Universal Testing Pattern:**
 ```typescript
-// Database testing pattern
-import { db } from './db'
-import { migrate } from './migrate'
-
 describe('Repository', () => {
   beforeAll(async () => {
-    await migrate()
+    await runMigrations()
   })
 
   beforeEach(async () => {
-    await db.delete(table) // Clean slate
+    await clearTestData()
   })
 
   afterAll(async () => {
-    await db.close()
+    await closeConnection()
   })
 
   it('should create and retrieve', async () => {
@@ -169,62 +167,61 @@ describe('Repository', () => {
 })
 ```
 
-- Use test database/container
-- Reset data between tests
-- Test transactions
-- Test constraints and validations
+**ORM-Specific Patterns:**
 
-### If Drizzle ORM Detected
+<details>
+<summary>Drizzle</summary>
 
 ```typescript
-// Drizzle testing pattern
 import { drizzle } from 'drizzle-orm/postgres-js'
-import { migrate } from 'drizzle-orm/postgres-js/migrator'
-import postgres from 'postgres'
 import * as schema from './schema'
 
-describe('Database Operations', () => {
-  const client = postgres(process.env.TEST_DATABASE_URL!)
-  const db = drizzle(client, { schema })
+const db = drizzle(client, { schema })
 
-  beforeAll(async () => {
-    await migrate(db, { migrationsFolder: './drizzle' })
-  })
+// Insert with returning
+const [user] = await db.insert(schema.users)
+  .values({ name: 'Test' })
+  .returning()
 
-  beforeEach(async () => {
-    await db.delete(schema.users)
-  })
+// Query with relations
+const result = await db.query.users.findFirst({
+  where: eq(schema.users.id, user.id),
+  with: { posts: true }
+})
 
-  afterAll(async () => {
-    await client.end()
-  })
-
-  it('should insert and query with relations', async () => {
-    const [user] = await db.insert(schema.users)
-      .values({ name: 'Test' })
-      .returning()
-
-    const result = await db.query.users.findFirst({
-      where: eq(schema.users.id, user.id),
-      with: { posts: true }
-    })
-
-    expect(result?.name).toBe('Test')
-  })
-
-  it('should handle transactions', async () => {
-    await db.transaction(async (tx) => {
-      await tx.insert(schema.users).values({ name: 'A' })
-      await tx.insert(schema.users).values({ name: 'B' })
-    })
-  })
+// Transaction
+await db.transaction(async (tx) => {
+  await tx.insert(schema.users).values({ name: 'A' })
 })
 ```
+</details>
 
-- Test schema relations with `with` queries
-- Test `returning()` for inserts/updates
-- Test transaction rollbacks
-- Test prepared statements
+<details>
+<summary>Prisma</summary>
+
+```typescript
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+// Create with relation
+const user = await prisma.user.create({
+  data: { name: 'Test' },
+  include: { posts: true }
+})
+
+// Transaction
+await prisma.$transaction([
+  prisma.user.create({ data: { name: 'A' } }),
+  prisma.user.create({ data: { name: 'B' } })
+])
+```
+</details>
+
+- Use test database/container
+- Reset data between tests
+- Test transactions and rollbacks
+- Test relation loading
 
 ---
 

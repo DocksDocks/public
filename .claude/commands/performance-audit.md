@@ -100,9 +100,10 @@ Adapt performance analysis based on detected stack.
 - Large state objects without normalization
 - Missing selector composition
 
-### If Database Detected (PostgreSQL/etc.)
+### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
-#### Query Performance
+#### Universal Query Performance
 - N+1 query problems
 - Missing database indexes
 - Full table scans
@@ -110,39 +111,40 @@ Adapt performance analysis based on detected stack.
 - Missing EXPLAIN ANALYZE on slow queries
 - No query result caching
 
-#### Connection Management
+#### Universal Connection Management
 - Missing connection pooling
 - Connection leaks
 - Pool exhaustion under load
 - No connection timeouts
 
-### If Drizzle ORM Detected
+#### ORM-Specific Optimization
 
-#### Query Optimization
+**Drizzle:**
 - Use prepared statements for repeated queries
-- Avoid `db.query.*` for complex joins (use `db.select()`)
-- Use `limit()` and `offset()` for pagination
 - Select only needed columns: `db.select({ id, name })`
-- Use `exists()` instead of counting for checks
-- Batch inserts with `values([...])` not loops
+- Use `with` for eager loading, avoid N+1
+- Batch inserts with `values([...])`
 
-#### Relation Loading
-- Use `with` for eager loading relations
-- Avoid nested `with` queries when joins suffice
-- Consider `extras` for computed columns
+**Prisma:**
+- Use `select` to limit fields returned
+- Use `include` wisely (avoid over-fetching)
+- Batch with `createMany()`, `$transaction`
+- Use `findFirst` instead of `findMany()[0]`
+
+**TypeORM:**
+- Use QueryBuilder for complex queries
+- Configure eager/lazy relations appropriately
+- Use `select` in find options
 
 ```typescript
-// Instead of N+1
+// Generic N+1 prevention pattern
+// BAD: Query in loop
 for (const user of users) {
-  const posts = await db.query.posts.findMany({
-    where: eq(posts.userId, user.id)
-  })
+  const posts = await getPosts(user.id) // N+1!
 }
 
-// Use relation query
-const usersWithPosts = await db.query.users.findMany({
-  with: { posts: true }
-})
+// GOOD: Eager load relations
+const usersWithPosts = await getUsersWithPosts() // Single query
 ```
 
 ### If Redis Detected

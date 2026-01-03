@@ -78,21 +78,26 @@ First, understand the file context:
 - Persistence configuration
 - DevTools integration
 
-### If Database/Repository
+### If Database/ORM File
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
+
+**Universal Analysis:**
 - Query safety (parameterization)
 - Transaction handling
 - Connection management
 - Error handling
-- Type safety with ORM
+- Type safety usage
 
-### If Drizzle Schema/Query File
-- Schema organization (tables, relations, indexes)
-- Proper use of `relations()` for type-safe joins
-- Column type appropriateness
+**Schema/Model Files:**
+- Schema/model organization
+- Relation definitions
 - Index definitions for queried columns
-- `$inferSelect` and `$inferInsert` type exports
-- Prepared statement efficiency
-- Transaction usage patterns
+- Type exports for use in application
+
+**ORM-Specific:**
+- **Drizzle**: `relations()` usage, `$inferSelect`/`$inferInsert` exports
+- **Prisma**: Schema.prisma structure, generated client usage
+- **TypeORM**: Entity decorators, relation configurations
 
 ### If Test File
 - Test coverage completeness

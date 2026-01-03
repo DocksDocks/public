@@ -117,32 +117,29 @@ Adapt security checks based on detected stack.
 - Sensitive data in bundle
 - Debug mode in production
 
-### If Database Detected (PostgreSQL/etc.)
-- Parameterized queries (no string concatenation)
-- Connection string security
-- Least privilege database users
-- Row-level security
-- Prepared statements
+### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
-### If Drizzle ORM Detected
-- Always use Drizzle's query builders (inherently parameterized)
-- Never use `sql.raw()` with user input
-- Use `sql.placeholder()` for dynamic prepared statements
-- Validate input before passing to `eq()`, `like()`, etc.
-- Check `inArray()` for empty arrays (SQL error)
-- Secure connection string in environment variables
+**Universal Security:**
+- Use ORM query builders (inherently parameterized)
+- Never concatenate user input into queries
+- Secure connection strings in environment variables
+- Use least privilege database users
+- Enable row-level security where applicable
+
+**ORM-Specific:**
+- **Drizzle**: Avoid `sql.raw()` with user input, use `sql.placeholder()`
+- **Prisma**: Avoid `$queryRaw` with string interpolation, use `$queryRaw` with Prisma.sql
+- **TypeORM**: Avoid `query()` with concatenation, use QueryBuilder parameters
+
 ```typescript
-// UNSAFE - SQL injection risk
-sql.raw(`SELECT * FROM users WHERE name = '${userInput}'`)
+// UNSAFE - SQL injection in any ORM
+`SELECT * FROM users WHERE name = '${userInput}'`
 
-// SAFE - Parameterized
-db.select().from(users).where(eq(users.name, userInput))
-
-// SAFE - Dynamic with placeholder
-const prepared = db.select().from(users)
-  .where(eq(users.id, sql.placeholder('id')))
-  .prepare()
-await prepared.execute({ id: userInput })
+// SAFE - Use ORM query builder
+// Drizzle: db.select().from(users).where(eq(users.name, userInput))
+// Prisma:  prisma.user.findMany({ where: { name: userInput } })
+// TypeORM: repo.find({ where: { name: userInput } })
 ```
 
 ### If Redis Detected

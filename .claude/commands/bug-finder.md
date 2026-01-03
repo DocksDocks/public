@@ -104,30 +104,40 @@ Adapt bug detection based on detected stack.
 - Race conditions in async actions
 
 ### If Database/ORM Detected
+First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queries.
 
-#### Query Bugs
+#### Universal Query Bugs
 - N+1 queries in loops
 - Wrong relation loading (eager vs lazy)
 - Transaction not committed/rolled back
 - Connection pool exhaustion
 - Deadlocks from transaction order
 
-#### Data Bugs
+#### Universal Data Bugs
 - Missing unique constraints
 - Cascade delete issues
 - Foreign key violations
 - Data type mismatches
 - Timezone handling errors
 
-### If Drizzle ORM Detected
+#### ORM-Specific Bugs
+**Drizzle:**
 - Missing `await` on query execution
 - Incorrect `eq()`, `and()`, `or()` usage
-- Wrong column references in queries
 - Transaction not using same `tx` instance
-- Relation queries missing `with` clause
 - `returning()` not called when needed
-- Schema/migration out of sync
-- Prepared statement parameter mismatches
+
+**Prisma:**
+- Missing `await` on queries
+- Incorrect `include` vs `select` usage
+- Transaction isolation level issues
+- `$transaction` not awaited properly
+
+**TypeORM:**
+- Repository method misuse
+- Lazy relation not awaited
+- QueryBuilder missing `getMany()`/`getOne()`
+- Entity listener errors
 
 ### If Expo/React Native Detected
 - Platform-specific code not handled

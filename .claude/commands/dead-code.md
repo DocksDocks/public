@@ -93,20 +93,19 @@ Adapt detection based on detected stack.
 - Unused persist configurations
 
 ### If Database/ORM Detected
-- Unused model definitions
-- Unused migrations (applied but referenced)
-- Unused query builders
-- Unused repository methods
-- Unused seeders
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
-### If Drizzle ORM Detected
-- Unused table schemas
-- Unused relation definitions
-- Unused prepared statements
-- Unused enum definitions
-- Unused index definitions
+**Universal:**
+- Unused model/schema definitions
+- Unused migrations (applied but code references removed)
+- Unused query builders/repository methods
+- Unused seeders
 - Old migration files after squash
-- Unused schema type exports (`$inferSelect`, `$inferInsert`)
+
+**ORM-Specific:**
+- **Drizzle**: Unused table schemas, relations, prepared statements, `$inferSelect` types
+- **Prisma**: Unused models in schema.prisma, unused generated types
+- **TypeORM**: Unused entity classes, unused repository methods
 
 ---
 

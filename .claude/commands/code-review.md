@@ -113,20 +113,20 @@ Adapt review criteria based on detected stack.
 - [ ] No stale closures in callbacks
 
 ### If Database/ORM Detected
-- [ ] Queries are parameterized (no injection)
+First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
+
+**Universal Checks:**
+- [ ] Queries use ORM builders (parameterized, no injection)
 - [ ] Transactions used where needed
-- [ ] No N+1 query issues
+- [ ] No N+1 query issues (relations eagerly loaded)
 - [ ] Proper connection handling
 - [ ] Migrations are reversible
+- [ ] No raw SQL with user input concatenation
 
-### If Drizzle ORM Detected
-- [ ] Using query builders, not raw SQL with user input
-- [ ] `returning()` called when insert/update result needed
-- [ ] Transactions use same `tx` instance throughout
-- [ ] Relations loaded with `with` to avoid N+1
-- [ ] Schema types used for type safety
-- [ ] Migrations generated with `drizzle-kit generate`
-- [ ] No `sql.raw()` with unsanitized input
+**ORM-Specific:**
+- **Drizzle**: `returning()` called, same `tx` instance, no `sql.raw()` with input
+- **Prisma**: Proper `include`/`select`, `$transaction` used correctly
+- **TypeORM**: QueryBuilder parameters used, relations configured
 
 ### If Docker Detected
 - [ ] No secrets in Dockerfile
