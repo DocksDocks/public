@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(wc:*), Bash(find:*)
-description: Performance audit with stack-specific optimizations
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash(wc:*), Bash(find:*)
+description: Find and fix performance issues
 ---
 
-# Performance Analysis & Optimization
+# Performance Fixer
 
-Conduct a comprehensive performance review with stack-specific optimization recommendations.
+Find performance issues and **fix them directly**. Do not just report - implement the optimizations.
 
 ## Phase 0: Project Detection
 
@@ -191,20 +191,32 @@ const usersWithPosts = await getUsersWithPosts() // Single query
 
 ---
 
-## Output Format
+## Implementation
 
-For each performance issue:
-
-1. **Location**: File and line
-2. **Category**: Algorithm / Memory / Network / Rendering / Database
-3. **Current**: What's happening now
-4. **Impact**: Estimated performance cost (ms, memory, etc.)
-5. **Optimized**: Recommended solution with code
-6. **Benefit**: Expected improvement
-7. **Priority**: Critical / High / Medium / Low
-
-**Prioritize by**:
+**Fix performance issues directly in this order:**
 1. User-facing latency issues
 2. Resource exhaustion risks
 3. Scalability blockers
 4. General optimizations
+
+**For each fix:**
+1. Edit the file to optimize the code
+2. Add missing memoization
+3. Fix N+1 queries with eager loading
+4. Add missing indexes (document in migration)
+5. Implement caching where beneficial
+6. Add code splitting / lazy loading
+
+## Output Format
+
+After implementing fixes, report:
+
+### Optimizations Applied
+| File | Category | Issue | Fix Applied |
+|------|----------|-------|-------------|
+| src/api.ts:45 | Database | N+1 query | Added eager loading |
+
+### Summary
+- Critical fixed: X
+- Optimizations applied: X
+- Estimated improvement: X

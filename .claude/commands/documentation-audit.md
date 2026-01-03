@@ -1,11 +1,11 @@
 ---
 allowed-tools: Read, Grep, Glob, Write, Bash(find:*), Bash(ls:*)
-description: Audit and improve project documentation
+description: Fix and improve project documentation directly
 ---
 
-# Documentation Audit & Improvement
+# Documentation Fixer
 
-Analyze the codebase, identify documentation gaps, and propose improvements.
+Analyze the codebase, identify documentation gaps, and **implement fixes directly**. Do not just suggest - write the documentation.
 
 ## Phase 0: Project Detection
 
@@ -160,48 +160,55 @@ cp .env.example .env.local
 
 ---
 
-## Phase 4: Implementation Plan
+## Phase 4: Implement Fixes
 
-For each documentation improvement:
+**Do not just suggest - implement directly.**
 
-| File | Change | Priority | Reason |
-|------|--------|----------|--------|
-| README.md | Add setup instructions | Critical | New devs can't start |
-| CLAUDE.md | Create file | Critical | AI context missing |
-| .env.example | Add missing vars | High | Deployment fails |
+### Priority Order
+1. **Critical**: Create/fix CLAUDE.md, README.md, .env.example
+2. **High**: Add missing JSDoc/TSDoc to exported functions
+3. **Medium**: Document complex logic, add inline comments
+4. **Low**: Polish and extended docs
 
-### Priority Levels
-- **Critical**: Blocks development/deployment
-- **High**: Significantly improves DX
-- **Medium**: Nice to have
-- **Low**: Polish
+### Implementation Actions
+
+1. **CLAUDE.md** - Create or update with:
+   - Project overview
+   - Tech stack
+   - Project structure
+   - Development commands
+   - Architecture patterns
+   - Key files
+
+2. **README.md** - Ensure it has:
+   - Project description
+   - Installation steps
+   - Usage examples
+   - Development setup
+
+3. **.env.example** - Create/update with:
+   - All required environment variables
+   - Descriptions as comments
+   - Example values (non-sensitive)
+
+4. **Code Documentation** - Add directly:
+   - JSDoc/TSDoc to public functions
+   - Comments for complex logic
+   - Type descriptions
 
 ---
 
 ## Output Format
 
-### Current State Summary
-- Documentation coverage: X%
-- Critical gaps: X
-- Files needing updates: X
+After implementing fixes, report:
 
-### Recommended Changes
-1. **Create CLAUDE.md** (Critical)
-   - Purpose: AI assistant context
-   - Content: [outline]
+### Changes Made
+| File | Action | Description |
+|------|--------|-------------|
+| CLAUDE.md | Created | Added project context |
+| README.md | Updated | Added setup instructions |
 
-2. **Update README.md** (High)
-   - Add: Setup instructions
-   - Add: Development commands
-   - Fix: Outdated information
-
-3. **Create .env.example** (High)
-   - Document all environment variables
-   - Add descriptions for each
-
-### Implementation Order
-1. Critical documentation first
-2. Developer experience improvements
-3. Polish and extended docs
-
-Wait for approval before implementing changes.
+### Summary
+- Files created: X
+- Files updated: X
+- Functions documented: X

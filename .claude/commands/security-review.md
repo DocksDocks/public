@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob
-description: Security vulnerability scan with stack-specific checks
+allowed-tools: Read, Grep, Glob, Edit, Write
+description: Find and fix security vulnerabilities
 ---
 
-# Security Vulnerability Analysis
+# Security Fixer
 
-Analyze the codebase for security vulnerabilities following OWASP guidelines and stack-specific best practices.
+Find security vulnerabilities and **fix them directly**. Do not just report - implement the fixes.
 
 ## Phase 0: Project Detection
 
@@ -183,21 +183,30 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
 ---
 
-## Output Format
+## Implementation
 
-For each vulnerability found:
-
-1. **CWE ID**: (e.g., CWE-89 for SQL Injection)
-2. **OWASP Category**: (A01-A10)
-3. **Location**: File and line number
-4. **Severity**: Critical / High / Medium / Low
-5. **Description**: Technical explanation
-6. **Exploitation**: How an attacker could exploit this
-7. **Remediation**: Specific fix with code example
-8. **References**: OWASP or CWE documentation links
-
-**Priority Order**:
+**Fix vulnerabilities directly in this order:**
 1. Critical: Actively exploitable, high impact
 2. High: Exploitable with some conditions
 3. Medium: Requires specific circumstances
 4. Low: Defense in depth improvements
+
+**For each fix:**
+1. Edit the file to fix the vulnerability
+2. Add input validation where missing
+3. Replace unsafe patterns with safe alternatives
+4. Add security headers if missing
+
+## Output Format
+
+After implementing fixes, report:
+
+### Fixes Applied
+| File | CWE | Issue | Fix Applied |
+|------|-----|-------|-------------|
+| src/api.ts:45 | CWE-89 | SQL Injection | Used parameterized query |
+
+### Summary
+- Critical fixed: X
+- High fixed: X
+- Total fixes applied: X

@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git log:*)
-description: Code review with SOLID compliance checks
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash(git diff:*), Bash(git log:*)
+description: Review and fix code issues
 ---
 
-# Code Review Analysis
+# Code Fixer
 
-Review code changes thoroughly, focusing on correctness, SOLID principles, and stack-specific best practices.
+Review code and **fix issues directly**. Do not just report - implement fixes for correctness, SOLID violations, and best practices.
 
 ## Phase 0: Project Detection
 
@@ -155,20 +155,34 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
 ---
 
-## Output Format
+## Implementation
 
-Focus on issues that matter. For each issue:
-
-1. **Severity**: Critical / High / Medium / Low
-2. **Category**: Bug / Security / Performance / SOLID / Style
-3. **Location**: File and line
-4. **Issue**: What's wrong
-5. **Suggestion**: How to fix
-
-**Prioritize**:
+**Fix issues directly in this order:**
 1. Bugs and logic errors
 2. Security vulnerabilities
 3. SOLID violations
 4. Performance issues
 
+**For each issue:**
+1. Edit the file to fix the problem
+2. Apply proper patterns and practices
+3. Ensure SOLID compliance
+4. Add missing validation/error handling
+
 Skip style nitpicks unless they affect functionality or significantly harm readability.
+
+## Output Format
+
+After implementing fixes, report:
+
+### Fixes Applied
+| File | Category | Issue | Fix |
+|------|----------|-------|-----|
+| src/api.ts:45 | Security | Missing validation | Added Zod schema |
+| src/store.ts:12 | SOLID/SRP | Mixed concerns | Split into services |
+
+### Summary
+- Bugs fixed: X
+- Security issues fixed: X
+- SOLID violations fixed: X
+- Files modified: X

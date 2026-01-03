@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(find:*), Bash(wc:*)
-description: Architecture review with SOLID principles analysis
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash(find:*), Bash(wc:*), Bash(mkdir:*)
+description: Review and fix architecture issues
 ---
 
-# Architecture Review
+# Architecture Fixer
 
-Analyze project architecture, evaluate SOLID principles adherence, and provide improvement recommendations.
+Analyze project architecture, evaluate SOLID principles, and **implement improvements directly**. Do not just report - refactor the code.
 
 ## Phase 0: Project Detection
 
@@ -173,25 +173,49 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queri
 
 ---
 
+## Implementation
+
+**Fix architecture issues directly:**
+
+1. **SOLID Violations** - Refactor:
+   - Split files with multiple responsibilities (SRP)
+   - Extract interfaces for dependency inversion (DIP)
+   - Create extension points instead of modifications (OCP)
+
+2. **Structure Issues** - Reorganize:
+   - Move misplaced files to correct directories
+   - Create missing directories for proper separation
+   - Extract shared code to proper locations
+
+3. **Dependency Issues** - Fix:
+   - Break circular dependencies
+   - Add proper abstractions
+   - Inject dependencies instead of importing directly
+
+**Actions:**
+- Create new files for extracted code
+- Move files to correct locations
+- Update imports after reorganization
+- Add barrel exports (index.ts) where needed
+
 ## Output Format
 
-1. **Architecture Diagram** (Mermaid format)
-   ```mermaid
-   graph TD
-     A[Layer] --> B[Layer]
-   ```
+After implementing fixes, report:
 
-2. **SOLID Compliance Summary**
-   - SRP: Score and findings
-   - OCP: Score and findings
-   - LSP: Score and findings
-   - ISP: Score and findings
-   - DIP: Score and findings
+### Changes Made
+| Type | Action | Details |
+|------|--------|---------|
+| SRP | Split | `utils.ts` → `date.ts`, `string.ts` |
+| DIP | Extracted | Created `IDatabase` interface |
+| Structure | Moved | `helpers/` → `lib/` |
 
-3. **Strengths** of current architecture
+### Architecture Diagram (After)
+```mermaid
+graph TD
+  A[Layer] --> B[Layer]
+```
 
-4. **Weaknesses and Risks** prioritized by impact
-
-5. **Recommendations** with implementation approach
-
-6. **Migration Path** for major changes (if needed)
+### Summary
+- SOLID violations fixed: X
+- Files reorganized: X
+- Abstractions added: X

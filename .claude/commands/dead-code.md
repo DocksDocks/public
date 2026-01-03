@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(find:*)
-description: Find unused code with stack-specific detection
+allowed-tools: Read, Grep, Glob, Edit, Bash(find:*), Bash(rm:*)
+description: Find and remove dead code
 ---
 
-# Dead Code Analysis
+# Dead Code Remover
 
-Identify unused code that can be safely removed, adapting detection based on project stack.
+Find unused code and **remove it directly**. Do not just report - delete the dead code.
 
 ## Phase 0: Project Detection
 
@@ -151,45 +151,43 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, or raw queries.
 
 ---
 
+## Implementation
+
+**Remove dead code directly:**
+
+1. **High confidence** - Remove immediately:
+   - Unused exports, functions, components
+   - Commented-out code blocks
+   - Unused imports and variables
+
+2. **Medium confidence** - Remove after checking:
+   - Verify no dynamic imports
+   - Check for string-based usage
+   - Then remove
+
+3. **Skip low confidence** - Flag for review:
+   - Test utilities
+   - Build-time code
+   - Framework convention files
+
+**Actions:**
+- Delete unused files entirely
+- Remove unused exports from files
+- Remove unused imports
+- Clean up empty files after removal
+
 ## Output Format
 
-### Summary
-- Total dead code instances found
-- Estimated lines removable
-- Files with most dead code
-- Risk assessment
+After removing dead code, report:
 
-### Detailed Report
-
-#### High Confidence (Safe to Remove)
-| Type | Location | Name | Reason |
+### Code Removed
+| Type | Location | Name | Action |
 |------|----------|------|--------|
-| Function | src/utils.ts:45 | `formatDate` | No imports found |
-| Component | src/Button.tsx | `OldButton` | Superseded by `Button` |
+| Function | src/utils.ts:45 | `formatDate` | Deleted |
+| File | src/legacy.ts | - | Deleted file |
 
-#### Medium Confidence (Review Recommended)
-| Type | Location | Name | Concern |
-|------|----------|------|---------|
-| Export | src/api.ts:12 | `legacyFetch` | May be dynamically used |
-
-#### Low Confidence (Investigate)
-| Type | Location | Name | Reason to Keep? |
-|------|----------|------|-----------------|
-| Type | types.ts:5 | `LegacyUser` | Used in test mocks |
-
-### Cleanup Commands (Optional)
-
-```bash
-# Remove unused dependencies
-pnpm remove unused-package
-
-# Files safe to delete
-rm src/legacy/old-feature.ts
-rm src/components/deprecated/Button.tsx
-```
-
-### Estimated Impact
-- Bundle size reduction: ~X KB
-- Type checking speedup: ~X%
-- Files to remove: X
-- Lines to remove: ~X
+### Summary
+- Files deleted: X
+- Functions removed: X
+- Lines removed: ~X
+- Estimated bundle reduction: ~X KB

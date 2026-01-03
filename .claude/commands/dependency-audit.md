@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
-description: Audit dependencies with auto-detected package manager
+allowed-tools: Read, Edit, Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
+description: Audit and fix dependency issues
 ---
 
-# Dependency Audit
+# Dependency Fixer
 
-Analyze project dependencies for security, updates, and optimization using the detected package manager.
+Analyze dependencies and **fix issues directly** - update vulnerable packages, remove unused deps, and apply safe updates.
 
 ## Phase 0: Project Detection
 
@@ -145,39 +145,46 @@ Check licenses for:
 
 ---
 
+## Implementation
+
+**Fix dependency issues directly:**
+
+1. **Critical vulnerabilities** - Fix immediately:
+   ```bash
+   pnpm update vulnerable-package
+   ```
+
+2. **Safe updates** (patch/minor) - Apply:
+   ```bash
+   pnpm update
+   ```
+
+3. **Remove unused** - Delete:
+   ```bash
+   pnpm remove unused-package
+   ```
+
+4. **Major updates** - Apply if no breaking changes affect project
+
+**Actions to take:**
+- Run `pnpm audit fix` for automatic fixes
+- Update vulnerable packages to safe versions
+- Remove packages not imported anywhere
+- Replace heavy packages with lighter alternatives
+
 ## Output Format
 
-### 1. Critical Security Issues
-Packages requiring immediate action:
-| Package | Severity | CVE | Fix |
-|---------|----------|-----|-----|
-| name | Critical | CVE-XXXX | Upgrade to vX.X.X |
+After fixing dependencies, report:
 
-### 2. Recommended Updates
-Safe updates to apply:
-| Package | Current | Latest | Type |
-|---------|---------|--------|------|
-| name | 1.0.0 | 1.2.0 | minor |
+### Actions Taken
+| Action | Package | Details |
+|--------|---------|---------|
+| Updated | lodash | 4.17.20 → 4.17.21 (CVE fix) |
+| Removed | unused-lib | Not imported |
+| Replaced | moment | Switched to date-fns |
 
-### 3. Major Updates (Review Required)
-Breaking changes to evaluate:
-| Package | Current | Latest | Breaking Changes |
-|---------|---------|--------|------------------|
-| name | 1.0.0 | 2.0.0 | [Link to changelog] |
-
-### 4. Dependencies to Remove
-Unused or redundant packages:
-- `package-name`: Not imported anywhere
-- `other-package`: Duplicate of X
-
-### 5. Optimization Opportunities
-Size or performance improvements:
-| Current | Suggested | Savings |
-|---------|-----------|---------|
-| moment | date-fns | ~200KB |
-
-### 6. License Summary
-| License | Count | Packages |
-|---------|-------|----------|
-| MIT | 45 | ... |
-| Apache-2.0 | 12 | ... |
+### Summary
+- Vulnerabilities fixed: X
+- Packages updated: X
+- Packages removed: X
+- Bundle size saved: ~X KB

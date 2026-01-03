@@ -1,11 +1,11 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git log:*)
-description: Deep bug analysis with stack-specific checks
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash(git diff:*), Bash(git log:*)
+description: Find and fix bugs directly
 ---
 
-# Comprehensive Bug Analysis
+# Bug Fixer
 
-Perform thorough investigation for bugs, logic errors, and stack-specific issues.
+Find bugs, logic errors, and stack-specific issues, then **fix them directly**. Do not just report - implement the fixes.
 
 ## Phase 0: Project Detection
 
@@ -185,24 +185,32 @@ First, identify the ORM: Drizzle, Prisma, TypeORM, Sequelize, Knex, or raw queri
 
 ---
 
-## Output Format
+## Implementation
 
-For each bug found:
-
-1. **Location**: File path and line number
-2. **Severity**: Critical / High / Medium / Low
-3. **Category**: Logic / Async / Type / State / Data
-4. **Description**: What the bug is
-5. **Trigger**: How to reproduce
-6. **Impact**: What could go wrong
-7. **Fix**: Suggested code change
-8. **Test**: How to verify the fix
-
-**Priority Order**:
+**Fix bugs directly in this order:**
 1. Data corruption/loss risks
 2. Security implications
 3. User-facing crashes
 4. Silent failures
 5. Edge case handling
 
-Focus on real, exploitable bugs rather than style issues.
+**For each bug:**
+1. Edit the file to fix the bug
+2. Add missing error handling
+3. Fix logic errors
+4. Add missing null checks
+5. Fix async issues (missing await, race conditions)
+
+## Output Format
+
+After implementing fixes, report:
+
+### Bugs Fixed
+| File | Category | Bug | Fix Applied |
+|------|----------|-----|-------------|
+| src/utils.ts:23 | Logic | Off-by-one error | Fixed loop bounds |
+
+### Summary
+- Critical fixed: X
+- Bugs fixed: X
+- Files modified: X
