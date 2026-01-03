@@ -10,13 +10,15 @@ Identify refactoring opportunities to improve code quality, maintainability, and
 ## Phase 0: Project Detection
 
 First, analyze the project to identify the tech stack:
-1. Check `tsconfig.json` / `jsconfig.json` for language
+1. Check `tsconfig.json` / `jsconfig.json` for:
+   - Path aliases (`@/*`, `~/*`, `@lib/*`, `@components/*`)
+   - Compiler options and strict mode
 2. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo, etc.)
 3. Check lock files for package manager (pnpm-lock.yaml, yarn.lock, package-lock.json)
 4. Check for state management (Zustand, Redux, MobX, Jotai, etc.)
 5. Check for ORM (Prisma, Drizzle, TypeORM, etc.)
 
-Adapt refactoring suggestions based on detected stack.
+Adapt refactoring suggestions based on detected stack and use project's path aliases in examples.
 
 ---
 
@@ -79,6 +81,8 @@ Adapt refactoring suggestions based on detected stack.
 - Extract shared types to dedicated files
 - Use discriminated unions over type assertions
 - Leverage utility types (Partial, Pick, Omit, etc.)
+- Convert relative imports (`../../`) to path aliases (`@/lib/`, `@/components/`)
+- Organize types using project's alias structure
 
 ### If React/Next.js Detected
 - Extract custom hooks for reusable logic

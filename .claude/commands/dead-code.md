@@ -10,13 +10,15 @@ Identify unused code that can be safely removed, adapting detection based on pro
 ## Phase 0: Project Detection
 
 First, identify the project stack:
-1. Check `tsconfig.json` for TypeScript configuration
+1. Check `tsconfig.json` for:
+   - Path aliases (`@/*`, `~/*`) - needed to trace imports
+   - Base URL configuration
 2. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
 3. Check for build/bundle config (to understand tree-shaking)
 4. Identify testing patterns (to avoid flagging test-only code)
 5. Check for monorepo structure
 
-Adapt detection based on detected stack.
+Adapt detection based on detected stack. Use path aliases when tracing imports.
 
 ---
 

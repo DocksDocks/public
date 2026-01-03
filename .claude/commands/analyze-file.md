@@ -12,9 +12,13 @@ Perform a comprehensive analysis of the specified file, adapting checks based on
 First, understand the file context:
 1. Identify file type (.ts, .tsx, .js, .json, etc.)
 2. Check project stack from package.json
-3. Identify the file's role (component, route, service, util, etc.)
-4. Check for related test files
-5. Identify dependencies and dependents
+3. Check tsconfig.json/jsconfig.json for:
+   - Path aliases (`@/*`, `~/*`, etc.)
+   - Compiler options (strict, target, etc.)
+   - Base URL configuration
+4. Identify the file's role (component, route, service, util, etc.)
+5. Check for related test files
+6. Identify dependencies and dependents
 
 ---
 

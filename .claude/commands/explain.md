@@ -11,9 +11,10 @@ Provide a comprehensive explanation of the specified code, adapting the explanat
 
 First, understand the context:
 1. Identify what's being explained (file, function, feature, concept)
-2. Check project stack from package.json/tsconfig.json
-3. Identify related files and dependencies
-4. Understand the role in the overall architecture
+2. Check project stack from package.json
+3. Check `tsconfig.json` for path aliases (`@/*`, `~/*`) to trace imports
+4. Identify related files and dependencies using resolved paths
+5. Understand the role in the overall architecture
 
 ---
 

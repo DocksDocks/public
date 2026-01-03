@@ -11,10 +11,11 @@ Conduct a comprehensive performance review with stack-specific optimization reco
 
 First, identify the project stack:
 1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
-2. Check for bundler config (next.config.js, vite.config.ts, etc.)
-3. Check for database/ORM (Prisma, Drizzle, pg, etc.)
-4. Check for caching (Redis, in-memory, etc.)
-5. Check for Docker configuration
+2. Check `tsconfig.json` for path aliases to trace imports
+3. Check for bundler config (next.config.js, vite.config.ts, etc.)
+4. Check for database/ORM (Prisma, Drizzle, pg, etc.)
+5. Check for caching (Redis, in-memory, etc.)
+6. Check for Docker configuration
 
 Adapt performance analysis based on detected stack.
 

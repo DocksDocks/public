@@ -11,10 +11,11 @@ Analyze the codebase, identify documentation gaps, and propose improvements.
 
 First, identify the project stack and existing docs:
 1. Check `package.json` for project type and scripts
-2. Check for existing docs (README.md, CLAUDE.md, docs/, etc.)
-3. Identify documentation tools (Storybook, TypeDoc, Swagger, etc.)
-4. Check for TypeScript (enables JSDoc/TSDoc)
-5. Check for API framework (for API documentation)
+2. Check `tsconfig.json` for path aliases (document in CLAUDE.md)
+3. Check for existing docs (README.md, CLAUDE.md, docs/, etc.)
+4. Identify documentation tools (Storybook, TypeDoc, Swagger, etc.)
+5. Check for TypeScript (enables JSDoc/TSDoc)
+6. Check for API framework (for API documentation)
 
 Document detected setup before analysis.
 

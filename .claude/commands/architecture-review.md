@@ -11,13 +11,16 @@ Analyze project architecture, evaluate SOLID principles adherence, and provide i
 
 First, identify the project stack and structure:
 1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
-2. Check `tsconfig.json` for TypeScript configuration
+2. Check `tsconfig.json` for:
+   - Path aliases (`@/*`, `~/*`, `@components/*`, etc.)
+   - Base URL and paths configuration
+   - Strict mode and compiler options
 3. Check directory structure for architecture patterns
 4. Check `docker-compose.yml` / `Dockerfile` for infrastructure
 5. Check for ORM/database configurations
 6. Check for state management setup
 
-Document detected stack before analysis.
+Document detected stack and path aliases before analysis.
 
 ---
 

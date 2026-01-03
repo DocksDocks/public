@@ -10,7 +10,10 @@ Review code changes thoroughly, focusing on correctness, SOLID principles, and s
 ## Phase 0: Project Detection
 
 First, identify the project stack:
-1. Check `tsconfig.json` for TypeScript configuration
+1. Check `tsconfig.json` for:
+   - Path aliases (`@/*`, `~/*`, etc.) - verify imports use them
+   - Strict mode compliance requirements
+   - Compiler options
 2. Check `package.json` for frameworks and dependencies
 3. Check lock files for package manager
 4. Check for testing frameworks (Jest, Vitest, etc.)
@@ -90,6 +93,8 @@ Adapt review criteria based on detected stack.
 - [ ] Proper type narrowing
 - [ ] No type assertions (`as`) where avoidable
 - [ ] Generic types used appropriately
+- [ ] Using project path aliases (`@/`) instead of relative imports (`../../`)
+- [ ] Imports follow project conventions
 
 ### If React/Next.js Detected
 - [ ] Hooks rules followed (dependencies, order)

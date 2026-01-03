@@ -10,7 +10,10 @@ Perform thorough investigation for bugs, logic errors, and stack-specific issues
 ## Phase 0: Project Detection
 
 First, identify the project stack:
-1. Check `tsconfig.json` for TypeScript configuration
+1. Check `tsconfig.json` for:
+   - Path aliases (`@/*`, `~/*`) - resolve import paths correctly
+   - Strict mode settings
+   - Module resolution
 2. Check `package.json` for frameworks and libraries
 3. Check for testing setup (to understand coverage)
 4. Check for state management (Zustand, Redux, etc.)

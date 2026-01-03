@@ -11,12 +11,13 @@ Analyze the codebase and generate comprehensive API documentation matching the p
 
 First, identify the API framework and tools:
 1. Check `package.json` for framework (Fastify, Express, Next.js, Hono, etc.)
-2. Check for existing OpenAPI/Swagger setup
-3. Check for validation libraries (Zod, Joi, TypeBox, etc.)
-4. Check for authentication patterns
-5. Identify the package manager for script commands
+2. Check `tsconfig.json` for path aliases (use in import examples)
+3. Check for existing OpenAPI/Swagger setup
+4. Check for validation libraries (Zod, Joi, TypeBox, etc.)
+5. Check for authentication patterns
+6. Identify the package manager for script commands
 
-Document detected setup before generating.
+Document detected setup before generating. Use project's path aliases in examples.
 
 ---
 

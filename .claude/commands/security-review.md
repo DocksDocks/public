@@ -11,10 +11,11 @@ Analyze the codebase for security vulnerabilities following OWASP guidelines and
 
 First, identify the project stack for targeted analysis:
 1. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo)
-2. Check for authentication libraries (next-auth, passport, etc.)
-3. Check for database/ORM (Prisma, Drizzle, pg, etc.)
-4. Check for Docker configuration
-5. Check for environment variable handling
+2. Check `tsconfig.json` for path aliases to trace imports correctly
+3. Check for authentication libraries (next-auth, passport, etc.)
+4. Check for database/ORM (Prisma, Drizzle, pg, etc.)
+5. Check for Docker configuration
+6. Check for environment variable handling
 
 Adapt security checks based on detected stack.
 

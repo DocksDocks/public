@@ -12,11 +12,12 @@ Analyze the codebase and generate comprehensive tests matching existing patterns
 First, identify the testing setup:
 1. Check `package.json` for test frameworks (Jest, Vitest, etc.)
 2. Check for test config files (jest.config.js, vitest.config.ts, etc.)
-3. Check existing test files for patterns and conventions
-4. Check for testing utilities (@testing-library, supertest, etc.)
-5. Identify the package manager (pnpm, yarn, npm)
+3. Check `tsconfig.json` for path aliases (`@/*`, `~/*`) - use in test imports
+4. Check existing test files for patterns and conventions
+5. Check for testing utilities (@testing-library, supertest, etc.)
+6. Identify the package manager (pnpm, yarn, npm)
 
-Document detected setup before generating tests.
+Document detected setup before generating tests. Use project's path aliases in imports.
 
 ---
 
