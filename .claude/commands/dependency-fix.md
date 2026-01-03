@@ -1,6 +1,6 @@
 ---
 allowed-tools: Read, Edit, Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
-description: Audit and fix dependency issues
+description: Fix dependency issues
 ---
 
 # Dependency Fixer
