@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(find:*), Bash(wc:*), Bash(mkdir:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*), Bash(wc:*), Bash(mkdir:*)
 description: Review and fix architecture issues
 ---
 
@@ -7,11 +7,19 @@ description: Review and fix architecture issues
 
 Analyze project architecture, evaluate SOLID principles, and **implement improvements directly**. Do not just report - refactor the code.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack and structure:
+1. **Launch explore agent** to:
+   - Map module boundaries and dependencies
+   - Identify architectural patterns in use
+   - Find SOLID violations and coupling issues
+   - Understand the layering strategy
+
+## Phase 0.5: Project Detection
+
+Identify the project stack and structure:
 1. Check `package.json` for:
    - Frameworks (Next.js, Fastify, Expo, etc.)
    - Workspaces configuration (pnpm/npm/yarn workspaces)

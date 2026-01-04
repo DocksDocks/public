@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Edit, Task, Bash(git:*), Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
+allowed-tools: Read, Grep, Glob, Edit, Task, Bash(git:*), Bash(ls:*), Bash(find:*), Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
 description: Fix dependency issues
 ---
 
@@ -7,11 +7,19 @@ description: Fix dependency issues
 
 Analyze dependencies and **fix issues directly** - update vulnerable packages, remove unused deps, and apply safe updates.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the package manager and project type:
+1. **Launch explore agent** to:
+   - Map dependency usage across the codebase
+   - Identify critical dependencies
+   - Find breaking change impacts
+   - Check for unused dependencies
+
+## Phase 0.5: Project Detection
+
+Identify the package manager and project type:
 1. Check for lock files:
    - `pnpm-lock.yaml` → pnpm
    - `yarn.lock` → yarn

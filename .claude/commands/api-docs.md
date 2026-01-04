@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Write
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Generate API documentation based on detected framework
 ---
 
@@ -7,7 +7,26 @@ description: Generate API documentation based on detected framework
 
 Analyze the codebase and generate comprehensive API documentation matching the project's framework.
 
-## Phase 0: Project Detection
+## Phase 0: Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before generating docs.
+
+1. **Launch explore agent** to:
+   - Find all API routes and endpoints
+   - Map request/response schemas
+   - Identify authentication patterns
+   - Discover existing documentation
+
+## Phase 1: Planning
+
+Before generating documentation, create a plan:
+
+1. **Document scope**: List all endpoints to document
+2. **Format decision**: OpenAPI, Markdown, or both
+3. **Structure outline**: How docs will be organized
+4. **Present plan to user** for approval
+
+## Phase 2: Project Detection
 
 First, identify the API framework and tools:
 1. Check `package.json` for framework (Fastify, Express, Next.js, Hono, etc.)
@@ -21,7 +40,7 @@ Document detected setup before generating. Use project's path aliases in example
 
 ---
 
-## Discovery Phase
+## Phase 3: Discovery
 
 1. Find all API endpoints/routes
 2. Identify request/response schemas
@@ -31,7 +50,7 @@ Document detected setup before generating. Use project's path aliases in example
 
 ---
 
-## Stack-Specific Documentation
+## Phase 4: Stack-Specific Documentation
 
 ### If Fastify Detected
 

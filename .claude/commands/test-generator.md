@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Write
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Generate tests following project patterns and stack conventions
 ---
 
@@ -7,7 +7,26 @@ description: Generate tests following project patterns and stack conventions
 
 Analyze the codebase and generate comprehensive tests matching existing patterns and conventions.
 
-## Phase 0: Project Detection
+## Phase 0: Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the testing landscape.
+
+1. **Launch explore agent** to:
+   - Find existing test patterns and conventions
+   - Identify testing frameworks and utilities
+   - Map code paths needing coverage
+   - Check for test configuration files
+
+## Phase 1: Planning
+
+Before generating tests, create a plan:
+
+1. **Coverage analysis**: What code needs tests
+2. **Test types**: Unit, integration, e2e
+3. **Priority order**: Critical paths first
+4. **Present plan to user** for approval
+
+## Phase 2: Project Detection
 
 First, identify the testing setup:
 1. Check `package.json` for test frameworks (Jest, Vitest, etc.)
@@ -23,7 +42,7 @@ For monorepos, respect workspace test configurations.
 
 ---
 
-## Phase 1: Analysis
+## Phase 3: Analysis
 
 1. Identify existing test patterns and conventions
 2. Find untested or under-tested code

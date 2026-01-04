@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Task, Bash(git:*), Bash(find:*), Bash(rm:*)
+allowed-tools: Read, Grep, Glob, Edit, Task, Bash(git:*), Bash(ls:*), Bash(find:*), Bash(rm:*)
 description: Find and remove dead code
 ---
 
@@ -7,11 +7,19 @@ description: Find and remove dead code
 
 Find unused code and **remove it directly**. Do not just report - delete the dead code.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack:
+1. **Launch explore agent** to:
+   - Map all imports and exports
+   - Trace usage across the codebase
+   - Check for dynamic imports and reflection
+   - Identify framework convention files
+
+## Phase 0.5: Project Detection
+
+Identify the project stack:
 1. Check `tsconfig.json` for:
    - Path aliases (`@/*`, `~/*`) - needed to trace imports
    - Base URL configuration

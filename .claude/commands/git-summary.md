@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git:*)
+allowed-tools: Read, Grep, Glob, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Summarize git activity and generate changelog
 ---
 
@@ -7,7 +7,17 @@ description: Summarize git activity and generate changelog
 
 Analyze recent git activity and provide useful summaries.
 
-## Phase 0: Repository Analysis
+## Phase 0: Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the repository.
+
+1. **Launch explore agent** to:
+   - Map repository structure
+   - Identify commit patterns
+   - Find CI/CD configuration
+   - Understand branching strategy
+
+## Phase 1: Repository Analysis
 
 First, understand the repository:
 1. Check current branch and status

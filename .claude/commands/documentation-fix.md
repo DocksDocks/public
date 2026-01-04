@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Write, Task, Bash(git:*), Bash(find:*), Bash(ls:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Fix and improve project documentation directly
 ---
 
@@ -7,11 +7,19 @@ description: Fix and improve project documentation directly
 
 Analyze the codebase, identify documentation gaps, and **implement fixes directly**. Do not just suggest - write the documentation.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack and existing docs:
+1. **Launch explore agent** to:
+   - Map project architecture
+   - Find existing documentation patterns
+   - Identify key modules and their purposes
+   - Check for undocumented public APIs
+
+## Phase 0.5: Project Detection
+
+Identify the project stack and existing docs:
 1. Check `package.json` for project type, scripts, and workspaces
 2. Check `pnpm-workspace.yaml` for monorepo structure
 3. Check `tsconfig.json` for path aliases (document in CLAUDE.md)

@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Find and fix security vulnerabilities
 ---
 
@@ -7,11 +7,19 @@ description: Find and fix security vulnerabilities
 
 Find security vulnerabilities and **fix them directly**. Do not just report - implement the fixes.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack for targeted analysis:
+1. **Launch explore agent** to:
+   - Map authentication and authorization flows
+   - Trace data input/output paths
+   - Find security-critical code (crypto, auth, db)
+   - Check for existing security measures
+
+## Phase 0.5: Project Detection
+
+Identify the project stack for targeted analysis:
 1. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo)
 2. Check `pnpm-workspace.yaml` for monorepo structure
 3. Check `tsconfig.json` for path aliases to trace imports correctly

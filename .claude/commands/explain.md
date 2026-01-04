@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Explain code with stack-aware context
 ---
 
@@ -7,7 +7,17 @@ description: Explain code with stack-aware context
 
 Provide a comprehensive explanation of the specified code, adapting the explanation based on the project's stack.
 
-## Phase 0: Context Detection
+## Phase 0: Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to gather full context.
+
+1. **Launch explore agent** to:
+   - Trace all dependencies and consumers
+   - Find related tests and documentation
+   - Check git history for evolution
+   - Map data flow through the code
+
+## Phase 1: Context Detection
 
 First, understand the context:
 1. Identify what's being explained (file, function, feature, concept)

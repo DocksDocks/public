@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Review and fix code issues
 ---
 
@@ -7,11 +7,19 @@ description: Review and fix code issues
 
 Review code and **fix issues directly**. Do not just report - implement fixes for correctness, SOLID violations, and best practices.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack:
+1. **Launch explore agent** to:
+   - Understand code context and patterns
+   - Check related tests and dependencies
+   - Review git history for context
+   - Identify coding conventions
+
+## Phase 0.5: Project Detection
+
+Identify the project stack:
 1. Check `tsconfig.json` for:
    - Path aliases (`@/*`, `~/*`, etc.) - verify imports use them
    - Strict mode compliance requirements

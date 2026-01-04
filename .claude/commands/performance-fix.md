@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(wc:*), Bash(find:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*), Bash(wc:*)
 description: Find and fix performance issues
 ---
 
@@ -7,11 +7,19 @@ description: Find and fix performance issues
 
 Find performance issues and **fix them directly**. Do not just report - implement the optimizations.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack:
+1. **Launch explore agent** to:
+   - Profile critical code paths
+   - Identify bottlenecks and hot spots
+   - Find N+1 queries and inefficient patterns
+   - Map data flow and caching opportunities
+
+## Phase 0.5: Project Detection
+
+Identify the project stack:
 1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
 2. Check `tsconfig.json` for path aliases to trace imports
 3. Check for bundler config (next.config.js, vite.config.ts, etc.)

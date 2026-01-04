@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read, Grep, Glob, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Deep analysis of a specific file with stack-aware checks
 ---
 
@@ -7,7 +7,17 @@ description: Deep analysis of a specific file with stack-aware checks
 
 Perform a comprehensive analysis of the specified file, adapting checks based on file type and project stack.
 
-## Phase 0: Context Detection
+## Phase 0: Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase context.
+
+1. **Launch explore agent** to:
+   - Map file dependencies (imports/exports)
+   - Find related files (tests, types, consumers)
+   - Understand architectural context
+   - Check git history for recent changes
+
+## Phase 1: Context Detection
 
 First, understand the file context:
 1. Identify file type (.ts, .tsx, .js, .json, etc.)

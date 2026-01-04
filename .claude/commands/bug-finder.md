@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(ls:*), Bash(find:*)
 description: Find and fix bugs directly
 ---
 
@@ -7,11 +7,19 @@ description: Find and fix bugs directly
 
 Find bugs, logic errors, and stack-specific issues, then **fix them directly**. Do not just report - implement the fixes.
 
-## Phase 0: Project Detection & Exploration
+## Phase 0: Exploration
 
 Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
-First, identify the project stack:
+1. **Launch explore agent** to:
+   - Map code structure and dependencies
+   - Find related tests and error handling patterns
+   - Check git history for recent bug fixes
+   - Identify critical code paths
+
+## Phase 0.5: Project Detection
+
+Identify the project stack:
 1. Check `tsconfig.json` for:
    - Path aliases (`@/*`, `~/*`) - resolve import paths correctly
    - Strict mode settings
