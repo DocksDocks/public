@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Write, Bash(find:*), Bash(ls:*)
+allowed-tools: Read, Grep, Glob, Write, Task, Bash(git:*), Bash(find:*), Bash(ls:*)
 description: Fix and improve project documentation directly
 ---
 
@@ -7,7 +7,9 @@ description: Fix and improve project documentation directly
 
 Analyze the codebase, identify documentation gaps, and **implement fixes directly**. Do not just suggest - write the documentation.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack and existing docs:
 1. Check `package.json` for project type, scripts, and workspaces
@@ -23,7 +25,26 @@ Document detected setup before analysis.
 
 ---
 
-## Phase 1: Investigation
+## Phase 1: Planning
+
+Before implementing any documentation, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Understand the project architecture
+   - Identify key modules and their purposes
+   - Find existing documentation patterns
+
+2. **Create a documentation plan** listing:
+   - Documentation gaps identified
+   - Priority order (CLAUDE.md, README, etc.)
+   - Content outline for each document
+   - Code areas needing JSDoc/TSDoc
+
+3. **Present plan to user** for approval before implementing
+
+---
+
+## Phase 2: Investigation
 
 ### Project Structure Analysis
 1. Scan the entire project structure
@@ -48,7 +69,7 @@ Document detected setup before analysis.
 
 ---
 
-## Phase 2: Documentation Gap Analysis
+## Phase 3: Documentation Gap Analysis
 
 ### Essential Documentation Checklist
 - [ ] Project overview and purpose
@@ -100,7 +121,7 @@ Document detected setup before analysis.
 
 ---
 
-## Phase 3: CLAUDE.md Optimization
+## Phase 4: CLAUDE.md Optimization
 
 Create or update CLAUDE.md with:
 
@@ -160,7 +181,7 @@ cp .env.example .env.local
 
 ---
 
-## Phase 4: Implement Fixes
+## Phase 5: Implement Fixes
 
 **Do not just suggest - implement directly.**
 

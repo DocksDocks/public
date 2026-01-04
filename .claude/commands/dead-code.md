@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Bash(find:*), Bash(rm:*)
+allowed-tools: Read, Grep, Glob, Edit, Task, Bash(git:*), Bash(find:*), Bash(rm:*)
 description: Find and remove dead code
 ---
 
@@ -7,7 +7,9 @@ description: Find and remove dead code
 
 Find unused code and **remove it directly**. Do not just report - delete the dead code.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack:
 1. Check `tsconfig.json` for:
@@ -22,6 +24,25 @@ First, identify the project stack:
 
 Adapt detection based on detected stack. Use path aliases when tracing imports.
 For monorepos, check cross-package usage.
+
+---
+
+## Phase 1: Planning
+
+Before removing any code, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Trace all imports and usages
+   - Check for dynamic imports and reflection
+   - Verify framework convention files
+
+2. **Create a removal plan** listing:
+   - Each dead code item with file:line reference
+   - Confidence level (high/medium/low)
+   - Verification steps taken
+   - Dependencies affected
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

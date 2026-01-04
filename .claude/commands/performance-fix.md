@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash(wc:*), Bash(find:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(wc:*), Bash(find:*)
 description: Find and fix performance issues
 ---
 
@@ -7,7 +7,9 @@ description: Find and fix performance issues
 
 Find performance issues and **fix them directly**. Do not just report - implement the optimizations.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack:
 1. Check `package.json` for frameworks (Next.js, Fastify, Expo, etc.)
@@ -18,6 +20,25 @@ First, identify the project stack:
 6. Check for Docker configuration
 
 Adapt performance analysis based on detected stack.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any optimizations, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Profile critical code paths
+   - Identify bottlenecks and hot spots
+   - Understand data flow patterns
+
+2. **Create a performance fix plan** listing:
+   - Each issue with file:line reference
+   - Category (algorithm, memory, async, database)
+   - Current vs expected performance
+   - Proposed optimization
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

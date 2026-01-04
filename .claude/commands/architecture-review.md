@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash(find:*), Bash(wc:*), Bash(mkdir:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*), Bash(find:*), Bash(wc:*), Bash(mkdir:*)
 description: Review and fix architecture issues
 ---
 
@@ -7,7 +7,9 @@ description: Review and fix architecture issues
 
 Analyze project architecture, evaluate SOLID principles, and **implement improvements directly**. Do not just report - refactor the code.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack and structure:
 1. Check `package.json` for:
@@ -25,6 +27,25 @@ First, identify the project stack and structure:
 8. Check for state management setup
 
 Document detected stack, workspaces, and path aliases before analysis.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any changes, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Map the current architecture and dependencies
+   - Identify SOLID violations and patterns
+   - Understand module boundaries
+
+2. **Create an architecture improvement plan** listing:
+   - Each issue with affected files
+   - SOLID principle violated
+   - Proposed refactoring approach
+   - Migration steps if needed
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

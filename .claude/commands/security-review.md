@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
 description: Find and fix security vulnerabilities
 ---
 
@@ -7,7 +7,9 @@ description: Find and fix security vulnerabilities
 
 Find security vulnerabilities and **fix them directly**. Do not just report - implement the fixes.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack for targeted analysis:
 1. Check `package.json` for frameworks (Next.js, Fastify, Express, Expo)
@@ -20,6 +22,25 @@ First, identify the project stack for targeted analysis:
 8. Check for environment variable handling
 
 Adapt security checks based on detected stack.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any fixes, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Map authentication and authorization flows
+   - Trace data input/output paths
+   - Identify security-critical areas
+
+2. **Create a security fix plan** listing:
+   - Each vulnerability with CWE reference
+   - Severity level (Critical/High/Medium/Low)
+   - Proposed remediation
+   - Testing approach
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

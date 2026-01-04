@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Edit, Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
+allowed-tools: Read, Edit, Task, Bash(git:*), Bash(pnpm:*), Bash(npm:*), Bash(yarn:*), Bash(cat:*)
 description: Fix dependency issues
 ---
 
@@ -7,7 +7,9 @@ description: Fix dependency issues
 
 Analyze dependencies and **fix issues directly** - update vulnerable packages, remove unused deps, and apply safe updates.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the package manager and project type:
 1. Check for lock files:
@@ -22,6 +24,25 @@ First, identify the package manager and project type:
 5. Check for shared packages in workspace
 
 Use detected package manager for all commands. For monorepos, audit each workspace.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any fixes, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Understand how dependencies are used
+   - Check for breaking change impacts
+   - Identify test coverage for affected areas
+
+2. **Create a dependency fix plan** listing:
+   - Vulnerabilities to fix (with CVE references)
+   - Packages to update (current → target version)
+   - Packages to remove (with reason)
+   - Breaking changes requiring code updates
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

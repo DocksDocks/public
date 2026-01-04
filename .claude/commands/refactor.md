@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Write
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
 description: Code refactoring analysis with SOLID principles
 ---
 
@@ -7,7 +7,9 @@ description: Code refactoring analysis with SOLID principles
 
 Identify refactoring opportunities to improve code quality, maintainability, and adherence to SOLID principles.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, analyze the project to identify the tech stack:
 1. Check `tsconfig.json` / `jsconfig.json` for:
@@ -22,6 +24,25 @@ First, analyze the project to identify the tech stack:
 7. Check for scripts (`scripts/`, `*.sh`) that could be improved
 
 Adapt refactoring suggestions based on detected stack and use project's path aliases in examples.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any refactoring, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Map dependencies and coupling
+   - Identify code smells and patterns
+   - Understand test coverage
+
+2. **Create a refactoring plan** listing:
+   - Each refactoring with affected files
+   - SOLID principle or code smell addressed
+   - Step-by-step approach
+   - Risk assessment and testing needs
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

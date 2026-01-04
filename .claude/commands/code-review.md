@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash(git diff:*), Bash(git log:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
 description: Review and fix code issues
 ---
 
@@ -7,7 +7,9 @@ description: Review and fix code issues
 
 Review code and **fix issues directly**. Do not just report - implement fixes for correctness, SOLID violations, and best practices.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack:
 1. Check `tsconfig.json` for:
@@ -22,6 +24,25 @@ First, identify the project stack:
 7. Check for scripts (`scripts/`, `*.sh`)
 
 Adapt review criteria based on detected stack.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any fixes, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Understand the code context and patterns
+   - Check related tests and dependencies
+   - Review git history for context
+
+2. **Create a fix plan** listing:
+   - Each issue with file:line reference
+   - Category (bug, security, SOLID, performance)
+   - Proposed fix approach
+   - Test coverage status
+
+3. **Present plan to user** for approval before implementing
 
 ---
 

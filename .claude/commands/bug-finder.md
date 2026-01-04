@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash(git diff:*), Bash(git log:*)
+allowed-tools: Read, Grep, Glob, Edit, Write, Task, Bash(git:*)
 description: Find and fix bugs directly
 ---
 
@@ -7,7 +7,9 @@ description: Find and fix bugs directly
 
 Find bugs, logic errors, and stack-specific issues, then **fix them directly**. Do not just report - implement the fixes.
 
-## Phase 0: Project Detection
+## Phase 0: Project Detection & Exploration
+
+Use the **Task tool with `subagent_type=Explore`** to understand the codebase before making changes.
 
 First, identify the project stack:
 1. Check `tsconfig.json` for:
@@ -22,6 +24,25 @@ First, identify the project stack:
 7. Check for scripts (`scripts/`, `*.sh`)
 
 Adapt bug detection based on detected stack.
+
+---
+
+## Phase 1: Planning
+
+Before implementing any fixes, create a plan:
+
+1. **Use Task tool** with `subagent_type=Explore` to:
+   - Understand the affected code areas
+   - Trace data flow and dependencies
+   - Identify related tests and patterns
+
+2. **Create a fix plan** listing:
+   - Each bug found with file:line reference
+   - Root cause analysis
+   - Proposed fix approach
+   - Potential side effects
+
+3. **Present plan to user** for approval before implementing
 
 ---
 
