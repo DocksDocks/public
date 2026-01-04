@@ -52,6 +52,25 @@ Before implementing any fixes, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before fixing, **launch multiple agents in parallel** to verify vulnerabilities:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Vulnerability Confirmation**: Verify each issue is exploitable
+2. **Agent 2 - Attack Surface Analysis**: Map all entry points and data flows
+3. **Agent 3 - Fix Verification**: Confirm proposed fixes don't introduce new issues
+
+**Cross-check results:**
+- All agents must agree on severity classification
+- False positives should be filtered out
+- Only proceed with confirmed vulnerabilities
+
+---
+
 ## OWASP Top 10 Analysis
 
 ### A01: Broken Access Control

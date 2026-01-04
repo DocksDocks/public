@@ -54,6 +54,25 @@ Before removing any code, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before removing code, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Usage Verification**: Confirm code is truly unused
+2. **Agent 2 - Dynamic Import Check**: Search for string-based/dynamic usage
+3. **Agent 3 - Framework Convention Check**: Verify not a convention file
+
+**Cross-check results:**
+- All agents must confirm code is safe to remove
+- Any doubt → keep the code, flag for manual review
+- Only proceed when all agents agree
+
+---
+
 ## Universal Dead Code Detection
 
 ### Unused Exports

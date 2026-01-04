@@ -52,7 +52,26 @@ Before implementing any documentation, create a plan:
 
 ---
 
-## Phase 2: Investigation
+## Phase 2: Verification (Multi-Agent)
+
+Before writing docs, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Code Analysis**: Extract accurate info from code
+2. **Agent 2 - Existing Docs Review**: Find what already exists
+3. **Agent 3 - Gap Analysis**: Identify what's missing or outdated
+
+**Cross-check results:**
+- All agents must agree on documentation gaps
+- Avoid duplicating existing documentation
+- Only proceed with verified gaps
+
+---
+
+## Phase 3: Investigation
 
 ### Project Structure Analysis
 1. Scan the entire project structure
@@ -77,7 +96,7 @@ Before implementing any documentation, create a plan:
 
 ---
 
-## Phase 3: Documentation Gap Analysis
+## Phase 4: Documentation Gap Analysis
 
 ### Essential Documentation Checklist
 - [ ] Project overview and purpose
@@ -129,7 +148,7 @@ Before implementing any documentation, create a plan:
 
 ---
 
-## Phase 4: CLAUDE.md Optimization
+## Phase 5: CLAUDE.md Optimization
 
 Create or update CLAUDE.md with:
 
@@ -189,7 +208,7 @@ cp .env.example .env.local
 
 ---
 
-## Phase 5: Implement Fixes
+## Phase 6: Implement Fixes
 
 **Do not just suggest - implement directly.**
 

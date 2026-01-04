@@ -17,9 +17,28 @@ Use the **Task tool with `subagent_type=Explore`** to understand the codebase co
    - Understand architectural context
    - Check git history for recent changes
 
-## Phase 1: Context Detection
+## Phase 1: Verification (Multi-Agent)
 
-First, understand the file context:
+**Launch multiple agents in parallel** to gather comprehensive analysis:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Dependency Analysis**: Map all imports and consumers
+2. **Agent 2 - Quality Assessment**: Check for code smells and issues
+3. **Agent 3 - Test Coverage**: Find related tests and coverage gaps
+
+**Cross-check results:**
+- Combine findings from all agents
+- Prioritize issues by severity
+- Build complete picture before reporting
+
+---
+
+## Phase 2: Context Detection
+
+Understand the file context:
 1. Identify file type (.ts, .tsx, .js, .json, etc.)
 2. Check project stack from package.json
 3. Check tsconfig.json/jsconfig.json for:

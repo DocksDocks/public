@@ -54,6 +54,25 @@ Before implementing any fixes, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before implementing, **launch multiple agents in parallel** to verify findings:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Bug Verification**: Confirm each bug exists and is reproducible
+2. **Agent 2 - Impact Analysis**: Check for side effects and related issues
+3. **Agent 3 - Test Coverage**: Verify tests exist or identify test gaps
+
+**Cross-check results:**
+- All agents must agree on bug severity
+- Conflicts require additional investigation
+- Only proceed when verification passes
+
+---
+
 ## Universal Bug Patterns
 
 ### Logic Errors

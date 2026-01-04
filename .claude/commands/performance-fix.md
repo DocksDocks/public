@@ -50,6 +50,25 @@ Before implementing any optimizations, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before optimizing, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Bottleneck Confirmation**: Verify performance issues exist
+2. **Agent 2 - Impact Analysis**: Measure expected improvement
+3. **Agent 3 - Regression Check**: Ensure optimizations don't break functionality
+
+**Cross-check results:**
+- All agents must confirm performance issues
+- Optimizations must have measurable impact
+- Only proceed with verified bottlenecks
+
+---
+
 ## Universal Performance Checks
 
 ### Algorithm Efficiency

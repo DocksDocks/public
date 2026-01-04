@@ -26,9 +26,28 @@ Before generating documentation, create a plan:
 3. **Structure outline**: How docs will be organized
 4. **Present plan to user** for approval
 
-## Phase 2: Project Detection
+## Phase 2: Verification (Multi-Agent)
 
-First, identify the API framework and tools:
+**Launch multiple agents in parallel** to ensure complete coverage:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Route Discovery**: Find all API endpoints
+2. **Agent 2 - Schema Analysis**: Extract request/response types
+3. **Agent 3 - Auth/Middleware Check**: Map security requirements
+
+**Cross-check results:**
+- All agents must find the same endpoints
+- Schemas must be consistent
+- No endpoints should be missed
+
+---
+
+## Phase 3: Project Detection
+
+Identify the API framework and tools:
 1. Check `package.json` for framework (Fastify, Express, Next.js, Hono, etc.)
 2. Check `tsconfig.json` for path aliases (use in import examples)
 3. Check for existing OpenAPI/Swagger setup
@@ -40,7 +59,7 @@ Document detected setup before generating. Use project's path aliases in example
 
 ---
 
-## Phase 3: Discovery
+## Phase 4: Discovery
 
 1. Find all API endpoints/routes
 2. Identify request/response schemas
@@ -50,7 +69,7 @@ Document detected setup before generating. Use project's path aliases in example
 
 ---
 
-## Phase 4: Stack-Specific Documentation
+## Phase 5: Stack-Specific Documentation
 
 ### If Fastify Detected
 

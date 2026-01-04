@@ -17,9 +17,28 @@ Use the **Task tool with `subagent_type=Explore`** to gather full context.
    - Check git history for evolution
    - Map data flow through the code
 
-## Phase 1: Context Detection
+## Phase 1: Verification (Multi-Agent)
 
-First, understand the context:
+**Launch multiple agents in parallel** to build complete understanding:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Data Flow Analysis**: Trace inputs, transformations, outputs
+2. **Agent 2 - Dependency Mapping**: Find all related code and consumers
+3. **Agent 3 - Historical Context**: Check git history and evolution
+
+**Cross-check results:**
+- Combine perspectives from all agents
+- Resolve any conflicting interpretations
+- Build comprehensive explanation
+
+---
+
+## Phase 2: Context Detection
+
+Understand the context:
 1. Identify what's being explained (file, function, feature, concept)
 2. Check project stack from package.json
 3. Check `tsconfig.json` for path aliases (`@/*`, `~/*`) to trace imports

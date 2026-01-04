@@ -57,6 +57,25 @@ Before implementing any changes, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before refactoring, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Dependency Analysis**: Map all affected dependencies
+2. **Agent 2 - SOLID Verification**: Confirm violations and improvements
+3. **Agent 3 - Risk Assessment**: Identify breaking changes and migration needs
+
+**Cross-check results:**
+- All agents must agree on architectural issues
+- Refactoring scope must be validated
+- Only proceed when risks are understood
+
+---
+
 ## SOLID Principles Architecture Analysis
 
 ### Single Responsibility (SRP)

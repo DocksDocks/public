@@ -54,6 +54,25 @@ Before implementing any refactoring, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before refactoring, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Code Smell Verification**: Confirm issues warrant refactoring
+2. **Agent 2 - Dependency Impact**: Map all code that will be affected
+3. **Agent 3 - Test Coverage Check**: Verify tests exist to catch regressions
+
+**Cross-check results:**
+- All agents must agree on refactoring necessity
+- High-risk changes require comprehensive tests
+- Only proceed when impact is understood
+
+---
+
 ## SOLID Principles Analysis (Primary Focus)
 
 ### Single Responsibility Principle (SRP)

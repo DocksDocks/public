@@ -54,6 +54,25 @@ Before implementing any fixes, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before fixing, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Issue Verification**: Confirm each issue is valid
+2. **Agent 2 - Test Impact**: Check test coverage and potential regressions
+3. **Agent 3 - Pattern Consistency**: Verify fixes match project conventions
+
+**Cross-check results:**
+- All agents must agree on issue validity
+- Filter out style nitpicks unless impactful
+- Only proceed with confirmed issues
+
+---
+
 ## SOLID Principles Compliance
 
 ### Single Responsibility

@@ -17,9 +17,28 @@ Use the **Task tool with `subagent_type=Explore`** to understand the repository.
    - Find CI/CD configuration
    - Understand branching strategy
 
-## Phase 1: Repository Analysis
+## Phase 1: Verification (Multi-Agent)
 
-First, understand the repository:
+**Launch multiple agents in parallel** to gather complete git context:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Commit Analysis**: Categorize and summarize commits
+2. **Agent 2 - Branch Status**: Check all branches and their states
+3. **Agent 3 - File Churn**: Identify hot spots and frequently changed files
+
+**Cross-check results:**
+- Combine findings from all agents
+- Validate commit categorization
+- Build comprehensive summary
+
+---
+
+## Phase 2: Repository Analysis
+
+Understand the repository:
 1. Check current branch and status
 2. Identify main/master branch
 3. Check for conventional commit usage

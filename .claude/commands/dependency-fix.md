@@ -54,6 +54,25 @@ Before implementing any fixes, create a plan:
 
 ---
 
+## Phase 2: Verification (Multi-Agent)
+
+Before updating, **launch multiple agents in parallel** to verify:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Breaking Change Analysis**: Check changelogs for breaking changes
+2. **Agent 2 - Usage Impact**: Find all usages of packages being updated
+3. **Agent 3 - Compatibility Check**: Verify peer dependency compatibility
+
+**Cross-check results:**
+- All agents must confirm updates are safe
+- Breaking changes require migration plan
+- Only proceed when compatibility verified
+
+---
+
 ## Security Checks
 
 ### Vulnerability Scan

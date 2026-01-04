@@ -26,9 +26,28 @@ Before generating tests, create a plan:
 3. **Priority order**: Critical paths first
 4. **Present plan to user** for approval
 
-## Phase 2: Project Detection
+## Phase 2: Verification (Multi-Agent)
 
-First, identify the testing setup:
+**Launch multiple agents in parallel** to ensure comprehensive test planning:
+
+```
+Use Task tool to launch these agents simultaneously:
+```
+
+1. **Agent 1 - Code Path Analysis**: Map all branches and paths to test
+2. **Agent 2 - Edge Case Discovery**: Identify boundary conditions
+3. **Agent 3 - Pattern Matching**: Find existing test patterns to follow
+
+**Cross-check results:**
+- All agents must agree on coverage gaps
+- Test patterns must be consistent
+- Edge cases must be comprehensive
+
+---
+
+## Phase 3: Project Detection
+
+Identify the testing setup:
 1. Check `package.json` for test frameworks (Jest, Vitest, etc.)
 2. Check for test config files (jest.config.js, vitest.config.ts, etc.)
 3. Check `pnpm-workspace.yaml` for monorepo structure
@@ -42,7 +61,7 @@ For monorepos, respect workspace test configurations.
 
 ---
 
-## Phase 3: Analysis
+## Phase 4: Analysis
 
 1. Identify existing test patterns and conventions
 2. Find untested or under-tested code
