@@ -208,7 +208,65 @@ cp .env.example .env.local
 
 ---
 
-## Phase 6: Implement Fixes
+## Phase 6: AI Slop Detection & Removal
+
+**Identify and remove AI-generated filler content:**
+
+### Common AI Slop Patterns to Remove
+
+#### Unnecessary Hedging
+- "It's important to note that..."
+- "It's worth mentioning that..."
+- "Please note that..."
+- "Keep in mind that..."
+- "As you may know..."
+
+#### Empty Filler Phrases
+- "In order to..." → just use "To..."
+- "Make sure to..." → just state the action
+- "You'll want to..." → just state the action
+- "This allows you to..." → state what it does
+- "This helps ensure..." → be direct
+
+#### Redundant Transitions
+- "Now, let's..." / "Next, we'll..."
+- "First and foremost..."
+- "Last but not least..."
+- "With that being said..."
+- "Moving on to..."
+
+#### Over-Explanation
+- Explaining obvious things
+- Restating what code clearly shows
+- Excessive context before simple instructions
+
+#### Performative Enthusiasm
+- "Great!" / "Perfect!" / "Awesome!"
+- "Happy coding!"
+- Unnecessary exclamation marks
+
+#### Bloated Descriptions
+- Long paragraphs that could be bullet points
+- Repeating the same concept multiple ways
+- Adding "context" that doesn't help
+
+### Fix Actions
+1. **Delete** hedging phrases entirely
+2. **Simplify** filler phrases to direct statements
+3. **Remove** redundant transitions between sections
+4. **Condense** over-explained content
+5. **Convert** paragraphs to bullet points where clearer
+
+### Good Documentation Style
+- Direct and concise
+- Commands, not suggestions
+- Code examples over explanations
+- Bullet points over paragraphs
+- No fluff, just facts
+
+---
+
+## Phase 7: Implement Fixes
 
 **Do not just suggest - implement directly.**
 

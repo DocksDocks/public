@@ -73,6 +73,86 @@ Use Task tool to launch these agents simultaneously:
 
 ---
 
+## AI Slop Detection & Removal
+
+**Identify and remove AI-generated code patterns:**
+
+### Code Slop Patterns
+
+#### Unnecessary Comments
+```typescript
+// BAD: Comment restates the code
+// Get the user by ID
+const user = getUserById(id)
+
+// GOOD: No comment needed - code is clear
+const user = getUserById(id)
+
+// GOOD: Comment explains WHY, not what
+// Cache busting required due to CDN edge caching
+const url = `${base}?v=${Date.now()}`
+```
+
+#### Over-Abstraction
+```typescript
+// BAD: Abstraction for single use
+const createUserNameFormatter = () => (user) => user.name.toUpperCase()
+const formatUserName = createUserNameFormatter()
+
+// GOOD: Direct and simple
+const displayName = user.name.toUpperCase()
+```
+
+#### Verbose Naming
+```typescript
+// BAD: Redundant naming
+const userDataObject = { userName: user.name }
+const responseResultData = await fetchData()
+
+// GOOD: Concise naming
+const userData = { name: user.name }
+const response = await fetchData()
+```
+
+#### Unnecessary Flexibility
+```typescript
+// BAD: Over-engineered for "future flexibility"
+interface ConfigOptions {
+  enableFeature?: boolean
+  featureConfig?: FeatureConfig
+  onFeatureInit?: () => void
+  // ... 10 more unused options
+}
+
+// GOOD: Only what's needed now
+interface Config {
+  enabled: boolean
+}
+```
+
+#### Bloated Error Handling
+```typescript
+// BAD: Catching and rethrowing with no value added
+try {
+  await doThing()
+} catch (error) {
+  console.error('An error occurred while doing the thing:', error)
+  throw error
+}
+
+// GOOD: Either handle it or let it propagate
+await doThing() // Let caller handle errors
+```
+
+### Fix Actions
+1. **Remove** comments that restate code
+2. **Inline** single-use abstractions
+3. **Simplify** verbose variable/function names
+4. **Delete** unused flexibility/options
+5. **Flatten** unnecessary try-catch wrappers
+
+---
+
 ## SOLID Principles Compliance
 
 ### Single Responsibility
@@ -127,6 +207,13 @@ Use Task tool to launch these agents simultaneously:
 - [ ] Follows project conventions
 - [ ] No unnecessary complexity
 - [ ] DRY principle followed
+
+### AI Slop Detection
+- [ ] No excessive/unnecessary comments
+- [ ] No over-explained obvious code
+- [ ] No redundant variable names (e.g., `userUser`, `dataData`)
+- [ ] No verbose function names when simple ones work
+- [ ] No unnecessary abstractions "for flexibility"
 
 ### Testing
 - [ ] Tests cover new functionality
