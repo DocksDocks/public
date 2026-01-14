@@ -2,6 +2,15 @@
 
 Generate comprehensive tests following project patterns and conventions. Uses Devil's Advocate committee to ensure thorough coverage and quality.
 
+## Phase 0: Environment Check
+
+```bash
+# ALWAYS run this first to get the actual current date
+date "+%Y-%m-%d"
+```
+
+Use this date for any date-related operations. Do NOT assume the year from training data.
+
 ## Phase 1: Exploration
 
 First, understand the project's testing setup and patterns.
@@ -9,6 +18,7 @@ First, understand the project's testing setup and patterns.
 ```xml
 <task>
 Use the Task tool to launch an explore agent:
+- Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the test framework (Jest, Vitest, Pytest, Go test, etc.)
 - Find existing test files and understand their patterns
 - Check test configuration (jest.config, vitest.config, pytest.ini, etc.)

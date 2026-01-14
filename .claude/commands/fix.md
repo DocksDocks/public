@@ -2,6 +2,15 @@
 
 Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Devil's Advocate committee to ensure safe, effective fixes.
 
+## Phase 0: Environment Check
+
+```bash
+# ALWAYS run this first to get the actual current date
+date "+%Y-%m-%d"
+```
+
+Use this date for any date-related operations. Do NOT assume the year from training data.
+
 ## Phase 1: Exploration
 
 First, explore to understand what needs fixing.
@@ -9,6 +18,7 @@ First, explore to understand what needs fixing.
 ```xml
 <task>
 Use the Task tool to launch an explore agent:
+- Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and package manager
 - Find the target scope (use $ARGUMENTS if provided)
 - Check for existing issues: failing tests, linter errors, security advisories

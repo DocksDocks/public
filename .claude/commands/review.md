@@ -2,6 +2,15 @@
 
 Comprehensive code review covering quality, security, and performance using a Devil's Advocate committee approach.
 
+## Phase 0: Environment Check
+
+```bash
+# ALWAYS run this first to get the actual current date
+date "+%Y-%m-%d"
+```
+
+Use this date for any date-related operations. Do NOT assume the year from training data.
+
 ## Phase 1: Exploration
 
 First, explore the codebase to understand context and identify the target scope.
@@ -9,6 +18,7 @@ First, explore the codebase to understand context and identify the target scope.
 ```xml
 <task>
 Use the Task tool to launch an explore agent:
+- Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack (check package.json, tsconfig.json, pyproject.toml, etc.)
 - Find the files/directories to review (use $ARGUMENTS if provided, otherwise review recent changes or key modules)
 - Understand existing patterns, conventions, and architecture
