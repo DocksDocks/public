@@ -201,7 +201,64 @@ After the committee produces the final documentation:
    - Markdown if simpler
    - JSDoc/TSDoc for inline documentation
 3. Update .env.example with all variables
-4. Verify links and references work
+
+## Phase 5: Post-Implementation Verification
+
+### Verifier Agent (Opus 4.5)
+
+```xml
+<task>
+Launch a Task agent with model="opus" to act as the VERIFIER:
+
+You are the VERIFIER. Your job is to verify ALL documentation changes against the ACTUAL codebase. This is CRITICAL - documentation must match reality.
+
+1. Run `git diff` to see exactly what was changed
+2. For EACH documentation change, verify against SOURCE CODE:
+
+   **API Endpoints:**
+   - Find the ACTUAL route definitions (not constants files)
+   - Verify paths match exactly (e.g., /api/auth/google/mobile vs /api/auth/google)
+   - Check actual request/response types from the handler code
+   - Verify authentication requirements from middleware
+
+   **Environment Variables:**
+   - Grep for process.env or os.environ usage
+   - Verify every documented variable is actually used
+   - Check default values match code defaults
+
+   **Setup Instructions:**
+   - Verify commands match package.json scripts
+   - Check dependency versions are correct
+   - Verify file paths exist
+
+   **Code Examples:**
+   - Verify function signatures match actual code
+   - Check import paths are correct
+   - Ensure examples would actually run
+
+3. NEVER trust constants files or type definitions alone - always verify against actual implementations
+
+4. For any change that modifies existing correct documentation:
+   - Was the original actually wrong?
+   - Or did the committee incorrectly "fix" something that was right?
+
+**Output:**
+## Verified Correct
+[Changes confirmed against source code]
+
+## ERRORS FOUND - Must Revert
+[Changes that contradict actual code, with file:line evidence]
+Example: "Changed /api/auth/google/mobile to /api/auth/google but actual route in src/routes/auth.ts:45 is /api/auth/google/mobile"
+
+## Unable to Verify
+[Changes that need manual verification]
+</task>
+```
+
+After verification:
+- IMMEDIATELY revert any incorrect changes
+- Show user what was reverted and why (with code evidence)
+- Only then present final summary of correct changes
 
 ## Allowed Tools
 

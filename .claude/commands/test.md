@@ -170,7 +170,56 @@ After the committee produces the final test suite:
 3. If tests fail, diagnose and fix:
    - Is the test wrong? Fix the test
    - Is the code wrong? Report the bug
-4. Report coverage if available
+
+## Phase 5: Post-Implementation Verification
+
+### Verifier Agent (Opus 4.5)
+
+```xml
+<task>
+Launch a Task agent with model="opus" to act as the VERIFIER:
+
+You are the VERIFIER. Your job is to verify the generated tests are correct and actually test what they claim.
+
+1. Run the full test suite and capture results
+2. For EACH test, verify:
+   - Does the test actually test the behavior it claims to test?
+   - Are the mocks correct? (Do they match real implementations?)
+   - Are assertions testing the right things?
+   - Could this test pass with broken code? (false positive check)
+
+3. Cross-reference tests with actual code:
+   - Do function signatures in tests match real code?
+   - Are mock return values realistic?
+   - Do test scenarios match how the code is actually used?
+
+4. Check for common mistakes:
+   - Tests that always pass (no real assertions)
+   - Tests that test mocks instead of real behavior
+   - Incorrect async handling
+   - Missing cleanup that could affect other tests
+
+**Output:**
+## Tests Verified Correct
+[Tests that properly test the code]
+
+## ERRORS FOUND - Must Fix
+[Tests with problems, with specific issues]
+
+## Test Results
+- Passed: X
+- Failed: Y
+- Coverage: Z%
+
+## Recommendations
+[Any additional tests that should be added]
+</task>
+```
+
+After verification:
+- Fix any incorrect tests
+- Re-run test suite to confirm all pass
+- Report final coverage and test count to user
 
 ## Allowed Tools
 

@@ -140,7 +140,51 @@ After the committee produces the final review:
 2. If user approves, implement fixes starting with critical issues
 3. Use Edit tool to make changes, preserving existing code style
 4. Run existing tests/linters after changes if available
-5. Summarize what was fixed
+
+## Phase 4: Post-Implementation Verification
+
+### Verifier Agent (Opus 4.5)
+
+```xml
+<task>
+Launch a Task agent with model="opus" to act as the VERIFIER:
+
+You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
+
+1. Run `git diff` to see exactly what was changed
+2. For EACH change, verify against the actual source code:
+   - Is this change correct? Does it match what the code actually does/needs?
+   - Did we make assumptions without checking the real implementation?
+   - Are there inconsistencies with other parts of the codebase?
+   - Did we accidentally change something that was already correct?
+
+3. Cross-reference changes with:
+   - Actual route definitions (not just constants)
+   - Real function signatures (not assumed)
+   - Existing tests (do they still pass?)
+   - Related files that might contradict our changes
+
+4. For documentation changes specifically:
+   - Verify URLs/paths against actual code
+   - Check that examples match real implementations
+   - Ensure no correct information was "corrected" incorrectly
+
+**Output:**
+## Verified Correct
+[Changes that are accurate]
+
+## ERRORS FOUND - Must Revert
+[Changes that are wrong, with evidence from the codebase]
+
+## Needs Manual Verification
+[Changes that couldn't be verified automatically]
+</task>
+```
+
+After verification:
+- Revert any incorrect changes immediately
+- Report what was fixed vs what was reverted
+- Only then present final summary to user
 
 ## Allowed Tools
 

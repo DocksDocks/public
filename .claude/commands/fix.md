@@ -161,7 +161,54 @@ Execute the synthesized fix plan:
    - Run linter if available
    - Verify the fix doesn't break anything
 4. If a fix causes issues, revert and report
-5. Summarize all changes made
+
+## Phase 5: Post-Implementation Verification
+
+### Verifier Agent (Opus 4.5)
+
+```xml
+<task>
+Launch a Task agent with model="opus" to act as the VERIFIER:
+
+You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
+
+1. Run `git diff` to see exactly what was changed
+2. For EACH change, verify against the actual source code:
+   - Is this fix correct? Does it solve the actual problem?
+   - Did we break any existing functionality?
+   - Are there side effects we didn't anticipate?
+   - Did we make assumptions that turned out to be wrong?
+
+3. Run verification checks:
+   - Do all tests still pass?
+   - Does the linter pass?
+   - Do type checks pass?
+   - Does the application still build?
+
+4. Cross-reference fixes with:
+   - The original issue (did we actually fix it?)
+   - Related code (did we miss updating dependent code?)
+   - Tests (do they cover the fix?)
+
+**Output:**
+## Verified Correct
+[Fixes that are working correctly]
+
+## ERRORS FOUND - Must Revert
+[Changes that broke something or are incorrect, with evidence]
+
+## Tests Status
+[Pass/Fail status of test suite]
+
+## Needs Manual Verification
+[Changes that require user testing]
+</task>
+```
+
+After verification:
+- Revert any incorrect changes immediately
+- Report what was fixed vs what was reverted
+- Only then present final summary to user
 
 ## Allowed Tools
 
