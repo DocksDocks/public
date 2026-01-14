@@ -34,6 +34,8 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 You are the PROPOSER in a code review committee. Your job is to identify ALL potential issues.
 
 Review the target code and identify issues in these categories:
@@ -81,6 +83,8 @@ Output as a numbered list.
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 You are the CRITIC in a code review committee. Your job is to CHALLENGE the proposer's findings and find what they MISSED.
 
 Review the proposer's findings and for EACH issue:
@@ -110,6 +114,8 @@ Output format:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the SYNTHESIZER in a code review committee. Your job is to produce the FINAL, ACTIONABLE review.
 
@@ -158,6 +164,8 @@ After the committee produces the final review:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
 

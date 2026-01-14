@@ -35,6 +35,8 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to discover issues:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 Scan the target code for fixable issues:
 
 **Bugs**
@@ -78,6 +80,8 @@ Output a prioritized list of issues with locations and suggested fixes.
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 You are the PROPOSER. For each identified issue, propose a specific fix.
 
 For each fix provide:
@@ -101,6 +105,8 @@ Output numbered list of proposed fixes.
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the CRITIC. Challenge each proposed fix:
 
@@ -128,6 +134,8 @@ Output:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the SYNTHESIZER. Produce the final fix plan.
 
@@ -179,6 +187,8 @@ Execute the synthesized fix plan:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
 

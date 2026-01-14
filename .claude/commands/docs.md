@@ -37,6 +37,8 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to analyze gaps:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 Compare existing documentation against the codebase:
 
 **README.md**
@@ -74,6 +76,8 @@ Output a gap analysis with specific items to document.
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the PROPOSER. Draft the documentation based on the gap analysis.
 
@@ -123,6 +127,8 @@ Output the drafted documentation.
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 You are the CRITIC. Review the proposed documentation for accuracy and quality.
 
 **Accuracy Check:**
@@ -164,6 +170,8 @@ Output:
 ```xml
 <task>
 Launch a Task agent with model="sonnet" to act as the SYNTHESIZER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the SYNTHESIZER. Produce the final documentation.
 
@@ -219,6 +227,8 @@ After the committee produces the final documentation:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the VERIFIER. Your job is to verify ALL documentation changes against the ACTUAL codebase. This is CRITICAL - documentation must match reality.
 

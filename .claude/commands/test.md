@@ -36,6 +36,8 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to analyze the target:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 Analyze the code that needs tests:
 
 1. **Functions/Methods**: List all functions with their signatures
@@ -56,6 +58,8 @@ Output a structured analysis for test generation.
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the PROPOSER. Generate comprehensive tests for the target code.
 
@@ -97,6 +101,8 @@ Output complete test code following the project's existing patterns.
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
 You are the CRITIC. Review the proposed tests for quality and completeness.
 
 **For Each Test:**
@@ -131,6 +137,8 @@ Output:
 ```xml
 <task>
 Launch a Task agent with model="sonnet" to act as the SYNTHESIZER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the SYNTHESIZER. Produce the final test suite.
 
@@ -188,6 +196,8 @@ After the committee produces the final test suite:
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the VERIFIER. Your job is to verify the generated tests are correct and actually test what they claim.
 
