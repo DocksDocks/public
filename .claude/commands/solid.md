@@ -2,6 +2,10 @@
 
 Analyze, identify, and fix SOLID principle violations across the codebase. Uses an extended 7-phase agent pipeline for thorough analysis and safe refactoring.
 
+> **IMPORTANT - Model Requirement**
+> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
+> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+
 ## Phase 0: Environment Check
 
 ```bash
