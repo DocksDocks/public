@@ -132,11 +132,11 @@ Output:
 </task>
 ```
 
-### Round 3 - Synthesizer Agent (Sonnet 4.5)
+### Round 3 - Synthesizer Agent (Opus 4.5)
 
 ```xml
 <task>
-Launch a Task agent with model="sonnet" to act as the SYNTHESIZER:
+Launch a Task agent with model="opus" to act as the SYNTHESIZER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
