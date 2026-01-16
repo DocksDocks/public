@@ -6,6 +6,27 @@ Fix issues in code: bugs, security vulnerabilities, performance problems, depend
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
 > Do NOT use haiku or let it default. Always specify: `model: "opus"`
 
+## CRITICAL: Plan Mode First
+
+**This command operates in two distinct phases:**
+
+### PLANNING PHASE (Phases 0-4) - READ-ONLY
+- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, npm audit)
+- Do NOT use: Write, Edit, or any modifying tools
+- Output: A detailed fix plan for user approval
+
+### IMPLEMENTATION PHASE (Phases 5-7) - ONLY AFTER APPROVAL
+- Wait for user to type: "approved", "proceed", "yes", or "go ahead"
+- Only then execute the fixes
+- Run verification after
+
+**If user does not approve:**
+- Ask what changes they want
+- Revise the plan
+- Present again for approval
+
+---
+
 ## Phase 0: Environment Check
 
 ```bash
@@ -172,19 +193,39 @@ Output the FINAL FIX PLAN:
 </task>
 ```
 
-## Phase 4: Implementation
+## Phase 4: User Approval Gate
 
-Execute the synthesized fix plan:
+**STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-1. Present the plan to user for approval on high-risk items
-2. Implement fixes in the specified order
-3. After each fix:
+After the committee produces the final fix plan:
+
+1. Present all proposed fixes organized by risk level
+2. Show exactly what will be changed (files, lines, code changes)
+3. Ask user to review and approve before proceeding
+4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
+
+**Do NOT proceed to Phase 5 without user approval.**
+
+If user requests changes:
+- Revise the plan based on feedback
+- Present the updated plan
+- Wait for approval again
+
+---
+
+## Phase 5: Implementation
+
+Once user has approved the plan:
+
+1. Implement fixes in the specified order
+2. After each fix:
    - Run tests if available (`npm test`, `pytest`, etc.)
    - Run linter if available
    - Verify the fix doesn't break anything
-4. If a fix causes issues, revert and report
+3. If a fix causes issues, revert and report
+4. Track each change made for verification
 
-## Phase 5: Post-Implementation Verification
+## Phase 6: Post-Implementation Verification
 
 ### Verifier Agent (Opus 4.5)
 

@@ -6,6 +6,27 @@ Comprehensive code review covering quality, security, and performance using a De
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
 > Do NOT use haiku or let it default. Always specify: `model: "opus"`
 
+## CRITICAL: Plan Mode First
+
+**This command operates in two distinct phases:**
+
+### PLANNING PHASE (Phases 0-3) - READ-ONLY
+- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
+- Do NOT use: Write, Edit, or any modifying tools
+- Output: A detailed review plan for user approval
+
+### IMPLEMENTATION PHASE (Phases 4-6) - ONLY AFTER APPROVAL
+- Wait for user to type: "approved", "proceed", "yes", or "go ahead"
+- Only then execute the fixes
+- Run verification after
+
+**If user does not approve:**
+- Ask what changes they want
+- Revise the plan
+- Present again for approval
+
+---
+
 ## Phase 0: Environment Check
 
 ```bash
@@ -152,16 +173,36 @@ Output the FINAL REVIEW:
 </task>
 ```
 
-## Phase 3: Implementation
+## Phase 3: User Approval Gate
+
+**STOP HERE AND PRESENT THE PLAN TO THE USER**
 
 After the committee produces the final review:
 
-1. Present the synthesized findings to the user
-2. If user approves, implement fixes starting with critical issues
-3. Use Edit tool to make changes, preserving existing code style
-4. Run existing tests/linters after changes if available
+1. Present the synthesized findings clearly
+2. Show exactly what will be changed (files, lines, fixes)
+3. Ask user to review and approve before proceeding
+4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
-## Phase 4: Post-Implementation Verification
+**Do NOT proceed to Phase 4 without user approval.**
+
+If user requests changes:
+- Revise the plan based on feedback
+- Present the updated plan
+- Wait for approval again
+
+---
+
+## Phase 4: Implementation
+
+Once user has approved the plan:
+
+1. Implement fixes starting with critical issues
+2. Use Edit tool to make changes, preserving existing code style
+3. Run existing tests/linters after changes if available
+4. Track each change made for verification
+
+## Phase 5: Post-Implementation Verification
 
 ### Verifier Agent (Opus 4.5)
 

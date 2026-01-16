@@ -6,6 +6,27 @@ Generate comprehensive tests following project patterns and conventions. Uses De
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
 > Do NOT use haiku or let it default. Always specify: `model: "opus"`
 
+## CRITICAL: Plan Mode First
+
+**This command operates in two distinct phases:**
+
+### PLANNING PHASE (Phases 0-4) - READ-ONLY
+- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
+- Do NOT use: Write, Edit, or any modifying tools
+- Output: A detailed test plan for user approval
+
+### IMPLEMENTATION PHASE (Phases 5-7) - ONLY AFTER APPROVAL
+- Wait for user to type: "approved", "proceed", "yes", or "go ahead"
+- Only then write the tests
+- Run verification after
+
+**If user does not approve:**
+- Ask what changes they want
+- Revise the plan
+- Present again for approval
+
+---
+
 ## Phase 0: Environment Check
 
 ```bash
@@ -183,17 +204,39 @@ Also output:
 </task>
 ```
 
-## Phase 4: Implementation
+## Phase 4: User Approval Gate
+
+**STOP HERE AND PRESENT THE PLAN TO THE USER**
 
 After the committee produces the final test suite:
+
+1. Present the complete test plan with all test cases
+2. Show what files will be created and where
+3. List all test scenarios being covered
+4. Ask user to review and approve before proceeding
+5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
+
+**Do NOT proceed to Phase 5 without user approval.**
+
+If user requests changes:
+- Revise the test plan based on feedback
+- Present the updated plan
+- Wait for approval again
+
+---
+
+## Phase 5: Implementation
+
+Once user has approved the plan:
 
 1. Write the test file(s) using Write tool
 2. Run the tests to verify they pass
 3. If tests fail, diagnose and fix:
    - Is the test wrong? Fix the test
    - Is the code wrong? Report the bug
+4. Track all changes for verification
 
-## Phase 5: Post-Implementation Verification
+## Phase 6: Post-Implementation Verification
 
 ### Verifier Agent (Opus 4.5)
 
