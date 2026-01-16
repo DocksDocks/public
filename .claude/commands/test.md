@@ -6,24 +6,30 @@ Generate comprehensive tests following project patterns and conventions. Uses De
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
 > Do NOT use haiku or let it default. Always specify: `model: "opus"`
 
-## CRITICAL: Plan Mode First
+---
 
-**This command operates in two distinct phases:**
+## ⚠️ MANDATORY: Enter Plan Mode First
 
-### PLANNING PHASE (Phases 0-4) - READ-ONLY
+**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
+
+This command requires user approval before making any changes. The workflow is:
+
+1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
+2. **Execute Phases 0-4** → Read-only analysis and committee discussion
+3. **Present Plan** → Show user the complete test plan
+4. **Wait for Approval** → User must explicitly approve
+5. **Execute Phases 5-6** → Only after approval, write tests
+
+**STOP! Use the EnterPlanMode tool now before continuing.**
+
+---
+
+## Planning Phase Tools (READ-ONLY)
 - Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
 - Do NOT use: Write, Edit, or any modifying tools
-- Output: A detailed test plan for user approval
 
-### IMPLEMENTATION PHASE (Phases 5-7) - ONLY AFTER APPROVAL
-- Wait for user to type: "approved", "proceed", "yes", or "go ahead"
-- Only then write the tests
-- Run verification after
-
-**If user does not approve:**
-- Ask what changes they want
-- Revise the plan
-- Present again for approval
+## Implementation Phase Tools (AFTER APPROVAL)
+- Edit, Write, Bash(npm:*, pnpm:*, pytest:*, go:*)
 
 ---
 
