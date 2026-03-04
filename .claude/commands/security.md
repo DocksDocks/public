@@ -20,15 +20,7 @@ This command analyzes the **entire codebase** for:
 
 ---
 
-## Phase 0: Environment & Discovery
-
-```bash
-# Get current date
-date "+%Y-%m-%d"
-
-# Identify project structure
-ls -la
-```
+## Phase 1: Discovery
 
 ```xml
 <task>
@@ -66,7 +58,11 @@ Output a structured map of security-relevant files and their purposes.
 </task>
 ```
 
-## Phase 1: Vulnerability Scanning
+## Phase 2: Parallel Analysis
+
+> **CRITICAL: Launch ALL THREE agents below in a SINGLE turn.**
+> Do NOT wait for one to finish before launching the next.
+> Each agent runs independently and their results will be combined in Phase 3.
 
 ### Scanner Agent (Opus 4.5)
 
@@ -139,9 +135,7 @@ Output as categorized list by severity.
 </task>
 ```
 
-## Phase 2: Logic Analysis
-
-### Logic Analyzer Agent (Opus 4.5)
+### Analyzer Agent (Opus 4.5)
 
 ```xml
 <task>
@@ -201,27 +195,17 @@ Output as categorized list.
 </task>
 ```
 
-## Phase 3: Adversarial Review
-
-### Red Team Agent (Opus 4.5)
+### Adversarial Hunter Agent (Opus 4.5)
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the RED TEAM REVIEWER:
+Launch a Task agent with model="opus" as the ADVERSARIAL HUNTER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are an adversarial reviewer. Challenge ALL previous findings and hunt for what was missed.
-
-**Challenge Previous Findings**
-For each vulnerability/logic flaw found:
-1. Is it actually exploitable in this context?
-2. Are there mitigating factors not considered?
-3. Is the severity rating accurate?
-4. Could the suggested fix introduce new issues?
+You are an adversarial hunter. Think like an attacker and hunt for vulnerabilities that a systematic scan might miss.
 
 **Hunt for Missed Issues**
-Think like an attacker. Look for:
 
 1. **Authentication Bypass**: Alternative paths to authenticated resources
 2. **Hidden Endpoints**: Debug routes, admin panels, API docs
@@ -242,9 +226,6 @@ For the top 5 most critical findings, write detailed attack scenarios:
 - Detection difficulty
 
 Output:
-**Critiques of Previous Findings**
-[Accept/Reject with reasoning]
-
 **Additional Vulnerabilities Found**
 [New findings with full details]
 
@@ -253,7 +234,7 @@ Output:
 </task>
 ```
 
-## Phase 4: Synthesis & Prioritization
+## Phase 3: Synthesis & Challenge
 
 ### Synthesizer Agent (Opus 4.5)
 
@@ -265,13 +246,19 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Produce the FINAL SECURITY REPORT from all previous analysis.
 
+**Challenge All Findings**
+For each vulnerability/logic flaw reported by the analysis agents:
+1. Is it actually exploitable in this context?
+2. Are there mitigating factors not considered?
+3. Is the severity rating accurate?
+4. Could the suggested fix introduce new issues?
+
 **Consolidation Rules**
-1. Accept findings that survived red team challenge
+1. Accept findings that survive your challenge review
 2. Reject false positives with clear reasoning
-3. Incorporate red team's additional findings
-4. Adjust severity based on exploitability and impact
-5. Group related issues together
-6. Prioritize by: Exploitability > Impact > Ease of Fix
+3. Adjust severity based on exploitability and impact
+4. Group related issues together
+5. Prioritize by: Exploitability > Impact > Ease of Fix
 
 **Output Format**
 
@@ -315,7 +302,7 @@ For each:
 </task>
 ```
 
-## Phase 5: Report Delivery
+## Phase 4: Report Delivery
 
 Present the final security report to the user with:
 1. Executive summary first

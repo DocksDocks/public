@@ -15,7 +15,7 @@ Generate comprehensive tests following project patterns and conventions. Uses De
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 0-4** → Read-only analysis and committee discussion
+2. **Execute Phases 1-4** → Read-only analysis and committee discussion
 3. **Present Plan** → Show user the complete test plan
 4. **Wait for Approval** → User must explicitly approve
 5. **Execute Phases 5-6** → Only after approval, write tests
@@ -32,15 +32,6 @@ This command requires user approval before making any changes. The workflow is:
 - Edit, Write, Bash(npm:*, pnpm:*, pytest:*, go:*)
 
 ---
-
-## Phase 0: Environment Check
-
-```bash
-# ALWAYS run this first to get the actual current date
-date "+%Y-%m-%d"
-```
-
-Use this date for any date-related operations. Do NOT assume the year from training data.
 
 ## Phase 1: Exploration
 

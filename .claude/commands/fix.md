@@ -15,7 +15,7 @@ Fix issues in code: bugs, security vulnerabilities, performance problems, depend
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 0-4** → Read-only discovery and committee discussion
+2. **Execute Phases 1-4** → Read-only discovery and committee discussion
 3. **Present Plan** → Show user exactly what will be fixed
 4. **Wait for Approval** → User must explicitly approve
 5. **Execute Phases 5-6** → Only after approval, make changes
@@ -32,15 +32,6 @@ This command requires user approval before making any changes. The workflow is:
 - Edit, Write, Bash(git:*, npm:*, pnpm:*, pip:*, rm:*)
 
 ---
-
-## Phase 0: Environment Check
-
-```bash
-# ALWAYS run this first to get the actual current date
-date "+%Y-%m-%d"
-```
-
-Use this date for any date-related operations. Do NOT assume the year from training data.
 
 ## Phase 1: Exploration
 
@@ -60,27 +51,25 @@ Use the Task tool to launch an explore agent:
 
 ## Phase 2: Issue Discovery
 
-### Identify Issues to Fix
+> **CRITICAL: Launch BOTH agents below in a SINGLE turn.**
+> Do NOT wait for one to finish before launching the next.
+> Each agent runs independently and their results will be combined by the committee.
+
+### Code Quality Scanner (Opus 4.5)
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to discover issues:
+Launch a Task agent with model="opus" as the CODE QUALITY SCANNER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
-Scan the target code for fixable issues:
+Scan the target code for quality issues:
 
 **Bugs**
 - Logic errors, off-by-one, null/undefined handling
 - Race conditions, async/await misuse
 - Incorrect type coercion, comparison errors
 - Missing error handling, unhandled promise rejections
-
-**Dependencies**
-- Run `npm audit` or equivalent to find vulnerabilities
-- Check for outdated packages with security patches
-- Identify unused dependencies
-- Find missing peer dependencies
 
 **Dead Code**
 - Unused exports, functions, variables, types
@@ -100,6 +89,39 @@ Scan the target code for fixable issues:
 - Unnecessary re-renders, computations
 
 Output a prioritized list of issues with locations and suggested fixes.
+</task>
+```
+
+### Dependency Scanner (Opus 4.5)
+
+```xml
+<task>
+Launch a Task agent with model="opus" as the DEPENDENCY SCANNER:
+
+First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+
+Scan the project's dependencies for issues:
+
+**Security Vulnerabilities**
+- Run `npm audit` or equivalent to find known vulnerabilities
+- Check for packages with published CVEs
+- Identify transitive dependency risks
+
+**Outdated Packages**
+- Check for outdated packages with security patches
+- Identify packages multiple major versions behind
+- Note packages with active deprecation notices
+
+**Unused Dependencies**
+- Identify dependencies listed in package.json but not imported
+- Find devDependencies that are never used in scripts or config
+- Check for duplicate packages providing same functionality
+
+**Missing Peer Dependencies**
+- Find missing peer dependency warnings
+- Identify version conflicts between peer dependencies
+
+Output a prioritized list of dependency issues with recommended actions.
 </task>
 ```
 
