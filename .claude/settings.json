@@ -52,7 +52,8 @@
       "Bash(head:*)",
       "Bash(tail:*)",
       "Bash(sed:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(rtk:*)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -127,6 +128,17 @@
             "command": "ffplay -nodisp -autoexit ~/.claude/alert_bubble.mp3",
             "async": true,
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/rtk-rewrite.sh"
           }
         ]
       }
