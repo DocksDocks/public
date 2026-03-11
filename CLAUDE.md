@@ -11,7 +11,7 @@ Portable Claude Code setup — commands, settings, hooks, and coding standards. 
 | `.claude/commands/*.md` | 8 custom slash commands (see below) |
 | `.claude/hooks/rtk-rewrite.sh` | RTK PreToolUse hook for token-compressed Bash output |
 | `.claude/RTK.md` | RTK reference (meta commands, verification) |
-| `alert_bubble.mp3` | Audio notification for Stop/Notification hooks |
+| `alert_bubble.mp3` | Audio notification for Notification hook |
 
 ## Custom Commands
 
@@ -89,7 +89,7 @@ rtk gain             # Should show tracking is active
 ## Hooks
 
 - **SessionStart**: Injects current date/time so agents don't rely on training data cutoff
-- **Stop / Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
+- **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 
 ## Setup

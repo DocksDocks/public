@@ -108,18 +108,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "ffplay -nodisp -autoexit ~/.claude/alert_bubble.mp3",
-            "async": true,
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "Notification": [
       {
         "hooks": [
