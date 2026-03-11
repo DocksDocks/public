@@ -43,6 +43,7 @@ Use the Task tool to launch an explore agent:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and package manager
 - Find the target scope (use $ARGUMENTS if provided)
+- If `.claude/context/_index.json` exists, read it and relevant branch files for project conventions
 - Check for existing issues: failing tests, linter errors, security advisories
 - Understand the codebase structure and conventions
 - Identify test coverage and CI/CD setup
@@ -55,13 +56,13 @@ Use the Task tool to launch an explore agent:
 > Do NOT wait for one to finish before launching the next.
 > Each agent runs independently and their results will be combined by the committee.
 
-### Code Quality Scanner (Opus 4.5)
+### Code Quality Scanner
 
 ```xml
 <task>
 Launch a Task agent with model="opus" as the CODE QUALITY SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Scan the target code for quality issues:
 
@@ -92,13 +93,13 @@ Output a prioritized list of issues with locations and suggested fixes.
 </task>
 ```
 
-### Dependency Scanner (Opus 4.5)
+### Dependency Scanner
 
 ```xml
 <task>
 Launch a Task agent with model="opus" as the DEPENDENCY SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Scan the project's dependencies for issues:
 
@@ -127,72 +128,74 @@ Output a prioritized list of dependency issues with recommended actions.
 
 ## Phase 3: Committee Discussion
 
-### Round 1 - Proposer Agent (Opus 4.5)
+### Round 1 — Proposer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the PROPOSER. For each identified issue, propose a specific fix.
 
-For each fix provide:
-1. **Issue**: What's wrong (file:line)
-2. **Root Cause**: Why this happened
-3. **Proposed Fix**: Exact code changes
-4. **Testing**: How to verify the fix works
-5. **Risk Level**: low/medium/high
+<constraint>
+- MINIMAL, TARGETED fixes only — fix the bug, not the whole function
+- Every fix must include file:line location and exact code changes
+- Do NOT refactor surrounding code or reorganize files
+</constraint>
 
-Focus on MINIMAL, TARGETED fixes. Don't over-engineer.
-- Fix the bug, don't refactor the whole function
-- Update the dependency, don't rewrite the feature
-- Remove the dead code, don't reorganize the file
+For each fix provide:
+
+| Field | Content |
+|-------|---------|
+| Issue | What's wrong (file:line) |
+| Root Cause | Why this happened |
+| Proposed Fix | Exact code changes |
+| Testing | How to verify the fix works |
+| Risk Level | low / medium / high |
 
 Output numbered list of proposed fixes.
 </task>
 ```
 
-### Round 2 - Critic Agent (Opus 4.5)
+### Round 2 — Critic
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the CRITIC. Challenge each proposed fix:
 
-For each fix:
-1. **Regression Risk**: Could this break existing functionality?
-2. **Edge Cases**: Does the fix handle all scenarios?
-3. **Dependencies**: Will this affect other parts of the codebase?
-4. **Test Coverage**: Is there adequate testing for this fix?
-5. **Alternative**: Is there a simpler or safer approach?
+**Per-fix checks:**
+- **Regression Risk**: Could this break existing functionality?
+- **Edge Cases**: Does the fix handle all scenarios?
+- **Dependencies**: Will this affect other parts of the codebase?
+- **Test Coverage**: Is there adequate testing for this fix?
+- **Alternative**: Is there a simpler or safer approach?
 
-Also check:
-- Are there fixes the proposer should have suggested but didn't?
-- Are any "fixes" actually unnecessary or harmful?
-- Are the risk levels accurate?
+**Cross-cutting checks:**
+- Fixes the proposer missed?
+- "Fixes" that are unnecessary or harmful?
+- Risk levels that are inaccurate?
 
-Output:
-**Fix Critiques** (for each: Approve/Modify/Reject with reasoning)
-**Missing Fixes** (issues that need fixing but weren't addressed)
-**Warnings** (things to watch out for during implementation)
+**Output:**
+- **Fix Critiques** (for each: Approve / Modify / Reject with reasoning)
+- **Missing Fixes** (issues that need fixing but weren't addressed)
+- **Warnings** (things to watch out for during implementation)
 </task>
 ```
 
-### Round 3 - Synthesizer Agent (Opus 4.5)
+### Round 3 — Synthesizer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the SYNTHESIZER. Produce the final fix plan.
-
-Review proposer's fixes and critic's challenges:
 
 1. **Approve** fixes that passed criticism
 2. **Modify** fixes based on valid concerns
@@ -200,7 +203,7 @@ Review proposer's fixes and critic's challenges:
 4. **Add** missing fixes identified by critic
 5. **Order** fixes by dependency (what must be done first)
 
-Output the FINAL FIX PLAN:
+**Output the FINAL FIX PLAN:**
 
 ## Safe to Fix (Low Risk)
 [Fixes that can be applied immediately]
@@ -215,9 +218,8 @@ Output the FINAL FIX PLAN:
 [Proposed fixes that shouldn't be done, with reasons]
 
 ## Implementation Order
-1. [First fix - no dependencies]
-2. [Second fix - depends on #1]
-...
+1. [First fix — no dependencies]
+2. [Second fix — depends on #1]
 </task>
 ```
 
@@ -255,13 +257,13 @@ Once user has approved the plan:
 
 ## Phase 6: Post-Implementation Verification
 
-### Verifier Agent (Opus 4.5)
+### Verifier
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
 

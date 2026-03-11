@@ -44,6 +44,7 @@ Use the Task tool to launch an explore agent:
 - Identify the test framework (Jest, Vitest, Pytest, Go test, etc.)
 - Find existing test files and understand their patterns
 - Check test configuration (jest.config, vitest.config, pytest.ini, etc.)
+- If `.claude/context/_index.json` exists, read it and relevant branch files for project testing conventions
 - Understand mocking strategies used in the project
 - Identify the target code to test (use $ARGUMENTS if provided)
 - Note code coverage configuration if present
@@ -58,7 +59,7 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to analyze the target:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Analyze the code that needs tests:
 
@@ -75,92 +76,91 @@ Output a structured analysis for test generation.
 
 ## Phase 3: Committee Discussion
 
-### Round 1 - Proposer Agent (Opus 4.5)
+### Round 1 — Proposer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the PROPOSER. Generate comprehensive tests for the target code.
 
-**Test Categories to Generate:**
+<constraint>
+- Follow the project's existing test patterns and conventions exactly
+- If a context tree exists, read `.claude/context/testing/` for project test standards
+- Use the project's actual mocking strategies (do NOT invent new patterns)
+</constraint>
 
-**Unit Tests**
-- Test each function in isolation
-- Mock all external dependencies
-- Cover happy path and error cases
-- Test boundary conditions
+**Test categories:**
 
-**Integration Tests** (if applicable)
-- Test interactions between modules
-- Test with real dependencies where safe
-- Verify data flow through the system
+| Type | Scope |
+|------|-------|
+| Unit | Each function in isolation, mock external deps, happy + error paths, boundaries |
+| Integration | Module interactions, real deps where safe, data flow verification |
 
-For each test:
-1. Test name (descriptive, follows project conventions)
-2. Setup/arrange phase
-3. Action/act phase
-4. Assertions/assert phase
+**Per test, include:**
+1. Descriptive test name (project conventions)
+2. Setup / arrange
+3. Action / act
+4. Assertions / assert
 5. Cleanup if needed
 
-**Edge Cases to Cover:**
-- Null/undefined inputs
-- Empty arrays/objects
+**Edge cases to cover:**
+- Null/undefined inputs, empty arrays/objects
 - Boundary values (0, -1, MAX_INT)
-- Invalid types
-- Async errors/timeouts
+- Invalid types, async errors/timeouts
 - Concurrent operations
 
 Output complete test code following the project's existing patterns.
 </task>
 ```
 
-### Round 2 - Critic Agent (Opus 4.5)
+### Round 2 — Critic
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the CRITIC. Review the proposed tests for quality and completeness.
 
-**For Each Test:**
-1. **Assertion Quality**: Are assertions specific enough? Do they test the right things?
-2. **Isolation**: Is the unit properly isolated? Are mocks correct?
-3. **Flakiness Risk**: Could this test fail randomly? (timing, order dependency)
-4. **Readability**: Is the test clear and maintainable?
-5. **False Positives**: Could this test pass when the code is actually broken?
+**Per-test checks:**
+- **Assertion Quality**: Specific enough? Testing the right things?
+- **Isolation**: Unit properly isolated? Mocks correct?
+- **Flakiness Risk**: Could fail randomly? (timing, order dependency)
+- **Readability**: Clear and maintainable?
+- **False Positives**: Could pass when code is broken?
 
-**Coverage Gaps:**
-- What scenarios are NOT tested?
-- What edge cases were missed?
-- What error paths aren't covered?
-- Are there implicit assumptions that should be tested?
+**Coverage gaps:**
+- Scenarios NOT tested? Edge cases missed?
+- Error paths not covered? Implicit assumptions?
 
-**Anti-Patterns to Flag:**
-- Testing implementation details instead of behavior
-- Over-mocking (mocking things that don't need mocking)
-- Multiple assertions testing unrelated things
-- Tests that depend on each other
-- Hardcoded values that should be parameterized
+**Anti-patterns to flag:**
 
-Output:
-**Test Critiques** (for each: Approve/Improve with specifics)
-**Missing Tests** (scenarios that need coverage)
-**Anti-Patterns Found** (problems to fix)
+| Anti-pattern | Why it's bad |
+|-------------|-------------|
+| Testing implementation details | Breaks on refactor, doesn't verify behavior |
+| Over-mocking | Tests mock, not real code |
+| Unrelated multi-assertions | Unclear what failed |
+| Test interdependence | Order-dependent failures |
+| Hardcoded values | Should be parameterized |
+
+**Output:**
+- **Test Critiques** (for each: Approve / Improve with specifics)
+- **Missing Tests** (scenarios that need coverage)
+- **Anti-Patterns Found** (problems to fix)
 </task>
 ```
 
-### Round 3 - Synthesizer Agent (Opus 4.5)
+### Round 3 — Synthesizer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the SYNTHESIZER. Produce the final test suite.
 
@@ -235,13 +235,13 @@ Once user has approved the plan:
 
 ## Phase 6: Post-Implementation Verification
 
-### Verifier Agent (Opus 4.5)
+### Verifier
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the VERIFIER. Your job is to verify the generated tests are correct and actually test what they claim.
 

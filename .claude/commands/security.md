@@ -33,6 +33,7 @@ Map the entire codebase to identify security-relevant areas:
 1. **Project Stack**: Identify languages, frameworks, dependencies
    - Check package.json, requirements.txt, go.mod, Cargo.toml, etc.
    - Note framework versions (Express, Django, Rails, etc.)
+   - If `.claude/context/_index.json` exists, read it and relevant branch files for project architecture
 
 2. **Security-Critical Areas**: Locate and list:
    - Authentication/login handlers
@@ -64,7 +65,7 @@ Output a structured map of security-relevant files and their purposes.
 > Do NOT wait for one to finish before launching the next.
 > Each agent runs independently and their results will be combined in Phase 3.
 
-### Scanner Agent (Opus 4.5)
+### Vulnerability Scanner
 
 ```xml
 <task>
@@ -135,7 +136,7 @@ Output as categorized list by severity.
 </task>
 ```
 
-### Analyzer Agent (Opus 4.5)
+### Logic Analyzer
 
 ```xml
 <task>
@@ -195,7 +196,7 @@ Output as categorized list.
 </task>
 ```
 
-### Adversarial Hunter Agent (Opus 4.5)
+### Adversarial Hunter
 
 ```xml
 <task>
@@ -236,7 +237,7 @@ Output:
 
 ## Phase 3: Synthesis & Challenge
 
-### Synthesizer Agent (Opus 4.5)
+### Synthesizer
 
 ```xml
 <task>

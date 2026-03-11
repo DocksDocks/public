@@ -43,6 +43,7 @@ Use the Task tool to launch an explore agent:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack (check package.json, tsconfig.json, pyproject.toml, etc.)
 - Find the files/directories to review (use $ARGUMENTS if provided, otherwise review recent changes or key modules)
+- If `.claude/context/_index.json` exists, read it and relevant branch files for project conventions
 - Understand existing patterns, conventions, and architecture
 - Note any existing linting/testing configurations
 </task>
@@ -50,106 +51,87 @@ Use the Task tool to launch an explore agent:
 
 ## Phase 2: Committee Discussion
 
-### Round 1 - Proposer Agent (Opus 4.5)
+### Round 1 — Proposer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER in a code review committee. Your job is to identify ALL potential issues.
+You are the PROPOSER. Identify ALL potential issues in the target code.
 
-Review the target code and identify issues in these categories:
+<constraint>
+- Every issue must include file:line location and severity
+- Suggest minimal, targeted fixes (not refactors)
+- If a context tree exists, check `.claude/context/conventions/` for project-specific rules
+</constraint>
 
-**Code Quality**
-- SOLID principle violations (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion)
-- Code smells (long methods, deep nesting, magic numbers, duplicated logic)
-- Error handling gaps
-- Type safety issues
-- Naming and readability problems
+**Review categories:**
 
-**Security (OWASP Top 10)**
-- Injection vulnerabilities (SQL, NoSQL, command, XSS)
-- Broken authentication/authorization
-- Sensitive data exposure
-- Security misconfiguration
-- Insecure dependencies
+| Category | What to check |
+|----------|--------------|
+| Code Quality | SOLID violations, code smells, error handling gaps, type safety, naming |
+| Security (OWASP Top 10) | Injection, broken auth, data exposure, misconfiguration, insecure deps |
+| Performance | N+1 queries, memory leaks, blocking async, missing caching, bad algorithms |
+| AI Slop | Verbose code, unnecessary abstractions, obvious comments, over-engineering |
 
-**Performance**
-- N+1 queries, missing indexes
-- Memory leaks, unnecessary allocations
-- Blocking operations in async code
-- Missing caching opportunities
-- Inefficient algorithms
-
-**AI Slop Detection**
-- Overly verbose code that could be simpler
-- Unnecessary abstractions
-- Comments that restate the obvious
-- Over-engineered solutions
-
-For each issue found, provide:
+**Per issue, provide:**
 1. File and line location
-2. Issue category and severity (critical/high/medium/low)
-3. Detailed explanation of WHY it's a problem
+2. Category and severity (critical / high / medium / low)
+3. WHY it's a problem
 4. Suggested fix
 
 Output as a numbered list.
 </task>
 ```
 
-### Round 2 - Critic Agent (Opus 4.5)
+### Round 2 — Critic
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC in a code review committee. Your job is to CHALLENGE the proposer's findings and find what they MISSED.
+You are the CRITIC. CHALLENGE the proposer's findings and find what they MISSED.
 
-Review the proposer's findings and for EACH issue:
-1. **Challenge**: Is this actually a problem in this context? Could it be a false positive?
-2. **Edge Cases**: Are there scenarios where this issue matters more or less?
-3. **Fix Evaluation**: Is the proposed fix safe? Could it introduce regressions?
-4. **Severity Check**: Is the severity rating accurate?
+**Per-issue checks:**
+- **Challenge**: Is this actually a problem in this context? False positive?
+- **Edge Cases**: Scenarios where this matters more or less?
+- **Fix Evaluation**: Is the proposed fix safe? Regression risk?
+- **Severity Check**: Is the severity rating accurate?
 
-Then, ACTIVELY LOOK for issues the proposer missed:
+**Then actively hunt for missed issues:**
 - Review the same code independently
-- Check areas the proposer may have glossed over
+- Check areas the proposer glossed over
 - Look for subtle bugs in complex logic
 - Verify security assumptions
 - Check for race conditions, deadlocks, edge cases
 
-Output format:
-**Critiques of Proposer Findings**
-[For each item: Accept/Challenge with reasoning]
-
-**Missed Issues**
-[New issues found that proposer missed]
+**Output:**
+- **Critiques of Proposer Findings** (for each: Accept / Challenge with reasoning)
+- **Missed Issues** (new issues found)
 </task>
 ```
 
-### Round 3 - Synthesizer Agent (Opus 4.5)
+### Round 3 — Synthesizer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the SYNTHESIZER in a code review committee. Your job is to produce the FINAL, ACTIONABLE review.
+You are the SYNTHESIZER. Produce the FINAL, ACTIONABLE review.
 
-Given the proposer's findings and critic's challenges:
-
-1. **Accept** issues that survived criticism (critic agreed or couldn't refute)
-2. **Reject** issues with valid counter-arguments (false positives)
+1. **Accept** issues that survived criticism
+2. **Reject** false positives with valid counter-arguments
 3. **Incorporate** new issues found by the critic
 4. **Adjust** severity ratings based on critic's input
-5. **Prioritize** by impact: critical issues first, then high, medium, low
+5. **Prioritize** by impact: critical → high → medium → low
 
-Output the FINAL REVIEW:
+**Output the FINAL REVIEW:**
 
 ## Critical Issues (Fix Immediately)
 [List with file:line, description, and fix]
@@ -201,13 +183,13 @@ Once user has approved the plan:
 
 ## Phase 5: Post-Implementation Verification
 
-### Verifier Agent (Opus 4.5)
+### Verifier
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
 

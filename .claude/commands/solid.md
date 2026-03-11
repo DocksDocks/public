@@ -41,6 +41,7 @@ Use the Task tool to launch an explore agent:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and architecture patterns
 - Find the main source directories
+- If `.claude/context/_index.json` exists, read it and relevant branch files for project architecture and conventions
 - Understand existing abstractions, interfaces, and class hierarchies
 - Note dependency injection patterns if present
 - Identify the target scope (use $ARGUMENTS if provided, otherwise analyze key modules)
@@ -49,13 +50,13 @@ Use the Task tool to launch an explore agent:
 
 ## Phase 2: Discovery
 
-### Discovery Agent (Opus 4.5)
+### Discovery
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the DISCOVERY agent:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the DISCOVERY agent. Your job is to create a complete inventory of components to analyze.
 
@@ -98,13 +99,13 @@ Find and catalog:
 
 ## Phase 3: Analysis
 
-### Analyzer Agent (Opus 4.5)
+### Analyzer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the ANALYZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the ANALYZER. Your job is to deeply analyze each component against ALL 5 SOLID principles.
 
@@ -165,15 +166,22 @@ For each violation include:
 
 ## Phase 4: Committee Discussion
 
-### Round 1 - Proposer Agent (Opus 4.5)
+### Round 1 — Proposer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PROPOSER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the PROPOSER. For each SOLID violation, propose a specific refactoring.
+
+<constraint>
+- Propose MINIMAL refactorings — fix the violation, not the whole module
+- If a context tree exists, check `.claude/context/architecture/` for project patterns before proposing
+- Prefer composition over inheritance for L and I violations
+- Every refactoring must include file:line and affected files
+</constraint>
 
 For each violation provide:
 
@@ -215,17 +223,17 @@ Output numbered list of proposed refactorings.
 </task>
 ```
 
-### Round 2 - Critic Agent (Opus 4.5)
+### Round 2 — Critic
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the CRITIC:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Challenge each proposed refactoring:
+You are the CRITIC. Challenge each proposed refactoring.
 
-For each refactoring:
+**Per-refactoring checks:**
 1. **Over-engineering Check**: Is this refactoring necessary or is it adding unnecessary complexity?
 2. **Breaking Changes**: Will this break existing functionality or APIs?
 3. **Test Impact**: Will existing tests need significant changes?
@@ -251,13 +259,13 @@ Output:
 </task>
 ```
 
-### Round 3 - Synthesizer Agent (Opus 4.5)
+### Round 3 — Synthesizer
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the SYNTHESIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the SYNTHESIZER. Produce the final refactoring plan.
 
@@ -327,13 +335,13 @@ Once user has approved the plan:
 
 ## Phase 7: Post-Implementation Verification
 
-### Verifier Agent (Opus 4.5)
+### Verifier
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the VERIFIER. Verify all refactorings are correct and the code still works.
 
