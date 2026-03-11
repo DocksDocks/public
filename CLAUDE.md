@@ -11,6 +11,8 @@ Portable Claude Code setup — commands, settings, hooks, and coding standards. 
 | `.claude/commands/*.md` | 8 custom slash commands (see below) |
 | `.claude/hooks/rtk-rewrite.sh` | RTK PreToolUse hook for token-compressed Bash output |
 | `.claude/RTK.md` | RTK reference (meta commands, verification) |
+| `.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
+| `.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 | `alert_bubble.mp3` | Audio notification for Notification hook |
 
 ## Custom Commands
@@ -86,11 +88,21 @@ rtk gain             # Should show tracking is active
 # 6. Restart Claude Code for the hook to take effect
 ```
 
+## Status Line
+
+Two-line display inspired by [claude-watch](https://github.com/xleddyl/claude-watch). Cross-platform (macOS + Linux).
+
+- **Line 1**: Model name | folder | git branch
+- **Line 2**: 5h/7d API usage with reset countdowns | context window usage with token counts
+
+Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached to `/tmp/.claude_usage_cache`.
+
 ## Hooks
 
 - **SessionStart**: Injects current date/time so agents don't rely on training data cutoff
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
+- **Stop**: Fetches API usage stats (async) to keep status line data fresh
 
 ## Setup
 
@@ -101,6 +113,11 @@ git clone <this-repo> ~/projects/public
 # Sync to user config
 cp -r ~/projects/public/.claude/commands/ ~/.claude/commands/
 cp ~/projects/public/alert_bubble.mp3 ~/.claude/
+
+# Status line
+cp ~/projects/public/.claude/statusline.sh ~/.claude/
+cp ~/projects/public/.claude/fetch-usage.sh ~/.claude/
+chmod +x ~/.claude/statusline.sh ~/.claude/fetch-usage.sh
 
 # RTK hook + docs (requires rtk binary — see "Install RTK" section)
 mkdir -p ~/.claude/hooks
