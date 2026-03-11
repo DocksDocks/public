@@ -479,6 +479,20 @@ For each leaf's source_files:
 - Any branch with 1 leaf < 50 lines? → recommend merge
 - Any branch with 0 leaves and < 30 lines? → recommend merge
 
+**AI-Optimization Compliance:**
+For each branch and leaf file, spot-check against the 10 rules:
+1. Are critical rules/constraints at the START of the file? Gotchas at the END?
+2. Any prose paragraphs (3+ sentences)? Should be bullets/tables.
+3. Any claims without file:line references?
+4. Any "Don't do X" without a positive alternative first?
+5. Any patterns described in prose instead of code blocks?
+6. Any AI slop phrases? ("important to note", "robust", "elegant", "seamless", "might", "could possibly")
+7. Are non-negotiable rules wrapped in `<constraint>` XML tags?
+8. Any vague warnings without concrete failure scenarios?
+9. Complex rules without example tables?
+10. Any JSON in documentation content?
+Flag non-compliant files for rewrite.
+
 **CLAUDE.md Sync:**
 - Verify all @imports point to existing branch files
 - Verify _index.json matches actual filesystem
@@ -494,6 +508,7 @@ Output:
 - Coverage gaps: [uncovered source dirs]
 - Balance issues: [list]
 - Metadata drift: [mismatched line counts]
+- AI-optimization failures: [files + which rules they violate]
 
 ## Recommended Actions
 [Prioritized list of proposed changes]
