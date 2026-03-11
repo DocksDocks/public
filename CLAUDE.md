@@ -8,7 +8,7 @@ Portable Claude Code setup — commands, settings, hooks, and coding standards. 
 |------|---------|
 | `.claude/CLAUDE.md` | Coding standards and conventions (loaded into every session) |
 | `.claude/settings.json` | Permissions, hooks, plugins, token limits |
-| `.claude/commands/*.md` | 7 custom slash commands (see below) |
+| `.claude/commands/*.md` | 8 custom slash commands (see below) |
 | `.claude/hooks/rtk-rewrite.sh` | RTK PreToolUse hook for token-compressed Bash output |
 | `.claude/RTK.md` | RTK reference (meta commands, verification) |
 | `alert_bubble.mp3` | Audio notification for Stop/Notification hooks |
@@ -26,8 +26,9 @@ All commands use multi-agent pipelines with Opus models. Most use a **Devil's Ad
 | `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Committee → Implement | DAG + Committee |
 | `/human-docs` | Exploration → Analysis → Committee → Implement | Committee |
 | `/solid` | Exploration → Discovery → Analysis → Committee → Implement | Committee |
+| `/team` | Discovery → [Role Mapper \| Pattern Extractor] → Committee → Implement | DAG + Committee |
 
-Commands with parallel phases (`/security`, `/fix`, `/docs`) include explicit instructions to launch agents in a single turn for wall-clock time savings.
+Commands with parallel phases (`/security`, `/fix`, `/docs`, `/team`) include explicit instructions to launch agents in a single turn for wall-clock time savings.
 
 All commands except `/security` enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
 
