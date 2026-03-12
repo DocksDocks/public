@@ -24,9 +24,11 @@ This command requires user approval before making any changes. The workflow is:
 
 ---
 
-## Planning Phase Tools (READ-ONLY)
+<constraint>
+Planning Phase Tools (READ-ONLY):
 - Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git log, git status, wc -l, find)
-- Do NOT use: Write, Edit, or any modifying tools
+- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
+</constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
 - Edit, Write, Bash(mkdir:*, git:*)
@@ -76,9 +78,11 @@ Output:
 
 ## Phase 2: Parallel Analysis
 
-> **CRITICAL: Launch BOTH agents below in a SINGLE turn.**
-> Do NOT wait for one to finish before launching the next.
-> Each agent runs independently and their results will be combined by the committee.
+<constraint>
+Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
+</constraint>
+
+Each agent runs independently and their results will be combined by the committee.
 
 ### Categorizer Agent (Opus)
 
@@ -159,6 +163,10 @@ Scan the codebase to extract concrete patterns, conventions, and decisions. For 
 Output findings grouped by category with file:line references for every claim.
 </task>
 ```
+
+<constraint>
+Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
+</constraint>
 
 ## Phase 3: Committee — Proposer
 
@@ -263,22 +271,23 @@ Read the existing `.claude/CLAUDE.md`. Rewrite it as a slim directive file (~150
 ### Retrieval
 When you need specifics, read the leaf file from the branch's pointer table.
 
-### Maintenance — ALWAYS keep the context tree current
-After making changes to the codebase, you MUST update the context tree:
+<constraint>
+### Context Tree Maintenance
 
-**Update existing context** when changes affect documented patterns/conventions/architecture/APIs:
+After ANY code change that affects documented patterns, conventions, architecture, or APIs:
 1. Check `.claude/context/_index.json` — find leaves whose `source_files` overlap with changed files
-2. Read and update the affected leaf to reflect new state
-3. If leaf exceeds 150 lines after update, split it: create two leaves, update parent branch and _index.json
-4. Update `_index.json` with new line counts and timestamps
+2. Read and update affected leaves to reflect the new state
+3. If a leaf exceeds 150 lines, split it and update parent branch + `_index.json`
+4. Update `_index.json` timestamps and line counts
+5. BEFORE committing, verify all affected context leaves are current
 
-**Add new context** when you introduce something not covered by any existing leaf:
-1. Find the most relevant branch (or create a new one if none fits)
-2. Create a new leaf file in `.claude/context/<branch>/<topic>.md` (30-150 lines)
-3. Add the leaf entry to the branch's pointer table
-4. Add the leaf to `_index.json` with `source_files`, line count, and timestamp
+When introducing something not covered by any existing leaf:
+1. Find the most relevant branch (or create one)
+2. Create a new leaf in `.claude/context/<branch>/<topic>.md` (30-150 lines)
+3. Add the leaf to the branch pointer table and `_index.json`
 
-Skip updates for trivial changes (bug fixes, typos, variable renames).
+Skip only for trivial changes (typos, variable renames, single-line bug fixes).
+</constraint>
 ```
 
 **Target**: CLAUDE.md should go from potentially 1000+ lines down to ~150-200 lines.
@@ -296,6 +305,13 @@ Launch a Task agent with model="opus" to act as the CRITIC:
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the CRITIC. Review the proposed context tree for accuracy, completeness, structure, and AI-optimization.
+
+<constraint>
+- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
+- For each disagreement, cite the exact content you challenge and why
+- Do NOT open with "the proposal is generally good" — start with problems
+- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
+</constraint>
 
 **Size Compliance:**
 - Any branch file over 80 lines? Flag it.
@@ -355,6 +371,12 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the SYNTHESIZER. Produce the FINAL content for every file in the context tree.
 
+<constraint>
+- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
+- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
+- Do NOT reproduce the Proposer's output with only minor edits
+</constraint>
+
 Given the proposer's drafts and critic's feedback:
 
 1. **Fix** all accuracy issues — verify file:line references
@@ -403,6 +425,10 @@ Output the FINAL content for each file, clearly delimited:
 </task>
 ```
 
+<constraint>
+After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+</constraint>
+
 ## Phase 6: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
@@ -415,7 +441,9 @@ After the committee produces the final tree:
 4. Show estimated token cost (lines of @import expansion)
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
-**Do NOT proceed to Phase 7 without user approval.**
+<constraint>
+Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+</constraint>
 
 If user requests changes:
 - Revise based on feedback
@@ -570,6 +598,13 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the CRITIC. Challenge each proposed change:
 
+<constraint>
+- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
+- For each disagreement, cite the exact content you challenge and why
+- Do NOT open with "the proposal is generally good" — start with problems
+- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
+</constraint>
+
 1. **Splits**: Is the split necessary? Will it create two coherent topics or fragmented ones?
 2. **Merges**: Will merging lose important topic separation?
 3. **Updates**: Is the new content accurate? File:line references correct?
@@ -596,7 +631,9 @@ Output:
 2. Show which files will be created, modified, or deleted
 3. Wait for explicit approval
 
-**Do NOT proceed without user approval.**
+<constraint>
+Do NOT proceed to Phase 5M without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+</constraint>
 
 ---
 

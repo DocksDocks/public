@@ -61,9 +61,11 @@ Output a structured map of security-relevant files and their purposes.
 
 ## Phase 2: Parallel Analysis
 
-> **CRITICAL: Launch ALL THREE agents below in a SINGLE turn.**
-> Do NOT wait for one to finish before launching the next.
-> Each agent runs independently and their results will be combined in Phase 3.
+<constraint>
+Launch ALL THREE agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
+</constraint>
+
+Each agent runs independently and their results will be combined in Phase 3.
 
 ### Vulnerability Scanner
 
@@ -74,6 +76,12 @@ Launch a Task agent with model="opus" as the VULNERABILITY SCANNER:
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Systematically scan the entire codebase for security vulnerabilities:
+
+<constraint>
+- Every finding MUST include file:line and a concrete exploitation scenario
+- Do NOT report theoretical vulnerabilities without evidence in actual code
+- Severity must reflect actual exploitability, not theoretical worst-case
+</constraint>
 
 **Injection Vulnerabilities**
 - SQL Injection: Raw queries, string concatenation, missing parameterization
@@ -247,6 +255,12 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Produce the FINAL SECURITY REPORT from all previous analysis.
 
+<constraint>
+- Challenge EVERY finding — reject anything without concrete file:line evidence
+- Adjust severity based on actual mitigating factors in the codebase
+- Do NOT inflate severity counts for a more dramatic report
+</constraint>
+
 **Challenge All Findings**
 For each vulnerability/logic flaw reported by the analysis agents:
 1. Is it actually exploitable in this context?
@@ -313,20 +327,11 @@ Present the final security report to the user with:
 
 ---
 
-## Allowed Tools
-
-```yaml
-- Read
-- Glob
-- Grep
-- Task
-- Bash(date)
-- Bash(ls)
-- Bash(git:status)
-- Bash(git:log)
-- Bash(npm:audit)
-- Bash(pip:audit)
-```
+<constraint>
+Allowed Tools (READ-ONLY — this command does not modify code):
+- Read, Glob, Grep, Task, Bash(date, ls, git status, git log, npm audit, pip audit)
+- Do NOT use: Write, Edit, or any modifying tools
+</constraint>
 
 ## Usage
 

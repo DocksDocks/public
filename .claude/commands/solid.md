@@ -24,9 +24,11 @@ This command requires user approval before making any changes. The workflow is:
 
 ---
 
-## Planning Phase Tools (READ-ONLY)
+<constraint>
+Planning Phase Tools (READ-ONLY):
 - Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
-- Do NOT use: Write, Edit, or any modifying tools
+- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
+</constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
 - Edit, Write, Bash(git:*, npm:*, pnpm:*, yarn:*)
@@ -164,6 +166,10 @@ For each violation include:
 </task>
 ```
 
+<constraint>
+Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
+</constraint>
+
 ## Phase 4: Committee Discussion
 
 ### Round 1 — Proposer
@@ -233,6 +239,13 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the CRITIC. Challenge each proposed refactoring.
 
+<constraint>
+- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
+- For each disagreement, cite the exact content you challenge and why
+- Do NOT open with "the proposal is generally good" — start with problems
+- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
+</constraint>
+
 **Per-refactoring checks:**
 1. **Over-engineering Check**: Is this refactoring necessary or is it adding unnecessary complexity?
 2. **Breaking Changes**: Will this break existing functionality or APIs?
@@ -269,6 +282,12 @@ First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the SYNTHESIZER. Produce the final refactoring plan.
 
+<constraint>
+- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
+- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
+- Do NOT reproduce the Proposer's output with only minor edits
+</constraint>
+
 Review proposer's refactorings and critic's challenges:
 
 1. **Approve** refactorings that passed criticism
@@ -299,6 +318,10 @@ Output the FINAL REFACTORING PLAN:
 </task>
 ```
 
+<constraint>
+After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+</constraint>
+
 ## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
@@ -311,7 +334,9 @@ After the committee produces the final refactoring plan:
 4. Ask user to review and approve before proceeding
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
-**Do NOT proceed to Phase 6 without user approval.**
+<constraint>
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+</constraint>
 
 If user requests changes:
 - Revise the plan based on feedback

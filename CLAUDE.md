@@ -9,7 +9,6 @@ Portable Claude Code setup — commands, settings, hooks, and coding standards. 
 | `.claude/CLAUDE.md` | Coding standards and conventions (loaded into every session) |
 | `.claude/settings.json` | Permissions, hooks, plugins, token limits |
 | `.claude/commands/*.md` | 8 custom slash commands (see below) |
-| `.claude/hooks/rtk-rewrite.sh` | RTK PreToolUse hook for token-compressed Bash output |
 | `.claude/RTK.md` | RTK reference (meta commands, verification) |
 | `.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
@@ -40,7 +39,6 @@ Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToo
 
 | File | Purpose |
 |------|---------|
-| `.claude/hooks/rtk-rewrite.sh` | PreToolUse hook — rewrites commands to rtk equivalents |
 | `.claude/RTK.md` | RTK reference for Claude (meta commands, verification) |
 
 ### Supported commands
@@ -57,35 +55,20 @@ curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/instal
 sudo apt install -y jq   # Debian/Ubuntu
 # or: sudo pacman -S jq  # Arch
 
-# 3. Copy hook and docs to ~/.claude/
-mkdir -p ~/.claude/hooks
-cp .claude/hooks/rtk-rewrite.sh ~/.claude/hooks/rtk-rewrite.sh
-chmod +x ~/.claude/hooks/rtk-rewrite.sh
+# 3. Initialize RTK globally (generates hook + configures Claude Code)
+rtk init --global
+
+# 4. Copy RTK docs for Claude
 cp .claude/RTK.md ~/.claude/RTK.md
 
-# 4. Merge PreToolUse hook into ~/.claude/settings.json
-#    Add this inside the "hooks" object:
-#
-#    "PreToolUse": [
-#      {
-#        "matcher": "Bash",
-#        "hooks": [
-#          {
-#            "type": "command",
-#            "command": "$HOME/.claude/hooks/rtk-rewrite.sh"
-#          }
-#        ]
-#      }
-#    ]
-#
-#    Also add "Bash(rtk:*)" to permissions.allow
+# 5. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
 
-# 5. Verify
+# 6. Verify
 rtk --version        # Should print version
 rtk ls .             # Should show compressed output
 rtk gain             # Should show tracking is active
 
-# 6. Restart Claude Code for the hook to take effect
+# 7. Restart Claude Code for the hook to take effect
 ```
 
 ## Status Line
@@ -119,10 +102,8 @@ cp ~/projects/public/.claude/statusline.sh ~/.claude/
 cp ~/projects/public/.claude/fetch-usage.sh ~/.claude/
 chmod +x ~/.claude/statusline.sh ~/.claude/fetch-usage.sh
 
-# RTK hook + docs (requires rtk binary — see "Install RTK" section)
-mkdir -p ~/.claude/hooks
-cp ~/projects/public/.claude/hooks/rtk-rewrite.sh ~/.claude/hooks/
-chmod +x ~/.claude/hooks/rtk-rewrite.sh
+# RTK (requires rtk binary — see "Install RTK" section)
+rtk init --global
 cp ~/projects/public/.claude/RTK.md ~/.claude/
 
 # Settings are project-level (.claude/settings.json) — they apply
