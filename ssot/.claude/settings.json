@@ -9,8 +9,9 @@
   "cleanupPeriodDays": 14,
   "respectGitignore": true,
   "env": {
-    "MAX_THINKING_TOKENS": "32000",
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000"
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1"
   },
   "permissions": {
     "allow": [
@@ -189,6 +190,16 @@
             "command": "bash $HOME/.claude/fetch-usage.sh",
             "timeout": 5,
             "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check the subagent's last message. Verify it produced structured output (not just a summary or 'I'm done'). If the output lacks concrete file paths, line numbers, or actionable findings, block with reason. Otherwise approve."
           }
         ]
       }

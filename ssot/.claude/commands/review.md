@@ -2,9 +2,9 @@
 
 Comprehensive code review covering quality, security, and performance using a Builder-Verifier pattern.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -41,13 +41,29 @@ First, explore the codebase to understand context and identify the target scope.
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent:
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Map the project stack, conventions, and target scope for code review.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack (check package.json, tsconfig.json, pyproject.toml, etc.)
 - Find the files/directories to review (use $ARGUMENTS if provided, otherwise review recent changes or key modules)
 - If `.claude/context/_index.json` exists, read it and relevant branch files for project conventions
 - Understand existing patterns, conventions, and architecture
 - Note any existing linting/testing configurations
+
+**Output Format:**
+- Project stack summary with key file paths
+- Target scope (files/directories to review)
+- Existing conventions and patterns found
+
+**Constraints:**
+- Read-only exploration, no modifications
+- Focus on understanding, not analysis
+
+**Success Criteria:**
+Identified project stack, target scope, and existing patterns with file paths.
 </task>
 ```
 
@@ -55,17 +71,14 @@ Use the Task tool to launch an explore agent:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the ANALYZER:
+Launch a Task agent with model="opus" as the ANALYZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Identify all concrete bugs, logic errors, security issues, and maintainability problems in the target code.
 
-You are the ANALYZER. Identify ALL potential issues in the target code.
-
-<constraint>
-- Every issue must include file:line location and severity
-- Suggest minimal, targeted fixes (not refactors)
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration results for project stack and conventions
 - If a context tree exists, check `.claude/context/conventions/` for project-specific rules
-</constraint>
 
 **Review categories:**
 
@@ -76,13 +89,21 @@ You are the ANALYZER. Identify ALL potential issues in the target code.
 | Performance | N+1 queries, memory leaks, blocking async, missing caching, bad algorithms |
 | AI Slop | Verbose code, unnecessary abstractions, obvious comments, over-engineering |
 
-**Per issue, provide:**
+**Output Format:**
+Numbered list with per issue:
 1. File and line location
 2. Category and severity (critical / high / medium / low)
 3. WHY it's a problem
 4. Suggested fix
 
-Output as a numbered list.
+**Constraints:**
+<constraint>
+- Every issue must include file:line location and severity
+- Suggest minimal, targeted fixes (not refactors)
+</constraint>
+
+**Success Criteria:**
+Every finding includes file:line verified by reading actual file. Zero severity-less items.
 </task>
 ```
 
@@ -90,11 +111,13 @@ Output as a numbered list.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate the Analyzer's findings against the actual codebase, rejecting false positives.
 
-You are the VERIFIER. Your job is to validate the Analyzer's findings against the actual codebase.
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use the Analyzer's numbered findings list as input
 
 For each reported issue:
 1. Read the file at the reported location — does the code actually exist there?
@@ -104,7 +127,7 @@ For each reported issue:
 
 Spot-check at least 5 file:line references to verify they exist.
 
-Output:
+**Output Format:**
 ## Verified Issues
 [Issues confirmed as real with evidence]
 
@@ -119,6 +142,18 @@ Output:
 - Verified: Y
 - Rejected: Z
 - Adjusted severity: W
+
+**Constraints:**
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. Zero unverified findings in final output.
 </task>
 ```
 
@@ -163,11 +198,12 @@ Once user has approved the plan:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Review ALL changes made and catch any mistakes BEFORE presenting to the user.
 
-You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
 
 1. Run `git diff` to see exactly what was changed
 2. For EACH change, verify against the actual source code:
@@ -187,7 +223,7 @@ You are the VERIFIER. Your job is to review ALL changes made and catch any mista
    - Check that examples match real implementations
    - Ensure no correct information was "corrected" incorrectly
 
-**Output:**
+**Output Format:**
 ## Verified Correct
 [Changes that are accurate]
 
@@ -196,6 +232,18 @@ You are the VERIFIER. Your job is to review ALL changes made and catch any mista
 
 ## Needs Manual Verification
 [Changes that couldn't be verified automatically]
+
+**Constraints:**
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Every change verified against actual source code. Zero unverified modifications in final output.
 </task>
 ```
 

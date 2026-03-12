@@ -2,9 +2,9 @@
 
 Generate comprehensive tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure thorough coverage and quality.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -41,7 +41,11 @@ First, understand the project's testing setup and patterns.
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent:
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Understand the project's testing setup, patterns, and identify target code to test.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the test framework (Jest, Vitest, Pytest, Go test, etc.)
 - Find existing test files and understand their patterns
@@ -50,6 +54,17 @@ Use the Task tool to launch an explore agent:
 - Understand mocking strategies used in the project
 - Identify the target code to test (use $ARGUMENTS if provided)
 - Note code coverage configuration if present
+
+**Output Format:**
+- Test framework and configuration
+- Existing test patterns and mocking strategies
+- Target code to test with file paths
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+Identified test framework, existing patterns, and target scope with file paths.
 </task>
 ```
 
@@ -61,7 +76,11 @@ Use the Task tool to launch an explore agent:
 <task>
 Launch a Task agent with model="opus" to analyze the target:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Analyze the target code to identify all functions, dependencies, edge cases, and integration points for test coverage.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration output for project testing conventions
 
 Analyze the code that needs tests:
 
@@ -73,6 +92,12 @@ Analyze the code that needs tests:
 6. **Integration Points**: Where does this code interact with other modules?
 
 Output a structured analysis for test generation.
+
+**Output Format:**
+Structured analysis with functions, dependencies, side effects, edge cases, happy paths, and integration points.
+
+**Success Criteria:**
+All public functions listed with signatures. Edge cases identified for each function. Dependencies mapped for mocking strategy.
 </task>
 ```
 
@@ -82,7 +107,11 @@ Output a structured analysis for test generation.
 <task>
 Launch a Task agent with model="opus" to act as the GENERATOR:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Generate comprehensive tests covering all functions, edge cases, and integration points in the target code.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use analysis output for functions, edge cases, and dependencies
 
 You are the GENERATOR. Generate comprehensive tests for the target code.
 
@@ -90,6 +119,13 @@ You are the GENERATOR. Generate comprehensive tests for the target code.
 - Follow the project's existing test patterns and conventions exactly
 - If a context tree exists, read `.claude/context/testing/` for project test standards
 - Use the project's actual mocking strategies (do NOT invent new patterns)
+</constraint>
+
+<constraint>
+Write tests in two passes:
+1. **Structure pass:** Write all describe/it blocks, imports, and mock setup first. Verify every import path against real project files before continuing.
+2. **Implementation pass:** Fill in setup/act/assert for each test.
+Do NOT write assertions before verifying function signatures match actual code.
 </constraint>
 
 **Test categories:**
@@ -113,6 +149,9 @@ You are the GENERATOR. Generate comprehensive tests for the target code.
 - Concurrent operations
 
 Output complete test code following the project's existing patterns.
+
+**Success Criteria:**
+All imports match real project paths. All function signatures in tests match actual code. Every test has meaningful assertions (not just mock verification).
 </task>
 ```
 
@@ -120,9 +159,13 @@ Output complete test code following the project's existing patterns.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate the generated tests against the actual codebase, catching false positives and missing coverage.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Generator output as input
 
 You are the VERIFIER. Validate the generated tests against the actual codebase.
 
@@ -133,6 +176,14 @@ For each test:
 4. Does the test actually test behavior (not just testing mocks)?
 5. Are test file names and describe blocks following project convention?
 6. Could this test pass even when code is broken? (false positive check)
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
 
 Output:
 ## Tests Verified
@@ -145,6 +196,9 @@ Output:
 - Functions covered: X/Y
 - Edge cases covered: [list]
 - Missing scenarios: [list]
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. All import paths verified against real project. Zero false-positive tests in approved list.
 </task>
 ```
 
@@ -192,9 +246,12 @@ Once user has approved the plan:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Verify generated tests are correct, actually test what they claim, and the test suite passes.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
 
 You are the VERIFIER. Your job is to verify the generated tests are correct and actually test what they claim.
 
@@ -216,6 +273,14 @@ You are the VERIFIER. Your job is to verify the generated tests are correct and 
    - Incorrect async handling
    - Missing cleanup that could affect other tests
 
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
 **Output:**
 ## Tests Verified Correct
 [Tests that properly test the code]
@@ -230,6 +295,9 @@ You are the VERIFIER. Your job is to verify the generated tests are correct and 
 
 ## Recommendations
 [Any additional tests that should be added]
+
+**Success Criteria:**
+All tests pass. Every test verified to test real behavior (not just mocks). Zero false-positive tests.
 </task>
 ```
 

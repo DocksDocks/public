@@ -2,9 +2,9 @@
 
 Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through a Builder-Verifier pattern.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -41,7 +41,11 @@ First, discover ALL documentation and understand the project.
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent:
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Discover all documentation files and understand the project for documentation generation.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Find ALL .md files: `find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./vendor/*"`
 - Identify the project stack and architecture
@@ -50,6 +54,17 @@ Use the Task tool to launch an explore agent:
 - Identify environment variables used
 - Note existing documentation conventions
 - Use $ARGUMENTS to focus on specific docs if provided
+
+**Output Format:**
+- All .md files found with categories
+- Project stack and architecture
+- Documentation gaps identified
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+All .md files cataloged. Project stack identified. Documentation gaps mapped to source areas.
 </task>
 ```
 
@@ -60,6 +75,12 @@ Use the Task tool to launch an explore agent:
 ```xml
 <task>
 Launch a Task agent with model="opus" to categorize and analyze:
+
+**Objective:** Categorize all .md files by type (human-readable, AI-optimized, keep-as-is) and analyze gaps.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
+- Use exploration output for documentation inventory
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
@@ -104,6 +125,9 @@ First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date ref
 
 ## Optimization Candidates
 [Files that need AI-optimization]
+
+**Success Criteria:**
+Every .md file categorized. Gap analysis covers README, CLAUDE.md, docs/, and .env.example. Optimization candidates identified.
 </task>
 ```
 
@@ -112,6 +136,12 @@ First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date ref
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the WRITER:
+
+**Objective:** Draft documentation based on the gap analysis, using correct format per category (human-readable vs AI-optimized).
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
+- Use Analyzer's gap analysis and categorization
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
@@ -178,6 +208,9 @@ Use this structured format:
 - Group by category (database, auth, external services)
 
 Output the drafted documentation for each file.
+
+**Success Criteria:**
+All file:line references point to actual existing code. AI-optimized docs use bullets/tables only. Human-readable docs have copy-paste ready commands.
 </task>
 ```
 
@@ -185,7 +218,13 @@ Output the drafted documentation for each file.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
+
+**Objective:** Validate drafted documentation against the actual codebase for accuracy.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Writer's drafted documentation as input
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
@@ -226,6 +265,17 @@ Output:
 
 ## Unable to Verify
 [Items needing manual verification]
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. Zero AI slop phrases remaining. All code examples verified runnable.
 </task>
 ```
 
@@ -270,11 +320,16 @@ Once user has approved the plan:
 
 ## Phase 7: Post-Implementation Verifier
 
-### Verifier Agent (Opus 4.5)
+### Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
+
+**Objective:** Verify ALL documentation changes against the ACTUAL codebase.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
@@ -320,6 +375,17 @@ Example: "Documented endpoint as /api/users but actual route in src/routes/users
 
 ## Unable to Verify
 [Changes that need manual verification]
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Every change verified against source code. All file paths confirmed existing. Zero contradictions with actual code.
 </task>
 ```
 

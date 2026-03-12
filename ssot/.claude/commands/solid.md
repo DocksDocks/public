@@ -2,9 +2,9 @@
 
 Analyze, identify, and fix SOLID principle violations across the codebase. Uses a multi-phase agent pipeline for thorough analysis and safe refactoring.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -39,7 +39,11 @@ Planning Phase Tools (READ-ONLY):
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent:
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Map the project architecture, abstractions, and target scope for SOLID analysis.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and architecture patterns
 - Find the main source directories
@@ -47,6 +51,17 @@ Use the Task tool to launch an explore agent:
 - Understand existing abstractions, interfaces, and class hierarchies
 - Note dependency injection patterns if present
 - Identify the target scope (use $ARGUMENTS if provided, otherwise analyze key modules)
+
+**Output Format:**
+- Project stack and architecture patterns
+- Target scope with file paths
+- Existing abstractions and class hierarchies
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+Identified project stack, target scope, and existing architecture patterns with file paths.
 </task>
 ```
 
@@ -56,9 +71,13 @@ Use the Task tool to launch an explore agent:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the DISCOVERY agent:
+Launch a Task agent as the DISCOVERY agent:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Create a complete inventory of classes, interfaces, functions, and dependencies to analyze for SOLID violations.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration output for project structure
 
 You are the DISCOVERY agent. Your job is to create a complete inventory of components to analyze.
 
@@ -96,8 +115,15 @@ Find and catalog:
 
 ## Analysis Priority
 [Order components by complexity/importance for SOLID analysis]
+
+**Success Criteria:**
+All classes, interfaces, and key functions cataloged with file:line. Dependency graph mapped. Analysis priority ordered by complexity.
 </task>
 ```
+
+<constraint>
+After Phase 2 completes, if context exceeds 50%, run `/compact` retaining: component inventory, dependency graph, and analysis priority. Discard raw exploration logs.
+</constraint>
 
 ## Phase 3: Analysis
 
@@ -107,7 +133,11 @@ Find and catalog:
 <task>
 Launch a Task agent with model="opus" to act as the ANALYZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Deeply analyze each component against all 5 SOLID principles, identifying concrete violations with evidence.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output for component inventory and dependency graph
 
 You are the ANALYZER. Your job is to deeply analyze each component against ALL 5 SOLID principles.
 
@@ -163,6 +193,9 @@ For each violation include:
 - Principle violated (S/O/L/I/D)
 - Specific issue description
 - Impact on maintainability
+
+**Success Criteria:**
+Every violation includes file:line location and specific impact statement. All 5 SOLID principles evaluated for each component.
 </task>
 ```
 
@@ -172,7 +205,11 @@ For each violation include:
 <task>
 Launch a Task agent with model="opus" to act as the PLANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Propose specific, minimal refactorings to fix each SOLID violation.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Analyzer's violation report as input
 
 You are the PLANNER. For each SOLID violation, propose a specific refactoring.
 
@@ -220,6 +257,9 @@ For **D** violations:
 - Apply Inversion of Control
 
 Output numbered list of proposed refactorings.
+
+**Success Criteria:**
+Every refactoring includes file:line, affected files, and risk level. No refactoring exceeds the scope of its violation.
 </task>
 ```
 
@@ -227,9 +267,13 @@ Output numbered list of proposed refactorings.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate each proposed refactoring against the actual codebase for correctness and feasibility.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Planner's proposed refactorings as input
 
 You are the VERIFIER. Validate each proposed refactoring against the actual codebase.
 
@@ -254,6 +298,17 @@ Output:
 ## Impact Assessment
 - Files affected: X
 - Risk summary: [low/medium/high counts]
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. Over-engineering check passed for each refactoring. All affected files listed.
 </task>
 ```
 
@@ -303,9 +358,12 @@ Once user has approved the plan:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Verify all refactorings are correct, the code builds, and no new SOLID violations were introduced.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
 
 You are the VERIFIER. Verify all refactorings are correct and the code still works.
 
@@ -342,6 +400,17 @@ You are the VERIFIER. Verify all refactorings are correct and the code still wor
 
 ## Final SOLID Score
 [Brief assessment of SOLID compliance after changes]
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+**Success Criteria:**
+Every refactoring verified against source. Test suite passes. No new SOLID violations introduced.
 </task>
 ```
 

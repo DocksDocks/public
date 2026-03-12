@@ -2,9 +2,9 @@
 
 Bootstrap and manage a B-tree-inspired context hierarchy in `.claude/context/`. Organizes project knowledge (conventions, architecture, patterns, APIs) into size-bounded files with an index for on-demand retrieval and self-maintenance.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -54,7 +54,11 @@ Check if `.claude/context/_index.json` exists in the project:
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent with model="opus":
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Map the project stack, directory structure, and existing documentation for context tree bootstrapping.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack: languages, frameworks, package managers
 - Map the directory structure: source dirs, config files, test dirs, docs
@@ -73,8 +77,18 @@ Output:
 
 ## Knowledge Areas Identified
 [List potential topic categories with source locations]
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+Project stack identified, directory structure mapped with file counts, all existing documentation listed.
 </task>
 ```
+
+<constraint>
+After Phase 1 completes, if context exceeds 50%, run `/compact` retaining: project profile, knowledge areas, and file paths. Discard raw exploration logs.
+</constraint>
 
 ## Phase 2: Parallel Analysis
 
@@ -88,9 +102,13 @@ Each agent runs independently and their results will be combined by the Builder.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the CATEGORIZER:
+Launch a Task agent as the CATEGORIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Categorize all discoverable project knowledge into branches with leaf topics and size estimates.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration results for project profile and knowledge areas
 
 Based on the exploration results, categorize all discoverable project knowledge into branches.
 
@@ -117,6 +135,9 @@ Based on the exploration results, categorize all discoverable project knowledge 
 - Total @imported branches must expand to under 200 lines combined
 
 Output a structured tree proposal with line estimates.
+
+**Success Criteria:**
+Every branch has 1-8 leaves with realistic line estimates. Total @imported branches expand to under 200 lines combined.
 </task>
 ```
 
@@ -124,9 +145,13 @@ Output a structured tree proposal with line estimates.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the PATTERN SCANNER:
+Launch a Task agent as the PATTERN SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Extract concrete patterns, conventions, and decisions from the codebase with file:line references.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration results for project structure
 
 Scan the codebase to extract concrete patterns, conventions, and decisions. For each finding, include file:line references.
 
@@ -161,8 +186,15 @@ Scan the codebase to extract concrete patterns, conventions, and decisions. For 
    - Legacy patterns to avoid
 
 Output findings grouped by category with file:line references for every claim.
+
+**Success Criteria:**
+Every finding includes file:line reference. All 5 extraction categories covered. Gotchas include concrete failure scenarios.
 </task>
 ```
+
+<constraint>
+After Phase 2 completes (both parallel agents return), if context exceeds 50%, run `/compact` retaining: categorizer's tree proposal, scanner's findings with file:line refs, and pipeline state. Discard raw exploration logs.
+</constraint>
 
 ## Phase 3: Builder
 
@@ -170,7 +202,12 @@ Output findings grouped by category with file:line references for every claim.
 <task>
 Launch a Task agent with model="opus" to act as the BUILDER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Draft complete content for every file in the context tree using categorizer's structure and scanner's findings.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use categorizer's tree proposal for structure
+- Use pattern scanner's findings for content
 
 You are the BUILDER. Using the categorizer's tree structure and the pattern scanner's findings, draft the COMPLETE content for every file in the context tree.
 
@@ -291,6 +328,9 @@ The CLAUDE.md output MUST contain the Context Tree Maintenance block exactly as 
 </constraint>
 
 Output ALL drafted content for every file, clearly delimited. Include the COMPLETE rewritten CLAUDE.md.
+
+**Success Criteria:**
+All branch files under 80 lines. All leaf files 30-150 lines. CLAUDE.md under 200 lines with Context Tree Maintenance block. All claims have file:line references.
 </task>
 ```
 
@@ -298,9 +338,13 @@ Output ALL drafted content for every file, clearly delimited. Include the COMPLE
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate the Builder's output against concrete size, accuracy, and AI-optimization criteria.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Builder's complete output as input
 
 You are the VERIFIER. Validate the Builder's output against concrete criteria.
 
@@ -336,6 +380,13 @@ You are the VERIFIER. Validate the Builder's output against concrete criteria.
 **Completeness:**
 - Any important source directories not covered by any leaf's `source_files`?
 
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+
 Output:
 ## Size Report
 [Per-file line counts with pass/fail]
@@ -354,6 +405,9 @@ Output:
 
 ## Issues to Fix
 [Prioritized list of problems]
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. All size limits verified. CLAUDE.md maintenance block confirmed present.
 </task>
 ```
 
@@ -409,9 +463,12 @@ Once user has approved:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the AUDITOR:
+Launch a Task agent as the AUDITOR:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Audit the entire context tree for size violations, staleness, coverage gaps, and AI-optimization compliance.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
 
 Read `.claude/context/_index.json` and audit the entire context tree.
 
@@ -472,8 +529,15 @@ Output:
 
 ## Recommended Actions
 [Prioritized list of proposed changes]
+
+**Success Criteria:**
+Health report covers all nodes with actual line counts. Stale nodes identified with git evidence. Coverage gaps mapped to source directories.
 </task>
 ```
+
+<constraint>
+After Phase 1M completes, if context exceeds 50%, run `/compact` retaining: health report findings, recommended actions, and tree metadata. Discard raw file contents read during audit.
+</constraint>
 
 ## Phase 2M: Planner
 
@@ -481,7 +545,11 @@ Output:
 <task>
 Launch a Task agent with model="opus" to act as the PLANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Propose specific changes (splits, merges, updates, new nodes) based on the audit report.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use audit report for issues to address
 
 You are the PLANNER. Based on the audit report, propose specific changes.
 
@@ -517,6 +585,9 @@ You are the PLANNER. Based on the audit report, propose specific changes.
 If the user chose "Add new context": focus only on creating a new node under the branch they specified. Ask what topic to document if not already clear, then scan relevant source files and draft the leaf.
 
 If the user chose "Rebalance": focus only on split/merge/rebalance actions, skip staleness updates.
+
+**Success Criteria:**
+Every proposed change includes complete file content. All new/modified files within size limits. _index.json entries updated.
 </task>
 ```
 
@@ -524,9 +595,13 @@ If the user chose "Rebalance": focus only on split/merge/rebalance actions, skip
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate each proposed change against size limits, reference accuracy, and structural consistency.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Planner's proposed changes as input
 
 You are the VERIFIER. Validate each proposed change against concrete criteria.
 
@@ -543,6 +618,12 @@ Also verify:
 - @import expansion stays under 200 lines after changes
 - All context tree references remain valid
 
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+
 Output:
 ## Approved Changes
 [Changes that pass all checks]
@@ -552,6 +633,9 @@ Output:
 
 ## Rejected Changes
 [Changes that would violate constraints, with evidence]
+
+**Success Criteria:**
+All proposed files within size limits. @import expansion stays under 200 lines. All context references valid.
 </task>
 ```
 

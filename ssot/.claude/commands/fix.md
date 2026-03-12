@@ -2,9 +2,9 @@
 
 Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Builder-Verifier pattern to ensure safe, effective fixes.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -15,10 +15,10 @@ Fix issues in code: bugs, security vulnerabilities, performance problems, depend
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only discovery and plan validation
+2. **Execute Phases 1-5** → Read-only discovery and plan validation
 3. **Present Plan** → Show user exactly what will be fixed
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 6-7** → Only after approval, make changes
+5. **Execute Phases 7-8** → Only after approval, make changes
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -41,7 +41,11 @@ First, explore to understand what needs fixing.
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent:
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Map the project stack, identify target scope, and locate existing issues.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and package manager
 - Find the target scope (use $ARGUMENTS if provided)
@@ -49,10 +53,52 @@ Use the Task tool to launch an explore agent:
 - Check for existing issues: failing tests, linter errors, security advisories
 - Understand the codebase structure and conventions
 - Identify test coverage and CI/CD setup
+
+**Output Format:**
+- Project stack and package manager
+- Target files/directories
+- Existing issues found
+- Test/CI configuration
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+Identified project stack, target scope, and existing patterns with file paths.
 </task>
 ```
 
-## Phase 2: Issue Discovery
+## Phase 2: Reproduction (conditional)
+
+Skip if $ARGUMENTS is empty or a directory path. Only run when a specific bug/issue is described.
+
+```xml
+<task>
+Launch a Task agent as the REPRODUCER:
+
+**Objective:** Confirm the reported issue exists by reproducing it.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use $ARGUMENTS for the bug description
+- Use exploration output for project stack and test setup
+
+**Output Format:**
+- Status: REPRODUCED | NOT REPRODUCED | UNABLE TO TEST
+- Steps taken to reproduce
+- Error output or behavior observed
+- Minimal reproduction case if possible
+
+**Constraints:**
+- Use existing test infrastructure if available
+- Do NOT modify any code during reproduction
+
+**Success Criteria:**
+Issue confirmed with concrete evidence (error output, failing test) OR confirmed not reproducible with evidence of attempts.
+</task>
+```
+
+## Phase 3: Issue Discovery
 
 <constraint>
 Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
@@ -66,9 +112,11 @@ Each agent runs independently and their results will be combined by the Planner.
 <task>
 Launch a Task agent with model="opus" as the CODE QUALITY SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Scan the target code for bugs, dead code, refactoring opportunities, and performance issues.
 
-Scan the target code for quality issues:
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration output for project conventions and scope
 
 **Bugs**
 - Logic errors, off-by-one, null/undefined handling
@@ -94,6 +142,9 @@ Scan the target code for quality issues:
 - Unnecessary re-renders, computations
 
 Output a prioritized list of issues with locations and suggested fixes.
+
+**Success Criteria:**
+Every finding includes file:line and concrete evidence. Prioritized list with severity levels.
 </task>
 ```
 
@@ -101,11 +152,13 @@ Output a prioritized list of issues with locations and suggested fixes.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the DEPENDENCY SCANNER:
+Launch a Task agent as the DEPENDENCY SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Scan project dependencies for security vulnerabilities, outdated packages, and unused dependencies.
 
-Scan the project's dependencies for issues:
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use exploration output for package manager and lockfile locations
 
 **Security Vulnerabilities**
 - Run `npm audit` or equivalent to find known vulnerabilities
@@ -127,16 +180,27 @@ Scan the project's dependencies for issues:
 - Identify version conflicts between peer dependencies
 
 Output a prioritized list of dependency issues with recommended actions.
+
+**Success Criteria:**
+Every dependency issue includes package name, current version, and recommended action. Audit command output included.
 </task>
 ```
 
-## Phase 3: Planner
+<constraint>
+After Phase 3 completes (both parallel scanners return), if context exceeds 50%, run `/compact` retaining: scanner findings, file paths, and pipeline state. Discard raw exploration logs.
+</constraint>
+
+## Phase 4: Planner
 
 ```xml
 <task>
 Launch a Task agent with model="opus" to act as the PLANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Propose a specific, minimal fix for each issue identified by the scanners.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use scanner findings from Phase 3
 
 You are the PLANNER. For each identified issue, propose a specific fix.
 
@@ -157,16 +221,23 @@ For each fix provide:
 | Risk Level | low / medium / high |
 
 Output numbered list of proposed fixes.
+
+**Success Criteria:**
+Every fix includes file:line, before/after code, and test approach. No fix exceeds the scope of its issue.
 </task>
 ```
 
-## Phase 4: Verifier
+## Phase 5: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate each proposed fix against the actual codebase, checking correctness and blast radius.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Planner's proposed fixes as input
 
 You are the VERIFIER. Validate each proposed fix against the actual codebase.
 
@@ -176,6 +247,14 @@ For each proposed fix:
 3. Search for usages of the function/class being changed to assess blast radius
 4. Is the risk level accurate? (1 file, no callers = low; shared utility = higher)
 5. Is the proposed code change syntactically and logically correct?
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
 
 Output:
 ## Approved Fixes
@@ -191,6 +270,9 @@ Output:
 - Low risk fixes: X
 - Medium risk fixes: Y
 - High risk fixes: Z
+
+**Success Criteria:**
+Spot-checked 5+ file:line references. Zero unverified fixes in approved list.
 </task>
 ```
 
@@ -198,7 +280,7 @@ Output:
 After the Verifier produces its results, you MUST write the Planner output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Fix Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 6: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
@@ -210,7 +292,7 @@ After the Verifier validates the fix plan:
 4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -220,7 +302,7 @@ If user requests changes:
 
 ---
 
-## Phase 6: Implementation
+## Phase 7: Implementation
 
 Once user has approved the plan:
 
@@ -232,15 +314,18 @@ Once user has approved the plan:
 3. If a fix causes issues, revert and report
 4. Track each change made for verification
 
-## Phase 7: Post-Implementation Verifier
+## Phase 8: Post-Implementation Verifier
 
 ### Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Verify ALL changes made are correct and nothing was broken.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
 
 You are the VERIFIER. Your job is to review ALL changes made and catch any mistakes BEFORE presenting to the user.
 
@@ -262,6 +347,14 @@ You are the VERIFIER. Your job is to review ALL changes made and catch any mista
    - Related code (did we miss updating dependent code?)
    - Tests (do they cover the fix?)
 
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
 **Output:**
 ## Verified Correct
 [Fixes that are working correctly]
@@ -274,6 +367,9 @@ You are the VERIFIER. Your job is to review ALL changes made and catch any mista
 
 ## Needs Manual Verification
 [Changes that require user testing]
+
+**Success Criteria:**
+Every change verified against actual source code. Test suite passes. Zero unverified modifications.
 </task>
 ```
 

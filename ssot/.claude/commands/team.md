@@ -2,9 +2,9 @@
 
 Generate project-specific Claude Code agents from the context tree. Agents reference `.claude/context/` leaves for domain knowledge instead of duplicating it inline, staying slim and always current.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -48,7 +48,11 @@ Check if `.claude/context/_index.json` exists in the project.
 
 ```xml
 <task>
-Use the Task tool to launch an explore agent with model="opus":
+Launch a Task agent as the EXPLORER:
+
+**Objective:** Map the context tree structure and existing agents to determine what agent roles are needed.
+
+**Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Read `.claude/context/_index.json` — understand all branches and leaves
 - Read every branch file in `.claude/context/` to understand project domains
@@ -66,6 +70,12 @@ Output:
 
 ## Proposed Agent Roles
 [For each branch that warrants an agent: role name, scope, which leaves it covers]
+
+**Constraints:**
+- Read-only exploration, no modifications
+
+**Success Criteria:**
+Context tree summary complete with all branches and leaves. Existing agents audited. Proposed agent roles mapped to branches.
 </task>
 ```
 
@@ -86,9 +96,13 @@ Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to fini
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the ROLE MAPPER:
+Launch a Task agent as the ROLE MAPPER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Map context tree branches to agent roles with clear boundaries, triggers, and tool sets.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output for context tree structure and existing agents
 
 Map context tree branches to agent roles. For each proposed agent, determine:
 
@@ -118,6 +132,9 @@ Map context tree branches to agent roles. For each proposed agent, determine:
 - Propose consolidated/split agents where needed
 
 Output a structured agent roster with roles, boundaries, and integration points.
+
+**Success Criteria:**
+One agent per domain with no overlapping responsibilities. Every agent has specific trigger conditions in description. Max 7 agents total.
 </task>
 ```
 
@@ -125,9 +142,13 @@ Output a structured agent roster with roles, boundaries, and integration points.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the PATTERN EXTRACTOR:
+Launch a Task agent as the PATTERN EXTRACTOR:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Extract concrete patterns, workflows, and constraints from context tree leaves for each agent's system prompt.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output and Role Mapper's proposed roles
 
 For each proposed agent role, read the relevant context tree leaves and extract the CONCRETE patterns, workflows, and constraints that should go in the agent's system prompt.
 
@@ -151,6 +172,9 @@ The agent's system prompt should be a WORKFLOW GUIDE, not a knowledge dump.
 **Target system prompt size:** 100-200 lines per agent.
 
 Output structured content per agent, clearly delimited.
+
+**Success Criteria:**
+Every agent has context tree references (not inlined content). Target system prompt size 100-200 lines. Integration points mapped.
 </task>
 ```
 
@@ -160,7 +184,11 @@ Output structured content per agent, clearly delimited.
 <task>
 Launch a Task agent with model="opus" to act as the GENERATOR:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Draft complete agent files using role mapper's roster and pattern extractor's findings.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Role Mapper's agent roster and Pattern Extractor's content
 
 You are the GENERATOR. Using the role mapper's roster and the pattern extractor's findings, draft COMPLETE agent files.
 
@@ -222,6 +250,9 @@ Read these for detailed knowledge:
 ```
 
 Output ALL drafted agent files, clearly delimited with `---` separators.
+
+**Success Criteria:**
+All agent files have valid YAML frontmatter. System prompts under 200 lines. Context tree references point to existing files. No scope overlaps.
 </task>
 ```
 
@@ -229,9 +260,13 @@ Output ALL drafted agent files, clearly delimited with `---` separators.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the VERIFIER:
+Launch a Task agent as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Validate each generated agent file against frontmatter rules, context tree references, and scope boundaries.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Generator's agent files as input
 
 You are the VERIFIER. Validate each generated agent file against real project data.
 
@@ -260,6 +295,15 @@ Output:
 - Agents verified: X
 - Issues found: Y
 - Context refs validated: Z/total
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Validate all `.claude/context/` paths referenced actually exist (check against _index.json)
+4. Validate all file paths in output exist (use Glob)
+
+**Success Criteria:**
+All frontmatter valid. All context tree references verified against _index.json. Zero scope overlaps between agents.
 </task>
 ```
 

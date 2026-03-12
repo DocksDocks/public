@@ -2,9 +2,9 @@
 
 Comprehensive security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
 
-> **IMPORTANT - Model Requirement**
-> When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
-> Do NOT use haiku or let it default. Always specify: `model: "opus"`
+> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
+> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
+> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
 
 ---
 
@@ -24,8 +24,11 @@ This command analyzes the **entire codebase** for:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" for CODEBASE DISCOVERY:
+Launch a Task agent as the CODEBASE DISCOVERER:
 
+**Objective:** Map the entire codebase to identify all security-relevant areas, entry points, and attack surface.
+
+**Context:**
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
 Map the entire codebase to identify security-relevant areas:
@@ -56,6 +59,16 @@ Map the entire codebase to identify security-relevant areas:
    - Message queue consumers
 
 Output a structured map of security-relevant files and their purposes.
+
+**Output Format:**
+Structured map of security-relevant files and their purposes, organized by category.
+
+**Constraints:**
+- Read-only exploration, no modifications
+- Focus on completeness — missing an entry point means missing a vulnerability
+
+**Success Criteria:**
+All entry points (HTTP routes, WebSocket handlers, CLI args, message consumers) identified with file paths. Project stack fully mapped.
 </task>
 ```
 
@@ -73,7 +86,11 @@ Each agent runs independently and their results will be combined in Phase 3.
 <task>
 Launch a Task agent with model="opus" as the VULNERABILITY SCANNER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Systematically scan the entire codebase for exploitable security vulnerabilities with concrete evidence.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output for security-relevant file map
 
 Systematically scan the entire codebase for security vulnerabilities:
 
@@ -141,6 +158,9 @@ For each finding, provide:
 5. Recommended fix
 
 Output as categorized list by severity.
+
+**Success Criteria:**
+Every finding includes file:line and a concrete exploitation scenario. Zero theoretical-only findings without evidence in actual code.
 </task>
 ```
 
@@ -150,7 +170,11 @@ Output as categorized list by severity.
 <task>
 Launch a Task agent with model="opus" as the LOGIC ANALYZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Analyze the entire codebase for logic flaws, edge cases, and trust boundary violations.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output for codebase map
 
 Analyze the entire codebase for logic flaws and edge cases:
 
@@ -201,6 +225,9 @@ For each finding, provide:
 5. Recommended fix
 
 Output as categorized list.
+
+**Success Criteria:**
+Every finding includes file:line location and a concrete trigger scenario. Logic flaws verified by reading surrounding code context.
 </task>
 ```
 
@@ -210,7 +237,11 @@ Output as categorized list.
 <task>
 Launch a Task agent with model="opus" as the ADVERSARIAL HUNTER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Think like an attacker and hunt for vulnerabilities that systematic scanning might miss, including chained attacks.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use Discovery output for entry points and attack surface
 
 You are an adversarial hunter. Think like an attacker and hunt for vulnerabilities that a systematic scan might miss.
 
@@ -240,8 +271,15 @@ Output:
 
 **Top 5 Attack Scenarios**
 [Detailed exploitation paths]
+
+**Success Criteria:**
+Top 5 attack scenarios include step-by-step exploitation paths with file:line references. At least 2 chained-attack scenarios identified.
 </task>
 ```
+
+<constraint>
+After Phase 2 completes (all 3 parallel agents return), if context exceeds 50%, run `/compact` retaining: all findings from scanners, file paths, and pipeline state. Discard raw exploration logs.
+</constraint>
 
 ## Phase 3: Synthesis & Challenge
 
@@ -249,9 +287,13 @@ Output:
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the SYNTHESIZER:
+Launch a Task agent as the SYNTHESIZER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+**Objective:** Produce the final security report by challenging, verifying, and consolidating all findings from Phase 2.
+
+**Context:**
+- Run `date "+%Y-%m-%d"` first to confirm current date
+- Use findings from all 3 Phase 2 agents
 
 Produce the FINAL SECURITY REPORT from all previous analysis.
 
@@ -274,6 +316,17 @@ For each vulnerability/logic flaw reported by the analysis agents:
 3. Adjust severity based on exploitability and impact
 4. Group related issues together
 5. Prioritize by: Exploitability > Impact > Ease of Fix
+
+**Execute three verification passes in order:**
+
+1. **Correctness Pass:** For each finding, read the actual file at the stated line. REJECT if code doesn't exist or doesn't match.
+
+2. **Completeness Pass:** Check all OWASP Top 10 categories were examined. For each, mark "reviewed — clean" or "not examined." Flag gaps.
+
+3. **Priority Pass:** For each Critical/High finding, verify exploitability:
+   - Is user input actually reachable at this code path?
+   - Are there existing mitigations (middleware, validation) the scanners missed?
+   - Downgrade severity if mitigations exist.
 
 **Output Format**
 
@@ -314,6 +367,16 @@ For each:
 
 ## Files Requiring Review
 [List of files with issue counts]
+
+**Anti-Hallucination Checks (mandatory):**
+1. Read each referenced file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob)
+3. Check function signatures match actual code (read the source)
+4. Validate all file paths in output exist (use Glob)
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+
+**Success Criteria:**
+All findings cross-referenced against actual code. False positive rate documented. OWASP Top 10 coverage status included.
 </task>
 ```
 
