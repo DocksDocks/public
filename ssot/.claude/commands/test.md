@@ -1,6 +1,6 @@
 # Test Generator
 
-Generate comprehensive tests following project patterns and conventions. Uses Devil's Advocate committee to ensure thorough coverage and quality.
+Generate comprehensive tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure thorough coverage and quality.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
@@ -15,10 +15,10 @@ Generate comprehensive tests following project patterns and conventions. Uses De
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only analysis and committee discussion
+2. **Execute Phases 1-4** → Read-only analysis and Builder-Verifier pipeline
 3. **Present Plan** → Show user the complete test plan
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 5-6** → Only after approval, write tests
+5. **Execute Phases 6-7** → Only after approval, write tests
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -76,21 +76,15 @@ Output a structured analysis for test generation.
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 3: Committee Discussion
-
-### Round 1 — Proposer
+## Phase 3: Generator
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the GENERATOR:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. Generate comprehensive tests for the target code.
+You are the GENERATOR. Generate comprehensive tests for the target code.
 
 <constraint>
 - Follow the project's existing test patterns and conventions exactly
@@ -122,113 +116,47 @@ Output complete test code following the project's existing patterns.
 </task>
 ```
 
-### Round 2 — Critic
+## Phase 4: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Review the proposed tests for quality and completeness.
+You are the VERIFIER. Validate the generated tests against the actual codebase.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+For each test:
+1. Do import paths match the real project structure?
+2. Do function signatures in tests match actual code signatures?
+3. Are mock return values realistic (check actual function return types)?
+4. Does the test actually test behavior (not just testing mocks)?
+5. Are test file names and describe blocks following project convention?
+6. Could this test pass even when code is broken? (false positive check)
 
-**Per-test checks:**
-- **Assertion Quality**: Specific enough? Testing the right things?
-- **Isolation**: Unit properly isolated? Mocks correct?
-- **Flakiness Risk**: Could fail randomly? (timing, order dependency)
-- **Readability**: Clear and maintainable?
-- **False Positives**: Could pass when code is broken?
+Output:
+## Tests Verified
+[Tests that are correct and test what they claim]
 
-**Coverage gaps:**
-- Scenarios NOT tested? Edge cases missed?
-- Error paths not covered? Implicit assumptions?
+## Tests With Issues
+[For each: specific problem and fix needed]
 
-**Anti-patterns to flag:**
-
-| Anti-pattern | Why it's bad |
-|-------------|-------------|
-| Testing implementation details | Breaks on refactor, doesn't verify behavior |
-| Over-mocking | Tests mock, not real code |
-| Unrelated multi-assertions | Unclear what failed |
-| Test interdependence | Order-dependent failures |
-| Hardcoded values | Should be parameterized |
-
-**Output:**
-- **Test Critiques** (for each: Approve / Improve with specifics)
-- **Missing Tests** (scenarios that need coverage)
-- **Anti-Patterns Found** (problems to fix)
-</task>
-```
-
-### Round 3 — Synthesizer
-
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
-
-You are the SYNTHESIZER. Produce the final test suite.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-Given proposer's tests and critic's feedback:
-
-1. **Keep** tests that passed criticism
-2. **Improve** tests based on valid concerns
-3. **Add** missing tests identified by critic
-4. **Remove** tests that are flaky or test wrong things
-5. **Reorder** tests logically (simple → complex, unit → integration)
-
-Output the FINAL TEST SUITE:
-
-```[language]
-// Test file header with imports
-
-describe('[Module/Component Name]', () => {
-  // Setup
-
-  // Unit Tests
-  describe('[function name]', () => {
-    it('should [expected behavior]', () => {
-      // test code
-    });
-  });
-
-  // Integration Tests (if applicable)
-  describe('integration', () => {
-    // ...
-  });
-});
-```
-
-Also output:
-- Total tests: X
-- Coverage estimate: Y%
-- Notes on what couldn't be easily tested
+## Coverage Assessment
+- Functions covered: X/Y
+- Edge cases covered: [list]
+- Missing scenarios: [list]
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Generator output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Test Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 4: User Approval Gate
+## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final test suite:
+After the Verifier validates the generated tests:
 
 1. Present the complete test plan with all test cases
 2. Show what files will be created and where
@@ -237,7 +165,7 @@ After the committee produces the final test suite:
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 5 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -247,7 +175,7 @@ If user requests changes:
 
 ---
 
-## Phase 5: Implementation
+## Phase 6: Implementation
 
 Once user has approved the plan:
 
@@ -258,7 +186,7 @@ Once user has approved the plan:
    - Is the code wrong? Report the bug
 4. Track all changes for verification
 
-## Phase 6: Post-Implementation Verification
+## Phase 7: Post-Implementation Verifier
 
 ### Verifier
 

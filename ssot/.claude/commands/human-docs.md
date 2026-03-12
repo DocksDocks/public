@@ -1,6 +1,6 @@
 # Documentation Generator
 
-Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through Devil's Advocate committee.
+Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through a Builder-Verifier pattern.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
@@ -8,17 +8,17 @@ Generate, fix, and optimize documentation across the entire project. Scans ALL .
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
+## MANDATORY: Enter Plan Mode First
 
 **BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
 
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only analysis and planning
+2. **Execute Phases 1-4** → Read-only analysis, drafting, and verification
 3. **Present Plan** → Show user exactly what will change
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 5-7** → Only after approval, make changes
+5. **Execute Phases 6-7** → Only after approval, make changes
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -107,21 +107,15 @@ First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date ref
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 3: Committee Discussion
-
-### Round 1 - Proposer Agent (Opus 4.5)
+## Phase 3: Writer
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the WRITER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
-You are the PROPOSER. Draft documentation based on the gap analysis.
+You are the WRITER. Draft documentation based on the gap analysis.
 
 <constraint>
 - Every file:line reference must point to actual existing code
@@ -187,118 +181,63 @@ Output the drafted documentation for each file.
 </task>
 ```
 
-### Round 2 - Critic Agent (Opus 4.5)
+## Phase 4: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
+First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Review the proposed documentation for accuracy and quality.
+You are the VERIFIER. Validate the drafted documentation against the actual codebase.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+**Accuracy Checks:**
+1. Do all referenced file paths actually exist?
+2. Do line number references match actual code?
+3. Do API endpoint docs match actual route definitions? (Check handler code, not constants)
+4. Are code examples correct and runnable?
+5. Do function signatures in docs match real code?
 
-**Accuracy Check:**
-- Do file paths actually exist?
-- Do line numbers match actual code?
-- Do API schemas match implementation?
-- Are code examples correct and runnable?
+**Environment Variables:**
+- Grep for `process.env` / `os.environ` usage
+- Verify every documented variable is actually used
+- Check default values match code defaults
 
-**AI Slop Detection - FLAG AND REMOVE:**
-- "It's important to note that..."
-- "powerful", "elegant", "robust", "seamless", "cutting-edge"
-- "might", "could possibly", "should probably"
+**AI Slop Scan — flag for removal:**
+- "It's important to note that...", "powerful", "elegant", "robust", "seamless"
+- "cutting-edge", "might", "could possibly", "should probably"
 - "easy to use", "simple to understand"
-- "This function does what it says"
-- Unnecessary caveats and disclaimers
-- Prose paragraphs (convert to bullets)
-- Marketing speak in technical docs
+- Prose paragraphs in AI-optimized docs (should be bullets/tables)
 
-**Structure Check (for AI-Optimized docs):**
+**Structure Check (AI-optimized docs only):**
 - Uses tables instead of prose?
 - Has file:line references?
-- Uses bullets not paragraphs?
 - Has concrete examples from codebase?
 
-**Completeness Check:**
-- Any important functionality not documented?
-- Any edge cases missing?
-- Any error scenarios unexplained?
-
 Output:
-**Accuracy Issues** (things that are wrong with evidence)
-**AI Slop Found** (phrases to remove/rewrite)
-**Missing Content** (things that should be added)
-**Structural Improvements** (reformatting needed)
-</task>
-```
+## Verified Correct
+[Documentation confirmed against source code]
 
-### Round 3 - Synthesizer Agent (Opus 4.5)
+## Errors Found
+[Inaccuracies with file:line evidence from actual code]
 
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
+## AI Slop Found
+[Phrases to remove/rewrite with locations]
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
-
-You are the SYNTHESIZER. Produce the final documentation.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-Given proposer's drafts and critic's feedback:
-
-1. **Correct** all factual errors
-2. **Remove** ALL AI slop and filler
-3. **Convert** prose to bullets/tables
-4. **Add** file:line references where missing
-5. **Verify** all code examples are correct
-
-Output the FINAL DOCUMENTATION for each file:
-
----
-## README.md
-[Complete content - human-readable]
-
----
-## CLAUDE.md
-[Complete content - AI-optimized format]
-
----
-## docs/[filename].md
-[Complete content - AI-optimized format]
-
----
-## .env.example
-[Environment file with comments]
-
----
-
-Also note:
-- Files that were improved
-- Content that couldn't be documented (needs more info)
-- Files intentionally left unchanged
+## Unable to Verify
+[Items needing manual verification]
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Writer output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Documentation Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 4: User Approval Gate
+## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final documentation:
+After the Verifier validates the drafted documentation:
 
 1. Present all proposed documentation changes
 2. Show diff of what will change (old vs new)
@@ -307,7 +246,7 @@ After the committee produces the final documentation:
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 5 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -317,7 +256,7 @@ If user requests changes:
 
 ---
 
-## Phase 5: Implementation
+## Phase 6: Implementation
 
 Once user has approved the plan:
 
@@ -329,7 +268,7 @@ Once user has approved the plan:
 3. Update .env.example with all variables
 4. Track all changes for verification
 
-## Phase 6: Post-Implementation Verification
+## Phase 7: Post-Implementation Verifier
 
 ### Verifier Agent (Opus 4.5)
 

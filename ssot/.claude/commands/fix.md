@@ -1,6 +1,6 @@
 # Universal Fixer
 
-Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Devil's Advocate committee to ensure safe, effective fixes.
+Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Builder-Verifier pattern to ensure safe, effective fixes.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
@@ -8,17 +8,17 @@ Fix issues in code: bugs, security vulnerabilities, performance problems, depend
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
+## MANDATORY: Enter Plan Mode First
 
 **BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
 
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only discovery and committee discussion
+2. **Execute Phases 1-4** → Read-only discovery and plan validation
 3. **Present Plan** → Show user exactly what will be fixed
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 5-6** → Only after approval, make changes
+5. **Execute Phases 6-7** → Only after approval, make changes
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -58,7 +58,7 @@ Use the Task tool to launch an explore agent:
 Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
 </constraint>
 
-Each agent runs independently and their results will be combined by the committee.
+Each agent runs independently and their results will be combined by the Planner.
 
 ### Code Quality Scanner
 
@@ -130,21 +130,15 @@ Output a prioritized list of dependency issues with recommended actions.
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 3: Committee Discussion
-
-### Round 1 — Proposer
+## Phase 3: Planner
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the PLANNER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. For each identified issue, propose a specific fix.
+You are the PLANNER. For each identified issue, propose a specific fix.
 
 <constraint>
 - MINIMAL, TARGETED fixes only — fix the bug, not the whole function
@@ -166,93 +160,49 @@ Output numbered list of proposed fixes.
 </task>
 ```
 
-### Round 2 — Critic
+## Phase 4: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Challenge each proposed fix:
+You are the VERIFIER. Validate each proposed fix against the actual codebase.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+For each proposed fix:
+1. Read the file at the reported location — does the issue actually exist?
+2. Read the surrounding code — will the fix break any callers or dependents?
+3. Search for usages of the function/class being changed to assess blast radius
+4. Is the risk level accurate? (1 file, no callers = low; shared utility = higher)
+5. Is the proposed code change syntactically and logically correct?
 
-**Per-fix checks:**
-- **Regression Risk**: Could this break existing functionality?
-- **Edge Cases**: Does the fix handle all scenarios?
-- **Dependencies**: Will this affect other parts of the codebase?
-- **Test Coverage**: Is there adequate testing for this fix?
-- **Alternative**: Is there a simpler or safer approach?
+Output:
+## Approved Fixes
+[Fixes confirmed as correct and safe]
 
-**Cross-cutting checks:**
-- Fixes the proposer missed?
-- "Fixes" that are unnecessary or harmful?
-- Risk levels that are inaccurate?
+## Modified Fixes
+[Fixes that need adjustments, with specific changes needed]
 
-**Output:**
-- **Fix Critiques** (for each: Approve / Modify / Reject with reasoning)
-- **Missing Fixes** (issues that need fixing but weren't addressed)
-- **Warnings** (things to watch out for during implementation)
-</task>
-```
+## Rejected Fixes
+[Fixes that are wrong or too risky, with evidence]
 
-### Round 3 — Synthesizer
-
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
-
-You are the SYNTHESIZER. Produce the final fix plan.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-1. **Approve** fixes that passed criticism
-2. **Modify** fixes based on valid concerns
-3. **Reject** fixes that are too risky or unnecessary
-4. **Add** missing fixes identified by critic
-5. **Order** fixes by dependency (what must be done first)
-
-**Output the FINAL FIX PLAN:**
-
-## Safe to Fix (Low Risk)
-[Fixes that can be applied immediately]
-
-## Requires Caution (Medium Risk)
-[Fixes that need careful implementation and testing]
-
-## Needs Discussion (High Risk)
-[Fixes that might need user approval before proceeding]
-
-## Rejected
-[Proposed fixes that shouldn't be done, with reasons]
-
-## Implementation Order
-1. [First fix — no dependencies]
-2. [Second fix — depends on #1]
+## Risk Assessment
+- Low risk fixes: X
+- Medium risk fixes: Y
+- High risk fixes: Z
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Planner output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Fix Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 4: User Approval Gate
+## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final fix plan:
+After the Verifier validates the fix plan:
 
 1. Present all proposed fixes organized by risk level
 2. Show exactly what will be changed (files, lines, code changes)
@@ -260,7 +210,7 @@ After the committee produces the final fix plan:
 4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 5 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -270,7 +220,7 @@ If user requests changes:
 
 ---
 
-## Phase 5: Implementation
+## Phase 6: Implementation
 
 Once user has approved the plan:
 
@@ -282,7 +232,7 @@ Once user has approved the plan:
 3. If a fix causes issues, revert and report
 4. Track each change made for verification
 
-## Phase 6: Post-Implementation Verification
+## Phase 7: Post-Implementation Verifier
 
 ### Verifier
 

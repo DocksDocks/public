@@ -1,6 +1,6 @@
 # SOLID Architecture Enforcer
 
-Analyze, identify, and fix SOLID principle violations across the codebase. Uses an extended 7-phase agent pipeline for thorough analysis and safe refactoring.
+Analyze, identify, and fix SOLID principle violations across the codebase. Uses a multi-phase agent pipeline for thorough analysis and safe refactoring.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
@@ -15,10 +15,10 @@ Analyze, identify, and fix SOLID principle violations across the codebase. Uses 
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-5** → Read-only analysis and committee discussion
+2. **Execute Phases 1-5** → Read-only analysis and verification
 3. **Present Plan** → Show user the complete refactoring plan
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 6-7** → Only after approval, make changes
+5. **Execute Phases 7-8** → Only after approval, make changes
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -166,21 +166,15 @@ For each violation include:
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 4: Committee Discussion
-
-### Round 1 — Proposer
+## Phase 4: Planner
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the PLANNER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. For each SOLID violation, propose a specific refactoring.
+You are the PLANNER. For each SOLID violation, propose a specific refactoring.
 
 <constraint>
 - Propose MINIMAL refactorings — fix the violation, not the whole module
@@ -229,104 +223,49 @@ Output numbered list of proposed refactorings.
 </task>
 ```
 
-### Round 2 — Critic
+## Phase 5: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Challenge each proposed refactoring.
+You are the VERIFIER. Validate each proposed refactoring against the actual codebase.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
-
-**Per-refactoring checks:**
-1. **Over-engineering Check**: Is this refactoring necessary or is it adding unnecessary complexity?
-2. **Breaking Changes**: Will this break existing functionality or APIs?
-3. **Test Impact**: Will existing tests need significant changes?
-4. **Pattern Appropriateness**: Is the proposed pattern the right choice?
-5. **Alternative Approach**: Is there a simpler way to fix this violation?
-
-Also check:
-- Are there SOLID violations the Analyzer missed?
-- Are any proposed refactorings actually making things worse?
-- Are the risk levels accurate?
-- Is the scope of each refactoring appropriate?
-
-**Watch for:**
-- Premature abstraction (YAGNI)
-- Pattern overuse
-- Refactorings that don't actually fix the violation
-- Changes that would require rewriting half the codebase
+For each proposed refactoring:
+1. Read the file at the reported location — does the violation actually exist?
+2. Does the proposed refactoring actually fix the SOLID violation?
+3. Over-engineering check: is the fix simpler than the problem it solves?
+4. Search for all usages of changed interfaces/classes — are all affected files listed?
+5. Will the refactoring break existing tests?
+6. Is the risk level accurate?
 
 Output:
-**Refactoring Critiques** (for each: Approve/Modify/Reject with reasoning)
-**Missed Violations** (SOLID issues not identified)
-**Warnings** (risks to watch during implementation)
-</task>
-```
+## Approved Refactorings
+[Refactorings confirmed as correct and worthwhile]
 
-### Round 3 — Synthesizer
-
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
-
-You are the SYNTHESIZER. Produce the final refactoring plan.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-Review proposer's refactorings and critic's challenges:
-
-1. **Approve** refactorings that passed criticism
-2. **Modify** refactorings based on valid concerns
-3. **Reject** refactorings that are over-engineered or risky
-4. **Add** fixes for violations the critic identified
-5. **Order** by dependency (what must be done first)
-
-Output the FINAL REFACTORING PLAN:
-
-## Phase 1: Foundation (Do First)
-[Refactorings that other changes depend on]
-
-## Phase 2: Core Violations (Critical)
-[Most impactful SOLID fixes]
-
-## Phase 3: Secondary Violations (High Priority)
-[Important but less critical fixes]
-
-## Phase 4: Polish (If Time Permits)
-[Nice-to-have improvements]
+## Modified Refactorings
+[Refactorings that need adjustments, with specific changes]
 
 ## Rejected Refactorings
-[Proposals that shouldn't be done, with reasons]
+[Over-engineered or incorrect proposals, with evidence]
 
-## Implementation Notes
-[Dependencies between refactorings, order matters]
+## Impact Assessment
+- Files affected: X
+- Risk summary: [low/medium/high counts]
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Planner output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Refactoring Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 6: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final refactoring plan:
+After the Verifier validates the refactoring plan:
 
 1. Present all proposed refactorings organized by phase
 2. Show exactly what will be changed (files, patterns, code changes)
@@ -335,7 +274,7 @@ After the committee produces the final refactoring plan:
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -345,7 +284,7 @@ If user requests changes:
 
 ---
 
-## Phase 6: Implementation
+## Phase 7: Implementation
 
 Once user has approved the plan:
 
@@ -358,7 +297,7 @@ Once user has approved the plan:
 4. If a refactoring causes issues, revert and report
 5. Track all changes for verification
 
-## Phase 7: Post-Implementation Verification
+## Phase 8: Post-Implementation Verifier
 
 ### Verifier
 

@@ -2,32 +2,34 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
+The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
+
 ## Repository Structure
 
 | Path | Purpose |
 |------|---------|
-| `.claude/CLAUDE.md` | Coding standards and conventions (loaded into every session) |
-| `.claude/settings.json` | Permissions, hooks, plugins, token limits |
-| `.claude/commands/*.md` | 8 custom slash commands (see below) |
-| `.claude/RTK.md` | RTK reference (meta commands, verification) |
-| `.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
-| `.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
+| `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
+| `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
+| `ssot/.claude/commands/*.md` | 8 custom slash commands (see below) |
+| `ssot/.claude/RTK.md` | RTK reference (meta commands, verification) |
+| `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
+| `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 | `alert_bubble.mp3` | Audio notification for Notification hook |
 
 ## Custom Commands
 
-All commands use multi-agent pipelines with Opus models. Most use a **Devil's Advocate committee pattern** (Proposer → Critic → Synthesizer) for quality.
+All commands use multi-agent pipelines with Opus models. Most use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
 
 | Command | Pipeline | Pattern |
 |---------|----------|---------|
 | `/security` | Discovery → [Scanner \| Analyzer \| Hunter] → Synthesizer | DAG fan-out/fan-in |
-| `/fix` | Exploration → [Code Quality \| Dependency] → Committee → Implement | DAG + Committee |
-| `/review` | Exploration → Committee → Implement | Committee |
-| `/test` | Exploration → Committee → Implement | Committee |
-| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Committee → Implement | DAG + Committee |
-| `/human-docs` | Exploration → Analysis → Committee → Implement | Committee |
-| `/solid` | Exploration → Discovery → Analysis → Committee → Implement | Committee |
-| `/team` | Discovery → [Role Mapper \| Pattern Extractor] → Committee → Implement | DAG + Committee |
+| `/fix` | Exploration → [Code Scanner \| Dependency Scanner] → Planner → Verifier | DAG + Builder-Verifier |
+| `/review` | Exploration → Analyzer → Verifier | Builder-Verifier |
+| `/test` | Exploration → Analyzer → Generator → Verifier | Builder-Verifier |
+| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Builder → Verifier | DAG + Builder-Verifier |
+| `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
+| `/solid` | Exploration → Discovery → Analyzer → Planner → Verifier | Builder-Verifier |
+| `/team` | Discovery → [Role Mapper \| Pattern Extractor] → Generator → Verifier | DAG + Builder-Verifier |
 
 Commands with parallel phases (`/security`, `/fix`, `/docs`, `/team`) include explicit instructions to launch agents in a single turn for wall-clock time savings.
 
@@ -39,7 +41,7 @@ Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToo
 
 | File | Purpose |
 |------|---------|
-| `.claude/RTK.md` | RTK reference for Claude (meta commands, verification) |
+| `ssot/.claude/RTK.md` | RTK reference for Claude (meta commands, verification) |
 
 ### Supported commands
 
@@ -59,7 +61,7 @@ sudo apt install -y jq   # Debian/Ubuntu
 rtk init --global
 
 # 4. Copy RTK docs for Claude
-cp .claude/RTK.md ~/.claude/RTK.md
+cp ssot/.claude/RTK.md ~/.claude/RTK.md
 
 # 5. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
 
@@ -93,22 +95,20 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 # Clone
 git clone <this-repo> ~/projects/public
 
-# Sync to user config
-cp -r ~/projects/public/.claude/commands/ ~/.claude/commands/
+# Sync SSOT to user config
+cp -r ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
 cp ~/projects/public/alert_bubble.mp3 ~/.claude/
 
 # Status line
-cp ~/projects/public/.claude/statusline.sh ~/.claude/
-cp ~/projects/public/.claude/fetch-usage.sh ~/.claude/
+cp ~/projects/public/ssot/.claude/statusline.sh ~/.claude/
+cp ~/projects/public/ssot/.claude/fetch-usage.sh ~/.claude/
 chmod +x ~/.claude/statusline.sh ~/.claude/fetch-usage.sh
 
 # RTK (requires rtk binary — see "Install RTK" section)
 rtk init --global
-cp ~/projects/public/.claude/RTK.md ~/.claude/
+cp ~/projects/public/ssot/.claude/RTK.md ~/.claude/
 
-# Settings are project-level (.claude/settings.json) — they apply
-# automatically when Claude Code runs inside this repo. To use them
-# globally, merge into ~/.claude/settings.json.
+# Settings — merge ssot/.claude/settings.json into ~/.claude/settings.json
 ```
 
 ## Editing Commands
@@ -116,8 +116,8 @@ cp ~/projects/public/.claude/RTK.md ~/.claude/
 When modifying commands, keep in sync:
 
 ```bash
-# After editing .claude/commands/*.md
-cp .claude/commands/*.md ~/.claude/commands/
+# After editing ssot/.claude/commands/*.md
+cp ssot/.claude/commands/*.md ~/.claude/commands/
 ```
 
-The repo is the source of truth. `~/.claude/commands/` is the deployed copy.
+The `ssot/.claude/` directory is the source of truth. `~/.claude/` is the deployed copy.

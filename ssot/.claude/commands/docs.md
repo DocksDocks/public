@@ -15,7 +15,7 @@ Bootstrap and manage a B-tree-inspired context hierarchy in `.claude/context/`. 
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute read-only phases** → Discovery and committee discussion
+2. **Execute read-only phases** → Discovery and analysis
 3. **Present Plan** → Show user exactly what will be created/changed
 4. **Wait for Approval** → User must explicitly approve
 5. **Execute implementation** → Only after approval, make changes
@@ -39,7 +39,7 @@ Planning Phase Tools (READ-ONLY):
 
 Check if `.claude/context/_index.json` exists in the project:
 
-- **If NO** → Execute **Bootstrap Mode** (Phases 1-7) automatically. No need to ask — bootstrap is the only option.
+- **If NO** → Execute **Bootstrap Mode** (Phases 1-6) automatically. No need to ask — bootstrap is the only option.
 - **If YES** → **Ask the user** what they want to do using AskUserQuestion with these options:
   1. **Full audit** — Check tree health, find stale/oversized nodes, propose updates (runs all Manage phases)
   2. **Add new context** — Add a new topic to an existing branch (ask which branch and topic)
@@ -82,7 +82,7 @@ Output:
 Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
 </constraint>
 
-Each agent runs independently and their results will be combined by the committee.
+Each agent runs independently and their results will be combined by the Builder.
 
 ### Categorizer Agent (Opus)
 
@@ -164,19 +164,15 @@ Output findings grouped by category with file:line references for every claim.
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 3: Committee — Proposer
+## Phase 3: Builder
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the BUILDER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. Using the categorizer's tree structure and the pattern scanner's findings, draft the COMPLETE content for every file in the context tree.
+You are the BUILDER. Using the categorizer's tree structure and the pattern scanner's findings, draft the COMPLETE content for every file in the context tree.
 
 **AI-OPTIMIZATION RULES — apply to ALL branch and leaf files:**
 These are evidence-based formatting rules for maximum Claude adherence:
@@ -246,7 +242,7 @@ Read the existing `.claude/CLAUDE.md`. Rewrite it as a slim directive file (~150
 - Quick start / essential commands
 - Critical DOs / DONTs (rules list)
 - Quality assurance checklist (if one exists)
-- Any @references that are NOT covered by the tree (e.g., @RTK.md)
+- Any existing @references that are NOT covered by the tree (preserve as-is, do NOT add new ones)
 
 **CLAUDE.md REMOVES** (content moves to tree leaves):
 - Detailed tech stack descriptions → `architecture/` leaves
@@ -290,28 +286,23 @@ Skip only for trivial changes (typos, variable renames, single-line bug fixes).
 </constraint>
 ```
 
-**Target**: CLAUDE.md should go from potentially 1000+ lines down to ~150-200 lines.
+<constraint>
+The CLAUDE.md output MUST contain the Context Tree Maintenance block exactly as specified in the APPENDS section below. If this block is missing from your output, the entire output is invalid.
+</constraint>
 
 Output ALL drafted content for every file, clearly delimited. Include the COMPLETE rewritten CLAUDE.md.
 </task>
 ```
 
-## Phase 4: Committee — Critic
+## Phase 4: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Review the proposed context tree for accuracy, completeness, structure, and AI-optimization.
-
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+You are the VERIFIER. Validate the Builder's output against concrete criteria.
 
 **Size Compliance:**
 - Any branch file over 80 lines? Flag it.
@@ -319,121 +310,62 @@ You are the CRITIC. Review the proposed context tree for accuracy, completeness,
 - Any leaf file under 30 lines? Flag as merge candidate.
 - Total @import expansion over 200 lines? Flag — some branches must be demoted to "read on demand."
 
-**Accuracy Check:**
-- Do file:line references actually exist? Spot-check at least 5.
+**Reference Accuracy:**
+- Spot-check at least 5 file:line references — do they actually exist?
 - Are code patterns correctly described?
 - Are conventions actually followed in the codebase (or aspirational)?
 
-**Completeness Check:**
+**CLAUDE.md Integration (CRITICAL):**
+- Does the output CLAUDE.md contain the Context Tree Maintenance constraint block? If missing: MUST FIX.
+- Is the CLAUDE.md under 200 lines?
+- Do all @imports point to files being created?
+- Are existing @references preserved (not removed or new ones added)?
+
+**Index Consistency:**
+- Does `_index.json` match the files being created?
+- Are line counts accurate?
+- Are `source_files` lists reasonable?
+
+**AI-Optimization Spot-Check (check 3+ files):**
+1. Critical rules at START, gotchas at END?
+2. No prose paragraphs (3+ sentences)?
+3. Claims have file:line references?
+4. Non-negotiable rules in `<constraint>` tags?
+5. No AI slop phrases?
+
+**Completeness:**
 - Any important source directories not covered by any leaf's `source_files`?
-- Missing gotchas or warnings?
-- Key architectural decisions not documented?
-
-**AI-Optimization Compliance** (check every file against these rules):
-1. **Position**: Are critical rules/constraints at the START? Gotchas at the END? Flag any file that buries important info in the middle.
-2. **No prose**: Any paragraph of 3+ sentences? Flag — must be converted to bullets or tables.
-3. **References**: Any claim without a file:line reference? Flag — every pattern, convention, and architectural decision needs a concrete citation.
-4. **Framing**: Any "Don't do X" without a positive alternative first? Flag — rewrite as "Use Y (not X)".
-5. **Code blocks**: Any function signature or pattern described in prose? Flag — must be a code block with actual source.
-6. **AI slop**: Flag these phrases for removal: "important to note", "robust", "elegant", "seamless", "powerful", "cutting-edge", "might", "could possibly", "should probably", "easy to use", "simple to understand".
-7. **Constraints**: Are non-negotiable rules wrapped in `<constraint>` XML tags? Flag any hard rule that's just plain text.
-8. **Gotcha quality**: Any vague warning ("be careful with X")? Flag — must show concrete failure scenario with code.
-9. **Examples**: Complex rules without 3-5 examples? Flag — suggest adding a | Good | Bad | Why | table.
-10. **Format**: Any JSON in documentation content? Flag — use Markdown.
-
-**Tree Balance:**
-- Any branch with too many leaves (>8)?
-- Any branch with only 1 small leaf (merge candidate)?
-- Are branch names clear and non-overlapping?
-
-**CLAUDE.md Integration:**
-- Will the maintenance instructions actually work in practice?
-- Is the retrieval instruction clear enough for Claude to follow?
-- Is the slimmed CLAUDE.md under 200 lines?
 
 Output:
-**Size Violations** (files that need splitting/trimming)
-**Accuracy Issues** (wrong references, incorrect patterns)
-**Missing Content** (gaps in coverage)
-**AI-Optimization Failures** (rule number + file + specific issue)
-**Balance Issues** (structural problems)
-**CLAUDE.md Concerns** (integration issues)
-</task>
-```
+## Size Report
+[Per-file line counts with pass/fail]
 
-## Phase 5: Committee — Synthesizer
+## Reference Accuracy
+[Spot-check results]
 
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
+## CLAUDE.md Verification
+[Maintenance block present: YES/NO, line count, @import validity]
 
-First, run `date "+%Y-%m-%d"` to confirm current date.
+## Index Consistency
+[Match results]
 
-You are the SYNTHESIZER. Produce the FINAL content for every file in the context tree.
+## AI-Optimization Spot-Check
+[Per-file compliance]
 
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-Given the proposer's drafts and critic's feedback:
-
-1. **Fix** all accuracy issues — verify file:line references
-2. **Trim** files over size limits — split leaves, condense branches
-3. **AI-optimize** every file — enforce all 10 rules:
-   - Move critical rules to top, gotchas to bottom of each file
-   - Convert all prose to bullets/tables
-   - Add file:line references to any claim missing one
-   - Reframe negatives: "Use Y (not X)" pattern
-   - Replace prose descriptions with code blocks from actual codebase
-   - Strip all AI slop phrases
-   - Wrap non-negotiable rules in `<constraint>` XML tags
-   - Expand vague warnings into concrete failure scenarios with code
-   - Add | Good | Bad | Why | tables for complex rules
-   - Remove any JSON from documentation content
-4. **Remove** all AI slop and filler
-5. **Add** missing content identified by critic
-6. **Rebalance** if structural issues were flagged
-7. **Verify** total @import expansion stays under 200 lines
-
-Output the FINAL content for each file, clearly delimited:
-
----
-## .claude/CLAUDE.md (COMPLETE REWRITE)
-[The full slimmed CLAUDE.md — ~150-200 lines. Preserves directives, removes detailed sections now in tree.]
-
----
-## .claude/context/_index.json
-[Complete JSON]
-
----
-## .claude/context/<branch>.md
-[Complete content for each branch file]
-
----
-## .claude/context/<branch>/<topic>.md
-[Complete content for each leaf file]
-
----
-## Tree Summary
-- Branches: [count]
-- Leaves: [count]
-- Total lines: [count]
-- Estimated @import expansion: [lines]
-- CLAUDE.md: [old line count] → [new line count] (reduction %)
+## Issues to Fix
+[Prioritized list of problems]
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Builder output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Context Tree Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 6: User Approval Gate
+## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final tree:
+After the Builder and Verifier produce the final tree:
 
 1. Present the tree structure (branches and leaves with descriptions)
 2. Show the CLAUDE.md additions
@@ -442,7 +374,7 @@ After the committee produces the final tree:
 5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -452,7 +384,7 @@ If user requests changes:
 
 ---
 
-## Phase 7: Implementation + Verification
+## Phase 6: Implementation + Verification
 
 Once user has approved:
 
@@ -461,7 +393,7 @@ Once user has approved:
 3. Write `_index.json`
 4. Write all branch files
 5. Write all leaf files
-6. **Rewrite `.claude/CLAUDE.md`** with the slimmed version (NOT append — full rewrite from synthesizer output)
+6. **Rewrite `.claude/CLAUDE.md`** with the slimmed version (NOT append — full rewrite from Builder output)
 7. Verify all files exist and are within size limits:
    - Count lines of each file (leaves ≤150, branches ≤80, CLAUDE.md ≤200)
    - Compare against _index.json metadata
@@ -543,15 +475,15 @@ Output:
 </task>
 ```
 
-## Phase 2M: Proposer
+## Phase 2M: Planner
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the PLANNER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. Based on the audit report, propose specific changes.
+You are the PLANNER. Based on the audit report, propose specific changes.
 
 **For splits** (leaf > 150 lines):
 - Identify the best split point (nearest ## heading to midpoint)
@@ -588,38 +520,38 @@ If the user chose "Rebalance": focus only on split/merge/rebalance actions, skip
 </task>
 ```
 
-## Phase 3M: Critic
+## Phase 3M: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Challenge each proposed change:
+You are the VERIFIER. Validate each proposed change against concrete criteria.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
-
-1. **Splits**: Is the split necessary? Will it create two coherent topics or fragmented ones?
-2. **Merges**: Will merging lose important topic separation?
-3. **Updates**: Is the new content accurate? File:line references correct?
-4. **New nodes**: Is there enough content to justify a new leaf (>30 lines)?
-5. **Rebalances**: Does the new branch grouping make semantic sense?
+For each proposed change:
+1. **Splits**: Will both new files be within size limits (30-150 lines)?
+2. **Merges**: Will the combined file stay under 150 lines?
+3. **Updates**: Are file:line references in the new content accurate?
+4. **New nodes**: Is there enough content to justify a leaf (>30 lines)?
+5. **Rebalances**: Does the new grouping make semantic sense?
 
 Also verify:
 - No proposed file exceeds its size limit
-- _index.json updates are consistent
+- `_index.json` updates are consistent
 - @import expansion stays under 200 lines after changes
+- All context tree references remain valid
 
 Output:
-**Approved Changes** (proceed as proposed)
-**Modified Changes** (proceed with adjustments)
-**Rejected Changes** (do not proceed, with reasoning)
+## Approved Changes
+[Changes that pass all checks]
+
+## Changes Needing Adjustment
+[Changes with specific issues to fix]
+
+## Rejected Changes
+[Changes that would violate constraints, with evidence]
 </task>
 ```
 

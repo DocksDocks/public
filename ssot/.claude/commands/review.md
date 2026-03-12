@@ -1,6 +1,6 @@
 # Universal Code Review
 
-Comprehensive code review covering quality, security, and performance using a Devil's Advocate committee approach.
+Comprehensive code review covering quality, security, and performance using a Builder-Verifier pattern.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.
@@ -8,17 +8,17 @@ Comprehensive code review covering quality, security, and performance using a De
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
+## MANDATORY: Enter Plan Mode First
 
 **BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
 
 This command requires user approval before making any changes. The workflow is:
 
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-3** → Read-only analysis and committee review
+1. **Enter Plan Mode** -> Use `EnterPlanMode` tool NOW
+2. **Execute Phases 1-3** → Read-only analysis and verification
 3. **Present Plan** → Show user exactly what will be fixed
 4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 4-5** → Only after approval, make changes
+5. **Execute Phases 5-6** → Only after approval, make changes
 
 **STOP! Use the EnterPlanMode tool now before continuing.**
 
@@ -51,21 +51,15 @@ Use the Task tool to launch an explore agent:
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 2: Committee Discussion
-
-### Round 1 — Proposer
+## Phase 2: Analyzer
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the ANALYZER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. Identify ALL potential issues in the target code.
+You are the ANALYZER. Identify ALL potential issues in the target code.
 
 <constraint>
 - Every issue must include file:line location and severity
@@ -92,102 +86,59 @@ Output as a numbered list.
 </task>
 ```
 
-### Round 2 — Critic
+## Phase 3: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. CHALLENGE the proposer's findings and find what they MISSED.
+You are the VERIFIER. Your job is to validate the Analyzer's findings against the actual codebase.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+For each reported issue:
+1. Read the file at the reported location — does the code actually exist there?
+2. Is the issue real? Read surrounding context to confirm.
+3. Is the severity rating accurate given the codebase context?
+4. Is the suggested fix correct and safe?
 
-**Per-issue checks:**
-- **Challenge**: Is this actually a problem in this context? False positive?
-- **Edge Cases**: Scenarios where this matters more or less?
-- **Fix Evaluation**: Is the proposed fix safe? Regression risk?
-- **Severity Check**: Is the severity rating accurate?
+Spot-check at least 5 file:line references to verify they exist.
 
-**Then actively hunt for missed issues:**
-- Review the same code independently
-- Check areas the proposer glossed over
-- Look for subtle bugs in complex logic
-- Verify security assumptions
-- Check for race conditions, deadlocks, edge cases
+Output:
+## Verified Issues
+[Issues confirmed as real with evidence]
 
-**Output:**
-- **Critiques of Proposer Findings** (for each: Accept / Challenge with reasoning)
-- **Missed Issues** (new issues found)
-</task>
-```
+## Rejected Issues (False Positives)
+[Issues that are not real, with evidence from the code]
 
-### Round 3 — Synthesizer
-
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
-
-You are the SYNTHESIZER. Produce the FINAL, ACTIONABLE review.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-1. **Accept** issues that survived criticism
-2. **Reject** false positives with valid counter-arguments
-3. **Incorporate** new issues found by the critic
-4. **Adjust** severity ratings based on critic's input
-5. **Prioritize** by impact: critical → high → medium → low
-
-**Output the FINAL REVIEW:**
-
-## Critical Issues (Fix Immediately)
-[List with file:line, description, and fix]
-
-## High Priority Issues
-[List with file:line, description, and fix]
-
-## Medium Priority Issues
-[List with file:line, description, and fix]
-
-## Low Priority / Suggestions
-[List with file:line, description, and fix]
+## Severity Adjustments
+[Any issues where severity should change, with reasoning]
 
 ## Summary
-- Total issues: X
-- Files affected: Y
-- Estimated effort: [brief description]
+- Total reported: X
+- Verified: Y
+- Rejected: Z
+- Adjusted severity: W
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Analyzer findings and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Analysis Results` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 3: User Approval Gate
+## Phase 4: User Approval Gate
 
 **STOP HERE AND PRESENT THE PLAN TO THE USER**
 
-After the committee produces the final review:
+After the Verifier produces the validated findings:
 
-1. Present the synthesized findings clearly
+1. Present the verified findings clearly
 2. Show exactly what will be changed (files, lines, fixes)
 3. Ask user to review and approve before proceeding
 4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
 
 <constraint>
-Do NOT proceed to Phase 4 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 5 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 If user requests changes:
@@ -197,7 +148,7 @@ If user requests changes:
 
 ---
 
-## Phase 4: Implementation
+## Phase 5: Implementation
 
 Once user has approved the plan:
 
@@ -206,7 +157,7 @@ Once user has approved the plan:
 3. Run existing tests/linters after changes if available
 4. Track each change made for verification
 
-## Phase 5: Post-Implementation Verification
+## Phase 6: Post-Implementation Verification
 
 ### Verifier
 

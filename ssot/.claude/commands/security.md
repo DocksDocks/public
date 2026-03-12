@@ -1,6 +1,6 @@
 # Security Audit
 
-Comprehensive security and logic analysis across the entire codebase using a specialized security committee approach.
+Comprehensive security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
 
 > **IMPORTANT - Model Requirement**
 > When launching ANY Task agent in this command, you MUST explicitly set `model: "opus"` in the Task tool parameters.

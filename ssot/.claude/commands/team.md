@@ -15,7 +15,7 @@ Generate project-specific Claude Code agents from the context tree. Agents refer
 This command requires user approval before making any changes. The workflow is:
 
 1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute read-only phases** → Discovery and committee discussion
+2. **Execute read-only phases** → Discovery and analysis
 3. **Present Plan** → Show user exactly what agents will be created
 4. **Wait for Approval** → User must explicitly approve
 5. **Execute implementation** → Only after approval, write agent files
@@ -154,19 +154,15 @@ Output structured content per agent, clearly delimited.
 </task>
 ```
 
-<constraint>
-Committee phases (Proposer → Critic → Synthesizer) are SEQUENTIAL and AUTOMATIC. After each agent returns its result, IMMEDIATELY launch the next agent. Do NOT stop, summarize, or ask the user between committee phases.
-</constraint>
-
-## Phase 3: Committee — Proposer
+## Phase 3: Generator
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PROPOSER:
+Launch a Task agent with model="opus" to act as the GENERATOR:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the PROPOSER. Using the role mapper's roster and the pattern extractor's findings, draft COMPLETE agent files.
+You are the GENERATOR. Using the role mapper's roster and the pattern extractor's findings, draft COMPLETE agent files.
 
 **Agent file format:**
 ```yaml
@@ -229,116 +225,49 @@ Output ALL drafted agent files, clearly delimited with `---` separators.
 </task>
 ```
 
-## Phase 4: Committee — Critic
+## Phase 4: Verifier
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the CRITIC:
+Launch a Task agent with model="opus" to act as the VERIFIER:
 
 First, run `date "+%Y-%m-%d"` to confirm current date.
 
-You are the CRITIC. Review each proposed agent for quality, optimization, and correctness.
+You are the VERIFIER. Validate each generated agent file against real project data.
 
-<constraint>
-- You MUST list at least 3 specific disagreements or issues with the proposal before listing any agreements
-- For each disagreement, cite the exact content you challenge and why
-- Do NOT open with "the proposal is generally good" — start with problems
-- If you genuinely find fewer than 3 issues, explain what you checked and why it passed
-</constraint>
+For each agent file:
+1. **Frontmatter valid?** name is kebab-case, max 64 chars, no "anthropic"/"claude" in name
+2. **Description quality?** Under 1024 chars, written in 3rd person, specific trigger conditions
+3. **System prompt size?** Under 200 lines (not counting frontmatter)
+4. **Context tree references valid?** Every `.claude/context/` path referenced actually exists (check against `_index.json`)
+5. **Tool set minimal?** No unnecessary tools included
+6. **Scope overlaps?** Compare domains between agents — flag any overlap
 
-**Description Quality:**
-- Will Claude know WHEN to delegate? Is the trigger specific enough?
-- Is the description under 1024 characters?
-- Is it written in 3rd person?
-
-**Scope & Overlap:**
-- Do any agents have overlapping responsibilities?
-- Are scope boundaries clear?
-- Is each agent narrow enough (one domain)?
-
-**AI-Optimization Compliance (check all 10 rules on every agent):**
-1. Critical constraints at START? Gotchas at END?
-2. Any prose paragraphs? Must be bullets/tables.
-3. Claims without file:line or context tree references?
-4. Negative framing without positive alternative?
-5. Patterns in prose instead of code blocks?
-6. AI slop phrases?
-7. Non-negotiable rules missing `<constraint>` tags?
-8. Vague warnings without failure scenarios?
-9. Complex rules without example tables?
-10. Any JSON in documentation?
-
-**Agent-Specific Checks:**
-- Does the agent REFERENCE context tree leaves (not duplicate them)?
-- Is the tool set minimal? Any unnecessary tools?
-- System prompt under 200 lines?
-- Frontmatter valid? (name: kebab-case, no reserved words)
-- Workflow steps concrete and actionable?
-
-**Integration:**
-- Do handoff conditions make sense?
-- Any gaps where no agent covers a domain?
+**AI-optimization spot-check (3+ agents):**
+- Critical constraints at START of system prompt?
+- Gotchas at END?
+- No prose paragraphs?
+- Non-negotiable rules in `<constraint>` tags?
 
 Output:
-**Per-Agent Review** (for each: Approve / Modify / Reject with specifics)
-**Scope Overlaps** (any conflicts between agents)
-**AI-Optimization Failures** (rule number + agent + issue)
-**Missing Coverage** (domains without agents that should have them)
-</task>
-```
+## Per-Agent Verification
+[For each agent: name, status (pass/issues), specific problems if any]
 
-## Phase 5: Committee — Synthesizer
+## Scope Overlap Report
+[Any overlapping responsibilities between agents]
 
-```xml
-<task>
-Launch a Task agent with model="opus" to act as the SYNTHESIZER:
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
-
-You are the SYNTHESIZER. Produce the FINAL agent files.
-
-<constraint>
-- BEFORE producing final output, list each Critic disagreement and your resolution (accepted/rejected with reason)
-- You MUST incorporate at least 1 Critic suggestion substantively — if all rejected, explain why for each
-- Do NOT reproduce the Proposer's output with only minor edits
-</constraint>
-
-Given the proposer's drafts and critic's feedback:
-
-1. **Fix** all critic issues — scope overlaps, optimization failures, missing references
-2. **AI-optimize** every agent — enforce all 10 rules plus 6 agent-specific rules
-3. **Trim** system prompts over 200 lines
-4. **Verify** all context tree references point to existing leaves (check against _index.json)
-5. **Verify** descriptions are specific triggers, not generic
-
-Output the FINAL content for each agent file, clearly delimited:
-
----
-## .claude/agents/[name].md
-```yaml
----
-[frontmatter]
----
-```
-[Complete system prompt]
-
----
-
-Repeat for each agent.
-
-## Team Summary
-- Agents: [count]
-- Total system prompt lines: [count]
-- Context tree leaves referenced: [count]
-- Scope coverage: [which branches are covered]
+## Summary
+- Agents verified: X
+- Issues found: Y
+- Context refs validated: Z/total
 </task>
 ```
 
 <constraint>
-After the Synthesizer produces its final output, you MUST write the complete synthesis results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Synthesis Output` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, you MUST write the Generator output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Agent Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 6: User Approval Gate
+## Phase 5: User Approval Gate
 
 **STOP HERE AND PRESENT THE AGENTS TO THE USER**
 
@@ -348,12 +277,12 @@ After the Synthesizer produces its final output, you MUST write the complete syn
 4. Wait for explicit approval
 
 <constraint>
-Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
+Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
 </constraint>
 
 ---
 
-## Phase 7: Implementation + Verification
+## Phase 6: Implementation + Verification
 
 Once user has approved:
 
