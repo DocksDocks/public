@@ -21,3 +21,11 @@ IMPORTANT: Before writing or modifying code that uses any framework, library, or
 - Skip research because the library "seems familiar"
 
 This prevents hallucinated APIs, deprecated patterns, and version mismatches.
+
+## Context Tree
+
+Projects may have a `.claude/context/` directory with a B-tree knowledge hierarchy managed by `/docs`.
+
+<constraint>
+If the project's CLAUDE.md contains `@context/` imports, those branch files are auto-loaded at session start. When you need topic-specific details, follow the branch's pointer table to read the leaf file. After any code change affecting documented patterns, follow the Context Tree Maintenance protocol in the project's CLAUDE.md.
+</constraint>

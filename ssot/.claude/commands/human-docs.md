@@ -8,19 +8,9 @@ Generate, fix, and optimize documentation across the entire project. Scans ALL .
 
 ---
 
-## MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only analysis, drafting, and verification
-3. **Present Plan** → Show user exactly what will change
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 6-7** → Only after approval, make changes
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -283,32 +273,21 @@ Spot-checked 5+ file:line references. Zero AI slop phrases remaining. All code e
 After the Verifier produces its results, you MUST write the Writer output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Documentation Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 5: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE PLAN TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-After the Verifier validates the drafted documentation:
+1. Proposed documentation changes
+2. Diff of old vs new
+3. Files to create, modify, or leave unchanged
 
-1. Present all proposed documentation changes
-2. Show diff of what will change (old vs new)
-3. List files being created, modified, or left unchanged
-4. Ask user to review and approve before proceeding
-5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
-
-<constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
-
-If user requests changes:
-- Revise the documentation based on feedback
-- Present the updated plan
-- Wait for approval again
+Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
 ---
 
 ## Phase 6: Implementation
 
-Once user has approved the plan:
+After approval:
 
 1. Write/update documentation files using Write/Edit tools
 2. For API docs, generate in the appropriate format:

@@ -8,19 +8,9 @@ Generate comprehensive tests following project patterns and conventions. Uses Bu
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-4** → Read-only analysis and Builder-Verifier pipeline
-3. **Present Plan** → Show user the complete test plan
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 6-7** → Only after approval, write tests
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -206,32 +196,21 @@ Spot-checked 5+ file:line references. All import paths verified against real pro
 After the Verifier produces its results, you MUST write the Generator output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Test Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 5: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE PLAN TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-After the Verifier validates the generated tests:
+1. Complete test plan with test cases
+2. Files to create and locations
+3. Test scenarios covered
 
-1. Present the complete test plan with all test cases
-2. Show what files will be created and where
-3. List all test scenarios being covered
-4. Ask user to review and approve before proceeding
-5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
-
-<constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
-
-If user requests changes:
-- Revise the test plan based on feedback
-- Present the updated plan
-- Wait for approval again
+Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
 ---
 
 ## Phase 6: Implementation
 
-Once user has approved the plan:
+After approval:
 
 1. Write the test file(s) using Write tool
 2. Run the tests to verify they pass

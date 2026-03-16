@@ -111,6 +111,31 @@ cp ~/projects/public/ssot/.claude/RTK.md ~/.claude/
 # Settings — merge ssot/.claude/settings.json into ~/.claude/settings.json
 ```
 
+## Command Authoring Conventions
+
+When creating or modifying commands in `ssot/.claude/commands/`:
+
+<constraint>
+Plan Mode Enforcement:
+- Use a `<constraint>` tag to enforce `EnterPlanMode`, not plain markdown
+- Template: `<constraint>\nIf not already in Plan Mode, call \`EnterPlanMode\` NOW before doing anything else. All phases are read-only until the user approves the plan.\n</constraint>`
+- Do NOT use `## MANDATORY`, `**STOP!**`, or numbered workflow lists — Plan Mode handles this
+
+Approval Gates:
+- Do NOT add custom approval gates (`STOP HERE`, `Do NOT proceed`, `Wait for explicit approval`)
+- Plan Mode's `ExitPlanMode` is the only approval mechanism — the UI handles user review
+- The approval phase should write plan summary to the plan file, then call `ExitPlanMode`
+- Template: `## Phase N: Present Plan + Exit Plan Mode\n\nWrite the following to the plan file, then call \`ExitPlanMode\`:\n1. [presentation items]\n\nPlan Mode handles user approval. Once approved, proceed to Phase X.`
+
+Phase Transitions:
+- Use `<constraint>` tags for non-negotiable rules, not bold markdown or `STOP!`
+- Do NOT use `/compact` between phases — write phase output to the plan file instead
+- Include a Phase Transition Protocol constraint if the command has 3+ sequential phases
+
+Implementation Phase:
+- Start with `After approval:` not `Once user has approved the plan:`
+</constraint>
+
 ## Editing Commands
 
 When modifying commands, keep in sync:

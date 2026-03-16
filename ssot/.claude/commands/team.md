@@ -8,19 +8,9 @@ Generate project-specific Claude Code agents from the context tree. Agents refer
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute read-only phases** → Discovery and analysis
-3. **Present Plan** → Show user exactly what agents will be created
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute implementation** → Only after approval, write agent files
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -311,24 +301,21 @@ All frontmatter valid. All context tree references verified against _index.json.
 After the Verifier produces its results, you MUST write the Generator output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Agent Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 5: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE AGENTS TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-1. Show the agent roster: name, description (first line), tools, scope
-2. For each agent, show the context tree leaves it references
-3. List which existing agents will be replaced (if improving)
-4. Wait for explicit approval
+1. Agent roster: name, description, tools, scope
+2. Context tree leaves each agent references
+3. Existing agents to be replaced (if improving)
 
-<constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
+Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
 ---
 
 ## Phase 6: Implementation + Verification
 
-Once user has approved:
+After approval:
 
 1. Create `.claude/agents/` directory if needed
 2. Write all agent files

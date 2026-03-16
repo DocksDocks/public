@@ -8,19 +8,9 @@ Comprehensive code review covering quality, security, and performance using a Bu
 
 ---
 
-## MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** -> Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-3** → Read-only analysis and verification
-3. **Present Plan** → Show user exactly what will be fixed
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 5-6** → Only after approval, make changes
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -161,31 +151,20 @@ Spot-checked 5+ file:line references. Zero unverified findings in final output.
 After the Verifier produces its results, you MUST write the Analyzer findings and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Analysis Results` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 4: User Approval Gate
+## Phase 4: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE PLAN TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-After the Verifier produces the validated findings:
+1. Verified findings
+2. Files, lines, and proposed fixes
 
-1. Present the verified findings clearly
-2. Show exactly what will be changed (files, lines, fixes)
-3. Ask user to review and approve before proceeding
-4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
-
-<constraint>
-Do NOT proceed to Phase 5 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
-
-If user requests changes:
-- Revise the plan based on feedback
-- Present the updated plan
-- Wait for approval again
+Plan Mode handles user approval. Once approved, proceed to Phase 5.
 
 ---
 
 ## Phase 5: Implementation
 
-Once user has approved the plan:
+After approval:
 
 1. Implement fixes starting with critical issues
 2. Use Edit tool to make changes, preserving existing code style

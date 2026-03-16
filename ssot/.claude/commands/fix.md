@@ -8,19 +8,9 @@ Fix issues in code: bugs, security vulnerabilities, performance problems, depend
 
 ---
 
-## MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute Phases 1-5** → Read-only discovery and plan validation
-3. **Present Plan** → Show user exactly what will be fixed
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute Phases 7-8** → Only after approval, make changes
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -280,31 +270,20 @@ Spot-checked 5+ file:line references. Zero unverified fixes in approved list.
 After the Verifier produces its results, you MUST write the Planner output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Fix Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
-## Phase 6: User Approval Gate
+## Phase 6: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE PLAN TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-After the Verifier validates the fix plan:
+1. Proposed fixes organized by risk level
+2. Files, lines, and code changes
 
-1. Present all proposed fixes organized by risk level
-2. Show exactly what will be changed (files, lines, code changes)
-3. Ask user to review and approve before proceeding
-4. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
-
-<constraint>
-Do NOT proceed to Phase 7 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
-
-If user requests changes:
-- Revise the plan based on feedback
-- Present the updated plan
-- Wait for approval again
+Plan Mode handles user approval. Once approved, proceed to Phase 7.
 
 ---
 
 ## Phase 7: Implementation
 
-Once user has approved the plan:
+After approval:
 
 1. Implement fixes in the specified order
 2. After each fix:

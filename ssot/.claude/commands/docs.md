@@ -8,19 +8,9 @@ Bootstrap and manage a B-tree-inspired context hierarchy in `.claude/context/`. 
 
 ---
 
-## ⚠️ MANDATORY: Enter Plan Mode First
-
-**BEFORE doing anything else, you MUST use the `EnterPlanMode` tool.**
-
-This command requires user approval before making any changes. The workflow is:
-
-1. **Enter Plan Mode** → Use `EnterPlanMode` tool NOW
-2. **Execute read-only phases** → Discovery and analysis
-3. **Present Plan** → Show user exactly what will be created/changed
-4. **Wait for Approval** → User must explicitly approve
-5. **Execute implementation** → Only after approval, make changes
-
-**STOP! Use the EnterPlanMode tool now before continuing.**
+<constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
 
 ---
 
@@ -34,6 +24,18 @@ Planning Phase Tools (READ-ONLY):
 - Edit, Write, Bash(mkdir:*, git:*)
 
 ---
+
+<constraint>
+Phase Transition Protocol — Orchestrator Behavior:
+
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
+
+The ONLY times you stop and wait for user input are:
+- Phase 0 in Manage Mode (asking which mode)
+- Phase 5 in Bootstrap / Phase 4M in Manage (User Approval Gates)
+
+If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
 
 ## Phase 0: Mode Detection
 
@@ -87,7 +89,7 @@ Project stack identified, directory structure mapped with file counts, all exist
 ```
 
 <constraint>
-After Phase 1 completes, if context exceeds 50%, run `/compact` retaining: project profile, knowledge areas, and file paths. Discard raw exploration logs.
+After Phase 1 completes, write the Explorer's output (Project Profile + Knowledge Areas) to the plan file under `## Phase 1: Exploration Results`. Then immediately launch Phase 2.
 </constraint>
 
 ## Phase 2: Parallel Analysis
@@ -193,7 +195,7 @@ Every finding includes file:line reference. All 5 extraction categories covered.
 ```
 
 <constraint>
-After Phase 2 completes (both parallel agents return), if context exceeds 50%, run `/compact` retaining: categorizer's tree proposal, scanner's findings with file:line refs, and pipeline state. Discard raw exploration logs.
+After Phase 2 completes (both parallel agents return), append the Categorizer's tree proposal and Scanner's findings to the plan file under `## Phase 2: Analysis Results`. Then immediately launch Phase 3 (Builder).
 </constraint>
 
 ## Phase 3: Builder
@@ -412,35 +414,25 @@ Spot-checked 5+ file:line references. All size limits verified. CLAUDE.md mainte
 ```
 
 <constraint>
-After the Verifier produces its results, you MUST write the Builder output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Context Tree Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
+After the Verifier produces its results, append the Builder output and Verifier results to the plan file under `## Phase 4: Context Tree Plan`. The plan file should now contain Phase 1, Phase 2, and Phase 4 results. This is mandatory — implementation reads from this file.
 </constraint>
 
-## Phase 5: User Approval Gate
+## Phase 5: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE PLAN TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-After the Builder and Verifier produce the final tree:
+1. Tree structure (branches and leaves with descriptions)
+2. CLAUDE.md additions
+3. List of all files that will be created
+4. Estimated token cost (lines of @import expansion)
 
-1. Present the tree structure (branches and leaves with descriptions)
-2. Show the CLAUDE.md additions
-3. List all files that will be created
-4. Show estimated token cost (lines of @import expansion)
-5. Wait for explicit approval: "approved", "proceed", "yes", or "go ahead"
-
-<constraint>
-Do NOT proceed to Phase 6 without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
-
-If user requests changes:
-- Revise based on feedback
-- Present updated plan
-- Wait for approval again
+Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
 ---
 
 ## Phase 6: Implementation + Verification
 
-Once user has approved:
+After approval:
 
 1. **Backup**: Copy current `.claude/CLAUDE.md` to `.claude/CLAUDE.md.bak` (safety net)
 2. Create `.claude/context/` directory and all subdirectories
@@ -536,7 +528,7 @@ Health report covers all nodes with actual line counts. Stale nodes identified w
 ```
 
 <constraint>
-After Phase 1M completes, if context exceeds 50%, run `/compact` retaining: health report findings, recommended actions, and tree metadata. Discard raw file contents read during audit.
+After Phase 1M completes, write the Auditor's health report and recommended actions to the plan file under `## Phase 1M: Audit Results`. Then immediately launch Phase 2M (Planner).
 </constraint>
 
 ## Phase 2M: Planner
@@ -639,23 +631,20 @@ All proposed files within size limits. @import expansion stays under 200 lines. 
 </task>
 ```
 
-## Phase 4M: User Approval Gate
+## Phase 4M: Present Plan + Exit Plan Mode
 
-**STOP HERE AND PRESENT THE CHANGES TO THE USER**
+Write the following to the plan file, then call `ExitPlanMode`:
 
-1. List all proposed changes with before/after
-2. Show which files will be created, modified, or deleted
-3. Wait for explicit approval
+1. All proposed changes with before/after
+2. Files to be created, modified, or deleted
 
-<constraint>
-Do NOT proceed to Phase 5M without explicit user approval ("approved", "proceed", "yes", or "go ahead").
-</constraint>
+Plan Mode handles user approval. Once approved, proceed to Phase 5M.
 
 ---
 
 ## Phase 5M: Implementation + Verification
 
-Once user has approved:
+After approval:
 
 1. Execute all approved changes (create/edit/delete files)
 2. Update `_index.json` with new metadata

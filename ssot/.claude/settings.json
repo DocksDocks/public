@@ -155,6 +155,11 @@
             "type": "command",
             "command": "echo \"[CONTEXT] Current date: $(date '+%A, %Y-%m-%d %H:%M:%S %Z')\"",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "[ -f .claude/context/_index.json ] && echo '[CONTEXT TREE] Project has a context tree at .claude/context/. Branch files are @-imported via CLAUDE.md. For topic details, read the leaf file from the branch pointer table. After code changes affecting documented patterns, follow the Context Tree Maintenance protocol in CLAUDE.md.' || true",
+            "timeout": 5
           }
         ]
       }
@@ -198,8 +203,8 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Check the subagent's last message. Verify it produced structured output (not just a summary or 'I'm done'). If the output lacks concrete file paths, line numbers, or actionable findings, block with reason. Otherwise approve."
+            "type": "command",
+            "command": "jq -r '.last_assistant_message // empty' | grep -qE '(file|line|path|src/|\\.[a-z]{2,4}:)' && exit 0 || { echo 'Subagent output lacks concrete file paths or line references. Include specific file:line references and actionable findings.' >&2; exit 2; }"
           }
         ]
       }
