@@ -1,13 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
-  },
-  "alwaysThinkingEnabled": true,
-  "showTurnDuration": true,
-  "cleanupPeriodDays": 14,
   "respectGitignore": true,
+  "cleanupPeriodDays": 14,
   "env": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
@@ -89,34 +83,6 @@
       "Bash(pip *)",
       "Bash(pip3 *)"
     ],
-    "ask": [
-      "Bash(git push *)",
-      "Bash(git reset *)",
-      "Bash(git clean *)",
-      "Bash(git merge *)",
-      "Bash(git rebase *)",
-      "Bash(git checkout -- *)",
-      "Bash(git checkout . *)",
-      "Bash(rm *)",
-      "Bash(mv *)",
-      "Bash(chmod *)",
-      "Bash(chown *)",
-      "Bash(kill *)",
-      "Bash(pkill *)",
-      "Bash(docker run *)",
-      "Bash(docker rm *)",
-      "Bash(docker stop *)",
-      "Bash(docker volume rm *)",
-      "Bash(docker system prune *)",
-      "Bash(docker-compose down *)",
-      "Bash(docker-compose up *)",
-      "Bash(sed -i *)",
-      "Bash(xargs *)",
-      "Bash(pip install *)",
-      "Bash(pip uninstall *)",
-      "Bash(pip3 install *)",
-      "Bash(pip3 uninstall *)"
-    ],
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.*)",
@@ -145,6 +111,34 @@
       "Bash(git push --force origin master *)",
       "Bash(git push -f origin main *)",
       "Bash(git push -f origin master *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git checkout -- *)",
+      "Bash(git checkout . *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Bash(chmod *)",
+      "Bash(chown *)",
+      "Bash(kill *)",
+      "Bash(pkill *)",
+      "Bash(docker run *)",
+      "Bash(docker rm *)",
+      "Bash(docker stop *)",
+      "Bash(docker volume rm *)",
+      "Bash(docker system prune *)",
+      "Bash(docker-compose down *)",
+      "Bash(docker-compose up *)",
+      "Bash(sed -i *)",
+      "Bash(xargs *)",
+      "Bash(pip install *)",
+      "Bash(pip uninstall *)",
+      "Bash(pip3 install *)",
+      "Bash(pip3 uninstall *)"
     ]
   },
   "hooks": {
@@ -170,8 +164,8 @@
           {
             "type": "command",
             "command": "ffplay -nodisp -autoexit ~/.claude/alert_bubble.mp3",
-            "async": true,
-            "timeout": 10
+            "timeout": 10,
+            "async": true
           }
         ]
       }
@@ -210,13 +204,25 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
   "enabledPlugins": {
     "agent-sdk-dev@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "n8n-mcp-skills@n8n-mcp-skills": true,
     "context7@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "php-lsp@claude-plugins-official": true
   },
-  "skipDangerousModePermissionPrompt": true
+  "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "showTurnDuration": true
 }
