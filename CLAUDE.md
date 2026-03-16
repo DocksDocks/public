@@ -10,7 +10,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 |------|---------|
 | `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
-| `ssot/.claude/commands/*.md` | 8 custom slash commands (see below) |
+| `ssot/.claude/commands/*.md` | 9 custom slash commands (see below) |
 | `ssot/.claude/RTK.md` | RTK reference (meta commands, verification) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
@@ -28,6 +28,7 @@ All commands use multi-agent pipelines with Opus models. Most use a **Builder-Ve
 | `/test` | Exploration → Analyzer → Generator → Verifier | Builder-Verifier |
 | `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Builder → Verifier | DAG + Builder-Verifier |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
+| `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → Planner → Verifier | DAG + Builder-Verifier |
 | `/solid` | Exploration → Discovery → Analyzer → Planner → Verifier | Builder-Verifier |
 | `/team` | Discovery → [Role Mapper \| Pattern Extractor] → Generator → Verifier | DAG + Builder-Verifier |
 
