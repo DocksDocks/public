@@ -96,8 +96,8 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 # Clone
 git clone <this-repo> ~/projects/public
 
-# Sync SSOT to user config
-cp -r ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
+# Sync SSOT to user config (exact mirror — removes commands deleted from SSOT)
+rsync -a --delete ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
 cp ~/projects/public/alert_bubble.mp3 ~/.claude/
 
 # Status line
@@ -143,7 +143,7 @@ When modifying commands, keep in sync:
 
 ```bash
 # After editing ssot/.claude/commands/*.md
-cp ssot/.claude/commands/*.md ~/.claude/commands/
+rsync -a --delete ssot/.claude/commands/ ~/.claude/commands/
 ```
 
 The `ssot/.claude/` directory is the source of truth. `~/.claude/` is the deployed copy.
