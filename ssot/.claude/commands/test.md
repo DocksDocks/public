@@ -40,7 +40,7 @@ Launch a Task agent as the EXPLORER:
 - Identify the test framework (Jest, Vitest, Pytest, Go test, etc.)
 - Find existing test files and understand their patterns
 - Check test configuration (jest.config, vitest.config, pytest.ini, etc.)
-- If `.claude/context/_index.json` exists, read it and relevant branch files for project testing conventions
+- If `.claude/skills/` exists, read relevant project skills for testing conventions
 - Understand mocking strategies used in the project
 - Identify the target code to test (use $ARGUMENTS if provided)
 - Note code coverage configuration if present
@@ -107,7 +107,7 @@ You are the GENERATOR. Generate comprehensive tests for the target code.
 
 <constraint>
 - Follow the project's existing test patterns and conventions exactly
-- If a context tree exists, read `.claude/context/testing/` for project test standards
+- If project skills exist, read `.claude/skills/` for project test standards
 - Use the project's actual mocking strategies (do NOT invent new patterns)
 </constraint>
 

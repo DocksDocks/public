@@ -59,7 +59,7 @@ Launch a Task agent as the EXPLORER:
 5. Map directory structure with file counts per directory
 6. If scoped ($ARGUMENTS provided): focus exploration on those files/dirs and their dependents
 7. Check for existing linter configs (.eslintrc, .prettierrc, ruff.toml, etc.)
-8. Read project CLAUDE.md and context tree (if exists) for conventions
+8. Read project CLAUDE.md and project skills (if `.claude/skills/` exists) for conventions
 
 **Output:**
 ## Project Profile
@@ -75,7 +75,7 @@ Launch a Task agent as the EXPLORER:
 [directory structure with file counts, focused on source dirs]
 
 ## Conventions
-[key patterns from CLAUDE.md/context tree relevant to refactoring]
+[key patterns from CLAUDE.md/project skills relevant to refactoring]
 
 **Success Criteria:**
 Stack identified. Test runner command verified. Available analysis tools listed with exact paths.

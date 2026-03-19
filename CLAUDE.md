@@ -26,7 +26,7 @@ All commands use multi-agent pipelines with Opus models. Most use a **Builder-Ve
 | `/fix` | Exploration → [Code Scanner \| Dependency Scanner] → Planner → Verifier | DAG + Builder-Verifier |
 | `/review` | Exploration → Analyzer → Verifier | Builder-Verifier |
 | `/test` | Exploration → Analyzer → Generator → Verifier | Builder-Verifier |
-| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Builder → Verifier | DAG + Builder-Verifier |
+| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Builder → Verifier (+ Migration Mode) | DAG + Builder-Verifier |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
 | `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → Planner → Verifier | DAG + Builder-Verifier |
 | `/solid` | Exploration → Discovery → Analyzer → Planner → Verifier | Builder-Verifier |

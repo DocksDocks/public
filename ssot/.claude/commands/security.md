@@ -36,7 +36,7 @@ Map the entire codebase to identify security-relevant areas:
 1. **Project Stack**: Identify languages, frameworks, dependencies
    - Check package.json, requirements.txt, go.mod, Cargo.toml, etc.
    - Note framework versions (Express, Django, Rails, etc.)
-   - If `.claude/context/_index.json` exists, read it and relevant branch files for project architecture
+   - If `.claude/skills/` exists, read relevant project skills for project architecture
 
 2. **Security-Critical Areas**: Locate and list:
    - Authentication/login handlers

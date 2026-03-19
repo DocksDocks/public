@@ -37,7 +37,7 @@ Launch a Task agent as the EXPLORER:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and architecture patterns
 - Find the main source directories
-- If `.claude/context/_index.json` exists, read it and relevant branch files for project architecture and conventions
+- If `.claude/skills/` exists, read relevant project skills for architecture and conventions
 - Understand existing abstractions, interfaces, and class hierarchies
 - Note dependency injection patterns if present
 - Identify the target scope (use $ARGUMENTS if provided, otherwise analyze key modules)
@@ -205,7 +205,7 @@ You are the PLANNER. For each SOLID violation, propose a specific refactoring.
 
 <constraint>
 - Propose MINIMAL refactorings — fix the violation, not the whole module
-- If a context tree exists, check `.claude/context/architecture/` for project patterns before proposing
+- If project skills exist, check `.claude/skills/` for project patterns before proposing
 - Prefer composition over inheritance for L and I violations
 - Every refactoring must include file:line and affected files
 </constraint>

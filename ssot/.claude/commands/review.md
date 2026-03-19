@@ -39,7 +39,7 @@ Launch a Task agent as the EXPLORER:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack (check package.json, tsconfig.json, pyproject.toml, etc.)
 - Find the files/directories to review (use $ARGUMENTS if provided, otherwise review recent changes or key modules)
-- If `.claude/context/_index.json` exists, read it and relevant branch files for project conventions
+- If `.claude/skills/` exists, read relevant project skills for domain-specific conventions
 - Understand existing patterns, conventions, and architecture
 - Note any existing linting/testing configurations
 
@@ -68,7 +68,7 @@ Launch a Task agent with model="opus" as the ANALYZER:
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Use exploration results for project stack and conventions
-- If a context tree exists, check `.claude/context/conventions/` for project-specific rules
+- If project skills exist, check `.claude/skills/` for project-specific conventions
 
 **Review categories:**
 

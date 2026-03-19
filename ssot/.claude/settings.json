@@ -152,7 +152,7 @@
           },
           {
             "type": "command",
-            "command": "[ -f .claude/context/_index.json ] && echo '[CONTEXT TREE] Project has a context tree at .claude/context/. Branch files are @-imported via CLAUDE.md. For topic details, read the leaf file from the branch pointer table. After code changes affecting documented patterns, follow the Context Tree Maintenance protocol in CLAUDE.md.' || true",
+            "command": "SKILL_COUNT=$(find .claude/skills -name 'SKILL.md' -mindepth 2 -maxdepth 2 2>/dev/null | wc -l); [ \"$SKILL_COUNT\" -gt 0 ] && echo \"[SKILLS] $SKILL_COUNT project skills available in .claude/skills/. Claude Code loads them on demand via Skill tool. After code changes affecting documented patterns, update the relevant skill and its metadata.updated field.\" || true",
             "timeout": 5
           }
         ]

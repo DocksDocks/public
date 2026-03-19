@@ -39,7 +39,7 @@ Launch a Task agent as the EXPLORER:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Identify the project stack and package manager
 - Find the target scope (use $ARGUMENTS if provided)
-- If `.claude/context/_index.json` exists, read it and relevant branch files for project conventions
+- If `.claude/skills/` exists, read relevant project skills for domain-specific conventions
 - Check for existing issues: failing tests, linter errors, security advisories
 - Understand the codebase structure and conventions
 - Identify test coverage and CI/CD setup

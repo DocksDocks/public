@@ -22,10 +22,10 @@ IMPORTANT: Before writing or modifying code that uses any framework, library, or
 
 This prevents hallucinated APIs, deprecated patterns, and version mismatches.
 
-## Context Tree
+## Project Skills
 
-Projects may have a `.claude/context/` directory with a B-tree knowledge hierarchy managed by `/docs`.
+Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.
 
 <constraint>
-If the project's CLAUDE.md contains `@context/` imports, those branch files are auto-loaded at session start. When you need topic-specific details, follow the branch's pointer table to read the leaf file. After any code change affecting documented patterns, follow the Context Tree Maintenance protocol in the project's CLAUDE.md.
+After any code change affecting documented patterns, update the relevant skill in `.claude/skills/` and its `metadata.updated` frontmatter field. When introducing something new, create a skill or add a `references/` file to an existing skill.
 </constraint>
