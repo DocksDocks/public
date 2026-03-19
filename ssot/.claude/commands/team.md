@@ -114,7 +114,9 @@ Map project skills to agent roles. For each proposed agent, determine:
 - One agent per domain — no overlapping responsibilities
 - Not every skill needs an agent — skip skills with minimal content
 - Consider cross-cutting agents (e.g., code-reviewer spans conventions + architecture)
-- Max 7 agents total (keep the team manageable)
+- No hard limit on agent count — create as many as the project needs
+- Each agent must have a single, clear responsibility (SRP) — if you can't describe the scope in one sentence, split it
+- No overlapping responsibilities between agents — if two agents could handle the same task, merge or clarify boundaries
 
 **If improving existing agents:**
 - Flag agents with generic descriptions ("helps with code")
@@ -125,7 +127,7 @@ Map project skills to agent roles. For each proposed agent, determine:
 Output a structured agent roster with roles, boundaries, and integration points.
 
 **Success Criteria:**
-One agent per domain with no overlapping responsibilities. Every agent has specific trigger conditions in description. Max 7 agents total.
+Every agent has a single responsibility with no overlapping scope. Every agent has specific trigger conditions in description. No thin agents — each must justify its own file.
 </task>
 ```
 
