@@ -206,7 +206,7 @@ You are the PLANNER. For each identified issue, propose a specific fix.
 <constraint>
 - MINIMAL, TARGETED fixes only — fix the bug, not the whole function
 - Every fix must include file:line location and exact code changes
-- Before proposing fixes that use framework/library APIs, verify current syntax via `resolve-library-id` → `query-docs` (context7) or `WebFetch` on official docs. Do NOT assume API signatures from training data.
+- Before proposing fixes that use framework/library APIs: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Do NOT assume API signatures, method names, or config options from training data.
 - Do NOT refactor surrounding code or reorganize files
 </constraint>
 
