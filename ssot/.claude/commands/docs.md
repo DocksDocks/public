@@ -152,7 +152,7 @@ Launch a Task agent with model="opus" as the CONVERTER:
 **Additionally, generate a maintenance skill** (`.claude/skills/skill-maintenance/SKILL.md`) — same spec as Bootstrap Mode Builder. This skill auto-triggers after code changes to keep other skills current.
 
 **Constraints:**
-- Max 7 domain skills per project (maintenance skill does not count toward this limit)
+- No hard limit on skill count — create as many as the project needs, but each must have enough content to justify its own SKILL.md
 - Each SKILL.md under 500 lines
 - Each references/ file: 30-150 lines (split or merge if needed)
 - Descriptions MUST be trigger-condition-first (CSO)
@@ -321,14 +321,14 @@ Based on the exploration results, propose project skills using the Tool Wrapper 
    - List each proposed `references/<topic>.md` file with purpose and estimated lines
 
 **Constraints:**
-- Max 7 skills per project
+- No hard limit on skill count — create as many as the project needs, but each must justify its own SKILL.md
 - Each SKILL.md: under 500 lines
 - Each references/ file: 30-150 lines
 - Descriptions MUST be trigger-condition-first (CSO), not capability-first
 - No skill with fewer than 3 distinct claims warrants its own references/ file — merge into SKILL.md body
 
 **Success Criteria:**
-Every skill has a trigger-condition description. References/ files only proposed where content exceeds SKILL.md body capacity. Max 7 skills total.
+Every skill has a trigger-condition description. References/ files only proposed where content exceeds SKILL.md body capacity. No thin skills — each must have enough content to justify existence.
 </task>
 ```
 
@@ -512,7 +512,7 @@ You are the VERIFIER. Validate the Builder's output against concrete criteria.
 - Any SKILL.md over 500 lines? Flag it.
 - Any references/ file over 150 lines? Flag for split.
 - Any references/ file under 30 lines? Flag as merge candidate into SKILL.md body.
-- Total skills ≤ 7?
+- Any thin skills that should be merged into another? (< 50 lines with no references/)
 
 **Reference Accuracy:**
 - Spot-check at least 5 file:line references — do they actually exist?
@@ -759,7 +759,7 @@ Also verify:
 - No proposed SKILL.md exceeds 500 lines
 - No references/ file exceeds 150 lines or is under 30 lines
 - All metadata.source_files paths exist
-- Total skills ≤ 7 after changes
+- Any thin skills that should be merged? (< 50 lines with no references/)
 
 **Anti-Hallucination Checks (mandatory):**
 1. Read each referenced file — does code at the stated line actually exist?
