@@ -26,6 +26,13 @@ This prevents hallucinated APIs, deprecated patterns, and version mismatches.
 
 Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.
 
+Skills follow the [agentskills.io](https://agentskills.io) open standard (works across Claude Code, Gemini CLI, Cursor, and 30+ tools):
+- **SKILL.md**: frontmatter (`name`, `description`, `user-invocable: false`, `metadata`) + body (≤500 lines)
+- **references/**: on-demand detail files (30-150 lines each), loaded when the skill instructs Claude to read them
+- **Discovery**: Claude Code scans `.claude/skills/*/SKILL.md` at session start, loads only `name` + `description` (~100 tokens per skill)
+- **Triggering**: Claude semantically matches descriptions against user tasks, invokes via `Skill` tool — no `@import` or pointer tables needed
+- **CSO (Claude Search Optimization)**: descriptions MUST start with "Use when..." and describe trigger conditions, not capabilities
+
 <constraint>
 After any code change affecting documented patterns, update the relevant skill in `.claude/skills/` and its `metadata.updated` frontmatter field. When introducing something new, create a skill or add a `references/` file to an existing skill.
 </constraint>

@@ -25,6 +25,17 @@ Planning Phase Tools (READ-ONLY):
 
 ---
 
+<constraint>
+Phase Transition Protocol — Orchestrator Behavior:
+
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
+
+The ONLY times you stop and wait for user input are:
+- Phase 6 (ExitPlanMode gate)
+
+If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
 ## Phase 1: Exploration
 
 ```xml
@@ -56,8 +67,6 @@ Identified project stack, target scope, and existing architecture patterns with 
 ```
 
 ## Phase 2: Discovery
-
-### Discovery
 
 ```xml
 <task>
@@ -112,7 +121,7 @@ All classes, interfaces, and key functions cataloged with file:line. Dependency 
 ```
 
 <constraint>
-After Phase 2 completes, if context exceeds 50%, run `/compact` retaining: component inventory, dependency graph, and analysis priority. Discard raw exploration logs.
+After Phase 2 completes, write the Discovery agent's output to the plan file under `## Phase 2: Discovery Results`. Then immediately launch Phase 3 (Analyzer).
 </constraint>
 
 ## Phase 3: Analysis

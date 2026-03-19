@@ -25,9 +25,18 @@ Planning Phase Tools (READ-ONLY):
 
 ---
 
-## Phase 1: Exploration
+<constraint>
+Phase Transition Protocol — Orchestrator Behavior:
 
-First, explore to understand what needs fixing.
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
+
+The ONLY times you stop and wait for user input are:
+- Phase 6 (ExitPlanMode gate)
+
+If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+## Phase 1: Exploration
 
 ```xml
 <task>
@@ -177,7 +186,7 @@ Every dependency issue includes package name, current version, and recommended a
 ```
 
 <constraint>
-After Phase 3 completes (both parallel scanners return), if context exceeds 50%, run `/compact` retaining: scanner findings, file paths, and pipeline state. Discard raw exploration logs.
+After Phase 3 completes (both parallel scanners return), write both scanners' findings to the plan file under `## Phase 3: Scanner Results`. Then immediately launch Phase 4 (Planner).
 </constraint>
 
 ## Phase 4: Planner

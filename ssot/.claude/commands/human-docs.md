@@ -72,8 +72,6 @@ Launch a Task agent with model="opus" to categorize and analyze:
 - Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
 - Use exploration output for documentation inventory
 
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
-
 **Step 1: Categorize ALL .md files**
 
 | Category | Files | Treatment |
@@ -132,8 +130,6 @@ Launch a Task agent with model="opus" to act as the WRITER:
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
 - Use Analyzer's gap analysis and categorization
-
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the WRITER. Draft documentation based on the gap analysis.
 
@@ -215,8 +211,6 @@ Launch a Task agent as the VERIFIER:
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Use Writer's drafted documentation as input
-
-First, run `date "+%Y-%m-%d"` to confirm current date.
 
 You are the VERIFIER. Validate the drafted documentation against the actual codebase.
 
@@ -309,8 +303,6 @@ Launch a Task agent as the VERIFIER:
 
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
-
-First, run `date "+%Y-%m-%d"` to confirm current date. Use this for any date references.
 
 You are the VERIFIER. Verify ALL documentation changes against the ACTUAL codebase.
 

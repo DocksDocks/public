@@ -1,6 +1,6 @@
 # Test Generator
 
-Generate comprehensive tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure thorough coverage and quality.
+Generate tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure coverage and quality.
 
 > **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
 > Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
@@ -26,8 +26,6 @@ Planning Phase Tools (READ-ONLY):
 ---
 
 ## Phase 1: Exploration
-
-First, understand the project's testing setup and patterns.
 
 ```xml
 <task>

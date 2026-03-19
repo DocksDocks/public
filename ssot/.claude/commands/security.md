@@ -1,6 +1,6 @@
 # Security Audit
 
-Comprehensive security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
+Security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
 
 > **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
 > Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
@@ -278,7 +278,7 @@ Top 5 attack scenarios include step-by-step exploitation paths with file:line re
 ```
 
 <constraint>
-After Phase 2 completes (all 3 parallel agents return), if context exceeds 50%, run `/compact` retaining: all findings from scanners, file paths, and pipeline state. Discard raw exploration logs.
+After Phase 2 completes (all 3 parallel agents return), immediately launch Phase 3 (Synthesizer). Do NOT stop to summarize between phases.
 </constraint>
 
 ## Phase 3: Synthesis & Challenge

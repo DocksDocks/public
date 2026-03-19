@@ -1,6 +1,6 @@
 # Universal Code Review
 
-Comprehensive code review covering quality, security, and performance using a Builder-Verifier pattern.
+Code review covering quality, security, and performance using a Builder-Verifier pattern.
 
 > **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
 > Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
@@ -27,8 +27,6 @@ Planning Phase Tools (READ-ONLY):
 
 ## Phase 1: Exploration
 
-First, explore the codebase to understand context and identify the target scope.
-
 ```xml
 <task>
 Launch a Task agent as the EXPLORER:
@@ -50,7 +48,6 @@ Launch a Task agent as the EXPLORER:
 
 **Constraints:**
 - Read-only exploration, no modifications
-- Focus on understanding, not analysis
 
 **Success Criteria:**
 Identified project stack, target scope, and existing patterns with file paths.

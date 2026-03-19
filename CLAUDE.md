@@ -135,6 +135,22 @@ Phase Transitions:
 
 Implementation Phase:
 - Start with `After approval:` not `Once user has approved the plan:`
+
+Project Skills Integration:
+- Commands that read project knowledge should check `.claude/skills/` (NOT `.claude/context/`)
+- Pattern: `If .claude/skills/ exists, read relevant project skills for domain-specific conventions`
+- Do NOT reference `.claude/context/` or `_index.json` — the context tree system is deprecated
+
+Content Quality:
+- No slop words in titles or descriptions: "comprehensive", "robust", "elegant", "seamless"
+- No filler sentences before `<task>` blocks — the task prompt is self-explanatory
+- No duplicate instructions within a single `<task>` block (e.g., stating "Run date" twice)
+- Every Verifier must include Anti-Hallucination Checks (file existence, import paths, function signatures, file paths, package cross-reference)
+
+Structural:
+- Phase Transition Protocol constraint is MANDATORY for commands with 3+ sequential phases
+- Each `<task>` block should have a concrete, measurable Success Criteria section
+- Allowed Tools section goes at the bottom of the command, split into Planning/Implementation
 </constraint>
 
 ## Editing Commands
