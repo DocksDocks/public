@@ -122,6 +122,10 @@ Launch a Task agent with model="opus" as the CONVERTER:
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Use Phase 1G tree structure and content
 
+<constraint>
+When converting library/framework patterns, API conventions, or configuration options: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Skills persist across sessions — a hallucinated API in a skill propagates errors to every future interaction.
+</constraint>
+
 **For each branch → create a skill:**
 
 1. **Skill name**: Use branch name + `-context` suffix (e.g., `architecture-context`)
@@ -401,6 +405,10 @@ Launch a Task agent with model="opus" to act as the BUILDER:
 - Use pattern scanner's findings for content
 
 You are the BUILDER. Using the categorizer's skill structure and the pattern scanner's findings, draft the COMPLETE content for every skill.
+
+<constraint>
+When documenting library/framework patterns, API conventions, or configuration options: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Skills persist across sessions — a hallucinated API in a skill propagates errors to every future interaction.
+</constraint>
 
 **AI-OPTIMIZATION RULES — apply to ALL skill and reference files:**
 These are evidence-based formatting rules for maximum Claude adherence:

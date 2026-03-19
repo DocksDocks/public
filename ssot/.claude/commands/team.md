@@ -185,6 +185,10 @@ Launch a Task agent with model="opus" to act as the GENERATOR:
 
 You are the GENERATOR. Using the role mapper's roster and the pattern extractor's findings, draft COMPLETE agent files.
 
+<constraint>
+When documenting library/framework patterns, API conventions, or configuration options in agent prompts: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Agent prompts persist across sessions — a hallucinated API propagates errors to every future interaction.
+</constraint>
+
 **Agent file format:**
 ```yaml
 ---
