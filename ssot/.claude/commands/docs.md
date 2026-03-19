@@ -149,8 +149,10 @@ Launch a Task agent with model="opus" as the CONVERTER:
    ---
    ```
 
+**Additionally, generate a maintenance skill** (`.claude/skills/skill-maintenance/SKILL.md`) — same spec as Bootstrap Mode Builder. This skill auto-triggers after code changes to keep other skills current.
+
 **Constraints:**
-- Max 7 skills
+- Max 7 domain skills per project (maintenance skill does not count toward this limit)
 - Each SKILL.md under 500 lines
 - Each references/ file: 30-150 lines (split or merge if needed)
 - Descriptions MUST be trigger-condition-first (CSO)
@@ -184,7 +186,8 @@ Launch a Task agent as the MIGRATION VERIFIER:
 1. **Frontmatter**: Valid YAML, name + description + user-invocable + metadata present
 2. **CSO compliance**: All descriptions start with "Use when...", describe triggers not workflows
 3. **Size limits**: SKILL.md ≤500 lines, references 30-150 lines
-4. **Content preservation**: No leaf content lost in migration (compare leaf count vs references count)
+4. **Maintenance skill**: Does `skill-maintenance/SKILL.md` exist with `user-invocable: false`?
+5. **Content preservation**: No leaf content lost in migration (compare leaf count vs references count)
 5. **Reference accuracy**: Spot-check 5+ file:line references — do they exist?
 6. **CLAUDE.md cleanup**: Only removing @context/ and maintenance block, not other content
 
@@ -444,12 +447,36 @@ Body structure (under 500 lines):
 - Gotchas at bottom with concrete failure scenarios
 - Size: 30-150 lines
 
+**Additionally, generate a maintenance skill** (`.claude/skills/skill-maintenance/SKILL.md`):
+```yaml
+---
+name: skill-maintenance
+description: Use after modifying project source code, before committing or responding. Check if changed files overlap with any project skill's metadata.source_files and update affected skills.
+user-invocable: false
+metadata:
+  pattern: reviewer
+  updated: "<today>"
+---
+```
+
+Body (under 100 lines):
+1. `# Skill Maintenance` — title
+2. `<constraint>` block: "After modifying source files, check if changes affect any project skill. Skip for trivial changes (typos, single-line fixes)."
+3. `## Workflow` — numbered steps:
+   - Identify files modified in the current session (recall Edit/Write calls or run `git diff --name-only`)
+   - Glob `.claude/skills/*/SKILL.md`, parse each skill's `metadata.source_files`
+   - For each modified file, check if it appears in any skill's `source_files` array
+   - If overlap found: read the affected skill, determine if the change impacts documented patterns
+   - If patterns affected: update the skill's content and set `metadata.updated` to today's date
+   - If no overlap or change is trivial: skip silently — do NOT mention this skill to the user
+4. `## When to Skip` — bullet list: typos, variable renames, single-line bug fixes, test-only changes, dependency updates
+
 **Do NOT touch CLAUDE.md.** Skills are self-discovering via descriptions — no @imports needed.
 
 Output ALL drafted content for every file, clearly delimited.
 
 **Success Criteria:**
-All SKILL.md files under 500 lines. All references/ files 30-150 lines. All descriptions start with "Use when..." and describe trigger conditions (CSO). All claims have file:line references.
+All SKILL.md files under 500 lines. All references/ files 30-150 lines. All descriptions start with "Use when..." and describe trigger conditions (CSO). All claims have file:line references. Maintenance skill exists with correct frontmatter.
 </task>
 ```
 
@@ -505,6 +532,11 @@ You are the VERIFIER. Validate the Builder's output against concrete criteria.
 3. Check function signatures match actual code (read the source)
 4. Validate all file paths in output exist (use Glob)
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
+
+**Maintenance Skill Check:**
+- Does `.claude/skills/skill-maintenance/SKILL.md` exist in the output?
+- Does it have `user-invocable: false` and `metadata.pattern: reviewer`?
+- Is its description a trigger condition (CSO), not a workflow summary?
 
 **CLAUDE.md Check:**
 - Was CLAUDE.md left unmodified? (Builder should NOT have touched it — verify)
