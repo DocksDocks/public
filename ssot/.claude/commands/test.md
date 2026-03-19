@@ -106,6 +106,7 @@ You are the GENERATOR. Generate comprehensive tests for the target code.
 <constraint>
 - Follow the project's existing test patterns and conventions exactly
 - If project skills exist, read `.claude/skills/` for project test standards
+- Before writing tests that use framework APIs (jest, vitest, pytest, etc.), verify current syntax via `resolve-library-id` → `query-docs` (context7) or `WebFetch` on official docs. Do NOT assume API signatures from training data.
 - Use the project's actual mocking strategies (do NOT invent new patterns)
 </constraint>
 

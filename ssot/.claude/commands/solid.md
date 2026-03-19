@@ -215,6 +215,7 @@ You are the PLANNER. For each SOLID violation, propose a specific refactoring.
 <constraint>
 - Propose MINIMAL refactorings — fix the violation, not the whole module
 - If project skills exist, check `.claude/skills/` for project patterns before proposing
+- Before proposing refactorings that use framework/library APIs, verify current syntax via `resolve-library-id` → `query-docs` (context7) or `WebFetch` on official docs. Do NOT assume API signatures from training data.
 - Prefer composition over inheritance for L and I violations
 - Every refactoring must include file:line and affected files
 </constraint>

@@ -284,6 +284,10 @@ Launch a Task agent with model="opus" as the PLANNER:
 - Use Dead Code Scanner and Duplication Scanner results
 - Use Explorer's project profile for test commands and conventions
 
+<constraint>
+Before proposing refactorings that use framework/library APIs, verify current syntax via `resolve-library-id` → `query-docs` (context7) or `WebFetch` on official docs. Do NOT assume API signatures from training data.
+</constraint>
+
 **Prioritization framework:**
 
 Tier 1 — **Quick Wins** (high impact, low risk):
