@@ -9,11 +9,26 @@ Security and logic analysis across the entire codebase using parallel specialize
 ---
 
 <constraint>
+If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
+</constraint>
+
+---
+
+<constraint>
+Planning Phase Tools (READ-ONLY):
+- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, find)
+- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
+</constraint>
+
+---
+
+<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
 
-The ONLY time you stop is after the final Synthesizer phase produces its report.
+The ONLY time you stop and wait for user input is:
+- After the Synthesizer phase produces its report (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
 </constraint>

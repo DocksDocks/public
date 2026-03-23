@@ -34,7 +34,7 @@ All commands use multi-agent pipelines with Opus models. Most use a **Builder-Ve
 
 Commands with parallel phases (`/security`, `/fix`, `/docs`, `/team`) include explicit instructions to launch agents in a single turn for wall-clock time savings.
 
-All commands except `/security` enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
+All commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
 
 ## Plugins
 
