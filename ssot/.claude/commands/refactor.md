@@ -142,6 +142,9 @@ For each finding:
 - Evidence: [why it's dead — zero importers, unreachable after return, etc.]
 - Dynamic import check: [for CAUTION items — did you grep for dynamic references?]
 
+- BAD: "There are some unused functions that could be removed"
+- GOOD: "src/utils/format.ts:45 — `formatCurrency()` — SAFE — zero importers (grep: 0 matches across src/), last modified 8 months ago"
+
 ## Summary
 - SAFE items: [count]
 - CAUTION items: [count]
