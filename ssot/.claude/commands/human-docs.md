@@ -238,9 +238,10 @@ You are the VERIFIER. Validate the drafted documentation against the actual code
 - Check default values match code defaults
 
 **AI Slop Scan — flag for removal:**
-- "It's important to note that...", "powerful", "elegant", "robust", "seamless"
-- "cutting-edge", "might", "could possibly", "should probably"
-- "easy to use", "simple to understand"
+- Filler phrases: "It's important to note that...", "cutting-edge"
+- Inflated adjectives: "powerful", "world-class", "state-of-the-art"
+- Hedging: "might", "could possibly", "should probably"
+- Empty claims: "easy to use", "simple to understand"
 - Prose paragraphs in AI-optimized docs (should be bullets/tables)
 
 **Structure Check (AI-optimized docs only):**
