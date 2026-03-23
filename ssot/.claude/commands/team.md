@@ -217,7 +217,7 @@ model: opus
 3. **Every claim needs file:line reference or skill reference**
 4. **Positive framing**: "Use X (not Y)" instead of "Don't use Y"
 5. **Code blocks for patterns**: show actual code, never describe in prose
-6. **No AI slop**: strip "important to note", "robust", "elegant", hedging
+6. **No AI slop**: strip filler phrases ("important to note"), inflated adjectives, hedging ("might", "could possibly")
 7. **`<constraint>` XML tags** for non-negotiable rules
 8. **Concrete failure scenarios** for gotchas (not vague "be careful")
 9. **Example tables**: `| Good | Bad | Why |` for conventions
