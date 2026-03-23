@@ -193,6 +193,9 @@ For each violation include:
 - Specific issue description
 - Impact on maintainability
 
+- BAD: "The UserService class violates SRP by doing too many things"
+- GOOD: "src/services/UserService.ts:1-350 — SRP violation: handles auth (login/logout/token), profile CRUD, email notifications, and billing. Impact: 4 reasons to change, 12 dependencies. Split into: AuthService, ProfileService, NotificationService, BillingService."
+
 **Success Criteria:**
 Every violation includes file:line location and specific impact statement. All 5 SOLID principles evaluated for each component.
 </task>
