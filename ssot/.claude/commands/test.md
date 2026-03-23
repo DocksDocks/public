@@ -142,6 +142,9 @@ Do NOT write assertions before verifying function signatures match actual code.
 4. Assertions / assert
 5. Cleanup if needed
 
+- BAD: "Test that the function works correctly"
+- GOOD: "it('returns 401 when JWT is expired', () => { const token = createExpiredJWT(); const res = await request(app).get('/api/me').set('Authorization', `Bearer ${token}`); expect(res.status).toBe(401); })"
+
 **Edge cases to cover:**
 - Null/undefined inputs, empty arrays/objects
 - Boundary values (0, -1, MAX_INT)
