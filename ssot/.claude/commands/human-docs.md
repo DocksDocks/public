@@ -145,6 +145,10 @@ Launch a Task agent with model="opus" to act as the WRITER:
 You are the WRITER. Draft documentation based on the gap analysis.
 
 <constraint>
+When documenting library/framework APIs, configuration options, or CLI commands: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Documentation with wrong API signatures is worse than no documentation.
+</constraint>
+
+<constraint>
 - Every file:line reference must point to actual existing code
 - AI-optimized docs (CLAUDE.md, docs/*.md): bullets/tables only, never prose paragraphs
 - Human-readable docs (README.md): may use prose but must have copy-paste ready commands
