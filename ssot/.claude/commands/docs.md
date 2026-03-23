@@ -425,7 +425,7 @@ These are evidence-based formatting rules for maximum Claude adherence:
 3. **Every claim needs a file:line reference**: abstract rules without references are ignored. Always cite `src/path/file.ts:45`
 4. **Positive framing first**: write "Use `const` (not `var`)" instead of "Don't use `var`"
 5. **Code blocks for patterns**: show actual code from the codebase, never describe function signatures in prose
-6. **No AI slop**: strip "important to note", "robust", "elegant", "seamless", hedging ("might", "could possibly", "should probably")
+6. **No AI slop**: strip filler phrases ("important to note"), inflated adjectives, hedging ("might", "could possibly", "should probably")
 7. **Use `<constraint>` XML tags for critical rules**: these get highest adherence for non-negotiable boundaries
 8. **Concrete failure scenarios for gotchas**: show what breaks and why, not vague "be careful" warnings
 9. **3-5 examples for complex rules**: few-shot dramatically improves adherence. Use tables for examples: | Good | Bad | Why |
