@@ -244,6 +244,9 @@ You are the VERIFIER. Validate the drafted documentation against the actual code
 - Empty claims: "easy to use", "simple to understand"
 - Prose paragraphs in AI-optimized docs (should be bullets/tables)
 
+- BAD: "This module provides functionality for handling user authentication in a seamless way"
+- GOOD: "## AuthModule\n- **File**: `src/auth/index.ts:1-85`\n- **Exports**: `login()`, `logout()`, `refreshToken()`\n- **Depends on**: `SessionStore`, `JWTService`"
+
 **Structure Check (AI-optimized docs only):**
 - Uses tables instead of prose?
 - Has file:line references?
