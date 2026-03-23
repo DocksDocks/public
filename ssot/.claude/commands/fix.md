@@ -222,6 +222,9 @@ For each fix provide:
 
 Output numbered list of proposed fixes.
 
+- BAD: "Fix the authentication issue by updating the auth module"
+- GOOD: "src/auth/session.ts:34 — Root Cause: `expires` set to `Date.now()` (instant expiry) instead of `Date.now() + 3600000`. Fix: change line 34 to `expires: Date.now() + SESSION_TTL_MS`. Test: verify session persists after login."
+
 **Success Criteria:**
 Every fix includes file:line, before/after code, and test approach. No fix exceeds the scope of its issue.
 </task>
