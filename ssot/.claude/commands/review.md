@@ -94,6 +94,9 @@ Numbered list with per issue:
 3. WHY it's a problem
 4. Suggested fix
 
+- BAD: "The auth module has some issues that should be addressed"
+- GOOD: "src/auth/login.ts:42 — Critical/Security: `req.body.email` passed directly to SQL query without sanitization. Fix: use parameterized query `db.query('SELECT * FROM users WHERE email = $1', [email])`"
+
 **Constraints:**
 <constraint>
 - Every issue must include file:line location and severity
