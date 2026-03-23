@@ -175,6 +175,10 @@ Plan Mode handles user approval. Once approved, proceed to Phase 5.
 
 ## Phase 5: Implementation
 
+<constraint>
+Before implementing fixes that use framework/library APIs: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Do NOT assume API signatures, method names, or config options from training data.
+</constraint>
+
 After approval:
 
 1. Implement fixes starting with critical issues
