@@ -36,6 +36,25 @@ Commands with parallel phases (`/security`, `/fix`, `/docs`, `/team`) include ex
 
 All commands except `/security` enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
 
+## Plugins
+
+Third-party plugins installed via the Claude Code plugin marketplace. Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnownMarketplaces`.
+
+| Plugin | Source | Purpose |
+|--------|--------|---------|
+| `autoresearch` | [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch) | Autonomous iteration loop (Karpathy's autoresearch for Claude Code). Commands: `/autoresearch`, `:plan`, `:security`, `:ship`, `:debug`, `:fix`, `:scenario`, `:predict`, `:learn` |
+
+### Install plugins on a new machine
+
+```bash
+# Autoresearch (third-party marketplace)
+/plugin marketplace add uditgoenka/autoresearch
+/plugin install autoresearch@autoresearch
+/reload-plugins
+```
+
+Official plugins (`superpowers`, `context7`, `frontend-design`, etc.) are auto-installed from `enabledPlugins` in settings.json.
+
 ## RTK (Rust Token Killer)
 
 Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
@@ -96,8 +115,8 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 # Clone
 git clone <this-repo> ~/projects/public
 
-# Sync SSOT to user config (exact mirror — removes commands deleted from SSOT)
-rsync -a --delete ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
+# Sync commands (additive — won't delete commands from other sources)
+rsync -a ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
 cp ~/projects/public/alert_bubble.mp3 ~/.claude/
 
 # Status line
@@ -159,7 +178,7 @@ When modifying commands, keep in sync:
 
 ```bash
 # After editing ssot/.claude/commands/*.md
-rsync -a --delete ssot/.claude/commands/ ~/.claude/commands/
+rsync -a ssot/.claude/commands/ ~/.claude/commands/
 ```
 
 The `ssot/.claude/` directory is the source of truth. `~/.claude/` is the deployed copy.

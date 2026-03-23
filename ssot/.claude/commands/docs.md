@@ -129,9 +129,10 @@ When converting library/framework patterns, API conventions, or configuration op
 **For each branch → create a skill:**
 
 1. **Skill name**: Use branch name + `-context` suffix (e.g., `architecture-context`)
-2. **Description**: Rewrite branch description to CSO format — MUST start with "Use when..." and describe trigger conditions, NOT workflow steps
+2. **Description**: Rewrite branch description to CSO format — MUST start with "Use when..." and describe trigger conditions, NOT workflow steps. Descriptions must be **keyword-rich**: include project-specific function names, class names, config keys, file types, error names, CLI commands, and domain terms that a user would actually type when seeking help. Generic category terms alone are insufficient.
    - BAD: "Analyzes project architecture and documents module structure"
-   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers entry points, module boundaries, and error propagation."
+   - BAD (too generic): "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers entry points, module boundaries, and error propagation."
+   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers AuthController, SessionManager, wp_ing_token, JWT expiration flow, NonceManager, HttpClient, and ErrorTranslator patterns."
 3. **SKILL.md body**: Combine branch pointer table content + key decisions into Tool Wrapper format:
    - `<constraint>` block with critical rules
    - `## When to Use` with trigger scenarios
@@ -160,6 +161,7 @@ When converting library/framework patterns, API conventions, or configuration op
 - Each SKILL.md under 500 lines
 - Each references/ file: 30-150 lines (split or merge if needed)
 - Descriptions MUST be trigger-condition-first (CSO)
+- Descriptions MUST be keyword-rich: after the "Use when..." trigger clause, append a coverage clause naming at least 5 project-specific identifiers (function names, class names, config keys, error types, CLI commands). Generic phrases like "Covers entry points and module boundaries" are NOT sufficient.
 - Preserve all existing file:line references that are still valid
 - Drop references to files that no longer exist
 
@@ -316,9 +318,15 @@ Based on the exploration results, propose project skills using the Tool Wrapper 
 
 **For each skill propose:**
 1. Skill name (kebab-case, from domains above)
-2. Description: MUST start with "Use when..." and specify trigger conditions using natural language phrases users would say. Max 1024 chars.
+2. Description: MUST start with "Use when..." and specify trigger conditions using natural language phrases users would say. After the trigger clause, include a coverage clause with **project-specific keywords**: actual function names, class names, config keys, error names, file extensions, and CLI commands extracted from this codebase. Max 1024 chars.
    - BAD: "Documents the project architecture including modules and entry points"
-   - GOOD: "Use when designing new modules, reviewing code structure, diagnosing unexpected behavior, or onboarding to the codebase. Covers entry points, module boundaries, state management, and error propagation."
+   - BAD (too generic): "Use when designing new modules, reviewing code structure, diagnosing unexpected behavior, or onboarding to the codebase. Covers entry points, module boundaries, state management, and error propagation."
+   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers AppKernel, ServiceContainer, EventDispatcher, DatabaseConnection, .env config keys (DB_HOST, REDIS_URL), and MigrationRunner patterns."
+
+   **Keyword extraction rules:**
+   - Scan `metadata.source_files` for: class names, exported functions, config keys, error class names, CLI entry points
+   - Include synonyms users would say at the symptom level: not just "authentication" but "login fails", "JWT expired", "token renewal"
+   - Make descriptions maximally distinct from sibling skills — no two skills should share the same keywords
 3. What goes in SKILL.md body (inline — high-signal content, under 500 lines):
    - constraint block, When to Use, Core Patterns, Key Decisions, Gotchas, References list
 4. What goes in references/ (larger detail loaded on demand):
@@ -423,11 +431,23 @@ These are evidence-based formatting rules for maximum Claude adherence:
 9. **3-5 examples for complex rules**: few-shot dramatically improves adherence. Use tables for examples: | Good | Bad | Why |
 10. **Markdown only**: no JSON in documentation content. 34-38% more token-efficient.
 
+**Description Keyword Enrichment — apply to EVERY description:**
+After writing the "Use when..." trigger clause, scan the skill's `metadata.source_files` and extract project-specific identifiers to form a coverage clause:
+- **Class and function names**: exported classes, public methods, key functions (e.g., `AuthService`, `parseToken`, `refreshJWT`)
+- **Config keys**: environment variables, config file keys (e.g., `JWT_SECRET`, `REDIS_URL`, `.env` fields)
+- **Error types**: exception class names, error codes, error strings users would search for (e.g., `TokenExpiredError`, `ECONNREFUSED`)
+- **File types and formats**: domain-specific extensions or formats handled (e.g., `.xlsx`, `JWT`, `multipart/form-data`)
+- **CLI commands**: if the skill covers tooling (e.g., `artisan migrate`, `prisma generate`, `nx build`)
+- **Symptom-level synonyms**: phrases a user types when something goes wrong — not "authentication" but "login fails", "session expired", "401 Unauthorized"
+
+Coverage clause format: "Covers <identifier-1>, <identifier-2>, <identifier-3>, <identifier-4>, <identifier-5>[, more...]."
+Include at least 5 identifiers. Generic terms like "module boundaries" or "entry points" do NOT count toward the 5.
+
 **For each SKILL.md** (`.claude/skills/<name>/SKILL.md`):
 ```yaml
 ---
 name: <skill-name>
-description: Use when <trigger conditions>. <coverage areas>.
+description: Use when <trigger conditions>. Covers <5+ project-specific identifiers: class names, function names, config keys, error types, or CLI commands from this codebase>.
 user-invocable: false
 metadata:
   pattern: tool-wrapper
@@ -484,7 +504,7 @@ Body (under 100 lines):
 Output ALL drafted content for every file, clearly delimited.
 
 **Success Criteria:**
-All SKILL.md files under 500 lines. All references/ files 30-150 lines. All descriptions start with "Use when..." and describe trigger conditions (CSO). All claims have file:line references. Maintenance skill exists with correct frontmatter.
+All SKILL.md files under 500 lines. All references/ files 30-150 lines. All descriptions start with "Use when..." and describe trigger conditions (CSO) with at least 5 project-specific keywords (identifiers, config keys, or error types). All claims have file:line references. Maintenance skill exists with correct frontmatter.
 </task>
 ```
 
@@ -512,8 +532,9 @@ You are the VERIFIER. Validate the Builder's output against concrete criteria.
 - Does each description start with "Use when..."?
 - Does the description describe TRIGGER CONDITIONS, not workflow steps or capabilities?
   BAD: "Analyzes project architecture and generates documentation about module structure"
-  GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior"
+  GOOD: "Use when designing new modules or diagnosing unexpected behavior. Covers AuthService, parseToken, JWT_SECRET, TokenExpiredError, and 401 Unauthorized handling."
 - Does the description include natural language phrases users would say?
+- **Keyword density check**: Does the description contain at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands)? Generic phrases ("entry points", "module boundaries", "error propagation") do NOT count. Flag any description that only uses category-level language.
 - Is each description under 1024 chars?
 
 **Size Compliance:**
@@ -654,6 +675,7 @@ For each skill:
 - Does description start with "Use when..."?
 - Does it describe trigger conditions (not capabilities/workflows)?
 - Does it include natural language phrases?
+- **Keyword density**: Does the description name at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands)? Descriptions that only use generic terms ("entry points", "module boundaries", "error propagation") fail this check — flag as CSO-vague.
 - Is it under 1024 chars?
 
 **AI-Optimization Compliance:**
@@ -674,7 +696,8 @@ Output:
 - Stale skills: [list with git evidence]
 - Coverage gaps: [uncovered source dirs]
 - Balance issues: [list]
-- CSO failures: [skills with bad descriptions]
+- CSO failures: [skills with bad descriptions — missing "Use when..." prefix]
+- CSO-vague: [skills with generic descriptions lacking project-specific keywords]
 - AI-optimization failures: [files + which rules violated]
 
 ## Recommended Actions
@@ -727,6 +750,7 @@ You are the PLANNER. Based on the audit report, propose specific changes.
 - Rewrite descriptions to trigger-condition format
 - Ensure "Use when..." prefix
 - Include natural language phrases
+- **Enrich with project keywords**: read the skill's `metadata.source_files`, extract at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands), and append them as a coverage clause: "Covers <id-1>, <id-2>, <id-3>, <id-4>, <id-5>." Generic phrases do not count toward the 5.
 
 **For each proposed change, output:**
 1. Action: split/merge/update/create/fix-description
@@ -761,7 +785,7 @@ For each proposed change:
 2. **Merges**: Will the combined SKILL.md stay under 500 lines?
 3. **Updates**: Are file:line references in the new content accurate?
 4. **New skills**: Enough content to justify a skill (>50 lines)?
-5. **Descriptions**: All follow CSO format? Start with "Use when..."?
+5. **Descriptions**: All follow CSO format? Start with "Use when..."? Do they contain at least 5 project-specific identifiers in the coverage clause — not just generic category terms?
 
 Also verify:
 - No proposed SKILL.md exceeds 500 lines

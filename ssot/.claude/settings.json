@@ -220,7 +220,16 @@
     "typescript-lsp@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true
+    "php-lsp@claude-plugins-official": true,
+    "autoresearch@autoresearch": true
+  },
+  "extraKnownMarketplaces": {
+    "autoresearch": {
+      "source": {
+        "source": "github",
+        "repo": "uditgoenka/autoresearch"
+      }
+    }
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
