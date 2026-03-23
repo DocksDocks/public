@@ -174,6 +174,9 @@ Read `.claude/skills/api-context/references/routes.md` for the complete route pa
 ```
 The agent's system prompt should be a WORKFLOW GUIDE, not a knowledge dump.
 
+- BAD: "The agent should know about the project's API patterns and authentication flow"
+- GOOD: "Read `.claude/skills/api-context/SKILL.md` for route patterns. Read `.claude/skills/api-context/references/auth-flow.md` when handling login/logout/token-refresh endpoints."
+
 **Target system prompt size:** 100-200 lines per agent.
 
 Output structured content per agent, clearly delimited.
