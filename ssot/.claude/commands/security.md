@@ -301,6 +301,10 @@ Launch a Task agent as the SYNTHESIZER:
 
 **Objective:** Produce the final security report by challenging, verifying, and consolidating all findings from Phase 2.
 
+<constraint>
+Before proposing remediations that use security libraries/frameworks (helmet, cors, csrf, bcrypt, etc.): FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Do NOT assume API signatures from training data — security fixes with wrong APIs are worse than no fix.
+</constraint>
+
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Use findings from all 3 Phase 2 agents
