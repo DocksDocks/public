@@ -106,13 +106,13 @@ All public functions listed with signatures. Edge cases identified for each func
 <task>
 Launch a Task agent with model="opus" to act as the GENERATOR:
 
-**Objective:** Generate comprehensive tests covering all functions, edge cases, and integration points in the target code.
+**Objective:** Generate tests covering all functions, edge cases, and integration points in the target code.
 
 **Context:**
 - Run `date "+%Y-%m-%d"` first to confirm current date
 - Use analysis output for functions, edge cases, and dependencies
 
-You are the GENERATOR. Generate comprehensive tests for the target code.
+You are the GENERATOR. Generate tests for the target code covering all functions, edge cases, and error paths.
 
 <constraint>
 - Follow the project's existing test patterns and conventions exactly
