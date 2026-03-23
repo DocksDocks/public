@@ -358,6 +358,9 @@ For each:
 - **Remediation**: Specific fix with code example
 - **References**: Links to relevant documentation
 
+- BAD: "The application has some security issues with user input handling"
+- GOOD: "src/api/users.ts:87 — CWE-89 SQL Injection: `db.query(\`SELECT * FROM users WHERE id = ${req.params.id}\`)` — attacker can inject via URL param. Fix: `db.query('SELECT * FROM users WHERE id = $1', [req.params.id])`"
+
 ## High Severity Vulnerabilities
 [Same format as critical]
 
