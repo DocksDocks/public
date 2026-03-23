@@ -25,6 +25,18 @@ Planning Phase Tools (READ-ONLY):
 
 ---
 
+<constraint>
+Phase Transition Protocol — Orchestrator Behavior:
+
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
+
+The ONLY times you stop and wait for user input are:
+- Phase 0 when no skills found (telling user to run /docs first)
+- Phase 4 (ExitPlanMode gate)
+
+If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
 ## Phase 0: Prerequisites
 
 Check if `.claude/skills/*/SKILL.md` exists in the project (use Glob).
