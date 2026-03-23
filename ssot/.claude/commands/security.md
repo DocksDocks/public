@@ -8,6 +8,16 @@ Security and logic analysis across the entire codebase using parallel specialize
 
 ---
 
+<constraint>
+Phase Transition Protocol — Orchestrator Behavior:
+
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
+
+The ONLY time you stop is after the final Synthesizer phase produces its report.
+
+If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
 ## Scope
 
 This command analyzes the **entire codebase** for:
