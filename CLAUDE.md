@@ -11,7 +11,6 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
 | `ssot/.claude/commands/*.md` | 9 custom slash commands (see below) |
-| `ssot/.claude/RTK.md` | RTK reference (meta commands, verification) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 | `alert_bubble.mp3` | Audio notification for Notification hook |
@@ -59,9 +58,7 @@ Official plugins (`superpowers`, `context7`, `frontend-design`, etc.) are auto-i
 
 Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
 
-| File | Purpose |
-|------|---------|
-| `ssot/.claude/RTK.md` | RTK reference for Claude (meta commands, verification) |
+`rtk init -g` auto-generates `~/.claude/RTK.md`, the hook, the `@RTK.md` CLAUDE.md import, and the settings.json hook entry. No manual file management needed.
 
 ### Supported commands
 
@@ -80,17 +77,14 @@ sudo apt install -y jq   # Debian/Ubuntu
 # 3. Initialize RTK globally (generates hook + configures Claude Code)
 rtk init --global
 
-# 4. Copy RTK docs for Claude
-cp ssot/.claude/RTK.md ~/.claude/RTK.md
+# 4. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
 
-# 5. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
-
-# 6. Verify
+# 5. Verify
 rtk --version        # Should print version
 rtk ls .             # Should show compressed output
 rtk gain             # Should show tracking is active
 
-# 7. Restart Claude Code for the hook to take effect
+# 6. Restart Claude Code for the hook to take effect
 ```
 
 ## Status Line
@@ -126,9 +120,11 @@ chmod +x ~/.claude/statusline.sh ~/.claude/fetch-usage.sh
 
 # RTK (requires rtk binary — see "Install RTK" section)
 rtk init --global
-cp ~/projects/public/ssot/.claude/RTK.md ~/.claude/
 
 # Settings — merge ssot/.claude/settings.json into ~/.claude/settings.json
+
+# Sync principle: add and update only, never delete.
+# Tools like `rtk init -g` own their generated files at ~/.claude/
 ```
 
 ## Command Authoring Conventions

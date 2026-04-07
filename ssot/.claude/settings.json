@@ -232,6 +232,8 @@
     }
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
+  "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true,
   "showTurnDuration": true
 }

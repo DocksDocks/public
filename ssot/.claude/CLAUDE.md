@@ -22,6 +22,10 @@ IMPORTANT: Before writing or modifying code that uses any framework, library, or
 
 This prevents hallucinated APIs, deprecated patterns, and version mismatches.
 
+<constraint>
+Research the codebase before editing. Never change code you haven't read.
+</constraint>
+
 ## Project Skills
 
 Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.
