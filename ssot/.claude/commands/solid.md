@@ -2,9 +2,7 @@
 
 Analyze, identify, and fix SOLID principle violations across the codebase. Uses a multi-phase agent pipeline for thorough analysis and safe refactoring.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, npm:*, pnpm:*, yarn:*)
+- Edit, Write, Bash(git:*, npm:*, pnpm:*, yarn:*, rtk:*)
 
 ---
 
@@ -130,7 +128,7 @@ After Phase 2 completes, write the Discovery agent's output to the plan file und
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the ANALYZER:
+Launch a Task agent to act as the ANALYZER:
 
 **Objective:** Deeply analyze each component against all 5 SOLID principles, identifying concrete violations with evidence.
 
@@ -205,7 +203,7 @@ Every violation includes file:line location and specific impact statement. All 5
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PLANNER:
+Launch a Task agent to act as the PLANNER:
 
 **Objective:** Propose specific, minimal refactorings to fix each SOLID violation.
 
@@ -418,6 +416,8 @@ After verification:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Edit
 - Write
 - Bash(git:*)
@@ -425,6 +425,7 @@ After verification:
 - Bash(pnpm:*)
 - Bash(yarn:*)
 - Bash(ls:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

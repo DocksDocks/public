@@ -1,0 +1,43 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate settings.json is valid JSON
+        run: jq . ssot/.claude/settings.json > /dev/null
+
+      - name: Run guard-commands.sh
+        run: bash guard-commands.sh
+
+      - name: Run score-commands.sh
+        run: |
+          score=$(bash score-commands.sh)
+          echo "Quality score: $score"
+          # Current baseline: 277. Fail if score drops significantly below baseline.
+          if [ "$score" -lt 250 ]; then
+            echo "Score $score is below minimum threshold (250)" >&2
+            exit 1
+          fi
+
+      - name: Syntax-check shell scripts
+        run: |
+          bash -n sync.sh
+          bash -n guard-commands.sh
+          bash -n score-commands.sh
+          bash -n ssot/.claude/statusline.sh
+          bash -n ssot/.claude/fetch-usage.sh
+
+      - name: Assert no inert model="opus" annotations
+        run: |
+          if grep -r 'model="opus"' ssot/.claude/commands/; then
+            echo "Found inert model=\"opus\" annotations — remove them." >&2
+            exit 1
+          fi

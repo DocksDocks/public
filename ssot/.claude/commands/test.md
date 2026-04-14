@@ -2,9 +2,7 @@
 
 Generate tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure coverage and quality.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(npm:*, pnpm:*, pytest:*, go:*)
+- Edit, Write, Bash(npm:*, pnpm:*, pytest:*, go:*, rtk:*)
 
 ---
 
@@ -73,7 +71,7 @@ Identified test framework, existing patterns, and target scope with file paths.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to analyze the target:
+Launch a Task agent to analyze the target:
 
 **Objective:** Analyze the target code to identify all functions, dependencies, edge cases, and integration points for test coverage.
 
@@ -104,7 +102,7 @@ All public functions listed with signatures. Edge cases identified for each func
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the GENERATOR:
+Launch a Task agent to act as the GENERATOR:
 
 **Objective:** Generate tests covering all functions, edge cases, and integration points in the target code.
 
@@ -305,6 +303,8 @@ After verification:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Edit
 - Write
 - Bash(npm:*)
@@ -313,6 +313,7 @@ After verification:
 - Bash(pytest:*)
 - Bash(go:*)
 - Bash(ls:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

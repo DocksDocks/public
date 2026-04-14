@@ -2,9 +2,7 @@
 
 Detect and fix structural code issues: dead code, duplication, missing reuse opportunities, complexity, and modernization candidates. Uses tool-augmented analysis with parallel scanners and Builder-Verifier pattern.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, git log, wc -l, find, npx knip, npx depcheck)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, git log, wc -l, find, npx knip, npx depcheck, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(mkdir:*, git:*, npm:*, pnpm:*, yarn:*, rm:*)
+- Edit, Write, Bash(mkdir:*, git:*, npm:*, pnpm:*, yarn:*, rm:*, rtk:*)
 
 ---
 
@@ -98,7 +96,7 @@ Each agent runs independently. Results will be combined by the Planner.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the DEAD CODE SCANNER:
+Launch a Task agent as the DEAD CODE SCANNER:
 
 **Objective:** Find dead code — unused exports, unreachable code, unused dependencies, orphaned files.
 
@@ -166,7 +164,7 @@ Every finding includes file:line. CAUTION items have dynamic import check. Tool 
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the DUPLICATION & REUSE SCANNER:
+Launch a Task agent as the DUPLICATION & REUSE SCANNER:
 
 **Objective:** Find duplicate code, missing function extraction opportunities, and reuse candidates (including frontend component reuse).
 
@@ -278,7 +276,7 @@ After Phase 2 completes (both parallel agents return), append the Dead Code Scan
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the PLANNER:
+Launch a Task agent as the PLANNER:
 
 **Objective:** Prioritize findings and create a concrete, ordered refactoring plan.
 
@@ -531,6 +529,8 @@ Planning Phase:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Bash(date)
 - Bash(ls:*)
 - Bash(find:*)
@@ -543,11 +543,14 @@ Planning Phase:
 - Bash(vulture:*)
 - Bash(ruff:*)
 - Bash(deadcode:*)
+- Bash(rtk:*)
 
 Implementation Phase:
 - Read
 - Edit
 - Write
+- WebFetch
+- WebSearch
 - Bash(git:*)
 - Bash(npm:*)
 - Bash(pnpm:*)
@@ -556,6 +559,7 @@ Implementation Phase:
 - Bash(cargo:*)
 - Bash(rm:*)
 - Bash(mkdir:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

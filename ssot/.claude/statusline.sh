@@ -1,7 +1,7 @@
 #!/bin/bash
 # Claude Code status line — two-line display inspired by claude-watch.
 # Line 1: Model | folder • branch
-# Line 2: 5h X% (Xh Xm) • 7d X% (Xd Xh) | ctx X% (Xk/200k)
+# Line 2: 5h X% (Xh Xm) • 7d X% (Xd Xh) | ctx X% (Xk/Xk)
 # Cross-platform: works on both macOS and Linux.
 
 input=$(cat)

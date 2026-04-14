@@ -3,7 +3,8 @@
 # Scores each .md command file against quality criteria from CLAUDE.md conventions
 # Output: single number (total score across all commands)
 
-DIR="${1:-/home/docks/projects/public/ssot/.claude/commands}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DIR="${1:-$SCRIPT_DIR/ssot/.claude/commands}"
 total=0
 
 for f in "$DIR"/*.md; do
@@ -43,14 +44,29 @@ for f in "$DIR"/*.md; do
   [ "$cc" -gt 3 ] && cc=3
   score=$((score + cc))
 
-  # 8. Model tiering (opus for critical agents) (2pts)
-  grep -q 'model="opus"\|model: "opus"' "$f" && score=$((score + 2))
+  # 8. No inert `model="opus"` annotations — subagent model is controlled by
+  #    CLAUDE_CODE_SUBAGENT_MODEL env var; XML-attr-style annotations in prompts
+  #    have no programmatic effect and waste tokens. (2pts if absent)
+  if ! grep -qE 'model="opus"|model: "opus"' "$f"; then
+    score=$((score + 2))
+  fi
 
   # 9. Allowed Tools section (1pt)
   grep -qi 'Allowed Tools' "$f" && score=$((score + 1))
 
   # 10. Research-first constraint (context7 + WebFetch) (2pts)
   grep -q 'resolve-library-id\|context7\|query-docs' "$f" && score=$((score + 2))
+
+  # 11. Research-Allowed-Tools consistency: if the file instructs research (context7
+  #     or WebFetch), it must also permit WebFetch/WebSearch somewhere. (2pts)
+  if grep -qE 'resolve-library-id|context7|query-docs' "$f"; then
+    if grep -qE 'WebFetch|WebSearch' "$f" && grep -qiE 'Allowed Tools|allowed-tools' "$f"; then
+      score=$((score + 2))
+    fi
+  else
+    # No research needed — don't penalize
+    score=$((score + 2))
+  fi
 
   total=$((total + score))
 done

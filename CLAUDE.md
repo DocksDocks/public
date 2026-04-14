@@ -2,6 +2,8 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
+**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction (45%), `high` effort (not `max`), sonnet subagents under an Opus orchestrator, and fixed thinking budgets — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
 ## Repository Structure
@@ -17,7 +19,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 
 ## Custom Commands
 
-All commands use multi-agent pipelines with Opus models. Most use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
+All commands use multi-agent pipelines. The orchestrator runs on Opus; subagents run on sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`) — rigorously constrained by `<task>` blocks with Success Criteria and Anti-Hallucination Checks. Most commands use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
 
 | Command | Pipeline | Pattern |
 |---------|----------|---------|
@@ -98,34 +100,83 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 
 ## Hooks
 
-- **SessionStart**: Injects current date/time so agents don't rely on training data cutoff
+- **SessionStart**: Injects current date/time and active config (context window, auto-compact %, effort level, thinking budget, subagent model) so agents don't rely on training data cutoff
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 - **Stop**: Fetches API usage stats (async) to keep status line data fresh
+- **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
+
+## Environment Variables
+
+All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 45% auto-compact + high effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane.
+
+### Context management
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `45` | Compacts at 45% of context window (~450K on 1M). Can only lower the threshold below the default (~83%), never raise it. Prevents context rot that begins near 400K. |
+| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.6. |
+
+### Thinking & reasoning
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `CLAUDE_CODE_EFFORT_LEVEL` | `high` | Deep reasoning without `max`'s 5-10× token cost. Valid: `low`/`medium`/`high`/`max`. |
+| `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Fixed thinking budget per turn. Prevents zero-thinking turns that cause hallucinations. |
+| `MAX_THINKING_TOKENS` | `32000` | Active only when adaptive thinking is disabled. Near Opus default (31,999). |
+
+### Model selection
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `CLAUDE_CODE_SUBAGENT_MODEL` | `claude-sonnet-4-6` | All Task-tool subagents use sonnet. Must be a full model name (bare aliases like `sonnet` are risky). |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `claude-opus-4-6` | Pins the opus model version for the main orchestrator. |
+
+### Output & UI
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session. Subagents remain capped at 32K regardless. |
+| `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
+| `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
+
+### Top-level settings.json keys
+
+| Key | Value | Notes |
+|-----|-------|-------|
+| `effortLevel` | `high` | Does **NOT** accept `max` — only `low`/`medium`/`high`. Use the env var for `max`. |
+| `alwaysThinkingEnabled` | `true` | Legacy extended-thinking toggle. Independent of adaptive thinking. |
+| `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. |
+| `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
+
+### Settings that do NOT belong in settings.json
+
+| Setting | Correct location | Notes |
+|---------|-----------------|-------|
+| `showTurnDuration` | `~/.claude.json` | Triggers schema validation error in settings.json. `sync.sh` writes it to the right file. |
 
 ## Setup
 
 ```bash
-# Clone
+# Clone and sync
 git clone <this-repo> ~/projects/public
-
-# Sync commands (additive — won't delete commands from other sources)
-rsync -a ~/projects/public/ssot/.claude/commands/ ~/.claude/commands/
-cp ~/projects/public/alert_bubble.mp3 ~/.claude/
-
-# Status line
-cp ~/projects/public/ssot/.claude/statusline.sh ~/.claude/
-cp ~/projects/public/ssot/.claude/fetch-usage.sh ~/.claude/
-chmod +x ~/.claude/statusline.sh ~/.claude/fetch-usage.sh
-
-# RTK (requires rtk binary — see "Install RTK" section)
-rtk init --global
-
-# Settings — merge ssot/.claude/settings.json into ~/.claude/settings.json
-
-# Sync principle: add and update only, never delete.
-# Tools like `rtk init -g` own their generated files at ~/.claude/
+cd ~/projects/public
+./sync.sh              # full sync + RTK bootstrap
+./sync.sh --dry-run    # preview before applying
+./sync.sh --no-rtk     # skip RTK install (also strips @RTK.md import from CLAUDE.md)
+./sync.sh --force      # replace ~/.claude/settings.json instead of merging (backup kept)
 ```
+
+`sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts, and installs/initializes RTK if missing. Sync principle: additive only, never delete.
+
+## Troubleshooting
+
+- **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
+- **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
+- **Auto-compact triggering too early or not at all** — check `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Values above ~83% are clamped to the default (the env var can only lower the threshold).
+- **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` handles this automatically.
+- **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
+- **`@RTK.md` import missing** — generated by `rtk init -g`. If RTK is not installed, run `./sync.sh --no-rtk` to strip the import cleanly.
 
 ## Command Authoring Conventions
 
@@ -170,11 +221,11 @@ Structural:
 
 ## Editing Commands
 
-When modifying commands, keep in sync:
+When modifying commands, keep in sync by re-running `./sync.sh`. The `ssot/.claude/` directory is the source of truth; `~/.claude/` is the deployed copy.
+
+Before committing, run the validators:
 
 ```bash
-# After editing ssot/.claude/commands/*.md
-rsync -a ssot/.claude/commands/ ~/.claude/commands/
+bash guard-commands.sh   # structural checks (task tags, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
+bash score-commands.sh   # quality score across all commands
 ```
-
-The `ssot/.claude/` directory is the source of truth. `~/.claude/` is the deployed copy.

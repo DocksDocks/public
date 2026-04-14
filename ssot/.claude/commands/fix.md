@@ -2,9 +2,7 @@
 
 Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Builder-Verifier pattern to ensure safe, effective fixes.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, npm audit)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, npm audit, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, npm:*, pnpm:*, pip:*, rm:*)
+- Edit, Write, Bash(git:*, npm:*, pnpm:*, pip:*, rm:*, rtk:*)
 
 ---
 
@@ -109,7 +107,7 @@ Each agent runs independently and their results will be combined by the Planner.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the CODE QUALITY SCANNER:
+Launch a Task agent as the CODE QUALITY SCANNER:
 
 **Objective:** Scan the target code for bugs, dead code, refactoring opportunities, and performance issues.
 
@@ -193,7 +191,7 @@ After Phase 3 completes (both parallel scanners return), write both scanners' fi
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PLANNER:
+Launch a Task agent to act as the PLANNER:
 
 **Objective:** Propose a specific, minimal fix for each issue identified by the scanners.
 
@@ -377,6 +375,8 @@ After verification:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Edit
 - Write
 - Bash(git:*)
@@ -385,6 +385,7 @@ After verification:
 - Bash(yarn:*)
 - Bash(pip:*)
 - Bash(ls:*)
+- Bash(rtk:*)
 - Bash(rm:*)  # For removing dead code files
 ```
 
