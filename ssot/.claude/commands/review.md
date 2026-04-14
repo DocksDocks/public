@@ -2,9 +2,7 @@
 
 Code review covering quality, security, and performance using a Builder-Verifier pattern.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, npm:*, pnpm:*)
+- Edit, Write, Bash(git:*, npm:*, pnpm:*, rtk:*)
 
 ---
 
@@ -69,7 +67,7 @@ Identified project stack, target scope, and existing patterns with file paths.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the ANALYZER:
+Launch a Task agent as the ANALYZER:
 
 **Objective:** Identify all concrete bugs, logic errors, security issues, and maintainability problems in the target code.
 
@@ -253,12 +251,15 @@ After verification:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Edit
 - Write
 - Bash(git:*)
 - Bash(npm:*)
 - Bash(pnpm:*)
 - Bash(ls:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

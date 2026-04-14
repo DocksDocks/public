@@ -2,9 +2,7 @@
 
 Security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,7 +14,7 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, find)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, find, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
@@ -109,7 +107,7 @@ Each agent runs independently and their results will be combined in Phase 3.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the VULNERABILITY SCANNER:
+Launch a Task agent as the VULNERABILITY SCANNER:
 
 **Objective:** Systematically scan the entire codebase for exploitable security vulnerabilities with concrete evidence.
 
@@ -193,7 +191,7 @@ Every finding includes file:line and a concrete exploitation scenario. Zero theo
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the LOGIC ANALYZER:
+Launch a Task agent as the LOGIC ANALYZER:
 
 **Objective:** Analyze the entire codebase for logic flaws, edge cases, and trust boundary violations.
 
@@ -260,7 +258,7 @@ Every finding includes file:line location and a concrete trigger scenario. Logic
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the ADVERSARIAL HUNTER:
+Launch a Task agent as the ADVERSARIAL HUNTER:
 
 **Objective:** Think like an attacker and hunt for vulnerabilities that systematic scanning might miss, including chained attacks.
 
@@ -418,13 +416,14 @@ Present the final security report to the user with:
 1. Executive summary first
 2. Critical issues highlighted
 3. Clear remediation steps
-4. Offer to help fix specific issues if requested
+
+This command is read-only by design. To fix issues, use `/fix` with the specific findings as input.
 
 ---
 
 <constraint>
 Allowed Tools (READ-ONLY — this command does not modify code):
-- Read, Glob, Grep, Task, Bash(date, ls, git status, git log, npm audit, pip audit)
+- Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git log, npm audit, pip audit, rtk)
 - Do NOT use: Write, Edit, or any modifying tools
 </constraint>
 

@@ -2,9 +2,7 @@
 
 Bootstrap and manage project-specific skills in `.claude/skills/`. Organizes project knowledge (conventions, architecture, patterns, APIs) into Tool Wrapper skills with on-demand references — loaded only when Claude invokes the Skill tool, not at session start.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git log, git status, wc -l, find)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git log, git status, wc -l, find, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(mkdir:*, git:*)
+- Edit, Write, Bash(mkdir:*, git:*, rtk:*)
 
 ---
 
@@ -114,7 +112,7 @@ After Phase 1G completes, write results to the plan file under `## Phase 1G: Tre
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the CONVERTER:
+Launch a Task agent as the CONVERTER:
 
 **Objective:** Convert every branch/leaf into a skill with SKILL.md + references/ files.
 
@@ -297,7 +295,7 @@ Each agent runs independently and their results will be combined by the Builder.
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the CATEGORIZER:
+Launch a Task agent as the CATEGORIZER:
 
 **Objective:** Propose project skills — names, trigger descriptions, and references/ structure.
 
@@ -348,7 +346,7 @@ Every skill has a trigger-condition description. References/ files only proposed
 
 ```xml
 <task>
-Launch a Task agent with model="opus" as the PATTERN SCANNER:
+Launch a Task agent as the PATTERN SCANNER:
 
 **Objective:** Extract concrete patterns, conventions, and decisions from the codebase with file:line references.
 
@@ -403,7 +401,7 @@ After Phase 2 completes (both parallel agents return), append the Categorizer's 
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the BUILDER:
+Launch a Task agent to act as the BUILDER:
 
 **Objective:** Draft complete content for every skill — SKILL.md files and references/ files.
 
@@ -716,7 +714,7 @@ After Phase 1M completes, write the Auditor's health report and recommended acti
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the PLANNER:
+Launch a Task agent to act as the PLANNER:
 
 **Objective:** Propose specific changes (splits, merges, updates, new skills) based on the audit report.
 
@@ -848,20 +846,26 @@ Planning Phase:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Bash(date)
 - Bash(ls:*)
 - Bash(find:*)
 - Bash(wc:*)
 - Bash(git log:*)
 - Bash(git status)
+- Bash(rtk:*)
 
 Implementation Phase:
 - Read
 - Edit
 - Write
+- WebFetch
+- WebSearch
 - Bash(mkdir:*)
 - Bash(rm:*)
 - Bash(git:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

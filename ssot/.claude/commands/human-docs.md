@@ -2,9 +2,7 @@
 
 Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through a Builder-Verifier pattern.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, git status, git diff, find)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, find, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*)
+- Edit, Write, Bash(git:*, rtk:*)
 
 ---
 
@@ -75,7 +73,7 @@ All .md files cataloged. Project stack identified. Documentation gaps mapped to 
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to categorize and analyze:
+Launch a Task agent to categorize and analyze:
 
 **Objective:** Categorize all .md files by type (human-readable, AI-optimized, keep-as-is) and analyze gaps.
 
@@ -134,7 +132,7 @@ Every .md file categorized. Gap analysis covers README, CLAUDE.md, docs/, and .e
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the WRITER:
+Launch a Task agent to act as the WRITER:
 
 **Objective:** Draft documentation based on the gap analysis, using correct format per category (human-readable vs AI-optimized).
 
@@ -392,16 +390,22 @@ Planning Phase:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Bash(date)
 - Bash(ls:*)
 - Bash(find:*)
 - Bash(git status)
 - Bash(git diff)
+- Bash(rtk:*)
 
 Implementation Phase:
 - Edit
 - Write
+- WebFetch
+- WebSearch
 - Bash(git:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

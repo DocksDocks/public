@@ -2,9 +2,7 @@
 
 Generate project-specific Claude Code agents from project skills. Agents reference `.claude/skills/` and their `references/` files for domain knowledge instead of duplicating it inline, staying slim and always current.
 
-> **Model Tiering:** Subagents default to `sonnet` (via CLAUDE_CODE_SUBAGENT_MODEL).
-> Only set `model: "opus"` for quality-critical agents (analyzers, planners, builders, generators).
-> Explorers, scanners, verifiers, and synthesizers use the default. Do NOT use haiku.
+> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
 ---
 
@@ -16,12 +14,12 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, Bash(date, ls, find)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, find, rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(mkdir:*)
+- Edit, Write, Bash(mkdir:*, rtk:*)
 
 ---
 
@@ -190,7 +188,7 @@ Every agent has skill references (not inlined content). Target system prompt siz
 
 ```xml
 <task>
-Launch a Task agent with model="opus" to act as the GENERATOR:
+Launch a Task agent to act as the GENERATOR:
 
 **Objective:** Draft complete agent files using role mapper's roster and pattern extractor's findings.
 
@@ -361,15 +359,21 @@ Planning Phase:
 - Glob
 - Grep
 - Task
+- WebFetch
+- WebSearch
 - Bash(date)
 - Bash(ls:*)
 - Bash(find:*)
+- Bash(rtk:*)
 
 Implementation Phase:
 - Read
 - Edit
 - Write
+- WebFetch
+- WebSearch
 - Bash(mkdir:*)
+- Bash(rtk:*)
 ```
 
 ## Usage

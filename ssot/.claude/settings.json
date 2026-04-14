@@ -4,11 +4,11 @@
   "cleanupPeriodDays": 14,
   "env": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6",
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "45",
     "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_EFFORT_LEVEL": "high",
     "MAX_THINKING_TOKENS": "32000",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
     "CLAUDE_CODE_NO_FLICKER": "1"
@@ -158,6 +158,11 @@
           },
           {
             "type": "command",
+            "command": "echo \"[CONFIG] Context: $([ \\\"${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\\" = \\\"1\\\" ] && echo '200K' || echo '1M') | Auto-compact: ${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-83}% | Effort: ${CLAUDE_CODE_EFFORT_LEVEL:-high} | Thinking: $([ \\\"${CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING:-0}\\\" = \\\"1\\\" ] && echo \\\"fixed ${MAX_THINKING_TOKENS:-31999}\\\" || echo 'adaptive') | Subagent: ${CLAUDE_CODE_SUBAGENT_MODEL:-default}\"",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "SKILL_COUNT=$(find .claude/skills -name 'SKILL.md' -mindepth 2 -maxdepth 2 2>/dev/null | wc -l); [ \"$SKILL_COUNT\" -gt 0 ] && echo \"[SKILLS] $SKILL_COUNT project skills available in .claude/skills/. Claude Code loads them on demand via Skill tool. After code changes affecting documented patterns, update the relevant skill and its metadata.updated field.\" || true",
             "timeout": 5
           }
@@ -204,7 +209,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.last_assistant_message // empty' | grep -qE '(file|line|path|src/|\\.[a-z]{2,4}:)' && exit 0 || { echo 'Subagent output lacks concrete file paths or line references. Include specific file:line references and actionable findings.' >&2; exit 2; }"
+            "command": "msg=$(jq -r '.last_assistant_message // empty'); echo \"$msg\" | grep -qiE '(no (issues|problems|violations)|which mode|select.*option|mode selection)' && exit 0; echo \"$msg\" | grep -qE '(file|line|path|src/|\\.[a-z]{2,4}:)' && exit 0; echo 'Subagent output lacks concrete file paths or line references. Include specific file:line references and actionable findings.' >&2; exit 2"
           }
         ]
       }
@@ -240,6 +245,5 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "showThinkingSummaries": true,
-  "skipDangerousModePermissionPrompt": true,
-  "showTurnDuration": true
+  "skipDangerousModePermissionPrompt": true
 }

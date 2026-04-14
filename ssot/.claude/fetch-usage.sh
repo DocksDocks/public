@@ -57,7 +57,10 @@ seven_d=$(echo "$response" | jq -r '.seven_day.utilization // empty' | awk '{pri
 five_h_reset=$(echo "$response" | jq -r '.five_hour.resets_at // empty')
 seven_d_reset=$(echo "$response" | jq -r '.seven_day.resets_at // empty')
 
-# Only write if we got valid data
-if [ -n "$five_h" ] && [ -n "$seven_d" ]; then
+# Only write if we got valid numeric data in 0-100 range (guards against
+# silent cache corruption if the API schema changes)
+if [ -n "$five_h" ] && [ -n "$seven_d" ] \
+   && echo "$five_h"  | grep -qE '^[0-9]+$' && [ "$five_h"  -ge 0 ] && [ "$five_h"  -le 100 ] 2>/dev/null \
+   && echo "$seven_d" | grep -qE '^[0-9]+$' && [ "$seven_d" -ge 0 ] && [ "$seven_d" -le 100 ] 2>/dev/null; then
   printf '%s\n%s\n%s\n%s\n' "$five_h" "$seven_d" "$five_h_reset" "$seven_d_reset" > "$CACHE_FILE"
 fi
