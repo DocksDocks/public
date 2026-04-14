@@ -169,6 +169,25 @@ cd ~/projects/public
 
 `sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts, and installs/initializes RTK if missing. Sync principle: additive only, never delete.
 
+### When to use `--force`
+
+The default merge is additive: keys present in `~/.claude/settings.json` but absent from the SSOT are preserved. This protects user-only additions, but it also means **stale keys accumulate** — if a key is removed from the SSOT (e.g. `CLAUDE_CODE_DISABLE_1M_CONTEXT`, `showTurnDuration`), a normal `./sync.sh` cannot clean it up.
+
+`./sync.sh --force` replaces `~/.claude/settings.json` wholesale with the SSOT version (backup kept at `settings.json.bak`). Use it when:
+
+- Removing/renaming a key in the SSOT and you want the change reflected downstream
+- Debugging drift-related schema warnings or unexpected env behavior
+- Resetting a machine whose settings have diverged
+
+Before running `--force`, diff first to confirm nothing you need will be lost:
+
+```bash
+diff <(jq -S . ssot/.claude/settings.json) <(jq -S . ~/.claude/settings.json)
+./sync.sh --force
+```
+
+User-added permissions or env vars that don't exist in the SSOT will be discarded — reconcile them into the SSOT first if you want to keep them.
+
 ## Troubleshooting
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
