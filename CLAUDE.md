@@ -2,6 +2,8 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
+**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction (45%), `high` effort (not `max`), sonnet subagents under an Opus orchestrator, and fixed thinking budgets — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
 ## Repository Structure
