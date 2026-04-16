@@ -1,3 +1,18 @@
+---
+name: fix
+description: Use when fixing bugs, security vulnerabilities, performance problems, dependency issues, or dead code in a codebase. Runs a multi-scanner discovery pipeline (code-quality + dependency scanners in parallel) with Builder-Verifier pattern; produces a prioritized fix plan with per-change test strategy and revert triggers.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch Edit Write
+  Bash(date) Bash(ls:*) Bash(mkdir:*) Bash(rtk:*)
+  Bash(git status) Bash(git log:*) Bash(git diff:*)
+  Bash(git rm:*) Bash(git add:*) Bash(git restore:*)
+  Bash(npm audit) Bash(npx knip:*) Bash(npx depcheck:*) Bash(npx ts-prune:*)
+  Bash(npx tsc:*) Bash(npx eslint:*)
+  Bash(ruff:*) Bash(mypy:*)
+  Bash(npm test) Bash(npm run test:*) Bash(pnpm test) Bash(pnpm run test:*) Bash(yarn test)
+  Bash(pytest:*) Bash(cargo test:*) Bash(go test:*)
+---
+
 # Universal Fixer
 
 Fix issues in code: bugs, security vulnerabilities, performance problems, dependencies, and dead code. Uses Builder-Verifier pattern to ensure safe, effective fixes.
@@ -13,17 +28,6 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 ---
 
 <constraint>
-Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, npm audit, rtk)
-- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
-</constraint>
-
-## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, npm:*, pnpm:*, pip:*, rm:*, rtk:*)
-
----
-
-<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
@@ -32,6 +36,19 @@ The ONLY times you stop and wait for user input are:
 - Phase 6 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+---
+
+<constraint>
+Shell-avoidance — apply in EVERY phase:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `git diff`, `git add`, `git rm`, `git restore`, `mkdir`, `rtk`, test runners, analysis tools, type checkers, linters, package audits).
 </constraint>
 
 ## Phase 1: Exploration
@@ -59,6 +76,10 @@ Launch a Task agent as the EXPLORER:
 
 **Constraints:**
 - Read-only exploration, no modifications
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Identified project stack, target scope, and existing patterns with file paths.
@@ -89,6 +110,10 @@ Launch a Task agent as the REPRODUCER:
 **Constraints:**
 - Use existing test infrastructure if available
 - Do NOT modify any code during reproduction
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Issue confirmed with concrete evidence (error output, failing test) OR confirmed not reproducible with evidence of attempts.
@@ -140,6 +165,10 @@ Launch a Task agent as the CODE QUALITY SCANNER:
 
 Output a prioritized list of issues with locations and suggested fixes.
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every finding includes file:line and concrete evidence. Prioritized list with severity levels.
 </task>
@@ -177,6 +206,10 @@ Launch a Task agent as the DEPENDENCY SCANNER:
 - Identify version conflicts between peer dependencies
 
 Output a prioritized list of dependency issues with recommended actions.
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Every dependency issue includes package name, current version, and recommended action. Audit command output included.
@@ -222,6 +255,10 @@ Output numbered list of proposed fixes.
 
 - BAD: "Fix the authentication issue by updating the auth module"
 - GOOD: "src/auth/session.ts:34 — Root Cause: `expires` set to `Date.now()` (instant expiry) instead of `Date.now() + 3600000`. Fix: change line 34 to `expires: Date.now() + SESSION_TTL_MS`. Test: verify session persists after login."
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Every fix includes file:line, before/after code, and test approach. No fix exceeds the scope of its issue.
@@ -271,6 +308,10 @@ Output:
 - Low risk fixes: X
 - Medium risk fixes: Y
 - High risk fixes: Z
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Spot-checked 5+ file:line references. Zero unverified fixes in approved list.
@@ -358,6 +399,10 @@ You are the VERIFIER. Your job is to review ALL changes made and catch any mista
 ## Needs Manual Verification
 [Changes that require user testing]
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every change verified against actual source code. Test suite passes. Zero unverified modifications.
 </task>
@@ -370,24 +415,12 @@ After verification:
 
 ## Allowed Tools
 
-```yaml
-- Read
-- Glob
-- Grep
-- Task
-- WebFetch
-- WebSearch
-- Edit
-- Write
-- Bash(git:*)
-- Bash(npm:*)
-- Bash(pnpm:*)
-- Bash(yarn:*)
-- Bash(pip:*)
-- Bash(ls:*)
-- Bash(rtk:*)
-- Bash(rm:*)  # For removing dead code files
-```
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
+
+- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `git status`, `git log:*`, `git diff:*`, `npm audit`, `rtk:*`).
+- **Implementation:** `Edit`, `Write`, scoped deletion/stage/revert (`git rm:*`, `git add:*`, `git restore:*`), scoped test-runner subcommands (`npm test`, `pnpm test`, `pnpm run test:*`, `yarn test`, `pytest:*`, `cargo test:*`, `go test:*`), scoped analysis/type-check/lint tools (`npx knip:*`, `npx depcheck:*`, `npx ts-prune:*`, `npx tsc:*`, `npx eslint:*`, `ruff:*`, `mypy:*`).
+
+Intentionally excluded: broad `Bash(rm:*)`, `Bash(git:*)`, `Bash(npm:*)`, `Bash(pnpm:*)`, `Bash(yarn:*)`, `Bash(pip:*)` — all replaced by narrower subcommand rules. Dead-code removal uses `git rm` (staged, reversible), not raw `rm`.
 
 ## Usage
 

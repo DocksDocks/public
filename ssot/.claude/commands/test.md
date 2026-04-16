@@ -1,3 +1,16 @@
+---
+name: test
+description: Use when generating tests for a codebase following the project's existing framework and patterns. Analyzes target code for functions/edge cases/integration points, generates tests via a structure-then-implementation pass, and validates each test against actual code signatures through a Builder-Verifier pattern.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch Edit Write
+  Bash(date) Bash(ls:*) Bash(mkdir:*) Bash(rtk:*)
+  Bash(git status) Bash(git log:*) Bash(git diff:*)
+  Bash(git add:*) Bash(git restore:*)
+  Bash(npm test) Bash(npm run test:*) Bash(pnpm test) Bash(pnpm run test:*) Bash(yarn test)
+  Bash(pytest:*) Bash(cargo test:*) Bash(go test:*)
+  Bash(npx tsc:*) Bash(npx eslint:*) Bash(ruff:*) Bash(mypy:*)
+---
+
 # Test Generator
 
 Generate tests following project patterns and conventions. Uses Builder-Verifier pattern to ensure coverage and quality.
@@ -13,17 +26,6 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 ---
 
 <constraint>
-Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, rtk)
-- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
-</constraint>
-
-## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(npm:*, pnpm:*, pytest:*, go:*, rtk:*)
-
----
-
-<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
@@ -32,6 +34,19 @@ The ONLY time you stop and wait for user input is:
 - Phase 4 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+---
+
+<constraint>
+Shell-avoidance — apply in EVERY phase:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `git diff`, `git add`, `git restore`, `mkdir`, `rtk`, test runners, type checkers, linters).
 </constraint>
 
 ## Phase 1: Exploration
@@ -59,6 +74,10 @@ Launch a Task agent as the EXPLORER:
 
 **Constraints:**
 - Read-only exploration, no modifications
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Identified test framework, existing patterns, and target scope with file paths.
@@ -92,6 +111,10 @@ Output a structured analysis for test generation.
 
 **Output Format:**
 Structured analysis with functions, dependencies, side effects, edge cases, happy paths, and integration points.
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 All public functions listed with signatures. Edge cases identified for each function. Dependencies mapped for mocking strategy.
@@ -151,6 +174,10 @@ Do NOT write assertions before verifying function signatures match actual code.
 
 Output complete test code following the project's existing patterns.
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 All imports match real project paths. All function signatures in tests match actual code. Every test has meaningful assertions (not just mock verification).
 </task>
@@ -197,6 +224,10 @@ Output:
 - Functions covered: X/Y
 - Edge cases covered: [list]
 - Missing scenarios: [list]
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Spot-checked 5+ file:line references. All import paths verified against real project. Zero false-positive tests in approved list.
@@ -286,6 +317,10 @@ You are the VERIFIER. Your job is to verify the generated tests are correct and 
 ## Recommendations
 [Any additional tests that should be added]
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 All tests pass. Every test verified to test real behavior (not just mocks). Zero false-positive tests.
 </task>
@@ -298,23 +333,12 @@ After verification:
 
 ## Allowed Tools
 
-```yaml
-- Read
-- Glob
-- Grep
-- Task
-- WebFetch
-- WebSearch
-- Edit
-- Write
-- Bash(npm:*)
-- Bash(pnpm:*)
-- Bash(yarn:*)
-- Bash(pytest:*)
-- Bash(go:*)
-- Bash(ls:*)
-- Bash(rtk:*)
-```
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
+
+- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
+- **Implementation:** `Edit`, `Write` (for test files), `Bash(git add:*)`, `Bash(git restore:*)`, scoped test-runner subcommands (`npm test`, `pnpm test`, `pnpm run test:*`, `yarn test`, `pytest:*`, `cargo test:*`, `go test:*`), type checkers and linters (`npx tsc:*`, `npx eslint:*`, `ruff:*`, `mypy:*`).
+
+Intentionally excluded: broad `Bash(npm:*)`, `Bash(pnpm:*)`, `Bash(yarn:*)`, `Bash(go:*)` — all replaced by narrower subcommand rules.
 
 ## Usage
 

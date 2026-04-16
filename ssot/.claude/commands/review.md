@@ -1,3 +1,15 @@
+---
+name: review
+description: Use when reviewing code for bugs, security vulnerabilities, performance issues, or maintainability problems. Runs a Builder-Verifier pipeline (Analyzer + Verifier) over a target scope, producing a categorized findings list with file:line references, severity, and suggested fixes. Optional implementation phase applies fixes if requested.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch Edit Write
+  Bash(date) Bash(ls:*) Bash(mkdir:*) Bash(rtk:*)
+  Bash(git status) Bash(git log:*) Bash(git diff:*)
+  Bash(git add:*) Bash(git restore:*)
+  Bash(npm test) Bash(npm run test:*) Bash(pnpm test) Bash(pnpm run test:*) Bash(yarn test)
+  Bash(pytest:*) Bash(npx tsc:*) Bash(npx eslint:*) Bash(ruff:*) Bash(mypy:*)
+---
+
 # Universal Code Review
 
 Code review covering quality, security, and performance using a Builder-Verifier pattern.
@@ -13,17 +25,6 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 ---
 
 <constraint>
-Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, rtk)
-- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
-</constraint>
-
-## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, npm:*, pnpm:*, rtk:*)
-
----
-
-<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
@@ -32,6 +33,19 @@ The ONLY time you stop and wait for user input is:
 - Phase 4 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+---
+
+<constraint>
+Shell-avoidance — apply in EVERY phase:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `git diff`, `git add`, `git restore`, `mkdir`, `rtk`, test runners, type checkers, linters).
 </constraint>
 
 ## Phase 1: Exploration
@@ -57,6 +71,10 @@ Launch a Task agent as the EXPLORER:
 
 **Constraints:**
 - Read-only exploration, no modifications
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Identified project stack, target scope, and existing patterns with file paths.
@@ -99,6 +117,10 @@ Numbered list with per issue:
 <constraint>
 - Every issue must include file:line location and severity
 - Suggest minimal, targeted fixes (not refactors)
+</constraint>
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
 </constraint>
 
 **Success Criteria:**
@@ -150,6 +172,10 @@ Spot-check at least 5 file:line references to verify they exist.
 4. Validate all file paths in output exist (use Glob)
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
 6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Spot-checked 5+ file:line references. Zero unverified findings in final output.
@@ -234,6 +260,10 @@ Launch a Task agent as the VERIFIER:
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
 6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every change verified against actual source code. Zero unverified modifications in final output.
 </task>
@@ -246,21 +276,12 @@ After verification:
 
 ## Allowed Tools
 
-```yaml
-- Read
-- Glob
-- Grep
-- Task
-- WebFetch
-- WebSearch
-- Edit
-- Write
-- Bash(git:*)
-- Bash(npm:*)
-- Bash(pnpm:*)
-- Bash(ls:*)
-- Bash(rtk:*)
-```
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
+
+- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
+- **Implementation (optional fix phase):** `Edit`, `Write`, `Bash(git add:*)`, `Bash(git restore:*)`, scoped test-runner subcommands (`npm test`, `pnpm test`, `pnpm run test:*`, `yarn test`, `pytest:*`), type checkers and linters (`npx tsc:*`, `npx eslint:*`, `ruff:*`, `mypy:*`).
+
+Intentionally excluded: broad `Bash(git:*)`, `Bash(npm:*)`, `Bash(pnpm:*)` — all replaced by narrower subcommand rules.
 
 ## Usage
 

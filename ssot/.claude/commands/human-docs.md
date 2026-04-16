@@ -1,3 +1,13 @@
+---
+name: human-docs
+description: Use when generating, fixing, or optimizing project documentation — README.md, CLAUDE.md, docs/**/*.md, .env.example, API references, JSDoc/TSDoc. Scans all .md files, categorizes human-readable vs AI-optimized, and produces updates through a Builder-Verifier pattern that grounds every claim in source code.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch Edit Write
+  Bash(date) Bash(ls:*) Bash(find:*) Bash(mkdir:*) Bash(rtk:*)
+  Bash(git status) Bash(git log:*) Bash(git diff:*)
+  Bash(git add:*)
+---
+
 # Documentation Generator
 
 Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through a Builder-Verifier pattern.
@@ -13,17 +23,6 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 ---
 
 <constraint>
-Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, find, rtk)
-- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
-</constraint>
-
-## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(git:*, rtk:*)
-
----
-
-<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
@@ -32,6 +31,19 @@ The ONLY time you stop and wait for user input is:
 - Phase 3 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+---
+
+<constraint>
+Shell-avoidance — apply in EVERY phase:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `git diff`, `git add`, `mkdir`, `rtk`).
 </constraint>
 
 ## Phase 1: Exploration
@@ -61,6 +73,10 @@ Launch a Task agent as the EXPLORER:
 
 **Constraints:**
 - Read-only exploration, no modifications
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 All .md files cataloged. Project stack identified. Documentation gaps mapped to source areas.
@@ -122,6 +138,10 @@ Launch a Task agent to categorize and analyze:
 
 ## Optimization Candidates
 [Files that need AI-optimization]
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Every .md file categorized. Gap analysis covers README, CLAUDE.md, docs/, and .env.example. Optimization candidates identified.
@@ -208,6 +228,10 @@ Use this structured format:
 
 Output the drafted documentation for each file.
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 All file:line references point to actual existing code. AI-optimized docs use bullets/tables only. Human-readable docs have copy-paste ready commands.
 </task>
@@ -274,6 +298,10 @@ Output:
 4. Validate all file paths in output exist (use Glob)
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
 6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Spot-checked 5+ file:line references. Zero AI slop phrases remaining. All code examples verified runnable.
@@ -372,6 +400,10 @@ Example: "Documented endpoint as /api/users but actual route in src/routes/users
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
 6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every change verified against source code. All file paths confirmed existing. Zero contradictions with actual code.
 </task>
@@ -384,29 +416,12 @@ After verification:
 
 ## Allowed Tools
 
-```yaml
-Planning Phase:
-- Read
-- Glob
-- Grep
-- Task
-- WebFetch
-- WebSearch
-- Bash(date)
-- Bash(ls:*)
-- Bash(find:*)
-- Bash(git status)
-- Bash(git diff)
-- Bash(rtk:*)
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
 
-Implementation Phase:
-- Edit
-- Write
-- WebFetch
-- WebSearch
-- Bash(git:*)
-- Bash(rtk:*)
-```
+- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `find:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
+- **Implementation:** `Edit`, `Write` (for .md files), `Bash(git add:*)`, `Bash(mkdir:*)`.
+
+Intentionally excluded: broad `Bash(git:*)` — replaced by narrower `git status`, `git log:*`, `git diff:*`, `git add:*`. This command does not run tests or modify source code; only documentation files are edited.
 
 ## Usage
 

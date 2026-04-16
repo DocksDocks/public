@@ -1,3 +1,13 @@
+---
+name: security
+description: Use when running a security audit on a codebase — OWASP Top 10 coverage, logic flaws, authentication/authorization weaknesses, cryptographic misuse, race conditions, dependency vulnerabilities. Three parallel scanners (Vulnerability, Logic, Adversarial) followed by a Synthesizer that challenges every finding. Read-only; to fix issues, pipe findings into /fix.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch
+  Bash(date) Bash(ls:*) Bash(find:*) Bash(rtk:*)
+  Bash(git status) Bash(git log:*)
+  Bash(npm audit) Bash(pip audit)
+---
+
 # Security Audit
 
 Security and logic analysis across the entire codebase using parallel specialized scanners with a final synthesis pass.
@@ -13,14 +23,6 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 ---
 
 <constraint>
-Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git diff, find, rtk)
-- Do NOT use: Write, Edit, or any modifying tools (except the plan file)
-</constraint>
-
----
-
-<constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
@@ -29,6 +31,19 @@ The ONLY time you stop and wait for user input is:
 - After the Synthesizer phase produces its report (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+---
+
+<constraint>
+Shell-avoidance — apply in EVERY phase:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `rtk`, `npm audit`, `pip audit`). This command is read-only — no `Edit`, `Write`, or write-side `git` subcommands are permitted.
 </constraint>
 
 ## Scope
@@ -89,6 +104,10 @@ Structured map of security-relevant files and their purposes, organized by categ
 **Constraints:**
 - Read-only exploration, no modifications
 - Focus on completeness — missing an entry point means missing a vulnerability
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 All entry points (HTTP routes, WebSocket handlers, CLI args, message consumers) identified with file paths. Project stack fully mapped.
@@ -182,6 +201,10 @@ For each finding, provide:
 
 Output as categorized list by severity.
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every finding includes file:line and a concrete exploitation scenario. Zero theoretical-only findings without evidence in actual code.
 </task>
@@ -249,6 +272,10 @@ For each finding, provide:
 
 Output as categorized list.
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 Every finding includes file:line location and a concrete trigger scenario. Logic flaws verified by reading surrounding code context.
 </task>
@@ -294,6 +321,10 @@ Output:
 
 **Top 5 Attack Scenarios**
 [Detailed exploitation paths]
+
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
 
 **Success Criteria:**
 Top 5 attack scenarios include step-by-step exploitation paths with file:line references. At least 2 chained-attack scenarios identified.
@@ -405,6 +436,10 @@ For each:
 4. Validate all file paths in output exist (use Glob)
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
 
+<constraint>
+Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
+</constraint>
+
 **Success Criteria:**
 All findings cross-referenced against actual code. False positive rate documented. OWASP Top 10 coverage status included.
 </task>
@@ -421,11 +456,13 @@ This command is read-only by design. To fix issues, use `/fix` with the specific
 
 ---
 
-<constraint>
-Allowed Tools (READ-ONLY — this command does not modify code):
-- Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git status, git log, npm audit, pip audit, rtk)
-- Do NOT use: Write, Edit, or any modifying tools
-</constraint>
+## Allowed Tools
+
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
+
+- **Read-only tools:** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery and audits (`date`, `ls:*`, `find:*`, `git status`, `git log:*`, `rtk:*`, `npm audit`, `pip audit`).
+
+Intentionally excluded: `Edit`, `Write`, all write-side `git` subcommands (`git add`, `git rm`, `git restore`, `git commit`), all package-manager wildcards. This command is read-only by design — to apply fixes, pipe findings into `/fix`.
 
 ## Usage
 
