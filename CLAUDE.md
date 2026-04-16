@@ -29,10 +29,9 @@ All commands use multi-agent pipelines. The orchestrator runs on Opus; subagents
 | `/test` | Exploration → Analyzer → Generator → Verifier | Builder-Verifier |
 | `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Skills Builder → [Role Mapper \| Pattern Extractor] → Agents Builder → Unified Verifier | DAG + Builder-Verifier (skills + agents + cross-layer check) |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
-| `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → Planner → Verifier | DAG + Builder-Verifier |
-| `/solid` | Exploration → Discovery → Analyzer → Planner → Verifier | Builder-Verifier |
+| `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → SOLID Analyzer → Planner → Verifier | DAG + Builder-Verifier (sequential SOLID phase) |
 
-Commands with parallel phases (`/security`, `/fix`, `/docs`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
+Commands with parallel phases (`/security`, `/fix`, `/docs`, `/refactor`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
 
 All commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
 

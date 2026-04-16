@@ -17,13 +17,33 @@ jobs:
       - name: Run guard-commands.sh
         run: bash guard-commands.sh
 
-      - name: Run score-commands.sh
+      - name: Score — per-file floor (Check A)
         run: |
-          score=$(bash score-commands.sh)
-          echo "Quality score: $score"
-          # Current baseline: 277. Fail if score drops significantly below baseline.
-          if [ "$score" -lt 250 ]; then
-            echo "Score $score is below minimum threshold (250)" >&2
+          PER_FILE_MIN=26
+          failed=0
+          while IFS=' ' read -r name score; do
+            if [ "$score" -lt "$PER_FILE_MIN" ]; then
+              echo "::error file=ssot/.claude/commands/$name::scored $score, below per-file floor $PER_FILE_MIN"
+              failed=1
+            else
+              echo "$name: $score"
+            fi
+          done < <(bash score-commands.sh --per-file)
+          exit $failed
+
+      - name: Score — average-per-command floor (Check B)
+        run: |
+          AVG_MIN=28
+          total=$(bash score-commands.sh)
+          count=$(bash score-commands.sh --per-file | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No command files found in ssot/.claude/commands/"
+            exit 1
+          fi
+          avg=$(( total / count ))
+          echo "total=$total count=$count avg=$avg floor=$AVG_MIN"
+          if [ "$avg" -lt "$AVG_MIN" ]; then
+            echo "::error::Average per-command score $avg is below floor $AVG_MIN" >&2
             exit 1
           fi
 

@@ -4,7 +4,15 @@
 # Output: single number (total score across all commands)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DIR="${1:-$SCRIPT_DIR/ssot/.claude/commands}"
+MODE="total"
+DIR=""
+for arg in "$@"; do
+  case "$arg" in
+    --per-file) MODE="per-file" ;;
+    *) DIR="$arg" ;;
+  esac
+done
+DIR="${DIR:-$SCRIPT_DIR/ssot/.claude/commands}"
 total=0
 
 for f in "$DIR"/*.md; do
@@ -68,7 +76,12 @@ for f in "$DIR"/*.md; do
     score=$((score + 2))
   fi
 
+  if [ "$MODE" = "per-file" ]; then
+    echo "$name $score"
+  fi
   total=$((total + score))
 done
 
-echo "$total"
+if [ "$MODE" = "total" ]; then
+  echo "$total"
+fi
