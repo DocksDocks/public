@@ -1,6 +1,18 @@
-# Project Skills Manager
+---
+name: docs
+description: Use when bootstrapping or auditing a project's .claude/skills/ and .claude/agents/ directories. Covers skill health (CSO descriptions, size limits, staleness, coverage gaps), agent generation from skills, skill-maintenance skill creation, and cross-layer reference validation between agents and skills.
+allowed-tools: >-
+  Read Grep Glob Task WebFetch WebSearch
+  Bash(date) Bash(ls:*) Bash(find:*) Bash(wc:*)
+  Bash(git log:*) Bash(git status)
+  Bash(rtk:*) Bash(mkdir:*)
+  Edit(.claude/skills/**) Edit(.claude/agents/**)
+  Write(.claude/skills/**) Write(.claude/agents/**)
+---
 
-Bootstrap and manage project-specific skills in `.claude/skills/`. Organizes project knowledge (conventions, architecture, patterns, APIs) into Tool Wrapper skills with on-demand references — loaded only when Claude invokes the Skill tool, not at session start.
+# Project Skills & Agents Manager
+
+Bootstrap and audit project-specific skills (`.claude/skills/`) and project-specific agents (`.claude/agents/`) in a single non-interactive pass. The command always performs the full audit: missing skills get created, stale skills get refreshed, uncovered source areas get proposed as new skills, agents whose backing skills have moved get updated. Every improvement it can find is presented as one plan; the `ExitPlanMode` gate is the only decision point.
 
 > **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
 
@@ -14,234 +26,45 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 
 <constraint>
 Planning Phase Tools (READ-ONLY):
-- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date, ls, git log, git status, wc -l, find, rtk)
+- Use ONLY: Read, Glob, Grep, Task, WebFetch, WebSearch, Bash(date), Bash(ls), Bash(find), Bash(wc), Bash(git log), Bash(git status), Bash(rtk)
 - Do NOT use: Write, Edit, or any modifying tools (except the plan file)
+- See frontmatter `allowed-tools` for the enforced permission surface.
 </constraint>
 
 ## Implementation Phase Tools (AFTER APPROVAL)
-- Edit, Write, Bash(mkdir:*, git:*, rtk:*)
+- Edit, Write (both scoped to `.claude/skills/**` and `.claude/agents/**` via frontmatter)
+- Bash(mkdir:*, rtk:*)
 
 ---
 
 <constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
-Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
 
-The ONLY times you stop and wait for user input are:
-- Phase 0 when context tree detected (asking about migration)
-- Phase 0 in Manage Mode (asking which mode)
-- Phase 5 in Bootstrap / Phase 3G in Migration / Phase 4M in Manage (ExitPlanMode gates)
+The ONLY time you stop and wait for user input is Phase 7 (ExitPlanMode gate).
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
 </constraint>
 
-## Phase 0: Mode Detection
+## Phase 0: State Detection
 
-Check for existing skills and legacy context tree:
+Deterministic filesystem inspection — no agent, no branching, no `AskUserQuestion`. Produces counts that Phase 1 uses to orient exploration.
 
-1. Glob `.claude/skills/*/SKILL.md` → `has_skills`
-2. Check if `.claude/context/_index.json` exists → `has_context_tree`
+1. `Glob(".claude/skills/*/SKILL.md")` → `skills_count`
+2. `Glob(".claude/agents/*.md")` → `agents_count` (ignore any `*.bak` backups)
+3. `Glob(".claude/skills/skill-maintenance/SKILL.md")` → `has_maintenance_skill`
+4. Run `Bash(date "+%Y-%m-%d")` → `today` (used by every downstream phase)
 
-**Routing:**
-
-- `!has_skills && !has_context_tree` → **Bootstrap Mode** (Phases 1-6) automatically. No need to ask.
-- `!has_skills && has_context_tree` → Ask via AskUserQuestion:
-  1. **Migrate to skills (Recommended)** — Convert context tree to skills, delete `.claude/context/`
-  2. Full audit — Audit existing context tree (legacy)
-  3. Add new context — Add to existing context tree (legacy)
-  4. Health check only — Report tree status (legacy)
-- `has_skills && !has_context_tree` → Ask via AskUserQuestion:
-  1. **Full audit** — Check skill health, find stale/uncovered areas, propose updates
-  2. **Add new skill** — Add a skill for a new knowledge domain
-  3. **Health check only** — Report skill status without changes
-  4. **Rebalance** — Merge thin skills, split oversized SKILL.md files
-- `has_skills && has_context_tree` → Ask via AskUserQuestion:
-  1. **Migrate to skills (Recommended)** — Convert remaining context tree to skills, delete `.claude/context/`
-  2. Full audit — Audit existing skills
-  3. Add new skill — Add a skill for a new domain
-  4. Health check only — Report skill status
-
----
-
-# MIGRATION MODE
-
-For repos with an existing `.claude/context/` tree. Converts branches to skills, leaves to references.
-
-## Phase 1G: Read Existing Tree
-
-```xml
-<task>
-Launch a Task agent as the TREE READER:
-
-**Objective:** Read the complete context tree and CLAUDE.md integration for migration.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-
-**Steps:**
-1. Read `.claude/context/_index.json` — extract all branch/leaf metadata, source_files arrays
-2. Read every branch file listed in `_index.json`
-3. Read every leaf file listed in `_index.json`
-4. Read `CLAUDE.md` (project root, or `.claude/CLAUDE.md` if the project uses that path) — identify @context/ imports and Context Tree Maintenance constraint block
-5. For each leaf's source_files, verify the source files still exist (Glob)
-
-Output:
-## Tree Structure
-[Complete branch → leaf mapping with line counts]
-
-## Content Summary
-[Per-file: key topics covered, source_files, line count]
-
-## CLAUDE.md Integration
-[Exact @import lines and maintenance constraint block to remove]
-
-## Stale References
-[Any source_files that no longer exist]
-
-**Success Criteria:**
-All branches and leaves read. Source file existence verified. CLAUDE.md integration points identified.
-</task>
-```
+Write to the plan file under `## Phase 0: State`:
+- Skills: {skills_count}
+- Agents: {agents_count} (ignoring .bak)
+- Has skill-maintenance skill: {yes/no}
+- Today: {today}
 
 <constraint>
-After Phase 1G completes, write results to the plan file under `## Phase 1G: Tree Structure`. Then immediately launch Phase 2G.
+After Phase 0 completes, immediately launch Phase 1 in the same turn. Do NOT ask the user which mode to run. The command always performs the full audit.
 </constraint>
-
-## Phase 2G: Convert to Skills
-
-```xml
-<task>
-Launch a Task agent as the CONVERTER:
-
-**Objective:** Convert every branch/leaf into a skill with SKILL.md + references/ files.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use Phase 1G tree structure and content
-
-<constraint>
-When converting library/framework patterns, API conventions, or configuration options: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Skills persist across sessions — a hallucinated API in a skill propagates errors to every future interaction.
-</constraint>
-
-**For each branch → create a skill:**
-
-1. **Skill name**: Use branch name + `-context` suffix (e.g., `architecture-context`)
-2. **Description**: Rewrite branch description to CSO format — MUST start with "Use when..." and describe trigger conditions, NOT workflow steps. Descriptions must be **keyword-rich**: include project-specific function names, class names, config keys, file types, error names, CLI commands, and domain terms that a user would actually type when seeking help. Generic category terms alone are insufficient.
-   - BAD: "Analyzes project architecture and documents module structure"
-   - BAD (too generic): "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers entry points, module boundaries, and error propagation."
-   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers AuthController, SessionManager, wp_ing_token, JWT expiration flow, NonceManager, HttpClient, and ErrorTranslator patterns."
-3. **SKILL.md body**: Combine branch pointer table content + key decisions into Tool Wrapper format:
-   - `<constraint>` block with critical rules
-   - `## When to Use` with trigger scenarios
-   - `## Core Patterns` with tables and code blocks
-   - `## Key Decisions` with file:line references
-   - `## Gotchas` at bottom
-   - `## References` listing references/ files with when-to-read conditions
-4. **references/ files**: Each leaf → `references/<leaf-name>.md` (preserve content as-is, only update stale file:line references)
-5. **Frontmatter**:
-   ```yaml
-   ---
-   name: <branch>-context
-   description: Use when <trigger conditions>.
-   user-invocable: false
-   metadata:
-     pattern: tool-wrapper
-     source_files: [<union of all leaf source_files>]
-     updated: "<today>"
-   ---
-   ```
-
-**Additionally, generate a maintenance skill** (`.claude/skills/skill-maintenance/SKILL.md`) — same spec as Bootstrap Mode Builder. This skill auto-triggers after code changes to keep other skills current.
-
-**Constraints:**
-- No hard limit on skill count — create as many as the project needs, but each must have enough content to justify its own SKILL.md
-- Each SKILL.md under 500 lines
-- Each references/ file: 30-150 lines (split or merge if needed)
-- Descriptions MUST be trigger-condition-first (CSO)
-- Descriptions MUST be keyword-rich: after the "Use when..." trigger clause, append a coverage clause naming at least 5 project-specific identifiers (function names, class names, config keys, error types, CLI commands). Generic phrases like "Covers entry points and module boundaries" are NOT sufficient.
-- Preserve all existing file:line references that are still valid
-- Drop references to files that no longer exist
-
-**Also draft CLAUDE.md cleanup:**
-- Identify exact lines to remove (@context/ imports, Context Tree Maintenance block)
-- Do NOT add anything to CLAUDE.md — skills are self-discovering
-
-Output all converted content clearly delimited per skill.
-
-**Success Criteria:**
-Every branch converted to a skill. Every leaf preserved as a references/ file. All descriptions follow CSO format. CLAUDE.md cleanup identified.
-</task>
-```
-
-## Phase 3G: Verify + Present Plan
-
-```xml
-<task>
-Launch a Task agent as the MIGRATION VERIFIER:
-
-**Objective:** Validate the conversion and present the migration plan.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use Converter's output
-
-**Validate:**
-1. **Frontmatter**: Valid YAML, name + description + user-invocable + metadata present
-2. **CSO compliance**: All descriptions start with "Use when...", describe triggers not workflows
-3. **Size limits**: SKILL.md ≤500 lines, references 30-150 lines
-4. **Maintenance skill**: Does `skill-maintenance/SKILL.md` exist with `user-invocable: false`?
-5. **Content preservation**: No leaf content lost in migration (compare leaf count vs references count)
-5. **Reference accuracy**: Spot-check 5+ file:line references — do they exist?
-6. **CLAUDE.md cleanup**: Only removing @context/ and maintenance block, not other content
-
-**Anti-Hallucination Checks (mandatory):**
-1. Read each referenced file — does code at the stated line actually exist?
-2. Verify file paths in skill content exist (use Glob)
-3. Check function signatures match actual code
-4. Validate metadata.source_files paths exist
-
-Output:
-## Migration Summary
-- Skills to create: [count with names]
-- References files: [count]
-- Files to delete: .claude/context/ (full directory)
-- CLAUDE.md lines to remove: [line numbers]
-
-## Validation Results
-[Per-skill: size, CSO, references count]
-
-## Issues
-[Any problems found]
-
-**Success Criteria:**
-All skills pass validation. All file:line references verified. Migration plan ready.
-</task>
-```
-
-<constraint>
-After Phase 3G completes, write the migration summary and validation results to the plan file, then call `ExitPlanMode`. Plan Mode handles user approval.
-</constraint>
-
-## Phase 4G: Execute Migration
-
-After approval:
-
-1. Create `.claude/skills/` directory and all `<skill-name>/references/` subdirectories
-2. Write all SKILL.md files
-3. Write all references/ files
-4. Clean CLAUDE.md (project root or `.claude/CLAUDE.md`): remove `@context/` import block and Context Tree Maintenance constraint block
-5. Delete `.claude/context/` directory (full removal: `rm -rf .claude/context/`)
-6. Verify:
-   - All SKILL.md files exist and are within size limits
-   - All references/ files exist and are within size limits
-   - CLAUDE.md has no @context/ or maintenance block references
-   - `.claude/context/` directory no longer exists
-7. Report: skills created, references migrated, context tree removed, CLAUDE.md cleaned
-
----
-
-# BOOTSTRAP MODE
 
 ## Phase 1: Exploration
 
@@ -249,63 +72,97 @@ After approval:
 <task>
 Launch a Task agent as the EXPLORER:
 
-**Objective:** Map the project stack, directory structure, and existing documentation for skill bootstrapping.
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** Map the project stack, directory structure, existing skills, and existing agents to feed both the skills and agents pipelines.
 
 **Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Identify the project stack: languages, frameworks, package managers
-- Map the directory structure: source dirs, config files, test dirs, docs
-- Count files per directory to gauge project size
-- Find existing documentation: README, CLAUDE.md, docs/, .env.example
-- Check for existing .claude/skills/ directory (partial skills)
-- Note the project's primary purpose and architecture style
+- Today's date is provided by Phase 0.
+- Identify the project stack: languages, frameworks, package managers.
+- Map the directory structure using Glob (source dirs, config files, test dirs, docs). Do NOT use `ls` or `find`.
+- Count files per directory by processing Glob results in-agent.
+- Find existing documentation: README, CLAUDE.md, docs/, .env.example (use Read).
+- For every existing skill (from Phase 0 `Glob(".claude/skills/*/SKILL.md")`): Read SKILL.md, parse YAML frontmatter (`name`, `description`, `metadata.source_files`, `metadata.updated`), list all files under its `references/` directory via Glob.
+- For every existing agent (Phase 0 `Glob(".claude/agents/*.md")`, excluding `*.bak`): Read the file, extract the frontmatter and any `.claude/skills/...` paths it references.
+- Note the project's primary purpose and architecture style.
 
+Output (to plan file under `## Phase 1: Exploration Results`):
 
-Output:
 ## Project Profile
 - Stack: [languages, frameworks]
 - Size: [file count, LOC estimate]
-- Structure: [key directories]
-- Existing docs: [list]
+- Structure: [key directories from Glob]
+- Existing docs: [list from Read]
+
+## Existing Skills
+[For each skill: name, description (first 120 chars), source_files count, references count, last updated]
+
+## Existing Agents
+[For each agent: name, description, skills referenced, tools granted]
 
 ## Knowledge Areas Identified
-[List potential topic categories with source locations]
+[Candidate topic categories with source locations]
 
 **Constraints:**
-- Read-only exploration, no modifications
+- Read-only exploration, no modifications.
+- Do NOT skip this phase even when skills_count=0 and agents_count=0 — downstream phases still need the project profile.
 
 **Success Criteria:**
-Project stack identified, directory structure mapped with file counts, all existing documentation listed.
+Project stack identified; directory structure mapped via Glob; every existing skill and agent enumerated with frontmatter parsed.
 </task>
 ```
 
 <constraint>
-After Phase 1 completes, write the Explorer's output (Project Profile + Knowledge Areas) to the plan file under `## Phase 1: Exploration Results`. Then immediately launch Phase 2.
+After Phase 1 completes, write results to the plan file under `## Phase 1: Exploration Results`, then immediately launch Phase 2 in the same turn.
 </constraint>
 
-## Phase 2: Parallel Analysis
+## Phase 2: Skills Analysis
 
 <constraint>
-Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
+Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next. Each agent runs independently and their results combine in Phase 3.
 </constraint>
 
-Each agent runs independently and their results will be combined by the Builder.
-
-### Categorizer Agent (Opus)
+### Categorizer Agent
 
 ```xml
 <task>
 Launch a Task agent as the CATEGORIZER:
 
-**Objective:** Propose project skills — names, trigger descriptions, and references/ structure.
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** Propose the complete skill set — new skills to create, existing skills to update/split/merge/refresh, and descriptions to rewrite. Operates as both auditor (of existing skills) and designer (of missing ones).
 
 **Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use exploration results for project profile and knowledge areas
+- Today's date is provided by Phase 0.
+- Use Phase 1 exploration results for project profile, existing skills, and knowledge areas.
 
-Based on the exploration results, propose project skills using the Tool Wrapper pattern.
+**For existing skills (audit):**
+1. Size check: SKILL.md > 500 lines → split proposal. SKILL.md < 50 lines with no `references/` and < 3 distinct claims → merge proposal into most related sibling.
+2. Staleness check: `Bash("git log --oneline --since=<metadata.updated> -- <source_file>")` for each source_file. If any churn → refresh proposal.
+3. Coverage check: any source directory identified in Phase 1 but NOT referenced by any skill's `metadata.source_files` → new skill proposal.
+4. CSO compliance: descriptions must start with "Use when…" AND include ≥5 project-specific identifiers. If not → rewrite proposal.
+5. Deleted source: `metadata.source_files` paths that no longer exist (verify with Glob) → remove from array.
 
-**Standard skill domains** (use only those that apply):
+**For new skills (design):**
+Standard skill domains — use only those that apply:
 - `architecture-context` — system design, data flow, module structure, entry points
 - `conventions-context` — naming, error handling, logging, code organization patterns
 - `api-context` — routes/endpoints, request/response types, auth, versioning
@@ -314,138 +171,143 @@ Based on the exploration results, propose project skills using the Tool Wrapper 
 - `deployment-context` — CI/CD, Docker, env config, build pipeline
 - `data-context` — database schema, migrations, ORM patterns, caching
 
-**For each skill propose:**
-1. Skill name (kebab-case, from domains above)
-2. Description: MUST start with "Use when..." and specify trigger conditions using natural language phrases users would say. After the trigger clause, include a coverage clause with **project-specific keywords**: actual function names, class names, config keys, error names, file extensions, and CLI commands extracted from this codebase. Max 1024 chars.
-   - BAD: "Documents the project architecture including modules and entry points"
-   - BAD (too generic): "Use when designing new modules, reviewing code structure, diagnosing unexpected behavior, or onboarding to the codebase. Covers entry points, module boundaries, state management, and error propagation."
-   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers AppKernel, ServiceContainer, EventDispatcher, DatabaseConnection, .env config keys (DB_HOST, REDIS_URL), and MigrationRunner patterns."
+**For each proposed skill (new OR modified):**
+1. Skill name (kebab-case).
+2. Description: MUST start with "Use when…" and include ≥5 project-specific keywords. Max 1024 chars.
 
-   **Keyword extraction rules:**
-   - Scan `metadata.source_files` for: class names, exported functions, config keys, error class names, CLI entry points
-   - Include synonyms users would say at the symptom level: not just "authentication" but "login fails", "JWT expired", "token renewal"
-   - Make descriptions maximally distinct from sibling skills — no two skills should share the same keywords
-3. What goes in SKILL.md body (inline — high-signal content, under 500 lines):
-   - constraint block, When to Use, Core Patterns, Key Decisions, Gotchas, References list
-4. What goes in references/ (larger detail loaded on demand):
-   - List each proposed `references/<topic>.md` file with purpose and estimated lines
+   **Keyword-extraction rules — how to fill the "Covers …" clause:**
+
+   Scan `metadata.source_files` and extract project-specific identifiers that users would type when seeking help:
+   - **Class names and exported functions** — e.g., `AuthController`, `parseToken`, `MigrationRunner`.
+   - **Config keys and env vars** — e.g., `JWT_SECRET`, `DB_HOST`, `.env` fields.
+   - **Error types and error strings** — e.g., `TokenExpiredError`, `ECONNREFUSED`, `401 Unauthorized`.
+   - **File types and formats** handled by the domain — e.g., `.xlsx`, `JWT`, `multipart/form-data`.
+   - **CLI commands** if the skill covers tooling — e.g., `artisan migrate`, `prisma generate`.
+   - **Symptom-level synonyms** — not "authentication" but "login fails", "session expired", "JWT expired".
+
+   Generic category phrases — `entry points`, `module boundaries`, `error propagation`, `request lifecycle`, `state management` — do NOT count toward the ≥5 identifier requirement. A description using only these terms fails the keyword check even if it has 5+ words.
+
+   - BAD: "Analyzes project architecture and documents module structure"
+   - BAD (too generic): "Use when designing new modules or reviewing code structure. Covers entry points and module boundaries."
+   - GOOD: "Use when designing new modules, reviewing code structure, or diagnosing unexpected behavior. Covers AppKernel, ServiceContainer, EventDispatcher, DatabaseConnection, .env config keys (DB_HOST, REDIS_URL), and MigrationRunner patterns."
+3. SKILL.md body content (under 500 lines): constraint block, When to Use, Core Patterns, Key Decisions, Gotchas, References list.
+4. `references/` files (each 30-150 lines).
+5. Frontmatter fields: `name`, `description`, `user-invocable: false`, `metadata.pattern: tool-wrapper`, `metadata.source_files`, `metadata.updated: <today>`.
+
+**Maintenance skill rule:**
+If Phase 0 reported `has_maintenance_skill=no`, always propose creation of `.claude/skills/skill-maintenance/SKILL.md` with `metadata.pattern: reviewer` and the standard workflow. If it exists but frontmatter has drifted, propose a fix.
 
 **Constraints:**
-- No hard limit on skill count — create as many as the project needs, but each must justify its own SKILL.md
-- Each SKILL.md: under 500 lines
-- Each references/ file: 30-150 lines
-- Descriptions MUST be trigger-condition-first (CSO), not capability-first
-- No skill with fewer than 3 distinct claims warrants its own references/ file — merge into SKILL.md body
+- No hard limit on skill count — create as many as the project needs, but each must justify its own SKILL.md.
+- Each SKILL.md: under 500 lines.
+- Each `references/` file: 30-150 lines.
+- Descriptions MUST be trigger-condition-first (CSO).
+- No skill with fewer than 3 distinct claims warrants its own `references/` file — merge into SKILL.md body.
+
+Output: a structured proposal per skill with fields {action: create|update|split|merge|refresh|rewrite-description, name, description, body-plan, references-plan, source_files, updated}.
 
 **Success Criteria:**
-Every skill has a trigger-condition description. References/ files only proposed where content exceeds SKILL.md body capacity. No thin skills — each must have enough content to justify existence.
+Every existing skill audited against all 5 checks with a recommendation. Every uncovered knowledge area has a new-skill proposal OR an explicit "too small to warrant a skill" decision. Maintenance skill covered. All descriptions CSO-compliant with ≥5 project keywords.
 </task>
 ```
 
-### Pattern Scanner Agent (Opus)
+### Pattern Scanner Agent
 
 ```xml
 <task>
 Launch a Task agent as the PATTERN SCANNER:
 
-**Objective:** Extract concrete patterns, conventions, and decisions from the codebase with file:line references.
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** Extract concrete patterns, conventions, and decisions from the codebase with file:line references, grouped by skill domain.
 
 **Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use exploration results for project structure
+- Today's date is provided by Phase 0.
+- Use Phase 1 exploration results for project structure.
 
-Scan the codebase to extract concrete patterns, conventions, and decisions. For each finding, include file:line references.
+Scan the codebase. For each finding, include a file:line reference.
 
 **Extract:**
 
-1. **Architecture Patterns**
-   - Entry points and request lifecycle
-   - Module boundaries (what imports what)
-   - State management approach
-   - Error propagation strategy
-
-2. **Code Conventions**
-   - File/function/variable naming patterns
-   - Import organization style
-   - Error handling idioms
-   - Logging patterns
-
-3. **API Contracts** (if applicable)
-   - Route definitions with paths
-   - Auth/middleware chains
-   - Request/response shapes
-
-4. **Testing Patterns**
-   - Test file naming and location
-   - Mocking/stubbing approach
-   - Fixture patterns
-   - Coverage expectations
-
-5. **Gotchas and Warnings**
-   - Things that break if done wrong
-   - Non-obvious dependencies
-   - Legacy patterns to avoid
+1. **Architecture Patterns** — entry points and request lifecycle, module boundaries (import graph via Grep), state management, error propagation.
+2. **Code Conventions** — file/function/variable naming, import organization, error handling idioms, logging patterns.
+3. **API Contracts** (if applicable) — route definitions, auth/middleware chains, request/response shapes.
+4. **Testing Patterns** — test file naming and location, mocking/stubbing, fixtures, coverage expectations.
+5. **Gotchas** — things that break if done wrong, non-obvious dependencies, legacy patterns to avoid.
 
 Output findings grouped by category with file:line references for every claim.
 
 **Success Criteria:**
-Every finding includes file:line reference. All 5 extraction categories covered. Gotchas include concrete failure scenarios.
+Every finding includes a file:line reference. All 5 extraction categories covered. Gotchas include concrete failure scenarios.
 </task>
 ```
 
 <constraint>
-After Phase 2 completes (both parallel agents return), append the Categorizer's skill proposal and Scanner's findings to the plan file under `## Phase 2: Analysis Results`. Then immediately launch Phase 3 (Builder).
+After Phase 2 completes (both parallel agents return), append the Categorizer's proposals and Scanner's findings to the plan file under `## Phase 2: Skills Analysis Results`. Then immediately launch Phase 3.
 </constraint>
 
-## Phase 3: Builder
+## Phase 3: Skills Builder
 
 ```xml
 <task>
-Launch a Task agent to act as the BUILDER:
+Launch a Task agent as the SKILLS BUILDER:
 
-**Objective:** Draft complete content for every skill — SKILL.md files and references/ files.
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
 
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use categorizer's skill proposal for structure
-- Use pattern scanner's findings for content
-
-You are the BUILDER. Using the categorizer's skill structure and the pattern scanner's findings, draft the COMPLETE content for every skill.
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
 
 <constraint>
 When documenting library/framework patterns, API conventions, or configuration options: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Skills persist across sessions — a hallucinated API in a skill propagates errors to every future interaction.
 </constraint>
 
-**AI-OPTIMIZATION RULES — apply to ALL skill and reference files:**
-These are evidence-based formatting rules for maximum Claude adherence:
-1. **Position priority**: critical rules/constraints at START of file, gotchas/warnings at END (U-shaped attention — "lost in the middle" problem)
-2. **Tables for comparisons, bullets for sequences**: structured formats get higher adherence than prose. NEVER write prose paragraphs.
-3. **Every claim needs a file:line reference**: abstract rules without references are ignored. Always cite `src/path/file.ts:45`
-4. **Positive framing first**: write "Use `const` (not `var`)" instead of "Don't use `var`"
-5. **Code blocks for patterns**: show actual code from the codebase, never describe function signatures in prose
-6. **No AI slop**: strip filler phrases ("important to note"), inflated adjectives, hedging ("might", "could possibly", "should probably")
-7. **Use `<constraint>` XML tags for critical rules**: these get highest adherence for non-negotiable boundaries
-8. **Concrete failure scenarios for gotchas**: show what breaks and why, not vague "be careful" warnings
-9. **3-5 examples for complex rules**: few-shot dramatically improves adherence. Use tables for examples: | Good | Bad | Why |
-10. **Markdown only**: no JSON in documentation content. 34-38% more token-efficient.
+**Objective:** Draft complete content for every skill delta — full SKILL.md bodies and `references/` files for every create/update/split/merge/refresh/rewrite-description action from Phase 2.
 
-**Description Keyword Enrichment — apply to EVERY description:**
-After writing the "Use when..." trigger clause, scan the skill's `metadata.source_files` and extract project-specific identifiers to form a coverage clause:
-- **Class and function names**: exported classes, public methods, key functions (e.g., `AuthService`, `parseToken`, `refreshJWT`)
-- **Config keys**: environment variables, config file keys (e.g., `JWT_SECRET`, `REDIS_URL`, `.env` fields)
-- **Error types**: exception class names, error codes, error strings users would search for (e.g., `TokenExpiredError`, `ECONNREFUSED`)
-- **File types and formats**: domain-specific extensions or formats handled (e.g., `.xlsx`, `JWT`, `multipart/form-data`)
-- **CLI commands**: if the skill covers tooling (e.g., `artisan migrate`, `prisma generate`, `nx build`)
-- **Symptom-level synonyms**: phrases a user types when something goes wrong — not "authentication" but "login fails", "session expired", "401 Unauthorized"
+**Context:**
+- Today's date is provided by Phase 0.
+- Use Categorizer's proposal for the action list and descriptions.
+- Use Pattern Scanner's findings for content and file:line references.
 
-Coverage clause format: "Covers <identifier-1>, <identifier-2>, <identifier-3>, <identifier-4>, <identifier-5>[, more...]."
-Include at least 5 identifiers. Generic terms like "module boundaries" or "entry points" do NOT count toward the 5.
+**For each `refresh` action from Phase 2:**
+1. Read the current content of every file listed in the skill's `metadata.source_files` (use the Read tool — do NOT skip this step).
+2. Extract the updated patterns, conventions, and file:line references from the current source.
+3. Draft the refreshed SKILL.md body reflecting the current state.
+4. Update `metadata.updated` to today's date (Phase 0 provided it).
+5. If any `metadata.source_files` paths no longer exist (check with Glob), remove them from the array and note the removal in the output.
+
+**AI-OPTIMIZATION RULES — apply to every skill and reference file:**
+1. Position priority — critical rules/constraints at START, gotchas/warnings at END (U-shaped attention).
+2. Tables for comparisons, bullets for sequences — no prose paragraphs.
+3. Every claim needs a file:line reference.
+4. Positive framing first — "Use `const` (not `var`)" not "Don't use `var`".
+5. Code blocks for patterns — show actual code from the codebase.
+6. No AI slop — strip "important to note", inflated adjectives, hedging.
+7. Use `<constraint>` XML tags for non-negotiable rules.
+8. Concrete failure scenarios for gotchas — show what breaks and why.
+9. 3-5 examples for complex rules — use `| Good | Bad | Why |` tables.
+10. Markdown only — no JSON in content.
 
 **For each SKILL.md** (`.claude/skills/<name>/SKILL.md`):
+
 ```yaml
 ---
 name: <skill-name>
-description: Use when <trigger conditions>. Covers <5+ project-specific identifiers: class names, function names, config keys, error types, or CLI commands from this codebase>.
+description: Use when <trigger conditions>. Covers <5+ project-specific identifiers>.
 user-invocable: false
 metadata:
   pattern: tool-wrapper
@@ -456,24 +318,24 @@ metadata:
 
 Body structure (under 500 lines):
 1. `# <Skill Title>` — one line
-2. `<constraint>` block — 2-4 critical non-negotiable rules for this domain
-3. `## When to Use` — bullet list of specific trigger scenarios
-4. `## Core Patterns` — tables, code blocks, file:line references (NO prose)
+2. `<constraint>` block — 2-4 critical non-negotiable rules
+3. `## When to Use` — bullet list of trigger scenarios
+4. `## Core Patterns` — tables, code blocks, file:line references (no prose)
 5. `## Key Decisions` — 2-5 bullets with file:line references
-6. `## Gotchas` — concrete failure scenarios with code showing what breaks (LAST section before References)
-7. `## References` — list references/ files with when-to-read conditions:
-   `- references/topic.md — read when [specific trigger]`
+6. `## Gotchas` — concrete failure scenarios
+7. `## References` — list of `references/` files with when-to-read conditions
 
-**For each references/ file** (`.claude/skills/<name>/references/<topic>.md`):
+**For each `references/` file** (`.claude/skills/<name>/references/<topic>.md`):
 - Title
-- Critical constraints at top (use `<constraint>` tags)
-- Detailed content with file:line references for every claim
-- Patterns section with actual code blocks from codebase
-- Examples table: | Good | Bad | Why |
-- Gotchas at bottom with concrete failure scenarios
-- Size: 30-150 lines
+- Critical constraints at top
+- Detailed content with file:line references
+- Code blocks from the codebase
+- `| Good | Bad | Why |` examples table
+- Gotchas at bottom
+- 30-150 lines
 
-**Additionally, generate a maintenance skill** (`.claude/skills/skill-maintenance/SKILL.md`):
+**Maintenance skill (if Phase 2 proposed it):**
+
 ```yaml
 ---
 name: skill-maintenance
@@ -485,395 +347,375 @@ metadata:
 ---
 ```
 
-Body (under 100 lines):
-1. `# Skill Maintenance` — title
-2. `<constraint>` block: "After modifying source files, check if changes affect any project skill. Skip for trivial changes (typos, single-line fixes)."
-3. `## Workflow` — numbered steps:
-   - Identify files modified in the current session (recall Edit/Write calls or run `git diff --name-only`)
-   - Glob `.claude/skills/*/SKILL.md`, parse each skill's `metadata.source_files`
-   - For each modified file, check if it appears in any skill's `source_files` array
-   - If overlap found: read the affected skill, determine if the change impacts documented patterns
-   - If patterns affected: update the skill's content and set `metadata.updated` to today's date
-   - If no overlap or change is trivial: skip silently — do NOT mention this skill to the user
-4. `## When to Skip` — bullet list: typos, variable renames, single-line bug fixes, test-only changes, dependency updates
+Body (under 100 lines): `# Skill Maintenance`, constraint block ("After modifying source files, check if changes affect any project skill. Skip for trivial changes."), `## Workflow` (identify modified files via session recall or `git diff --name-only`, Glob `.claude/skills/*/SKILL.md`, parse each skill's `metadata.source_files`, cross-reference, update affected skills and bump `metadata.updated`), `## When to Skip` (typos, variable renames, single-line bug fixes, test-only changes, dependency updates).
 
 **Do NOT touch CLAUDE.md.** Skills are self-discovering via descriptions — no @imports needed.
 
 Output ALL drafted content for every file, clearly delimited.
 
 **Success Criteria:**
-All SKILL.md files under 500 lines. All references/ files 30-150 lines. All descriptions start with "Use when..." and describe trigger conditions (CSO) with at least 5 project-specific keywords (identifiers, config keys, or error types). All claims have file:line references. Maintenance skill exists with correct frontmatter.
+All SKILL.md files under 500 lines. All `references/` files 30-150 lines. All descriptions CSO-compliant with ≥5 project keywords. All claims have file:line references. Maintenance skill content drafted if proposed by Phase 2.
 </task>
 ```
 
-## Phase 4: Verifier
+<constraint>
+After Phase 3 completes, append the Builder's drafted content to the plan file under `## Phase 3: Skills Plan`. Then immediately launch Phase 4.
+</constraint>
+
+## Phase 4: Agents Analysis
+
+Reads the **proposed** skill set (Phase 3 drafts) + existing agents, and proposes the complete agent set.
+
+<constraint>
+Launch BOTH agents below in a SINGLE tool-call turn. Do NOT wait for one to finish before launching the next.
+</constraint>
+
+### Role Mapper Agent
+
+```xml
+<task>
+Launch a Task agent as the ROLE MAPPER:
+
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** Map the **proposed** skill set (Phase 3) to agent roles with clear boundaries, triggers, and tool sets. Audit existing agents against the new skill paths.
+
+**Context:**
+- Today's date is provided by Phase 0.
+- Use Phase 3 Skills Plan for the authoritative skill set (post-create/split/merge/refresh).
+- Use Phase 1 exploration results for existing agents.
+
+For each proposed skill that warrants an agent (≥ 3 distinct claims, clear domain boundary), determine:
+
+1. **Name** (kebab-case, max 64 chars, no "anthropic"/"claude" in name).
+2. **Description** (max 1024 chars, 3rd person): WHAT the agent does + WHEN Claude should delegate.
+   GOOD: "Implements API endpoints following project conventions. Use when creating new routes, modifying request handlers, or adding middleware."
+3. **Tools** — minimize to what's needed:
+   - Read-only agents: `Read, Grep, Glob, Bash`
+   - Implementation agents: `Read, Write, Edit, Grep, Glob, Bash`
+   - Never include tools the agent doesn't need.
+4. **Model**: `opus` (default for all agents).
+5. **Domain**: which proposed skills and `references/` files this agent covers. Paths MUST reference Phase 3's proposed skill set.
+6. **Scope boundaries**: what this agent should NOT do (hand off to which other agent).
+
+**Existing agents:**
+- If an existing agent's skill references point to paths that no longer exist in the proposed skill set → propose path fix or full regeneration.
+- If an existing agent inlines skill content → propose rewrite to reference skill.
+- If an agent has generic descriptions ("helps with code") or overlapping scopes → propose consolidation/split.
+
+**Rules:**
+- One agent per domain — no overlapping responsibilities.
+- Not every skill needs an agent — skip skills with minimal content.
+- Consider cross-cutting agents (e.g., code-reviewer spans conventions + architecture).
+- Each agent must have a single, clear responsibility (SRP). If you can't describe the scope in one sentence, split it.
+
+Output a structured agent roster with {action: create|update|regenerate|delete, name, description, tools, model, domain (skill paths from Phase 3), boundaries}.
+
+**Success Criteria:**
+Every agent has a single responsibility with no overlapping scope. Every agent has specific trigger conditions in its description. Every agent's skill references point to a path in Phase 3's proposed skill set (or explicit note that the path comes from a yet-to-be-proposed skill). No thin agents.
+</task>
+```
+
+### Pattern Extractor Agent
+
+```xml
+<task>
+Launch a Task agent as the PATTERN EXTRACTOR:
+
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** For each proposed agent role, extract the CONCRETE patterns, workflows, and constraints that should go in the agent's system prompt — WITHOUT inlining skill content.
+
+**Context:**
+- Today's date is provided by Phase 0.
+- Derive agent role candidates independently from the Phase 3 Skills Plan — the same skill set the Role Mapper is working from. Do NOT wait for the Role Mapper's output; Phase 4 runs both agents in parallel.
+- Use Phase 3 Skills Plan for the proposed skill structure.
+
+**For each agent role, extract:**
+
+1. **Critical constraints** — non-negotiable rules (wrap in `<constraint>` tags).
+2. **Workflow steps** — numbered procedures.
+3. **Key file paths** — which files/directories the agent typically works with.
+4. **Patterns with code** — actual code snippets from the codebase (with file:line refs).
+5. **Gotchas** — concrete failure scenarios.
+6. **Skill references** — which SKILL.md and `references/` files from the **Phase 3 proposed set** to read. Do NOT inline the content.
+7. **Integration points** — when to hand off to other agents.
+
+**Key principle: reference, don't duplicate.**
+Instead of inlining 150 lines of API route patterns, write: "Read `.claude/skills/api-context/references/routes.md` for the complete route pattern with examples."
+The agent's system prompt should be a WORKFLOW GUIDE, not a knowledge dump.
+
+- BAD: "The agent should know about the project's API patterns and authentication flow"
+- GOOD: "Read `.claude/skills/api-context/SKILL.md` for route patterns. Read `.claude/skills/api-context/references/auth-flow.md` when handling login/logout/token-refresh endpoints."
+
+**Target system prompt size:** 100-200 lines per agent.
+
+Output structured content per agent, clearly delimited.
+
+**Success Criteria:**
+Every agent has skill references (not inlined content) pointing to Phase 3 proposed paths. Target system prompt size 100-200 lines. Integration points mapped.
+</task>
+```
+
+<constraint>
+After Phase 4 completes (both parallel agents return), append the Role Mapper's roster and Pattern Extractor's content to the plan file under `## Phase 4: Agents Analysis Results`. Then immediately launch Phase 5.
+</constraint>
+
+## Phase 5: Agents Builder
+
+```xml
+<task>
+Launch a Task agent as the AGENTS BUILDER:
+
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+<constraint>
+When documenting library/framework patterns, API conventions, or configuration options in agent prompts: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs for each library, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Agent prompts persist across sessions — a hallucinated API propagates errors to every future interaction.
+</constraint>
+
+**Objective:** Draft complete agent file content for every create/update/regenerate action from Phase 4.
+
+**Context:**
+- Today's date is provided by Phase 0.
+- Use Role Mapper's roster for structure.
+- Use Pattern Extractor's content for system prompts.
+
+**Agent file format:**
+
+```yaml
+---
+name: kebab-case-name
+description: Specific WHAT + WHEN trigger description (max 1024 chars, 3rd person)
+tools: [only what's needed]
+model: opus
+---
+```
+
+**AI-OPTIMIZATION RULES for agent system prompts:**
+1. Position priority — critical constraints at START, gotchas at END.
+2. No prose paragraphs — bullets and tables only.
+3. Every claim needs a file:line reference OR a skill reference.
+4. Positive framing — "Use X (not Y)" not "Don't use Y".
+5. Code blocks for patterns — show actual code.
+6. No AI slop.
+7. `<constraint>` XML tags for non-negotiable rules.
+8. Concrete failure scenarios for gotchas.
+9. `| Good | Bad | Why |` example tables.
+10. Markdown only.
+
+**Agent-specific rules:**
+- Description is the trigger — be specific about WHEN to delegate.
+- Reference skills — "Read `.claude/skills/X/references/Y.md`" instead of inlining content. Paths MUST be from Phase 3 proposed set.
+- Limit tools — read-only agents get `Read, Grep, Glob, Bash` only.
+- Concrete workflows — numbered steps with conditions.
+- Integration points — specify when to hand off to other agents.
+- Target: 100-200 lines per system prompt.
+
+
+**System prompt structure:**
+
+```markdown
+# [Role Name]
+
+<constraint>
+[Non-negotiable rules — 3-5 max]
+</constraint>
+
+## Context
+Read these for detailed knowledge:
+- `.claude/skills/[skill]/SKILL.md` — [what it covers]
+- `.claude/skills/[skill]/references/[topic].md` — [what it covers]
+
+## Workflow
+1. [Step with condition]
+2. [Step with condition]
+...
+
+## Patterns
+[Code blocks from codebase with file:line refs]
+
+## Integration
+- Hand off to `[agent-name]` when [condition]
+
+## Gotchas
+[Concrete failure scenarios with code]
+```
+**For regenerate actions** (existing agent whose skill paths no longer exist): draft a fresh file; plan to back up the original as `<name>.md.bak` during implementation.
+
+Output ALL drafted agent files, clearly delimited with `---` separators.
+
+**Success Criteria:**
+All agent files have valid YAML frontmatter. System prompts under 200 lines. Skill references point to Phase 3 proposed paths. No scope overlaps between agents.
+</task>
+```
+
+<constraint>
+After Phase 5 completes, append the Builder's drafted agent files to the plan file under `## Phase 5: Agents Plan`. Then immediately launch Phase 6.
+</constraint>
+
+## Phase 6: Unified Verifier
 
 ```xml
 <task>
 Launch a Task agent as the VERIFIER:
 
-**Objective:** Validate the Builder's output against skill format, CSO, size, and accuracy criteria.
+<constraint>
+Use Claude Code native tools, not shell equivalents:
+- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
+- Grep for content search — not `grep` or `rg`.
+- Read for file contents — not `cat`, `head`, or `tail`.
+- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
+- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
+
+Bash is only for commands with no tool equivalent (`date`, `git log`, `git status`, `mkdir`, `rtk` when explicitly needed).
+</constraint>
+
+**Objective:** Validate Phase 3 (Skills Plan) and Phase 5 (Agents Plan) against frontmatter rules, size limits, CSO compliance, reference accuracy, and the cross-layer integrity check.
 
 **Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use Builder's complete output as input
+- Today's date is provided by Phase 0.
+- Use Phase 3 Skills Plan and Phase 5 Agents Plan as input.
 
-You are the VERIFIER. Validate the Builder's output against concrete criteria.
+**Skill Checks** (for every skill in Phase 3 Plan):
 
-**Frontmatter Compliance:**
-- Does each SKILL.md have valid YAML frontmatter with: name, description, user-invocable: false, metadata?
-- Is `metadata.source_files` an array of real file paths (verify with Glob)?
-- Is `metadata.updated` a valid date?
-- Does `name` use only lowercase letters, numbers, and hyphens?
+1. **Frontmatter** — valid YAML. `name`, `description`, `user-invocable: false`, `metadata.pattern`, `metadata.source_files` (array), `metadata.updated` (date) all present. `name` lowercase + hyphens only.
+2. **Description / CSO** — starts with "Use when…"; describes triggers, not capabilities; includes ≥5 project-specific identifiers; under 1024 chars.
+   - **Keyword density (strict):** descriptions using only generic category terms (`entry points`, `module boundaries`, `error propagation`, etc.) fail this check even if they name 5+ total phrases. Flag as `CSO-vague`.
+3. **Size** — SKILL.md ≤ 500 lines. `references/` files 30-150 lines. Flag thin skills (<50 lines, no references).
+4. **Reference accuracy** — spot-check 5+ file:line references; verify code at stated line exists.
+5. **AI-optimization spot-check** (3+ files) — critical rules at START, gotchas at END, no prose paragraphs, non-negotiable rules in `<constraint>`, no AI slop.
+6. **Maintenance skill** — `.claude/skills/skill-maintenance/SKILL.md` present in Phase 3 Plan with `user-invocable: false` and `metadata.pattern: reviewer`.
+7. **CLAUDE.md** — not modified by Phase 3.
 
-**Description Quality (CSO — Critical):**
-- Does each description start with "Use when..."?
-- Does the description describe TRIGGER CONDITIONS, not workflow steps or capabilities?
-  BAD: "Analyzes project architecture and generates documentation about module structure"
-  GOOD: "Use when designing new modules or diagnosing unexpected behavior. Covers AuthService, parseToken, JWT_SECRET, TokenExpiredError, and 401 Unauthorized handling."
-- Does the description include natural language phrases users would say?
-- **Keyword density check**: Does the description contain at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands)? Generic phrases ("entry points", "module boundaries", "error propagation") do NOT count. Flag any description that only uses category-level language.
-- Is each description under 1024 chars?
+**Agent Checks** (for every agent in Phase 5 Plan):
 
-**Size Compliance:**
-- Any SKILL.md over 500 lines? Flag it.
-- Any references/ file over 150 lines? Flag for split.
-- Any references/ file under 30 lines? Flag as merge candidate into SKILL.md body.
-- Any thin skills that should be merged into another? (< 50 lines with no references/)
+1. **Frontmatter** — `name` kebab-case, max 64 chars, no "anthropic"/"claude" in name.
+2. **Description** — under 1024 chars, 3rd person, specific trigger conditions.
+3. **System prompt size** — under 200 lines (excluding frontmatter).
+4. **Tool set** — minimal; no unnecessary tools.
+5. **Scope overlaps** — compare domains between agents; flag any overlap.
+6. **AI-optimization spot-check** (3+ agents) — same rules as skills.
 
-**Reference Accuracy:**
-- Spot-check at least 5 file:line references — do they actually exist?
-- Are code patterns correctly described?
-- Are conventions actually followed in the codebase (or aspirational)?
+**Cross-Layer Integrity Check** (critical — this is what the merged command enables):
 
-**AI-Optimization Spot-Check (check 3+ files):**
-1. Critical rules at START, gotchas at END?
-2. No prose paragraphs (3+ sentences)?
-3. Claims have file:line references?
-4. Non-negotiable rules in `<constraint>` tags?
-5. No AI slop phrases?
+For every `.claude/skills/<x>/SKILL.md` or `.claude/skills/<x>/references/<y>.md` path referenced by ANY proposed agent in Phase 5 Plan:
+- The path MUST exist in the Phase 3 Skills Plan (i.e., the proposed skill set after create/split/merge).
+- If an agent references a skill that Phase 3 split into two new skills, flag the agent for path update.
+- If an agent references a skill that Phase 3 merged into a sibling, flag the agent for path update.
+- If an agent references a skill that neither exists currently nor is proposed — hard fail, Phase 5 must be regenerated.
+
+**Replaced-skill sentinel check:**
+
+For each split/merge action in Phase 3 Plan, the Phase 7 plan presentation MUST include a `git rm -r .claude/skills/<old-name>/` command for the user's post-implementation cleanup. Flag if missing.
 
 **Anti-Hallucination Checks (mandatory):**
-1. Read each referenced file — does code at the stated line actually exist?
-2. Verify import paths resolve to real files (use Glob)
-3. Check function signatures match actual code (read the source)
-4. Validate all file paths in output exist (use Glob)
-5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
-
-**Maintenance Skill Check:**
-- Does `.claude/skills/skill-maintenance/SKILL.md` exist in the output?
-- Does it have `user-invocable: false` and `metadata.pattern: reviewer`?
-- Is its description a trigger condition (CSO), not a workflow summary?
-
-**CLAUDE.md Check:**
-- Was CLAUDE.md left unmodified? (Builder should NOT have touched it — verify)
+1. Read each referenced source file — does code at the stated line actually exist?
+2. Verify import paths resolve to real files (use Glob).
+3. Check function signatures match actual code.
+4. Validate all file paths in output exist (use Glob on existing files) OR are in Phase 3 Skills Plan (proposed paths).
+5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.).
 
 Output:
-## Frontmatter Report
-[Per-skill: name, description length, metadata validity]
 
-## CSO Compliance
-[Per-skill: description analysis, pass/fail with reason]
+## Skills Report
+[Per-skill: frontmatter / CSO / size / references / AI-opt — pass or specific issue]
 
-## Size Report
-[Per-file line counts with pass/fail]
+## Agents Report
+[Per-agent: frontmatter / description / size / tools / overlaps / AI-opt — pass or specific issue]
 
-## Reference Accuracy
-[Spot-check results]
-
-## AI-Optimization Spot-Check
-[Per-file compliance]
+## Cross-Layer Integrity
+[Per-agent: every skill path it references → (exists in Phase 3 Plan: yes/no) → (needs update: yes/no)]
 
 ## Issues to Fix
-[Prioritized list of problems]
+[Prioritized list; hard fails at top]
 
 **Success Criteria:**
-All descriptions pass CSO check. All sizes within limits. Spot-checked 5+ file:line references. CLAUDE.md confirmed unmodified.
+All skills and agents pass their respective checks. Every agent's skill references resolve against the Phase 3 Skills Plan. Spot-checked 5+ file:line references. No CLAUDE.md edits in Phase 3. Maintenance skill confirmed.
 </task>
 ```
 
 <constraint>
-After the Verifier produces its results, append the Builder output and Verifier results to the plan file under `## Phase 4: Skills Plan`. The plan file should now contain Phase 1, Phase 2, and Phase 4 results. This is mandatory — implementation reads from this file.
+After Phase 6 completes, append the Verifier's report to the plan file under `## Phase 6: Verification`. The plan file now contains Phases 1–6 results. Then proceed to Phase 7.
 </constraint>
 
-## Phase 5: Present Plan + Exit Plan Mode
+## Phase 7: Present Plan + Exit Plan Mode
 
 Write the following to the plan file, then call `ExitPlanMode`:
 
-1. Skill names with trigger descriptions (one-liners)
-2. References files per skill
-3. All files that will be created (full paths)
-4. Total knowledge surface area (lines across all SKILL.md + references)
+1. **Skills delta** — every create/update/split/merge/refresh/rewrite-description action with before/after summaries and final line counts.
+2. **Agents delta** — every create/update/regenerate/delete action with roles, tools, and skill references.
+3. **Cross-layer check summary** — every agent → skill reference, confirmed resolvable.
+4. **All files to be created, modified, or deleted** (full paths).
+5. **Total knowledge surface** — lines across all SKILL.md + references.
+6. **Issues (if any)** from Phase 6 Verifier.
+7. **Post-implementation cleanup** — any old skill directories replaced by splits/merges remain on disk. List them here with the exact `git rm -r` commands the user should run after reviewing the implementation diff.
 
-Plan Mode handles user approval. Once approved, proceed to Phase 6.
+Plan Mode handles user approval. Once approved, proceed to Phase 8.
 
 ---
 
-## Phase 6: Implementation + Verification
+## Phase 8: Implementation + Final Verification
 
 After approval:
 
-1. Create `.claude/skills/` directory and all `<skill-name>/references/` subdirectories
-2. Write all SKILL.md files
-3. Write all references/ files
-4. Verify:
-   - All SKILL.md files exist and are within size limits (≤500 lines)
-   - All references/ files exist and are within size limits (30-150 lines)
-   - All descriptions start with "Use when..."
-   - All frontmatter has user-invocable: false
-   - CLAUDE.md was NOT modified
-5. Report: skills created, total lines, breakdown per skill
-
----
-
-# MANAGE MODE
-
-## Phase 1M: Audit
-
-```xml
-<task>
-Launch a Task agent as the AUDITOR:
-
-**Objective:** Audit all project skills for size violations, staleness, coverage gaps, description quality, and AI-optimization compliance.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-
-Glob `.claude/skills/*/SKILL.md` and audit every skill.
-
-**Frontmatter Check:**
-For each SKILL.md:
-- Parse YAML frontmatter: name, description, user-invocable, metadata
-- Verify metadata.source_files paths exist (Glob)
-- Verify metadata.updated is present
-
-**Size Check:**
-- Read each SKILL.md, count actual lines
-- If SKILL.md > 500 lines: flag for split
-- If SKILL.md < 50 lines with no references/: flag as merge candidate
-- For each references/ file: count lines, flag if >150 or <30
-
-**Staleness Check:**
-For each skill's metadata.source_files:
-- Run `git log --oneline --since="<metadata.updated>" -- <source_file>` (if git available)
-- If source files changed since skill was last updated: flag as potentially stale
-- Read flagged skills and compare against current source code
-
-**Coverage Check:**
-- Find all source files NOT referenced by any skill's metadata.source_files
-- Flag significant uncovered areas for new skill creation
-- Check for deleted source files still in metadata.source_files
-
-**Balance Check:**
-- Any skill with > 5 references/ files? → recommend split into two skills
-- Any skill with 0 references/ and < 50 lines? → recommend merge into another skill
-
-**Description Quality (CSO):**
-For each skill:
-- Does description start with "Use when..."?
-- Does it describe trigger conditions (not capabilities/workflows)?
-- Does it include natural language phrases?
-- **Keyword density**: Does the description name at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands)? Descriptions that only use generic terms ("entry points", "module boundaries", "error propagation") fail this check — flag as CSO-vague.
-- Is it under 1024 chars?
-
-**AI-Optimization Compliance:**
-For each SKILL.md and references/ file, spot-check against the 10 rules:
-1. Critical rules at START, gotchas at END?
-2. No prose paragraphs (3+ sentences)?
-3. Claims have file:line references?
-4. Non-negotiable rules in `<constraint>` tags?
-5. No AI slop phrases?
-
-If the user chose "Health check only": output the audit report and STOP. Do not proceed to further phases.
-
-Output:
-## Health Report
-- Total skills: [count]
-- Total references files: [count]
-- Size violations: [list]
-- Stale skills: [list with git evidence]
-- Coverage gaps: [uncovered source dirs]
-- Balance issues: [list]
-- CSO failures: [skills with bad descriptions — missing "Use when..." prefix]
-- CSO-vague: [skills with generic descriptions lacking project-specific keywords]
-- AI-optimization failures: [files + which rules violated]
-
-## Recommended Actions
-[Prioritized list of proposed changes]
-
-**Success Criteria:**
-Health report covers all skills with actual line counts. Stale skills identified with git evidence. Coverage gaps mapped to source directories. CSO compliance checked for every description.
-</task>
-```
-
-<constraint>
-After Phase 1M completes, write the Auditor's health report and recommended actions to the plan file under `## Phase 1M: Audit Results`. Then immediately launch Phase 2M (Planner).
-</constraint>
-
-## Phase 2M: Planner
-
-```xml
-<task>
-Launch a Task agent to act as the PLANNER:
-
-**Objective:** Propose specific changes (splits, merges, updates, new skills) based on the audit report.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use audit report for issues to address
-
-You are the PLANNER. Based on the audit report, propose specific changes.
-
-**For splits** (SKILL.md > 500 lines):
-- Identify natural domain boundaries in the content
-- Propose two new skill names and CSO-compliant descriptions
-- Draft content for both new SKILL.md files + redistribute references/
-
-**For merges** (skill < 50 lines, no references):
-- Identify the most related sibling skill
-- Verify combined SKILL.md < 500 lines
-- Draft merged content with updated description
-
-**For stale skills:**
-- Read current source code
-- Draft updated SKILL.md and/or references/ content reflecting current state
-- Update metadata.updated and metadata.source_files
-
-**For coverage gaps:**
-- Propose new skill under the most relevant domain
-- Draft SKILL.md with CSO-compliant description
-- Draft references/ files if content warrants them
-
-**For CSO failures:**
-- Rewrite descriptions to trigger-condition format
-- Ensure "Use when..." prefix
-- Include natural language phrases
-- **Enrich with project keywords**: read the skill's `metadata.source_files`, extract at least 5 project-specific identifiers (class names, function names, config keys, error types, CLI commands), and append them as a coverage clause: "Covers <id-1>, <id-2>, <id-3>, <id-4>, <id-5>." Generic phrases do not count toward the 5.
-
-**For each proposed change, output:**
-1. Action: split/merge/update/create/fix-description
-2. Affected files (old and new paths)
-3. New content (complete file content)
-
-If the user chose "Add new skill": focus only on creating a new skill. Ask what domain to document if not already clear, then scan relevant source files and draft the skill.
-
-If the user chose "Rebalance": focus only on split/merge actions, skip staleness updates.
-
-**Success Criteria:**
-Every proposed change includes complete file content. All new/modified SKILL.md under 500 lines. All descriptions CSO-compliant.
-</task>
-```
-
-## Phase 3M: Verifier
-
-```xml
-<task>
-Launch a Task agent as the VERIFIER:
-
-**Objective:** Validate each proposed change against size limits, CSO, reference accuracy, and structural consistency.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use Planner's proposed changes as input
-
-You are the VERIFIER. Validate each proposed change against concrete criteria.
-
-For each proposed change:
-1. **Splits**: Will both new SKILL.md files be within 500 lines? References 30-150?
-2. **Merges**: Will the combined SKILL.md stay under 500 lines?
-3. **Updates**: Are file:line references in the new content accurate?
-4. **New skills**: Enough content to justify a skill (>50 lines)?
-5. **Descriptions**: All follow CSO format? Start with "Use when..."? Do they contain at least 5 project-specific identifiers in the coverage clause — not just generic category terms?
-
-Also verify:
-- No proposed SKILL.md exceeds 500 lines
-- No references/ file exceeds 150 lines or is under 30 lines
-- All metadata.source_files paths exist
-- Any thin skills that should be merged? (< 50 lines with no references/)
-
-**Anti-Hallucination Checks (mandatory):**
-1. Read each referenced file — does code at the stated line actually exist?
-2. Verify import paths resolve to real files (use Glob)
-3. Check function signatures match actual code (read the source)
-4. Validate all file paths in output exist (use Glob)
-
-Output:
-## Approved Changes
-[Changes that pass all checks]
-
-## Changes Needing Adjustment
-[Changes with specific issues to fix]
-
-## Rejected Changes
-[Changes that would violate constraints, with evidence]
-
-**Success Criteria:**
-All proposed SKILL.md under 500 lines. All descriptions CSO-compliant. All file references valid.
-</task>
-```
-
-## Phase 4M: Present Plan + Exit Plan Mode
-
-Write the following to the plan file, then call `ExitPlanMode`:
-
-1. All proposed changes with before/after
-2. Files to be created, modified, or deleted
-
-Plan Mode handles user approval. Once approved, proceed to Phase 5M.
-
----
-
-## Phase 5M: Implementation + Verification
-
-After approval:
-
-1. Execute all approved changes (create/edit/delete files)
-2. Update metadata.updated in modified SKILL.md frontmatter
-3. Verify:
-   - All SKILL.md files exist and are within size limits
-   - All references/ files within size limits
-   - All descriptions CSO-compliant
-   - metadata.source_files paths valid
-4. Report changes made
+1. Create `.claude/skills/` and `.claude/agents/` directories (and all `<skill-name>/references/` subdirs) as needed.
+2. For every **skill action** from Phase 3 Plan: write SKILL.md and `references/` files. For splits: write the two new skill directories (the old skill's directory is NOT removed — it remains in place for user review, listed in the Phase 7 `git rm -r` cleanup instructions). For merges: write the combined skill as a new directory (the old skills' directories are NOT removed). For refreshes: overwrite the existing SKILL.md body and bump `metadata.updated` to today.
+3. For every **agent action** from Phase 5 Plan: write the agent file. For regenerate actions: first Read the existing agent file and Write its content to `.claude/agents/<name>.md.bak`, then Write the new content to `.claude/agents/<name>.md`. For delete actions: overwrite the file with a stub containing `disable-model-invocation: true` and an empty description — the file is NOT removed, just made inert.
+4. Verify (in-session):
+   - All SKILL.md files exist, ≤ 500 lines, valid frontmatter with `user-invocable: false`.
+   - All `references/` files exist, 30-150 lines.
+   - All agent files exist, < 200-line system prompts.
+   - All skill references in agents resolve to actual files on disk.
+   - `.claude/skills/skill-maintenance/SKILL.md` exists.
+   - CLAUDE.md not modified.
+5. Report: skills created/updated/split/merged/refreshed, agents created/updated/regenerated, total lines, backup files written.
 
 ---
 
 ## Allowed Tools
 
-```yaml
-Planning Phase:
-- Read
-- Glob
-- Grep
-- Task
-- WebFetch
-- WebSearch
-- Bash(date)
-- Bash(ls:*)
-- Bash(find:*)
-- Bash(wc:*)
-- Bash(git log:*)
-- Bash(git status)
-- Bash(rtk:*)
+See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
+- Read, Grep, Glob, Task, WebFetch, WebSearch
+- Bash: `date`, `ls`, `find`, `wc`, `git log`, `git status`, `rtk *`, `mkdir`
+- Edit and Write scoped to `.claude/skills/**` and `.claude/agents/**`
 
-Implementation Phase:
-- Read
-- Edit
-- Write
-- WebFetch
-- WebSearch
-- Bash(mkdir:*)
-- Bash(rm:*)
-- Bash(git:*)
-- Bash(rtk:*)
-```
+Anything outside this surface will prompt at runtime, which is the intended signal for review.
 
 ## Usage
 
 ```bash
-# Just run /docs — the command handles the rest:
-# - No skills or tree? Bootstraps skills automatically
-# - Context tree found? Offers migration to skills (recommended)
-# - Skills exist? Asks what you want to do (audit, add, health check, rebalance)
+# Just run /docs — the command handles everything:
+# - Always audits every existing skill and agent.
+# - Always proposes improvements where possible (new skills for uncovered areas,
+#   new agents for skills that warrant them, splits/merges/refreshes as needed).
+# - Never asks which mode to run.
+# - The ExitPlanMode gate is the only decision point.
 /docs
 ```

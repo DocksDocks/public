@@ -12,7 +12,6 @@
     "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Read",
       "Glob",

@@ -27,13 +27,12 @@ All commands use multi-agent pipelines. The orchestrator runs on Opus; subagents
 | `/fix` | Exploration → [Code Scanner \| Dependency Scanner] → Planner → Verifier | DAG + Builder-Verifier |
 | `/review` | Exploration → Analyzer → Verifier | Builder-Verifier |
 | `/test` | Exploration → Analyzer → Generator → Verifier | Builder-Verifier |
-| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Builder → Verifier (+ Migration Mode) | DAG + Builder-Verifier |
+| `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Skills Builder → [Role Mapper \| Pattern Extractor] → Agents Builder → Unified Verifier | DAG + Builder-Verifier (skills + agents + cross-layer check) |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
 | `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → Planner → Verifier | DAG + Builder-Verifier |
 | `/solid` | Exploration → Discovery → Analyzer → Planner → Verifier | Builder-Verifier |
-| `/team` | Discovery → [Role Mapper \| Pattern Extractor] → Generator → Verifier | DAG + Builder-Verifier |
 
-Commands with parallel phases (`/security`, `/fix`, `/docs`, `/team`) include explicit instructions to launch agents in a single turn for wall-clock time savings.
+Commands with parallel phases (`/security`, `/fix`, `/docs`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
 
 All commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
 
@@ -116,23 +115,25 @@ The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents.
 
 ## Permission Mode
 
-The kit sets `permissions.defaultMode: "auto"` so new sessions start in auto mode — Claude executes without permission prompts, and a separate classifier (same model, so the cost counts toward token usage) reviews each shell command or network action before it runs. Reads and edits inside the working directory skip the classifier. Docs: https://code.claude.com/docs/en/permission-modes.
+The kit does **not** set a `defaultMode` — new sessions start in `default` mode (normal per-tool approval prompts). Auto mode is supported but opt-in; enable it when you want it via `Shift+Tab` (cycles `default` → `acceptEdits` → `plan` → `auto`) or `claude --permission-mode auto`. Docs: https://code.claude.com/docs/en/permission-modes.
 
-**Requirements** (the kit already meets them on a Max subscription):
+Why not default to auto: the classifier that gates each action in auto mode is an API call in its own right. When that service has a transient outage, every Edit/Bash is blocked until it recovers — even simple local work stalls. Keeping auto mode opt-in means routine sessions aren't held hostage by a backend hiccup, while longer agentic loops can still opt in when prompt fatigue outweighs classifier risk.
+
+**Requirements** for auto mode (the kit meets them on a Max subscription):
 - Plan: Max / Team / Enterprise / API (not Pro)
 - Model: on Max, **Opus 4.7 only** (the kit pins this); on other plans Sonnet 4.6 / Opus 4.6 / Opus 4.7
 - Provider: Anthropic API only (not Bedrock, Vertex, Foundry)
 - Claude Code v2.1.83+
 
-**What changes vs. the kit's allow-list in auto mode:**
+**What changes when auto mode is active:**
 - Broad wildcard allow rules (`Bash(git *)`, `Bash(npm *)`, `Bash(python *)`, etc.) are dropped — everything routes through the classifier instead. Narrow rules like `Bash(npm test)` carry over.
 - The `deny` list is still enforced.
-- `protected paths` (`.git`, `.claude`, `.mcp.json`, etc.) route to the classifier rather than being auto-approved.
-- Dropped rules are restored the moment you leave auto mode (Shift+Tab cycles `default` → `acceptEdits` → `plan` → `auto`).
+- Protected paths (`.git`, `.claude`, `.mcp.json`, etc.) route to the classifier rather than being auto-approved.
+- Dropped rules are restored the moment you leave auto mode.
 
 **Fallbacks baked in**: 3 consecutive classifier blocks or 20 total in a session pause auto mode and resume prompting. Approving the prompted action resumes auto. Not configurable.
 
-**When to bail out**: sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` to default, or start a session with `claude --permission-mode default`.
+**When to bail out of auto mode**: classifier outage, sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` cycles away from auto.
 
 Auto mode is Anthropic's term-of-art "research preview" — it reduces prompt fatigue on long agentic loops, not a replacement for review on risky operations.
 
