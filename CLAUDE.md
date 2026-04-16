@@ -114,6 +114,28 @@ Rule of thumb: if a turn starts with "that didn't work, try X instead," reach fo
 
 The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents. The blog validates that pattern for ad-hoc work too.
 
+## Permission Mode
+
+The kit sets `permissions.defaultMode: "auto"` so new sessions start in auto mode — Claude executes without permission prompts, and a separate classifier (same model, so the cost counts toward token usage) reviews each shell command or network action before it runs. Reads and edits inside the working directory skip the classifier. Docs: https://code.claude.com/docs/en/permission-modes.
+
+**Requirements** (the kit already meets them on a Max subscription):
+- Plan: Max / Team / Enterprise / API (not Pro)
+- Model: on Max, **Opus 4.7 only** (the kit pins this); on other plans Sonnet 4.6 / Opus 4.6 / Opus 4.7
+- Provider: Anthropic API only (not Bedrock, Vertex, Foundry)
+- Claude Code v2.1.83+
+
+**What changes vs. the kit's allow-list in auto mode:**
+- Broad wildcard allow rules (`Bash(git *)`, `Bash(npm *)`, `Bash(python *)`, etc.) are dropped — everything routes through the classifier instead. Narrow rules like `Bash(npm test)` carry over.
+- The `deny` list is still enforced.
+- `protected paths` (`.git`, `.claude`, `.mcp.json`, etc.) route to the classifier rather than being auto-approved.
+- Dropped rules are restored the moment you leave auto mode (Shift+Tab cycles `default` → `acceptEdits` → `plan` → `auto`).
+
+**Fallbacks baked in**: 3 consecutive classifier blocks or 20 total in a session pause auto mode and resume prompting. Approving the prompted action resumes auto. Not configurable.
+
+**When to bail out**: sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` to default, or start a session with `claude --permission-mode default`.
+
+Auto mode is Anthropic's term-of-art "research preview" — it reduces prompt fatigue on long agentic loops, not a replacement for review on risky operations.
+
 ## Hooks
 
 - **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, pinned opus model, subagent model) so agents don't rely on training data cutoff
