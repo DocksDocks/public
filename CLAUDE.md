@@ -2,7 +2,7 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
-**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction (45%), `high` effort (not `max`), sonnet subagents under an Opus orchestrator, and fixed thinking budgets — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction (45%), `xhigh` effort (Opus 4.7's recommended tier for agentic/coding work, below `max`'s overthinking cost), sonnet subagents under an Opus 4.7 orchestrator, and adaptive thinking — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
 
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
@@ -108,29 +108,29 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 
 ## Environment Variables
 
-All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 45% auto-compact + high effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane.
+All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 45% auto-compact + xhigh effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
 
 ### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `45` | Compacts at 45% of context window (~450K on 1M). Can only lower the threshold below the default (~83%), never raise it. Prevents context rot that begins near 400K. |
-| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.6. |
+| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7. Note: 4.7 uses a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text. |
 
 ### Thinking & reasoning
 
+Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinking the only thinking-on mode**. Fixed budgets and `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` are gone.
+
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_EFFORT_LEVEL` | `high` | Deep reasoning without `max`'s 5-10× token cost. Valid: `low`/`medium`/`high`/`max`. |
-| `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | `1` | Fixed thinking budget per turn. Prevents zero-thinking turns that cause hallucinations. |
-| `MAX_THINKING_TOKENS` | `32000` | Active only when adaptive thinking is disabled. Near Opus default (31,999). |
+| `CLAUDE_CODE_EFFORT_LEVEL` | `xhigh` | Anthropic's recommended starting point for 4.7 agentic/coding. Sits between `high` and `max`. Valid: `low`/`medium`/`high`/`xhigh`/`max`. `max` is reserved for frontier problems — it risks overthinking on structured tasks. |
 
 ### Model selection
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `CLAUDE_CODE_SUBAGENT_MODEL` | `claude-sonnet-4-6` | All Task-tool subagents use sonnet. Must be a full model name (bare aliases like `sonnet` are risky). |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `claude-opus-4-6` | Pins the opus model version for the main orchestrator. |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `claude-opus-4-7` | Pins the opus model version for the main orchestrator. 4.7 launched 2026-04-16 with step-change agentic-coding gains. |
 
 ### Output & UI
 
@@ -144,10 +144,11 @@ All configured in `ssot/.claude/settings.json` under the `env` block. The center
 
 | Key | Value | Notes |
 |-----|-------|-------|
-| `effortLevel` | `high` | Does **NOT** accept `max` — only `low`/`medium`/`high`. Use the env var for `max`. |
-| `alwaysThinkingEnabled` | `true` | Legacy extended-thinking toggle. Independent of adaptive thinking. |
-| `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. |
+| `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. |
+| `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. On 4.7, thinking content is omitted by default at the API layer; Claude Code opts in when this is true. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
+
+Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key was removed because its schema doesn't accept `xhigh`.
 
 ### Settings that do NOT belong in settings.json
 

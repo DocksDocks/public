@@ -7,10 +7,8 @@
     "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6",
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "45",
-    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_CODE_EFFORT_LEVEL": "high",
-    "MAX_THINKING_TOKENS": "32000",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
+    "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-7",
     "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "permissions": {
@@ -158,7 +156,7 @@
           },
           {
             "type": "command",
-            "command": "echo \"[CONFIG] Context: $([ \\\"${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\\" = \\\"1\\\" ] && echo '200K' || echo '1M') | Auto-compact: ${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-83}% | Effort: ${CLAUDE_CODE_EFFORT_LEVEL:-high} | Thinking: $([ \\\"${CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING:-0}\\\" = \\\"1\\\" ] && echo \\\"fixed ${MAX_THINKING_TOKENS:-31999}\\\" || echo 'adaptive') | Subagent: ${CLAUDE_CODE_SUBAGENT_MODEL:-default}\"",
+            "command": "echo \"[CONFIG] Context: $([ \\\"${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\\" = \\\"1\\\" ] && echo '200K' || echo '1M') | Auto-compact: ${CLAUDE_AUTOCOMPACT_PCT_OVERRIDE:-83}% | Effort: ${CLAUDE_CODE_EFFORT_LEVEL:-high} | Thinking: adaptive | Model: ${ANTHROPIC_DEFAULT_OPUS_MODEL:-default} | Subagent: ${CLAUDE_CODE_SUBAGENT_MODEL:-default}\"",
             "timeout": 5
           },
           {
@@ -243,7 +241,6 @@
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
   "showThinkingSummaries": true,
   "skipDangerousModePermissionPrompt": true
 }
