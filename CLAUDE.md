@@ -2,7 +2,7 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
-**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction (45%), `xhigh` effort (Opus 4.7's recommended tier for agentic/coding work, below `max`'s overthinking cost), sonnet subagents under an Opus 4.7 orchestrator, and adaptive thinking — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction via a 400K effective window, `xhigh` effort (Opus 4.7's recommended tier for agentic/coding work, below `max`'s overthinking cost), sonnet subagents under an Opus 4.7 orchestrator, and adaptive thinking — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
 
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
@@ -98,9 +98,25 @@ Two-line display inspired by [claude-watch](https://github.com/xleddyl/claude-wa
 
 Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached to `/tmp/.claude_usage_cache`.
 
+## Session Management
+
+Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 400K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
+
+| Signal | Action | Why |
+|--------|--------|-----|
+| Related follow-up, same working set | **Continue** | Everything in context still matters |
+| New task starting | **`/clear`** | Zero rot; you control what carries forward |
+| Wrong path, same task | **`/rewind`** (double-tap `Esc`) | Undo the detour before it pollutes context |
+| Same task, context getting heavy | **`/compact` with steering** | Direct Claude what to keep ("preserve the failing test + stack trace; drop the exploration"). Beats waiting for auto-compact to guess. |
+| Work will produce output you only need the conclusion of | **Subagent** | Keeps verbose output out of the parent context |
+
+Rule of thumb: if a turn starts with "that didn't work, try X instead," reach for `/rewind` before retrying — the failed attempt is context rot you're otherwise carrying forward.
+
+The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents. The blog validates that pattern for ad-hoc work too.
+
 ## Hooks
 
-- **SessionStart**: Injects current date/time and active config (context window, auto-compact %, effort level, thinking budget, subagent model) so agents don't rely on training data cutoff
+- **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, pinned opus model, subagent model) so agents don't rely on training data cutoff
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 - **Stop**: Fetches API usage stats (async) to keep status line data fresh
@@ -108,14 +124,16 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 
 ## Environment Variables
 
-All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 45% auto-compact + xhigh effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
+All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + xhigh effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
 
 ### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `45` | Compacts at 45% of context window (~450K on 1M). Can only lower the threshold below the default (~83%), never raise it. Prevents context rot that begins near 400K. |
-| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7. Note: 4.7 uses a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text. |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `400000` | Cap the effective window at 400K regardless of the model's real capacity. Compaction fires at the default ~95% → ~380K. Per Anthropic's Thariq Shihipar (2026-04-15 blog + tweet): a good compromise on 1M Opus. Value is capped at the model's real window, so it's safe on 200K models too. Docs: https://code.claude.com/docs/en/env-vars. |
+| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7. Note: 4.7 uses a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text — another reason to cap the compact window in absolute tokens rather than as a percentage. |
+
+The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
 
 ### Thinking & reasoning
 
@@ -193,7 +211,7 @@ User-added permissions or env vars that don't exist in the SSOT will be discarde
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
-- **Auto-compact triggering too early or not at all** — check `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`. Values above ~83% are clamped to the default (the env var can only lower the threshold).
+- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000`, which caps the effective window and fires compaction at ~95% of that (~380K). To delay, raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` (percentage of the capacity). Both env vars at https://code.claude.com/docs/en/env-vars.
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` handles this automatically.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **`@RTK.md` import missing** — generated by `rtk init -g`. If RTK is not installed, run `./sync.sh --no-rtk` to strip the import cleanly.
