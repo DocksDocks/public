@@ -30,13 +30,14 @@
 | `~/.claude/commands/solid.md` | DELETED | Task 9 (additive `sync.sh` doesn't remove) |
 | `~/.claude/commands/refactor.md` | REPLACED | Task 10 via `./sync.sh` |
 | `CLAUDE.md` | UPDATED | Task 9 — commands table row edits |
-| `.github/workflows/validate.yml` | UPDATED | Task 10a — recalibrate score baseline + minimum threshold after command count drops from 9 → 8 |
+| `score-commands.sh` | UPDATED | Task 10a — add `--per-file` output mode so the workflow can do per-file checks without re-implementing scoring logic |
+| `.github/workflows/validate.yml` | REWRITTEN | Task 10a — replace the hardcoded baseline/total-minimum with two count-independent checks: per-file floor (Check A) + average-per-command floor (Check B) |
 
 **Score context (baseline):**
-- `score-commands.sh` produces a sum of per-file scores (~30 points per well-formed command).
-- Current SSOT score (pre-merge, 9 commands): **246** (measured fresh; the workflow's hardcoded `277` baseline is stale from before the `/docs`+`/team` merge — CI is already failing).
+- `score-commands.sh` produces a sum of per-file scores (~30 points per well-formed command; max ~31).
+- Current SSOT score (pre-merge, 9 commands): **246** (measured fresh; the workflow's hardcoded `277` baseline and `250` minimum are stale from before the `/docs`+`/team` merge — CI is already failing).
 - Expected post-merge score (8 commands): **220-240** depending on new `/refactor`'s individual quality.
-- Workflow thresholds will be recalibrated to the actual post-merge measurement in Task 10a.
+- Task 10a replaces both hardcoded numbers with count-independent thresholds (per-file minimum + average-per-command minimum), so future command add/remove does not require touching the workflow.
 
 **Working directory for all tasks:** `/home/docks/projects/public` (the repo root).
 
@@ -1259,66 +1260,179 @@ Reality check:
 
 ---
 
-## Task 10a: Recalibrate CI workflow thresholds
+## Task 10a: Switch CI to count-independent score checks (per-file floor + average floor)
 
-The CI workflow at `.github/workflows/validate.yml` has a hardcoded baseline comment (`277`) and a minimum threshold (`250`) that are both stale. After this merge, the score drops by roughly one command's worth of points, pushing it below the minimum. Both numbers need updating.
+The workflow at `.github/workflows/validate.yml` currently has a hardcoded baseline (`277`) and a hardcoded total-score minimum (`250`). Both are count-sensitive: every command add/remove requires editing the workflow. Both are also stale (pre-merge score is already `246`, below the hardcoded minimum).
+
+Replace them with two count-independent checks:
+
+- **Check A — per-file floor.** Every individual command must score ≥ `PER_FILE_MIN`. Catches per-file regressions directly; a single weak command can't be masked by strong ones.
+- **Check B — average-per-command floor.** `total / count ≥ AVG_MIN`. Catches kit-wide drift. Auto-scales with command count.
+
+Neither check uses the total or the command count as a hardcoded threshold.
 
 **Files:**
-- Modify: `.github/workflows/validate.yml`
+- Modify: `score-commands.sh` (add `--per-file` output mode)
+- Modify: `.github/workflows/validate.yml` (rewrite the score step)
 
-- [ ] **Step 1: Read the current workflow to confirm the edit target**
+- [ ] **Step 1: Add `--per-file` mode to `score-commands.sh`**
+
+Read the current `score-commands.sh` first. The scorer's structure is:
+```
+for f in "$DIR"/*.md; do
+  ...
+  score=0
+  # 11 scoring rules, each adds to $score
+  ...
+  total=$((total + score))
+done
+echo "$total"
+```
+
+Make two edits:
+
+**Edit A — parse optional `--per-file` flag.** Replace the existing `DIR="${1:-$SCRIPT_DIR/ssot/.claude/commands}"` line (near the top, after the `SCRIPT_DIR=` line) with:
+
+```bash
+MODE="total"
+DIR=""
+for arg in "$@"; do
+  case "$arg" in
+    --per-file) MODE="per-file" ;;
+    *) DIR="$arg" ;;
+  esac
+done
+DIR="${DIR:-$SCRIPT_DIR/ssot/.claude/commands}"
+```
+
+**Edit B — emit per-file scores inside the loop when in `per-file` mode, and suppress the total emission in that mode.** Just before the `total=$((total + score))` line inside the loop, add:
+
+```bash
+  if [ "$MODE" = "per-file" ]; then
+    echo "$name $score"
+  fi
+```
+
+And change the final `echo "$total"` at the bottom to:
+
+```bash
+if [ "$MODE" = "total" ]; then
+  echo "$total"
+fi
+```
+
+- [ ] **Step 2: Verify `score-commands.sh` still works in total mode (backwards compat)**
 
 Run:
 ```bash
-grep -n "baseline\|lt 250\|below minimum" .github/workflows/validate.yml
+bash score-commands.sh
 ```
-Expected: matches the baseline comment line (`# Current baseline: 277. ...`) and the `if [ "$score" -lt 250 ]` line.
+Expected: prints a single integer (same as before — one number to stdout).
 
-- [ ] **Step 2: Compute the new thresholds**
-
-Given `$NEW_SCORE` from Task 10 step 5:
-- **New baseline** = `$NEW_SCORE` (the actual post-merge measurement — source of truth).
-- **New minimum** = `$NEW_SCORE - 20` (same ~gap as before: old 277 - 250 = 27; give ourselves a little breathing room without being so lax that real regressions slip through).
-
-Example: if `$NEW_SCORE` is 232, baseline = 232, minimum = 212.
-
-- [ ] **Step 3: Update the baseline comment**
-
-Use Edit on `.github/workflows/validate.yml`:
-
-Old:
+Run:
+```bash
+bash score-commands.sh /nonexistent/path
 ```
+Expected: prints `0` (or errors silently, but not a crash — same behavior as before).
+
+- [ ] **Step 3: Verify `--per-file` mode**
+
+Run:
+```bash
+bash score-commands.sh --per-file
+```
+Expected: prints one line per command file, format `NAME SCORE`. No total line at the end.
+
+Example expected shape:
+```
+docs.md 30
+fix.md 29
+human-docs.md 28
+refactor.md 31
+review.md 28
+security.md 30
+solid.md 29    <- this line will disappear after Task 9 deletes /solid
+test.md 29
+```
+
+- [ ] **Step 4: Measure current per-file minimum and average**
+
+Run:
+```bash
+bash score-commands.sh --per-file | awk '{print $2}' | sort -n | head -1
+```
+Expected: the lowest per-command score. Note this number as `MEASURED_MIN`.
+
+Run:
+```bash
+total=$(bash score-commands.sh)
+count=$(bash score-commands.sh --per-file | wc -l)
+echo "total=$total count=$count avg=$(( total / count ))"
+```
+Expected: prints `total=<N> count=<C> avg=<A>`. Note `avg` as `MEASURED_AVG`.
+
+- [ ] **Step 5: Pick the floors**
+
+- `PER_FILE_MIN` = `MEASURED_MIN - 3` (small buffer below the lowest current score; keeps CI green today but catches any single command dropping further).
+- `AVG_MIN` = `MEASURED_AVG - 2` (small buffer below the current average; catches broad drift).
+
+Example: if `MEASURED_MIN = 28` and `MEASURED_AVG = 29`, then `PER_FILE_MIN = 25` and `AVG_MIN = 27`.
+
+Write these two numbers down; they go into the workflow in the next step.
+
+- [ ] **Step 6: Rewrite the score step in `.github/workflows/validate.yml`**
+
+Read the current workflow. The relevant block is:
+
+```yaml
+      - name: Run score-commands.sh
+        run: |
+          score=$(bash score-commands.sh)
+          echo "Quality score: $score"
           # Current baseline: 277. Fail if score drops significantly below baseline.
-```
-
-New (substitute the actual `$NEW_SCORE`):
-```
-          # Current baseline: <NEW_SCORE>. Fail if score drops significantly below baseline.
-```
-
-- [ ] **Step 4: Update the minimum-threshold check**
-
-Use Edit on `.github/workflows/validate.yml`:
-
-Old:
-```
           if [ "$score" -lt 250 ]; then
             echo "Score $score is below minimum threshold (250)" >&2
             exit 1
           fi
 ```
 
-New (substitute `$NEW_SCORE - 20` as the minimum — e.g., `212` if `$NEW_SCORE` is 232):
-```
-          if [ "$score" -lt <NEW_MIN> ]; then
-            echo "Score $score is below minimum threshold (<NEW_MIN>)" >&2
+Replace that single step with two steps (substitute the `PER_FILE_MIN` and `AVG_MIN` numbers chosen in Step 5):
+
+```yaml
+      - name: Score — per-file floor (Check A)
+        run: |
+          PER_FILE_MIN=<PER_FILE_MIN>
+          failed=0
+          while IFS=' ' read -r name score; do
+            if [ "$score" -lt "$PER_FILE_MIN" ]; then
+              echo "::error file=ssot/.claude/commands/$name::scored $score, below per-file floor $PER_FILE_MIN"
+              failed=1
+            else
+              echo "$name: $score"
+            fi
+          done < <(bash score-commands.sh --per-file)
+          exit $failed
+
+      - name: Score — average-per-command floor (Check B)
+        run: |
+          AVG_MIN=<AVG_MIN>
+          total=$(bash score-commands.sh)
+          count=$(bash score-commands.sh --per-file | wc -l)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No command files found in ssot/.claude/commands/"
+            exit 1
+          fi
+          avg=$(( total / count ))
+          echo "total=$total count=$count avg=$avg floor=$AVG_MIN"
+          if [ "$avg" -lt "$AVG_MIN" ]; then
+            echo "::error::Average per-command score $avg is below floor $AVG_MIN" >&2
             exit 1
           fi
 ```
 
-Both the numeric value in the `-lt` comparison AND the value quoted in the error message must match the new minimum.
+No hardcoded total. No hardcoded command count. Both thresholds are per-command and independent of the number of files.
 
-- [ ] **Step 5: Verify the workflow still parses as valid YAML**
+- [ ] **Step 7: Verify the workflow still parses as valid YAML**
 
 Run:
 ```bash
@@ -1326,23 +1440,47 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/validate.yml'))"
 ```
 Expected: prints `OK`.
 
-- [ ] **Step 6: Dry-run the score check locally with the new threshold**
+- [ ] **Step 8: Dry-run both checks locally**
 
 Run:
 ```bash
-score=$(bash score-commands.sh)
-min=$(grep -oP 'score\\" -lt \\K[0-9]+' .github/workflows/validate.yml | head -1)
-echo "score=$score, min=$min"
-[ "$score" -ge "$min" ] && echo "PASS" || echo "FAIL"
+PER_FILE_MIN=<PER_FILE_MIN>
+failed=0
+while IFS=' ' read -r name score; do
+  if [ "$score" -lt "$PER_FILE_MIN" ]; then
+    echo "FAIL: $name=$score < $PER_FILE_MIN"
+    failed=1
+  fi
+done < <(bash score-commands.sh --per-file)
+[ $failed -eq 0 ] && echo "Check A: PASS" || echo "Check A: FAIL"
 ```
-Expected: `PASS`. If `FAIL`, the minimum is still too high or the score is still too low — investigate before committing.
+Expected: `Check A: PASS`. If `FAIL`, a specific command is below the floor — lower `PER_FILE_MIN`, or improve that command, or accept the floor change. Don't just rubber-stamp a lower floor without understanding why.
+
+Run:
+```bash
+AVG_MIN=<AVG_MIN>
+total=$(bash score-commands.sh)
+count=$(bash score-commands.sh --per-file | wc -l)
+avg=$(( total / count ))
+echo "total=$total count=$count avg=$avg floor=$AVG_MIN"
+[ "$avg" -ge "$AVG_MIN" ] && echo "Check B: PASS" || echo "Check B: FAIL"
+```
+Expected: `Check B: PASS`.
+
+- [ ] **Step 9: Sanity check — no hardcoded totals left in the workflow**
+
+Run:
+```bash
+grep -nE '277|250|baseline' .github/workflows/validate.yml
+```
+Expected: zero matches. The old hardcoded baseline and total-minimum are gone.
 
 ---
 
 ## Task 11: Commit
 
 **Files:**
-- Commit: `ssot/.claude/commands/refactor.md`, `CLAUDE.md`, `.github/workflows/validate.yml`, deletion of `ssot/.claude/commands/solid.md`
+- Commit: `ssot/.claude/commands/refactor.md`, `CLAUDE.md`, `score-commands.sh`, `.github/workflows/validate.yml`, deletion of `ssot/.claude/commands/solid.md`
 
 - [ ] **Step 1: Review the staged diff**
 
@@ -1351,16 +1489,14 @@ Run:
 git status --short
 git diff --stat HEAD
 ```
-Expected: shows `M .github/workflows/validate.yml`, `M CLAUDE.md`, `M ssot/.claude/commands/refactor.md`, `D ssot/.claude/commands/solid.md`.
+Expected: shows `M .github/workflows/validate.yml`, `M CLAUDE.md`, `M score-commands.sh`, `M ssot/.claude/commands/refactor.md`, `D ssot/.claude/commands/solid.md`.
 
 - [ ] **Step 2: Commit**
-
-Substitute the actual `$NEW_SCORE` and minimum into the commit message body.
 
 Run:
 ```bash
 git commit -m "$(cat <<'EOF'
-commands: merge /solid into /refactor as dedicated SOLID phase
+commands: merge /solid into /refactor; switch CI score checks to count-independent
 
 Eight-phase pipeline that absorbs /solid's deep per-principle analysis
 (including Liskov) as a sequential Phase 3 after the parallel Dead Code +
@@ -1379,10 +1515,13 @@ applied to every phase.
 Deletes /solid (both ssot and ~/.claude). Updates CLAUDE.md commands
 table to reflect the merged /refactor pipeline with sequential SOLID phase.
 
-Recalibrates .github/workflows/validate.yml score thresholds. The previous
-baseline (277) and minimum (250) were stale from before the /docs+/team
-merge; the pre-merge score was already 246 (CI was failing). New baseline
-reflects the measured post-merge total; new minimum is baseline - 20.
+Replaces the stale hardcoded CI score thresholds (baseline 277, minimum
+250, both count-sensitive and drifted since the /docs+/team merge) with
+two count-independent checks: per-file floor (every command must score
+>= PER_FILE_MIN) and average-per-command floor (total/count >= AVG_MIN).
+Adds --per-file output mode to score-commands.sh to support the per-file
+check without duplicating scoring logic in the workflow. Command add/
+remove no longer requires editing the workflow.
 
 One intentional functionality drop: /solid's --principle=X filter.
 Consistent with the non-interactive full-audit posture locked in during
@@ -1439,8 +1578,8 @@ If the smoke test fails, open a follow-up plan to patch the specific issue.
 - AC 12 (validators pass) → Task 10 steps 4-5 + Task 10a step 6 dry-run
 - AC 13 (smoke test) → User-gated smoke test section
 
-**Out-of-spec addition (user flagged during planning):** `.github/workflows/validate.yml` score thresholds are stale from before the `/docs+/team` merge (pre-merge score was already 246, below the hardcoded minimum of 250 — CI is currently failing). Task 10a recalibrates the baseline and minimum using the actual post-merge measurement.
+**Out-of-spec addition (user flagged during planning):** `.github/workflows/validate.yml` score thresholds were stale and count-sensitive — every command add/remove required editing the workflow. Task 10a goes further than a simple recalibration: it switches CI to two count-independent checks (per-file floor + average-per-command floor) and adds a `--per-file` mode to `score-commands.sh` so the workflow doesn't duplicate scoring logic. Future command add/remove will no longer require workflow edits.
 
-**Placeholder scan:** No TBD / TODO / "fill in" / "implement later" / "handle edge cases". All content is concrete. The two placeholders in Task 10a (`<NEW_SCORE>` and `<NEW_MIN>`) are *intentional* — they are filled in by the executor using the number measured in Task 10 step 5. This is the only responsible way to set a CI threshold: measure the real value, then lock it in.
+**Placeholder scan:** No TBD / TODO / "fill in" / "implement later" / "handle edge cases". All content is concrete. The three placeholders in Task 10a (`MEASURED_MIN`, `MEASURED_AVG`, `PER_FILE_MIN`, `AVG_MIN`) are *intentional* — they are computed by the executor from the actual measurements in Step 4 and substituted into the workflow in Step 6. This is the only responsible way to set CI thresholds: measure the real values, then lock them in.
 
 **Type consistency:** Pattern field named consistently as `Pattern` across Tasks 3, 4, 5, 7. Principle codes S/O/L/I/D used consistently. The synthetic `X` code for cross-package coupling appears only in Task 3 and is explained on first use.
