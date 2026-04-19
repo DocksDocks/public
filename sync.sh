@@ -38,6 +38,18 @@ else
   log "Commands synced ($count files)"
 fi
 
+# --- Sync skills (additive, never delete) ---
+if [ -d "$REPO_DIR/ssot/.claude/skills" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/skills/ $CLAUDE_DIR/skills/"
+  else
+    mkdir -p "$CLAUDE_DIR/skills"
+    rsync -a "$REPO_DIR/ssot/.claude/skills/" "$CLAUDE_DIR/skills/"
+    skill_count=$(find "$CLAUDE_DIR/skills" -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l)
+    log "Skills synced ($skill_count skills)"
+  fi
+fi
+
 # --- Sync scripts + alert sound ---
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "[dry-run] cp statusline.sh, fetch-usage.sh, alert_bubble.mp3"
@@ -148,6 +160,8 @@ echo "Target:   $CLAUDE_DIR"
 if [ "$DRY_RUN" -eq 0 ]; then
   count=$(ls "$CLAUDE_DIR/commands/"*.md 2>/dev/null | wc -l)
   echo "Commands: $count files"
+  skill_count=$(find "$CLAUDE_DIR/skills" -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l)
+  echo "Skills:   $skill_count skills"
   if command -v rtk >/dev/null 2>&1; then
     echo "RTK:      $(rtk --version 2>/dev/null || echo 'installed')"
   else

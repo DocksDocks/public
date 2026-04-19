@@ -13,9 +13,12 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
 | `ssot/.claude/commands/*.md` | 9 custom slash commands (see below) |
+| `ssot/.claude/skills/*/SKILL.md` | Portable engineering-convention skills (see below) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 | `alert_bubble.mp3` | Audio notification for Notification hook |
+| `guard-skills.sh` / `score-skills.sh` | Structural + quality validators for skills |
+| `guard-commands.sh` / `score-commands.sh` | Structural + quality validators for commands |
 
 ## Custom Commands
 
@@ -34,6 +37,20 @@ All commands use multi-agent pipelines. The orchestrator runs on Opus; subagents
 Commands with parallel phases (`/security`, `/fix`, `/docs`, `/refactor`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
 
 All commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
+
+## Skills
+
+Portable engineering-convention skills that auto-trigger when Claude recognizes a matching task. Skills follow the [agentskills.io](https://agentskills.io) open standard: `SKILL.md` with frontmatter + body (≤500 lines), discovered by Claude Code at session start, full body loaded on demand. All skills in this kit are `user-invocable: false` — they stay out of the `/` menu but still auto-trigger on relevant work.
+
+| Skill | Triggers on |
+|-------|-------------|
+| `dep-vuln-workflow` | `pnpm audit` / `npm audit`, CVE/GHSA advisories, major version bumps, peer-dep conflicts, rollback decisions |
+| `lint-no-suppressions` | Tempted to add `eslint-disable` / `@ts-ignore` / `# noqa` / `@SuppressWarnings` — provides decision tree + reusable pre-commit hook |
+| `nextjs-conventions` | Next.js 13/14/15/16 work — App Router files, Server Components/Actions, `proxy.ts`, async cookies/headers, `"use client"` boundaries |
+| `react-effect-policy` | Writing `useEffect` — 6 anti-patterns with React 19 replacements (`useSyncExternalStore`, `useDeferredValue`, derived state, Server Actions) |
+| `react-solid` | Component architecture / refactoring — SOLID's 5 principles translated to function-based React (Extract Hook, Strategy Map, discriminated unions, ISP splits, DIP via Server Actions) |
+
+Validators (`guard-skills.sh`, `score-skills.sh`) enforce spec conformance — see `## Editing Commands` for the same pattern applied to commands.
 
 ## Plugins
 
@@ -279,13 +296,17 @@ Structural:
 - Allowed Tools section goes at the bottom of the command, split into Planning/Implementation
 </constraint>
 
-## Editing Commands
+## Editing Commands & Skills
 
-When modifying commands, keep in sync by re-running `./sync.sh`. The `ssot/.claude/` directory is the source of truth; `~/.claude/` is the deployed copy.
+When modifying commands or skills, keep in sync by re-running `./sync.sh`. The `ssot/.claude/` directory is the source of truth; `~/.claude/` is the deployed copy.
 
 Before committing, run the validators:
 
 ```bash
 bash guard-commands.sh   # structural checks (task tags, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
 bash score-commands.sh   # quality score across all commands
+bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when", body ≤500 lines, metadata.updated ISO date)
+bash score-skills.sh     # quality score across all skills (CSO, freshness, examples, tables, code fences, body-size sweet spot)
 ```
+
+`score-skills.sh --per-file` prints one `<name> <score>` line per skill — useful for spotting drift after an edit.
