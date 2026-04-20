@@ -49,8 +49,11 @@ Portable engineering-convention skills that auto-trigger when Claude recognizes 
 | `nextjs-conventions` | Next.js 13/14/15/16 work — App Router files, Server Components/Actions, `proxy.ts`, async cookies/headers, `"use client"` boundaries |
 | `react-effect-policy` | Writing `useEffect` — 6 anti-patterns with React 19 replacements (`useSyncExternalStore`, `useDeferredValue`, derived state, Server Actions) |
 | `react-solid` | Component architecture / refactoring — SOLID's 5 principles translated to function-based React (Extract Hook, Strategy Map, discriminated unions, ISP splits, DIP via Server Actions) |
+| `make-interfaces-feel-better` *(vendored, MIT, [upstream](https://github.com/jakubkrehel/make-interfaces-feel-better))* | UI polish — concentric border radius, optical alignment, layered shadows, enter/exit animations, `tabular-nums`, image outlines, `scale(0.96)` on press, 40×40px hit areas, `will-change` discipline |
 
 Validators (`guard-skills.sh`, `score-skills.sh`) enforce spec conformance — see `## Editing Commands` for the same pattern applied to commands.
+
+**Vendored / third-party skills** carry an `upstream:` frontmatter block (`source`, `license`, `vendored_at`). The guard and score scripts detect this and relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so upstream content can be preserved verbatim. Universal structural checks still apply.
 
 ## Plugins
 
@@ -305,8 +308,8 @@ Before committing, run the validators:
 ```bash
 bash guard-commands.sh   # structural checks (task tags, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
 bash score-commands.sh   # quality score across all commands
-bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when", body ≤500 lines, metadata.updated ISO date)
-bash score-skills.sh     # quality score across all skills (CSO, freshness, examples, tables, code fences, body-size sweet spot)
+bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when" unless `upstream:` block is present, body ≤500 lines, metadata.updated ISO date unless `upstream:` block is present)
+bash score-skills.sh     # quality score across all skills (CSO, freshness, examples, tables, code fences, body-size sweet spot; `upstream:` skills: CSO credited for "Use when" anywhere, freshness falls back to upstream.vendored_at)
 ```
 
 `score-skills.sh --per-file` prints one `<name> <score>` line per skill — useful for spotting drift after an edit.

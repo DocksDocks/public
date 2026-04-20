@@ -23,13 +23,25 @@ for skill_dir in "$DIR"/*/; do
   [ -f "$file" ] || continue
   score=0
 
-  # 1. Description starts with "Use when" (2pts)
-  desc=$(grep '^description:' "$file" | head -1 | sed 's/^description:[[:space:]]*//')
-  echo "$desc" | grep -qiE '^use when' && score=$((score + 2))
+  # Third-party vendored skills opt into relaxed scoring via `upstream:` frontmatter block
+  has_upstream=$(grep -c '^upstream:' "$file")
 
-  # 2. metadata.updated within last 180 days (1pt)
+  # 1. Description starts with "Use when" (2pts) — for upstream: skills, "Use when" anywhere counts
+  desc=$(grep '^description:' "$file" | head -1 | sed 's/^description:[[:space:]]*//')
+  if [ "$has_upstream" -gt 0 ]; then
+    echo "$desc" | grep -qiE 'use when' && score=$((score + 2))
+  else
+    echo "$desc" | grep -qiE '^use when' && score=$((score + 2))
+  fi
+
+  # 2. Freshness within last 180 days (1pt) — metadata.updated for kit skills;
+  # fall back to upstream.vendored_at for upstream: skills
   updated=$(awk '/^metadata:/{in_meta=1; next} in_meta && /^[a-z]/{in_meta=0} in_meta && /updated:/{print; exit}' "$file" \
             | sed 's/.*updated:[[:space:]]*"\{0,1\}\([0-9-]*\)"\{0,1\}.*/\1/')
+  if [ -z "$updated" ] && [ "$has_upstream" -gt 0 ]; then
+    updated=$(awk '/^upstream:/{in_up=1; next} in_up && /^[a-z]/{in_up=0} in_up && /vendored_at:/{print; exit}' "$file" \
+              | sed 's/.*vendored_at:[[:space:]]*"\{0,1\}\([0-9-]*\)"\{0,1\}.*/\1/')
+  fi
   if [ -n "$updated" ]; then
     updated_ts=$(date -d "$updated" +%s 2>/dev/null || echo 0)
     if [ "$updated_ts" -gt 0 ]; then

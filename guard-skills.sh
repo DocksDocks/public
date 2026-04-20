@@ -43,7 +43,11 @@ for skill_dir in "$DIR"/*/; do
     errors=$((errors + 1))
   fi
 
-  # description must be present, ≥10 chars, ≤1024 chars, start with "Use when"
+  # Third-party vendored skills opt into relaxed checks via `upstream:` frontmatter block
+  has_upstream=$(grep -c '^upstream:' "$file")
+
+  # description must be present, ≥10 chars, ≤1024 chars (universal);
+  # start with "Use when" is a kit CSO rule, relaxed for upstream: skills
   desc=$(grep '^description:' "$file" | head -1 | sed 's/^description:[[:space:]]*//')
   desc_len=${#desc}
   if [ "$desc_len" -lt 10 ]; then
@@ -53,23 +57,26 @@ for skill_dir in "$DIR"/*/; do
     echo "FAIL: $skill_name — description exceeds 1024 chars ($desc_len)" >&2
     errors=$((errors + 1))
   fi
-  if ! echo "$desc" | grep -qiE '^use when'; then
+  if [ "$has_upstream" -eq 0 ] && ! echo "$desc" | grep -qiE '^use when'; then
     echo "FAIL: $skill_name — description must start with 'Use when' (CSO)" >&2
     errors=$((errors + 1))
   fi
 
-  # user-invocable field must be present
-  if ! grep -qE '^user-invocable:' "$file"; then
+  # user-invocable field — kit convention, relaxed for upstream: skills
+  if [ "$has_upstream" -eq 0 ] && ! grep -qE '^user-invocable:' "$file"; then
     echo "FAIL: $skill_name — user-invocable field missing" >&2
     errors=$((errors + 1))
   fi
 
-  # metadata.updated must be present and match YYYY-MM-DD
-  updated=$(awk '/^metadata:/{in_meta=1; next} in_meta && /^[a-z]/{in_meta=0} in_meta && /updated:/{print; exit}' "$file" \
-            | sed 's/.*updated:[[:space:]]*"\{0,1\}\([0-9-]*\)"\{0,1\}.*/\1/')
-  if ! echo "$updated" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
-    echo "FAIL: $skill_name — metadata.updated missing or not in YYYY-MM-DD format (got: '$updated')" >&2
-    errors=$((errors + 1))
+  # metadata.updated — kit convention, relaxed for upstream: skills
+  # (upstream.vendored_at serves the freshness purpose for vendored skills)
+  if [ "$has_upstream" -eq 0 ]; then
+    updated=$(awk '/^metadata:/{in_meta=1; next} in_meta && /^[a-z]/{in_meta=0} in_meta && /updated:/{print; exit}' "$file" \
+              | sed 's/.*updated:[[:space:]]*"\{0,1\}\([0-9-]*\)"\{0,1\}.*/\1/')
+    if ! echo "$updated" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+      echo "FAIL: $skill_name — metadata.updated missing or not in YYYY-MM-DD format (got: '$updated')" >&2
+      errors=$((errors + 1))
+    fi
   fi
 
   # Body (post-frontmatter) ≤ 500 lines

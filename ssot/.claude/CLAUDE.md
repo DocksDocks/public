@@ -36,6 +36,7 @@ Skills follow the [agentskills.io](https://agentskills.io) open standard (works 
 - **Discovery**: Claude Code scans `.claude/skills/*/SKILL.md` at session start, loads only `name` + `description` (~100 tokens per skill)
 - **Triggering**: Claude semantically matches descriptions against user tasks, invokes via `Skill` tool — no `@import` or pointer tables needed
 - **CSO (Claude Search Optimization)**: descriptions MUST start with "Use when..." and describe trigger conditions, not capabilities
+- **Third-party / vendored skills**: add an `upstream:` frontmatter block (`source`, `license`, `vendored_at: "YYYY-MM-DD"`) when vendoring a skill from an external repo. This signals `guard-skills.sh` / `score-skills.sh` to relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so the skill's body can be preserved verbatim from upstream. Universal structural checks (fenced frontmatter, name matches directory, description length, 500-line body cap) still apply.
 
 <constraint>
 After any code change affecting documented patterns, update the relevant skill in `.claude/skills/` and its `metadata.updated` frontmatter field. When introducing something new, create a skill or add a `references/` file to an existing skill.

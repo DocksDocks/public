@@ -4,7 +4,7 @@ description: Use when working on a Next.js 13/14/15/16 project — adding a page
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-04-18"
+  updated: "2026-04-20"
 ---
 
 # Next.js App Router Conventions
@@ -22,7 +22,7 @@ Server-first: every data read is a Server Component, every mutation is a Server 
 - Fixing hydration mismatches or SSR/CSR render drift.
 - Reading cookies / headers / searchParams in Next 15+.
 - Debugging Turbopack dev behavior vs production build.
-- Upgrading Next.js across major versions.
+- Upgrading Next.js across major versions (pair with the `dep-vuln-workflow` skill for the full upgrade playbook — peer-dep checks, per-major commit split, verification suite).
 
 ## Next.js 16 Conventions (2025-11+)
 

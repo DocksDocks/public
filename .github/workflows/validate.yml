@@ -47,11 +47,50 @@ jobs:
             exit 1
           fi
 
+      - name: Run guard-skills.sh
+        run: bash guard-skills.sh
+
+      - name: Score skills — per-file floor (Check A)
+        run: |
+          PER_FILE_MIN=7
+          failed=0
+          while IFS=' ' read -r name score; do
+            if [ "$score" -lt "$PER_FILE_MIN" ]; then
+              echo "::error file=ssot/.claude/skills/$name::scored $score, below per-file floor $PER_FILE_MIN"
+              failed=1
+            else
+              echo "$name: $score"
+            fi
+          done < <(bash score-skills.sh --per-file)
+          exit $failed
+
+      - name: Score skills — average floor (Check B)
+        run: |
+          AVG_MIN=10
+          total=0
+          count=0
+          while IFS=' ' read -r name score; do
+            total=$((total + score))
+            count=$((count + 1))
+          done < <(bash score-skills.sh --per-file)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No skill files found in ssot/.claude/skills/"
+            exit 1
+          fi
+          avg=$(( total / count ))
+          echo "total=$total count=$count avg=$avg floor=$AVG_MIN"
+          if [ "$avg" -lt "$AVG_MIN" ]; then
+            echo "::error::Average per-skill score $avg is below floor $AVG_MIN" >&2
+            exit 1
+          fi
+
       - name: Syntax-check shell scripts
         run: |
           bash -n sync.sh
           bash -n guard-commands.sh
           bash -n score-commands.sh
+          bash -n guard-skills.sh
+          bash -n score-skills.sh
           bash -n ssot/.claude/statusline.sh
           bash -n ssot/.claude/fetch-usage.sh
 

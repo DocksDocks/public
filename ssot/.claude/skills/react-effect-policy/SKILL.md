@@ -4,7 +4,7 @@ description: Use when writing a React component, a custom hook, reviewing useEff
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-04-18"
+  updated: "2026-04-20"
 ---
 
 # React useEffect Policy
@@ -165,6 +165,7 @@ export function useDebouncedValue<T>(value: T, delay: number): T {
 - **Cleanup is mandatory for subscriptions.** Always return `() => unsubscribe()`. Strict Mode double-invokes effects in dev — a missing cleanup shows up as a leak.
 - **`useDeferredValue` is NOT a time-based debounce.** It's CPU-priority. For "wait 400ms then fire RPC," use `useDebouncedValue` (or any setTimeout-in-effect hook).
 - **`useEffectEvent` is still experimental** in React 19 (as of 2026-04). Do not use in production; use the ref-latest pattern instead.
+- **Don't "fix" an effect by burying it in a custom hook.** Extraction doesn't change correctness — it hides smell. Fix the anti-pattern first (use the replacement table above). Only extract once there's a second caller AND the logic fits one of the 3 acceptable categories. See the `react-solid` skill's Extract Hook guidance for when extraction is the right refactor.
 
 ## References
 
