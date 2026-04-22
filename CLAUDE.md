@@ -166,7 +166,7 @@ Auto mode is Anthropic's term-of-art "research preview" — it reduces prompt fa
 
 ## Environment Variables
 
-All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + xhigh effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
+All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + max effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
 
 ### Context management
 
@@ -183,7 +183,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_EFFORT_LEVEL` | `xhigh` | Anthropic's recommended starting point for 4.7 agentic/coding. Sits between `high` and `max`. Valid: `low`/`medium`/`high`/`xhigh`/`max`. `max` is reserved for frontier problems — it risks overthinking on structured tasks. |
+| `CLAUDE_CODE_EFFORT_LEVEL` | `max` | Highest thinking-budget tier. Valid: `low`/`medium`/`high`/`xhigh`/`max`/`auto`. Env var takes precedence over `/effort` and the `effortLevel` settings key. Tradeoff: `max` can overthink structured tasks — drop to `xhigh` if you see wasted reasoning on routine work. |
 
 ### Model selection
 
@@ -206,9 +206,10 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 |-----|-------|-------|
 | `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. |
 | `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. On 4.7, thinking content is omitted by default at the API layer; Claude Code opts in when this is true. |
+| `viewMode` | `verbose` | Default transcript view on startup. Pairs with `showThinkingSummaries` to make thinking summaries visible inline instead of hidden behind a `Ctrl+O` toggle. Also expands tool I/O — trade noise for visibility. Enum: `default`/`verbose`/`focus`. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
 
-Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key was removed because its schema doesn't accept `xhigh`.
+Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max` (and is the documented precedence winner over `/effort` and the settings key anyway).
 
 ### Settings that do NOT belong in settings.json
 
