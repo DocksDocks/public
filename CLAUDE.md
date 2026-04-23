@@ -134,9 +134,9 @@ The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents.
 
 ## Permission Mode
 
-The kit does **not** set a `defaultMode` — new sessions start in `default` mode (normal per-tool approval prompts). Auto mode is supported but opt-in; enable it when you want it via `Shift+Tab` (cycles `default` → `acceptEdits` → `plan` → `auto`) or `claude --permission-mode auto`. Docs: https://code.claude.com/docs/en/permission-modes.
+The kit sets `permissions.defaultMode: "auto"` and `skipAutoPermissionPrompt: true` — new sessions boot directly into auto mode with no entry confirmation. Docs: https://code.claude.com/docs/en/permission-modes.
 
-Why not default to auto: the classifier that gates each action in auto mode is an API call in its own right. When that service has a transient outage, every Edit/Bash is blocked until it recovers — even simple local work stalls. Keeping auto mode opt-in means routine sessions aren't held hostage by a backend hiccup, while longer agentic loops can still opt in when prompt fatigue outweighs classifier risk.
+The classifier tradeoff: the classifier that gates each action in auto mode is an API call in its own right. When that service has a transient outage, every Edit/Bash is blocked until it recovers — even simple local work stalls. When that happens, cycle away with `Shift+Tab` (`default` → `acceptEdits` → `plan` → `auto`) until the classifier recovers. Fallbacks are baked in anyway — see "Fallbacks" below.
 
 **Requirements** for auto mode (the kit meets them on a Max subscription):
 - Plan: Max / Team / Enterprise / API (not Pro)
@@ -206,7 +206,8 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 |-----|-------|-------|
 | `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. |
 | `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. On 4.7, thinking content is omitted by default at the API layer; Claude Code opts in when this is true. |
-| `viewMode` | `verbose` | Default transcript view on startup. Pairs with `showThinkingSummaries` to make thinking summaries visible inline instead of hidden behind a `Ctrl+O` toggle. Also expands tool I/O — trade noise for visibility. Enum: `default`/`verbose`/`focus`. |
+| `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable; `showThinkingSummaries` still controls whether thinking is generated. Press `Ctrl+O` to cycle to `verbose` on demand when you want to inspect a tool call or thinking block inline. Enum: `default`/`verbose`/`focus` (`focus` hides thinking — not recommended here). |
+| `skipAutoPermissionPrompt` | `true` | Suppresses the one-time confirmation shown when a session boots into auto mode (e.g. via `permissions.defaultMode: "auto"`). Named analogously to `skipDangerousModePermissionPrompt`; not in the official settings reference as of 2026-W16 but works in v2.1.x. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max` (and is the documented precedence winner over `/effort` and the settings key anyway).
