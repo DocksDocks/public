@@ -34,6 +34,27 @@ If auto-compaction triggers between phases, re-read the plan file to recover pri
 
 ---
 
+## Pre-flight context
+
+Environment snapshot (rendered at command-invoke time via Claude Code `!`-injection — no tool calls needed):
+
+- Date: !`date '+%Y-%m-%d %H:%M:%S %Z'`
+- Branch: !`git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "(not a git repo)"`
+
+Working tree (short):
+
+```!
+git status --short 2>/dev/null | head -30 || echo "(clean)"
+```
+
+Recent commits:
+
+```!
+git log --oneline -5 2>/dev/null || echo "(no commits)"
+```
+
+Before invoking the first subagent, write this rendered block to the plan file as `## Environment` so downstream phases can reference git state without re-running the shell.
+
 ## Phase 1: Exploration
 
 Invoke `subagent_type: review-explorer` with the following prompt:
