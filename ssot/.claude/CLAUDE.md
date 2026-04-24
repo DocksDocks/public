@@ -41,3 +41,18 @@ Skills follow the [agentskills.io](https://agentskills.io) open standard (works 
 <constraint>
 After any code change affecting documented patterns, update the relevant skill in `.claude/skills/` and its `metadata.updated` frontmatter field. When introducing something new, create a skill or add a `references/` file to an existing skill.
 </constraint>
+
+## Project Agents
+
+Projects and the global kit may have a `.claude/agents/` directory containing subagent definitions. Each agent file declares its `model` (`sonnet`/`opus`/`haiku`/`inherit`/full model ID), `tools`, and system prompt. Claude Code auto-discovers them at session start and delegates when a `subagent_type` matches or when a slash command explicitly invokes them.
+
+Agent files follow this structure:
+- **Frontmatter**: `name` (kebab-case, matches filename), `description` (CSO — starts "Use when…" with a "Not for…" exclusion clause), `tools`, `model`
+- **Body** (≤500 lines): `<constraint>` blocks for non-negotiable rules, `## Workflow` with context-acknowledgment as step 1, `## Output Format`, `## Anti-Hallucination Checks`, `## Success Criteria`
+- **Model-selection resolution** (per Claude Code docs): `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` param → agent frontmatter `model:` → parent conversation. The env var is NOT set in this kit, so per-agent frontmatter controls selection.
+
+<constraint>
+When adding a new agent: use kebab-case name matching filename, CSO-compliant description (starts "Use when…", contains a "Not" exclusion clause), explicit `model` and `tools`. Run `bash guard-agents.sh` to verify.
+</constraint>
+
+**Validators:** `bash guard-agents.sh` (structural), `bash score-agents.sh` (quality, mirrors `score-skills.sh`).

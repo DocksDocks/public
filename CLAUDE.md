@@ -2,7 +2,7 @@
 
 Portable Claude Code setup — commands, settings, hooks, and coding standards. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
 
-**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction via a 400K effective window, `max` effort (Opus 4.7's deepest thinking tier — see `## Thinking & reasoning` for the overthinking tradeoff), sonnet subagents under an Opus 4.7 orchestrator, and adaptive thinking — combined with `<task>` blocks that carry explicit Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+**Focus: token efficiency without sacrificing quality.** Every setting, command, and hook in this kit is tuned to minimize token consumption while preserving rigorous multi-agent pipeline output. The configuration leans on 1M context with early auto-compaction via a 400K effective window, `max` effort (Opus 4.7's deepest thinking tier — see `## Thinking & reasoning` for the overthinking tradeoff), per-phase model tiering via `ssot/.claude/agents/` (12 opus for synthesis/analysis + 29 sonnet for exploration/scanning/verification) under an Opus 4.7 orchestrator, and adaptive thinking — combined with explicit Success Criteria and Anti-Hallucination Checks in every agent body so smaller models still produce dependable work. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
 
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
@@ -12,17 +12,19 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 |------|---------|
 | `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
-| `ssot/.claude/commands/*.md` | 9 custom slash commands (see below) |
+| `ssot/.claude/commands/*.md` | 7 custom slash commands (see below) — thin orchestrators that invoke subagents by name |
+| `ssot/.claude/agents/*.md` | 41 specialized subagents (see `## Agents`) — one per command phase, explicit `model:` per-agent |
 | `ssot/.claude/skills/*/SKILL.md` | Portable engineering-convention skills (see below) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 | `alert_bubble.mp3` | Audio notification for Notification hook |
 | `guard-skills.sh` / `score-skills.sh` | Structural + quality validators for skills |
 | `guard-commands.sh` / `score-commands.sh` | Structural + quality validators for commands |
+| `guard-agents.sh` / `score-agents.sh` | Structural + quality validators for agents |
 
 ## Custom Commands
 
-All commands use multi-agent pipelines. The orchestrator runs on Opus; subagents run on sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`) — rigorously constrained by `<task>` blocks with Success Criteria and Anti-Hallucination Checks. Most commands use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
+All commands use multi-agent pipelines. The orchestrator runs on Opus 4.7; subagents are defined as individual files in `ssot/.claude/agents/` with explicit per-agent `model:` frontmatter (Opus for synthesis/architecture/creative reasoning, Sonnet for exploration/scanning/mechanical verification). Each command is a thin orchestrator that invokes subagents by `subagent_type`. Subagent bodies carry Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. Most commands use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
 
 | Command | Pipeline | Pattern |
 |---------|----------|---------|
@@ -54,6 +56,47 @@ Portable engineering-convention skills that auto-trigger when Claude recognizes 
 Validators (`guard-skills.sh`, `score-skills.sh`) enforce spec conformance — see `## Editing Commands` for the same pattern applied to commands.
 
 **Vendored / third-party skills** carry an `upstream:` frontmatter block (`source`, `license`, `vendored_at`). The guard and score scripts detect this and relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so upstream content can be preserved verbatim. Universal structural checks still apply.
+
+## Agents
+
+The kit ships with 41 specialized subagents in `ssot/.claude/agents/` — one per logical phase of each command. Every agent declares its own `model:` in frontmatter enabling per-phase Opus/Sonnet tiering.
+
+| Agent family | Count | Model mix | Opus agents (synthesis/architecture/creative) |
+|---|---|---|---|
+| /security agents | 5 | 3 opus + 2 sonnet | `security-logic-analyzer`, `security-adversarial-hunter`, `security-synthesizer` |
+| /fix agents | 7 | 1 opus + 6 sonnet | `fix-planner` |
+| /review agents | 4 | 1 opus + 3 sonnet | `review-analyzer` (the command's main value phase) |
+| /test agents | 5 | 1 opus + 4 sonnet | `test-generator` (creative edge-case design) |
+| /docs agents | 8 | 2 opus + 6 sonnet | `docs-categorizer`, `docs-role-mapper` |
+| /human-docs agents | 5 | 1 opus + 4 sonnet | `human-docs-writer` (prose rewriting + slop removal) |
+| /refactor agents | 7 | 3 opus + 4 sonnet | `refactor-solid-analyzer`, `refactor-planner`, `refactor-post-verifier` |
+| **Total** | **41** | **12 opus (29%) + 29 sonnet (71%)** | — |
+
+**Tiering rationale:** Opus 4.7 earns its ~5× output cost on synthesis, architectural reasoning, and multi-input reconciliation — synthesizers, analyzers with semantic reasoning, planners, creative/adversarial work. Sonnet 4.6 handles exploration, pattern scanning, and mechanical verification at a fraction of the cost. Anthropic's own [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) shows Opus-orchestrator + Sonnet-workers beat single-agent Opus by 90.2% on their internal research eval — this kit applies the same principle one level deeper (Opus for synthesis/architecture phases inside each command too).
+
+**Agent file structure:**
+- Frontmatter: `name` (kebab-case, matches filename), `description` (CSO — starts "Use when…" with "Not for…" clause), `tools`, `model` (`sonnet` / `opus` / `haiku` / `inherit` / full model ID)
+- Body (≤500 lines): `<constraint>` blocks for shell-avoidance + research-gate (where applicable), `## Workflow` with context-acknowledgment as step 1, `## Output Format`, `## Anti-Hallucination Checks`, `## Success Criteria`
+
+**Commands invoke agents by `subagent_type`:**
+```
+## Phase 3: Synthesis
+Invoke `subagent_type: security-synthesizer`. Prompt: "Run /security Phase 3..."
+```
+
+The orchestrator passes the `subagent_type` to Claude Code's Agent tool; Claude Code resolves the model per-agent from the frontmatter.
+
+**Model-selection resolution** (per [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)):
+1. `CLAUDE_CODE_SUBAGENT_MODEL` env var (NOT set in this kit — setting it would override all per-agent declarations)
+2. Per-invocation `model` parameter
+3. Agent frontmatter `model:` ← **this is where tiering lives**
+4. Parent conversation's model
+
+**Validators** — `bash guard-agents.sh` (structural) + `bash score-agents.sh` (quality, mirrors `score-skills.sh`). Enforced checks:
+- `name` kebab-case, matches filename, ≤64 chars, no "anthropic"/"claude"
+- `description` ≤1024 chars, starts "Use when", contains "Not" exclusion
+- `model` is valid alias or full ID
+- Body ≤500 lines, has `## Workflow`, `## Success Criteria`, ≥1 `<constraint>` block
 
 ## Plugins
 
@@ -189,8 +232,9 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_SUBAGENT_MODEL` | `claude-sonnet-4-6` | All Task-tool subagents use sonnet. Must be a full model name (bare aliases like `sonnet` are risky). |
 | `ANTHROPIC_DEFAULT_OPUS_MODEL` | `claude-opus-4-7` | Pins the opus model version for the main orchestrator. 4.7 launched 2026-04-16 with step-change agentic-coding gains. |
+
+**Subagent model selection:** not an env var. Each agent in `ssot/.claude/agents/` declares its own `model:` (sonnet/opus) in frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over the agent frontmatter.
 
 ### Output & UI
 
@@ -301,17 +345,21 @@ Structural:
 - Allowed Tools section goes at the bottom of the command, split into Planning/Implementation
 </constraint>
 
-## Editing Commands & Skills
+## Editing Commands, Skills & Agents
 
-When modifying commands or skills, keep in sync by re-running `./sync.sh`. The `ssot/.claude/` directory is the source of truth; `~/.claude/` is the deployed copy.
+When modifying commands, skills, or agents, keep in sync by re-running `./sync.sh`. The `ssot/.claude/` directory is the source of truth; `~/.claude/` is the deployed copy.
 
 Before committing, run the validators:
 
 ```bash
-bash guard-commands.sh   # structural checks (task tags, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
+bash guard-commands.sh   # structural checks (task tags OR subagent_type references, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
 bash score-commands.sh   # quality score across all commands
 bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when" unless `upstream:` block is present, body ≤500 lines, metadata.updated ISO date unless `upstream:` block is present)
 bash score-skills.sh     # quality score across all skills (CSO, freshness, examples, tables, code fences, body-size sweet spot; `upstream:` skills: CSO credited for "Use when" anywhere, freshness falls back to upstream.vendored_at)
+bash guard-agents.sh     # structural checks (frontmatter, name-matches-file, CSO "Use when…" + "Not…" clause, valid model, body ≤500 lines with Workflow + Success Criteria + ≥1 <constraint>)
+bash score-agents.sh     # quality score across all agents (CSO, constraint counts, anti-hallucination presence, body size sweet spot, slop-word penalty)
 ```
 
-`score-skills.sh --per-file` prints one `<name> <score>` line per skill — useful for spotting drift after an edit.
+`score-skills.sh --per-file` and `score-agents.sh --per-file` print one `<name> <score>` line per skill/agent — useful for spotting drift after an edit.
+
+**Note on thin commands:** After the agent-extraction migration, all 7 commands are thin orchestrators (no `<task>` blocks; phases reference agents by `subagent_type`). `guard-commands.sh` may flag these as "no `<task>` blocks found" — if you update guard-commands.sh to accept the new pattern, make sure Success Criteria are still enforced via the agent files instead.
