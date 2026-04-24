@@ -6,18 +6,67 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      agents: ${{ steps.filter.outputs.agents }}
+      skills: ${{ steps.filter.outputs.skills }}
+      commands: ${{ steps.filter.outputs.commands }}
+      settings: ${{ steps.filter.outputs.settings }}
+      scripts: ${{ steps.filter.outputs.scripts }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Emit one boolean per category. Commands depend on agents (via subagent_type
+      # cross-refs), so a pure "agents-only" change still triggers command checks below.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            agents:
+              - 'ssot/.claude/agents/**'
+              - 'guard-agents.sh'
+              - 'score-agents.sh'
+            skills:
+              - 'ssot/.claude/skills/**'
+              - 'guard-skills.sh'
+              - 'score-skills.sh'
+            commands:
+              - 'ssot/.claude/commands/**'
+              - 'guard-commands.sh'
+              - 'score-commands.sh'
+            settings:
+              - 'ssot/.claude/settings.json'
+            scripts:
+              - 'sync.sh'
+              - 'ssot/.claude/statusline.sh'
+              - 'ssot/.claude/fetch-usage.sh'
+              - 'guard-*.sh'
+              - 'score-*.sh'
+
+  validate:
+    needs: changes
+    runs-on: ubuntu-latest
+    # On push to main, ${{ needs.changes.outputs.* }} may be unreliable across merges,
+    # so `env.FULL_RUN` forces every check. Also forced when the workflow file itself
+    # changes (caught here by `hashFiles`—if this file is in the commit, run everything).
+    env:
+      FULL_RUN: ${{ github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'full-ci') }}
     steps:
       - uses: actions/checkout@v5
 
       - name: Validate settings.json is valid JSON
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.settings == 'true'
         run: jq . ssot/.claude/settings.json > /dev/null
 
+      # Commands re-validate when agents change because commands reference agents by
+      # subagent_type — an agent rename without a command edit would otherwise slip past.
       - name: Run guard-commands.sh
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true' || needs.changes.outputs.agents == 'true'
         run: bash guard-commands.sh
 
-      - name: Score — per-file floor (Check A)
+      - name: Score commands — per-file floor (Check A)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true' || needs.changes.outputs.agents == 'true'
         run: |
           PER_FILE_MIN=26
           failed=0
@@ -31,7 +80,8 @@ jobs:
           done < <(bash score-commands.sh --per-file)
           exit $failed
 
-      - name: Score — average-per-command floor (Check B)
+      - name: Score commands — average-per-command floor (Check B)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true' || needs.changes.outputs.agents == 'true'
         run: |
           AVG_MIN=28
           total=$(bash score-commands.sh)
@@ -48,9 +98,11 @@ jobs:
           fi
 
       - name: Run guard-skills.sh
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.skills == 'true'
         run: bash guard-skills.sh
 
       - name: Score skills — per-file floor (Check A)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.skills == 'true'
         run: |
           PER_FILE_MIN=7
           failed=0
@@ -65,6 +117,7 @@ jobs:
           exit $failed
 
       - name: Score skills — average floor (Check B)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.skills == 'true'
         run: |
           AVG_MIN=10
           total=0
@@ -85,9 +138,11 @@ jobs:
           fi
 
       - name: Run guard-agents.sh
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.agents == 'true'
         run: bash guard-agents.sh
 
       - name: Score agents — per-file floor (Check A)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.agents == 'true'
         run: |
           PER_FILE_MIN=11
           failed=0
@@ -102,6 +157,7 @@ jobs:
           exit $failed
 
       - name: Score agents — average floor (Check B)
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.agents == 'true'
         run: |
           AVG_MIN=12
           total=0
@@ -122,6 +178,7 @@ jobs:
           fi
 
       - name: Syntax-check shell scripts
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.scripts == 'true'
         run: |
           bash -n sync.sh
           bash -n guard-commands.sh
@@ -134,6 +191,7 @@ jobs:
           bash -n ssot/.claude/fetch-usage.sh
 
       - name: Assert no inert model="opus" annotations
+        if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true'
         run: |
           if grep -r 'model="opus"' ssot/.claude/commands/; then
             echo "Found inert model=\"opus\" annotations — remove them." >&2
