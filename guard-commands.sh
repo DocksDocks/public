@@ -1,5 +1,9 @@
 #!/bin/bash
-# Guard: validate command markdown structure hasn't been broken
+# Guard: validate command markdown structure hasn't been broken.
+# Accepts two flavors:
+#   - Legacy:  inline <task>...</task> blocks per phase (with Success Criteria in-task)
+#   - Thin orchestrator:  `subagent_type: foo-bar` references; Success Criteria lives
+#     in the corresponding ssot/.claude/agents/<name>.md files
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DIR="${1:-$SCRIPT_DIR/ssot/.claude/commands}"
 errors=0
@@ -7,31 +11,61 @@ errors=0
 for f in "$DIR"/*.md; do
   name=$(basename "$f")
 
-  # Every <task> must have a matching </task> (these aren't in code blocks)
-  open=$(grep -c '<task>' "$f")
-  close=$(grep -c '</task>' "$f")
-  if [ "$open" -ne "$close" ]; then
-    echo "FAIL: $name — mismatched <task> tags ($open open, $close close)" >&2
+  # Commands come in two flavors:
+  #   - Legacy:  inline <task>...</task> blocks per phase
+  #   - Thin orchestrator:  subagent_type: references that delegate to
+  #     ssot/.claude/agents/<name>.md files (agents carry Success Criteria)
+  task_open=$(grep -c '<task>' "$f")
+  task_close=$(grep -c '</task>' "$f")
+  subagent_refs=$(grep -cE '`subagent_type:|subagent_type: `' "$f")
+
+  if [ "$task_open" -gt 0 ] && [ "$subagent_refs" -eq 0 ]; then
+    flavor="legacy"
+  elif [ "$subagent_refs" -gt 0 ] && [ "$task_open" -eq 0 ]; then
+    flavor="thin"
+  elif [ "$task_open" -eq 0 ] && [ "$subagent_refs" -eq 0 ]; then
+    echo "FAIL: $name — neither <task> blocks nor subagent_type: references found (not a valid command)" >&2
     errors=$((errors + 1))
+    continue
+  else
+    echo "FAIL: $name — mixes <task> blocks and subagent_type: references (pick one flavor)" >&2
+    errors=$((errors + 1))
+    continue
   fi
 
-  # Must have at least one <task> block
-  if [ "$open" -eq 0 ]; then
-    echo "FAIL: $name — no <task> blocks found" >&2
-    errors=$((errors + 1))
+  if [ "$flavor" = "legacy" ]; then
+    # Every <task> must have a matching </task> (legacy flavor only)
+    if [ "$task_open" -ne "$task_close" ]; then
+      echo "FAIL: $name — mismatched <task> tags ($task_open open, $task_close close)" >&2
+      errors=$((errors + 1))
+    fi
+
+    # Legacy commands must have Success Criteria inline (thin commands push it to agents)
+    if ! grep -q 'Success Criteria' "$f"; then
+      echo "FAIL: $name — no Success Criteria found (legacy command)" >&2
+      errors=$((errors + 1))
+    fi
   fi
 
-  # Must not be empty or suspiciously short
+  # Must not be empty or suspiciously short (applies to both flavors)
   lines=$(wc -l < "$f")
   if [ "$lines" -lt 50 ]; then
     echo "FAIL: $name — suspiciously short ($lines lines)" >&2
     errors=$((errors + 1))
   fi
 
-  # Must have Success Criteria in at least one task
-  if ! grep -q 'Success Criteria' "$f"; then
-    echo "FAIL: $name — no Success Criteria found" >&2
-    errors=$((errors + 1))
+  # Thin commands: verify every subagent_type reference resolves to an agent file
+  if [ "$flavor" = "thin" ]; then
+    AGENTS_DIR="$SCRIPT_DIR/ssot/.claude/agents"
+    # Extract agent names from patterns like `subagent_type: foo-bar` or `subagent_type: \`foo-bar\``
+    agents=$(grep -oE "subagent_type: \`?[a-z][a-z0-9-]+\`?" "$f" \
+             | sed -E 's/subagent_type: `?([a-z0-9-]+)`?/\1/' | sort -u)
+    for a in $agents; do
+      if [ ! -f "$AGENTS_DIR/${a}.md" ]; then
+        echo "FAIL: $name — subagent_type '$a' has no matching $AGENTS_DIR/${a}.md" >&2
+        errors=$((errors + 1))
+      fi
+    done
   fi
 
   # Must have Phase Transition Protocol if 3+ phases (CLAUDE.md convention)
