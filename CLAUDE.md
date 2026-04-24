@@ -57,6 +57,8 @@ Validators (`guard-skills.sh`, `score-skills.sh`) enforce spec conformance — s
 
 **Vendored / third-party skills** carry an `upstream:` frontmatter block (`source`, `license`, `vendored_at`). The guard and score scripts detect this and relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so upstream content can be preserved verbatim. Universal structural checks still apply.
 
+**When to split into `references/`:** `agentskills.io` supports a `SKILL.md` + `references/*.md` layout where detail-heavy content (API tables, version-specific playbooks, long catalogs) lives in separate files the SKILL.md points to — loaded only when Claude follows the reference. None of this kit's current 6 skills use that pattern: they're all under 200 lines with cohesive "rules + BAD/GOOD + indicators" structure, no natural reference-vs-rules separation. Trigger for splitting: a single skill grows past ~250 lines *and* has a clearly detachable 50+ line block (deep API reference, exhaustive examples, platform-specific details) that Claude only needs sometimes. If both are true, extract; otherwise inline is better (one-stop context when the skill triggers).
+
 ## Agents
 
 The kit ships with 41 specialized subagents in `ssot/.claude/agents/` — one per logical phase of each command. Every agent declares its own `model:` in frontmatter enabling per-phase Opus/Sonnet tiering.
@@ -75,8 +77,10 @@ The kit ships with 41 specialized subagents in `ssot/.claude/agents/` — one pe
 **Tiering rationale:** Opus 4.7 earns its ~5× output cost on synthesis, architectural reasoning, and multi-input reconciliation — synthesizers, analyzers with semantic reasoning, planners, creative/adversarial work. Sonnet 4.6 handles exploration, pattern scanning, and mechanical verification at a fraction of the cost. Anthropic's own [multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) shows Opus-orchestrator + Sonnet-workers beat single-agent Opus by 90.2% on their internal research eval — this kit applies the same principle one level deeper (Opus for synthesis/architecture phases inside each command too).
 
 **Agent file structure:**
-- Frontmatter: `name` (kebab-case, matches filename), `description` (CSO — starts "Use when…" with "Not for…" clause), `tools`, `model` (`sonnet` / `opus` / `haiku` / `inherit` / full model ID)
+- Frontmatter: `name` (kebab-case, matches filename), `description` (CSO — starts "Use when…" with "Not for…" clause), `tools`, `model` (`sonnet` / `opus` / `haiku` / `inherit` / full model ID), `maxTurns` (runaway-loop insurance — kit-wide default: `100`)
 - Body (≤500 lines): `<constraint>` blocks for shell-avoidance + research-gate (where applicable), `## Workflow` with context-acknowledgment as step 1, `## Output Format`, `## Anti-Hallucination Checks`, `## Success Criteria`
+
+**`maxTurns` rationale:** Normal agents finish in 5-20 turns. The blanket `maxTurns: 100` on all 41 never trips in real use but caps cost + context burn if a subtle loop bug surfaces (malformed prompt, unexpected tool-call cycle). Free insurance — no reason not to set it.
 
 **Commands invoke agents by `subagent_type`:**
 ```
@@ -368,6 +372,11 @@ Phase Transitions:
 
 Implementation Phase:
 - Start with `After approval:` not `Once user has approved the plan:`
+
+Pre-flight Context Injection:
+- Each command has a `## Pre-flight context` section between the final `<constraint>` and the first `## Phase`, using Anthropic's `!`-shell-injection to inline live env data at template-render time: date, branch, `git status --short`, `git log --oneline -5`
+- The orchestrator's first action is to write that rendered block to the plan file as `## Environment`, so every downstream subagent has free access to git state without a separate tool call
+- Template block kept in `/tmp/preflight.md` during bulk edits; when adding a new command, copy the block from any existing command
 
 Project Skills Integration:
 - Commands that read project knowledge should check `.claude/skills/` (NOT `.claude/context/`)
