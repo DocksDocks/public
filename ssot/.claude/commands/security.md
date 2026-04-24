@@ -1,6 +1,7 @@
 ---
 name: security
 description: Use when running a security audit on a codebase — OWASP Top 10 coverage, logic flaws, authentication/authorization weaknesses, cryptographic misuse, race conditions, dependency vulnerabilities. Three parallel scanners (Vulnerability, Logic, Adversarial) followed by a Synthesizer that challenges every finding. Read-only; to fix issues, pipe findings into /fix.
+argument-hint: "[path-or-scope]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch
   Bash(date) Bash(git status) Bash(git log:*) Bash(rtk:*)

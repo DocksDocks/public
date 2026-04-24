@@ -1,6 +1,7 @@
 ---
 name: human-docs
 description: Use when generating, fixing, or optimizing project documentation — README.md, CLAUDE.md, docs/**/*.md, .env.example, API references, JSDoc/TSDoc. Scans all .md files, categorizes human-readable vs AI-optimized, and produces updates through a Builder-Verifier pattern that grounds every claim in source code.
+argument-hint: "[path-or-scope]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(ls:*) Bash(find:*) Bash(mkdir:*) Bash(rtk:*)

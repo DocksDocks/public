@@ -1,6 +1,7 @@
 ---
 name: fix
 description: Use when fixing bugs, security vulnerabilities, performance problems, dependency issues, or dead code in a codebase. Runs a multi-scanner discovery pipeline (code-quality + dependency scanners in parallel) with Builder-Verifier pattern; produces a prioritized fix plan with per-change test strategy and revert triggers.
+argument-hint: "[path-or-scope]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(git status) Bash(git log:*) Bash(git diff:*)

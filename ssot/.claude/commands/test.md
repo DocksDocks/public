@@ -1,6 +1,7 @@
 ---
 name: test
 description: Use when generating tests for a codebase following the project's existing framework and patterns. Analyzes target code for functions/edge cases/integration points, generates tests via a structure-then-implementation pass, and validates each test against actual code signatures through a Builder-Verifier pattern.
+argument-hint: "[path-or-function]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(git status) Bash(git log:*) Bash(git diff:*)

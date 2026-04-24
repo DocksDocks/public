@@ -1,6 +1,7 @@
 ---
 name: review
 description: Use when reviewing code for bugs, security vulnerabilities, performance issues, or maintainability problems. Runs a Builder-Verifier pipeline (Analyzer + Verifier) over a target scope, producing a categorized findings list with file:line references, severity, and suggested fixes. Optional implementation phase applies fixes if requested.
+argument-hint: "[path-or-scope]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(git status) Bash(git log:*) Bash(git diff:*)

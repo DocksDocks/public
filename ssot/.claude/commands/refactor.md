@@ -1,6 +1,7 @@
 ---
 name: refactor
 description: Use when auditing a codebase for structural issues — dead code, duplication, SOLID violations (all 5 principles including Liskov), missing abstractions, modernization candidates. Generates a tiered refactoring plan (quick wins → consolidation → structural) with per-change test strategy and revert triggers. Full-project scan by default; accepts a path argument to scope.
+argument-hint: "[path-or-scope]"
 allowed-tools: >-
   Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(ls:*) Bash(find:*) Bash(wc:*) Bash(mkdir:*) Bash(rtk:*)
