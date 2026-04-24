@@ -419,7 +419,7 @@ Each scoring dimension is tagged in the rubric comments as either **[docs]** (An
 | `tools:` or `disallowedTools:` declared | [docs] | Agents | Permission predictability |
 | Body ≤500 lines (SKILL.md) | [docs-tip] | Skills | Anthropic Tip in skills doc |
 | `description` + `when_to_use` ≤1,536 chars | [docs] | Skills | Hard spec — truncated in listing otherwise |
-| Body 80–350 lines sweet spot | [docs-aligned] | Skills | Compaction re-attaches first 5K tokens |
+| Body 80–310 lines sweet spot | [docs-aligned] | Skills | 4.7-safe compaction ceiling (5K tok ÷ ~16 tok/line) |
 | Subagent refs resolve to agent files | [structural] | Commands | Cross-reference correctness |
 | "Use when…" description start | [docs-example] | Skills, Agents | Every Anthropic example uses this; no doc mandate |
 | "Not…" exclusion clause | [project] | Agents | Narrows match surface |

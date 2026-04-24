@@ -109,14 +109,17 @@ for skill_dir in "$DIR"/*/; do
   # 8. [project] Code fences with language tags (1 pt)
   grep -qE '^```[a-z]+' "$file" && score=$((score + 1))
 
-  # 9. [docs-aligned] Body size in sweet spot 80–350 lines (2 pts).
-  #    Anthropic tip: keep SKILL.md under 500 lines. Compaction re-attaches only
-  #    the first 5,000 tokens of each invoked skill — content beyond that gets
-  #    silently truncated. At ~12 tokens/line measured across this kit's skills
-  #    (and ~1.35× higher on Opus 4.7's tokenizer), 350 lines ≈ 4,200 tokens on
-  #    4.6 / ~5,670 on 4.7 — the soft ceiling sits right at the 4.7 budget edge.
+  # 9. [docs-aligned] Body size in sweet spot 80–310 lines (2 pts).
+  #    Anthropic tip: keep SKILL.md under 500 lines. Separate hard cap: Claude
+  #    Code's compaction logic re-attaches only the first 5,000 tokens of each
+  #    invoked skill post-summary (25K shared across all re-attached skills) —
+  #    content beyond that is silently dropped. Measured ~12 tokens/line in this
+  #    kit's skills at 4.6 density; Opus 4.7's tokenizer runs ~1.35× higher
+  #    (~16 tok/line), so 5,000 tokens ÷ 16 ≈ 310 lines is the 4.7-safe ceiling.
+  #    Anything past 310 risks post-compact truncation; anything past ~500 hits
+  #    Anthropic's soft tip — move detail into references/ files instead.
   body_lines=$(awk '/^---$/{c++;next} c==2{print}' "$file" | wc -l)
-  if [ "$body_lines" -ge 80 ] && [ "$body_lines" -le 350 ]; then
+  if [ "$body_lines" -ge 80 ] && [ "$body_lines" -le 310 ]; then
     score=$((score + 2))
   fi
 
