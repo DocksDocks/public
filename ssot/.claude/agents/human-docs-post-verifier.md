@@ -3,6 +3,7 @@ name: human-docs-post-verifier
 description: Use when running /human-docs command phase 7 — verifies all written documentation changes via git diff against the actual codebase, flagging contradictions for immediate revert. Not for pre-implementation planning (use human-docs-pre-verifier).
 tools: Read, Grep, Glob, Bash, Bash(git diff:*)
 model: sonnet
+maxTurns: 100
 ---
 
 # Human Docs Post-Verifier

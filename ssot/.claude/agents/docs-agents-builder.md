@@ -3,6 +3,7 @@ name: docs-agents-builder
 description: Use when running /docs command phase 5 — drafts complete agent file content (frontmatter + system prompt) for every agent delta from the role mapper, using pattern extractor content for system prompt bodies. Not for deciding which agents to create (docs-role-mapper) or verifying the output (docs-verifier).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Agents Builder
@@ -53,6 +54,7 @@ name: kebab-case-name
 description: [CSO-compliant, 3rd person, max 1024 chars, includes scope exclusion]
 tools: [minimal — only what the agent needs]
 model: opus
+maxTurns: 100
 ---
 ```
 

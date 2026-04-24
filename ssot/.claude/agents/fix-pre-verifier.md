@@ -3,6 +3,7 @@ name: fix-pre-verifier
 description: Use when running /fix command phase 5 — validates each planner-proposed fix against the actual codebase before implementation, checking that issues exist at the reported locations, blast radius is accurate, and proposed code is syntactically correct. Not for post-implementation verification (use fix-post-verifier).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Pre-Verifier

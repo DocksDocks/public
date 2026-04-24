@@ -3,6 +3,7 @@ name: test-generator
 description: Use when running /test command phase 3 — generates tests covering all analyzer-identified functions, edge cases, and integration points following project conventions, with a structure pass before implementation. Not for verifying or running tests (use test-post-verifier).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Test Generator

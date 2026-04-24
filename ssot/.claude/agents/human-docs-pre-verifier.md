@@ -3,6 +3,7 @@ name: human-docs-pre-verifier
 description: Use when running /human-docs command phase 4 — validates drafted documentation against the actual codebase before writing, catching inaccurate file refs, bad API docs, and AI slop. Not for post-implementation verification (use human-docs-post-verifier).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Human Docs Pre-Verifier

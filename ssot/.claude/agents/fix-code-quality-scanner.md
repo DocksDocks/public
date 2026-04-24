@@ -3,6 +3,7 @@ name: fix-code-quality-scanner
 description: Use when running /fix command phase 3 — scans target code for bugs, dead code, refactoring opportunities, and obvious performance issues with file:line evidence. Not for architectural refactoring (use /refactor instead) or dependency scanning (use fix-dependency-scanner).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Code Quality Scanner

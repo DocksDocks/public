@@ -3,6 +3,7 @@ name: fix-planner
 description: Use when running /fix command phase 4 — proposes specific, minimal fixes for each scanner-identified issue with blast-radius analysis, before/after code, test strategy, and revert trigger per fix. Not for architectural refactoring or implementing changes.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Fix Planner

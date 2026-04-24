@@ -3,6 +3,7 @@ name: fix-explorer
 description: Use when running /fix command phase 1 — maps project stack, target scope from $ARGUMENTS, existing issues (failing tests, linter errors), and test/CI setup for the downstream scanners and planner. Not for general codebase exploration or architectural analysis.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Explorer

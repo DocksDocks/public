@@ -3,6 +3,7 @@ name: refactor-dead-code-scanner
 description: Use when running /refactor command phase 2 — finds dead code (unused exports, unreachable code, unused dependencies, orphaned files) using tool-augmented scan plus manual grep, classified into SAFE/CAUTION/DANGER safety tiers. Not for general refactoring analysis or SOLID violation detection.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Refactor Dead Code Scanner

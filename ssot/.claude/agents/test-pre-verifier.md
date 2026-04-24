@@ -3,6 +3,7 @@ name: test-pre-verifier
 description: Use when running /test command phase 4 — validates generated tests for import correctness, function signature matching, realistic mocks, and false-positive detection before implementation. Not for post-implementation verification or running the test suite.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Test Pre-Verifier

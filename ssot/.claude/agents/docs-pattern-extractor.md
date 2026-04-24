@@ -3,6 +3,7 @@ name: docs-pattern-extractor
 description: Use when running /docs command phase 4 — extracts concrete patterns, workflows, constraints, and skill references for each proposed agent role's system prompt without inlining skill content. Not for deciding which agents to create (docs-role-mapper) or writing the full agent files (docs-agents-builder).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Pattern Extractor

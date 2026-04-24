@@ -3,6 +3,7 @@ name: fix-post-verifier
 description: Use when running /fix command phase 8 — verifies all implemented changes via git diff, runs tests/linter/type-checker, and flags regressions or incorrect changes for revert. Not for pre-implementation planning (use fix-pre-verifier).
 tools: Read, Grep, Glob, Bash, Bash(npm test), Bash(pnpm test), Bash(pytest:*), Bash(cargo test:*), Bash(go test:*), Bash(npx tsc:*), Bash(npx eslint:*)
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Post-Verifier

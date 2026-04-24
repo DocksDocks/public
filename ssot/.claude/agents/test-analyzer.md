@@ -3,6 +3,7 @@ name: test-analyzer
 description: Use when running /test command phase 2 — analyzes target code to enumerate all functions, dependencies, side effects, edge cases, happy paths, and integration points for test generation. Not for writing tests directly or running the test suite.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Test Analyzer

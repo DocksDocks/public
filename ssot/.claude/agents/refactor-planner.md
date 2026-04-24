@@ -3,6 +3,7 @@ name: refactor-planner
 description: Use when running /refactor command phase 4 — prioritizes findings from the dead-code scanner, duplication scanner, and SOLID analyzer into a tiered refactoring plan (quick wins → consolidation → structural) with 9 required fields per change including test strategy and revert trigger. Not for implementing fixes or detecting violations.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Refactor Planner

@@ -3,6 +3,7 @@ name: human-docs-writer
 description: Use when running /human-docs command phase 3 — drafts README/CLAUDE.md/docs content per the analyzer's gap analysis using correct format per category (human-readable vs AI-optimized). Not for source code, test generation, or project skill authoring (use /docs).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Human Docs Writer

@@ -3,6 +3,7 @@ name: security-adversarial-hunter
 description: Use when running /security command phase 2 — hunts for vulnerabilities missed by systematic scanning by thinking like an attacker, including chained low-severity issues that combine into high-severity. Not for routine scanning.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Security Adversarial Hunter

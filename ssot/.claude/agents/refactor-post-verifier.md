@@ -3,6 +3,7 @@ name: refactor-post-verifier
 description: Use when running /refactor command phase 8 — verifies applied refactorings against the plan via git diff, runs tests/linter/type-checker, AND re-analyzes every refactored file for NEW SOLID violations introduced while fixing old ones. Reports SOLID compliance delta (before/after/resolved/new). Not for pre-implementation verification (use refactor-pre-verifier).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch, Bash(git diff:*), Bash(npm test), Bash(pnpm test), Bash(pytest:*), Bash(cargo test:*), Bash(go test:*), Bash(npx tsc:*), Bash(npx eslint:*), Bash(ruff:*), Bash(mypy:*)
 model: opus
+maxTurns: 100
 ---
 
 # Refactor Post-Verifier

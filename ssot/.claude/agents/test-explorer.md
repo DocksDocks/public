@@ -3,6 +3,7 @@ name: test-explorer
 description: Use when running /test command phase 1 — identifies the project's test framework, existing test patterns, mocking strategies, coverage config, and target code to test before analysis. Not for general codebase exploration or writing tests.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Test Explorer

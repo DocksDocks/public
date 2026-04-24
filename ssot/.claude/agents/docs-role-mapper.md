@@ -3,6 +3,7 @@ name: docs-role-mapper
 description: Use when running /docs command phase 4 — maps the Phase 3 proposed skill set to agent roles with single-responsibility boundaries, trigger descriptions, and tool sets; audits existing agents for broken skill references. Not for writing agent file content (that is docs-agents-builder) or skill content.
 tools: Read, Grep, Glob, Bash
 model: opus
+maxTurns: 100
 ---
 
 # Docs Role Mapper

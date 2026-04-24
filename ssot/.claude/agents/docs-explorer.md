@@ -3,6 +3,7 @@ name: docs-explorer
 description: Use when running /docs command phase 1 — maps project profile, enumerates existing .claude/skills/ and .claude/agents/ with frontmatter parsed, and identifies knowledge areas for the skills and agents pipelines. Not for general project exploration or skill/agent writing.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Explorer

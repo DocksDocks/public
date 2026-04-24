@@ -3,6 +3,7 @@ name: refactor-explorer
 description: Use when running /refactor command phase 1 — maps project stack, monorepo structure, available analysis tools (knip/depcheck/ts-prune/vulture/ruff/deadcode/cargo-udeps), test infrastructure, existing abstractions, and DI patterns before the scanning phases. Not for general codebase exploration or writing code.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Refactor Explorer

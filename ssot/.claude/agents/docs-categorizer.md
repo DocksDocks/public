@@ -3,6 +3,7 @@ name: docs-categorizer
 description: Use when running /docs command phase 2 — proposes the complete skill set (create, update, split, merge, refresh, rewrite-description) with CSO-compliant descriptions requiring ≥5 project-specific identifiers per description. Not for writing skill content (that is docs-skills-builder) or agent roles (that is docs-role-mapper).
 tools: Read, Grep, Glob, Bash
 model: opus
+maxTurns: 100
 ---
 
 # Docs Categorizer

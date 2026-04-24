@@ -3,6 +3,7 @@ name: human-docs-analyzer
 description: Use when running /human-docs command phase 2 — categorizes .md files (human-readable vs AI-optimized vs keep-as-is) and produces a gap analysis per category. Not for writing doc content (that is human-docs-writer).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Human Docs Analyzer

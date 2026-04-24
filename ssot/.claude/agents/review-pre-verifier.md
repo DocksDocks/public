@@ -3,6 +3,7 @@ name: review-pre-verifier
 description: Use when running /review command phase 3 — validates the analyzer's findings against the actual codebase before presenting to the user, rejecting false positives and adjusting mis-rated severity. Not for post-implementation verification (use review-post-verifier).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Review Pre-Verifier

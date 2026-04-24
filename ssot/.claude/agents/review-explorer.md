@@ -3,6 +3,7 @@ name: review-explorer
 description: Use when running /review command phase 1 — maps project stack, target scope for review, existing conventions, linting configs, and test setup before the analyzer pass. Not for general codebase exploration or writing code.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Review Explorer

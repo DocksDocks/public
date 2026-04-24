@@ -3,6 +3,7 @@ name: refactor-pre-verifier
 description: Use when running /refactor command phase 5 — validates the planner's refactoring plan for reference accuracy, safety, dependency ordering, completeness, and over-engineering BEFORE implementation begins. Not for post-implementation verification (use refactor-post-verifier).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Refactor Pre-Verifier

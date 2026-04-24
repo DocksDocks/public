@@ -3,6 +3,7 @@ name: docs-skills-builder
 description: Use when running /docs command phase 3 — drafts complete SKILL.md bodies and references/ files for every skill delta (create, update, split, merge, refresh, rewrite-description) from the categorizer's proposal. Not for deciding which skills to create (docs-categorizer) or writing agent files (docs-agents-builder).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Skills Builder

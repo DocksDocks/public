@@ -3,6 +3,7 @@ name: fix-dependency-scanner
 description: Use when running /fix command phase 3 — scans project dependencies for security vulnerabilities, outdated packages, unused dependencies, and missing peer deps using audit tools. Not for writing new dependency code or architectural refactoring.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Dependency Scanner

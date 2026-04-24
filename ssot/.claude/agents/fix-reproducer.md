@@ -3,6 +3,7 @@ name: fix-reproducer
 description: Use when running /fix command phase 2 — confirms a reported bug exists by reproducing it with existing test infrastructure before planning a fix. Only runs when $ARGUMENTS describes a specific bug; skipped for directory-scoped or empty invocations. Not for code scanning or fix planning.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
+maxTurns: 100
 ---
 
 # Fix Reproducer

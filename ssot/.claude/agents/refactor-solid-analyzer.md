@@ -3,6 +3,7 @@ name: refactor-solid-analyzer
 description: Use when running /refactor command phase 3 — performs deep per-principle SOLID analysis (all 5 principles including Liskov) plus monorepo cross-package coupling checks, after the dead-code and duplication scanners complete. Not for general refactoring scanning (use refactor-dead-code-scanner or refactor-duplication-scanner for that).
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Refactor SOLID Analyzer

@@ -3,6 +3,7 @@ name: test-post-verifier
 description: Use when running /test command phase 7 — verifies generated tests actually pass, test the claimed behavior, have correct mocks, and catch false positives by running the test suite after implementation. Not for pre-implementation planning or generating tests.
 tools: Read, Grep, Glob, Bash, Bash(npm test), Bash(pnpm test), Bash(yarn test), Bash(pytest:*), Bash(cargo test:*), Bash(go test:*), Bash(npx tsc:*), Bash(npx eslint:*)
 model: sonnet
+maxTurns: 100
 ---
 
 # Test Post-Verifier

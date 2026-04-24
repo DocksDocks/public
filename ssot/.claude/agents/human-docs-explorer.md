@@ -3,6 +3,7 @@ name: human-docs-explorer
 description: Use when running /human-docs command phase 1 — discovers all .md files, identifies the project stack and architecture, finds API routes and env vars, and notes existing doc conventions. Not for project skills (use /docs) or general exploration.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Human Docs Explorer

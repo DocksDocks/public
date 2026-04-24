@@ -3,6 +3,7 @@ name: refactor-duplication-scanner
 description: Use when running /refactor command phase 2 — finds duplicate code blocks, missing function-extraction opportunities, frontend component reuse candidates, module-organization issues, and modernization candidates. SOLID violations are handled by refactor-solid-analyzer — do not flag them here.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Refactor Duplication Scanner

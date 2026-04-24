@@ -3,6 +3,7 @@ name: docs-pattern-scanner
 description: Use when running /docs command phase 2 — extracts concrete patterns, conventions, and decisions from the codebase with file:line references grouped across 5 skill domains (architecture, conventions, API, testing, gotchas). Not for proposing which skills to create (that is docs-categorizer) or writing skill content.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Pattern Scanner

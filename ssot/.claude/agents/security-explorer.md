@@ -3,6 +3,7 @@ name: security-explorer
 description: Use when running /security command phase 1 — maps codebase attack surface, security-critical areas, and entry points for the downstream scanners. Not for general codebase exploration.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Security Explorer

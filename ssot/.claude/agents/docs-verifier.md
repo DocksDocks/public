@@ -3,6 +3,7 @@ name: docs-verifier
 description: Use when running /docs command phase 6 — validates the Phase 3 Skills Plan and Phase 5 Agents Plan against frontmatter rules, size limits, CSO compliance, file:line accuracy, and cross-layer integrity (every agent skill reference must resolve to a Phase 3 path). Not for creating skills or agents.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+maxTurns: 100
 ---
 
 # Docs Verifier

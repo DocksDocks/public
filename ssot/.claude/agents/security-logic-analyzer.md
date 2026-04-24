@@ -3,6 +3,7 @@ name: security-logic-analyzer
 description: Use when running /security command phase 2 — analyzes codebase for business-logic flaws, trust-boundary violations, race conditions, and edge cases that systematic vulnerability scans miss. Not for ad-hoc bug-hunting.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Security Logic Analyzer

@@ -3,6 +3,7 @@ name: review-analyzer
 description: Use when running /review command phase 2 — identifies bugs, security issues (OWASP Top 10), performance problems, and AI slop in target code with file:line evidence and severity. This is the primary value-producing phase of /review. Not for automated fix generation or post-implementation verification.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: opus
+maxTurns: 100
 ---
 
 # Review Analyzer

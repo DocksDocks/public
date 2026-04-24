@@ -3,6 +3,7 @@ name: review-post-verifier
 description: Use when running /review command phase 6 — verifies all implementation changes via git diff against the actual codebase after fixes are applied, flagging incorrect edits for revert. Not for pre-implementation planning (use review-pre-verifier).
 tools: Read, Grep, Glob, Bash, Bash(git diff:*), Bash(npm test), Bash(pnpm test), Bash(pytest:*), Bash(npx tsc:*), Bash(npx eslint:*)
 model: sonnet
+maxTurns: 100
 ---
 
 # Review Post-Verifier
