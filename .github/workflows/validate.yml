@@ -84,6 +84,43 @@ jobs:
             exit 1
           fi
 
+      - name: Run guard-agents.sh
+        run: bash guard-agents.sh
+
+      - name: Score agents — per-file floor (Check A)
+        run: |
+          PER_FILE_MIN=11
+          failed=0
+          while IFS=' ' read -r name score; do
+            if [ "$score" -lt "$PER_FILE_MIN" ]; then
+              echo "::error file=ssot/.claude/agents/$name::scored $score, below per-file floor $PER_FILE_MIN"
+              failed=1
+            else
+              echo "$name: $score"
+            fi
+          done < <(bash score-agents.sh --per-file)
+          exit $failed
+
+      - name: Score agents — average floor (Check B)
+        run: |
+          AVG_MIN=12
+          total=0
+          count=0
+          while IFS=' ' read -r name score; do
+            total=$((total + score))
+            count=$((count + 1))
+          done < <(bash score-agents.sh --per-file)
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No agent files found in ssot/.claude/agents/"
+            exit 1
+          fi
+          avg=$(( total / count ))
+          echo "total=$total count=$count avg=$avg floor=$AVG_MIN"
+          if [ "$avg" -lt "$AVG_MIN" ]; then
+            echo "::error::Average per-agent score $avg is below floor $AVG_MIN" >&2
+            exit 1
+          fi
+
       - name: Syntax-check shell scripts
         run: |
           bash -n sync.sh
@@ -91,6 +128,8 @@ jobs:
           bash -n score-commands.sh
           bash -n guard-skills.sh
           bash -n score-skills.sh
+          bash -n guard-agents.sh
+          bash -n score-agents.sh
           bash -n ssot/.claude/statusline.sh
           bash -n ssot/.claude/fetch-usage.sh
 
