@@ -50,6 +50,18 @@ if [ -d "$REPO_DIR/ssot/.claude/skills" ]; then
   fi
 fi
 
+# --- Sync agents (additive, never delete) ---
+if [ -d "$REPO_DIR/ssot/.claude/agents" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/agents/ $CLAUDE_DIR/agents/"
+  else
+    mkdir -p "$CLAUDE_DIR/agents"
+    rsync -a --exclude '.gitkeep' "$REPO_DIR/ssot/.claude/agents/" "$CLAUDE_DIR/agents/"
+    agent_count=$(ls "$CLAUDE_DIR/agents/"*.md 2>/dev/null | wc -l)
+    log "Agents synced ($agent_count agents)"
+  fi
+fi
+
 # --- Sync scripts + alert sound ---
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "[dry-run] cp statusline.sh, fetch-usage.sh, alert_bubble.mp3"
@@ -162,6 +174,8 @@ if [ "$DRY_RUN" -eq 0 ]; then
   echo "Commands: $count files"
   skill_count=$(find "$CLAUDE_DIR/skills" -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l)
   echo "Skills:   $skill_count skills"
+  agent_count=$(ls "$CLAUDE_DIR/agents/"*.md 2>/dev/null | wc -l)
+  echo "Agents:   $agent_count agents"
   if command -v rtk >/dev/null 2>&1; then
     echo "RTK:      $(rtk --version 2>/dev/null || echo 'installed')"
   else
