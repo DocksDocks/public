@@ -2,17 +2,14 @@
 name: human-docs
 description: Use when generating, fixing, or optimizing project documentation — README.md, CLAUDE.md, docs/**/*.md, .env.example, API references, JSDoc/TSDoc. Scans all .md files, categorizes human-readable vs AI-optimized, and produces updates through a Builder-Verifier pattern that grounds every claim in source code.
 allowed-tools: >-
-  Read Grep Glob Task WebFetch WebSearch Edit Write
+  Read Write Glob Grep Task WebFetch WebSearch Edit
   Bash(date) Bash(ls:*) Bash(find:*) Bash(mkdir:*) Bash(rtk:*)
-  Bash(git status) Bash(git log:*) Bash(git diff:*)
-  Bash(git add:*)
+  Bash(git status) Bash(git log:*) Bash(git diff:*) Bash(git add:*)
 ---
 
 # Documentation Generator
 
-Generate, fix, and optimize documentation across the entire project. Scans ALL .md files, optimizes for AI consumption, and ensures accuracy through a Builder-Verifier pattern.
-
-> **Model Tiering:** All subagents use sonnet (via `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6`). The orchestrator runs on Opus. Do NOT use haiku.
+Generate, fix, and optimize human-readable and AI-optimized documentation. Thin orchestrator — all domain logic lives in the subagents below.
 
 ---
 
@@ -20,305 +17,54 @@ Generate, fix, and optimize documentation across the entire project. Scans ALL .
 If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases are read-only until the user approves the plan.
 </constraint>
 
----
-
 <constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
 Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
 
 The ONLY time you stop and wait for user input is:
-- Phase 3 (ExitPlanMode gate)
+- Phase 5 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
 </constraint>
 
 ---
 
-<constraint>
-Shell-avoidance — apply in EVERY phase:
-- Glob for file enumeration — not `find`, `ls`, or shell `for` loops.
-- Grep for content search — not `grep` or `rg`.
-- Read for file contents — not `cat`, `head`, or `tail`.
-- Count matches by processing Glob results in-agent — do NOT pipe to `wc -l` inside `$(...)`.
-- Do NOT compose shell loops (`for`, `while`), command substitution (`$(...)`), or pipes — each subcommand re-triggers permission prompts even when the allow-list would cover individual commands.
-
-Bash is only for commands with no tool equivalent (`date`, `git status`, `git log`, `git diff`, `git add`, `mkdir`, `rtk`).
-</constraint>
-
 ## Phase 1: Exploration
 
-First, discover ALL documentation and understand the project.
+Invoke `subagent_type: human-docs-explorer` with the following prompt:
 
-```xml
-<task>
-Launch a Task agent as the EXPLORER:
-
-**Objective:** Discover all documentation files and understand the project for documentation generation.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Find ALL .md files: `find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./vendor/*"`
-- Identify the project stack and architecture
-- Find API routes/endpoints if applicable
-- Check for OpenAPI/Swagger specs
-- Identify environment variables used
-- Note existing documentation conventions
-- Use $ARGUMENTS to focus on specific docs if provided
-
-**Output Format:**
-- All .md files found with categories
-- Project stack and architecture
-- Documentation gaps identified
-
-**Constraints:**
-- Read-only exploration, no modifications
-
-<constraint>
-Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
-</constraint>
-
-**Success Criteria:**
-All .md files cataloged. Project stack identified. Documentation gaps mapped to source areas.
-</task>
-```
+> "Run /human-docs Phase 1. Plan file path: {plan-path-from-system-prompt}. Scope: $ARGUMENTS (or full project if empty). Catalog all .md files, identify project stack, surface API routes, env vars, and existing doc conventions. Write output to the plan file under `## Phase 1: Exploration Results`."
 
 ## Phase 2: Analysis
 
-### Categorize and Analyze Documentation
+Invoke `subagent_type: human-docs-analyzer` with the following prompt:
 
-```xml
-<task>
-Launch a Task agent to categorize and analyze:
-
-**Objective:** Categorize all .md files by type (human-readable, AI-optimized, keep-as-is) and analyze gaps.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
-- Use exploration output for documentation inventory
-
-**Step 1: Categorize ALL .md files**
-
-| Category | Files | Treatment |
-|----------|-------|-----------|
-| Human-Readable | README.md, CONTRIBUTING.md | Keep clear for humans, marketing OK |
-| AI-Optimized | CLAUDE.md, docs/**/*.md, *.md in src/ | Structured, no fluff, file:line refs |
-| Keep As-Is | CHANGELOG.md, LICENSE.md, CODE_OF_CONDUCT.md | Don't modify |
-
-**Step 2: Analyze Each Category**
-
-**README.md (Human-Readable)**
-- Is the project description accurate and compelling?
-- Are setup instructions complete and copy-paste ready?
-- Are dependencies documented?
-- Are usage examples clear?
-
-**CLAUDE.md (AI-Optimized)**
-- Does it explain project structure with file paths?
-- Are coding conventions explicit?
-- Are patterns explained with file:line references?
-- Are gotchas and warnings clear?
-
-**docs/**/*.md (AI-Optimized)**
-- Is API documentation accurate?
-- Do schemas match actual implementation?
-- Are examples runnable?
-
-**.env.example**
-- Are all variables documented?
-- Are descriptions clear?
-- Are defaults appropriate?
-
-**Output:**
-## Documentation Inventory
-[List ALL .md files with category and status]
-
-## Gap Analysis
-[What's missing, outdated, or wrong]
-
-## Optimization Candidates
-[Files that need AI-optimization]
-
-<constraint>
-Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
-</constraint>
-
-**Success Criteria:**
-Every .md file categorized. Gap analysis covers README, CLAUDE.md, docs/, and .env.example. Optimization candidates identified.
-</task>
-```
+> "Run /human-docs Phase 2. Plan file path: {plan-path-from-system-prompt}. Read Phase 1 Explorer output. Categorize every .md file (human-readable / AI-optimized / keep-as-is), evaluate each against quality criteria, and produce a gap analysis with specific named deficiencies. Write output to `## Phase 2: Analysis Results`."
 
 ## Phase 3: Writer
 
-```xml
-<task>
-Launch a Task agent to act as the WRITER:
+Invoke `subagent_type: human-docs-writer` with the following prompt:
 
-**Objective:** Draft documentation based on the gap analysis, using correct format per category (human-readable vs AI-optimized).
+> "Run /human-docs Phase 3. Plan file path: {plan-path-from-system-prompt}. Read Phase 2 Analyzer gap analysis. Draft documentation for every flagged file using the correct format per category: prose + copy-paste commands for README.md, bullets/tables/file:line for CLAUDE.md and docs/, grouped var comments for .env.example. Apply AI slop scan. Write output to `## Phase 3: Writer Drafts`."
 
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
-- Use Analyzer's gap analysis and categorization
+## Phase 4: Pre-Implementation Verification
 
-You are the WRITER. Draft documentation based on the gap analysis.
+Invoke `subagent_type: human-docs-pre-verifier` with the following prompt:
+
+> "Run /human-docs Phase 4. Plan file path: {plan-path-from-system-prompt}. Read Phase 3 Writer drafts. Validate every claim against the actual codebase — spot-check 5+ file:line refs, verify API endpoints against actual route handlers, confirm env vars are used in source, scan for AI slop, check AI-optimized docs contain no prose paragraphs. Write output to `## Phase 4: Pre-Verification Results`."
 
 <constraint>
-When documenting library/framework APIs, configuration options, or CLI commands: FIRST use `resolve-library-id` → `query-docs` (context7) to fetch current docs, THEN use `WebFetch` on official documentation to cross-reference. Do BOTH — not just one. Documentation with wrong API signatures is worse than no documentation.
-</constraint>
-
-<constraint>
-- Every file:line reference must point to actual existing code
-- AI-optimized docs (CLAUDE.md, docs/*.md): bullets/tables only, never prose paragraphs
-- Human-readable docs (README.md): may use prose but must have copy-paste ready commands
-</constraint>
-
-**For README.md (Human-Readable Format):**
-- Project overview (what it does, why it exists)
-- Prerequisites and dependencies
-- Installation steps (copy-paste ready)
-- Configuration guide
-- Usage examples with code
-- API reference (if small) or link to full docs
-- Contributing guidelines (brief)
-- License
-
-**For CLAUDE.md and docs/*.md (AI-Optimized Format):**
-
-Use this structured format:
-
-```markdown
-# ComponentName
-
-## Purpose
-- [What it does - one bullet]
-- [When to use - one bullet]
-
-## Location
-- **File**: `src/path/to/file.ts`
-- **Lines**: 45-120
-- **Exports**: `functionA`, `ClassB`
-
-## Dependencies
-| Import | From | Purpose |
-|--------|------|---------|
-| `X` | `@/lib/x` | [Why] |
-
-## API
-### `functionName(param: Type): ReturnType`
-- **File**: `path/file.ts:45`
-- **Purpose**: [One line]
-- **Parameters**: [Table]
-- **Returns**: [Description]
-
-## Patterns
-```typescript
-// src/path/file.ts:78-85
-[actual code from codebase]
-```
-
-## Gotchas
-- **Do NOT**: [What to avoid]
-- **Always**: [What to do]
-```
-
-**For .env.example:**
-- All environment variables with descriptions as comments
-- Safe default values where appropriate
-- Group by category (database, auth, external services)
-
-Output the drafted documentation for each file.
-
-<constraint>
-Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
-</constraint>
-
-**Success Criteria:**
-All file:line references point to actual existing code. AI-optimized docs use bullets/tables only. Human-readable docs have copy-paste ready commands.
-</task>
-```
-
-## Phase 4: Verifier
-
-```xml
-<task>
-Launch a Task agent as the VERIFIER:
-
-**Objective:** Validate drafted documentation against the actual codebase for accuracy.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date
-- Use Writer's drafted documentation as input
-
-You are the VERIFIER. Validate the drafted documentation against the actual codebase.
-
-**Accuracy Checks:**
-1. Do all referenced file paths actually exist?
-2. Do line number references match actual code?
-3. Do API endpoint docs match actual route definitions? (Check handler code, not constants)
-4. Are code examples correct and runnable?
-5. Do function signatures in docs match real code?
-
-**Environment Variables:**
-- Grep for `process.env` / `os.environ` usage
-- Verify every documented variable is actually used
-- Check default values match code defaults
-
-**AI Slop Scan — flag for removal:**
-- Filler phrases: "It's important to note that...", "cutting-edge"
-- Inflated adjectives: "powerful", "world-class", "state-of-the-art"
-- Hedging: "might", "could possibly", "should probably"
-- Empty claims: "easy to use", "simple to understand"
-- Prose paragraphs in AI-optimized docs (should be bullets/tables)
-
-- BAD: "This module provides functionality for handling user authentication in a nice way"
-- GOOD: "## AuthModule\n- **File**: `src/auth/index.ts:1-85`\n- **Exports**: `login()`, `logout()`, `refreshToken()`\n- **Depends on**: `SessionStore`, `JWTService`"
-
-**Structure Check (AI-optimized docs only):**
-- Uses tables instead of prose?
-- Has file:line references?
-- Has concrete examples from codebase?
-
-Output:
-## Verified Correct
-[Documentation confirmed against source code]
-
-## Errors Found
-[Inaccuracies with file:line evidence from actual code]
-
-## AI Slop Found
-[Phrases to remove/rewrite with locations]
-
-## Unable to Verify
-[Items needing manual verification]
-
-**Anti-Hallucination Checks (mandatory):**
-1. Read each referenced file — does code at the stated line actually exist?
-2. Verify import paths resolve to real files (use Glob)
-3. Check function signatures match actual code (read the source)
-4. Validate all file paths in output exist (use Glob)
-5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
-6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
-
-<constraint>
-Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
-</constraint>
-
-**Success Criteria:**
-Spot-checked 5+ file:line references. Zero AI slop phrases remaining. All code examples verified runnable.
-</task>
-```
-
-<constraint>
-After the Verifier produces its results, you MUST write the Writer output and Verifier results to the plan file (path is in the system prompt) using the Write tool. Append under a `## Documentation Plan` heading. This is mandatory — implementation depends on it surviving context clearing.
+After Phase 4 returns, write the Writer drafts and Pre-Verifier results to the plan file under `## Documentation Plan`. This is mandatory — implementation depends on it surviving context clearing.
 </constraint>
 
 ## Phase 5: Present Plan + Exit Plan Mode
 
 Write the following to the plan file, then call `ExitPlanMode`:
 
-1. Proposed documentation changes
-2. Diff of old vs new
-3. Files to create, modify, or leave unchanged
+1. Documentation changes proposed: files to create, update, or leave as-is
+2. Per-file summary: category, action, key changes
+3. Pre-verifier verdict: approved claims vs errors to fix before writing
 
 Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
@@ -328,113 +74,33 @@ Plan Mode handles user approval. Once approved, proceed to Phase 6.
 
 After approval:
 
-1. Write/update documentation files using Write/Edit tools
-2. For API docs, generate in the appropriate format:
-   - OpenAPI/Swagger YAML if that's the project standard
-   - Markdown if simpler
-   - JSDoc/TSDoc for inline documentation
-3. Update .env.example with all variables
-4. Track all changes for verification
+1. Write/update documentation files using `Write` (new files) and `Edit` (targeted updates).
+2. For each file, apply the Pre-Verifier-approved draft from the plan file — do NOT rewrite from memory.
+3. Track every written file for Phase 7 verification.
 
-## Phase 7: Post-Implementation Verifier
+## Phase 7: Post-Implementation Verification
 
-### Verifier
+Invoke `subagent_type: human-docs-post-verifier` with the following prompt:
 
-```xml
-<task>
-Launch a Task agent as the VERIFIER:
-
-**Objective:** Verify ALL documentation changes against the ACTUAL codebase.
-
-**Context:**
-- Run `date "+%Y-%m-%d"` first to confirm current date. Use this for any date references.
-
-You are the VERIFIER. Verify ALL documentation changes against the ACTUAL codebase.
-
-1. Run `git diff` to see exactly what was changed
-2. For EACH documentation change, verify against SOURCE CODE:
-
-   **File Paths and Line Numbers:**
-   - Does every referenced file exist?
-   - Do line number references match actual code?
-   - Are function signatures correct?
-
-   **API Endpoints:**
-   - Find the ACTUAL route definitions (not constants files)
-   - Verify paths match exactly
-   - Check actual request/response types from handler code
-   - Verify authentication requirements from middleware
-
-   **Environment Variables:**
-   - Grep for actual usage: `process.env` or `os.environ`
-   - Verify every documented variable is actually used
-   - Check default values match code defaults
-
-   **Code Examples:**
-   - Verify import paths are correct
-   - Check that examples would actually run
-   - Verify function signatures match
-
-3. NEVER trust constants files alone - verify against implementations
-
-4. For README.md specifically:
-   - Do setup commands work?
-   - Are URLs valid?
-
-**Output:**
-## Verified Correct
-[Changes confirmed against source code]
-
-## ERRORS FOUND - Must Revert
-[Changes that contradict actual code, with file:line evidence]
-Example: "Documented endpoint as /api/users but actual route in src/routes/users.ts:23 is /api/v1/users"
-
-## Unable to Verify
-[Changes that need manual verification]
-
-**Anti-Hallucination Checks (mandatory):**
-1. Read each referenced file — does code at the stated line actually exist?
-2. Verify import paths resolve to real files (use Glob)
-3. Check function signatures match actual code (read the source)
-4. Validate all file paths in output exist (use Glob)
-5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, etc.)
-6. If generated code exists, verify syntax with project toolchain (tsc --noEmit, python -m py_compile, etc.)
-
-<constraint>
-Shell-avoidance: use Glob for file enumeration (not `find`/`ls`), Grep for content search (not `grep`/`rg`), Read for file contents (not `cat`/`head`/`tail`). No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes. Bash is limited to commands in the frontmatter allow-list.
-</constraint>
-
-**Success Criteria:**
-Every change verified against source code. All file paths confirmed existing. Zero contradictions with actual code.
-</task>
-```
+> "Run /human-docs Phase 7. Plan file path: {plan-path-from-system-prompt}. Read Phase 3 Writer drafts and Phase 4 Pre-Verifier approvals. Run git diff, verify each written change against actual source code, flag API endpoints against real route handlers (not constants), confirm env vars used in code, flag contradictions for revert. Write output to `## Phase 7: Post-Verification Results`."
 
 After verification:
-- IMMEDIATELY revert any incorrect changes
-- Show user what was reverted and why (with code evidence)
-- Only then present final summary of correct changes
+- Revert any incorrect changes immediately using `Edit` or `Write` to restore prior content.
+- Report what was written vs what was reverted.
+- Present final summary to user.
+
+---
 
 ## Allowed Tools
 
-See frontmatter `allowed-tools` at the top of this file. The enforced permission surface is:
-
-- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `find:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
-- **Implementation:** `Edit`, `Write` (for .md files), `Bash(git add:*)`, `Bash(mkdir:*)`.
-
-Intentionally excluded: broad `Bash(git:*)` — replaced by narrower `git status`, `git log:*`, `git diff:*`, `git add:*`. This command does not run tests or modify source code; only documentation files are edited.
+See frontmatter. Orchestrator uses `Read`/`Write`/`Glob`/`Grep`/`Task` for phase management and `Edit`/`Write`/`Bash(git *)` for implementation (post-ExitPlanMode only).
 
 ## Usage
 
 ```bash
-# Generate/fix all documentation
-/docs
-
-# Focus on specific documentation
-/docs README
-/docs API
-/docs CLAUDE.md
-/docs env
-
-# Optimize all docs for AI consumption
-/docs --ai-optimize
+/human-docs              # Generate/fix all documentation
+/human-docs README       # Focus on README.md
+/human-docs CLAUDE.md    # Focus on CLAUDE.md
+/human-docs docs/        # Focus on docs/ directory
+/human-docs env          # Focus on .env.example
 ```
