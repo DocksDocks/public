@@ -393,14 +393,53 @@ When modifying commands, skills, or agents, keep in sync by re-running `./sync.s
 Before committing, run the validators:
 
 ```bash
-bash guard-commands.sh   # structural checks (task tags OR subagent_type references, Success Criteria, Phase Transition Protocol for 3+ phases, WebFetch consistency)
-bash score-commands.sh   # quality score across all commands
+bash guard-commands.sh   # structural checks (task tags OR subagent_type references, Phase Transition Protocol for 3+ phases, WebFetch consistency, cross-refs resolve to agent files)
+bash score-commands.sh   # quality score (max 20): allowed-tools/description/argument-hint/$ARGUMENTS frontmatter [docs] + Plan Mode / Phase Transition / constraints / slop [project]
 bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when" unless `upstream:` block is present, body ≤500 lines, metadata.updated ISO date unless `upstream:` block is present)
-bash score-skills.sh     # quality score across all skills (CSO, freshness, examples, tables, code fences, body-size sweet spot; `upstream:` skills: CSO credited for "Use when" anywhere, freshness falls back to upstream.vendored_at)
-bash guard-agents.sh     # structural checks (frontmatter, name-matches-file, CSO "Use when…" + "Not…" clause, valid model, body ≤500 lines with Workflow + Success Criteria + ≥1 <constraint>)
-bash score-agents.sh     # quality score across all agents (CSO, constraint counts, anti-hallucination presence, body size sweet spot, slop-word penalty)
+bash score-skills.sh     # quality score (max 16): Use-when / desc+when_to_use ≤1,536 / body 80–350 [docs] + freshness / constraints / BAD-GOOD / tables / code fences / slop [project]
+bash guard-agents.sh     # structural checks (frontmatter, name-matches-file, "Use when…" + "Not…" clause, valid model, body ≤500 lines with Workflow + Success Criteria + ≥1 <constraint>)
+bash score-agents.sh     # quality score (max 13): model declared / tools-or-disallowedTools [docs] + Use-when / Not-clause / Workflow+Success Criteria / anti-hallucination / constraints / slop [project]
 ```
 
 `score-skills.sh --per-file` and `score-agents.sh --per-file` print one `<name> <score>` line per skill/agent — useful for spotting drift after an edit.
 
-**Note on thin commands:** After the agent-extraction migration, all 7 commands are thin orchestrators (no `<task>` blocks; phases reference agents by `subagent_type`). `guard-commands.sh` may flag these as "no `<task>` blocks found" — if you update guard-commands.sh to accept the new pattern, make sure Success Criteria are still enforced via the agent files instead.
+**Note on thin commands:** All 7 commands are thin orchestrators (no `<task>` blocks; phases reference agents by `subagent_type`). `guard-commands.sh` accepts both legacy (`<task>`) and thin flavors; scoring rewards `subagent_type:` cross-references resolving to agent files.
+
+### Rubric provenance
+
+Each scoring dimension is tagged in the rubric comments as either **[docs]** (Anthropic-documented in [sub-agents](https://code.claude.com/docs/en/sub-agents) / [skills](https://code.claude.com/docs/en/skills) / [agentskills.io](https://agentskills.io)) or **[project]** (kit-specific convention). When a scoring dimension fails, knowing which category it's in tells you whether the failure is a spec violation or a style divergence.
+
+| Dimension | Category | Applies to | Source |
+|---|---|---|---|
+| `description:` frontmatter present | [docs] | Commands, Skills, Agents | Official frontmatter reference |
+| `allowed-tools:` frontmatter | [docs] | Commands, Skills | Pre-approves tool usage |
+| `argument-hint:` frontmatter | [docs] | Commands, Skills | Autocomplete UX |
+| `$ARGUMENTS` usage consistency | [docs] | Commands | String substitution reference |
+| Explicit `model:` field | [docs] | Agents | Resolution order in sub-agents doc |
+| `tools:` or `disallowedTools:` declared | [docs] | Agents | Permission predictability |
+| Body ≤500 lines (SKILL.md) | [docs-tip] | Skills | Anthropic Tip in skills doc |
+| `description` + `when_to_use` ≤1,536 chars | [docs] | Skills | Hard spec — truncated in listing otherwise |
+| Body 80–350 lines sweet spot | [docs-aligned] | Skills | Compaction re-attaches first 5K tokens |
+| Subagent refs resolve to agent files | [structural] | Commands | Cross-reference correctness |
+| "Use when…" description start | [docs-example] | Skills, Agents | Every Anthropic example uses this; no doc mandate |
+| "Not…" exclusion clause | [project] | Agents | Narrows match surface |
+| `<constraint>` XML tags for rules | [project] | Commands, Skills, Agents | Not in Anthropic docs; empirically effective |
+| `## Workflow`, `## Success Criteria`, `## Anti-Hallucination Checks` sections | [project] | Agents | Project structure, not Anthropic canon |
+| Plan Mode constraint in command body | [project] | Commands | Enforces `EnterPlanMode` gate |
+| Phase Transition Protocol constraint | [project] | Commands | Prevents orchestrator stalling mid-pipeline |
+| Slop-word penalty ("comprehensive"/"robust"/"elegant"/"seamless") | [project] | all | Kit style |
+| 180-day freshness window (`metadata.updated`) | [project] | Skills | Kit hygiene |
+
+The split matters because **[docs]** dimensions track hard-spec or officially recommended behavior — regressions there imply a real functional/UX issue. **[project]** dimensions encode kit opinion; divergence is a style discussion, not a spec violation. Treat CI-floor failures accordingly: [docs] dimension drops → investigate for functional impact; [project] dimension drops → may be an intentional evolution of the kit's conventions.
+
+### Current rubric calibration
+
+Scores and CI floors as of 2026-04-24 (re-check after rubric changes):
+
+| Rubric | Max | Current min | Current avg | Per-file floor | Avg floor |
+|---|---|---|---|---|---|
+| Commands (7 files) | 20 | 19 (`/docs` — no args) | 19.9 | 17 | 19 |
+| Skills (6 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.5 | 8 | 12 |
+| Agents (41 files) | 13 | 13 | 13.4 | 11 | 13 |
+
+Floors leave ~2pt buffer per-file for minor edits; the tight average floor catches broad regressions. Re-calibrate these numbers in both this table AND `.github/workflows/validate.yml` after any rubric change.

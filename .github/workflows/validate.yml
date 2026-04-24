@@ -68,7 +68,7 @@ jobs:
       - name: Score commands — per-file floor (Check A)
         if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true' || needs.changes.outputs.agents == 'true'
         run: |
-          PER_FILE_MIN=26
+          PER_FILE_MIN=17
           failed=0
           while IFS=' ' read -r name score; do
             if [ "$score" -lt "$PER_FILE_MIN" ]; then
@@ -83,7 +83,7 @@ jobs:
       - name: Score commands — average-per-command floor (Check B)
         if: env.FULL_RUN == 'true' || needs.changes.outputs.commands == 'true' || needs.changes.outputs.agents == 'true'
         run: |
-          AVG_MIN=28
+          AVG_MIN=19
           total=$(bash score-commands.sh)
           count=$(bash score-commands.sh --per-file | wc -l)
           if [ "$count" -eq 0 ]; then
@@ -104,7 +104,7 @@ jobs:
       - name: Score skills — per-file floor (Check A)
         if: env.FULL_RUN == 'true' || needs.changes.outputs.skills == 'true'
         run: |
-          PER_FILE_MIN=7
+          PER_FILE_MIN=8
           failed=0
           while IFS=' ' read -r name score; do
             if [ "$score" -lt "$PER_FILE_MIN" ]; then
@@ -119,7 +119,7 @@ jobs:
       - name: Score skills — average floor (Check B)
         if: env.FULL_RUN == 'true' || needs.changes.outputs.skills == 'true'
         run: |
-          AVG_MIN=10
+          AVG_MIN=12
           total=0
           count=0
           while IFS=' ' read -r name score; do
@@ -145,6 +145,8 @@ jobs:
         if: env.FULL_RUN == 'true' || needs.changes.outputs.agents == 'true'
         run: |
           PER_FILE_MIN=11
+          # Current distribution: min=13, avg=13.4. Floor gives 2pt buffer so
+          # minor edits don't trip CI — broad regressions still hit the avg.
           failed=0
           while IFS=' ' read -r name score; do
             if [ "$score" -lt "$PER_FILE_MIN" ]; then
@@ -159,7 +161,7 @@ jobs:
       - name: Score agents — average floor (Check B)
         if: env.FULL_RUN == 'true' || needs.changes.outputs.agents == 'true'
         run: |
-          AVG_MIN=12
+          AVG_MIN=13
           total=0
           count=0
           while IFS=' ' read -r name score; do
