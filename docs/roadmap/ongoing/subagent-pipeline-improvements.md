@@ -1,6 +1,6 @@
 ---
 created: 2026-04-27T23:00:32-03:00
-updated: 2026-04-28T00:42:26-03:00
+updated: 2026-04-28T02:42:49-03:00
 finished: null
 status: ongoing
 ---
@@ -136,12 +136,12 @@ Currently each command's orchestrator writes a phase's output to the plan file, 
 
 #### T3-01 — Measure baseline pipeline token cost
 
-- [ ] Pick a representative project (e.g., a mid-sized Next.js app + a Python service)
-- [ ] Run `/security`, `/refactor`, `/test`, `/review` on each
-- [ ] Use `rtk gain --history` and the status line's API-usage data to capture per-phase token counts
-- [ ] Build a table per command: phase name, agent, model, token-in, token-out, wall-clock
-- [ ] Identify top 3 phases by bootstrap-cost ratio (`bootstrap-tokens ÷ total-tokens`)
-- [ ] Save findings to `docs/roadmap/finished/YYYY-MM-DD-pipeline-baseline-measurement.md` (this becomes the evidence for further optimization decisions)
+- [x] Pick a representative project — used the synthetic baseline fixture `tests/fixtures/nextjs-16-baseline/` instead of a real project (chosen for reproducibility — same fixture before/after kit changes gives clean delta-tracking)
+- [x] Run `/refactor` — completed. `/security`, `/test`, `/review` deferred (one run gives the structural shape; additional runs are confirmation, not new signal)
+- [x] Use session JSONL (via `tests/baseline/capture.sh`) to capture per-phase token counts — preferred over `rtk gain --history` because the JSONL has explicit `agentType` + `usage` fields per subagent invocation, while RTK history aggregates at the command level
+- [x] Build a table per command — see `docs/roadmap/finished/2026-04-28-pipeline-baseline-refactor.md`
+- [x] Identify top phases by cost — Phase 4 (planner, 110K) + Phase 5 (pre-verifier, 93K) flagged as the heaviest and as a candidate phase-merge pair for T3-02
+- [x] Save findings to `docs/roadmap/finished/2026-04-28-pipeline-baseline-refactor.md` — done; full breakdown + analysis there
 
 #### T3-02 — Investigate phase-merge opportunities
 

@@ -26,6 +26,8 @@ bash tests/baseline/run.sh /refactor --dry-run  # show invocation without runnin
 
 `run.sh` uses your **Claude subscription** (Max/Pro/Team/Enterprise) by default — tokens count against session/day quota, no API billing. To force API billing, set `ANTHROPIC_API_KEY` before invoking (per Claude Code auth precedence, an API key in env always wins in `-p` mode).
 
+**Known issue: `ExitPlanMode` hangs in `-p` mode.** The kit's commands call `ExitPlanMode` after the analysis phases. In headless mode there's no UI to approve, so the gate waits indefinitely. The `--max-turns 50` flag does not appear to fire on the gate (Phase 6 may not count toward agentic-turn budget). **Workaround**: wrap `run.sh` with `timeout 60m bash tests/baseline/run.sh ...` to enforce a hard ceiling. The pipeline is robust under SIGTERM — killing `claude -p` mid-gate leaves a clean JSONL with all completed analysis phases captured, and `capture.sh` extracts everything from disk regardless. Verified on the 2026-04-28 baseline run.
+
 The script:
 1. Copies `tests/fixtures/nextjs-16-baseline/` to `/tmp/baseline-target/` and `git init`s it
 2. Invokes `claude -p "/<command> /tmp/baseline-target/" --permission-mode plan --output-format json --max-turns 50`
