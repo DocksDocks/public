@@ -243,6 +243,7 @@
   "alwaysThinkingEnabled": true,
   "showThinkingSummaries": true,
   "viewMode": "default",
+  "theme": "dark-daltonized",
   "skipAutoPermissionPrompt": true,
   "skipDangerousModePermissionPrompt": true
 }
