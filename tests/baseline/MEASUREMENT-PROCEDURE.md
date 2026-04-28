@@ -15,11 +15,39 @@ Procedure for capturing per-phase token cost. **Default: plan-only measurement**
 
 Captures all read-only phases (exploration → scanners → analyzers → planners → pre-verifiers) and wall-clock + plan-file growth per phase. Misses the implementation phase.
 
+### Automated path (preferred): `run.sh`
+
 ```bash
-# Setup against the baseline fixture
+# One-shot — copies fixture, invokes /refactor via claude -p, captures, cleans up
+bash tests/baseline/run.sh                    # default: /refactor
+bash tests/baseline/run.sh /security          # specific command
+bash tests/baseline/run.sh /refactor --dry-run  # show invocation without running
+```
+
+`run.sh` uses your **Claude subscription** (Max/Pro/Team/Enterprise) by default — tokens count against session/day quota, no API billing. To force API billing, set `ANTHROPIC_API_KEY` before invoking (per Claude Code auth precedence, an API key in env always wins in `-p` mode).
+
+The script:
+1. Copies `tests/fixtures/nextjs-16-baseline/` to `/tmp/baseline-target/` and `git init`s it
+2. Invokes `claude -p "/<command> /tmp/baseline-target/" --permission-mode plan --output-format json --max-turns 50`
+3. Extracts `session_id` from the result JSON
+4. Runs `capture.sh` on that session — outputs the per-agent table to stdout
+5. Cleans up `/tmp/baseline-target/` and the result JSON
+
+`--permission-mode plan` ensures no Edit/Bash-write tool ever fires, so the kit repo is provably untouched (target is the fixture copy at `/tmp` anyway). `--max-turns 50` is a circuit breaker for the unknown `ExitPlanMode`-in-headless-mode behavior — if the pipeline hangs or loops at the gate, the run terminates with all analysis-phase data already captured.
+
+Save findings:
+
+```bash
+bash tests/baseline/run.sh /refactor > docs/roadmap/finished/$(date +%F)-pipeline-baseline-refactor.md
+```
+
+### Manual path (interactive — when you want eyeballs on each phase)
+
+```bash
+# Setup
 cp -r tests/fixtures/nextjs-16-baseline /tmp/baseline-target
 cd /tmp/baseline-target && git init -q && git add -A && git commit -qm "fixture state"
-touch /tmp/baseline-target/.measure          # marker for capture.sh (option 3)
+touch /tmp/baseline-target/.measure          # marker file (option 3)
 
 # In Claude Code (kit session, fresh /clear):
 # /refactor /tmp/baseline-target/
@@ -27,7 +55,8 @@ touch /tmp/baseline-target/.measure          # marker for capture.sh (option 3)
 # DECLINE the ExitPlanMode prompt — plan-only run
 
 # After: capture data from session JSONL
-bash tests/baseline/capture.sh <session-uuid>
+bash tests/baseline/capture.sh                  # most recent session
+bash tests/baseline/capture.sh <session-uuid>   # specific session
 
 # Repeat for /security, /review, /test (fresh /clear between)
 
@@ -35,7 +64,7 @@ bash tests/baseline/capture.sh <session-uuid>
 rm -rf /tmp/baseline-target
 ```
 
-The `.measure` marker is a forward-compatibility hook: today, `capture.sh` doesn't strictly need it (you pass the session UUID); later, if we add `SubagentStop`-hook auto-capture, the marker tells the hook "yes, log this run."
+The `.measure` marker is a forward-compatibility hook: today, neither `run.sh` nor `capture.sh` requires it (the session UUID is the actual key); later, if we add `SubagentStop`-hook auto-capture, the marker tells the hook "yes, log this run."
 
 ## Optional: execution-phase calibration
 
