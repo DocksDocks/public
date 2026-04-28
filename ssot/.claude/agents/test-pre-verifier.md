@@ -1,7 +1,7 @@
 ---
 name: test-pre-verifier
 description: Use when running /test command phase 4 — validates generated tests for import correctness, function signature matching, realistic mocks, and false-positive detection before implementation. Not for post-implementation verification or running the test suite.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Research-gate validation: for every test whose imports, mocks, or assertions touch a framework/library API:
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml`).
+2. Use `WebFetch` on the official documentation as a second source.
+Flag (Tests With Issues) any test that imports a legacy module/hook when the project uses the current one — e.g., importing `useRouter` from `next/router` when the project uses `next/navigation`; mocking `forwardRef` on a React 19 component that doesn't use it; using `getServerSideProps` patterns in an App Router project. Frameworks evolve fast; tests must reflect what the project actually imports, not what the model remembers.
 </constraint>
 
 ## Workflow

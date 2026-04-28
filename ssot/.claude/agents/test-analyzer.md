@@ -1,7 +1,7 @@
 ---
 name: test-analyzer
 description: Use when running /test command phase 2 — analyzes target code to enumerate all functions, dependencies, side effects, edge cases, happy paths, and integration points for test generation. Not for writing tests directly or running the test suite.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Research-gate before naming framework-specific edge cases or recommending mock strategies tied to a library:
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml`).
+2. Use `WebFetch` on the official documentation as a second source.
+Frameworks change which edge cases matter and how to mock them — React 19 changed `useEffect` Strict Mode behavior; Next.js 15+ made `cookies()` / `headers()` async (Promise-based); Server Components have a fundamentally different test surface than Client Components. Don't enumerate edge cases or mock strategies from training-data recall — verify against current docs, especially for any framework released or majorly versioned after the training cutoff.
 </constraint>
 
 ## Workflow

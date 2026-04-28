@@ -407,7 +407,7 @@ bash score-commands.sh   # quality score (max 20): allowed-tools/description/arg
 bash guard-skills.sh     # structural checks (frontmatter, name-matches-dir, description ≤1024 chars starting with "Use when" unless `upstream:` block is present, body ≤500 lines, metadata.updated ISO date unless `upstream:` block is present)
 bash score-skills.sh     # quality score (max 16): Use-when / desc+when_to_use ≤1,536 / body 80–350 [docs] + freshness / constraints / BAD-GOOD / tables / code fences / slop [project]
 bash guard-agents.sh     # structural checks (frontmatter, name-matches-file, "Use when…" + "Not…" clause, valid model, body ≤500 lines with Workflow + Success Criteria + ≥1 <constraint>)
-bash score-agents.sh     # quality score (max 13): model declared / tools-or-disallowedTools [docs] + Use-when / Not-clause / Workflow+Success Criteria / anti-hallucination / constraints / slop [project]
+bash score-agents.sh     # quality score (max 15): model declared / tools-or-disallowedTools [docs] + Use-when / Not-clause / Workflow+Success Criteria / anti-hallucination / constraints / slop / research-gate [project]
 ```
 
 `score-skills.sh --per-file` and `score-agents.sh --per-file` print one `<name> <score>` line per skill/agent — useful for spotting drift after an edit.
@@ -438,17 +438,20 @@ Each scoring dimension is tagged in the rubric comments as either **[docs]** (An
 | Phase Transition Protocol constraint | [project] | Commands | Prevents orchestrator stalling mid-pipeline |
 | Slop-word penalty ("comprehensive"/"robust"/"elegant"/"seamless") | [project] | all | Kit style |
 | 180-day freshness window (`metadata.updated`) | [project] | Skills | Kit hygiene |
+| Research-gate constraint (context7 / WebFetch before framework suggestions) | [project] | Agents | Catches training-data drift on framework conventions (e.g., Next.js 16 `proxy.ts` vs legacy `middleware.ts`, React 19 `ref` prop vs `forwardRef`). Detected by `resolve-library-id` / `query-docs` / `context7` keyword presence — they only appear inside `<constraint>` blocks |
 
 The split matters because **[docs]** dimensions track hard-spec or officially recommended behavior — regressions there imply a real functional/UX issue. **[project]** dimensions encode kit opinion; divergence is a style discussion, not a spec violation. Treat CI-floor failures accordingly: [docs] dimension drops → investigate for functional impact; [project] dimension drops → may be an intentional evolution of the kit's conventions.
 
 ### Current rubric calibration
 
-Scores and CI floors as of 2026-04-24 (re-check after rubric changes):
+Scores and CI floors as of 2026-04-27 (re-check after rubric changes):
 
 | Rubric | Max | Current min | Current avg | Per-file floor | Avg floor |
 |---|---|---|---|---|---|
 | Commands (7 files) | 20 | 19 (`/docs` — no args) | 19.9 | 17 | 19 |
 | Skills (6 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.5 | 8 | 12 |
-| Agents (41 files) | 13 | 13 | 13.4 | 11 | 13 |
+| Agents (41 files) | 15 | 13 | 14.07 | 11 | 13 |
 
 Floors leave ~2pt buffer per-file for minor edits; the tight average floor catches broad regressions. Re-calibrate these numbers in both this table AND `.github/workflows/validate.yml` after any rubric change.
+
+**Research-gate adoption** (research-backed framework suggestions): 19 of 41 agents at 2026-04-27 — every Builder and pre-Verifier in `/refactor`, `/review`, `/fix`, `/test`, plus most of `/security`, plus the `/human-docs` writer + pre-verifier. Agents still at 13 are explorers (read-only mapping, no framework claims), the dead-code scanner (finds unused code, no claims), kit-internal `/docs` agents that operate on agent/skill files (not project framework code), and post-verifiers that mechanically run tests/linters. If adoption ever needs to reach those, the next candidates are `*-post-verifier` agents (they could re-check that applied fixes match current docs).

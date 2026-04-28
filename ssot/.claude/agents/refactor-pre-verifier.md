@@ -1,7 +1,7 @@
 ---
 name: refactor-pre-verifier
 description: Use when running /refactor command phase 5 — validates the planner's refactoring plan for reference accuracy, safety, dependency ordering, completeness, and over-engineering BEFORE implementation begins. Not for post-implementation verification (use refactor-post-verifier).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`).
+</constraint>
+
+<constraint>
+Research-gate validation: for every Planner entry whose justification depends on a framework/library claim ("X is deprecated", "migrate from A to B", "replace this hook", "use new API Y"):
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed.
+2. Use `WebFetch` on the official documentation as a second source.
+REJECT (mark MUST FIX) any Planner entry whose claim is contradicted by current docs — including entries that propose migrating away from a current convention because the model "remembers" an older one (e.g., proposing `proxy.ts` → `middleware.ts` in Next.js 16, where `proxy.ts` IS the current convention). Frameworks evolve fast — verify, don't trust training data.
 </constraint>
 
 ## Workflow
@@ -56,6 +63,13 @@ Shell-avoidance:
 - Would a minimal in-place fix work instead of the proposed structural change?
 - Reject any refactoring whose complexity cost exceeds the violation's actual impact.
 
+**Check 6 — Research Backing** (for every entry with `category: modernization` OR whose "What changes" mentions migrating, replacing, or deprecating a framework/library API):
+- Read `package.json` / `requirements.txt` / `Cargo.toml` for the installed major version.
+- Run context7 `resolve-library-id` → `query-docs` for that version. Run `WebFetch` on the official docs as a second source.
+- Compare the Planner's claim against current docs. Common training-data drift to catch: Next.js 16 `proxy.ts` (current) being mistaken for "should be `middleware.ts`" (legacy); React 19 `ref` as a prop being flagged as "missing forwardRef"; Tailwind 4 CSS-first config being flagged as "missing tailwind.config.js".
+- If `.claude/skills/` includes a relevant skill (e.g., `nextjs-conventions`), the skill's content takes precedence over training data.
+- Mark MUST FIX for any entry contradicted by current docs. Mark APPROVED with citation for entries the docs confirm.
+
 ## Output Format
 
 ## Reference Accuracy
@@ -70,6 +84,10 @@ Shell-avoidance:
 ## Over-Engineering Check
 For each `solid-violation` entry:
 - Entry N: APPROVED | REJECTED (reason) | MODIFIED (suggested simplification)
+
+## Research Backing
+For each modernization / framework-migration entry:
+- Entry N: APPROVED (cite docs URL or context7 library ID) | REJECTED — contradicted by current docs (cite docs URL showing the contradiction)
 
 ## Issues to Fix
 Prioritized list:
@@ -91,5 +109,6 @@ Prioritized list:
 - Spot-checked 5+ `file:line` references with read results documented.
 - All CAUTION dead-code items verified (dynamic-import check confirmed thorough or flagged).
 - Every `solid-violation` entry passed the over-engineering check (APPROVED / REJECTED / MODIFIED).
+- Every modernization / framework-migration entry passed the Research Backing check with a current-docs citation, OR was rejected with a citation showing the contradiction.
 - Zero unverified dead code in the approved list.
 - Issues to Fix prioritized as MUST FIX / SHOULD FIX / MINOR.

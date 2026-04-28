@@ -1,7 +1,7 @@
 ---
 name: refactor-duplication-scanner
 description: Use when running /refactor command phase 2 — finds duplicate code blocks, missing function-extraction opportunities, frontend component reuse candidates, module-organization issues, and modernization candidates. SOLID violations are handled by refactor-solid-analyzer — do not flag them here.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -22,6 +22,17 @@ Shell-avoidance:
 
 <constraint>
 Do NOT flag SOLID violations — that is the refactor-solid-analyzer's responsibility (Phase 3). Flagging them here causes duplicated findings and degrades the planner's input quality.
+</constraint>
+
+<constraint>
+Research-gate before flagging any "modernization candidate", "deprecated API", "outdated pattern", or framework-specific reuse/module suggestion:
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework/library version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml` for the version).
+2. Use `WebFetch` on the official documentation to cross-reference what is currently idiomatic.
+Do BOTH. Frameworks evolve faster than the training cutoff — recent examples that flip "old" and "new":
+- Next.js 16 renamed `middleware.ts` → `proxy.ts` (the new name is the current convention, not the legacy)
+- React 19 deprecated `forwardRef` for most use cases (function components now accept `ref` directly)
+- Tailwind 4 moved config from `tailwind.config.js` to CSS-first
+If `.claude/skills/` contains a relevant skill (e.g., `nextjs-conventions`, `react-effect-policy`, `react-solid`), the skill's content takes precedence over training-data recall. NEVER mark a pattern outdated based on memory alone.
 </constraint>
 
 ## Workflow
@@ -61,7 +72,7 @@ Do NOT flag SOLID violations — that is the refactor-solid-analyzer's responsib
 - `var` usage (should be `const`/`let`)
 - Class components that could be function components (React)
 - Manual iteration that could use array methods (map, filter, reduce)
-- Deprecated API usage
+- Deprecated API usage — REQUIRES research-gate (above): cite the official-docs source that calls it deprecated *for the version the project uses*. If the docs do NOT call it deprecated, drop the finding. The framework's own current docs are the source of truth, NOT training data.
 
 ## Output Format
 
@@ -106,6 +117,7 @@ For each:
 4. Validate all file paths in output exist (use Glob).
 5. Cross-reference package names against lockfile (package-lock.json, pnpm-lock.yaml, Cargo.lock, go.sum, etc.).
 6. If generated code is present, verify syntax with project toolchain (`tsc --noEmit`, `python -m py_compile`, equivalent).
+7. For every "deprecated"/"outdated"/"modernize"/"replace with"/"migrate to" finding: include a citation to current official docs (URL or context7 library ID) that calls the pattern deprecated *for the project's installed major version*. If no such citation exists, DROP the finding.
 
 ## Success Criteria
 
@@ -114,3 +126,4 @@ For each:
 - Frontend reuse suggestions are grounded in actual existing components, not aspirational.
 - No SOLID violations flagged (those are Phase 3's job).
 - No modernization suggestion that changes behavior (e.g., sync → async changes return types).
+- Every modernization/deprecated finding cites current official docs for the installed major version. Findings without citations are dropped, not best-effort kept.

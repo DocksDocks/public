@@ -1,7 +1,7 @@
 ---
 name: fix-pre-verifier
 description: Use when running /fix command phase 5 — validates each planner-proposed fix against the actual codebase before implementation, checking that issues exist at the reported locations, blast radius is accurate, and proposed code is syntactically correct. Not for post-implementation verification (use fix-post-verifier).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Research-gate validation: for every fix whose before/after code uses a framework/library API — especially when the fix migrates from one API to another, replaces a "deprecated" call, or applies a "modern" pattern:
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml`).
+2. Use `WebFetch` on the official documentation as a second source.
+REJECT any fix whose justification depends on a "deprecated"/"legacy" claim that current docs contradict (e.g., proposing migration FROM Next.js 16 `proxy.ts` BACK TO `middleware.ts`, FROM React 19 `ref` prop BACK TO `forwardRef`). Frameworks evolve faster than the training cutoff — verify, don't trust training data.
 </constraint>
 
 ## Workflow

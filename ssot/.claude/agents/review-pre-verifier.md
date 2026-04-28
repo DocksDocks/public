@@ -1,7 +1,7 @@
 ---
 name: review-pre-verifier
 description: Use when running /review command phase 3 — validates the analyzer's findings against the actual codebase before presenting to the user, rejecting false positives and adjusting mis-rated severity. Not for post-implementation verification (use review-post-verifier).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Research-gate validation: for every analyzer finding whose severity depends on a framework/library claim (e.g., "deprecated API in use", "wrong hook ordering", "missing wrapper", "outdated pattern"):
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml`).
+2. Use `WebFetch` on the official documentation as a second source.
+REJECT (mark as False Positive) any finding contradicted by current docs. Common training-data drift to catch: Next.js 16 `proxy.ts` flagged as "should be middleware.ts"; React 19 `ref` prop flagged as "missing forwardRef"; Tailwind 4 CSS-first config flagged as "missing tailwind.config.js". Frameworks evolve fast — verify, don't trust training data.
 </constraint>
 
 ## Workflow

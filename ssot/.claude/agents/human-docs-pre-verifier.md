@@ -1,7 +1,7 @@
 ---
 name: human-docs-pre-verifier
 description: Use when running /human-docs command phase 4 — validates drafted documentation against the actual codebase before writing, catching inaccurate file refs, bad API docs, and AI slop. Not for post-implementation verification (use human-docs-post-verifier).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 model: sonnet
 maxTurns: 100
 ---
@@ -18,6 +18,13 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`).
+</constraint>
+
+<constraint>
+Research-gate validation: for every framework/library claim in the drafted docs (versioned conventions, "deprecated"/"legacy"/"outdated" patterns, "use X instead of Y" recommendations):
+1. Use `resolve-library-id` → `query-docs` (context7) to fetch current docs for the framework version actually installed (read `package.json` / `requirements.txt` / `Cargo.toml`).
+2. Use `WebFetch` on the official documentation as a second source.
+REJECT (mark as Errors Found) any docs claim contradicted by current framework docs — especially "outdated"/"deprecated"/"legacy" claims where the cited "old" thing is actually current (e.g., a draft saying "migrate proxy.ts → middleware.ts" in Next.js 16, where `proxy.ts` IS the current convention). The docs must reflect what the project's current stack actually uses, not what the model remembers from older versions.
 </constraint>
 
 <constraint>

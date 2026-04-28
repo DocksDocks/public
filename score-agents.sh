@@ -1,7 +1,7 @@
 #!/bin/bash
 # Mechanical agent quality scorer
 # Scores each agent file against Anthropic subagent docs + project conventions.
-# Max per-file: 13.
+# Max per-file: 15.
 #
 # Provenance:
 #  - "docs"    — Anthropic-documented (code.claude.com/docs/en/sub-agents)
@@ -92,6 +92,17 @@ for file in "$DIR"/*.md; do
   slop_score=$((2 - slop))
   [ "$slop_score" -lt 0 ] && slop_score=0
   score=$((score + slop_score))
+
+  # 11. [project] Research-gate constraint (1 pt) — rewards agents that explicitly
+  #     require context7 / WebFetch lookup before suggesting framework/library
+  #     changes. Catches training-data drift on framework conventions (e.g.,
+  #     Next.js 16 `proxy.ts` vs legacy `middleware.ts`, React 19 `ref` prop vs
+  #     `forwardRef`, Tailwind 4 CSS-first vs JS config). Detected by mention of
+  #     context7 lookup keywords — they only appear inside <constraint> blocks
+  #     in this kit, so it's a clean signal.
+  if grep -qiE '(resolve-library-id|query-docs|context7)' "$file"; then
+    score=$((score + 1))
+  fi
 
   if [ "$MODE" = "per-file" ]; then
     echo "$name $score"
