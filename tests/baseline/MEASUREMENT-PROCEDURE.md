@@ -26,16 +26,17 @@ bash tests/baseline/run.sh /refactor --dry-run  # show invocation without runnin
 
 `run.sh` uses your **Claude subscription** (Max/Pro/Team/Enterprise) by default — tokens count against session/day quota, no API billing. To force API billing, set `ANTHROPIC_API_KEY` before invoking (per Claude Code auth precedence, an API key in env always wins in `-p` mode).
 
-**Known issue: `ExitPlanMode` hangs in `-p` mode.** The kit's commands call `ExitPlanMode` after the analysis phases. In headless mode there's no UI to approve, so the gate waits indefinitely. The `--max-turns 50` flag does not appear to fire on the gate (Phase 6 may not count toward agentic-turn budget). **Workaround**: wrap `run.sh` with `timeout 60m bash tests/baseline/run.sh ...` to enforce a hard ceiling. The pipeline is robust under SIGTERM — killing `claude -p` mid-gate leaves a clean JSONL with all completed analysis phases captured, and `capture.sh` extracts everything from disk regardless. Verified on the 2026-04-28 baseline run.
+**`ExitPlanMode` auto-detect.** The kit's commands call `ExitPlanMode` after the analysis phases. In headless mode the gate has no UI to approve and would otherwise hang indefinitely (`--max-turns 50` does NOT fire on the gate — Phase 6 likely doesn't count toward the agentic-turn budget). `run.sh` invokes `claude -p` with `--output-format stream-json --verbose` and runs a watchdog that greps the live stream for the `ExitPlanMode` `tool_use` event, then SIGTERMs the parent process when detected. The pipeline is robust under SIGTERM — all completed analysis phases are flushed to the on-disk session JSONL before exit, and `capture.sh` extracts everything from there regardless. No manual `timeout` wrapper needed. Approach validated against the [Claude Code stream-json reference](https://code.claude.com/docs/en/headless) (tool-name fields are emitted before tool execution, so detection fires before the hang).
 
 The script:
 1. Copies `tests/fixtures/nextjs-16-baseline/` to `/tmp/baseline-target/` and `git init`s it
-2. Invokes `claude -p "/<command> /tmp/baseline-target/" --permission-mode plan --output-format json --max-turns 50`
-3. Extracts `session_id` from the result JSON
-4. Runs `capture.sh` on that session — outputs the per-agent table to stdout
-5. Cleans up `/tmp/baseline-target/` and the result JSON
+2. Spawns `claude -p "/<command> /tmp/baseline-target/" --permission-mode plan --output-format stream-json --verbose --max-turns 50` in the background
+3. Watchdog polls the stream every 2s for `"type":"tool_use"..."name":"ExitPlanMode"`; on match, SIGTERMs the claude PID after a 2s grace period for in-flight flushes; emits a heartbeat every 60s otherwise
+4. Extracts `session_id` from the stream's `system/init` event
+5. Runs `capture.sh` on that session — outputs the per-agent table to stdout
+6. Cleans up `/tmp/baseline-target/` and the temporary stream file
 
-`--permission-mode plan` ensures no Edit/Bash-write tool ever fires, so the kit repo is provably untouched (target is the fixture copy at `/tmp` anyway). `--max-turns 50` is a circuit breaker for the unknown `ExitPlanMode`-in-headless-mode behavior — if the pipeline hangs or loops at the gate, the run terminates with all analysis-phase data already captured.
+`--permission-mode plan` ensures no Edit/Bash-write tool ever fires, so the kit repo is provably untouched (target is the fixture copy at `/tmp` anyway). `--max-turns 50` is defense-in-depth in case the gate watchdog ever fails to match — the watchdog is the primary termination mechanism.
 
 Save findings:
 
