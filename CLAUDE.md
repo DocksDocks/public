@@ -194,10 +194,11 @@ Based on https://claude.com/blog/using-claude-code-session-management-and-1m-con
 | Wrong path, same task | **`/rewind`** (double-tap `Esc`) | Undo the detour before it pollutes context |
 | Same task, context getting heavy | **`/compact` with steering** | Direct Claude what to keep ("preserve the failing test + stack trace; drop the exploration"). Beats waiting for auto-compact to guess. |
 | Work will produce output you only need the conclusion of | **Subagent** | Keeps verbose output out of the parent context |
+| Side task that needs the full conversation context | **`/fork <directive>`** (experimental, requires `CLAUDE_CODE_FORK_SUBAGENT=1`, Claude Code v2.1.117+) | Spawns a subagent inheriting full message history, system prompt, tools, and model. First request reuses the parent's prompt cache, so it's cheaper than a fresh subagent when context is large. Per [sub-agents docs](https://code.claude.com/docs/en/sub-agents#fork-the-current-conversation). |
 
 Rule of thumb: if a turn starts with "that didn't work, try X instead," reach for `/rewind` before retrying — the failed attempt is context rot you're otherwise carrying forward.
 
-The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents. The blog validates that pattern for ad-hoc work too.
+The kit's nine custom commands already use Opus-orchestrator + sonnet-subagents. The blog validates that pattern for ad-hoc work too. **`/fork` is for ad-hoc exploration, not for kit command pipelines** — those intentionally isolate phases (fresh context per subagent, plan-file as the only handoff) to keep token costs predictable. Forking inside a pipeline would defeat the isolation that buys the kit's tiering and orchestrator-context discipline.
 
 ## Permission Mode
 
@@ -393,7 +394,9 @@ The kit deliberately uses sequential pipelines anyway. Three structural defenses
 
 The kit's commands are large multi-phase analyses where a single session would blow the 400K compact-window budget on tool output alone. The pipeline cost (per-phase bootstrap, plan-file re-reads) is the deliberate trade for orchestrator-context isolation.
 
-Open improvement work tracked at `docs/roadmap/planned/subagent-pipeline-improvements.md`.
+Builder→Verifier pairs concentrate cost (44% of `/refactor` in the 2026-04-28 baseline) but are deliberately not merged — the split buys per-phase Opus/Sonnet tiering and independent-eyes verification, which together are the kit's primary quality mechanism. See `docs/roadmap/finished/2026-04-28-pipeline-phase-merge-audit.md` for the full audit closing T3-02 with a non-merge conclusion.
+
+Open improvement work tracked at `docs/roadmap/ongoing/subagent-pipeline-improvements.md`.
 
 ## Command Authoring Conventions
 

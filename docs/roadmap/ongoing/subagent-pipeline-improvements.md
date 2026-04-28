@@ -1,6 +1,6 @@
 ---
 created: 2026-04-27T23:00:32-03:00
-updated: 2026-04-28T03:04:50-03:00
+updated: 2026-04-28T03:08:08-03:00
 finished: null
 status: ongoing
 ---
@@ -169,7 +169,7 @@ The audit's conclusion needs to be visible to future maintainers so the same que
 
 **Files:** `CLAUDE.md` (project root)
 
-- [ ] Add one paragraph to the `## Why sequential subagent pipelines?` section: "Builder→Verifier pairs concentrate cost (44% of /refactor in the 2026-04-28 baseline) but are deliberately not merged — the split buys per-phase Opus/Sonnet tiering and independent-eyes verification, which together are the kit's primary quality mechanism. See `docs/roadmap/finished/2026-04-28-pipeline-phase-merge-audit.md` for the full audit."
+- [x] Add one paragraph to the `### Why sequential subagent pipelines?` section linking to the audit (also fixed stale `planned/` → `ongoing/` path on the trailing reference line)
 
 #### T3-03 — Forked subagents for ad-hoc exploration (out of scope for kit, document for users)
 
@@ -177,8 +177,8 @@ Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents) (expe
 
 This is NOT a fit for the kit's command pipelines (which intentionally isolate phases for token efficiency — forking would defeat the purpose). But it's useful for users who want ad-hoc exploration with full conversation context.
 
-- [ ] Add a short note to root CLAUDE.md under `## Session Management` explaining when to use `/fork` vs. the kit's pipeline commands
-- [ ] No code changes to kit agents
+- [x] Add a short note to root CLAUDE.md under `## Session Management` explaining when to use `/fork` vs. the kit's pipeline commands — added as a new table row (with experimental flag + Claude Code v2.1.117+ requirement noted) plus a trailing sentence clarifying that forking is for ad-hoc work, not kit pipelines. Verified current state of the feature against [sub-agents docs](https://code.claude.com/docs/en/sub-agents#fork-the-current-conversation) before writing
+- [x] No code changes to kit agents
 
 ## Validation
 
