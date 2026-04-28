@@ -1,6 +1,6 @@
 ---
 name: react-solid
-description: Use when designing a React or Next.js component architecture, refactoring a component or hook, reviewing a PR that adds a large component (300+ LOC), extracting a custom hook, designing a Server Action layout, splitting a "god module" of actions, writing a discriminated union for component props, eliminating a growing switch/if-else chain, or deciding whether to keep two things in the same file. Covers SOLID's 5 principles translated to function-based React (no classes) — SRP via Extract Hook / Split Module, OCP via Strategy Map (Record<string, Formatter>), LSP via discriminated unions instead of inheritance, ISP via splitting bloated props, DIP via dependency injection through props / Context / Server Action imports.
+description: Use when refactoring a 300+ LOC component or hook, extracting a custom hook from a god component, splitting a "god module" of Server Actions, writing a discriminated union for variant component props, eliminating a growing switch/if-else chain over types or modes, deciding whether to keep two things in the same file, or designing a Server Action / Server Component layout. Covers SOLID's 5 principles translated to function-based React (no classes) — SRP via Extract Hook / Split Module, OCP via Strategy Map (Record<string, Formatter>), LSP via discriminated unions instead of inheritance, ISP via splitting bloated props, DIP via dependency injection through props / Context / Server Action imports.
 user-invocable: false
 paths:
   - "**/*.tsx"
@@ -9,7 +9,7 @@ paths:
   - "**/*.js"
 metadata:
   pattern: tool-wrapper
-  updated: "2026-04-27"
+  updated: "2026-04-28"
 ---
 
 # SOLID in Function-Based React / Next.js

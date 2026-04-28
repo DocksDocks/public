@@ -1,6 +1,6 @@
 ---
 name: make-interfaces-feel-better
-description: Design engineering principles for making interfaces feel polished. Use when building UI components, reviewing frontend code, implementing animations, hover states, shadows, borders, typography, micro-interactions, enter/exit animations, or any visual detail work. Triggers on UI polish, design details, "make it feel better", "feels off", stagger animations, border radius, optical alignment, font smoothing, tabular numbers, image outlines, box shadows.
+description: Use when building or reviewing UI components, fixing positioning that 'feels off' or 'feels detached', placing popovers/dropdowns/tooltips relative to their trigger, implementing animations, hover/press states, shadows, borders, typography, micro-interactions, or enter/exit transitions. Covers concentric border radius (outer = inner + padding), optical vs geometric alignment, layered box-shadows, interruptible CSS transitions, tabular numbers, image outlines, font smoothing, 40×40px hit areas, scale(0.96) on press, popover-anchored-to-trigger placement, and 'will-change' discipline. Triggers on phrases like 'make it feel better', 'feels off', 'looks weird', or any visual-detail polish work.
 upstream:
   source: https://github.com/jakubkrehel/make-interfaces-feel-better
   license: MIT
