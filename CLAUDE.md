@@ -24,6 +24,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `docs/roadmap/` | Time-boxed kit-improvement plans (`planned/` → `ongoing/` → `finished/`). See `docs/roadmap/CLAUDE.md` for the convention |
 | `tests/fixtures/` | Static fixtures (frozen synthetic projects) for kit smoke tests. See `tests/smoke/SMOKE-TESTS.md` for the canonical battery |
 | `tests/smoke/SMOKE-TESTS.md` | Manual battery of agent-invocation tests against the fixtures — run after non-trivial kit changes |
+| `tests/baseline/MEASUREMENT-PROCEDURE.md` | How to capture per-phase token cost on a real project (T3-01 in the pipeline-improvements roadmap). Pairs with `rtk gain --history` and session JSONL transcripts |
 
 ## Custom Commands
 
