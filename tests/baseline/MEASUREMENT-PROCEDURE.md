@@ -1,41 +1,72 @@
 # Pipeline Baseline Measurement (T3-01)
 
-Procedure for capturing per-phase token cost on a real project. **Don't measure on the synthetic fixture** (`tests/fixtures/nextjs-16-min/`) — it's too small to exercise pipeline depth, and the numbers would mislead. Use a real mid-sized project (japones is the obvious target) so the data reflects actual usage patterns.
+Procedure for capturing per-phase token cost. **Default: plan-only measurement** (decline at `ExitPlanMode`), which captures ~70–80% of total command cost for analysis-heavy pipelines (`/refactor`, `/security`, `/review`) without modifying any code. Execution-phase cost can be calibrated separately with one-off full runs.
 
-## What to capture per command
+## Two valid measurement targets
 
-Run each of these on the same target project, in the same session, with a fresh context (`/clear` between):
+| Target | Use when | Trade-off |
+|---|---|---|
+| `tests/fixtures/nextjs-16-baseline/` | Tracking kit *changes* — same fixture before + after lets you see deltas cleanly | Synthetic; absolute numbers don't generalize to production projects |
+| Real mid-sized project (e.g. japones) | Absolute cost data + representative usage patterns | Project changes between runs, so deltas are confounded |
 
-- `/refactor`
-- `/security`
-- `/review`
-- `/test src/` (or a representative subdirectory)
+**Pick one and stick with it within a measurement series.** Don't mix targets in the same baseline file.
 
-For each command, record:
+## Plan-only measurement (default)
 
-| Field | Source |
-|---|---|
-| Phase name | from the command's `## Phase N:` headers in the plan file |
-| Agent invoked | from the orchestrator's `subagent_type:` |
-| Model (sonnet/opus) | from the agent file's `model:` frontmatter |
-| Input tokens | `rtk gain --history` (per-command) — read from the most recent run row |
-| Output tokens | same |
-| Wall-clock | per-phase agent return shows `duration_ms` in the tool output |
-| Plan file size at end of phase | `wc -c <plan-file>` after each phase |
+Captures all read-only phases (exploration → scanners → analyzers → planners → pre-verifiers) and wall-clock + plan-file growth per phase. Misses the implementation phase.
 
-## How to capture
+```bash
+# Setup against the baseline fixture
+cp -r tests/fixtures/nextjs-16-baseline /tmp/baseline-target
+cd /tmp/baseline-target && git init -q && git add -A && git commit -qm "fixture state"
+touch /tmp/baseline-target/.measure          # marker for capture.sh (option 3)
 
-Two complementary sources:
+# In Claude Code (kit session, fresh /clear):
+# /refactor /tmp/baseline-target/
+# (Pipeline runs Plan Mode through Phase N → ExitPlanMode prompt)
+# DECLINE the ExitPlanMode prompt — plan-only run
 
-1. **`rtk gain --history`** — already running per the kit's hook. After each command, `rtk gain --history | head -20` shows the most recent operations with savings/totals. The numbers are post-RTK-compression; the actual API send is what got billed.
+# After: capture data from session JSONL
+bash tests/baseline/capture.sh <session-uuid>
 
-2. **Session JSONL transcript** — `~/.claude/projects/<project-slug>/<session-uuid>.jsonl` has the full per-message token counts in `usage` blocks. `jq '.usage' <session>.jsonl | head -50` extracts the raw numbers.
+# Repeat for /security, /review, /test (fresh /clear between)
 
-If `rtk gain` and the JSONL disagree by more than ~5%, prefer the JSONL — RTK reports compressed-input savings, not absolute API spend.
+# Cleanup
+rm -rf /tmp/baseline-target
+```
 
-## Output format
+The `.measure` marker is a forward-compatibility hook: today, `capture.sh` doesn't strictly need it (you pass the session UUID); later, if we add `SubagentStop`-hook auto-capture, the marker tells the hook "yes, log this run."
 
-Save findings to `docs/roadmap/finished/YYYY-MM-DD-pipeline-baseline-measurement.md` (move the parent plan from `ongoing/` once T3-01 is checked off). Use this skeleton:
+## Optional: execution-phase calibration
+
+To get the missing ~20-30%: run ONE full pipeline with approval at `ExitPlanMode`. Edits target the fixture copy at `/tmp` — kit repo unaffected.
+
+```bash
+cp -r tests/fixtures/nextjs-16-baseline /tmp/baseline-target-calib
+cd /tmp/baseline-target-calib && git init -q && git add -A && git commit -qm "fixture state"
+
+# /refactor /tmp/baseline-target-calib/
+# (run pipeline → APPROVE at ExitPlanMode → execution phase runs)
+
+bash tests/baseline/capture.sh <session-uuid> --include-implementation
+
+rm -rf /tmp/baseline-target-calib
+```
+
+One calibration run per command is enough. The execution-phase ratio (impl-cost ÷ analysis-cost) tends to be stable across runs of the same command, so you can apply the ratio to subsequent plan-only measurements.
+
+## What capture.sh produces
+
+A markdown table per command:
+
+| Phase | Agent | Model | In tok | Out tok | Cache reads | Wall-clock | Plan-file growth |
+|---|---|---|---|---|---|---|---|
+
+Plus a summary row with totals + bootstrap-cost ratio (= input tokens consumed before the phase produced its first plan-file write, ÷ total input tokens for the phase). High ratio = lots of re-discovery; low ratio = phase did real work fast — flag for T3-02 phase-merge analysis.
+
+## Output format (saved findings)
+
+When ready to publish, save to `docs/roadmap/finished/YYYY-MM-DD-pipeline-baseline-measurement.md` and `git mv` the parent plan from `ongoing/` to `finished/`. Skeleton:
 
 ```markdown
 ---
@@ -47,34 +78,37 @@ status: finished
 
 # Pipeline Baseline Measurement — <date>
 
-## Project measured
-- Path, commit SHA, file count, primary stack
+## Target
+- Fixture path / project commit SHA / file count / primary stack
 
-## Per-command totals
-| Command | Phases | Total in | Total out | Wall-clock | Cost (est.) |
-|---|---|---|---|---|---|
-| /refactor | 8 | … | … | … | … |
-| /security | 4 | … | … | … | … |
+## Per-command totals (plan-only, unless noted)
+| Command | Phases | Total in | Total out | Cache hit % | Wall-clock | Cost (est.) |
+|---|---|---|---|---|---|---|
+| /refactor | 8 | … | … | … | … | … |
 | ...
 
 ## Per-phase breakdown (worst 3 by bootstrap-cost ratio)
-For each: phase name, agent, model, in/out, plan-file size delta, and **bootstrap-cost ratio** = (input tokens consumed before the phase produced its first plan-file write) ÷ (total input tokens for the phase). High ratio = lots of re-discovery / re-reading; low ratio = phase did real work fast.
+For each: phase, agent, model, in/out, plan-file growth, bootstrap ratio.
+
+## Execution-phase calibration (one-shot per command)
+| Command | Impl in tok | Impl out tok | Ratio (impl ÷ analysis) |
+|---|---|---|---|
 
 ## Findings
-- Surprises (phases that cost more than expected)
-- Phase-merge candidates surfaced by the data (feeds T3-02)
-- Anything that suggests revisiting the model tiering
+- Surprises (phases costing more than expected)
+- Phase-merge candidates surfaced by the data → feeds T3-02
+- Model-tier mismatches (Opus phase doing mechanical work, Sonnet doing synthesis)
 ```
 
-## Pre-conditions for a clean measurement
+## Pre-conditions
 
-- Run on a project with a recent commit (last 24h) so `git log` and friends produce stable output
-- Don't have other Claude sessions running (RTK history will interleave)
+- Run on a clean session (`/clear` first)
+- No other Claude sessions active (RTK history would interleave)
 - Note kit commit SHA at run time so the measurement can be re-run on the same kit version later
-- `/clear` between commands to avoid context-window contamination affecting the per-command numbers
+- For real-project measurement: project must be on a recent commit (last 24h) so `git log` produces stable output
 
 ## Post-conditions
 
-- Append findings to the file above
-- If a phase shows a high bootstrap-cost ratio, note it as a candidate for T3-02 (phase-merge audit)
-- If a model tier feels mismatched (Opus phase doing mechanical work, or Sonnet phase doing synthesis), flag it — but don't change the agent yet; let evidence accumulate over multiple measurements
+- Append findings to the saved file
+- High bootstrap-cost ratio → flag as T3-02 candidate
+- Model-tier mismatch suspicion → don't change agents on a single data point; let evidence accumulate across multiple measurements before tweaking
