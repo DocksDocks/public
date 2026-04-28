@@ -3,7 +3,7 @@ name: refactor
 description: Use when auditing a codebase for structural issues — dead code, duplication, SOLID violations (all 5 principles including Liskov), missing abstractions, modernization candidates. Generates a tiered refactoring plan (quick wins → consolidation → structural) with per-change test strategy and revert triggers. Full-project scan by default; accepts a path argument to scope.
 argument-hint: "[path-or-scope]"
 allowed-tools: >-
-  Read Write Glob Grep Task WebFetch WebSearch Edit
+  Read Write Glob Grep Agent WebFetch WebSearch Edit
   Bash(date) Bash(ls:*) Bash(find:*) Bash(wc:*) Bash(mkdir:*) Bash(rtk:*)
   Bash(git status) Bash(git log:*) Bash(git diff:*)
   Bash(git rm:*) Bash(git add:*) Bash(git restore:*)
@@ -27,11 +27,19 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 <constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
-Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next subagent(s) in the same turn. Do not end your turn between phases.
 
 The ONLY time you stop and wait for user input is Phase 6 (Present Plan + Exit Plan Mode).
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+<constraint>
+Phase Output Integrity — Orchestrator Behavior:
+
+Before launching any subsequent phase, verify the prior phase's output landed in the plan file. Use `Grep('^## Phase N:', <plan-file-path>)` (substituting the actual phase number) — if zero matches, abort with: "Phase N (<agent>) produced no plan-file output. Aborting pipeline." Do NOT launch the next phase on stale state.
+
+This catches silent subagent failures (failed Write, malformed output, wrong heading) before they propagate. Cost is one Grep call per phase transition — cheap relative to the cost of a Phase N+1 working from missing inputs.
 </constraint>
 
 ---
@@ -176,7 +184,7 @@ After verification:
 
 See frontmatter `allowed-tools`. The enforced permission surface is:
 
-- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Task`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `find:*`, `wc:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
+- **Planning (read-only):** `Read`, `Grep`, `Glob`, `Agent`, `WebFetch`, `WebSearch`, and scoped Bash for discovery (`date`, `ls:*`, `find:*`, `wc:*`, `git status`, `git log:*`, `git diff:*`, `rtk:*`).
 - **Implementation:** `Edit`, `Write`, scoped deletion/stage/revert (`git rm:*`, `git add:*`, `git restore:*`), scoped test runners (`npm test`, `pnpm test`, `pnpm run test:*`, `yarn test`, `pytest:*`, `cargo test:*`, `go test:*`), scoped analysis/type-check/lint tools (`npx knip:*`, `npx depcheck:*`, `npx ts-prune:*`, `npx tsc:*`, `npx eslint:*`, `vulture:*`, `ruff:*`, `mypy:*`, `deadcode:*`, `cargo-udeps:*`).
 
 ---

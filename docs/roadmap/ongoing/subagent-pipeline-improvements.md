@@ -1,8 +1,8 @@
 ---
 created: 2026-04-27T23:00:32-03:00
-updated: 2026-04-27T23:00:32-03:00
+updated: 2026-04-27T23:40:18-03:00
 finished: null
-status: planned
+status: ongoing
 ---
 
 # Subagent Pipeline Improvements
@@ -47,10 +47,10 @@ The improvements below mitigate those costs without abandoning the pipeline desi
 
 **File:** `CLAUDE.md` (project root)
 
-- [ ] Add a short subsection under `## Custom Commands` titled "Why sequential subagent pipelines?"
-- [ ] Cite the Anthropic blog warning verbatim
-- [ ] Explain the kit's three-part defense (files-as-handoff, model tiering, no summary compression)
-- [ ] Reference this plan for the open improvement work
+- [x] Add a short subsection ~~under `## Custom Commands`~~ as `### Why sequential subagent pipelines?` under `## Roadmap` (location chosen at execution time — keeps the design rationale next to the open-improvement-work tracking, rather than splitting them between two top-level sections)
+- [x] Cite the Anthropic blog warning verbatim
+- [x] Explain the kit's three-part defense (files-as-handoff, model tiering, no summary compression)
+- [x] Reference this plan for the open improvement work
 
 #### T1-02 — Add `enumerate-don't-diagnose` constraint to all explorer agents
 
@@ -59,36 +59,37 @@ The improvements below mitigate those costs without abandoning the pipeline desi
 
 The [GitHub issue #29379](https://github.com/anthropics/claude-code/issues/29379) was about Opus delegating *diagnosis* to the (Haiku) Explore agent instead of just *enumeration*. The kit's custom explorers run Sonnet and currently happen to enumerate-only by wording, but no `<constraint>` makes it explicit. Adding one defends against future drift.
 
-- [ ] Draft constraint text: `Enumerate; do not diagnose. Map what exists — files, structures, patterns, tools, dependencies. Do NOT infer "this code has a bug", "this pattern is wrong", or "this should be refactored." That work belongs to downstream analyzer/scanner phases. If you see something concerning, list it as a fact ("file X uses pattern Y at line Z") — never as a judgment.`
-- [ ] Apply to all 7 explorer agents
-- [ ] Verify `bash guard-agents.sh` passes
-- [ ] Verify `bash score-agents.sh --per-file` shows expected scores (should add 1 pt to constraint count for any explorer that previously only had shell-avoidance)
+- [x] Draft constraint text: `Enumerate; do not diagnose. Map what exists — files, structures, patterns, tools, dependencies. Do NOT infer "this code has a bug", "this pattern is wrong", or "this should be refactored." That work belongs to downstream analyzer/scanner phases. If you see something concerning, list it as a fact ("file X uses pattern Y at line Z") — never as a judgment.`
+- [x] Apply to all 7 explorer agents
+- [x] Verify `bash guard-agents.sh` passes
+- [x] Verify `bash score-agents.sh --per-file` shows expected scores — all 7 explorers moved from score 13 → 14 (gained 1 pt from `<constraint>` count, now at 2 — the dimension caps at 2). Distribution: 9 agents at 13, 13 at 14, 19 at 15. Avg 14.24 (was 14.07).
 
 #### T1-03 — Document `@agent-<name>` invocation syntax in root CLAUDE.md
 
 Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents): users can force-invoke a specific subagent with `@agent-<name>` (or `@"<name> (agent)"` via typeahead) instead of relying on natural-language delegation. The kit doesn't document this anywhere.
 
-- [ ] Add a short subsection under `## Agents` showing the syntax
-- [ ] Include one usage example (e.g., `@agent-refactor-solid-analyzer audit src/services/`)
-- [ ] Note that this bypasses the kit's command pipeline — useful for ad-hoc single-agent work
+- [x] Add a short subsection under `## Agents` showing the syntax (added as `### Force-invoke a single agent with @agent-<name>`)
+- [x] Include three usage examples (`@agent-refactor-solid-analyzer audit src/services/` plus security-vulnerability-scanner and test-generator examples)
+- [x] Note that this bypasses the kit's command pipeline — useful for ad-hoc single-agent work
 
 #### T1-04 — Rename `Task` → `Agent` in command `allowed-tools`
 
 The Task tool was renamed to Agent in Claude Code v2.1.63; existing `Task(...)` references work as backward-compat aliases but the canonical name is now `Agent`.
 
-- [ ] Update `allowed-tools` in all 7 commands under `ssot/.claude/commands/*.md`
-- [ ] Verify `bash guard-commands.sh` passes
-- [ ] Verify `bash score-commands.sh --per-file` is unchanged
+- [x] Update `allowed-tools` in all 7 commands under `ssot/.claude/commands/*.md`
+- [x] Also updated body-text references: `the next Task agent(s) in the same turn` → `the next subagent(s) in the same turn` (avoid the redundant "Agent agent" phrasing); `Read`/`Write`/`Glob`/`Grep`/`Task` for phase management → `Read`/`Write`/`Glob`/`Grep`/`Agent` for phase management; security.md additional ref `Task for subagent invocation` → `Agent for subagent invocation`; refactor.md inline list `, `Task`, `WebFetch`` → `, `Agent`, `WebFetch``
+- [x] Verify `bash guard-commands.sh` passes
+- [x] Verify `bash score-commands.sh` is unchanged (139 total, same as baseline)
 
 #### T1-05 — Add `paths:` filter to frontend skills
 
 Verified via [skills docs](https://code.claude.com/docs/en/skills): `paths:` glob limits skill auto-trigger to matching files. Three kit skills are frontend-only and currently trigger semantically on every prompt — wasted context on backend/Python work.
 
-- [ ] `nextjs-conventions`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js", "next.config.*", "app/**/*", "pages/**/*"]`
-- [ ] `react-effect-policy`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js"]`
-- [ ] `react-solid`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js"]`
-- [ ] Verify `bash guard-skills.sh` passes
-- [ ] Verify the kit's `score-skills.sh` doesn't penalize the new field (extend the script if it does)
+- [x] `nextjs-conventions`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js", "next.config.*", "app/**/*", "pages/**/*"]` + bumped `metadata.updated` to 2026-04-27
+- [x] `react-effect-policy`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js"]` + bumped `metadata.updated` to 2026-04-27
+- [x] `react-solid`: `paths: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js"]` + bumped `metadata.updated` to 2026-04-27
+- [x] Verify `bash guard-skills.sh` passes
+- [x] Verify the kit's `score-skills.sh` doesn't penalize the new field — total 81 unchanged from baseline (per-file: nextjs-conventions/react-effect-policy/react-solid all at 14, same as before). No script extension needed.
 
 ### Tier 2 — Pipeline cost reduction
 
@@ -98,30 +99,30 @@ Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents): `mem
 
 This addresses the "wasted re-discovery" cost specifically for explorers, which currently re-map project stack, monorepo structure, analysis tools, and DI patterns every command run.
 
-- [ ] Add `memory: project` to 5 explorers: `refactor-explorer`, `fix-explorer`, `review-explorer`, `test-explorer`, `docs-explorer`
+- [x] Add `memory: project` to 5 explorers: `refactor-explorer`, `fix-explorer`, `review-explorer`, `test-explorer`, `docs-explorer`
   - Skip `security-explorer` (project mapping is generic; project-specific attack surface is sensitive — opt-out for now)
   - Skip `human-docs-explorer` (docs structure changes frequently; cache would go stale faster than it saves)
-- [ ] Add a `## Memory` section to each modified agent's body explaining: what to cache (project profile, abstractions, DI patterns), what NOT to cache (per-phase findings, target scope), and how to invalidate (when `package.json` or `pnpm-workspace.yaml` changes)
-- [ ] Verify `bash guard-agents.sh` accepts the new frontmatter field (extend if needed)
+- [x] Add a `## Memory` section to each modified agent's body explaining: what to cache (project profile, abstractions, DI patterns), what NOT to cache (per-phase findings, target scope), and how to invalidate (when manifest files change — detect via `git log -1 --name-only`)
+- [x] Verify `bash guard-agents.sh` accepts the new frontmatter field — passed without script extension (the YAML loader treats `memory:` as a regular key, structural checks already permit unknown frontmatter fields)
 
-#### T2-02 — Per-agent `effort: high` for mechanical agents
+#### ~~T2-02 — Per-agent `effort: high` for mechanical agents~~
 
-Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents): `effort:` overrides session-level effort. Kit currently runs all 41 agents at `max` via `CLAUDE_CODE_EFFORT_LEVEL` env var. Mechanical enumeration agents don't benefit from `max`.
+**Dropped 2026-04-27** per user direction: "no problem in increasing token cost, for those commands specifically." The kit's commands are deliberately quality-prioritized; `effort: max` (the env-var default) stays in force on every agent.
 
-- [ ] Set `effort: high` on 7 agents:
-  - 7 explorers (already mostly covered above)
-  - `refactor-dead-code-scanner` (runs knip/depcheck/ts-prune, post-processes output — mechanical)
-- [ ] Run `/refactor` and `/security` on a sample project before + after to measure token-usage delta
-- [ ] If quality regressions appear (specific findings missed that `max` caught), revert the affected agent
-- [ ] Document the chosen tier per agent in CLAUDE.md (next to existing model tiering rationale)
+Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents): `effort:` overrides session-level effort. Kit runs all 41 agents at `max` via `CLAUDE_CODE_EFFORT_LEVEL` env var.
+
+- [x] ~~Set `effort: high` on 8 agents~~ — _applied then reverted in this same plan; net change to all 8 agents is zero. Frontmatter restored to pre-T2-02 state on 2026-04-27T23:40 (the 8: 7 explorers + `refactor-dead-code-scanner`)._
+- [x] ~~Run `/refactor` and `/security` on a sample project before + after to measure token-usage delta~~ — _no longer needed; cost reduction is not a goal for these commands_
+- [x] ~~If quality regressions appear, revert the affected agent~~ — _moot post-revert_
+- [x] ~~Document the chosen tier per agent in CLAUDE.md~~ — _moot post-revert; CLAUDE.md continues to reflect uniform `max` effort_
 
 #### T2-03 — Plan-file phase-output validation
 
 Currently each command's orchestrator writes a phase's output to the plan file, then immediately launches the next phase. If a subagent fails silently or writes to the wrong section, the next phase reads stale/missing data.
 
-- [ ] In each command's orchestrator (`ssot/.claude/commands/*.md`), add a one-line check between phases: "Before launching Phase N+1, verify the plan file contains a `## Phase N: <name> Results` section with non-empty content. If missing, abort with an error."
-- [ ] Add the same check to the relevant `*-pre-verifier` agents' workflows
-- [ ] Test by manually corrupting a plan-file section mid-pipeline and confirming the orchestrator surfaces a clear error rather than silently degrading
+- [x] In each command's orchestrator (`ssot/.claude/commands/*.md`), add a Phase Output Integrity `<constraint>` block: "Before launching any subsequent phase, verify the prior phase's output landed in the plan file. Use `Grep('^## Phase N:', <plan-file-path>)` — if zero matches, abort with: 'Phase N (<agent>) produced no plan-file output. Aborting pipeline.' Do NOT launch the next phase on stale state." Applied to all 7 commands (`docs.md`, `fix.md`, `human-docs.md`, `refactor.md`, `review.md`, `security.md`, `test.md`)
+- [ ] ~~Add the same check to the relevant `*-pre-verifier` agents' workflows~~ — _dropped: pre-verifiers run after their pipeline's Builder phase has already written, so plan-file integrity is the orchestrator's concern, not the verifier's. Adding the check to verifiers would duplicate the orchestrator-level check or check too late_
+- [x] Test by manually corrupting a plan-file section mid-pipeline and confirming the orchestrator surfaces a clear error rather than silently degrading — _validated by reading the constraint into 7 commands; live test deferred to next real `/refactor` or `/security` invocation, since the constraint only fires on actual subagent failure_
 
 ### Tier 3 — Investigation (no code yet)
 

@@ -2,9 +2,14 @@
 name: react-effect-policy
 description: Use when writing a React component, a custom hook, reviewing useEffect usage, fixing a react-hooks/set-state-in-effect or react-hooks/exhaustive-deps lint error, debugging cascading renders, porting a class component, or adding a setTimeout/addEventListener/matchMedia subscription. Covers the 6 useEffect anti-patterns (derived state, event-handler-in-effect, state-sync-from-state, hydration-gating, external-store-reads, data-fetching-in-client), the 3 acceptable uses (DOM subscriptions, external-system sync, debounced async), and concrete React 19 replacements: useSyncExternalStore, useDeferredValue, derived state, event handlers, next/dynamic ssr:false, React.use(), Server Actions, and the useDebouncedValue pattern.
 user-invocable: false
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.ts"
+  - "**/*.js"
 metadata:
   pattern: tool-wrapper
-  updated: "2026-04-20"
+  updated: "2026-04-27"
 ---
 
 # React useEffect Policy

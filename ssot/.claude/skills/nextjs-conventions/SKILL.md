@@ -2,9 +2,17 @@
 name: nextjs-conventions
 description: Use when working on a Next.js 13/14/15/16 project — adding a page, route handler, middleware/proxy, Server Action, Server Component, Client Component boundary, handling SSR/CSR hydration, configuring Turbopack, debugging cookies or auth, or upgrading between Next versions. Covers the Next.js 16 middleware → proxy.ts rename (proxy() function, nodejs runtime only), App Router conventions (page.tsx / layout.tsx / loading.tsx / error.tsx / route.ts / not-found.tsx), server-first principle (Server Components read, Server Actions write, avoid client fetches), "use client" boundary rules, cookies() / headers() async access in Next 15+, searchParams / params as Promises, hydration gating (next/dynamic ssr:false, React.use, CSS-class pre-hydration), streaming + Suspense, route groups ((group)), dynamic segments [id] and catch-all [...slug], parallel routes @slot, NEXT_PUBLIC_ env prefix, Turbopack dev vs webpack prod, and the revalidatePath/revalidateTag cache API.
 user-invocable: false
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.ts"
+  - "**/*.js"
+  - "next.config.*"
+  - "app/**/*"
+  - "pages/**/*"
 metadata:
   pattern: tool-wrapper
-  updated: "2026-04-20"
+  updated: "2026-04-27"
 ---
 
 # Next.js App Router Conventions

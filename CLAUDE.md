@@ -103,6 +103,20 @@ The orchestrator passes the `subagent_type` to Claude Code's Agent tool; Claude 
 - `model` is valid alias or full ID
 - Body ≤500 lines, has `## Workflow`, `## Success Criteria`, ≥1 `<constraint>` block
 
+### Force-invoke a single agent with `@agent-<name>`
+
+The kit's slash commands run the full pipeline. For ad-hoc single-agent work, you can force-invoke any agent directly using Claude Code's `@`-mention syntax (per [sub-agents docs](https://code.claude.com/docs/en/sub-agents)):
+
+```text
+@agent-refactor-solid-analyzer audit src/services/
+@agent-security-vulnerability-scanner check src/api/auth/
+@agent-test-generator generate tests for src/utils/format.ts
+```
+
+Type `@` to open the typeahead picker and select the agent (shown as `@"<name> (agent)"`), or type the mention manually as `@agent-<name>` for local agents and `@agent-<plugin>:<name>` for plugin agents.
+
+The full message still goes to Claude, which writes the subagent's task prompt based on what you asked. The `@`-mention only controls *which* subagent is invoked, not what prompt it receives. This bypasses the kit's pipeline — useful when you don't need the full multi-phase Builder-Verifier flow and just want one agent's output (e.g., re-running just the SOLID analyzer after fixing a different finding, without re-running the explorer + scanner phases).
+
 ## Plugins
 
 Third-party plugins installed via the Claude Code plugin marketplace. Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnownMarketplaces`.

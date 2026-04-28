@@ -3,7 +3,7 @@ name: fix
 description: Use when fixing bugs, security vulnerabilities, performance problems, dependency issues, or dead code in a codebase. Runs a multi-scanner discovery pipeline (code-quality + dependency scanners in parallel) with Builder-Verifier pattern; produces a prioritized fix plan with per-change test strategy and revert triggers.
 argument-hint: "[path-or-scope]"
 allowed-tools: >-
-  Read Write Glob Grep Task WebFetch WebSearch Edit
+  Read Write Glob Grep Agent WebFetch WebSearch Edit
   Bash(date) Bash(git status) Bash(git log:*) Bash(git diff:*)
   Bash(git rm:*) Bash(git add:*) Bash(git restore:*) Bash(rtk:*)
   Bash(npm audit) Bash(npm test) Bash(npm run test:*)
@@ -27,12 +27,20 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 <constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
-Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent(s) in the same turn. Do not end your turn between phases.
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next subagent(s) in the same turn. Do not end your turn between phases.
 
 The ONLY time you stop and wait for user input is:
 - Phase 6 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+<constraint>
+Phase Output Integrity — Orchestrator Behavior:
+
+Before launching any subsequent phase, verify the prior phase's output landed in the plan file. Use `Grep('^## Phase N:', <plan-file-path>)` (substituting the actual phase number) — if zero matches, abort with: "Phase N (<agent>) produced no plan-file output. Aborting pipeline." Do NOT launch the next phase on stale state.
+
+This catches silent subagent failures (failed Write, malformed output, wrong heading) before they propagate. Cost is one Grep call per phase transition — cheap relative to the cost of a Phase N+1 working from missing inputs.
 </constraint>
 
 ---
@@ -129,7 +137,7 @@ Invoke `subagent_type: fix-post-verifier` with the following prompt:
 
 ## Allowed Tools
 
-See frontmatter. Orchestrator uses `Read`/`Write`/`Glob`/`Grep`/`Task` for phase management and `Edit`/`Bash(git *)` for implementation.
+See frontmatter. Orchestrator uses `Read`/`Write`/`Glob`/`Grep`/`Agent` for phase management and `Edit`/`Bash(git *)` for implementation.
 
 ## Usage
 

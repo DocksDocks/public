@@ -3,6 +3,7 @@ name: test-explorer
 description: Use when running /test command phase 1 — identifies the project's test framework, existing test patterns, mocking strategies, coverage config, and target code to test before analysis. Not for general codebase exploration or writing tests.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+memory: project
 maxTurns: 100
 ---
 
@@ -18,6 +19,10 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Enumerate; do not diagnose. Map what exists — files, structures, patterns, tools, dependencies. Do NOT infer "this code has a bug", "this pattern is wrong", or "this should be refactored." That work belongs to downstream analyzer/scanner phases. If you see something concerning, list it as a fact ("file X uses pattern Y at line Z") — never as a judgment.
 </constraint>
 
 ## Workflow
@@ -70,3 +75,25 @@ Shell-avoidance:
 - Existing test patterns documented with `file:line` examples from real test files.
 - Mocking strategy confirmed (not assumed) from actual test files.
 - Target scope specified with verified file paths — zero assumed paths.
+
+## Memory
+
+`memory: project` enabled — `MEMORY.md` (first 200 lines / 25KB) is auto-injected at agent startup; Read/Write/Edit auto-enabled to self-curate.
+
+**Cache** (write to `MEMORY.md` after each run, dedupe against existing entries):
+- Project profile: stack, package manager
+- Test framework + version (Jest, Vitest, Pytest, Go test, Rust test, Mocha)
+- Test runner command
+- Test file naming convention (`*.test.ts`, `*_test.go`, `test_*.py`, `*.spec.*`)
+- Mocking strategy in use (`jest.mock`, `vi.mock`, `unittest.mock`, `testify/mock`, `__mocks__/` dir layout)
+- Coverage tool + config file path
+
+**Do NOT cache** (per-run only — belongs in plan file):
+- Target scope from `$ARGUMENTS`
+- Untested-functions inventory (changes as code evolves)
+- Anti-hallucination check results
+
+**Invalidate** (rewrite `MEMORY.md` from scratch) when:
+- Manifest files change: `package.json`, `pnpm-workspace.yaml`, `Cargo.toml`, `pyproject.toml`, `go.mod`
+- Test framework config files change (`jest.config.*`, `vitest.config.*`, `pytest.ini`)
+- Test framework migrates (Jest → Vitest, unittest → pytest)

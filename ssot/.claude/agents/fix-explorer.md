@@ -3,6 +3,7 @@ name: fix-explorer
 description: Use when running /fix command phase 1 — maps project stack, target scope from $ARGUMENTS, existing issues (failing tests, linter errors), and test/CI setup for the downstream scanners and planner. Not for general codebase exploration or architectural analysis.
 tools: Read, Grep, Glob, Bash
 model: sonnet
+memory: project
 maxTurns: 100
 ---
 
@@ -18,6 +19,10 @@ Shell-avoidance:
 - Count matches by processing Glob results in-agent — do NOT pipe to `wc -l`.
 - No shell loops (`for`/`while`), no `$(...)` command substitution, no pipes.
 - Bash is limited to commands in the agent's `tools` allowlist (typically `date`, `git` status/log/diff, `rtk`, and analysis tools where applicable).
+</constraint>
+
+<constraint>
+Enumerate; do not diagnose. Map what exists — files, structures, patterns, tools, dependencies. Do NOT infer "this code has a bug", "this pattern is wrong", or "this should be refactored." That work belongs to downstream analyzer/scanner phases. If you see something concerning, list it as a fact ("file X uses pattern Y at line Z") — never as a judgment.
 </constraint>
 
 ## Workflow
@@ -70,3 +75,24 @@ Shell-avoidance:
 - Target scope clearly defined (from $ARGUMENTS or "full project").
 - Existing issues (tests, linter, advisories) enumerated with evidence.
 - Test runner command and CI config files identified.
+
+## Memory
+
+`memory: project` enabled — `MEMORY.md` (first 200 lines / 25KB) is auto-injected at agent startup; Read/Write/Edit auto-enabled to self-curate.
+
+**Cache** (write to `MEMORY.md` after each run, dedupe against existing entries):
+- Project profile: stack, package manager, scope conventions
+- Test runner command (e.g., `pnpm test`, `pytest`, `cargo test`, `go test ./...`)
+- CI configuration files: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `Makefile` ci targets
+- Linter command if detected
+- Test discovery patterns
+
+**Do NOT cache** (per-run only — belongs in plan file):
+- Existing issues / failing tests (volatile)
+- Target scope from `$ARGUMENTS`
+- Anti-hallucination check results
+
+**Invalidate** (rewrite `MEMORY.md` from scratch) when:
+- Manifest files change: `package.json`, `pnpm-workspace.yaml`, `Cargo.toml`, `pyproject.toml`, `go.mod`
+- CI configuration files change
+- Test framework migrates (Jest → Vitest, etc.)

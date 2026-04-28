@@ -3,7 +3,7 @@ name: human-docs
 description: Use when generating, fixing, or optimizing project documentation — README.md, CLAUDE.md, docs/**/*.md, .env.example, API references, JSDoc/TSDoc. Scans all .md files, categorizes human-readable vs AI-optimized, and produces updates through a Builder-Verifier pattern that grounds every claim in source code.
 argument-hint: "[path-or-scope]"
 allowed-tools: >-
-  Read Write Glob Grep Task WebFetch WebSearch Edit
+  Read Write Glob Grep Agent WebFetch WebSearch Edit
   Bash(date) Bash(ls:*) Bash(find:*) Bash(mkdir:*) Bash(rtk:*)
   Bash(git status) Bash(git log:*) Bash(git diff:*) Bash(git add:*)
 ---
@@ -21,12 +21,20 @@ If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else
 <constraint>
 Phase Transition Protocol — Orchestrator Behavior:
 
-Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next Task agent in the same turn. Do not end your turn between phases.
+Between phases, do NOT stop to summarize, analyze, or present intermediate results to the user. Process each phase's output, write it to the plan file, and IMMEDIATELY launch the next subagent in the same turn. Do not end your turn between phases.
 
 The ONLY time you stop and wait for user input is:
 - Phase 5 (ExitPlanMode gate)
 
 If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue with the next phase.
+</constraint>
+
+<constraint>
+Phase Output Integrity — Orchestrator Behavior:
+
+Before launching any subsequent phase, verify the prior phase's output landed in the plan file. Use `Grep('^## Phase N:', <plan-file-path>)` (substituting the actual phase number) — if zero matches, abort with: "Phase N (<agent>) produced no plan-file output. Aborting pipeline." Do NOT launch the next phase on stale state.
+
+This catches silent subagent failures (failed Write, malformed output, wrong heading) before they propagate. Cost is one Grep call per phase transition — cheap relative to the cost of a Phase N+1 working from missing inputs.
 </constraint>
 
 ---
@@ -115,7 +123,7 @@ After verification:
 
 ## Allowed Tools
 
-See frontmatter. Orchestrator uses `Read`/`Write`/`Glob`/`Grep`/`Task` for phase management and `Edit`/`Write`/`Bash(git *)` for implementation (post-ExitPlanMode only).
+See frontmatter. Orchestrator uses `Read`/`Write`/`Glob`/`Grep`/`Agent` for phase management and `Edit`/`Write`/`Bash(git *)` for implementation (post-ExitPlanMode only).
 
 ## Usage
 
