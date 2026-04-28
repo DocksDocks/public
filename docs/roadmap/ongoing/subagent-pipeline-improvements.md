@@ -1,6 +1,6 @@
 ---
 created: 2026-04-27T23:00:32-03:00
-updated: 2026-04-28T02:42:49-03:00
+updated: 2026-04-28T03:04:50-03:00
 finished: null
 status: ongoing
 ---
@@ -147,12 +147,29 @@ Currently each command's orchestrator writes a phase's output to the plan file, 
 
 41 agents is a lot. Are there phases that could merge without sacrificing isolation benefits?
 
-- [ ] Audit each command's phases — list inputs and outputs of each
-- [ ] Identify pairs where Phase N's output is consumed only by Phase N+1 (no other readers)
-- [ ] For each candidate pair, decide: merge into one agent, or keep split for clarity?
-  - Merge if: combined size fits sonnet's effective ceiling AND no model-tier mismatch
-  - Keep split if: phases have distinct model tiers OR one phase is verbose tool-output that should stay isolated
-- [ ] Surface candidates in this plan as new T3 sub-items rather than auto-merging
+- [x] Audit each command's phases — list inputs and outputs of each. See `docs/roadmap/finished/2026-04-28-pipeline-phase-merge-audit.md` for the full audit covering all 5 Builder→Verifier pairs, explorer→scanner edges, parallel scanner siblings, and the `/security` fan-in
+- [x] Identify pairs where Phase N's output is consumed only by Phase N+1 (no other readers) — only the Builder→Verifier pairs qualify cleanly; explorer feeds 5 phases, parallel siblings serve common downstream readers, `/security` is fan-in
+- [x] For each candidate pair, decide: merge into one agent, or keep split for clarity? — **Decision: keep all pairs split.** The 44% cost concentration in /refactor (planner+pre-verifier = 203K) is structural to the kit's Builder-Verifier quality pattern; merging would collapse Opus→Sonnet tiering AND eliminate independent-eyes verification in one move. Real savings live inside the verifier scope, not at the seam.
+- [x] Surface candidates in this plan as new T3 sub-items rather than auto-merging — surfaced as T3-02a (verifier research-gate sampling) and T3-02b (document non-merge as kit policy) below
+
+#### T3-02a — Sample the verifier's research-gate (5 agents)
+
+The audit found one place where Builder and Verifier do **duplicate** work on the same entries: research-gate (context7 + WebFetch) on every modernization entry. The planner's research-gate is the primary filter; the verifier's pass adds independent eyes on the same population. Sampling preserves the independent angle while cutting per-run cost ~30–50K tokens per command run.
+
+**Files:** `ssot/.claude/agents/{refactor,fix,review,test,human-docs}-pre-verifier.md`
+
+- [ ] Change the research-gate constraint in each pre-verifier from "for every modernization / framework-migration entry" → "for a random sample of ⌈N/3⌉ modernization entries (minimum 2, maximum 5)"
+- [ ] Update each verifier's Output Format / Success Criteria to note which entries were sampled so the user knows the uncovered entries weren't independently verified
+- [ ] Re-run `/refactor` on `tests/fixtures/nextjs-16-baseline/` after the change; expected pre-verifier delta ~−30K tokens, ~−2 min wall-clock vs. the 2026-04-28 baseline
+- [ ] Verify `bash guard-agents.sh` and `bash score-agents.sh` still pass and stay above CI floors
+
+#### T3-02b — Document non-merge as a deliberate kit policy
+
+The audit's conclusion needs to be visible to future maintainers so the same question isn't re-litigated whenever someone sees the 44% concentration in a future baseline run.
+
+**Files:** `CLAUDE.md` (project root)
+
+- [ ] Add one paragraph to the `## Why sequential subagent pipelines?` section: "Builder→Verifier pairs concentrate cost (44% of /refactor in the 2026-04-28 baseline) but are deliberately not merged — the split buys per-phase Opus/Sonnet tiering and independent-eyes verification, which together are the kit's primary quality mechanism. See `docs/roadmap/finished/2026-04-28-pipeline-phase-merge-audit.md` for the full audit."
 
 #### T3-03 — Forked subagents for ad-hoc exploration (out of scope for kit, document for users)
 
