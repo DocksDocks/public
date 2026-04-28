@@ -21,6 +21,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `guard-skills.sh` / `score-skills.sh` | Structural + quality validators for skills |
 | `guard-commands.sh` / `score-commands.sh` | Structural + quality validators for commands |
 | `guard-agents.sh` / `score-agents.sh` | Structural + quality validators for agents |
+| `docs/roadmap/` | Time-boxed kit-improvement plans (`planned/` → `ongoing/` → `finished/`). See `docs/roadmap/CLAUDE.md` for the convention |
 
 ## Custom Commands
 
@@ -348,6 +349,32 @@ alias claude='claude --thinking-display summarized'
 5. If rendered: remove this Open Concerns entry + the shell alias.
 
 **Fallback if the flag doesn't help:** Issue [#52376](https://github.com/anthropics/claude-code/issues/52376) is the likely cause — on Max/Team/Enterprise subscriptions, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions honor it). In that case, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6. Cost: lose 4.7's SWE-bench Pro / agentic gains until Anthropic fixes the server-side behavior.
+
+## Roadmap
+
+In-flight kit-improvement work that spans multiple commits or sessions lives in `docs/roadmap/`. Files move between `planned/` → `ongoing/` → `finished/` via `git mv` so history is preserved. Each plan has YAML frontmatter (`created`, `updated`, `finished`, `status`) and GitHub-style checkboxes — flip `[ ]` → `[x]` in the same commit that lands the step, never as a batch pass later. See `docs/roadmap/CLAUDE.md` for the full convention.
+
+This is distinct from `## Open Concerns` above:
+- **Open Concerns**: wait-on-upstream blockers; resolution depends on Anthropic shipping a fix. No checkboxes — just verify-resolution criteria.
+- **Roadmap**: kit-internal work we control. Time-boxed, checkbox-tracked.
+
+Reference docs (conventions, rubric explanations, agent/skill structure) do NOT live in `docs/roadmap/` — they belong in `ssot/.claude/skills/`, `ssot/.claude/agents/`, or this file.
+
+### Why sequential subagent pipelines?
+
+Anthropic's [official subagents guidance](https://claude.com/blog/subagents-in-claude-code) warns against the kit's pattern:
+
+> "When step two needs the full output of step one, and step three needs both, a single session handling the chain is usually cleaner than a relay of subagents passing state through files."
+
+The kit deliberately uses sequential pipelines anyway. Three structural defenses justify the trade-off for analysis-heavy commands:
+
+1. **Files-as-handoff** matches Anthropic's other recommended pattern (same blog: "use the output files as the handoff mechanism between stages") — the plan file IS the explicit context-passing mechanism, not an inherited compressed summary
+2. **Per-phase model tiering** (12 Opus + 29 Sonnet) saves ~70% vs. all-Opus single session
+3. **No summary compression** — subagents bootstrap from the plan file rather than inheriting a compressed parent context, sidestepping the "specifics-flattened-by-compression" complaint that hits other subagent uses
+
+The kit's commands are large multi-phase analyses where a single session would blow the 400K compact-window budget on tool output alone. The pipeline cost (per-phase bootstrap, plan-file re-reads) is the deliberate trade for orchestrator-context isolation.
+
+Open improvement work tracked at `docs/roadmap/planned/subagent-pipeline-improvements.md`.
 
 ## Command Authoring Conventions
 
