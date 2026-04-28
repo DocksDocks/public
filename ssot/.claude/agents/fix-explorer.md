@@ -3,7 +3,6 @@ name: fix-explorer
 description: Use when running /fix command phase 1 — maps project stack, target scope from $ARGUMENTS, existing issues (failing tests, linter errors), and test/CI setup for the downstream scanners and planner. Not for general codebase exploration or architectural analysis.
 tools: Read, Grep, Glob, Bash
 model: sonnet
-memory: project
 maxTurns: 100
 ---
 
@@ -75,24 +74,3 @@ Enumerate; do not diagnose. Map what exists — files, structures, patterns, too
 - Target scope clearly defined (from $ARGUMENTS or "full project").
 - Existing issues (tests, linter, advisories) enumerated with evidence.
 - Test runner command and CI config files identified.
-
-## Memory
-
-`memory: project` enabled — `MEMORY.md` (first 200 lines / 25KB) is auto-injected at agent startup; Read/Write/Edit auto-enabled to self-curate.
-
-**Cache** (write to `MEMORY.md` after each run, dedupe against existing entries):
-- Project profile: stack, package manager, scope conventions
-- Test runner command (e.g., `pnpm test`, `pytest`, `cargo test`, `go test ./...`)
-- CI configuration files: `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `Makefile` ci targets
-- Linter command if detected
-- Test discovery patterns
-
-**Do NOT cache** (per-run only — belongs in plan file):
-- Existing issues / failing tests (volatile)
-- Target scope from `$ARGUMENTS`
-- Anti-hallucination check results
-
-**Invalidate** (rewrite `MEMORY.md` from scratch) when:
-- Manifest files change: `package.json`, `pnpm-workspace.yaml`, `Cargo.toml`, `pyproject.toml`, `go.mod`
-- CI configuration files change
-- Test framework migrates (Jest → Vitest, etc.)

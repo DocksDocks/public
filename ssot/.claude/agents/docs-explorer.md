@@ -3,7 +3,6 @@ name: docs-explorer
 description: Use when running /docs command phase 1 — maps project profile, enumerates existing .claude/skills/ and .claude/agents/ with frontmatter parsed, and identifies knowledge areas for the skills and agents pipelines. Not for general project exploration or skill/agent writing.
 tools: Read, Grep, Glob, Bash
 model: sonnet
-memory: project
 maxTurns: 100
 ---
 
@@ -72,23 +71,3 @@ Enumerate; do not diagnose. Map what exists — files, structures, patterns, too
 - Every existing skill enumerated with frontmatter parsed (name, description, source_files, updated, references count).
 - Every existing agent enumerated with frontmatter parsed and skill references extracted.
 - Knowledge areas identified with source directory evidence.
-
-## Memory
-
-`memory: project` enabled — `MEMORY.md` (first 200 lines / 25KB) is auto-injected at agent startup; Read/Write/Edit auto-enabled to self-curate.
-
-**Cache** (write to `MEMORY.md` after each run, dedupe against existing entries):
-- Project profile: stack, package manager, project size (file-count estimate)
-- Stable directory structure (top-level dirs) — what's source, what's docs, what's tests
-- Existing CLAUDE.md location (kit-managed at root vs project-managed)
-- Knowledge-area patterns observed across runs (e.g., "this project consistently has frontend + workers + admin packages")
-
-**Do NOT cache** (per-run only — `/docs` modifies these every run, so caching breaks correctness):
-- Skills inventory (skill names, descriptions, references files) — re-enumerate every run
-- Agents inventory (agent names, descriptions, tools, model) — re-enumerate every run
-- `metadata.updated` timestamps from skills
-- Anti-hallucination check results
-
-**Invalidate** (rewrite `MEMORY.md` from scratch) when:
-- Manifest files change: `package.json`, `pnpm-workspace.yaml`, `Cargo.toml`, `pyproject.toml`, `go.mod`, `composer.json`
-- Top-level project structure shifts (new monorepo packages, framework migration)

@@ -1,6 +1,6 @@
 ---
 created: 2026-04-27T23:00:32-03:00
-updated: 2026-04-27T23:40:18-03:00
+updated: 2026-04-28T00:42:26-03:00
 finished: null
 status: ongoing
 ---
@@ -93,17 +93,25 @@ Verified via [skills docs](https://code.claude.com/docs/en/skills): `paths:` glo
 
 ### Tier 2 — Pipeline cost reduction
 
-#### T2-01 — Add `memory: project` to explorer agents
+#### ~~T2-01 — Add `memory: project` to explorer agents~~
+
+**Reverted 2026-04-28** after smoke-test exposed the feature was not delivering value:
+
+A targeted smoke test of `refactor-explorer` against a synthetic Next.js 16 project showed the agent (a) didn't bootstrap `MEMORY.md`, (b) hallucinated about its own definition ("this agent does not have a `## Memory` body section" — it did, at line 87), and (c) looked for memory at `/tmp/.../MEMORY.md` instead of `.claude/agent-memory/refactor-explorer/MEMORY.md`. Net: zero `.claude/agent-memory/` directories created anywhere.
+
+Diagnosis: my `## Memory` body sections were **descriptive** ("Cache: project profile…") but not **imperative**. Per Anthropic's [own docs](https://code.claude.com/docs/en/sub-agents#enable-persistent-memory), subagents must be explicitly directed to "consult memory before starting work" — describing what *should* be cached doesn't make the agent actually do it.
+
+Even if fixed, the cost-benefit didn't justify the complexity:
+- The kit's commands are **one-shot** invocations — there's no long-running session where memory accumulates
+- Pre-flight injection already gives every command fresh git state (`git status --short`, `git log --oneline -5`) for free
+- Memory ROI requires repeated runs on the same project within the same week (otherwise the cache is stale)
+- Adding 15-20 lines per explorer + custom workflow steps for a feature with poor first-time-write payoff is over-engineering
 
 Verified via [sub-agents docs](https://code.claude.com/docs/en/sub-agents): `memory: project` writes a persistent directory at `.claude/agent-memory/<name>/` that the subagent reads on startup (first 200 lines of `MEMORY.md` auto-injected). Read/Write/Edit auto-enabled for the agent to self-curate.
 
-This addresses the "wasted re-discovery" cost specifically for explorers, which currently re-map project stack, monorepo structure, analysis tools, and DI patterns every command run.
-
-- [x] Add `memory: project` to 5 explorers: `refactor-explorer`, `fix-explorer`, `review-explorer`, `test-explorer`, `docs-explorer`
-  - Skip `security-explorer` (project mapping is generic; project-specific attack surface is sensitive — opt-out for now)
-  - Skip `human-docs-explorer` (docs structure changes frequently; cache would go stale faster than it saves)
-- [x] Add a `## Memory` section to each modified agent's body explaining: what to cache (project profile, abstractions, DI patterns), what NOT to cache (per-phase findings, target scope), and how to invalidate (when manifest files change — detect via `git log -1 --name-only`)
-- [x] Verify `bash guard-agents.sh` accepts the new frontmatter field — passed without script extension (the YAML loader treats `memory:` as a regular key, structural checks already permit unknown frontmatter fields)
+- [x] ~~Add `memory: project` to 5 explorers~~ — _applied then reverted; net change to all 5 agents (refactor/fix/review/test/docs explorers) is zero. Frontmatter restored to pre-T2-01 state on 2026-04-28T00:42._
+- [x] ~~Add a `## Memory` section to each modified agent's body~~ — _reverted; explorer body lengths back to pre-T2-01 baseline (refactor 84 lines, fix 76, review 77, test 76, docs 73)._
+- [x] ~~Verify `bash guard-agents.sh` accepts the new frontmatter field~~ — _moot post-revert; guard still passes_
 
 #### ~~T2-02 — Per-agent `effort: high` for mechanical agents~~
 

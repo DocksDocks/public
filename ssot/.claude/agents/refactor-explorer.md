@@ -3,7 +3,6 @@ name: refactor-explorer
 description: Use when running /refactor command phase 1 — maps project stack, monorepo structure, available analysis tools (knip/depcheck/ts-prune/vulture/ruff/deadcode/cargo-udeps), test infrastructure, existing abstractions, and DI patterns before the scanning phases. Not for general codebase exploration or writing code.
 tools: Read, Grep, Glob, Bash
 model: sonnet
-memory: project
 maxTurns: 100
 ---
 
@@ -83,20 +82,3 @@ Enumerate; do not diagnose. Map what exists — files, structures, patterns, too
 - DI patterns and existing abstractions catalogued with `file:line` references.
 - Scope resolved: `$ARGUMENTS` path confirmed to exist (via Glob) or full project mapped.
 - Zero assumed file paths — every path verified via Glob or Read.
-
-## Memory
-
-`memory: project` enabled — `MEMORY.md` (first 200 lines / 25KB) is auto-injected at agent startup; Read/Write/Edit auto-enabled to self-curate.
-
-**Cache** (write to `MEMORY.md` after each run, dedupe against existing entries):
-- Project profile: stack, package manager, monorepo layout (packages/apps with their stack)
-- Existing abstractions: interfaces, abstract classes, protocols with `file:line`
-- DI patterns: constructor injection, DI containers, factories, service registries with `file:line`
-- Available analysis tools (`knip`, `depcheck`, `ts-prune`, `vulture`, `ruff`, `deadcode`, `cargo-udeps`) and their installed paths
-
-**Do NOT cache** (per-run only — belongs in plan file):
-- Phase findings, target scope from `$ARGUMENTS`, anti-hallucination check results
-
-**Invalidate** (rewrite `MEMORY.md` from scratch) when:
-- Manifest files change: `package.json`, `pnpm-workspace.yaml`, `Cargo.toml`, `pyproject.toml`, `go.mod` (detect via `git log -1 --name-only`)
-- Top-level project structure shifts (new monorepo packages, removed app dirs)
