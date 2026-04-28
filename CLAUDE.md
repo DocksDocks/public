@@ -22,6 +22,8 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `guard-commands.sh` / `score-commands.sh` | Structural + quality validators for commands |
 | `guard-agents.sh` / `score-agents.sh` | Structural + quality validators for agents |
 | `docs/roadmap/` | Time-boxed kit-improvement plans (`planned/` → `ongoing/` → `finished/`). See `docs/roadmap/CLAUDE.md` for the convention |
+| `tests/fixtures/` | Static fixtures (frozen synthetic projects) for kit smoke tests. See `tests/smoke/SMOKE-TESTS.md` for the canonical battery |
+| `tests/smoke/SMOKE-TESTS.md` | Manual battery of agent-invocation tests against the fixtures — run after non-trivial kit changes |
 
 ## Custom Commands
 

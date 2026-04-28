@@ -1,0 +1,24 @@
+{
+  "name": "smoke-test-nextjs-16-min",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Synthetic Next.js 16 fixture with planted traps for kit smoke tests. Do NOT install or run; this is a static fixture.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "next lint",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "next": "16.0.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.6.0",
+    "@types/node": "22.10.0",
+    "@types/react": "19.0.0",
+    "vitest": "2.1.0",
+    "knip": "5.0.0"
+  }
+}
