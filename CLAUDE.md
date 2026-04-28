@@ -299,7 +299,7 @@ cd ~/projects/public
 ./sync.sh --force      # replace ~/.claude/settings.json instead of merging (backup kept)
 ```
 
-`sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts, and installs/initializes RTK if missing. Sync principle: additive only, never delete.
+`sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts, and installs/initializes RTK if missing — or warns when the installed RTK is older than the latest GitHub release (no auto-upgrade — third-party CLI, breaking changes possible). Sync principle: additive only, never delete.
 
 ### When to use `--force`
 

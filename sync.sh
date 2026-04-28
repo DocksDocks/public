@@ -151,7 +151,21 @@ else
       err "RTK install failed. Install manually: https://github.com/rtk-ai/rtk"
     fi
   else
-    log "RTK already installed ($(rtk --version 2>/dev/null || echo 'version unknown'))"
+    installed_ver=$(rtk --version 2>/dev/null | awk '{print $2}')
+    log "RTK already installed (rtk ${installed_ver:-unknown})"
+    # Stale-check: warn if GitHub has a newer release. Soft-fail on network/rate-limit issues.
+    latest_tag=$(curl -fsSL --max-time 5 "https://api.github.com/repos/rtk-ai/rtk/releases/latest" 2>/dev/null \
+      | jq -r '.tag_name // empty' 2>/dev/null | sed 's/^v//' || true)
+    if [ -n "$latest_tag" ] && [ -n "$installed_ver" ] && [ "$latest_tag" != "$installed_ver" ]; then
+      newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -V | tail -n1)
+      if [ "$newer" = "$latest_tag" ]; then
+        warn "RTK $installed_ver is outdated (latest $latest_tag).
+  Review:   https://github.com/rtk-ai/rtk/releases/tag/v$latest_tag (changelog + release author)
+  Research: ask Claude to web-search 'rtk-ai/rtk v$latest_tag' for any compromise/CVE reports
+  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+  (RTK runs as a PreToolUse bash hook — supply-chain risk warrants review before upgrading)"
+      fi
+    fi
   fi
 
   if command -v rtk >/dev/null 2>&1; then
