@@ -10,28 +10,28 @@ allowed-tools: >-
 
 # Roadmap Bootstrapper
 
-One-shot scaffolder for the `docs/roadmap/` convention: lifecycle folders, `.gitkeep` files, a roadmap-local `CLAUDE.md`, and a top-level mention in the project's root `CLAUDE.md`. All operations target the current project root (the working directory at invoke time, not this kit).
+One-shot scaffolder for the `docs/roadmap/` convention: lifecycle folders, `.gitkeep` files, a roadmap-local `CLAUDE.md`, and a top-level mention in the project's root `CLAUDE.md`. All operations target the current project root (the working directory at invoke time, not this kit). Single-session, no approval gate — the work is small and idempotent enough that re-running is the recovery mechanism.
 
 ---
-
-<constraint>
-If not already in Plan Mode, call `EnterPlanMode` NOW before doing anything else. All phases through Phase 2 are read-only — only Phase 3 (after `ExitPlanMode`) writes anything.
-</constraint>
-
-<constraint>
-Phase Transition Protocol — Orchestrator Behavior:
-
-Between Phase 1 and Phase 2, do NOT stop to summarize or wait for input. Process the detection results, write them to the plan file, and IMMEDIATELY draft the Phase 2 plan presentation in the same turn.
-
-The ONLY time you stop and wait for user input is Phase 2 (`ExitPlanMode` gate).
-
-If auto-compaction triggers between phases, re-read the plan file to recover prior phase results, then continue.
-</constraint>
 
 <constraint>
 Project-root targeting:
 
 All paths in this command are RELATIVE to the project working directory at invoke time — `docs/roadmap/CLAUDE.md`, `CLAUDE.md`, etc. Never write to `/home/docks/projects/public/` or any other absolute kit path. If `git rev-parse --show-toplevel` succeeds, prefer that as the project root; otherwise use the current working directory.
+</constraint>
+
+<constraint>
+Idempotency — never overwrite:
+
+For each target (4 scaffolding paths + the project root `CLAUDE.md`), check existence FIRST. If a file or directory already exists, classify it as SKIP and do not touch it. The only exception is the project root `CLAUDE.md` — if it exists but does NOT contain the literal string `docs/roadmap`, append the Roadmap section once. If it already mentions `docs/roadmap`, treat it as SKIP.
+
+Re-running this command on a project that already has `docs/roadmap/` must be a no-op for the existing files. Detection drives every action; never write blindly.
+</constraint>
+
+<constraint>
+Phase 1 is read-only:
+
+Phase 1 inspects the project state with `Read`/`Glob`/`Grep` and read-only `Bash` calls only (`test`, `ls`, `stat`, `git status`/`rev-parse`/`log`). No `Write`/`Edit`/`mkdir`/`touch` until Phase 2. After Phase 1 completes, `git status --short` should show no new untracked or modified files attributable to this command.
 </constraint>
 
 ---
@@ -53,19 +53,19 @@ test -f CLAUDE.md && echo "CLAUDE.md EXISTS" || echo "CLAUDE.md MISSING"
 ls docs/roadmap/ 2>/dev/null || true
 ```
 
-Before invoking Phase 1, write this rendered block to the plan file as `## Environment` so Phase 3 (post-approval) can act on the same snapshot without re-shelling.
+Use this snapshot directly in Phase 1 — no need to re-shell.
 
 ---
 
 ## Phase 1: Detection
 
 <task>
-Inspect the project to decide which of the four scaffolding actions are needed. Read-only — no Write/Edit/mkdir/touch in this phase.
+Inspect the project to decide which scaffolding actions are needed. Read-only — no Write/Edit/mkdir/touch in this phase.
 
 Steps:
 
 1. Confirm the project root (use the value rendered in Pre-flight). All subsequent paths are relative to it.
-2. For each of the four targets, classify as `CREATE`, `SKIP (already exists)`, or `UPDATE`:
+2. For each of the four scaffolding targets, classify as `CREATE` or `SKIP (already exists)`:
    - `docs/roadmap/planned/.gitkeep`
    - `docs/roadmap/ongoing/.gitkeep`
    - `docs/roadmap/finished/.gitkeep`
@@ -75,48 +75,25 @@ Steps:
    - If file EXISTS: `Grep` for the literal token `docs/roadmap` in it.
      - If matched: classify as `SKIP (already mentions docs/roadmap)`.
      - If not matched: classify as `APPEND ROADMAP SECTION`.
-4. Write a `## Phase 1: Detection Results` section to the plan file with a 5-row table: target | classification | reason.
+4. Emit a 5-row table to the user showing target | classification | reason. This is the only "plan" the user sees — no separate approval gate.
 
 Success Criteria:
-- Plan file contains a `## Phase 1: Detection Results` section with one row per target.
-- No file-system mutations occurred (verify with `git status --short` showing no new untracked artifacts beyond the plan file itself).
+- A 5-row classification table appears in the orchestrator's response.
+- No file-system mutations occurred (`git status --short` unchanged from Pre-flight).
 - Every classification is one of the allowed values listed above — no ambiguous "maybe" entries.
 </task>
 
-## Phase 2: Present Plan + ExitPlanMode
+## Phase 2: Implementation
 
 <task>
-Write the proposed change set to the plan file under `## Proposed Changes`, then call `ExitPlanMode`.
+Execute the actions classified in Phase 1. Skip any target classified `SKIP`.
 
-The proposal must include:
-
-1. The exact list of paths that will be created vs skipped vs updated (one bullet each, copy-pasted from Phase 1's table).
-2. A short note for the root `CLAUDE.md`: which exact section text will be appended, and where (end of file unless an obvious anchor like "## Conventions" exists).
-3. The verbatim contents of the `docs/roadmap/CLAUDE.md` template that will be written (so the user can object before it lands). Use the **Embedded Template** below as the source of truth — do not paraphrase.
-
-Then call `ExitPlanMode`. The user's approval at the Plan-Mode UI is the single decision point for this command.
-
-Success Criteria:
-- Plan file contains a `## Proposed Changes` section listing every action.
-- Embedded Template is reproduced verbatim in the plan file (or referenced by quoting it inline so the user sees what will land).
-- `ExitPlanMode` is the last call in this phase.
-</task>
-
----
-
-## Phase 3: Implementation
-
-After approval:
-
-<task>
-Execute the approved scaffolding actions exactly as proposed in Phase 2. No reinterpretation, no scope expansion.
-
-Steps (skip any classified `SKIP` in Phase 1):
+Steps:
 
 1. **Directories + .gitkeep** — for each missing folder among `planned/`, `ongoing/`, `finished/`:
    - `mkdir -p docs/roadmap/<folder>`
    - `touch docs/roadmap/<folder>/.gitkeep`
-2. **`docs/roadmap/CLAUDE.md`** — if missing, write the **Embedded Template** (below) verbatim. Substitute the timestamp tokens (`{{ISO_DATE}}`) with the output of `date +"%Y-%m-%dT%H:%M:%S%:z"`.
+2. **`docs/roadmap/CLAUDE.md`** — if classified `CREATE`, write the **Embedded Template** (below) verbatim. Substitute the timestamp tokens (`{{ISO_DATE}}`) with the output of `date +"%Y-%m-%dT%H:%M:%S%:z"`.
 3. **Project root `CLAUDE.md`** —
    - If `CREATE STUB`: write a minimal file containing exactly the **Root-CLAUDE.md Mention** snippet (below) and nothing else.
    - If `APPEND ROADMAP SECTION`: use `Edit` (or `Read`-then-`Write` if the file is small) to append the **Root-CLAUDE.md Mention** snippet at the end of the file, separated from prior content by one blank line.
@@ -124,17 +101,14 @@ Steps (skip any classified `SKIP` in Phase 1):
 4. Run `ls -la docs/roadmap/ docs/roadmap/planned docs/roadmap/ongoing docs/roadmap/finished` and capture the output.
 5. Run `git status --short` and capture the output.
 
-Then write `## Phase 3: Implementation Results` to the plan file with:
-- Per-target outcome (created / skipped / updated) — one bullet each.
-- The captured `ls` output (to prove the structure landed).
-- The captured `git status --short` (to show which paths are now untracked / modified).
+Final report to the user: a single bullet list (≤8 bullets) of created vs skipped paths, followed by the captured `ls` and `git status --short` outputs. No prose narration.
 
 Success Criteria:
-- Every target classified `CREATE` / `UPDATE` in Phase 1 is now in the expected state on disk.
-- Every target classified `SKIP` is still untouched (verify by checking its mtime did not change — `stat -c %Y <path>` before/after, or just by absence from `git status`).
-- `docs/roadmap/CLAUDE.md` opens with the YAML-style header convention block from the Embedded Template (Grep for the literal `tri-state checkboxes` heading to confirm).
+- Every target classified `CREATE` / `CREATE STUB` / `APPEND ROADMAP SECTION` in Phase 1 is now in the expected state on disk.
+- Every target classified `SKIP` is still untouched (verify by absence from `git status --short` for that path).
+- `docs/roadmap/CLAUDE.md` (if created) contains the literal heading `## Real-time task tracking — tri-state checkboxes` (Grep to confirm).
 - The project root `CLAUDE.md` contains the literal string `docs/roadmap` after this phase.
-- Final report to the user is a short bullet list (≤8 bullets) of what was created vs skipped, no prose narration.
+- The final bullet list reflects reality, not the Phase 1 plan — re-verify with `test -f` before claiming "created".
 
 Anti-Hallucination Checks:
 - Before reporting "created", run `test -f <path>` and confirm exit 0.
@@ -290,12 +264,12 @@ snippet — nothing else.
 
 ## Allowed Tools
 
-See frontmatter. Phases 1–2 use `Read`/`Glob`/`Grep` and a small set of read-only `Bash` calls (`test`, `ls`, `stat`, `git status`/`rev-parse`/`log`). Phase 3 adds `Write`/`Edit` plus `mkdir`/`touch` for the actual scaffolding. No subagents are invoked — this is a single-session orchestrator since the work is mechanical.
+See frontmatter. Phase 1 uses `Read`/`Glob`/`Grep` and read-only `Bash` calls (`test`, `ls`, `stat`, `git status`/`rev-parse`/`log`). Phase 2 adds `Write`/`Edit` plus `mkdir`/`touch` for the actual scaffolding. No subagents are invoked — this is a single-session orchestrator since the work is mechanical.
 
 ## Usage
 
 ```bash
-/roadmap-init    # Detect, propose, scaffold (no arguments)
+/roadmap-init    # Detect, then scaffold (no arguments, no approval gate)
 ```
 
-Idempotent: re-running on a project that already has `docs/roadmap/` reports each existing target as `SKIP` and writes nothing.
+Idempotent: re-running on a project that already has `docs/roadmap/` reports each existing target as `SKIP` and writes nothing. The recovery mechanism for any partial state is to re-run the command.

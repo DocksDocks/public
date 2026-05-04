@@ -39,11 +39,11 @@ Analysis commands use multi-agent pipelines. The orchestrator runs on Opus 4.7; 
 | `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Skills Builder → [Role Mapper \| Pattern Extractor] → Agents Builder → Unified Verifier | DAG + Builder-Verifier (skills + agents + cross-layer check) |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
 | `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → SOLID Analyzer → Planner → Verifier | DAG + Builder-Verifier (sequential SOLID phase) |
-| `/roadmap-init` | Detection → Present Plan → Implementation | Single-session scaffolder (legacy `<task>` flavor — bootstraps `docs/roadmap/` lifecycle folders, writes the tri-state-checkbox `CLAUDE.md`, mentions roadmap in project root `CLAUDE.md`) |
+| `/roadmap-init` | Detection → Implementation | Single-session scaffolder, no Plan Mode (legacy `<task>` flavor — bootstraps `docs/roadmap/` lifecycle folders, writes the tri-state-checkbox `CLAUDE.md`, mentions roadmap in project root `CLAUDE.md`; idempotent, re-run is the recovery path) |
 
 Commands with parallel phases (`/security`, `/fix`, `/docs`, `/refactor`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
 
-All commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation.
+All analysis commands enforce **Plan Mode** — read-only analysis first, user approval gate, then implementation. The exception is `/roadmap-init`, which skips Plan Mode (the work is small, mechanical, and idempotent — re-running is the recovery mechanism).
 
 ## Skills
 
@@ -498,7 +498,7 @@ Scores and CI floors as of 2026-04-27 (re-check after rubric changes):
 
 | Rubric | Max | Current min | Current avg | Per-file floor | Avg floor |
 |---|---|---|---|---|---|
-| Commands (8 files) | 20 | 19 (`/docs`, `/roadmap-init` — no args) | 19.75 | 17 | 19 |
+| Commands (8 files) | 20 | 17 (`/roadmap-init` — no Plan Mode + no args by design, sits at floor) | 19.5 | 17 | 19 |
 | Skills (6 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.5 | 8 | 12 |
 | Agents (41 files) | 15 | 13 | 14.07 | 11 | 13 |
 
