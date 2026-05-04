@@ -12,7 +12,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 |------|---------|
 | `ssot/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `ssot/.claude/settings.json` | Permissions, hooks, plugins, token limits |
-| `ssot/.claude/commands/*.md` | 7 custom slash commands (see below) — thin orchestrators that invoke subagents by name |
+| `ssot/.claude/commands/*.md` | 8 custom slash commands (see below) — 7 thin orchestrators that invoke subagents by name + `/roadmap-init` as a single-session scaffolder |
 | `ssot/.claude/agents/*.md` | 41 specialized subagents (see `## Agents`) — one per command phase, explicit `model:` per-agent |
 | `ssot/.claude/skills/*/SKILL.md` | Portable engineering-convention skills (see below) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
@@ -28,7 +28,7 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 
 ## Custom Commands
 
-All commands use multi-agent pipelines. The orchestrator runs on Opus 4.7; subagents are defined as individual files in `ssot/.claude/agents/` with explicit per-agent `model:` frontmatter (Opus for synthesis/architecture/creative reasoning, Sonnet for exploration/scanning/mechanical verification). Each command is a thin orchestrator that invokes subagents by `subagent_type`. Subagent bodies carry Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. Most commands use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality.
+Analysis commands use multi-agent pipelines. The orchestrator runs on Opus 4.7; subagents are defined as individual files in `ssot/.claude/agents/` with explicit per-agent `model:` frontmatter (Opus for synthesis/architecture/creative reasoning, Sonnet for exploration/scanning/mechanical verification). Each pipeline command is a thin orchestrator that invokes subagents by `subagent_type`. Subagent bodies carry Success Criteria and Anti-Hallucination Checks so smaller models still produce dependable work. Most pipelines use a **Builder-Verifier pattern** (Builder creates output → Verifier runs concrete checks) for quality. The lone exception is `/roadmap-init`, a single-session scaffolder with no delegated phases.
 
 | Command | Pipeline | Pattern |
 |---------|----------|---------|
@@ -39,6 +39,7 @@ All commands use multi-agent pipelines. The orchestrator runs on Opus 4.7; subag
 | `/docs` | Detection → Exploration → [Categorizer \| Scanner] → Skills Builder → [Role Mapper \| Pattern Extractor] → Agents Builder → Unified Verifier | DAG + Builder-Verifier (skills + agents + cross-layer check) |
 | `/human-docs` | Exploration → Analyzer → Writer → Verifier | Builder-Verifier |
 | `/refactor` | Exploration → [Dead Code Scanner \| Duplication Scanner] → SOLID Analyzer → Planner → Verifier | DAG + Builder-Verifier (sequential SOLID phase) |
+| `/roadmap-init` | Detection → Present Plan → Implementation | Single-session scaffolder (legacy `<task>` flavor — bootstraps `docs/roadmap/` lifecycle folders, writes the tri-state-checkbox `CLAUDE.md`, mentions roadmap in project root `CLAUDE.md`) |
 
 Commands with parallel phases (`/security`, `/fix`, `/docs`, `/refactor`) include explicit instructions to launch agents in a single turn for wall-clock time savings. `/docs` has two parallel phases (Phase 2 skills analysis and Phase 4 agents analysis).
 
@@ -461,7 +462,7 @@ bash score-agents.sh     # quality score (max 15): model declared / tools-or-dis
 
 `score-skills.sh --per-file` and `score-agents.sh --per-file` print one `<name> <score>` line per skill/agent — useful for spotting drift after an edit.
 
-**Note on thin commands:** All 7 commands are thin orchestrators (no `<task>` blocks; phases reference agents by `subagent_type`). `guard-commands.sh` accepts both legacy (`<task>`) and thin flavors; scoring rewards `subagent_type:` cross-references resolving to agent files.
+**Note on command flavors:** 7 of 8 commands are thin orchestrators (no `<task>` blocks; phases reference agents by `subagent_type`). `/roadmap-init` uses the legacy `<task>` flavor — its scaffolding work doesn't need delegated analysis, so the orchestrator does the work itself. `guard-commands.sh` accepts both flavors; scoring rewards `subagent_type:` cross-references resolving to agent files (so legacy commands forfeit those 3 pts but the per-file floor is calibrated to allow it).
 
 ### Rubric provenance
 
@@ -497,7 +498,7 @@ Scores and CI floors as of 2026-04-27 (re-check after rubric changes):
 
 | Rubric | Max | Current min | Current avg | Per-file floor | Avg floor |
 |---|---|---|---|---|---|
-| Commands (7 files) | 20 | 19 (`/docs` — no args) | 19.9 | 17 | 19 |
+| Commands (8 files) | 20 | 19 (`/docs`, `/roadmap-init` — no args) | 19.75 | 17 | 19 |
 | Skills (6 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.5 | 8 | 12 |
 | Agents (41 files) | 15 | 13 | 14.07 | 11 | 13 |
 
