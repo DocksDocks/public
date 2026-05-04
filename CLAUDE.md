@@ -56,13 +56,14 @@ Portable engineering-convention skills that auto-trigger when Claude recognizes 
 | `nextjs-conventions` | Next.js 13/14/15/16 work — App Router files, Server Components/Actions, `proxy.ts`, async cookies/headers, `"use client"` boundaries |
 | `react-effect-policy` | Writing `useEffect` — 6 anti-patterns with React 19 replacements (`useSyncExternalStore`, `useDeferredValue`, derived state, Server Actions) |
 | `react-solid` | Component architecture / refactoring — SOLID's 5 principles translated to function-based React (Extract Hook, Strategy Map, discriminated unions, ISP splits, DIP via Server Actions) |
+| `typescript-typing` | Writing or modifying any TS file — `any` vs `unknown`, `interface` vs `type`, magic-literal extraction, discriminated unions over flag bags, branded IDs, `as const` narrowing, exhaustive `never` checks, `satisfies`, parse-don't-assert at I/O boundaries |
 | `make-interfaces-feel-better` *(vendored, MIT, [upstream](https://github.com/jakubkrehel/make-interfaces-feel-better))* | UI polish — concentric border radius, optical alignment, layered shadows, enter/exit animations, `tabular-nums`, image outlines, `scale(0.96)` on press, 40×40px hit areas, `will-change` discipline |
 
 Validators (`guard-skills.sh`, `score-skills.sh`) enforce spec conformance — see `## Editing Commands` for the same pattern applied to commands.
 
 **Vendored / third-party skills** carry an `upstream:` frontmatter block (`source`, `license`, `vendored_at`). The guard and score scripts detect this and relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so upstream content can be preserved verbatim. Universal structural checks still apply.
 
-**When to split into `references/`:** `agentskills.io` supports a `SKILL.md` + `references/*.md` layout where detail-heavy content (API tables, version-specific playbooks, long catalogs) lives in separate files the SKILL.md points to — loaded only when Claude follows the reference. None of this kit's current 6 skills use that pattern: they're all under 200 lines with cohesive "rules + BAD/GOOD + indicators" structure, no natural reference-vs-rules separation. Trigger for splitting: a single skill grows past ~250 lines *and* has a clearly detachable 50+ line block (deep API reference, exhaustive examples, platform-specific details) that Claude only needs sometimes. If both are true, extract; otherwise inline is better (one-stop context when the skill triggers).
+**When to split into `references/`:** `agentskills.io` supports a `SKILL.md` + `references/*.md` layout where detail-heavy content (API tables, version-specific playbooks, long catalogs) lives in separate files the SKILL.md points to — loaded only when Claude follows the reference. None of this kit's current 7 skills use that pattern: they're all under ~280 lines with cohesive "rules + BAD/GOOD + indicators" structure, no natural reference-vs-rules separation. Trigger for splitting: a single skill grows past ~310 lines *and* has a clearly detachable 50+ line block (deep API reference, exhaustive examples, platform-specific details) that Claude only needs sometimes. If both are true, extract; otherwise inline is better (one-stop context when the skill triggers).
 
 **Skills vs project-level rules (`CLAUDE.md`, `AGENTS.md`):** When a project has a rule-heavy `CLAUDE.md` or `AGENTS.md` loaded into every conversation, those rules take precedence and the kit's skills can feel quiet — the rules in those project docs already cover the same ground (e.g. a project's `AGENTS.md` listing the 6 useEffect anti-patterns covers the same surface as `react-effect-policy`). This is *correct* behavior, not a bug: project-specific docs should win over generic kit skills. The skills earn their keep on projects *without* a comprehensive `AGENTS.md`. To surface a skill's content anyway in a rule-heavy project, invoke it explicitly via the `Skill` tool or reference the skill name directly in the prompt.
 
@@ -494,12 +495,12 @@ The split matters because **[docs]** dimensions track hard-spec or officially re
 
 ### Current rubric calibration
 
-Scores and CI floors as of 2026-04-27 (re-check after rubric changes):
+Scores and CI floors as of 2026-05-04 (re-check after rubric changes):
 
 | Rubric | Max | Current min | Current avg | Per-file floor | Avg floor |
 |---|---|---|---|---|---|
 | Commands (8 files) | 20 | 17 (`/roadmap-init` — no Plan Mode + no args by design, sits at floor) | 19.5 | 17 | 19 |
-| Skills (6 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.5 | 8 | 12 |
+| Skills (7 files) | 16 | 10 (`make-interfaces-feel-better`, vendored) | 13.9 | 8 | 12 |
 | Agents (41 files) | 15 | 13 | 14.07 | 11 | 13 |
 
 Floors leave ~2pt buffer per-file for minor edits; the tight average floor catches broad regressions. Re-calibrate these numbers in both this table AND `.github/workflows/validate.yml` after any rubric change.
