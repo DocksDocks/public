@@ -31,7 +31,7 @@ Shell-avoidance:
    - **Size**: SKILL.md ≤500 lines; `references/` files 30-150 lines. Flag thin skills (<50 lines, no references).
    - **Reference accuracy**: spot-check ≥5 `file:line` references using Read — does code at the stated line actually exist?
    - **AI-optimization spot-check** (3+ skills): critical rules at START, gotchas at END, no prose paragraphs, non-negotiable rules in `<constraint>`, no AI slop.
-   - **Maintenance skill**: `.claude/skills/skill-maintenance/SKILL.md` present in Phase 3 Plan with `user-invocable: false` and `metadata.pattern: reviewer`.
+   - **Maintenance skill**: `.claude/skills/skill-maintenance/SKILL.md` present in Phase 3 Plan with `user-invocable: false` and `metadata.pattern: reviewer`. Body MUST NOT reference kit-internal validators (`guard-skills.sh`, `score-skills.sh`, `guard-agents.sh`, `score-agents.sh`) — they are kit-only CI tooling absent from downstream projects. **Hard fail** if found; the body must use inline Read/Grep/Glob workflow steps instead.
    - **CLAUDE.md not modified**: confirm Phase 3 Skills Plan contains no CLAUDE.md edit instructions.
 5. **Agent Checks** (for every agent in Phase 5 Plan):
    - **Frontmatter**: `name` kebab-case, max 64 chars, no "anthropic"/"claude" in name.

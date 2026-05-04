@@ -94,7 +94,7 @@ metadata:
 - Gotchas at bottom
 
 **Maintenance skill body (if proposed):**
-Pattern: reviewer. Body ≤100 lines. Workflow: identify modified files, Glob skills, cross-reference source_files, update affected skills, bump `metadata.updated`. Include When to Skip section (typos, renames, test-only changes).
+Pattern: reviewer. Body ≤100 lines. Workflow: identify modified files, Glob skills, cross-reference source_files, update affected skills, bump `metadata.updated`. Include When to Skip section (typos, renames, test-only changes). Do NOT reference kit-internal validators (`guard-skills.sh`, `score-skills.sh`, `guard-agents.sh`, `score-agents.sh`) — they gate the kit's own SSOT and are not shipped to downstream projects. Describe checks as inline Claude-readable workflow steps (Read/Grep/Glob), not as shell-script invocations.
 
 **Do NOT touch CLAUDE.md.** Skills are self-discovering via descriptions.
 
