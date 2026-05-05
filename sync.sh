@@ -27,40 +27,13 @@ err()  { printf "\033[1;31m[err]\033[0m %s\n" "$1" >&2; }
 command -v jq   >/dev/null 2>&1 || { err "jq is required. Install: sudo apt install -y jq (or brew install jq)"; exit 1; }
 command -v curl >/dev/null 2>&1 || { err "curl is required."; exit 1; }
 [ -d "$REPO_DIR/ssot/.claude" ] || { err "Cannot find ssot/.claude/ in $REPO_DIR"; exit 1; }
-[ "$DRY_RUN" -eq 1 ] || mkdir -p "$CLAUDE_DIR/commands"
+[ "$DRY_RUN" -eq 1 ] || mkdir -p "$CLAUDE_DIR"
 
-# --- Sync commands (additive, never delete) ---
-if [ "$DRY_RUN" -eq 1 ]; then
-  echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/commands/ $CLAUDE_DIR/commands/"
-else
-  rsync -a "$REPO_DIR/ssot/.claude/commands/" "$CLAUDE_DIR/commands/"
-  count=$(ls "$CLAUDE_DIR/commands/"*.md 2>/dev/null | wc -l)
-  log "Commands synced ($count files)"
-fi
-
-# --- Sync skills (additive, never delete) ---
-if [ -d "$REPO_DIR/ssot/.claude/skills" ]; then
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/skills/ $CLAUDE_DIR/skills/"
-  else
-    mkdir -p "$CLAUDE_DIR/skills"
-    rsync -a "$REPO_DIR/ssot/.claude/skills/" "$CLAUDE_DIR/skills/"
-    skill_count=$(find "$CLAUDE_DIR/skills" -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l)
-    log "Skills synced ($skill_count skills)"
-  fi
-fi
-
-# --- Sync agents (additive, never delete) ---
-if [ -d "$REPO_DIR/ssot/.claude/agents" ]; then
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/agents/ $CLAUDE_DIR/agents/"
-  else
-    mkdir -p "$CLAUDE_DIR/agents"
-    rsync -a --exclude '.gitkeep' "$REPO_DIR/ssot/.claude/agents/" "$CLAUDE_DIR/agents/"
-    agent_count=$(ls "$CLAUDE_DIR/agents/"*.md 2>/dev/null | wc -l)
-    log "Agents synced ($agent_count agents)"
-  fi
-fi
+# Skills, commands, and agents now ship via the docks plugin (DocksDocks/docks).
+# Install on a new machine with:
+#   /plugin marketplace add DocksDocks/docks
+#   /plugin install docks@docks
+# This kit syncs only settings.json, hooks, status-line scripts, and the CLAUDE.md.
 
 # --- Sync scripts + alert sound ---
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -71,6 +44,19 @@ else
   chmod +x "$CLAUDE_DIR/statusline.sh" "$CLAUDE_DIR/fetch-usage.sh"
   [ -f "$REPO_DIR/alert_bubble.mp3" ] && cp "$REPO_DIR/alert_bubble.mp3" "$CLAUDE_DIR/"
   log "Scripts synced (statusline, fetch-usage, alert)"
+fi
+
+# --- Sync hooks (additive; preserves RTK + any user-managed hooks) ---
+if [ -d "$REPO_DIR/ssot/.claude/hooks" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/hooks/ $CLAUDE_DIR/hooks/"
+  else
+    mkdir -p "$CLAUDE_DIR/hooks"
+    rsync -a "$REPO_DIR/ssot/.claude/hooks/" "$CLAUDE_DIR/hooks/"
+    find "$CLAUDE_DIR/hooks" -maxdepth 1 -name '*.sh' -exec chmod +x {} +
+    hook_count=$(ls "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null | wc -l)
+    log "Hooks synced ($hook_count scripts)"
+  fi
 fi
 
 # --- Sync CLAUDE.md (project coding conventions) ---
@@ -184,17 +170,17 @@ echo "--- Sync complete ---"
 echo "Repo:     $REPO_DIR"
 echo "Target:   $CLAUDE_DIR"
 if [ "$DRY_RUN" -eq 0 ]; then
-  count=$(ls "$CLAUDE_DIR/commands/"*.md 2>/dev/null | wc -l)
-  echo "Commands: $count files"
-  skill_count=$(find "$CLAUDE_DIR/skills" -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l)
-  echo "Skills:   $skill_count skills"
-  agent_count=$(ls "$CLAUDE_DIR/agents/"*.md 2>/dev/null | wc -l)
-  echo "Agents:   $agent_count agents"
+  hook_count=$(ls "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null | wc -l)
+  echo "Hooks:    $hook_count scripts"
   if command -v rtk >/dev/null 2>&1; then
     echo "RTK:      $(rtk --version 2>/dev/null || echo 'installed')"
   else
     echo "RTK:      not installed"
   fi
+  echo ""
+  echo "Skills, commands, and agents come from the docks plugin (install separately):"
+  echo "  /plugin marketplace add DocksDocks/docks"
+  echo "  /plugin install docks@docks"
 fi
 echo ""
 echo "Restart Claude Code for changes to take effect."
