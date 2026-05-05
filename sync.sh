@@ -129,7 +129,7 @@ elif [ "$DRY_RUN" -eq 1 ]; then
 else
   if ! command -v rtk >/dev/null 2>&1; then
     warn "RTK not found. Installing..."
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | bash
     export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     if command -v rtk >/dev/null 2>&1; then
       log "RTK installed ($(rtk --version 2>/dev/null || echo 'version unknown'))"
@@ -148,16 +148,19 @@ else
         warn "RTK $installed_ver is outdated (latest $latest_tag).
   Review:   https://github.com/rtk-ai/rtk/releases/tag/v$latest_tag (changelog + release author)
   Research: ask Claude to web-search 'rtk-ai/rtk v$latest_tag' for any compromise/CVE reports
-  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | bash
   (RTK runs as a PreToolUse bash hook — supply-chain risk warrants review before upgrading)"
       fi
     fi
   fi
 
   if command -v rtk >/dev/null 2>&1; then
-    if [ ! -f "$CLAUDE_DIR/hooks/rtk-rewrite.sh" ]; then
+    # RTK 0.38.0 stopped generating ~/.claude/hooks/rtk-rewrite.sh in favor of
+    # a direct `rtk hook claude` command in settings.json. Use ~/.claude/RTK.md
+    # as the init sentinel (rtk init -g writes it).
+    if [ ! -f "$CLAUDE_DIR/RTK.md" ]; then
       rtk init --global
-      log "RTK initialized (hook + RTK.md generated)"
+      log "RTK initialized (RTK.md generated)"
     else
       log "RTK already initialized"
     fi
