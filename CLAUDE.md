@@ -91,8 +91,11 @@ git, gh, cargo, cat, grep/rg, ls, tree, find, diff, head, vitest, tsc, eslint, p
 ### Install RTK (Linux)
 
 ```bash
-# 1. Install the rtk binary
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | bash  # NB: upstream script has bashisms; on Debian/Ubuntu /bin/sh is dash and will choke
+# 1. Install the rtk binary (download-then-run; see note)
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh
+bash /tmp/rtk-install.sh
+rm /tmp/rtk-install.sh
+# NB: avoid `curl … | bash` — the pipe can truncate mid-stream (observed on the 0.38 → 0.39 upgrade, 2026-05-06; "unexpected EOF while looking for matching `}'" with no other diagnostics). The upstream installer also has bashisms, so `curl … | sh` would fail on Debian/Ubuntu where /bin/sh is dash.
 
 # 2. Ensure jq is installed (required by the hook)
 sudo apt install -y jq   # Debian/Ubuntu

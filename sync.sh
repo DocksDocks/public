@@ -274,7 +274,12 @@ elif [ "$DRY_RUN" -eq 1 ]; then
 else
   if ! command -v rtk >/dev/null 2>&1; then
     warn "RTK not found. Installing..."
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | bash
+    # Download-then-run rather than `curl … | bash`: the pipe can truncate mid-stream
+    # (observed on a 144-line installer during the 0.38 → 0.39 upgrade, 2026-05-06).
+    # Also dodges /bin/sh-vs-bash issues from the upstream installer's bashisms.
+    tmp_rtk_installer=$(mktemp 2>/dev/null || echo "/tmp/rtk-install-$$.sh")
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o "$tmp_rtk_installer" && bash "$tmp_rtk_installer"
+    rm -f "$tmp_rtk_installer"
     export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
     if command -v rtk >/dev/null 2>&1; then
       log "RTK installed ($(rtk --version 2>/dev/null || echo 'version unknown'))"
@@ -293,7 +298,7 @@ else
         warn "RTK $installed_ver is outdated (latest $latest_tag).
   Review:   https://github.com/rtk-ai/rtk/releases/tag/v$latest_tag (changelog + release author)
   Research: ask Claude to web-search 'rtk-ai/rtk v$latest_tag' for any compromise/CVE reports
-  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | bash
+  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh && bash /tmp/rtk-install.sh && rm /tmp/rtk-install.sh
   (RTK runs as a PreToolUse bash hook — supply-chain risk warrants review before upgrading)"
       fi
     fi
