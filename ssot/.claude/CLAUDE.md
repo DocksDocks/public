@@ -56,10 +56,6 @@ Distilled from Cursor's Agent Prompt 2.0 (publicly captured 2025-11-07, the late
 Treat the 11 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
 </constraint>
 
-## Known Workarounds
-
-- **Opus 4.7 thinking summaries empty** — Anthropic [issue #49268](https://github.com/anthropics/claude-code/issues/49268) (open as of 2026-05). The harness doesn't translate `showThinkingSummaries: true` into `thinking.display: "summarized"` on Opus 4.7 requests. Workaround: launch with `claude --thinking-display summarized` (hidden flag, added 2.1.111+, still required on 2.1.131), or persist via shell alias: `alias claude='claude --thinking-display summarized'`. Remove the alias when the issue closes.
-
 ## Project Skills
 
 Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.

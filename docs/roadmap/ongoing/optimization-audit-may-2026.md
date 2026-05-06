@@ -1,6 +1,6 @@
 ---
 created: 2026-05-06T16:50:31-03:00
-updated: 2026-05-06T18:07:58-03:00
+updated: 2026-05-06T18:34:53-03:00
 finished: null
 status: ongoing
 ---
@@ -30,7 +30,7 @@ Top-10 actionable items derived from §1 below. Per `docs/roadmap/CLAUDE.md`: fl
 - [ ] ~~**(MED)** A/B measure 400K vs 200K vs 1M compact window on a `/docks:refactor` baseline (§2.3).~~ **Deferred:** needs measurement scaffolding (the prior `tests/baseline/` was removed as stale); requires 3 sequential `/docks:refactor` runs on a fixed fixture with quality scoring. Out of scope for this round of plan execution.
 - [x] **(HIGH)** Add cache-invariance heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #3).
 - [x] **(MED)** Add proactive-compaction heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #5).
-- [x] **(MED)** Document `--thinking-display summarized` shell alias in `ssot/.claude/CLAUDE.md` (§2.4).
+- [ ] ~~**(MED)** Document `--thinking-display summarized` shell alias in `ssot/.claude/CLAUDE.md` (§2.4).~~ **Reverted (wrong target):** the alias / flag is already documented in `public/CLAUDE.md` § Open Concerns. `ssot/.claude/CLAUDE.md` ships into every session's prompt context, so per-bug workarounds don't belong there — they'd burn prompt tokens every session for a fix that lives in shell profile or kit setup docs. Task as originally framed was misdesigned.
 
 ---
 
