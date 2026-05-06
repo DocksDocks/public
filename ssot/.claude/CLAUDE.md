@@ -28,7 +28,7 @@ Research the codebase before editing. Never change code you haven't read.
 
 ## Agentic Harness Heuristics
 
-Distilled from Cursor's Agent Prompt 2.0 (publicly captured 2025-11-07, the latest leaked Cursor harness across all four major trackers as of 2026-05) and Cursor's official agent best-practices blog. Model-agnostic patterns that pair with auto-mode autonomy. 2026 Cursor changes have been architectural (dynamic context, hierarchical planners, multitask) rather than prompt-rule, so these eight remain current.
+Distilled from Cursor's Agent Prompt 2.0 (publicly captured 2025-11-07, the latest leaked Cursor harness across all four major trackers as of 2026-05) and Cursor's official agent best-practices blog. Model-agnostic patterns that pair with auto-mode autonomy. 2026 Cursor changes have been architectural (dynamic context, hierarchical planners, multitask) rather than prompt-rule, so these remain current. Heuristics 9–11 are Opus 4.7 / cache-aware additions — primary sources cited inline.
 
 **1. Persistence.** Keep going until the user's query is completely resolved. Only yield when sure the problem is solved. Autonomously resolve to the best of your ability before returning to the user.
 
@@ -46,9 +46,19 @@ Distilled from Cursor's Agent Prompt 2.0 (publicly captured 2025-11-07, the late
 
 **8. Todo hygiene.** Use TaskCreate for items with meaningful outcome (≥5 min, distinct deliverable). Never include operational sub-actions (linting, testing, searching, examining the codebase) as their own todos — those are sub-steps in service of higher-level tasks. Mark complete immediately when done, never in batches.
 
+**9. Literal-instruction rule (Opus 4.7-specific).** Opus 4.7 follows instructions literally — it does not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative. The model fails *closed* (sticks to literal scope), not open. 4.6 prompts that "filled in" implicit context may underperform on 4.7. Source: Anthropic Opus 4.7 best-practices post-launch guide.
+
+**10. Cache-invariance.** Don't insert timestamps, mutable state, or rotating tool definitions into the cached prefix (system prompt, tool sets, opening user message) — they break cache and force cold-start writes. Put dynamic context inside `<system-reminder>` tags within user messages instead. Cache breaks cost ~5× over a clean session. Caches are also per-model: switching Opus→Sonnet mid-session forces a cold-start cache write — use subagents for cross-model work instead. Source: Anthropic engineering blog "Lessons from building Claude Code: Prompt caching is everything".
+
+**11. Compact proactively, not reactively.** Run `/compact` at 50–60% of the compact window rather than waiting for autocompact. The model is at its least intelligent when compaction fires under context rot — reactive compaction loses the very signal you wanted preserved. For wrong-path detours, prefer `/rewind` to a previous turn over chained corrections (corrections accumulate noise; rewinds preserve the prefix and discard the bad branch). Source: Thariq Shihipar's April 15, 2026 session-management post.
+
 <constraint>
-Treat the 8 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
+Treat the 11 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
 </constraint>
+
+## Known Workarounds
+
+- **Opus 4.7 thinking summaries empty** — Anthropic [issue #49268](https://github.com/anthropics/claude-code/issues/49268) (open as of 2026-05). The harness doesn't translate `showThinkingSummaries: true` into `thinking.display: "summarized"` on Opus 4.7 requests. Workaround: launch with `claude --thinking-display summarized` (hidden flag, added 2.1.111+, still required on 2.1.131), or persist via shell alias: `alias claude='claude --thinking-display summarized'`. Remove the alias when the issue closes.
 
 ## Project Skills
 
