@@ -1,6 +1,6 @@
 ---
 created: 2026-05-06T16:50:31-03:00
-updated: 2026-05-06T18:04:31-03:00
+updated: 2026-05-06T18:07:58-03:00
 finished: null
 status: ongoing
 ---
@@ -25,9 +25,9 @@ Top-10 actionable items derived from §1 below. Per `docs/roadmap/CLAUDE.md`: fl
 - [x] **(MED)** Migrate `SubagentStop` validator from bash regex to `prompt` or `agent` hook (§3.1).
 - [x] **(MED)** Add `PostToolUseFailure` hook to inject failure context on bash errors (§3.2).
 - [x] **(HIGH)** Add Opus 4.7 literalism heuristic to `ssot/.claude/CLAUDE.md` as the 9th distilled rule (§4.1 #1).
-- [ ] **(HIGH)** Verify subagent prompt-cache behavior — instrument `cache_read_input_tokens` / `cache_creation_input_tokens` per the §1 measurement note.
+- [ ] ~~**(HIGH)** Verify subagent prompt-cache behavior — instrument `cache_read_input_tokens` / `cache_creation_input_tokens` per the §1 measurement note.~~ **Deferred:** runtime measurement task; needs a real `/docks:refactor` parallel-scanner fan-out + JSONL inspection. Re-evaluate after docks-side `context: fork` opt-in lands so children 2-N actually exercise the cache-prefix path.
 - [x] **(MED)** Bump `CLAUDE_CODE_MAX_OUTPUT_TOKENS` from 64000 to 96000 (§2.5).
-- [ ] **(MED)** A/B measure 400K vs 200K vs 1M compact window on a `/docks:refactor` baseline (§2.3).
+- [ ] ~~**(MED)** A/B measure 400K vs 200K vs 1M compact window on a `/docks:refactor` baseline (§2.3).~~ **Deferred:** needs measurement scaffolding (the prior `tests/baseline/` was removed as stale); requires 3 sequential `/docks:refactor` runs on a fixed fixture with quality scoring. Out of scope for this round of plan execution.
 - [x] **(HIGH)** Add cache-invariance heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #3).
 - [x] **(MED)** Add proactive-compaction heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #5).
 - [x] **(MED)** Document `--thinking-display summarized` shell alias in `ssot/.claude/CLAUDE.md` (§2.4).
