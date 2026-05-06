@@ -112,21 +112,33 @@ else
   log "~/.claude.json updated (showTurnDuration)"
 fi
 
-# --- Bootstrap plugin marketplaces + plugins from SSOT ---
+# --- Reconcile plugin marketplaces + plugins via the claude CLI ---
 # extraKnownMarketplaces declares marketplace sources, but Claude Code does NOT
 # auto-clone them — the marketplace must be cloned to
 # ~/.claude/plugins/marketplaces/<name>/ before plugins can install.
 # Same for enabledPlugins: declaration alone is not enough; the plugin record
 # must exist in ~/.claude/plugins/installed_plugins.json. Without this step,
 # /reload-plugins reports "Plugin <X> not found in marketplace <Y>".
-# Both `claude plugin marketplace add` and `claude plugin install` are idempotent.
+#
+# Six idempotent passes via the `claude plugin` CLI:
+#   1. Add SSOT marketplaces missing from disk
+#   2. Install SSOT plugins missing from installed_plugins.json
+#   3. Refresh marketplace manifests (`marketplace update`)
+#   4. Update installed plugins to latest (`plugin update` — idempotent)
+#   5. (--force only) Uninstall plugins NOT in SSOT enabledPlugins
+#   6. (--force only) Remove marketplaces NOT in SSOT extraKnownMarketplaces
+#      (built-in `claude-plugins-official` is never removed — Anthropic ships it)
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "[dry-run] bootstrap plugin marketplaces + plugins from SSOT"
+  echo "[dry-run] bootstrap + update plugin marketplaces + plugins from SSOT"
+  [ "$FORCE" -eq 1 ] && echo "[dry-run] (--force) would also uninstall plugins not in SSOT and remove extra marketplaces"
 elif command -v claude >/dev/null 2>&1; then
   KNOWN_MARKETPLACES="$CLAUDE_DIR/plugins/known_marketplaces.json"
   INSTALLED_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
   added_mp=0
   added_pl=0
+  updated_pl=0
+  removed_pl=0
+  removed_mp=0
   failed=0
 
   # 1. Add any extraKnownMarketplaces that aren't cloned yet.
@@ -157,14 +169,66 @@ elif command -v claude >/dev/null 2>&1; then
     fi
   done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$REPO_SETTINGS")
 
-  if [ "$added_mp" -gt 0 ] || [ "$added_pl" -gt 0 ]; then
-    log "Plugins bootstrapped (marketplaces: +$added_mp, plugins: +$added_pl)"
+  # 3. Refresh marketplace manifests so subsequent plugin updates see latest versions.
+  claude plugin marketplace update >/dev/null 2>&1 || true
+
+  # 4. Update each installed plugin (always; idempotent — `claude plugin update`
+  #    silently no-ops when the plugin is already at latest).
+  if [ -f "$INSTALLED_PLUGINS" ]; then
+    while IFS= read -r plugin_id; do
+      [ -z "$plugin_id" ] && continue
+      out=$(claude plugin update "$plugin_id" 2>&1 || true)
+      # "Successfully updated" only appears on actual upgrade — `already at the latest`
+      # is the no-op path. Counts only real version changes.
+      if echo "$out" | grep -q "Successfully updated"; then
+        updated_pl=$((updated_pl + 1))
+      fi
+    done < <(jq -r '.plugins | keys[]' "$INSTALLED_PLUGINS")
+  fi
+
+  # 5. (--force only) Uninstall plugins that are installed but NOT in SSOT enabledPlugins.
+  #    Mirrors --force's existing settings.json wholesale-replace semantics: drift in
+  #    enabledPlugins gets reconciled, not preserved.
+  if [ "$FORCE" -eq 1 ] && [ -f "$INSTALLED_PLUGINS" ]; then
+    while IFS= read -r plugin_id; do
+      [ -z "$plugin_id" ] && continue
+      if ! jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$REPO_SETTINGS" >/dev/null 2>&1; then
+        if claude plugin uninstall -y "$plugin_id" >/dev/null 2>&1; then
+          removed_pl=$((removed_pl + 1))
+        else
+          warn "Failed to uninstall plugin: $plugin_id"
+          failed=$((failed + 1))
+        fi
+      fi
+    done < <(jq -r '.plugins | keys[]' "$INSTALLED_PLUGINS")
+  fi
+
+  # 6. (--force only) Remove extraKnownMarketplaces not in SSOT.
+  #    NEVER remove `claude-plugins-official` — Claude Code auto-installs it and
+  #    re-removing each sync would just re-trigger Anthropic's bootstrap.
+  if [ "$FORCE" -eq 1 ] && [ -f "$KNOWN_MARKETPLACES" ]; then
+    while IFS= read -r mp_name; do
+      [ -z "$mp_name" ] && continue
+      [ "$mp_name" = "claude-plugins-official" ] && continue
+      if ! jq -e --arg n "$mp_name" '.extraKnownMarketplaces[$n]' "$REPO_SETTINGS" >/dev/null 2>&1; then
+        if claude plugin marketplace remove "$mp_name" >/dev/null 2>&1; then
+          removed_mp=$((removed_mp + 1))
+        else
+          warn "Failed to remove marketplace: $mp_name"
+          failed=$((failed + 1))
+        fi
+      fi
+    done < <(jq -r '. | keys[]' "$KNOWN_MARKETPLACES")
+  fi
+
+  if [ "$added_mp" -gt 0 ] || [ "$added_pl" -gt 0 ] || [ "$updated_pl" -gt 0 ] || [ "$removed_pl" -gt 0 ] || [ "$removed_mp" -gt 0 ]; then
+    log "Plugins synced (marketplaces: +$added_mp -$removed_mp, plugins: +$added_pl ~$updated_pl -$removed_pl)"
   else
     log "Plugins already in sync"
   fi
   [ "$failed" -gt 0 ] && warn "$failed plugin operation(s) failed — re-run sync or install manually"
 else
-  warn "claude CLI not in PATH — skipping plugin bootstrap (run /plugin marketplace add + /plugin install manually)"
+  warn "claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)"
 fi
 
 # --- RTK bootstrap ---
