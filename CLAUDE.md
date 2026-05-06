@@ -48,7 +48,7 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 /reload-plugins
 ```
 
-Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `claude-md-management`, `skill-creator`, `php-lsp`) are auto-installed from `enabledPlugins` in settings.json.
+Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `claude-md-management`, `skill-creator`, `php-lsp`, `code-simplifier`) are auto-installed from `enabledPlugins` in settings.json.
 
 ## RTK (Rust Token Killer)
 
