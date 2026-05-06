@@ -1,6 +1,6 @@
 ---
 created: 2026-05-06T16:50:31-03:00
-updated: 2026-05-06T17:59:07-03:00
+updated: 2026-05-06T18:04:31-03:00
 finished: null
 status: ongoing
 ---
@@ -22,8 +22,8 @@ status: ongoing
 Top-10 actionable items derived from §1 below. Per `docs/roadmap/CLAUDE.md`: flip `[ ]` → `[x]` in the same commit that lands the change; bump `updated` in the frontmatter on every edit.
 
 - [x] **(HIGH)** Enable `CLAUDE_CODE_FORK_SUBAGENT=1` in `ssot/.claude/settings.json` (§2.2). Requires docks-side `context: fork` opt-in to actually benefit.
-- [ ] **(MED)** Migrate `SubagentStop` validator from bash regex to `prompt` or `agent` hook (§3.1).
-- [ ] **(MED)** Add `PostToolUseFailure` hook to inject failure context on bash errors (§3.2).
+- [x] **(MED)** Migrate `SubagentStop` validator from bash regex to `prompt` or `agent` hook (§3.1).
+- [x] **(MED)** Add `PostToolUseFailure` hook to inject failure context on bash errors (§3.2).
 - [x] **(HIGH)** Add Opus 4.7 literalism heuristic to `ssot/.claude/CLAUDE.md` as the 9th distilled rule (§4.1 #1).
 - [ ] **(HIGH)** Verify subagent prompt-cache behavior — instrument `cache_read_input_tokens` / `cache_creation_input_tokens` per the §1 measurement note.
 - [x] **(MED)** Bump `CLAUDE_CODE_MAX_OUTPUT_TOKENS` from 64000 to 96000 (§2.5).
