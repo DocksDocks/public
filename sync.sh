@@ -178,7 +178,9 @@ elif command -v claude >/dev/null 2>&1; then
     fi
   done < <(jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo)"' "$REPO_SETTINGS")
 
-  # 2. Install any enabledPlugins (set to true) that aren't installed yet.
+  # 2. Install any enabledPlugins entry (true OR false) not yet installed.
+  #    `false` means "keep installed but globally disabled" — the plugin must
+  #    still be on disk so project-level settings.json can enable it per-project.
   while IFS= read -r plugin_id; do
     [ -z "$plugin_id" ] && continue
     if [ -f "$INSTALLED_PLUGINS" ] && jq -e --arg n "$plugin_id" '.plugins[$n] // empty' "$INSTALLED_PLUGINS" >/dev/null 2>&1; then
@@ -190,7 +192,7 @@ elif command -v claude >/dev/null 2>&1; then
       warn "Failed to install plugin: $plugin_id"
       failed=$((failed + 1))
     fi
-  done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$REPO_SETTINGS")
+  done < <(jq -r '.enabledPlugins // {} | keys[]' "$REPO_SETTINGS")
 
   # 3. Refresh marketplace manifests so subsequent plugin updates see latest versions.
   claude plugin marketplace update >/dev/null 2>&1 || true
@@ -209,13 +211,14 @@ elif command -v claude >/dev/null 2>&1; then
     done < <(jq -r '.plugins | keys[]' "$INSTALLED_PLUGINS")
   fi
 
-  # 5. (--remove-plugins only) Uninstall plugins installed but NOT in SSOT enabledPlugins.
-  #    Default sync is additive (drift preserved). Pass --remove-plugins to
-  #    reconcile the plugin layer to SSOT.
+  # 5. (--remove-plugins only) Uninstall plugins installed but NOT keyed in
+  #    SSOT enabledPlugins at all. Plugins keyed as `false` are kept installed
+  #    (globally disabled but available for per-project enable). Default sync
+  #    is additive — drift preserved. Pass --remove-plugins to reconcile.
   if [ "$REMOVE_PLUGINS" -eq 1 ] && [ -f "$INSTALLED_PLUGINS" ]; then
     while IFS= read -r plugin_id; do
       [ -z "$plugin_id" ] && continue
-      if ! jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$REPO_SETTINGS" >/dev/null 2>&1; then
+      if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$REPO_SETTINGS" >/dev/null 2>&1; then
         if claude plugin uninstall -y "$plugin_id" >/dev/null 2>&1; then
           removed_pl=$((removed_pl + 1))
         else

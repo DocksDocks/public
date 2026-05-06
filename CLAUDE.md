@@ -32,7 +32,31 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 | Plugin | Source | Purpose |
 |--------|--------|---------|
 | `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline kit — 3 commands where parallel-agent value is irreducible (`/security`, `/docs`, `/refactor`), 15 portable skills (tdd-workflow, test-coverage, code-review, fix-workflow, human-docs-workflow, design-tokenization, roadmap-init, dep-vuln-workflow, lint-no-suppressions, make-interfaces-feel-better, nextjs-conventions, react-effect-policy, solid, react-reuse-components, typescript-typing), 20 specialized subagents tiered between Opus and Sonnet per phase |
-| `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows |
+| `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in n8n repos to keep ~7 skills out of unrelated projects' system prompt |
+
+### Per-project plugin scoping
+
+`enabledPlugins` values carry three distinct meanings in this kit:
+
+| Value | Meaning | sync.sh `--remove-plugins` |
+|-------|---------|----------------------------|
+| `true` | Installed + enabled in every project | keeps installed |
+| `false` | Installed + globally disabled; project-level `.claude/settings.json` can flip to `true` per-repo | keeps installed |
+| key absent | Not installed | uninstalls if currently installed |
+
+Per-project enable lives in the project's `.claude/settings.json`:
+
+```json
+{
+  "enabledPlugins": {
+    "n8n-mcp-skills@n8n-mcp-skills": true
+  }
+}
+```
+
+The user-scope key MUST remain present (just `false`) — Claude Code [silently ignores](https://github.com/anthropics/claude-code/issues/27247) project-level `enabledPlugins` entries whose key is absent from user settings. That's why this kit prefers `false` over deletion for situationally-useful plugins.
+
+Reference example in this repo: `n8n-mcp-skills` is `false` in SSOT and `true` in `n8n-workflows/.claude/settings.json`. To extend to another n8n project: copy the project-level `enabledPlugins` block into that repo's `.claude/settings.json`.
 
 ### Install plugins on a new machine
 
@@ -192,6 +216,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 | `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable. Press `Ctrl+O` to cycle to `verbose` on demand. Enum: `default`/`verbose`/`focus`. |
 | `skipAutoPermissionPrompt` | `true` | Suppresses the one-time confirmation shown when a session boots into auto mode. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
+| `skillListingBudgetFraction` | `0.025` | Cap on system-prompt budget for skill descriptions (decimal 0–1, ~2.5% of the model's context window). Default `0.01` was dropping ~25 skill descriptions in projects with all kit plugins enabled (docks 15, n8n-mcp-skills 8, official ~40); `0.025` fits all current descriptions full-fidelity with headroom for ~5 more. Cost: ~5K tokens/session — ~1.25% of the 400K compact window. Added in Claude Code 2.1.129+. To verify the warning is gone, run `/skills` after sync; truncation banner should not appear. |
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max`.
 
@@ -224,10 +249,10 @@ For plugins it runs six idempotent passes via the `claude plugin` CLI:
 | Pass | Mode | What it does |
 |------|------|--------------|
 | 1 | always | `claude plugin marketplace add` for any SSOT `extraKnownMarketplaces` not yet cloned |
-| 2 | always | `claude plugin install` for any SSOT `enabledPlugins` not in `installed_plugins.json` |
+| 2 | always | `claude plugin install` for any SSOT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load |
 | 3 | always | `claude plugin marketplace update` (refresh manifests) |
 | 4 | always | `claude plugin update <name>` for each installed plugin (idempotent — no-op when already at latest) |
-| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins **not** in SSOT `enabledPlugins` |
+| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SSOT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
 | 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SSOT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
 
 `--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` (wholesale replace), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove). Default sync is additive on both layers — drift survives.
@@ -282,21 +307,21 @@ Entry format: `### [YYYY-MM-DD] <short title>` with Status / Symptom / Root caus
 
 ### [2026-04-24] Opus 4.7 thinking summaries not rendered
 
-**Status:** Open — confirmed bug, no fix in Claude Code 2.1.119 (verified on this machine).
+**Status:** Open — confirmed bug, no fix in Claude Code 2.1.131 (latest, last verified 2026-05-06).
 
 **Symptom:** `"showThinkingSummaries": true` in `settings.json` does not produce visible thinking content on Opus 4.7. The thinking block header (token count, elapsed time) renders, but the expand toggle reveals empty content.
 
 **Root cause:** Opus 4.7 flipped the API default for `thinking.display` from `"summarized"` (4.6 behavior) to `"omitted"` (faster time-to-first-token on streaming). Claude Code's harness does NOT currently translate `showThinkingSummaries: true` into `"display": "summarized"` on Opus 4.7 requests, so the client receives empty thinking blocks and has nothing to render.
 
-**Upstream issues** (all open as of 2026-04-24):
-- [anthropics/claude-code#49268](https://github.com/anthropics/claude-code/issues/49268) — "harness doesn't set display: summarized" (root cause)
-- [anthropics/claude-code#49708](https://github.com/anthropics/claude-code/issues/49708) — thinking empty despite `showThinkingSummaries: true` (closed as duplicate)
-- [anthropics/claude-code#49322](https://github.com/anthropics/claude-code/issues/49322) — VS Code extension variant
-- [anthropics/claude-code#49902](https://github.com/anthropics/claude-code/issues/49902) — VS Code extension 2.1.112
-- [anthropics/claude-code#52376](https://github.com/anthropics/claude-code/issues/52376) — subscription sessions may need server-side fix (separate open concern)
+**Upstream issues** (status re-checked 2026-05-06):
+- [anthropics/claude-code#49268](https://github.com/anthropics/claude-code/issues/49268) — "harness doesn't set display: summarized" (root cause, **OPEN**)
+- [anthropics/claude-code#49708](https://github.com/anthropics/claude-code/issues/49708) — thinking empty despite `showThinkingSummaries: true` (closed 2026-04-17 as duplicate of #49268, no code fix)
+- [anthropics/claude-code#49322](https://github.com/anthropics/claude-code/issues/49322) — VS Code extension variant (**OPEN**)
+- [anthropics/claude-code#49902](https://github.com/anthropics/claude-code/issues/49902) — VS Code extension 2.1.112 (**OPEN**)
+- [anthropics/claude-code#52376](https://github.com/anthropics/claude-code/issues/52376) — feature request for subscription sessions to honor `thinking.display` (closed 2026-04-27 as duplicate of #49268; no code fix shipped — tracked under root cause)
 - Model-side reference: [What's new in Claude Opus 4.7](https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-7)
 
-**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; verified on 2.1.119). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
+**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; still required on 2.1.131). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
 
 ```bash
 alias claude='claude --thinking-display summarized'
@@ -309,7 +334,7 @@ alias claude='claude --thinking-display summarized'
 4. Ask a non-trivial question that triggers adaptive reasoning; confirm thinking summary renders inline.
 5. If rendered: remove this Open Concerns entry + the shell alias.
 
-**Fallback if the flag doesn't help:** Issue [#52376](https://github.com/anthropics/claude-code/issues/52376) is the likely cause — on Max/Team/Enterprise subscriptions, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions honor it). In that case, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6.
+**Fallback if the flag doesn't help:** The closed-as-dup [#52376](https://github.com/anthropics/claude-code/issues/52376) describes a related subscription-side concern — on Max/Team/Enterprise, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions are documented to honor it). It was rolled into #49268 without an independent fix. If the alias doesn't work, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6.
 
 ## Roadmap
 
