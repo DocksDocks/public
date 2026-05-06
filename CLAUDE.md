@@ -207,10 +207,12 @@ Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-
 # Clone and sync the kit
 git clone <this-repo> ~/projects/public
 cd ~/projects/public
-./sync.sh              # full sync + RTK bootstrap + plugin bootstrap
-./sync.sh --dry-run    # preview before applying
-./sync.sh --no-rtk     # skip RTK install (also strips @RTK.md import from CLAUDE.md)
-./sync.sh --force      # replace ~/.claude/settings.json instead of merging (backup kept)
+./sync.sh                        # full sync + RTK bootstrap + plugin bootstrap (additive)
+./sync.sh --dry-run              # preview before applying
+./sync.sh --no-rtk               # skip RTK install (also strips @RTK.md import from CLAUDE.md)
+./sync.sh --force                # replace ~/.claude/settings.json wholesale (settings layer only)
+./sync.sh --remove-plugins       # uninstall plugins/marketplaces not in SSOT (plugin layer only)
+./sync.sh --force --remove-plugins   # full reset to SSOT (both layers)
 ```
 
 In an active Claude Code session, run `/reload-plugins` after `./sync.sh` to activate any newly installed plugins without restarting.
@@ -225,28 +227,34 @@ For plugins it runs six idempotent passes via the `claude plugin` CLI:
 | 2 | always | `claude plugin install` for any SSOT `enabledPlugins` not in `installed_plugins.json` |
 | 3 | always | `claude plugin marketplace update` (refresh manifests) |
 | 4 | always | `claude plugin update <name>` for each installed plugin (idempotent — no-op when already at latest) |
-| 5 | `--force` only | `claude plugin uninstall -y <name>` for installed plugins **not** in SSOT `enabledPlugins` |
-| 6 | `--force` only | `claude plugin marketplace remove <name>` for marketplaces **not** in SSOT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
+| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins **not** in SSOT `enabledPlugins` |
+| 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SSOT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
 
-Settings.json itself: additive merge by default (preserves user-only keys), wholesale replace under `--force`. Plugin reconcile passes 5 and 6 mirror that semantics — `--force` actually undoes drift, default sync only adds.
+`--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` (wholesale replace), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove). Default sync is additive on both layers — drift survives.
 
-### When to use `--force`
+### When to use `--force` and `--remove-plugins`
 
-The default merge is additive: keys present in `~/.claude/settings.json` but absent from the SSOT are preserved, and installed plugins not in SSOT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — if you removed a plugin or key from the SSOT, a normal `./sync.sh` cannot clean it up.
+The default merge is additive on both layers: keys present in `~/.claude/settings.json` but absent from the SSOT are preserved, and installed plugins not in SSOT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — neither flag-less reset can clean it up.
 
-`./sync.sh --force` replaces `~/.claude/settings.json` wholesale (backup kept at `settings.json.bak`) AND uninstalls plugins / removes marketplaces not declared in SSOT. Use it when:
+| Flag | Affects | Use when |
+|------|---------|----------|
+| `--force` | `~/.claude/settings.json` only | Removing/renaming a settings key in SSOT (env var, permission, hook); resetting after a schema warning; user-only env vars / permissions diverged from SSOT |
+| `--remove-plugins` | Plugin layer only (uninstall + marketplace remove) | Removed a plugin from SSOT and want it gone from the machine, not just disabled; cleaning up extra marketplaces; reconciling `installed_plugins.json` |
+| `--force --remove-plugins` | Both layers | Full reset to SSOT — bringing a divergent machine fully in line |
 
-- Removing a plugin from SSOT and you want it gone from the machine, not just disabled
-- Removing/renaming a settings key in SSOT and you want the change reflected
-- Debugging drift-related schema warnings or unexpected env behavior
-- Resetting a machine whose settings have diverged
-
-Before running `--force`, diff first:
+Before running either, diff first:
 
 ```bash
+# Settings layer (--force preview)
 diff <(jq -S . ssot/.claude/settings.json) <(jq -S . ~/.claude/settings.json)
-diff <(jq -rS '.enabledPlugins | keys[]' ssot/.claude/settings.json) <(jq -rS '.plugins | keys[]' ~/.claude/plugins/installed_plugins.json)
-./sync.sh --force
+
+# Plugin layer (--remove-plugins preview)
+diff <(jq -rS '.enabledPlugins | keys[]' ssot/.claude/settings.json) \
+     <(jq -rS '.plugins | keys[]' ~/.claude/plugins/installed_plugins.json)
+diff <(jq -rS '.extraKnownMarketplaces | keys[]' ssot/.claude/settings.json) \
+     <(jq -rS 'keys[]' ~/.claude/plugins/known_marketplaces.json | grep -v '^claude-plugins-official$')
+
+./sync.sh --force --remove-plugins
 ```
 
 User-added permissions, env vars, or plugins that don't exist in the SSOT will be discarded — reconcile them into the SSOT first if you want to keep them.
