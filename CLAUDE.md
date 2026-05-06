@@ -31,7 +31,7 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 
 | Plugin | Source | Purpose |
 |--------|--------|---------|
-| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline kit — 3 commands where parallel-agent value is irreducible (`/security`, `/docs`, `/refactor`), 14 portable skills (tdd-workflow, test-coverage, code-review, fix-workflow, human-docs-workflow, design-tokenization, roadmap-init, dep-vuln-workflow, lint-no-suppressions, make-interfaces-feel-better, nextjs-conventions, react-effect-policy, react-solid, typescript-typing), 20 specialized subagents tiered between Opus and Sonnet per phase |
+| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline kit — 3 commands where parallel-agent value is irreducible (`/security`, `/docs`, `/refactor`), 15 portable skills (tdd-workflow, test-coverage, code-review, fix-workflow, human-docs-workflow, design-tokenization, roadmap-init, dep-vuln-workflow, lint-no-suppressions, make-interfaces-feel-better, nextjs-conventions, react-effect-policy, solid, react-reuse-components, typescript-typing), 20 specialized subagents tiered between Opus and Sonnet per phase |
 | `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows |
 
 ### Install plugins on a new machine
