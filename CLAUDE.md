@@ -4,7 +4,7 @@ Portable Claude Code setup — settings, hooks, status line, RTK integration, ki
 
 **Focus: token efficiency without sacrificing quality.** Every setting and hook in this kit is tuned to minimize token consumption while preserving rigorous output. The configuration leans on 1M context with early auto-compaction via a 400K effective window, `max` effort (Opus 4.7's deepest thinking tier), Opus 4.7 as orchestrator, and adaptive thinking. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
 
-The skills, commands, and 41-agent multi-agent pipeline kit ship as a separate Claude Code plugin: **[DocksDocks/docks](https://github.com/DocksDocks/docks)**. This repo handles the parts that can't live in a plugin: env vars, permissions, hooks (RTK + claude.ai-connector disable), session/status-line tooling, and the consumer-facing CLAUDE.md. Install the docks plugin separately on each machine.
+The skills, commands, and multi-agent pipeline ship as a separate Claude Code plugin: **[DocksDocks/docks](https://github.com/DocksDocks/docks)**. This repo handles the parts that can't live in a plugin: env vars, permissions, hooks (RTK + claude.ai-connector disable), session/status-line tooling, and the consumer-facing CLAUDE.md. Install the docks plugin separately on each machine.
 
 The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
 
@@ -20,10 +20,8 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `alert_bubble.mp3` | Audio notification for Notification hook |
 | `sync.sh` | Deploy ssot/ → ~/.claude/, install/upgrade RTK, merge settings |
 | `docs/roadmap/` | Time-boxed kit-improvement plans (`planned/` → `ongoing/` → `finished/`). See `docs/roadmap/CLAUDE.md` for the convention |
-| `tests/fixtures/` | Static fixtures (frozen synthetic projects) for kit + plugin smoke tests. See `tests/smoke/SMOKE-TESTS.md` for the canonical battery |
-| `tests/baseline/MEASUREMENT-PROCEDURE.md` | How to capture per-phase token cost on a real project. Pairs with `rtk gain --history` and session JSONL transcripts |
 
-The plugin's content (8 commands, 7 skills, 41 agents, plus author-side validators) lives in **[DocksDocks/docks](https://github.com/DocksDocks/docks)** — see that repo's README for command/skill/agent inventory and the validators that enforce kit-level conventions.
+The plugin's content (commands, skills, agents, plus author-side validators) lives in **[DocksDocks/docks](https://github.com/DocksDocks/docks)** — see that repo's README for the current inventory and the validators that enforce kit-level conventions.
 
 ## Plugins
 
@@ -31,7 +29,7 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 
 | Plugin | Source | Purpose |
 |--------|--------|---------|
-| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline kit — 3 commands where parallel-agent value is irreducible (`/security`, `/docs`, `/refactor`), 15 portable skills (tdd-workflow, test-coverage, code-review, fix-workflow, human-docs-workflow, design-tokenization, roadmap-init, dep-vuln-workflow, lint-no-suppressions, make-interfaces-feel-better, nextjs-conventions, react-effect-policy, solid, react-reuse-components, typescript-typing), 20 specialized subagents tiered between Opus and Sonnet per phase |
+| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands (where parallel-agent value is irreducible), portable skills, and Opus/Sonnet-tiered subagents. See the plugin README for the current inventory |
 | `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in n8n repos to keep ~7 skills out of unrelated projects' system prompt |
 
 ### Per-project plugin scoping
