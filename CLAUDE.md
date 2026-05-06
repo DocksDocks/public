@@ -36,19 +36,21 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 
 ### Install plugins on a new machine
 
+`./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SSOT and runs `claude plugin marketplace add` + `claude plugin install` for anything missing from `~/.claude/plugins/known_marketplaces.json` / `installed_plugins.json`. Both CLI commands are idempotent, so reruns are no-ops.
+
+The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `ssot/.claude/settings.json`, then run `./sync.sh`. To pick up the new plugin in an active session, run `/reload-plugins`.
+
+Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `claude-md-management`, `skill-creator`, `php-lsp`, `code-simplifier`) are auto-installed by Claude Code from the built-in `claude-plugins-official` marketplace; the `enabledPlugins` declarations just keep them enabled.
+
+**Manual fallback** (only if the `claude` CLI isn't on PATH during sync — sync prints a warning and skips bootstrap):
+
 ```bash
-# docks (multi-agent pipeline kit)
 /plugin marketplace add DocksDocks/docks
 /plugin install docks@docks
-
-# n8n-mcp-skills (third-party marketplace)
 /plugin marketplace add czlonkowski/n8n-skills
 /plugin install n8n-mcp-skills@n8n-mcp-skills
-
 /reload-plugins
 ```
-
-Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `claude-md-management`, `skill-creator`, `php-lsp`, `code-simplifier`) are auto-installed from `enabledPlugins` in settings.json.
 
 ## RTK (Rust Token Killer)
 
@@ -205,19 +207,15 @@ Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-
 # Clone and sync the kit
 git clone <this-repo> ~/projects/public
 cd ~/projects/public
-./sync.sh              # full sync + RTK bootstrap
+./sync.sh              # full sync + RTK bootstrap + plugin bootstrap
 ./sync.sh --dry-run    # preview before applying
 ./sync.sh --no-rtk     # skip RTK install (also strips @RTK.md import from CLAUDE.md)
 ./sync.sh --force      # replace ~/.claude/settings.json instead of merging (backup kept)
-
-# Then install the docks plugin (skills/commands/agents)
-# In a Claude Code session:
-#   /plugin marketplace add DocksDocks/docks
-#   /plugin install docks@docks
-#   /reload-plugins
 ```
 
-`sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, and installs/initializes RTK if missing — or warns when the installed RTK is older than the latest GitHub release. Sync principle: additive only, never delete.
+In an active Claude Code session, run `/reload-plugins` after `./sync.sh` to activate any newly installed plugins without restarting.
+
+`sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, installs/initializes RTK if missing (or warns when the installed RTK is older than the latest GitHub release), and runs `claude plugin marketplace add` + `claude plugin install` for any `extraKnownMarketplaces` / `enabledPlugins` entries that aren't yet on disk. Sync principle: additive only, never delete.
 
 ### When to use `--force`
 

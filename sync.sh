@@ -112,6 +112,61 @@ else
   log "~/.claude.json updated (showTurnDuration)"
 fi
 
+# --- Bootstrap plugin marketplaces + plugins from SSOT ---
+# extraKnownMarketplaces declares marketplace sources, but Claude Code does NOT
+# auto-clone them — the marketplace must be cloned to
+# ~/.claude/plugins/marketplaces/<name>/ before plugins can install.
+# Same for enabledPlugins: declaration alone is not enough; the plugin record
+# must exist in ~/.claude/plugins/installed_plugins.json. Without this step,
+# /reload-plugins reports "Plugin <X> not found in marketplace <Y>".
+# Both `claude plugin marketplace add` and `claude plugin install` are idempotent.
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "[dry-run] bootstrap plugin marketplaces + plugins from SSOT"
+elif command -v claude >/dev/null 2>&1; then
+  KNOWN_MARKETPLACES="$CLAUDE_DIR/plugins/known_marketplaces.json"
+  INSTALLED_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
+  added_mp=0
+  added_pl=0
+  failed=0
+
+  # 1. Add any extraKnownMarketplaces that aren't cloned yet.
+  while IFS=$'\t' read -r mp_name mp_repo; do
+    [ -z "$mp_name" ] && continue
+    if [ -f "$KNOWN_MARKETPLACES" ] && jq -e --arg n "$mp_name" '.[$n]' "$KNOWN_MARKETPLACES" >/dev/null 2>&1; then
+      continue
+    fi
+    if claude plugin marketplace add "$mp_repo" >/dev/null 2>&1; then
+      added_mp=$((added_mp + 1))
+    else
+      warn "Failed to add marketplace: $mp_name ($mp_repo)"
+      failed=$((failed + 1))
+    fi
+  done < <(jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo)"' "$REPO_SETTINGS")
+
+  # 2. Install any enabledPlugins (set to true) that aren't installed yet.
+  while IFS= read -r plugin_id; do
+    [ -z "$plugin_id" ] && continue
+    if [ -f "$INSTALLED_PLUGINS" ] && jq -e --arg n "$plugin_id" '.plugins[$n] // empty' "$INSTALLED_PLUGINS" >/dev/null 2>&1; then
+      continue
+    fi
+    if claude plugin install "$plugin_id" >/dev/null 2>&1; then
+      added_pl=$((added_pl + 1))
+    else
+      warn "Failed to install plugin: $plugin_id"
+      failed=$((failed + 1))
+    fi
+  done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == true) | .key' "$REPO_SETTINGS")
+
+  if [ "$added_mp" -gt 0 ] || [ "$added_pl" -gt 0 ]; then
+    log "Plugins bootstrapped (marketplaces: +$added_mp, plugins: +$added_pl)"
+  else
+    log "Plugins already in sync"
+  fi
+  [ "$failed" -gt 0 ] && warn "$failed plugin operation(s) failed — re-run sync or install manually"
+else
+  warn "claude CLI not in PATH — skipping plugin bootstrap (run /plugin marketplace add + /plugin install manually)"
+fi
+
 # --- RTK bootstrap ---
 if [ "$SKIP_RTK" -eq 1 ]; then
   warn "Skipping RTK (--no-rtk)"
@@ -180,10 +235,11 @@ if [ "$DRY_RUN" -eq 0 ]; then
   else
     echo "RTK:      not installed"
   fi
-  echo ""
-  echo "Skills, commands, and agents come from the docks plugin (install separately):"
-  echo "  /plugin marketplace add DocksDocks/docks"
-  echo "  /plugin install docks@docks"
+  if command -v claude >/dev/null 2>&1; then
+    plugin_count=$(jq -r '.plugins | keys | length' "$CLAUDE_DIR/plugins/installed_plugins.json" 2>/dev/null || echo 0)
+    echo "Plugins:  $plugin_count installed (from SSOT enabledPlugins + Anthropic auto-installs)"
+  fi
 fi
 echo ""
-echo "Restart Claude Code for changes to take effect."
+echo "In a Claude Code session, run /reload-plugins to pick up newly installed plugins."
+echo "Restart Claude Code for hook/env-var changes to take effect."
