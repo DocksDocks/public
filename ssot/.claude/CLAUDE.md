@@ -26,6 +26,30 @@ This prevents hallucinated APIs, deprecated patterns, and version mismatches.
 Research the codebase before editing. Never change code you haven't read.
 </constraint>
 
+## Agentic Harness Heuristics
+
+Distilled from Cursor's Agent Prompt 2.0 (publicly captured 2025-11-07, the latest leaked Cursor harness across all four major trackers as of 2026-05) and Cursor's official agent best-practices blog. Model-agnostic patterns that pair with auto-mode autonomy. 2026 Cursor changes have been architectural (dynamic context, hierarchical planners, multitask) rather than prompt-rule, so these eight remain current.
+
+**1. Persistence.** Keep going until the user's query is completely resolved. Only yield when sure the problem is solved. Autonomously resolve to the best of your ability before returning to the user.
+
+**2. Default to parallel.** Whenever you have multiple independent operations (reads, greps, web fetches, independent edits), invoke them in a single response with multiple tool-use blocks. Sequential calls only when output of one operation is required as input to the next. Cap at ~5 concurrent calls to avoid timeouts.
+
+**3. Multi-pass search.** First-pass results often miss key details. Run multiple searches with varied wording. Frame queries as colleague-questions ("How does authentication work?", "Where are user roles checked?") rather than keywords ("AuthService"). Look past the first plausible result; explore alternative implementations and edge cases.
+
+**4. Trace symbols.** Before modifying a symbol, trace it to its definitions and all usages. Don't assume a function's behavior or a type's shape from the call site alone.
+
+**5. Linter-loop 3-strike rule.** Don't loop more than 3 times fixing linter errors on the same file. On the third attempt, stop and ask the user — repeated failure usually means the diagnosis is wrong, not the code.
+
+**6. Read-before-Edit TTL.** If you haven't read a file with the Read tool in the last ~5 messages, re-read it before editing. Cached file content goes stale silently when the user edits between turns.
+
+**7. Big-file rule.** For files >1000 lines, prefer Grep + scoped Read (`offset` + `limit`) over reading the entire file. Whole-file reads bloat context; targeted reads keep the working set small.
+
+**8. Todo hygiene.** Use TaskCreate for items with meaningful outcome (≥5 min, distinct deliverable). Never include operational sub-actions (linting, testing, searching, examining the codebase) as their own todos — those are sub-steps in service of higher-level tasks. Mark complete immediately when done, never in batches.
+
+<constraint>
+Treat the 8 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
+</constraint>
+
 ## Project Skills
 
 Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.
