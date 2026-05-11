@@ -1,13 +1,13 @@
 ---
 title: Audit `public` repo optimizations for Opus 4.7
-status: ongoing
+status: finished
 created: 2026-05-06
 updated: 2026-05-11
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
-ship_commit: null
+ship_commit: f40d9df8049ca971a32ee26f7f4026dd105f9474
 ---
 
 # Audit `public` repo optimizations for Opus 4.7
