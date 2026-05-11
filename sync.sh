@@ -43,7 +43,7 @@ err()  { printf "\033[1;31m[err]\033[0m %s\n" "$1" >&2; }
 # --- Pre-flight ---
 command -v jq   >/dev/null 2>&1 || { err "jq is required. Install: sudo apt install -y jq (or brew install jq)"; exit 1; }
 command -v curl >/dev/null 2>&1 || { err "curl is required."; exit 1; }
-[ -d "$REPO_DIR/ssot/.claude" ] || { err "Cannot find ssot/.claude/ in $REPO_DIR"; exit 1; }
+[ -d "$REPO_DIR/SoT/.claude" ] || { err "Cannot find SoT/.claude/ in $REPO_DIR"; exit 1; }
 [ "$DRY_RUN" -eq 1 ] || mkdir -p "$CLAUDE_DIR"
 
 # Skills, commands, and agents now ship via the docks plugin (DocksDocks/docks).
@@ -56,20 +56,20 @@ command -v curl >/dev/null 2>&1 || { err "curl is required."; exit 1; }
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "[dry-run] cp statusline.sh, fetch-usage.sh, alert_bubble.mp3"
 else
-  cp "$REPO_DIR/ssot/.claude/statusline.sh"  "$CLAUDE_DIR/"
-  cp "$REPO_DIR/ssot/.claude/fetch-usage.sh" "$CLAUDE_DIR/"
+  cp "$REPO_DIR/SoT/.claude/statusline.sh"  "$CLAUDE_DIR/"
+  cp "$REPO_DIR/SoT/.claude/fetch-usage.sh" "$CLAUDE_DIR/"
   chmod +x "$CLAUDE_DIR/statusline.sh" "$CLAUDE_DIR/fetch-usage.sh"
   [ -f "$REPO_DIR/alert_bubble.mp3" ] && cp "$REPO_DIR/alert_bubble.mp3" "$CLAUDE_DIR/"
   log "Scripts synced (statusline, fetch-usage, alert)"
 fi
 
 # --- Sync hooks (additive; preserves RTK + any user-managed hooks) ---
-if [ -d "$REPO_DIR/ssot/.claude/hooks" ]; then
+if [ -d "$REPO_DIR/SoT/.claude/hooks" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
-    echo "[dry-run] rsync -a $REPO_DIR/ssot/.claude/hooks/ $CLAUDE_DIR/hooks/"
+    echo "[dry-run] rsync -a $REPO_DIR/SoT/.claude/hooks/ $CLAUDE_DIR/hooks/"
   else
     mkdir -p "$CLAUDE_DIR/hooks"
-    rsync -a "$REPO_DIR/ssot/.claude/hooks/" "$CLAUDE_DIR/hooks/"
+    rsync -a "$REPO_DIR/SoT/.claude/hooks/" "$CLAUDE_DIR/hooks/"
     find "$CLAUDE_DIR/hooks" -maxdepth 1 -name '*.sh' -exec chmod +x {} +
     hook_count=$(ls "$CLAUDE_DIR/hooks/"*.sh 2>/dev/null | wc -l)
     log "Hooks synced ($hook_count scripts)"
@@ -78,14 +78,14 @@ fi
 
 # --- Sync CLAUDE.md (project coding conventions) ---
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "[dry-run] cp ssot/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md"
+  echo "[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md"
 else
-  cp "$REPO_DIR/ssot/.claude/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+  cp "$REPO_DIR/SoT/.claude/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
   log "CLAUDE.md synced"
 fi
 
 # --- Merge settings.json ---
-REPO_SETTINGS="$REPO_DIR/ssot/.claude/settings.json"
+REPO_SETTINGS="$REPO_DIR/SoT/.claude/settings.json"
 USER_SETTINGS="$CLAUDE_DIR/settings.json"
 
 if [ "$DRY_RUN" -eq 1 ]; then

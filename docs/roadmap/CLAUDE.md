@@ -78,8 +78,8 @@ finished/2026-04-27-subagent-pipeline-improvements.md
 ## Not a plan
 
 Reference docs, architecture notes, conventions, and rubric explanations do
-**not** belong here — they belong in `ssot/.claude/skills/`,
-`ssot/.claude/agents/`, or the kit's root `CLAUDE.md`. This folder is strictly
+**not** belong here — they belong in `SoT/.claude/skills/`,
+`SoT/.claude/agents/`, or the kit's root `CLAUDE.md`. This folder is strictly
 for time-boxed work items where progress needs to be tracked across sessions.
 
 Open Concerns in the root CLAUDE.md (kit-level bugs / wait-on-upstream items)

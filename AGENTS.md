@@ -7,8 +7,8 @@ Canonical instructions for coding agents working on this project. Compatible wit
 Portable configuration kit for AI coding agents. Per-tool Single Source of Truth (SSOT) directories get deployed to each tool's user-config location via `sync.sh` — clone once, sync to your home directory, get a consistent AI-assisted dev environment everywhere. The kit focuses on **token efficiency without sacrificing quality**: every setting and hook is tuned to minimize token consumption while preserving rigorous output. When adding or editing anything, ask: *does this change reduce tokens without weakening correctness?*
 
 Tool-specific instructions live alongside this file:
-- **`CLAUDE.md`** — Claude Code SSOT (`ssot/.claude/`), env vars, hooks, plugins, RTK, status line, session management, permission mode, open concerns.
-- **`CODEX.md`** (planned) — Codex SSOT (`ssot/.codex/`), CLI options, agent-config equivalents.
+- **`CLAUDE.md`** — Claude Code SSOT (`SoT/.claude/`), env vars, hooks, plugins, RTK, status line, session management, permission mode, open concerns.
+- **`CODEX.md`** (planned) — Codex SSOT (`SoT/.codex/`), CLI options, agent-config equivalents.
 
 ## Repository layout (cross-cutting)
 
@@ -21,7 +21,7 @@ Tool-specific instructions live alongside this file:
 | `CLAUDE.md` / `CODEX.md` (planned) | Per-tool instructions; both import this `AGENTS.md` |
 | `AGENTS.md` | This file — tool-agnostic instructions |
 
-For per-tool SSOT layouts (`ssot/.claude/`, future `ssot/.codex/`), see the matching per-tool file.
+For per-tool SSOT layouts (`SoT/.claude/`, future `SoT/.codex/`), see the matching per-tool file.
 
 ## Engineering rules
 
@@ -35,7 +35,7 @@ For per-tool SSOT layouts (`ssot/.claude/`, future `ssot/.codex/`), see the matc
 ## Code style
 
 - Bash: `set -euo pipefail`, quoted variables, `[[ ]]` over `[ ]`, function-scoped `local`. Match `sync.sh`.
-- JSON config: edit the SSOT (`ssot/<tool>/`) and run `sync.sh`. Never edit deployed config (`~/.claude/`, future `~/.codex/`) directly.
+- JSON config: edit the SSOT (`SoT/<tool>/`) and run `sync.sh`. Never edit deployed config (`~/.claude/`, future `~/.codex/`) directly.
 
 ## Security
 

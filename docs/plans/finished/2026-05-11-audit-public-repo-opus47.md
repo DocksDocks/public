@@ -12,11 +12,11 @@ ship_commit: f40d9df8049ca971a32ee26f7f4026dd105f9474
 
 # Audit `public` repo optimizations for Opus 4.7
 
-**Scope:** the `public` repo owns the consumer-facing pieces — `ssot/.claude/settings.json`, hooks (`ssot/.claude/hooks/*.sh`), status line scripts, `sync.sh`, and the global `ssot/.claude/CLAUDE.md` (synced to `~/.claude/CLAUDE.md`). Plugin-internal optimizations — per-agent frontmatter, command bodies, validators, agentskills.io structural compliance — live in `docs/optimization-audit-may-2026.md` in the [docks plugin repo](https://github.com/DocksDocks/docks).
+**Scope:** the `public` repo owns the consumer-facing pieces — `SoT/.claude/settings.json`, hooks (`SoT/.claude/hooks/*.sh`), status line scripts, `sync.sh`, and the global `SoT/.claude/CLAUDE.md` (synced to `~/.claude/CLAUDE.md`). Plugin-internal optimizations — per-agent frontmatter, command bodies, validators, agentskills.io structural compliance — live in `docs/optimization-audit-may-2026.md` in the [docks plugin repo](https://github.com/DocksDocks/docks).
 
 ## TL;DR
 
-- **Three high-confidence wins for `public`:** (1) enable `CLAUDE_CODE_FORK_SUBAGENT=1` so children 2-N of parallel-scanner fan-outs inherit the parent's prompt-cache prefix (~10× input-token reduction per Anthropic v2.1.117 patch notes — but only if docks-side agents opt in via `context: fork`); (2) migrate the `SubagentStop` file:line validator from a bash regex to a `prompt` or `agent` hook for semantic verification of citations; (3) add the **Opus 4.7 literalism rule** as a new heuristic in `ssot/.claude/CLAUDE.md` — Anthropic flagged this as the single biggest behavioral change in 4.7.
+- **Three high-confidence wins for `public`:** (1) enable `CLAUDE_CODE_FORK_SUBAGENT=1` so children 2-N of parallel-scanner fan-outs inherit the parent's prompt-cache prefix (~10× input-token reduction per Anthropic v2.1.117 patch notes — but only if docks-side agents opt in via `context: fork`); (2) migrate the `SubagentStop` file:line validator from a bash regex to a `prompt` or `agent` hook for semantic verification of citations; (3) add the **Opus 4.7 literalism rule** as a new heuristic in `SoT/.claude/CLAUDE.md` — Anthropic flagged this as the single biggest behavioral change in 4.7.
 - **Effort level: keeping `CLAUDE_CODE_EFFORT_LEVEL=max` is intentional kit policy.** The original audit recommended dropping the default to `xhigh` per Anthropic's "diminishing returns / overthinking" guidance; this kit explicitly trades the marginal token cost for a higher ceiling on every Opus orchestrator turn. The recommendation is **rejected for this repo**. The narrower case for per-agent overrides on Sonnet-tier subagents (where `max` can be wasteful inheritance) belongs in the docks doc, not here.
 - **Defer to measurement:** 400K vs 200K vs 1M compact window. Anthropic's CPO published only a 15% reduction in compaction events from 1M; community evidence (Sikkema, Aider, JetBrains, NoLiMa) argues 200K + aggressive compaction often beats 1M on code work. Current 400K cap is a defensible middle ground; A/B test on a /refactor baseline before flipping.
 
@@ -26,16 +26,16 @@ ship_commit: f40d9df8049ca971a32ee26f7f4026dd105f9474
 
 Top-10 actionable items derived from §1 below. Per `docs/plans/AGENTS.md`: flip `[ ]` → `[x]` in the same commit that lands the change; bump `updated` in the frontmatter on every edit.
 
-- [x] **(HIGH)** Enable `CLAUDE_CODE_FORK_SUBAGENT=1` in `ssot/.claude/settings.json` (§2.2). Requires docks-side `context: fork` opt-in to actually benefit.
+- [x] **(HIGH)** Enable `CLAUDE_CODE_FORK_SUBAGENT=1` in `SoT/.claude/settings.json` (§2.2). Requires docks-side `context: fork` opt-in to actually benefit.
 - [x] **(MED)** Migrate `SubagentStop` validator from bash regex to `prompt` or `agent` hook (§3.1).
 - [x] **(MED)** Add `PostToolUseFailure` hook to inject failure context on bash errors (§3.2).
-- [x] **(HIGH)** Add Opus 4.7 literalism heuristic to `ssot/.claude/CLAUDE.md` as the 9th distilled rule (§4.1 #1).
+- [x] **(HIGH)** Add Opus 4.7 literalism heuristic to `SoT/.claude/CLAUDE.md` as the 9th distilled rule (§4.1 #1).
 - [ ] ~~**(HIGH)** Verify subagent prompt-cache behavior — instrument `cache_read_input_tokens` / `cache_creation_input_tokens` per the §1 measurement note.~~ **Deferred:** runtime measurement task; needs a real `/docks:refactor` parallel-scanner fan-out + JSONL inspection. Re-evaluate after docks-side `context: fork` opt-in lands so children 2-N actually exercise the cache-prefix path.
 - [x] **(MED)** Bump `CLAUDE_CODE_MAX_OUTPUT_TOKENS` from 64000 to 96000 (§2.5).
 - [ ] ~~**(MED)** A/B measure 400K vs 200K vs 1M compact window on a `/docks:refactor` baseline (§2.3).~~ **Deferred:** needs measurement scaffolding (the prior `tests/baseline/` was removed as stale); requires 3 sequential `/docks:refactor` runs on a fixed fixture with quality scoring. Out of scope for this round of plan execution.
-- [x] **(HIGH)** Add cache-invariance heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #3).
-- [x] **(MED)** Add proactive-compaction heuristic to `ssot/.claude/CLAUDE.md` (§4.1 #5).
-- [ ] ~~**(MED)** Document `--thinking-display summarized` shell alias in `ssot/.claude/CLAUDE.md` (§2.4).~~ **Reverted (wrong target):** the alias / flag is already documented in `public/CLAUDE.md` § Open Concerns. `ssot/.claude/CLAUDE.md` ships into every session's prompt context, so per-bug workarounds don't belong there — they'd burn prompt tokens every session for a fix that lives in shell profile or kit setup docs. Task as originally framed was misdesigned.
+- [x] **(HIGH)** Add cache-invariance heuristic to `SoT/.claude/CLAUDE.md` (§4.1 #3).
+- [x] **(MED)** Add proactive-compaction heuristic to `SoT/.claude/CLAUDE.md` (§4.1 #5).
+- [ ] ~~**(MED)** Document `--thinking-display summarized` shell alias in `SoT/.claude/CLAUDE.md` (§2.4).~~ **Reverted (wrong target):** the alias / flag is already documented in `public/CLAUDE.md` § Open Concerns. `SoT/.claude/CLAUDE.md` ships into every session's prompt context, so per-bug workarounds don't belong there — they'd burn prompt tokens every session for a fix that lives in shell profile or kit setup docs. Task as originally framed was misdesigned.
 
 ---
 
@@ -45,20 +45,20 @@ Confidence: **HIGH** = multiple independent sources + empirical data; **MED** = 
 
 | # | Recommendation | Confidence | Effort | Expected Impact |
 |---|---|---|---|---|
-| 1 | `CLAUDE_CODE_FORK_SUBAGENT=1` in `ssot/.claude/settings.json`. v2.1.117 enabled fork on external builds; children 2-N inherit prompt-cache prefix. | HIGH | trivial | ~10× input-token cut on parallel-scanner children (per Anthropic patch notes); requires docks-side agents to opt in via `context: fork`. |
+| 1 | `CLAUDE_CODE_FORK_SUBAGENT=1` in `SoT/.claude/settings.json`. v2.1.117 enabled fork on external builds; children 2-N inherit prompt-cache prefix. | HIGH | trivial | ~10× input-token cut on parallel-scanner children (per Anthropic patch notes); requires docks-side agents to opt in via `context: fork`. |
 | 2 | Migrate `SubagentStop` validator from regex to `prompt` or `agent` hook (event types added 2026). | MED | moderate | Eliminates whitelist drift; reduces false-block rate on semantically-valid outputs lacking literal `path:line`. |
 | 3 | Add `PostToolUseFailure` hook (event added 2026) to inject failure context on bash errors. | MED | trivial | Better self-recovery on transient failures during long Phase-4/5 sessions on `/docks:refactor` and `/docks:security`. |
-| 4 | Add **Opus 4.7 literalism rule** to `ssot/.claude/CLAUDE.md` as a new heuristic alongside the 8 distilled ones. | HIGH | trivial | Improves first-shot quality on every phase; Anthropic 4.7 release notes flag this as the dominant behavioral change. |
+| 4 | Add **Opus 4.7 literalism rule** to `SoT/.claude/CLAUDE.md` as a new heuristic alongside the 8 distilled ones. | HIGH | trivial | Improves first-shot quality on every phase; Anthropic 4.7 release notes flag this as the dominant behavioral change. |
 | 5 | Verify subagent prompt-caching is live. Per anthropics/claude-code issue #29966, Agent-SDK subagents had `enablePromptCaching: false` hardcoded. Instrument `cache_read_input_tokens` / `cache_creation_input_tokens`. | HIGH | moderate | If broken, fixing could cut subagent costs ~5×. The kit's reported 94% main-agent cache-hit rate suggests orchestrator is fine; parallel scanners may not be. |
 | 6 | Bump `CLAUDE_CODE_MAX_OUTPUT_TOKENS` from 64000 to 96000. | MED | trivial | Anthropic recommends a higher cap when running `max` effort on 4.7's new tokenizer (1.0×–1.35× more tokens than 4.6); current 64K can truncate verbose synthesis outputs. |
 | 7 | A/B measure 400K vs 200K vs 1M compact window on a `/docks:refactor` fixed-fixture run. | MED | trivial config flip | Either confirms 400K is the sweet spot, or unlocks ~30% session-quality lift on long phases. Workload-specific. |
 | 8 | Add a **cache-invariance heuristic** ("do not insert timestamps, mutable state, or rotating tool definitions into the cached prefix; put dynamic context in `<system-reminder>` tags inside user messages"). | HIGH | trivial | Protects the 94% cache-hit rate the kit already achieves. |
 | 9 | Add a **proactive-compaction heuristic** ("`/compact` at 50–60% beats waiting for autocompact; the model is at its least intelligent when compaction fires due to context rot"). | MED | trivial | Reinforces the existing `## Session Management` table in `public/CLAUDE.md`; promotes the rule from prose to enforceable heuristic. |
-| 10 | Document the `--thinking-display summarized` workaround as a shell alias in `ssot/.claude/CLAUDE.md` instead of leaving it only in `public/CLAUDE.md` § Open Concerns. | MED | trivial | Surfaces the workaround at session start so contributors don't re-debug; alias persists across machines after sync. |
+| 10 | Document the `--thinking-display summarized` workaround as a shell alias in `SoT/.claude/CLAUDE.md` instead of leaving it only in `public/CLAUDE.md` § Open Concerns. | MED | trivial | Surfaces the workaround at session start so contributors don't re-debug; alias persists across machines after sync. |
 
 ---
 
-## Section 2 — `ssot/.claude/settings.json` Specific Changes
+## Section 2 — `SoT/.claude/settings.json` Specific Changes
 
 ### 2.1 Effort level — KEEP `max` (no change)
 
@@ -105,7 +105,7 @@ Run a `/docks:refactor` baseline three ways on a fixed fixture project:
 
 `public/CLAUDE.md` § Open Concerns already documents the `claude --thinking-display summarized` workaround for the Opus 4.7 thinking-summary bug (issues #49268, #49708, #48065 — all OPEN as of 2026-05-06).
 
-**Suggested addition:** mention the shell alias in `ssot/.claude/CLAUDE.md` so it surfaces at session start rather than only being discoverable when contributors hit the bug:
+**Suggested addition:** mention the shell alias in `SoT/.claude/CLAUDE.md` so it surfaces at session start rather than only being discoverable when contributors hit the bug:
 
 ```bash
 # add to ~/.bashrc or ~/.zshrc (kit cannot manage shell profile from sync)
@@ -134,7 +134,7 @@ Audit items:
 
 ---
 
-## Section 3 — Hooks (`ssot/.claude/hooks/` + settings.json `hooks` block)
+## Section 3 — Hooks (`SoT/.claude/hooks/` + settings.json `hooks` block)
 
 ### 3.1 Migrate `SubagentStop` validator from regex to `prompt`/`agent` hook (MED / moderate)
 
@@ -214,11 +214,11 @@ Verify (currently looks fine):
 
 ---
 
-## Section 4 — `ssot/.claude/CLAUDE.md` (global heuristics)
+## Section 4 — `SoT/.claude/CLAUDE.md` (global heuristics)
 
 ### 4.1 The 8 Distilled Heuristics — gaps to fill
 
-The 8 heuristics in `ssot/.claude/CLAUDE.md` are accurate distillations of Cursor's Agent Prompt 2.0 (2025-11-07 leak; verified against x1xhlol/system-prompts-and-models-of-ai-tools). Cursor's 2026 changes have been architectural (dynamic context discovery, Composer 2, /multitask, /best-of-n) rather than prompt-rule, so these eight remain current.
+The 8 heuristics in `SoT/.claude/CLAUDE.md` are accurate distillations of Cursor's Agent Prompt 2.0 (2025-11-07 leak; verified against x1xhlol/system-prompts-and-models-of-ai-tools). Cursor's 2026 changes have been architectural (dynamic context discovery, Composer 2, /multitask, /best-of-n) rather than prompt-rule, so these eight remain current.
 
 **Heuristics worth ADDING** (each HIGH confidence, with Anthropic primary source):
 
@@ -267,7 +267,7 @@ Confirms the kit's choice to leave the env var unset is correct (priority 1 woul
 
 ### 4.5 Cursor-system-prompt items to verify (one-time check)
 
-Per the leaked Cursor Agent prompt and jujumilk3 corpus, things `ssot/.claude/CLAUDE.md` should already cover (verify presence — add if missing):
+Per the leaked Cursor Agent prompt and jujumilk3 corpus, things `SoT/.claude/CLAUDE.md` should already cover (verify presence — add if missing):
 
 - "NEVER refer to tool names in user-facing text — say 'I will edit your file', not 'I'll use edit_file'"
 - "Code edits must run immediately error-free; include all imports and dependencies"
