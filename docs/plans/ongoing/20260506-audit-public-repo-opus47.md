@@ -1,11 +1,16 @@
 ---
-created: 2026-05-06T16:50:31-03:00
-updated: 2026-05-06T18:34:53-03:00
-finished: null
+title: Audit `public` repo optimizations for Opus 4.7
 status: ongoing
+created: 2026-05-06
+updated: 2026-05-11
+assignee: null
+blockers: []
+blocked_reason: null
+blocked_since: null
+ship_commit: null
 ---
 
-# `public` Repo Optimization Audit on Opus 4.7 — May 2026
+# Audit `public` repo optimizations for Opus 4.7
 
 **Scope:** the `public` repo owns the consumer-facing pieces — `ssot/.claude/settings.json`, hooks (`ssot/.claude/hooks/*.sh`), status line scripts, `sync.sh`, and the global `ssot/.claude/CLAUDE.md` (synced to `~/.claude/CLAUDE.md`). Plugin-internal optimizations — per-agent frontmatter, command bodies, validators, agentskills.io structural compliance — live in `docs/optimization-audit-may-2026.md` in the [docks plugin repo](https://github.com/DocksDocks/docks).
 
@@ -19,7 +24,7 @@ status: ongoing
 
 ## Tasks
 
-Top-10 actionable items derived from §1 below. Per `docs/roadmap/CLAUDE.md`: flip `[ ]` → `[x]` in the same commit that lands the change; bump `updated` in the frontmatter on every edit.
+Top-10 actionable items derived from §1 below. Per `docs/plans/AGENTS.md`: flip `[ ]` → `[x]` in the same commit that lands the change; bump `updated` in the frontmatter on every edit.
 
 - [x] **(HIGH)** Enable `CLAUDE_CODE_FORK_SUBAGENT=1` in `ssot/.claude/settings.json` (§2.2). Requires docks-side `context: fork` opt-in to actually benefit.
 - [x] **(MED)** Migrate `SubagentStop` validator from bash regex to `prompt` or `agent` hook (§3.1).

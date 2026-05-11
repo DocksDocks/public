@@ -1,14 +1,10 @@
-# Claude Code Configuration Kit
+@AGENTS.md
 
-Portable Claude Code setup — settings, hooks, status line, RTK integration, kit-level coding conventions. Clone once, sync to `~/.claude/`, get a consistent AI-assisted dev environment everywhere.
+## Claude Code
 
-**Focus: token efficiency without sacrificing quality.** Every setting and hook in this kit is tuned to minimize token consumption while preserving rigorous output. The configuration leans on 1M context with early auto-compaction via a 400K effective window, `max` effort (Opus 4.7's deepest thinking tier), Opus 4.7 as orchestrator, and adaptive thinking. When adding or editing anything here, the guiding question is: *does this change reduce tokens without weakening correctness?*
+Configuration specific to Claude Code. `ssot/.claude/` is the Single Source of Truth that gets synced to `~/.claude/` by `./sync.sh`. Edit files in `ssot/.claude/` here in the repo, then run sync — never edit `~/.claude/` directly. The skills, commands, and multi-agent pipeline ship as a separate plugin: **[DocksDocks/docks](https://github.com/DocksDocks/docks)**.
 
-The skills, commands, and multi-agent pipeline ship as a separate Claude Code plugin: **[DocksDocks/docks](https://github.com/DocksDocks/docks)**. This repo handles the parts that can't live in a plugin: env vars, permissions, hooks (RTK + claude.ai-connector disable), session/status-line tooling, and the consumer-facing CLAUDE.md. Install the docks plugin separately on each machine.
-
-The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.claude/`. Edit files here, then sync to your home directory.
-
-## Repository Structure
+### Repository structure (Claude-specific)
 
 | Path | Purpose |
 |------|---------|
@@ -17,13 +13,8 @@ The `ssot/.claude/` directory is the **Single Source of Truth** (SSOT) for `~/.c
 | `ssot/.claude/hooks/` | SessionStart hook scripts (e.g. `disable-claudeai-connectors.sh`) |
 | `ssot/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `ssot/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
-| `alert_bubble.mp3` | Audio notification for Notification hook |
-| `sync.sh` | Deploy ssot/ → ~/.claude/, install/upgrade RTK, merge settings |
-| `docs/roadmap/` | Time-boxed kit-improvement plans (`planned/` → `ongoing/` → `finished/`). See `docs/roadmap/CLAUDE.md` for the convention |
 
-The plugin's content (commands, skills, agents, plus author-side validators) lives in **[DocksDocks/docks](https://github.com/DocksDocks/docks)** — see that repo's README for the current inventory and the validators that enforce kit-level conventions.
-
-## Plugins
+### Plugins
 
 Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnownMarketplaces`.
 
@@ -33,7 +24,7 @@ Configured in `ssot/.claude/settings.json` under `enabledPlugins` and `extraKnow
 | `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in n8n repos to keep ~7 skills out of unrelated projects' system prompt |
 | `supabase` (official) | built-in `claude-plugins-official` | Bundles two skills (`supabase` for the full product surface — Auth/Database/Edge Functions/Realtime/Storage/Vectors/Cron/Queues/Postgres extensions — and `supabase-postgres-best-practices` for Postgres performance/schema guidance) plus the `supabase` MCP server. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in repos that touch Supabase or Postgres, to keep both skill descriptions + the MCP tool surface out of unrelated projects |
 
-### Per-project plugin scoping
+#### Per-project plugin scoping
 
 `enabledPlugins` values carry three distinct meanings in this kit:
 
@@ -59,7 +50,7 @@ Reference examples in this repo:
 - `n8n-mcp-skills` is `false` in SSOT and `true` in `n8n-workflows/.claude/settings.json`. To extend to another n8n project: copy the project-level `enabledPlugins` block into that repo's `.claude/settings.json`.
 - `supabase@claude-plugins-official` is `false` in SSOT. To enable in a Supabase/Postgres project, add `"supabase@claude-plugins-official": true` to that repo's `.claude/settings.json` (or `.claude/settings.local.json` for personal scope). Don't reference the upstream `supabase/agent-skills` marketplace — the postgres skill is bundled inside the official `supabase` plugin, and pointing at the upstream marketplace produces a stale "Plugin not found" warning in `/doctor` because that marketplace was never registered locally.
 
-### Install plugins on a new machine
+#### Install plugins on a new machine
 
 `./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SSOT and runs `claude plugin marketplace add` + `claude plugin install` for anything missing from `~/.claude/plugins/known_marketplaces.json` / `installed_plugins.json`. Both CLI commands are idempotent, so reruns are no-ops.
 
@@ -77,7 +68,7 @@ Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-comman
 /reload-plugins
 ```
 
-## RTK (Rust Token Killer)
+### RTK (Rust Token Killer)
 
 Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
 
@@ -87,11 +78,11 @@ Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToo
 **RTK upgrade gotcha** — `rtk init -g` rewrites `~/.claude/settings.json` and **clears `hooks.PreToolUse` to `[]` even when its "Patch existing settings.json? [y/N]" prompt defaults to N** (observed RTK 0.38.0, 2026-05-05). It prints a "MANUAL STEP: add this hook" message after destroying the existing one. Never run `rtk init -g` blindly during an upgrade — either snapshot `~/.claude/settings.json` first and restore the `PreToolUse` block after, or just re-run `./sync.sh --force` to redeploy the SSOT entry. The kit's `sync.sh` skips `rtk init -g` when `~/.claude/RTK.md` already exists, so it won't trip on routine syncs — only manual invocations.
 </constraint>
 
-### Supported commands
+#### Supported commands
 
 git, gh, cargo, cat, grep/rg, ls, tree, find, diff, head, vitest, tsc, eslint, prettier, playwright, prisma, docker, kubectl, curl, wget, pytest, ruff, pip, mypy, go test/build/vet, aws, psql, and more.
 
-### Install RTK (Linux)
+#### Install RTK (Linux)
 
 ```bash
 # 1. Install the rtk binary (download-then-run; see note)
@@ -117,7 +108,7 @@ rtk gain             # Should show tracking is active
 # 6. Restart Claude Code for the hook to take effect
 ```
 
-## Status Line
+### Status Line
 
 Two-line display inspired by [claude-watch](https://github.com/xleddyl/claude-watch). Cross-platform (macOS + Linux).
 
@@ -126,7 +117,7 @@ Two-line display inspired by [claude-watch](https://github.com/xleddyl/claude-wa
 
 Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached to `/tmp/.claude_usage_cache`.
 
-## Session Management
+### Session Management
 
 Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 400K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
 
@@ -143,7 +134,7 @@ Rule of thumb: if a turn starts with "that didn't work, try X instead," reach fo
 
 The docks plugin's commands already use Opus-orchestrator + sonnet-subagents internally. The blog validates that pattern for ad-hoc work too. **`/fork` is for ad-hoc exploration, not for plugin command pipelines** — those intentionally isolate phases (fresh context per subagent, plan-file as the only handoff) to keep token costs predictable.
 
-## Permission Mode
+### Permission Mode
 
 The kit sets `permissions.defaultMode: "auto"` and `skipAutoPermissionPrompt: true` — new sessions boot directly into auto mode with no entry confirmation. Docs: https://code.claude.com/docs/en/permission-modes.
 
@@ -165,7 +156,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 **When to bail out of auto mode**: classifier outage, sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` cycles away from auto.
 
-## Hooks
+### Hooks
 
 - **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, pinned opus model, subagent model) so agents don't rely on training data cutoff
 - **SessionStart (no matcher — fires on every event: `startup`/`resume`/`compact`/`clear`)**: Runs `~/.claude/hooks/disable-claudeai-connectors.sh` (sourced from `ssot/.claude/hooks/`) — auto-patches `~/.claude.json` `projects[$cwd].disabledMcpServers` for the current project, keeping unwanted Claude.ai connectors out of context. Workaround for the still-broken `ENABLE_CLAUDEAI_MCP_SERVERS` env var (see [issue #45158](https://github.com/anthropics/claude-code/issues/45158), [#20412](https://github.com/anthropics/claude-code/issues/20412)). Edit the `CONNECTORS` array in the script to change the disable list. Idempotent — safe to run on every event. **Why no `startup` matcher**: a `startup`-only hook never re-runs on resumed/compacted sessions, so any project the user opens via `--resume` or auto-compact never gets its `disabledMcpServers` entry. Symptom: connectors keep showing up in `/plugin` even after they were "disabled" in another session. Firing on every SessionStart event eliminates the gap; cost is one cheap `jq` patch per event
@@ -174,11 +165,11 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 - **Stop**: Fetches API usage stats (async) to keep status line data fresh
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
 
-## Environment Variables
+### Environment Variables
 
 All configured in `ssot/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + max effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7, which removed `budget_tokens` and makes adaptive thinking the only thinking-on mode.
 
-### Context management
+#### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -187,7 +178,7 @@ All configured in `ssot/.claude/settings.json` under the `env` block. The center
 
 The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
 
-### Thinking & reasoning
+#### Thinking & reasoning
 
 Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinking the only thinking-on mode**. Fixed budgets and `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` are gone.
 
@@ -195,7 +186,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 |----------|-------|---------|
 | `CLAUDE_CODE_EFFORT_LEVEL` | `max` | Highest thinking-budget tier. Valid: `low`/`medium`/`high`/`xhigh`/`max`/`auto`. Env var takes precedence over `/effort` and the `effortLevel` settings key. Tradeoff: `max` can overthink structured tasks — drop to `xhigh` if you see wasted reasoning on routine work. |
 
-### Model selection
+#### Model selection
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -203,7 +194,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 **Subagent model selection:** not an env var. The docks plugin declares per-agent `model:` (sonnet/opus) in each agent's frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over agent frontmatter.
 
-### Output & UI
+#### Output & UI
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -211,7 +202,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
 
-### Top-level settings.json keys
+#### Top-level settings.json keys
 
 | Key | Value | Notes |
 |-----|-------|-------|
@@ -224,13 +215,13 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max`.
 
-### Settings that do NOT belong in settings.json
+#### Settings that do NOT belong in settings.json
 
 | Setting | Correct location | Notes |
 |---------|-----------------|-------|
 | `showTurnDuration` | `~/.claude.json` | Triggers schema validation error in settings.json. `sync.sh` writes it to the right file. |
 
-## Setup
+### Setup
 
 ```bash
 # Clone and sync the kit
@@ -261,7 +252,7 @@ For plugins it runs six idempotent passes via the `claude plugin` CLI:
 
 `--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` (wholesale replace), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove). Default sync is additive on both layers — drift survives.
 
-### When to use `--force` and `--remove-plugins`
+#### When to use `--force` and `--remove-plugins`
 
 The default merge is additive on both layers: keys present in `~/.claude/settings.json` but absent from the SSOT are preserved, and installed plugins not in SSOT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — neither flag-less reset can clean it up.
 
@@ -288,7 +279,7 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' ssot/.claude/settings.json) \
 
 User-added permissions, env vars, or plugins that don't exist in the SSOT will be discarded — reconcile them into the SSOT first if you want to keep them.
 
-## Troubleshooting
+### Troubleshooting
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
@@ -299,17 +290,21 @@ User-added permissions, env vars, or plugins that don't exist in the SSOT will b
 - **`/plugin marketplace add DocksDocks/docks` fails with "marketplace.json not found"** — clear the partial cache: `/plugin marketplace remove DocksDocks-docks` then re-add.
 - **Plugin commands not appearing after install** — run `/reload-plugins`. Commands are namespaced as `/docks:<name>` (e.g., `/docks:security`).
 
-## Open Concerns
+### Plans
+
+Multi-commit work-item plans live under `docs/plans/` (active convention; see `AGENTS.md` § Plans for the cross-tool description). The Claude Code interface is the `plan-manager` agent invoked via `/docks:plan`: it reads plans, evaluates schedule triggers, and dispatches to the assignee agent named in each plan's frontmatter.
+
+### Open Concerns
 
 Living list of kit-level bugs, blockers, and wait-on-upstream items that can't be fixed locally. Each entry records the symptom, root cause, workaround, and how to verify resolution.
 
 **When invoked via "check open concerns"** (or similar), the assistant should: (a) read this section, (b) for each entry, fetch the linked upstream references and the current Claude Code version, (c) report which concerns are now resolved (issues closed/merged, version shipped), and (d) offer to remove resolved entries + undo their workarounds.
 
-Entry format: `### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cause / Upstream / Workaround / Verify resolution / Fallback.
+Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cause / Upstream / Workaround / Verify resolution / Fallback.
 
 ---
 
-### [2026-04-24] Opus 4.7 thinking summaries not rendered
+#### [2026-04-24] Opus 4.7 thinking summaries not rendered
 
 **Status:** Open — confirmed bug, no fix in Claude Code 2.1.131 (latest, last verified 2026-05-06).
 
@@ -339,13 +334,3 @@ alias claude='claude --thinking-display summarized'
 5. If rendered: remove this Open Concerns entry + the shell alias.
 
 **Fallback if the flag doesn't help:** The closed-as-dup [#52376](https://github.com/anthropics/claude-code/issues/52376) describes a related subscription-side concern — on Max/Team/Enterprise, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions are documented to honor it). It was rolled into #49268 without an independent fix. If the alias doesn't work, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6.
-
-## Roadmap
-
-In-flight kit-improvement work that spans multiple commits or sessions lives in `docs/roadmap/`. Files move between `planned/` → `ongoing/` → `finished/` via `git mv` so history is preserved. Each plan has YAML frontmatter (`created`, `updated`, `finished`, `status`) and GitHub-style checkboxes — flip `[ ]` → `[x]` in the same commit that lands the step, never as a batch pass later. See `docs/roadmap/CLAUDE.md` for the full convention.
-
-This is distinct from `## Open Concerns` above:
-- **Open Concerns**: wait-on-upstream blockers; resolution depends on Anthropic shipping a fix. No checkboxes — just verify-resolution criteria.
-- **Roadmap**: kit-internal work we control. Time-boxed, checkbox-tracked.
-
-Plugin-internal work (skills, commands, agents) belongs in the [docks repo](https://github.com/DocksDocks/docks)'s own roadmap, not here.
