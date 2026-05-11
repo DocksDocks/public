@@ -203,7 +203,7 @@ Two SessionStart blocks (one with config-injection commands, one without matcher
 
 ### 3.8 Notification hooks beyond `alert_bubble.mp3` — optional polish
 
-Mobile push (Pushover/ntfy), Slack via webhook etc. are common community patterns (disler/claude-code-hooks-mastery, eesel reference). Optional for a personal kit; out-of-scope for SSOT unless others request it.
+Mobile push (Pushover/ntfy), Slack via webhook etc. are common community patterns (disler/claude-code-hooks-mastery, eesel reference). Optional for a personal kit; out-of-scope for SoT unless others request it.
 
 ### 3.9 Hook security checklist
 
@@ -286,7 +286,7 @@ The orthogonal `--force` and `--remove-plugins` design (settings layer vs plugin
 
 ### 5.2 Plugin bootstrap — six-pass design holds up
 
-The six idempotent passes via `claude plugin {marketplace add, install, marketplace update, update, uninstall, marketplace remove}` correctly handle the SSOT-vs-installed reconciliation. No change.
+The six idempotent passes via `claude plugin {marketplace add, install, marketplace update, update, uninstall, marketplace remove}` correctly handle the SoT-vs-installed reconciliation. No change.
 
 ### 5.3 Status line — `fetch-usage.sh` async + cache file
 
@@ -310,7 +310,7 @@ Reinforcement — don't break these:
 
 4. **94% main-agent cache-hit rate** is in the same league as Anthropic's own production claim of 92%. System prompt is being kept stable. Don't break this by adding mutable values to it.
 
-5. **Plugin selection** — official Anthropic plugins (agent-sdk-dev, commit-commands, context7, frontend-design, code-simplifier, claude-md-management, skill-creator, php-lsp) are first-party and well-vetted. `frontend-design` alone has 277K+ installs. The per-project plugin scoping pattern (n8n-mcp-skills `false` in SSOT, `true` per-project) is a clean solution to Claude Code issue #27247.
+5. **Plugin selection** — official Anthropic plugins (agent-sdk-dev, commit-commands, context7, frontend-design, code-simplifier, claude-md-management, skill-creator, php-lsp) are first-party and well-vetted. `frontend-design` alone has 277K+ installs. The per-project plugin scoping pattern (n8n-mcp-skills `false` in SoT, `true` per-project) is a clean solution to Claude Code issue #27247.
 
 6. **`alert_bubble.mp3` Notification hook + `fetch-usage.sh` async Stop hook** — both align with documented community best practices. Async Stop hook correctly using the January-2026-shipped `async: true` capability.
 

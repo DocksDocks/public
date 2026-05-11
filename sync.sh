@@ -3,12 +3,12 @@
 # Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins]
 #
 # Flag semantics (orthogonal — combine as needed):
-#   --force            wholesale-replace ~/.claude/settings.json with SSOT
+#   --force            wholesale-replace ~/.claude/settings.json with SoT
 #                      (default is additive merge; user-only keys preserved)
-#   --remove-plugins   uninstall plugins / remove marketplaces NOT in SSOT
+#   --remove-plugins   uninstall plugins / remove marketplaces NOT in SoT
 #                      (default is additive: drift is preserved)
 #
-# For a full reset to SSOT (settings AND plugins), pass both flags.
+# For a full reset to SoT (settings AND plugins), pass both flags.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -27,8 +27,8 @@ for arg in "$@"; do
     -h|--help)
       echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins]"
       echo ""
-      echo "  --force           replace ~/.claude/settings.json with SSOT (default: merge)"
-      echo "  --remove-plugins  uninstall plugins/marketplaces not in SSOT (default: keep)"
+      echo "  --force           replace ~/.claude/settings.json with SoT (default: merge)"
+      echo "  --remove-plugins  uninstall plugins/marketplaces not in SoT (default: keep)"
       echo "  --no-rtk          skip RTK bootstrap"
       echo "  --dry-run         preview without applying"
       exit 0 ;;
@@ -138,22 +138,22 @@ fi
 # /reload-plugins reports "Plugin <X> not found in marketplace <Y>".
 #
 # Six idempotent passes via the `claude plugin` CLI:
-#   1. Add SSOT marketplaces missing from disk
-#   2. Install SSOT plugins missing from installed_plugins.json
+#   1. Add SoT marketplaces missing from disk
+#   2. Install SoT plugins missing from installed_plugins.json
 #   3. Refresh marketplace manifests (`marketplace update`)
 #   4. Update installed plugins to latest (`plugin update` — idempotent)
-#   5. (--remove-plugins only) Uninstall plugins NOT in SSOT enabledPlugins
-#   6. (--remove-plugins only) Remove marketplaces NOT in SSOT extraKnownMarketplaces
+#   5. (--remove-plugins only) Uninstall plugins NOT in SoT enabledPlugins
+#   6. (--remove-plugins only) Remove marketplaces NOT in SoT extraKnownMarketplaces
 #      (built-in `claude-plugins-official` is never removed — Anthropic ships it)
 #
 # Why --remove-plugins is its own flag (not folded into --force):
 # --force is about replacing settings.json wholesale; --remove-plugins is about
 # reconciling the plugin layer. They're orthogonal — you might want to wipe a
 # stale settings.json without nuking installed plugins, or vice versa. Combine
-# with `./sync.sh --force --remove-plugins` for a full reset to SSOT.
+# with `./sync.sh --force --remove-plugins` for a full reset to SoT.
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "[dry-run] bootstrap + update plugin marketplaces + plugins from SSOT"
-  [ "$REMOVE_PLUGINS" -eq 1 ] && echo "[dry-run] (--remove-plugins) would also uninstall plugins not in SSOT and remove extra marketplaces"
+  echo "[dry-run] bootstrap + update plugin marketplaces + plugins from SoT"
+  [ "$REMOVE_PLUGINS" -eq 1 ] && echo "[dry-run] (--remove-plugins) would also uninstall plugins not in SoT and remove extra marketplaces"
 elif command -v claude >/dev/null 2>&1; then
   KNOWN_MARKETPLACES="$CLAUDE_DIR/plugins/known_marketplaces.json"
   INSTALLED_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
@@ -212,7 +212,7 @@ elif command -v claude >/dev/null 2>&1; then
   fi
 
   # 5. (--remove-plugins only) Uninstall plugins installed but NOT keyed in
-  #    SSOT enabledPlugins at all. Plugins keyed as `false` are kept installed
+  #    SoT enabledPlugins at all. Plugins keyed as `false` are kept installed
   #    (globally disabled but available for per-project enable). Default sync
   #    is additive — drift preserved. Pass --remove-plugins to reconcile.
   if [ "$REMOVE_PLUGINS" -eq 1 ] && [ -f "$INSTALLED_PLUGINS" ]; then
@@ -229,7 +229,7 @@ elif command -v claude >/dev/null 2>&1; then
     done < <(jq -r '.plugins | keys[]' "$INSTALLED_PLUGINS")
   fi
 
-  # 6. (--remove-plugins only) Remove extraKnownMarketplaces not in SSOT.
+  # 6. (--remove-plugins only) Remove extraKnownMarketplaces not in SoT.
   #    NEVER remove `claude-plugins-official` — Claude Code auto-installs it and
   #    re-removing each sync would just re-trigger Anthropic's bootstrap.
   if [ "$REMOVE_PLUGINS" -eq 1 ] && [ -f "$KNOWN_MARKETPLACES" ]; then
@@ -332,7 +332,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
   fi
   if command -v claude >/dev/null 2>&1; then
     plugin_count=$(jq -r '.plugins | keys | length' "$CLAUDE_DIR/plugins/installed_plugins.json" 2>/dev/null || echo 0)
-    echo "Plugins:  $plugin_count installed (from SSOT enabledPlugins + Anthropic auto-installs)"
+    echo "Plugins:  $plugin_count installed (from SoT enabledPlugins + Anthropic auto-installs)"
   fi
 fi
 echo ""

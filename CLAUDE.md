@@ -21,8 +21,8 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | Plugin | Source | Purpose |
 |--------|--------|---------|
 | `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands (where parallel-agent value is irreducible), portable skills, and Opus/Sonnet-tiered subagents. See the plugin README for the current inventory |
-| `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in n8n repos to keep ~7 skills out of unrelated projects' system prompt |
-| `supabase` (official) | built-in `claude-plugins-official` | Bundles two skills (`supabase` for the full product surface — Auth/Database/Edge Functions/Realtime/Storage/Vectors/Cron/Queues/Postgres extensions — and `supabase-postgres-best-practices` for Postgres performance/schema guidance) plus the `supabase` MCP server. Globally **disabled** in SSOT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in repos that touch Supabase or Postgres, to keep both skill descriptions + the MCP tool surface out of unrelated projects |
+| `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. Globally **disabled** in SoT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in n8n repos to keep ~7 skills out of unrelated projects' system prompt |
+| `supabase` (official) | built-in `claude-plugins-official` | Bundles two skills (`supabase` for the full product surface — Auth/Database/Edge Functions/Realtime/Storage/Vectors/Cron/Queues/Postgres extensions — and `supabase-postgres-best-practices` for Postgres performance/schema guidance) plus the `supabase` MCP server. Globally **disabled** in SoT (`enabledPlugins[...]: false`); enabled per-project via `.claude/settings.json` only in repos that touch Supabase or Postgres, to keep both skill descriptions + the MCP tool surface out of unrelated projects |
 
 #### Per-project plugin scoping
 
@@ -47,12 +47,12 @@ Per-project enable lives in the project's `.claude/settings.json`:
 The user-scope key MUST remain present (just `false`) — Claude Code [silently ignores](https://github.com/anthropics/claude-code/issues/27247) project-level `enabledPlugins` entries whose key is absent from user settings. That's why this kit prefers `false` over deletion for situationally-useful plugins.
 
 Reference examples in this repo:
-- `n8n-mcp-skills` is `false` in SSOT and `true` in `n8n-workflows/.claude/settings.json`. To extend to another n8n project: copy the project-level `enabledPlugins` block into that repo's `.claude/settings.json`.
-- `supabase@claude-plugins-official` is `false` in SSOT. To enable in a Supabase/Postgres project, add `"supabase@claude-plugins-official": true` to that repo's `.claude/settings.json` (or `.claude/settings.local.json` for personal scope). Don't reference the upstream `supabase/agent-skills` marketplace — the postgres skill is bundled inside the official `supabase` plugin, and pointing at the upstream marketplace produces a stale "Plugin not found" warning in `/doctor` because that marketplace was never registered locally.
+- `n8n-mcp-skills` is `false` in SoT and `true` in `n8n-workflows/.claude/settings.json`. To extend to another n8n project: copy the project-level `enabledPlugins` block into that repo's `.claude/settings.json`.
+- `supabase@claude-plugins-official` is `false` in SoT. To enable in a Supabase/Postgres project, add `"supabase@claude-plugins-official": true` to that repo's `.claude/settings.json` (or `.claude/settings.local.json` for personal scope). Don't reference the upstream `supabase/agent-skills` marketplace — the postgres skill is bundled inside the official `supabase` plugin, and pointing at the upstream marketplace produces a stale "Plugin not found" warning in `/doctor` because that marketplace was never registered locally.
 
 #### Install plugins on a new machine
 
-`./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SSOT and runs `claude plugin marketplace add` + `claude plugin install` for anything missing from `~/.claude/plugins/known_marketplaces.json` / `installed_plugins.json`. Both CLI commands are idempotent, so reruns are no-ops.
+`./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SoT and runs `claude plugin marketplace add` + `claude plugin install` for anything missing from `~/.claude/plugins/known_marketplaces.json` / `installed_plugins.json`. Both CLI commands are idempotent, so reruns are no-ops.
 
 The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `SoT/.claude/settings.json`, then run `./sync.sh`. To pick up the new plugin in an active session, run `/reload-plugins`.
 
@@ -72,10 +72,10 @@ Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-comman
 
 Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
 
-`rtk init -g` generates `~/.claude/RTK.md` and the `@RTK.md` import in `~/.claude/CLAUDE.md`. The PreToolUse hook entry comes from this kit's SSOT (`SoT/.claude/settings.json`) — the command is `rtk hook claude` (direct, no shim script). RTK 0.38.0 dropped the previous `~/.claude/hooks/rtk-rewrite.sh` shim; older docs that mention it are stale.
+`rtk init -g` generates `~/.claude/RTK.md` and the `@RTK.md` import in `~/.claude/CLAUDE.md`. The PreToolUse hook entry comes from this kit's SoT (`SoT/.claude/settings.json`) — the command is `rtk hook claude` (direct, no shim script). RTK 0.38.0 dropped the previous `~/.claude/hooks/rtk-rewrite.sh` shim; older docs that mention it are stale.
 
 <constraint>
-**RTK upgrade gotcha** — `rtk init -g` rewrites `~/.claude/settings.json` and **clears `hooks.PreToolUse` to `[]` even when its "Patch existing settings.json? [y/N]" prompt defaults to N** (observed RTK 0.38.0, 2026-05-05). It prints a "MANUAL STEP: add this hook" message after destroying the existing one. Never run `rtk init -g` blindly during an upgrade — either snapshot `~/.claude/settings.json` first and restore the `PreToolUse` block after, or just re-run `./sync.sh --force` to redeploy the SSOT entry. The kit's `sync.sh` skips `rtk init -g` when `~/.claude/RTK.md` already exists, so it won't trip on routine syncs — only manual invocations.
+**RTK upgrade gotcha** — `rtk init -g` rewrites `~/.claude/settings.json` and **clears `hooks.PreToolUse` to `[]` even when its "Patch existing settings.json? [y/N]" prompt defaults to N** (observed RTK 0.38.0, 2026-05-05). It prints a "MANUAL STEP: add this hook" message after destroying the existing one. Never run `rtk init -g` blindly during an upgrade — either snapshot `~/.claude/settings.json` first and restore the `PreToolUse` block after, or just re-run `./sync.sh --force` to redeploy the SoT entry. The kit's `sync.sh` skips `rtk init -g` when `~/.claude/RTK.md` already exists, so it won't trip on routine syncs — only manual invocations.
 </constraint>
 
 #### Supported commands
@@ -231,8 +231,8 @@ cd ~/projects/public
 ./sync.sh --dry-run              # preview before applying
 ./sync.sh --no-rtk               # skip RTK install (also strips @RTK.md import from CLAUDE.md)
 ./sync.sh --force                # replace ~/.claude/settings.json wholesale (settings layer only)
-./sync.sh --remove-plugins       # uninstall plugins/marketplaces not in SSOT (plugin layer only)
-./sync.sh --force --remove-plugins   # full reset to SSOT (both layers)
+./sync.sh --remove-plugins       # uninstall plugins/marketplaces not in SoT (plugin layer only)
+./sync.sh --force --remove-plugins   # full reset to SoT (both layers)
 ```
 
 In an active Claude Code session, run `/reload-plugins` after `./sync.sh` to activate any newly installed plugins without restarting.
@@ -243,24 +243,24 @@ For plugins it runs six idempotent passes via the `claude plugin` CLI:
 
 | Pass | Mode | What it does |
 |------|------|--------------|
-| 1 | always | `claude plugin marketplace add` for any SSOT `extraKnownMarketplaces` not yet cloned |
-| 2 | always | `claude plugin install` for any SSOT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load |
+| 1 | always | `claude plugin marketplace add` for any SoT `extraKnownMarketplaces` not yet cloned |
+| 2 | always | `claude plugin install` for any SoT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load |
 | 3 | always | `claude plugin marketplace update` (refresh manifests) |
 | 4 | always | `claude plugin update <name>` for each installed plugin (idempotent — no-op when already at latest) |
-| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SSOT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
-| 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SSOT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
+| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SoT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
+| 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SoT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
 
 `--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` (wholesale replace), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove). Default sync is additive on both layers — drift survives.
 
 #### When to use `--force` and `--remove-plugins`
 
-The default merge is additive on both layers: keys present in `~/.claude/settings.json` but absent from the SSOT are preserved, and installed plugins not in SSOT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — neither flag-less reset can clean it up.
+The default merge is additive on both layers: keys present in `~/.claude/settings.json` but absent from the SoT are preserved, and installed plugins not in SoT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — neither flag-less reset can clean it up.
 
 | Flag | Affects | Use when |
 |------|---------|----------|
-| `--force` | `~/.claude/settings.json` only | Removing/renaming a settings key in SSOT (env var, permission, hook); resetting after a schema warning; user-only env vars / permissions diverged from SSOT |
-| `--remove-plugins` | Plugin layer only (uninstall + marketplace remove) | Removed a plugin from SSOT and want it gone from the machine, not just disabled; cleaning up extra marketplaces; reconciling `installed_plugins.json` |
-| `--force --remove-plugins` | Both layers | Full reset to SSOT — bringing a divergent machine fully in line |
+| `--force` | `~/.claude/settings.json` only | Removing/renaming a settings key in SoT (env var, permission, hook); resetting after a schema warning; user-only env vars / permissions diverged from SoT |
+| `--remove-plugins` | Plugin layer only (uninstall + marketplace remove) | Removed a plugin from SoT and want it gone from the machine, not just disabled; cleaning up extra marketplaces; reconciling `installed_plugins.json` |
+| `--force --remove-plugins` | Both layers | Full reset to SoT — bringing a divergent machine fully in line |
 
 Before running either, diff first:
 
@@ -277,7 +277,7 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' SoT/.claude/settings.json) \
 ./sync.sh --force --remove-plugins
 ```
 
-User-added permissions, env vars, or plugins that don't exist in the SSOT will be discarded — reconcile them into the SSOT first if you want to keep them.
+User-added permissions, env vars, or plugins that don't exist in the SoT will be discarded — reconcile them into the SoT first if you want to keep them.
 
 ### Troubleshooting
 
