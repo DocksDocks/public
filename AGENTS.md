@@ -24,7 +24,8 @@ Tool-specific instructions live alongside this file:
 
 Codex SoT notes:
 - `SoT/.codex/AGENTS.md` deploys to `~/.codex/AGENTS.md` as global Codex instructions.
-- `SoT/.codex/config.toml` enables the Docks plugin as `docks@docks`.
+- `SoT/.codex/config.toml` sets Codex approval/sandbox defaults and enables the Docks plugin as `docks@docks`.
+- `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`.
 - `SoT/.codex/bin/codex` deploys to `~/.local/bin/codex` as a launcher for npm/NVM Codex installs in non-interactive shells.
 - `SoT/.codex/AGENTS.md` imports `@RTK.md`; `sync.sh` lets `rtk init -g --codex` generate `~/.codex/RTK.md`, then restores the SoT-managed `AGENTS.md` so RTK owns only generated RTK content.

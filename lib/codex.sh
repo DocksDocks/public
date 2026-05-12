@@ -8,6 +8,8 @@ codex::sync() {
 
   local codex_settings="$REPO_DIR/SoT/.codex/config.toml"
   local user_codex_settings="$CODEX_DIR/config.toml"
+  local codex_rules_dir="$REPO_DIR/SoT/.codex/rules"
+  local user_codex_rules_dir="$CODEX_DIR/rules"
   local codex_agents_md="$REPO_DIR/SoT/.codex/AGENTS.md"
   local user_codex_agents_md="$CODEX_DIR/AGENTS.md"
   local user_codex_rtk_md="$CODEX_DIR/RTK.md"
@@ -18,6 +20,7 @@ codex::sync() {
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     [[ -f "$codex_settings" ]] && echo "[dry-run] merge $codex_settings -> $user_codex_settings"
+    [[ -d "$codex_rules_dir" ]] && echo "[dry-run] cp $codex_rules_dir/*.rules -> $user_codex_rules_dir/"
     [[ -f "$codex_agents_md" ]] && echo "[dry-run] cp $codex_agents_md -> $user_codex_agents_md"
     if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 0 ]]; then
       echo "[dry-run] refresh Codex RTK.md with rtk init -g --codex"
@@ -32,11 +35,31 @@ codex::sync() {
 
   mkdir -p "$CODEX_DIR"
   codex::sync_config "$codex_settings" "$user_codex_settings"
+  codex::sync_rules "$codex_rules_dir" "$user_codex_rules_dir"
   codex::sync_agents_md "$codex_agents_md" "$user_codex_agents_md"
   codex::sync_rtk "$codex_agents_md" "$user_codex_agents_md" "$user_codex_rtk_md"
   codex::install_launcher "$codex_bin" "$user_codex_bin"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
   codex::bootstrap_marketplace
+}
+
+codex::sync_rules() {
+  local codex_rules_dir="$1"
+  local user_codex_rules_dir="$2"
+  local rule_file user_rule_file rules_synced=0
+
+  [[ -d "$codex_rules_dir" ]] || return
+
+  mkdir -p "$user_codex_rules_dir"
+  while IFS= read -r rule_file; do
+    [[ -f "$rule_file" ]] || continue
+    user_rule_file="$user_codex_rules_dir/$(basename "$rule_file")"
+    [[ -f "$user_rule_file" ]] && cp "$user_rule_file" "$user_rule_file.bak"
+    cp "$rule_file" "$user_rule_file"
+    rules_synced=1
+  done < <(find "$codex_rules_dir" -maxdepth 1 -type f -name '*.rules' | sort)
+
+  [[ "$rules_synced" -eq 1 ]] && log "Codex rules synced"
 }
 
 codex::sync_agents_md() {
