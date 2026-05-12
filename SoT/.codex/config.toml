@@ -1,6 +1,9 @@
 model_reasoning_effort = "xhigh"
 plan_mode_reasoning_effort = "xhigh"
 
+[features]
+use_legacy_landlock = true
+
 [tui]
 status_line_use_colors = true
 status_line = [
