@@ -1,13 +1,13 @@
 ---
 title: Add Codex Docks plugin sync
-status: ongoing
+status: finished
 created: 2026-05-11
 updated: 2026-05-11
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
-ship_commit: null
+ship_commit: 5ae8fd3a3756476c4a680d48bc35c8cf5bacc240
 ---
 
 # Add Codex Docks plugin sync
