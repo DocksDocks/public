@@ -81,46 +81,23 @@ codex::sync_rtk() {
 codex::sync_config() {
   local codex_settings="$1"
   local user_codex_settings="$2"
-  local plugin_id added_codex_plugins
 
   [[ -f "$codex_settings" ]] || return
 
-  if [[ ! -f "$user_codex_settings" || "$FORCE" -eq 1 ]]; then
-    [[ -f "$user_codex_settings" ]] && cp "$user_codex_settings" "$user_codex_settings.bak"
+  if [[ ! -f "$user_codex_settings" ]]; then
     cp "$codex_settings" "$user_codex_settings"
-    if [[ -f "$user_codex_settings.bak" ]]; then
-      log "Codex config replaced (backup at config.toml.bak)"
-    else
-      log "Codex config installed"
-    fi
+    log "Codex config installed"
     return
   fi
 
   cp "$user_codex_settings" "$user_codex_settings.bak"
   codex::merge_top_level_settings "$codex_settings" "$user_codex_settings"
-  added_codex_plugins=0
+  codex::merge_table_settings "$codex_settings" "$user_codex_settings"
 
-  while IFS= read -r plugin_id; do
-    [[ -z "$plugin_id" ]] && continue
-    if grep -Fq "[plugins.\"$plugin_id\"]" "$user_codex_settings"; then
-      continue
-    fi
-    {
-      printf '\n'
-      awk -v header="[plugins.\"$plugin_id\"]" '
-        $0 == header { printing = 1 }
-        printing && $0 ~ /^\[/ && $0 != header { exit }
-        printing { print }
-      ' "$codex_settings"
-    } >> "$user_codex_settings"
-    added_codex_plugins=$((added_codex_plugins + 1))
-  done < <(grep -E '^\[plugins\."' "$codex_settings" | sed -E 's/^\[plugins\."([^"]+)".*/\1/')
-
-  if [[ "$added_codex_plugins" -gt 0 ]]; then
-    log "Codex config merged (backup at config.toml.bak; plugins +$added_codex_plugins)"
+  if [[ "$FORCE" -eq 1 ]]; then
+    log "Codex config reconciled (backup at config.toml.bak; runtime tables preserved)"
   else
-    rm -f "$user_codex_settings.bak"
-    log "Codex config already in sync"
+    log "Codex config merged (backup at config.toml.bak)"
   fi
 }
 
@@ -165,6 +142,36 @@ codex::merge_top_level_settings() {
     /^[[:space:]]*($|#)/ { next }
     /^[A-Za-z0-9_.-]+[[:space:]]*=/ { print }
   ' "$codex_settings")
+}
+
+codex::merge_table_settings() {
+  local codex_settings="$1"
+  local user_codex_settings="$2"
+  local table_header table_block tmp_file
+
+  while IFS= read -r table_header; do
+    [[ -z "$table_header" ]] && continue
+
+    table_block="$(
+      awk -v header="$table_header" '
+        $0 == header { printing = 1 }
+        printing && $0 ~ /^\[/ && $0 != header { exit }
+        printing { print }
+      ' "$codex_settings"
+    )"
+
+    tmp_file="$user_codex_settings.tmp"
+    awk -v header="$table_header" '
+      $0 == header { skip = 1; next }
+      skip && /^\[/ { skip = 0 }
+      !skip { print }
+    ' "$user_codex_settings" > "$tmp_file" && mv "$tmp_file" "$user_codex_settings"
+
+    {
+      printf '\n'
+      printf '%s\n' "$table_block"
+    } >> "$user_codex_settings"
+  done < <(grep -E '^\[[^]]+\]' "$codex_settings")
 }
 
 codex::install_launcher() {
