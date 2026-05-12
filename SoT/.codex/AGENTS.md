@@ -2,8 +2,6 @@
 
 @RTK.md
 
-Global Codex instructions managed by `./sync.sh`. Keep this file model-visible, high-signal, and tool-generic. Operational notes about the Codex SoT layout belong in `CODEX.md`, not here.
-
 ## Research Before Implementation
 
 IMPORTANT: Before writing or modifying code that uses any framework, library, or external API, research current documentation first.

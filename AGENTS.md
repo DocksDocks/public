@@ -8,7 +8,7 @@ Portable configuration kit for AI coding agents. Per-tool Single Source of Truth
 
 Tool-specific instructions live alongside this file:
 - **`CLAUDE.md`** — Claude Code SoT (`SoT/.claude/`), env vars, hooks, plugins, RTK, status line, session management, permission mode, open concerns.
-- **`CODEX.md`** — Codex SoT (`SoT/.codex/`), plugin marketplace bootstrap, CLI launcher, and config notes.
+- Codex uses this `AGENTS.md` file plus the Codex SoT under `SoT/.codex/`; no separate root `CODEX.md` is needed.
 
 ## Repository layout (cross-cutting)
 
@@ -18,10 +18,17 @@ Tool-specific instructions live alongside this file:
 | `lib/` | Shared sync helpers — `common.sh` for argument parsing/preflight, plus per-tool `claude.sh` / `codex.sh` sync implementations |
 | `alert_bubble.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
 | `docs/plans/` | Multi-commit work-item plans (`planned/` → `ongoing/` → `blocked/` / `scheduled/` / `finished/`). Convention: `docs/plans/AGENTS.md` |
-| `CLAUDE.md` / `CODEX.md` | Per-tool instructions; both import this `AGENTS.md` |
+| `CLAUDE.md` | Claude-specific instructions; imports this `AGENTS.md` |
 | `AGENTS.md` | This file — tool-agnostic instructions |
 
-For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching per-tool file.
+Codex SoT notes:
+- `SoT/.codex/AGENTS.md` deploys to `~/.codex/AGENTS.md` as global Codex instructions.
+- `SoT/.codex/config.toml` enables the Docks plugin as `docks@docks`.
+- `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`.
+- `SoT/.codex/bin/codex` deploys to `~/.local/bin/codex` as a launcher for npm/NVM Codex installs in non-interactive shells.
+- `SoT/.codex/AGENTS.md` imports `@RTK.md`; `sync.sh` lets `rtk init -g --codex` generate `~/.codex/RTK.md`, then restores the SoT-managed `AGENTS.md` so RTK owns only generated RTK content.
+
+For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT directory.
 
 ## Engineering rules
 
