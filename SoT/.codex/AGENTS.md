@@ -2,14 +2,71 @@
 
 @RTK.md
 
-Codex user-scope configuration managed by `./sync.sh`.
+Global Codex instructions managed by `./sync.sh`. Keep this file model-visible, high-signal, and tool-generic. Operational notes about the Codex SoT layout belong in `CODEX.md`, not here.
 
-This directory is intentionally small:
+## Research Before Implementation
 
-- `config.toml` declares portable Codex settings and enabled plugins.
-- `plugins/marketplace.json` is deployed to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`.
-- `bin/codex` is a PATH launcher for the existing npm/NVM Codex install.
-- `@RTK.md` imports Codex-scoped RTK instructions generated in `~/.codex/RTK.md` by `rtk init -g --codex`.
-- `agents/` is reserved for future Codex-native agent config if Codex exposes a stable user-scope format.
+IMPORTANT: Before writing or modifying code that uses any framework, library, or external API, research current documentation first.
 
-Do not store secrets here.
+Research workflow:
+1. Prefer official documentation and primary sources for the specific library, framework, or API.
+2. If a local docs or MCP tool is available, use it before broad web search.
+3. Only then proceed to implementation.
+
+Research when:
+- Installing or configuring a dependency.
+- Using an API, hook, method, or pattern not verified in this session.
+- Upgrading or migrating between versions.
+- Any task where relying on memory could cause stale syntax or behavior.
+
+Do not:
+- Assume API signatures, method names, or config options from memory.
+- Generate framework code without checking current docs first.
+- Skip research because the library seems familiar.
+
+<constraint>
+Research the codebase before editing. Never change code you have not read.
+</constraint>
+
+## Agentic Harness Heuristics
+
+Model-agnostic operating rules for coding-agent work.
+
+1. Persistence. Keep going until the user's request is actually handled. Only yield when the problem is solved or a concrete blocker is identified.
+2. Default to parallel. When multiple reads, searches, inspections, or independent checks can run without depending on each other, run them together.
+3. Multi-pass search. First-pass search results often miss key details. Search with varied wording and trace alternative implementations before settling.
+4. Trace symbols. Before modifying a symbol, trace its definition and usages. Do not infer behavior from one call site.
+5. Linter-loop 3-strike rule. Do not loop more than 3 times fixing the same lint/test failure without reassessing the diagnosis.
+6. Read-before-edit TTL. If you have not read a file recently, re-read it before editing. User edits can make cached context stale.
+7. Big-file rule. For files over 1000 lines, prefer targeted search plus scoped reads over whole-file reads.
+8. Task hygiene. Track meaningful deliverables, not operational sub-steps. Mark work complete as soon as it is done.
+9. Literal-instruction rule. Treat explicit user requirements as checklists with success criteria. Do not silently broaden scope.
+10. Cache-invariance. Avoid inserting volatile timestamps or mutable status into long-lived instruction text.
+11. Compact proactively. Preserve useful state before context quality decays; prefer clean summaries over chained corrections.
+
+<constraint>
+Treat these heuristics as protocol. If a turn violates an applicable rule, self-correct before continuing.
+</constraint>
+
+## Codex Skills And Plugins
+
+Codex user-scope plugin and skill state is synced by this kit from `SoT/.codex/`; the runtime config lives under `~/.codex/`, while personal marketplace metadata lives under `~/.agents/plugins/marketplace.json`.
+
+Docks is enabled as a Codex plugin for portable engineering-convention skills. In Codex it is skills-only: Claude Code slash commands and Claude subagents do not apply.
+
+<constraint>
+When a workflow depends on Docks skills, use the skill when Codex surfaces it; otherwise follow the same workflow manually and keep outputs grounded in files, commands, and tests.
+</constraint>
+
+## Engineering Discipline
+
+- Prefer the repository's existing patterns and helpers over new abstractions.
+- Keep edits scoped to the user's request and the surrounding ownership boundary.
+- Add abstractions only when they remove real complexity or match an established local pattern.
+- Preserve user changes. Never revert unrelated dirty work unless explicitly asked.
+- Verify with the narrowest useful command first, then broaden if risk warrants it.
+- Surface any test or verification you could not run.
+
+<constraint>
+No secrets in committed config. Treat plugin marketplaces, installers, and downloaded artifacts as untrusted until verified.
+</constraint>
