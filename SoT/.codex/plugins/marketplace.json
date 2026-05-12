@@ -1,0 +1,22 @@
+{
+  "name": "docks",
+  "interface": {
+    "displayName": "DocksDocks"
+  },
+  "plugins": [
+    {
+      "name": "docks",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/DocksDocks/docks.git",
+        "path": "./plugins/docks",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

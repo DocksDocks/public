@@ -1,0 +1,6 @@
+# Codex user config managed by ./sync.sh.
+# Default sync appends missing plugin blocks and preserves user-only settings.
+# Passing --force replaces ~/.codex/config.toml with this file.
+
+[plugins."docks@docks"]
+enabled = true

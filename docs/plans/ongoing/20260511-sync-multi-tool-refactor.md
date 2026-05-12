@@ -1,6 +1,6 @@
 ---
 title: Split sync.sh into lib/ and add Codex SoT scaffolding
-status: planned
+status: ongoing
 created: 2026-05-11
 updated: 2026-05-11
 assignee: null
@@ -32,15 +32,15 @@ User-confirmed design (this session): **detect-if-exists over `--codex` flag**; 
 
 ## Acceptance criteria
 
-- [ ] `./sync.sh --dry-run` runs on the current machine with **zero functional difference** from pre-refactor for the Claude-only flow (settings.json after = settings.json before)
-- [ ] `./sync.sh` with both SoTs present deploys both: `~/.claude/` updated, `~/.codex/` updated (or whatever Codex's deploy location is)
-- [ ] `./sync.sh` with only `SoT/.claude/` present skips Codex entirely (no `lib/codex.sh` sourced)
-- [ ] Each `lib/<tool>.sh` is sourceable in isolation (`bash -c 'source lib/claude.sh; declare -F'` lists its functions) — no cross-lib dependency leaks
-- [ ] `lib/common.sh` contains no tool-specific identifiers (`.claude`, `.codex`, `RTK`, `claude plugin`)
-- [ ] `--force` and `--remove-plugins` preserve their existing per-flag semantics for Claude, with equivalents for Codex
-- [ ] `AGENTS.md` updated: the four "(planned)" markers (`lib/`, `CODEX.md`, `SoT/.codex/`, and `lib/<tool>.sh` references) all dropped
-- [ ] Bash style: every lib uses `set -euo pipefail`, quoted variables, `[[ ]]` over `[ ]`, function-scoped `local`; functions are namespaced (e.g., `claude::install_rtk`, `codex::sync`) to prevent cross-lib name collisions
-- [ ] No regression in plugin layer: `~/.claude/plugins/installed_plugins.json` is identical pre/post-refactor on a clean `--force --remove-plugins` run
+- [x] `./sync.sh --dry-run` runs on the current machine with **zero functional difference** from pre-refactor for the Claude-only flow (settings.json after = settings.json before)
+- [x] `./sync.sh` with both SoTs present deploys both: `~/.claude/` updated, `~/.codex/` updated (or whatever Codex's deploy location is)
+- [x] `./sync.sh` with only `SoT/.claude/` present skips Codex entirely (no `lib/codex.sh` sourced)
+- [x] Each `lib/<tool>.sh` is sourceable in isolation (`bash -c 'source lib/claude.sh; declare -F'` lists its functions) — no cross-lib dependency leaks
+- [x] `lib/common.sh` contains no tool-specific identifiers (`.claude`, `.codex`, `RTK`, `claude plugin`)
+- [x] `--force` and `--remove-plugins` preserve their existing per-flag semantics for Claude, with equivalents for Codex
+- [x] `AGENTS.md` updated: the four "(planned)" markers (`lib/`, `CODEX.md`, `SoT/.codex/`, and `lib/<tool>.sh` references) all dropped
+- [x] Bash style: every lib uses `set -euo pipefail`, quoted variables, `[[ ]]` over `[ ]`, function-scoped `local`; functions are namespaced (e.g., `claude::install_rtk`, `codex::sync`) to prevent cross-lib name collisions
+- [x] No regression in plugin layer: `~/.claude/plugins/installed_plugins.json` is identical pre/post-refactor on a clean `--force --remove-plugins` run
 
 ## Out of scope
 
@@ -62,3 +62,8 @@ None at queue time. Likely to surface when picked up:
 - **Idempotency contract** — every public function in every lib must be safe to re-run when SoT has not changed (no-op). This is already true for the current Claude implementation; preserve it through the refactor.
 - Plan-internal pre-flight check: before writing `lib/codex.sh`, validate the Codex install path on a clean machine (does `codex` ship a `~/.codex/` analog? Does it use AGENTS.md natively? What's the plugin equivalent?). Update Notes when answered.
 - Related: AGENTS.md § Plans documents the Plans convention for future agents; this plan is the first one created under the convention.
+- Implementation pass on 2026-05-11 split `sync.sh` to a 42-line dispatcher plus `lib/common.sh`, `lib/claude.sh`, and `lib/codex.sh`. Verified `bash -n`, isolated `source lib/<tool>.sh`, `./sync.sh --dry-run --no-rtk`, and a real `./sync.sh --no-rtk`.
+- The destructive `--force --remove-plugins` clean regression check has not been run in this session; run only after a dry-run/diff review because it can remove user-only plugin/config drift.
+- `rtk init -g --codex` was tested in a temporary HOME. Sync now lets RTK generate `~/.codex/RTK.md` when missing, then restores the SoT-managed `~/.codex/AGENTS.md` containing `@RTK.md`. After sync, `rtk init --show --codex` reports global Codex RTK configured.
+- Real refresh test: removed one line from `~/.codex/RTK.md`, ran normal `./sync.sh`, and verified RTK regenerated the file and sync restored `~/.codex/AGENTS.md` to the SoT-managed relative import.
+- Destructive regression check run on 2026-05-11: `./sync.sh --force --remove-plugins` completed. `~/.claude/plugins/installed_plugins.json` was identical before/final; Claude marketplace keys/sources were identical before/final, with only `lastUpdated` timestamp churn during the first run. Codex force path replaced `config.toml`, refreshed RTK, restored `AGENTS.md`, installed the marketplace file, and reconciled the Docks marketplace record.

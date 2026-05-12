@@ -8,34 +8,34 @@ Portable configuration kit for AI coding agents. Per-tool Single Source of Truth
 
 Tool-specific instructions live alongside this file:
 - **`CLAUDE.md`** — Claude Code SoT (`SoT/.claude/`), env vars, hooks, plugins, RTK, status line, session management, permission mode, open concerns.
-- **`CODEX.md`** (planned) — Codex SoT (`SoT/.codex/`), CLI options, agent-config equivalents.
+- **`CODEX.md`** — Codex SoT (`SoT/.codex/`), plugin marketplace bootstrap, CLI launcher, and config notes.
 
 ## Repository layout (cross-cutting)
 
 | Path | Purpose |
 |------|---------|
 | `sync.sh` | Multi-tool deploy script. Detects which SoT directories exist and dispatches per-tool sync. Idempotent; flag-gated for destructive reconciliation |
-| `lib/` (planned) | Shared sync helpers — `common.sh` (jq merges, deep-merge primitives) plus per-tool `claude.sh` / `codex.sh`. See `docs/plans/` |
+| `lib/` | Shared sync helpers — `common.sh` for argument parsing/preflight, plus per-tool `claude.sh` / `codex.sh` sync implementations |
 | `alert_bubble.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
 | `docs/plans/` | Multi-commit work-item plans (`planned/` → `ongoing/` → `blocked/` / `scheduled/` / `finished/`). Convention: `docs/plans/AGENTS.md` |
-| `CLAUDE.md` / `CODEX.md` (planned) | Per-tool instructions; both import this `AGENTS.md` |
+| `CLAUDE.md` / `CODEX.md` | Per-tool instructions; both import this `AGENTS.md` |
 | `AGENTS.md` | This file — tool-agnostic instructions |
 
-For per-tool SoT layouts (`SoT/.claude/`, future `SoT/.codex/`), see the matching per-tool file.
+For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching per-tool file.
 
 ## Engineering rules
 
-- **Idempotent operations.** Every step in `sync.sh` (and future `lib/*.sh`) must be safe to re-run. Settings merges, plugin installs, and marketplace adds are all idempotent — re-running with no SoT changes is a no-op.
+- **Idempotent operations.** Every step in `sync.sh` and `lib/*.sh` must be safe to re-run. Settings merges, plugin installs, and marketplace adds are all idempotent — re-running with no SoT changes is a no-op.
 - **Additive by default.** Keys present in deployed config but absent from SoT are preserved on default sync. This protects user-only additions, but means drift accumulates — neither flag-less reset can clean it up.
 - **`--force` / `--remove-plugins` are the reconcile flags.** Orthogonal — `--force` wholesale-replaces the settings layer, `--remove-plugins` uninstalls plugins/marketplaces missing from SoT. Combine for a full reset to SoT. Each tool's per-tool file documents the specific paths and diff recipes.
-- **SOLID-aligned libraries** (planned, see `docs/plans/`). `lib/common.sh` owns shared primitives. Each `lib/<tool>.sh` owns the tool-specific bootstrap (CLI install, plugin install passes, marketplace add). Main `sync.sh` becomes a thin orchestrator: source common → detect SoTs → dispatch.
+- **SOLID-aligned libraries.** `lib/common.sh` owns shared primitives. Each `lib/<tool>.sh` owns the tool-specific bootstrap (CLI install, plugin install passes, marketplace add). Main `sync.sh` is a thin orchestrator: source common → detect SoTs → dispatch.
 - **Small, reviewable changes.** Bundled multi-concern PRs are harder to review and revert. Split a `sync.sh` change and a per-tool config change unless the change requires atomicity.
 - **Dry-run before destructive flags.** Always preview with `./sync.sh --dry-run` (or the relevant `diff <(jq -S …)` recipe in the per-tool file) before invoking `--force` or `--remove-plugins`. User-added permissions / env vars / plugins absent from SoT will be discarded.
 
 ## Code style
 
 - Bash: `set -euo pipefail`, quoted variables, `[[ ]]` over `[ ]`, function-scoped `local`. Match `sync.sh`.
-- JSON config: edit the SoT (`SoT/<tool>/`) and run `sync.sh`. Never edit deployed config (`~/.claude/`, future `~/.codex/`) directly.
+- JSON config: edit the SoT (`SoT/<tool>/`) and run `sync.sh`. Never edit deployed config (`~/.claude/`, `~/.codex/`) directly.
 
 ## Security
 
