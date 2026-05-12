@@ -97,6 +97,7 @@ codex::sync_config() {
   fi
 
   cp "$user_codex_settings" "$user_codex_settings.bak"
+  codex::merge_top_level_settings "$codex_settings" "$user_codex_settings"
   added_codex_plugins=0
 
   while IFS= read -r plugin_id; do
@@ -121,6 +122,49 @@ codex::sync_config() {
     rm -f "$user_codex_settings.bak"
     log "Codex config already in sync"
   fi
+}
+
+codex::merge_top_level_settings() {
+  local codex_settings="$1"
+  local user_codex_settings="$2"
+  local setting_line setting_key tmp_file
+
+  while IFS= read -r setting_line; do
+    [[ -z "$setting_line" ]] && continue
+    setting_key="${setting_line%%=*}"
+    setting_key="${setting_key%"${setting_key##*[![:space:]]}"}"
+
+    tmp_file="$user_codex_settings.tmp"
+    awk -v key="$setting_key" -v replacement="$setting_line" '
+      BEGIN { in_table = 0; replaced = 0 }
+      /^\[/ {
+        if (!replaced) {
+          print replacement
+          replaced = 1
+        }
+        in_table = 1
+        print
+        next
+      }
+      !in_table && $0 ~ ("^" key "[[:space:]]*=") {
+        if (!replaced) {
+          print replacement
+          replaced = 1
+        }
+        next
+      }
+      { print }
+      END {
+        if (!replaced) {
+          print replacement
+        }
+      }
+    ' "$user_codex_settings" > "$tmp_file" && mv "$tmp_file" "$user_codex_settings"
+  done < <(awk '
+    /^\[/ { exit }
+    /^[[:space:]]*($|#)/ { next }
+    /^[A-Za-z0-9_.-]+[[:space:]]*=/ { print }
+  ' "$codex_settings")
 }
 
 codex::install_launcher() {

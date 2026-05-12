@@ -1,6 +1,4 @@
-# Codex user config managed by ./sync.sh.
-# Default sync appends missing plugin blocks and preserves user-only settings.
-# Passing --force replaces ~/.codex/config.toml with this file.
+model_reasoning_effort = "xhigh"
 
 [plugins."docks@docks"]
 enabled = true

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Managed by DocksDocks/public sync.sh.
-# Stable Codex launcher for shells that do not source nvm before PATH lookup.
 set -euo pipefail
 
 NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
