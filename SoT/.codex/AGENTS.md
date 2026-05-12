@@ -46,16 +46,6 @@ Model-agnostic operating rules for coding-agent work.
 Treat these heuristics as protocol. If a turn violates an applicable rule, self-correct before continuing.
 </constraint>
 
-## Codex Skills And Plugins
-
-Codex user-scope plugin and skill state is synced by this kit from `SoT/.codex/`; the runtime config lives under `~/.codex/`, while personal marketplace metadata lives under `~/.agents/plugins/marketplace.json`.
-
-Docks is enabled as a Codex plugin for portable engineering-convention skills. In Codex it is skills-only: Claude Code slash commands and Claude subagents do not apply.
-
-<constraint>
-When a workflow depends on Docks skills, use the skill when Codex surfaces it; otherwise follow the same workflow manually and keep outputs grounded in files, commands, and tests.
-</constraint>
-
 ## Engineering Discipline
 
 - Prefer the repository's existing patterns and helpers over new abstractions.
