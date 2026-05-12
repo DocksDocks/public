@@ -23,6 +23,12 @@ if [[ -d "$REPO_DIR/SoT/.codex" ]]; then
   codex::sync
 fi
 
+if [[ -d "$REPO_DIR/SoT/.agents" ]]; then
+  # shellcheck source=lib/skills.sh
+  source "$REPO_DIR/lib/skills.sh"
+  skills::sync
+fi
+
 echo ""
 echo "--- Sync complete ---"
 echo "Repo:     $REPO_DIR"
@@ -32,6 +38,9 @@ fi
 if declare -F codex::summary >/dev/null 2>&1; then
   codex::summary
 fi
+if declare -F skills::summary >/dev/null 2>&1; then
+  skills::summary
+fi
 
 echo ""
 if declare -F claude::next_steps >/dev/null 2>&1; then
@@ -39,4 +48,7 @@ if declare -F claude::next_steps >/dev/null 2>&1; then
 fi
 if declare -F codex::next_steps >/dev/null 2>&1; then
   codex::next_steps
+fi
+if declare -F skills::next_steps >/dev/null 2>&1; then
+  skills::next_steps
 fi

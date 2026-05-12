@@ -58,3 +58,14 @@ Treat these heuristics as protocol. If a turn violates an applicable rule, self-
 <constraint>
 No secrets in committed config. Treat plugin marketplaces, installers, and downloaded artifacts as untrusted until verified.
 </constraint>
+
+## Agentic Engineering Discipline
+
+1. **State assumptions before coding.** If a requirement is ambiguous, surface the ambiguity and propose 1–2 concrete interpretations in your first message. Do not silently pick one and proceed.
+2. **Minimum code that solves the stated problem.** No speculative features, no abstractions without a second caller, no comments that restate what the code says.
+3. **Surgical changes only.** Do not modify code, comments, or formatting outside the explicit scope of the request. Surface unrelated issues as follow-ups — do not fix inline.
+4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works.
+
+<constraint>
+Treat the four rules above as preventive (during generation), not remedial (after the fact). Self-correct if a turn drifts.
+</constraint>

@@ -138,7 +138,9 @@ The docks plugin's commands already use Opus-orchestrator + sonnet-subagents int
 
 The kit sets `permissions.defaultMode: "auto"` and `skipAutoPermissionPrompt: true` — new sessions boot directly into auto mode with no entry confirmation. Docs: https://code.claude.com/docs/en/permission-modes.
 
-The classifier tradeoff: the classifier that gates each action in auto mode is an API call in its own right. When that service has a transient outage, every Edit/Bash is blocked until it recovers. When that happens, cycle away with `Shift+Tab` (`default` → `acceptEdits` → `plan` → `auto`) until the classifier recovers. Fallbacks are baked in anyway — see "Fallbacks" below.
+The `Shift+Tab` cycle — `default` → `acceptEdits` → `plan` → `auto` — is Claude Code's **autonomy slider** (Karpathy's framing from the [Software Is Changing (Again)](https://singjupost.com/andrej-karpathy-software-is-changing-again/) YC talk, June 2025: "less Iron Man robots and more Iron Man suits … partial autonomy products"). Cycle from the high-autonomy end down toward `default` for fine-grained review, back up for hands-off execution.
+
+The classifier tradeoff: the classifier that gates each action in auto mode is an API call in its own right. When that service has a transient outage, every Edit/Bash is blocked until it recovers. When that happens, cycle away with `Shift+Tab` until the classifier recovers. Fallbacks are baked in anyway — see "Fallbacks" below.
 
 **Requirements** for auto mode (the kit meets them on a Max subscription):
 - Plan: Max / Team / Enterprise / API (not Pro)
@@ -250,7 +252,7 @@ For plugins it runs six idempotent passes via the `claude plugin` CLI:
 | 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SoT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
 | 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SoT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
 
-`--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` (wholesale replace), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove). Default sync is additive on both layers — drift survives.
+`--force` and `--remove-plugins` are orthogonal: `--force` reconciles `settings.json` via jq merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--remove-plugins` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall kit-managed skills tracked in `~/.agents/.kit-managed-skills` that are no longer in `SoT/.agents/skills.txt`). Default sync is additive on all three layers — drift survives.
 
 #### When to use `--force` and `--remove-plugins`
 
@@ -258,9 +260,9 @@ The default merge is additive on both layers: keys present in `~/.claude/setting
 
 | Flag | Affects | Use when |
 |------|---------|----------|
-| `--force` | `~/.claude/settings.json` only | Removing/renaming a settings key in SoT (env var, permission, hook); resetting after a schema warning; user-only env vars / permissions diverged from SoT |
-| `--remove-plugins` | Plugin layer only (uninstall + marketplace remove) | Removed a plugin from SoT and want it gone from the machine, not just disabled; cleaning up extra marketplaces; reconciling `installed_plugins.json` |
-| `--force --remove-plugins` | Both layers | Full reset to SoT — bringing a divergent machine fully in line |
+| `--force` | `~/.claude/settings.json` (kit-owned keys only) | Removing/renaming a settings key in SoT (env var, permission, hook); resetting after a schema warning; dropping locally-added permissions that diverged from SoT. User-only top-level keys (custom env vars, mcpServers, theme overrides) survive untouched |
+| `--remove-plugins` | Plugin layer (uninstall + marketplace remove) + skills layer (uninstall kit-managed skills no longer declared in `SoT/.agents/skills.txt`; user-installed skills are never touched) | Removed a plugin or skill slug from SoT and want it gone from the machine; cleaning up extra marketplaces; reconciling kit-managed installs |
+| `--force --remove-plugins` | All three layers, kit-owned scope | Full reset to SoT's declared scope — bringing a divergent machine fully in line without trampling user-only additions |
 
 Before running either, diff first:
 
@@ -277,7 +279,7 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' SoT/.claude/settings.json) \
 ./sync.sh --force --remove-plugins
 ```
 
-User-added permissions, env vars, or plugins that don't exist in the SoT will be discarded — reconcile them into the SoT first if you want to keep them.
+User-added permissions arrays are discarded by `--force` (kit owns the permission model); user-added plugins and kit-managed skills missing from SoT are discarded by `--remove-plugins`. User-only top-level settings (custom env vars, mcpServers, theme overrides) and user-installed skills (not in `SoT/.agents/skills.txt`) are preserved — the kit only reconciles what it declares. If you want a locally-added permission or plugin to survive, add it to the SoT first.
 
 ### Troubleshooting
 

@@ -13,8 +13,8 @@ err()  { printf "\033[1;31m[err]\033[0m %s\n" "$1" >&2; }
 common::usage() {
   echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins]"
   echo ""
-  echo "  --force           replace tool settings with SoT where supported"
-  echo "  --remove-plugins  uninstall/remove plugin layer entries not in SoT where supported"
+  echo "  --force           reconcile kit-owned settings with SoT (SoT-declared keys win; user-only keys preserved; permissions arrays replaced)"
+  echo "  --remove-plugins  uninstall kit-managed installs not in SoT (plugins, marketplaces, skills declared in SoT/.agents/skills.txt)"
   echo "  --no-rtk          skip optional tool bootstrap"
   echo "  --dry-run         preview without applying"
 }

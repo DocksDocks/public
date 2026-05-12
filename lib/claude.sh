@@ -63,15 +63,22 @@ claude::sync_settings() {
   local user_settings="$CLAUDE_DIR/settings.json"
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] merge $repo_settings -> $user_settings"
-  elif [[ ! -f "$user_settings" || "$FORCE" -eq 1 ]]; then
-    [[ -f "$user_settings" ]] && cp "$user_settings" "$user_settings.bak"
-    cp "$repo_settings" "$user_settings"
-    if [[ -f "$user_settings.bak" ]]; then
-      log "Settings replaced (backup at settings.json.bak)"
+    if [[ ! -f "$user_settings" ]]; then
+      echo "[dry-run] install $repo_settings -> $user_settings"
+    elif [[ "$FORCE" -eq 1 ]]; then
+      echo "[dry-run] reconcile $repo_settings -> $user_settings (SoT keys win; permissions arrays replaced; user-only keys preserved)"
     else
-      log "Settings installed"
+      echo "[dry-run] merge $repo_settings -> $user_settings (SoT keys win; permissions arrays unioned; user-only keys preserved)"
     fi
+  elif [[ ! -f "$user_settings" ]]; then
+    cp "$repo_settings" "$user_settings"
+    log "Settings installed"
+  elif [[ "$FORCE" -eq 1 ]]; then
+    cp "$user_settings" "$user_settings.bak"
+    jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
+      "$repo_settings" "$user_settings" > "$user_settings.tmp" \
+      && mv "$user_settings.tmp" "$user_settings"
+    log "Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)"
   else
     cp "$user_settings" "$user_settings.bak"
     jq -s '
