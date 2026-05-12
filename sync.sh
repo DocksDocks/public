@@ -1,6 +1,6 @@
 #!/bin/bash
 # sync.sh — portable AI coding agent config sync
-# Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins]
+# Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--claude] [--codex] [--agents]
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,19 +11,19 @@ source "$REPO_DIR/lib/common.sh"
 common::parse_args "$@"
 common::preflight
 
-if [[ -d "$REPO_DIR/SoT/.claude" ]]; then
+if [[ "$SYNC_CLAUDE" -eq 1 && -d "$REPO_DIR/SoT/.claude" ]]; then
   # shellcheck source=lib/claude.sh
   source "$REPO_DIR/lib/claude.sh"
   claude::sync
 fi
 
-if [[ -d "$REPO_DIR/SoT/.codex" ]]; then
+if [[ "$SYNC_CODEX" -eq 1 && -d "$REPO_DIR/SoT/.codex" ]]; then
   # shellcheck source=lib/codex.sh
   source "$REPO_DIR/lib/codex.sh"
   codex::sync
 fi
 
-if [[ -d "$REPO_DIR/SoT/.agents" ]]; then
+if [[ "$SYNC_AGENTS" -eq 1 && -d "$REPO_DIR/SoT/.agents" ]]; then
   # shellcheck source=lib/skills.sh
   source "$REPO_DIR/lib/skills.sh"
   skills::sync
