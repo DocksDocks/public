@@ -81,10 +81,11 @@ compute_delta() {
   days=$(( diff / 86400 ))
   hours=$(( (diff % 86400) / 3600 ))
   minutes=$(( (diff % 3600) / 60 ))
+  # Show only the largest non-zero unit; truncate smaller (2h 13m → 2h).
   if [ "$days" -gt 0 ]; then
-    echo "${days}d ${hours}h"
+    echo "${days}d"
   elif [ "$hours" -gt 0 ]; then
-    echo "${hours}h ${minutes}m"
+    echo "${hours}h"
   else
     echo "${minutes}m"
   fi
