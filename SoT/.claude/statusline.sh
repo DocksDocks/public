@@ -1,7 +1,6 @@
 #!/bin/bash
-# Claude Code status line — two-line display inspired by claude-watch.
-# Line 1: Model | folder • branch
-# Line 2: 5h X% (Xh Xm) • 7d X% (Xd Xh) | ctx X% (Xk/Xk)
+# Claude Code status line — single-line display inspired by claude-watch.
+# Layout: model | folder • branch | ctx X% (Xk/Xk) | 5h X% (Xh Xm) • 7d X% (Xd Xh)
 # Cross-platform: works on both macOS and Linux.
 
 input=$(cat)
@@ -32,21 +31,14 @@ model=$(echo "$input" | jq -r '.model.display_name // ""')
 dir=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
 dir_name=$(basename "$dir")
 
-# --- git branch (cached 5s) ---
-GIT_CACHE="/tmp/statusline-git-cache"
+# --- git branch (per-invocation, no cache) ---
+# Previously cached to /tmp/statusline-git-cache with a 5s TTL, but that
+# leaked branches across concurrent sessions in different worktrees: any
+# session reading the cache within 5s of another saw the other's branch.
+# `git -C "$dir" symbolic-ref` is sub-5ms; not worth caching.
 branch=""
-cache_stale=1
-if [ -f "$GIT_CACHE" ]; then
-  age=$(( $(date +%s) - $(file_mtime "$GIT_CACHE") ))
-  [ "$age" -lt 5 ] && cache_stale=0
-fi
-if [ "$cache_stale" -eq 1 ]; then
-  if [ -d "${dir}/.git" ] || git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
-    branch=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null || git -C "$dir" rev-parse --short HEAD 2>/dev/null)
-  fi
-  echo "$branch" > "$GIT_CACHE"
-else
-  branch=$(cat "$GIT_CACHE")
+if [ -d "${dir}/.git" ] || git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
+  branch=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null || git -C "$dir" rev-parse --short HEAD 2>/dev/null)
 fi
 
 # --- usage stats from cache ---
@@ -138,7 +130,13 @@ if [ -n "$branch" ]; then
   printf "\033[1m\033[38;2;192;103;222m%s\033[22m\033[0m" "$branch"
 fi
 
-# Single-line: usage section opens with separator (ctx has its own | below)
+# Usage groups in order: ctx | 5h • 7d. Each group opens with `|`; the 5h/7d
+# pair share a soft-dot separator.
+if [ -n "$ctx_str" ]; then
+  printf "\033[90m | \033[0m"
+  printf "\033[38;2;130;160;230mctx %s\033[0m" "$ctx_str"
+  [ -n "$ctx_tokens_str" ] && printf " \033[2m\033[38;2;156;162;175m(%s)\033[0m" "$ctx_tokens_str"
+fi
 if [ -n "$five_h" ] || [ -n "$seven_d" ]; then
   printf "\033[90m | \033[0m"
 fi
@@ -156,10 +154,5 @@ if [ -n "$seven_d" ]; then
     delta=$(compute_delta "$seven_d_reset")
     [ -n "$delta" ] && printf " \033[2m\033[38;2;156;162;175m(%s)\033[0m" "$delta"
   fi
-fi
-if [ -n "$ctx_str" ]; then
-  printf "\033[90m | \033[0m"
-  printf "\033[38;2;130;160;230mctx %s\033[0m" "$ctx_str"
-  [ -n "$ctx_tokens_str" ] && printf " \033[2m\033[38;2;156;162;175m(%s)\033[0m" "$ctx_tokens_str"
 fi
 printf "\n"

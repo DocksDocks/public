@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Managed by DocksDocks/public sync.sh — see lib/codex.sh::install_launcher.
+# This marker is how the kit identifies its own deployed copy on subsequent syncs.
 set -euo pipefail
 
 NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
