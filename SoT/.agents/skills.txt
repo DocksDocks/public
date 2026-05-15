@@ -1,9 +1,10 @@
 # Universal AI-agent skills (agentskills.io standard).
 # Bootstrapped to ~/.agents/skills/ by lib/skills.sh during ./sync.sh.
 # One slug per line: <owner>/<repo>. Lines starting with # are comments.
-# Tools that follow the universal path (Codex, Cursor, Cline, ...) pick these up
-# automatically; the skills CLI also symlinks them into ~/.claude/skills/ for
-# Claude Code.
+# Each skill's canonical SKILL.md lands in ~/.agents/skills/<name>/ — Codex
+# reads that path natively; Claude Code gets a ~/.claude/skills/<name>
+# symlink to it. lib/skills.sh names both agents the kit supports
+# (-a claude-code codex) so the CLI keeps the shared canonical copy.
 
 # Browser automation CLI — reaches JS-rendered, auth-walled, login-gated pages
 # (x.com, LinkedIn, Confluence) that built-in WebFetch can't. `lib/skills.sh`
