@@ -26,6 +26,7 @@ parse_epoch() {
 
 # --- model ---
 model=$(echo "$input" | jq -r '.model.display_name // ""')
+model="${model%% (*}"  # strip parenthetical suffix: "Opus 4.7 (1M context)" → "Opus 4.7"
 
 # --- folder ---
 dir=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
