@@ -327,8 +327,12 @@ codex::sync_marketplace() {
   jq . "$codex_marketplace" >/dev/null
 
   if [[ -f "$user_codex_marketplace" && "$FORCE" -eq 0 ]]; then
+    if ! jq empty "$user_codex_marketplace" 2>/dev/null; then
+      err "Skipping marketplace sync: $user_codex_marketplace is not valid JSON. Fix or delete it."
+      return
+    fi
     cp "$user_codex_marketplace" "$user_codex_marketplace.bak"
-    jq -s '
+    if ! jq -s '
       .[0] as $repo | .[1] as $user |
       ($user * {name: ($user.name // $repo.name), interface: ($user.interface // $repo.interface)}) |
       .plugins = (
@@ -337,8 +341,12 @@ codex::sync_marketplace() {
         | unique_by(.name)
         | reverse
       )
-    ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp" \
-      && mv "$user_codex_marketplace.tmp" "$user_codex_marketplace"
+    ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"; then
+      rm -f "$user_codex_marketplace.tmp"
+      err "jq marketplace merge failed — marketplace unchanged (backup at marketplace.json.bak)"
+      return
+    fi
+    mv "$user_codex_marketplace.tmp" "$user_codex_marketplace"
     log "Codex marketplace merged (backup at marketplace.json.bak)"
   else
     [[ -f "$user_codex_marketplace" ]] && cp "$user_codex_marketplace" "$user_codex_marketplace.bak"

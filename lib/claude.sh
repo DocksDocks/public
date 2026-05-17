@@ -73,22 +73,33 @@ claude::sync_settings() {
   elif [[ ! -f "$user_settings" ]]; then
     cp "$repo_settings" "$user_settings"
     log "Settings installed"
+  elif ! jq empty "$user_settings" 2>/dev/null; then
+    err "Skipping settings sync: $user_settings is not valid JSON. Fix it manually or delete it to reinstall."
+    return
   elif [[ "$FORCE" -eq 1 ]]; then
     cp "$user_settings" "$user_settings.bak"
-    jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
-      "$repo_settings" "$user_settings" > "$user_settings.tmp" \
-      && mv "$user_settings.tmp" "$user_settings"
+    if ! jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
+         "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
+      rm -f "$user_settings.tmp"
+      err "jq reconcile failed — settings unchanged (backup at settings.json.bak)"
+      return
+    fi
+    mv "$user_settings.tmp" "$user_settings"
     log "Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)"
   else
     cp "$user_settings" "$user_settings.bak"
-    jq -s '
+    if ! jq -s '
       .[0] as $repo | .[1] as $user |
       ($user * $repo) |
       .permissions.allow = (($user.permissions.allow // []) + ($repo.permissions.allow // []) | unique) |
       .permissions.deny  = (($user.permissions.deny  // []) + ($repo.permissions.deny  // []) | unique) |
       .permissions.ask   = (($user.permissions.ask   // []) + ($repo.permissions.ask   // []) | unique)
-    ' "$repo_settings" "$user_settings" > "$user_settings.tmp" \
-      && mv "$user_settings.tmp" "$user_settings"
+    ' "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
+      rm -f "$user_settings.tmp"
+      err "jq merge failed — settings unchanged (backup at settings.json.bak)"
+      return
+    fi
+    mv "$user_settings.tmp" "$user_settings"
     log "Settings merged (backup at settings.json.bak)"
   fi
 }
@@ -102,8 +113,16 @@ claude::sync_claude_json() {
   fi
 
   if [[ -f "$claude_json" ]]; then
-    jq '.showTurnDuration = true' "$claude_json" > "$claude_json.tmp" \
-      && mv "$claude_json.tmp" "$claude_json"
+    if ! jq empty "$claude_json" 2>/dev/null; then
+      err "Skipping ~/.claude.json edit: not valid JSON. Fix or delete it."
+      return
+    fi
+    if ! jq '.showTurnDuration = true' "$claude_json" > "$claude_json.tmp"; then
+      rm -f "$claude_json.tmp"
+      err "jq edit of ~/.claude.json failed — file unchanged"
+      return
+    fi
+    mv "$claude_json.tmp" "$claude_json"
   else
     echo '{"showTurnDuration": true}' > "$claude_json"
   fi
