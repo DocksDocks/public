@@ -30,7 +30,7 @@ skills::sync() {
 }
 
 skills::sync_universal() {
-  local slug basename added=0 already=0 failed=0
+  local slug basename added=0 already=0 failed=0 healed=0
 
   if ! command -v node >/dev/null 2>&1; then
     warn "node/npx not in PATH — skipping universal skills bootstrap (install Node.js to enable)"
@@ -45,6 +45,7 @@ skills::sync_universal() {
       basename="${slug##*/}"
       if [[ -d "$SKILLS_DIR/$basename" ]]; then
         echo "[dry-run] universal skill present: $basename"
+        skills::heal_claude_symlink "$basename"
       else
         echo "[dry-run] npx skills add $slug -g -y -a claude-code codex"
       fi
@@ -61,6 +62,9 @@ skills::sync_universal() {
 
     if [[ -d "$SKILLS_DIR/$basename" ]]; then
       already=$((already + 1))
+      if skills::heal_claude_symlink "$basename"; then
+        healed=$((healed + 1))
+      fi
       continue
     fi
 
@@ -83,9 +87,54 @@ skills::sync_universal() {
   else
     log "Universal skills already in sync ($already present)"
   fi
+  if [[ "$healed" -gt 0 ]]; then
+    log "Claude per-tool symlinks healed (+$healed) — canonical present, ~/.claude/skills/<name> was missing or broken"
+  fi
   if [[ "$failed" -gt 0 ]]; then
     warn "$failed skill install(s) failed — re-run sync or install manually with: npx skills add <slug> -g -y -a claude-code codex"
   fi
+}
+
+# Recreate ~/.claude/skills/<basename> → ../../.agents/skills/<basename>
+# when canonical exists but the per-tool symlink is missing or broken.
+# Matches the relative path the upstream `skills` CLI writes
+# (vercel-labs/skills installer.ts:createSymlink uses relative(parentDir, target)).
+# Idempotent: leaves correct symlinks alone; replaces stale/broken symlinks.
+# Skips real (non-symlink) directories to avoid destroying user content.
+# Returns 0 when a heal occurred, 1 otherwise (so callers can tally).
+skills::heal_claude_symlink() {
+  local basename="$1"
+  local canonical="$SKILLS_DIR/$basename"
+  local claude_skills_dir="$HOME/.claude/skills"
+  local claude_link="$claude_skills_dir/$basename"
+  local rel_target="../../.agents/skills/$basename"
+
+  [[ -d "$canonical" ]] || return 1
+
+  if [[ -L "$claude_link" ]]; then
+    local current
+    current="$(readlink "$claude_link" 2>/dev/null || true)"
+    if [[ "$current" == "$rel_target" ]]; then
+      return 1
+    fi
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] would replace stale Claude symlink: ~/.claude/skills/$basename -> $current  (correct: $rel_target)"
+      return 0
+    fi
+    rm -f "$claude_link"
+  elif [[ -e "$claude_link" ]]; then
+    warn "~/.claude/skills/$basename exists as a real path (not a symlink) — leaving alone; remove manually if it's stale"
+    return 1
+  else
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] would create missing Claude symlink: ~/.claude/skills/$basename -> $rel_target"
+      return 0
+    fi
+  fi
+
+  mkdir -p "$claude_skills_dir"
+  ln -s "$rel_target" "$claude_link"
+  return 0
 }
 
 skills::sync_agent_browser_cli() {
