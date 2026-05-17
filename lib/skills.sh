@@ -45,7 +45,7 @@ skills::sync_universal() {
       basename="${slug##*/}"
       if [[ -d "$SKILLS_DIR/$basename" ]]; then
         echo "[dry-run] universal skill present: $basename"
-        skills::heal_claude_symlink "$basename"
+        skills::heal_claude_symlink "$basename" || true
       else
         echo "[dry-run] npx skills add $slug -g -y -a claude-code codex"
       fi
@@ -146,7 +146,7 @@ skills::sync_agent_browser_cli() {
     Linux*) install_flags+=(--with-deps) ;;  # may prompt sudo for libnss3/libatk
   esac
 
-  grep -q '^vercel-labs/agent-browser$' "$SKILLS_MANIFEST" 2>/dev/null || return
+  grep -q '^vercel-labs/agent-browser$' "$SKILLS_MANIFEST" 2>/dev/null || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     if command -v agent-browser >/dev/null 2>&1; then
@@ -175,7 +175,7 @@ skills::sync_agent_browser_cli() {
   fi
 
   log "Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)..."
-  if agent-browser install "${install_flags[@]}"; then
+  if agent-browser install ${install_flags[@]+"${install_flags[@]}"}; then
     log "agent-browser CLI ready ($(agent-browser --version 2>/dev/null || echo 'version unknown'))"
   else
     warn "agent-browser install failed. Re-run manually: agent-browser install ${install_flags[*]:-}"
@@ -208,7 +208,7 @@ skills::reconcile_removals() {
     [[ -n "$slug" ]] && snapshot_slugs+=("$slug")
   done < "$SKILLS_SNAPSHOT"
 
-  for slug in "${snapshot_slugs[@]}"; do
+  for slug in ${snapshot_slugs[@]+"${snapshot_slugs[@]}"}; do
     if [[ ${#current_slugs[@]} -gt 0 ]] && printf '%s\n' "${current_slugs[@]}" | grep -qx "$slug"; then
       continue
     fi
