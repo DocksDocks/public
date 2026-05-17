@@ -247,7 +247,7 @@ claude::sync_rtk() {
     latest_tag=$(curl -fsSL --max-time 5 "https://api.github.com/repos/rtk-ai/rtk/releases/latest" 2>/dev/null \
       | jq -r '.tag_name // empty' 2>/dev/null | sed 's/^v//' || true)
     if [[ -n "$latest_tag" && -n "$installed_ver" && "$latest_tag" != "$installed_ver" ]]; then
-      newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -V | tail -n1)
+      newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
       if [[ "$newer" == "$latest_tag" ]]; then
         warn "RTK $installed_ver is outdated (latest $latest_tag).
   Review:   https://github.com/rtk-ai/rtk/releases/tag/v$latest_tag (changelog + release author)
