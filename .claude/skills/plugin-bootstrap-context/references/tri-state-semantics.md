@@ -1,0 +1,48 @@
+# Plugin Tri-State Semantics
+
+## Critical Constraint
+
+The removal guard is `has($n)` NOT truthiness. `false`-valued keys PASS `has()` and are KEPT on `--remove-plugins`. (lib/claude.sh:198)
+
+## Value × Scenario Matrix
+
+| `enabledPlugins` value | Default sync | `--remove-plugins` | Per-project `true` | Claude Code default state |
+|------------------------|-------------|-------------------|-------------------|--------------------------|
+| `true` | Installed | Kept | N/A (already on) | Globally enabled |
+| `false` | Installed | Kept | Activates for that project | Globally disabled |
+| absent | Not installed | Uninstalled (if installed) | Cannot activate | N/A |
+
+## Real Examples from `SoT/.claude/settings.json`
+
+| Plugin ID | Value | Effect |
+|-----------|-------|--------|
+| `docks@docks` | `true` | Installed and active in every project |
+| `n8n-mcp-skills@n8n-mcp-skills` | `false` | Installed; disabled globally; enabled only in `n8n-workflows/.claude/settings.json` |
+| `supabase@claude-plugins-official` | `false` | Installed; disabled globally; enabled only in Supabase projects |
+
+## Per-Project Enable Pattern
+
+```json
+// project/.claude/settings.json
+{
+  "enabledPlugins": {
+    "n8n-mcp-skills@n8n-mcp-skills": true
+  }
+}
+```
+
+Requirement: the key `n8n-mcp-skills@n8n-mcp-skills` MUST exist in user-scope `~/.claude/settings.json` (even as `false`) or Claude Code silently ignores the project-level override.
+
+## Changing from `false` to absent (removing a plugin)
+
+1. Delete the key from `SoT/.claude/settings.json` `enabledPlugins`
+2. Run `./sync.sh --force --remove-plugins`
+   - `--force`: `$user * $repo` propagates the key deletion to `~/.claude/settings.json`
+   - `--remove-plugins`: Pass 5 detects `has()` fails → uninstalls
+
+Without `--force`, the key survives in `~/.claude/settings.json` (additive merge preserves user keys). `--remove-plugins` alone would find the key still present and not uninstall.
+
+## Gotchas
+
+- Official plugins auto-installed by Claude Code (context7, frontend-design, etc.) are not in `enabledPlugins`. They survive `--remove-plugins` because Pass 5 reads installed plugins from `installed_plugins.json` and checks them against `enabledPlugins`. If an official auto-install is not in SoT `enabledPlugins`, it IS uninstalled by Pass 5. Add it to `enabledPlugins: true` to protect it.
+- `claude-plugins-official` marketplace is unconditionally protected in Pass 6 (lib/claude.sh:212) — it is never removed regardless of SoT content.
