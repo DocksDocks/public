@@ -183,7 +183,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "ffplay -nodisp -autoexit ~/.claude/alert_bubble.mp3",
+            "command": "[ -x \"$HOME/.claude/hooks/notify.sh\" ] && \"$HOME/.claude/hooks/notify.sh\" || true",
             "timeout": 10,
             "async": true
           }
