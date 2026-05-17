@@ -4,9 +4,6 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
 
-[features]
-use_legacy_landlock = true
-
 [tui]
 status_line_use_colors = true
 status_line = [

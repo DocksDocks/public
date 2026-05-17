@@ -18,6 +18,8 @@ codex::sync() {
   local codex_marketplace="$REPO_DIR/SoT/.codex/plugins/marketplace.json"
   local user_codex_marketplace="$AGENTS_DIR/plugins/marketplace.json"
 
+  codex::ensure_bubblewrap
+
   if [[ "$DRY_RUN" -eq 1 ]]; then
     [[ -f "$codex_settings" ]] && echo "[dry-run] merge $codex_settings -> $user_codex_settings"
     [[ -d "$codex_rules_dir" ]] && echo "[dry-run] cp $codex_rules_dir/*.rules -> $user_codex_rules_dir/"
@@ -41,6 +43,62 @@ codex::sync() {
   codex::install_launcher "$codex_bin" "$user_codex_bin"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
   codex::bootstrap_marketplace
+}
+
+# Codex uses bubblewrap as its Linux sandbox runtime. macOS uses Seatbelt natively.
+codex::ensure_bubblewrap() {
+  case "$(uname -s)" in
+    Darwin*) return ;;
+    Linux*) ;;
+    *) warn "Unknown OS — skipping bubblewrap check; Codex sandbox may not work"; return ;;
+  esac
+
+  if command -v bwrap >/dev/null 2>&1; then
+    return
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] would install bubblewrap (Codex Linux sandbox prerequisite)"
+    return
+  fi
+
+  if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
+    warn "bubblewrap not installed (--no-rtk skips auto-install). Codex Linux sandbox will fail. Install manually: sudo apt install -y bubblewrap"
+    return
+  fi
+
+  local pm_install=""
+  if command -v apt-get >/dev/null 2>&1; then
+    pm_install="sudo apt-get install -y bubblewrap"
+  elif command -v dnf >/dev/null 2>&1; then
+    pm_install="sudo dnf install -y bubblewrap"
+  elif command -v pacman >/dev/null 2>&1; then
+    pm_install="sudo pacman -S --noconfirm bubblewrap"
+  elif command -v zypper >/dev/null 2>&1; then
+    pm_install="sudo zypper install -y bubblewrap"
+  fi
+
+  if [[ -z "$pm_install" ]]; then
+    warn "bubblewrap not installed and no supported package manager found (apt-get/dnf/pacman/zypper). Codex Linux sandbox requires it — install manually."
+    return
+  fi
+
+  warn "bubblewrap not installed — required for Codex Linux sandbox. Running: $pm_install (sudo prompt may appear)"
+  if ! eval "$pm_install"; then
+    warn "Failed to auto-install bubblewrap. Install manually: $pm_install"
+    return
+  fi
+
+  if ! command -v bwrap >/dev/null 2>&1; then
+    warn "Package install reported success but bwrap not on PATH — check installation manually"
+    return
+  fi
+
+  if unshare -Ur true >/dev/null 2>&1; then
+    log "bubblewrap installed and functional ($(bwrap --version 2>/dev/null | head -1))"
+  else
+    warn "bubblewrap installed but unprivileged user namespaces blocked. On Ubuntu 24+ try: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
+  fi
 }
 
 codex::sync_rules() {
@@ -114,6 +172,7 @@ codex::sync_config() {
   fi
 
   cp "$user_codex_settings" "$user_codex_settings.bak"
+  codex::scrub_deprecated_features "$user_codex_settings"
   codex::merge_top_level_settings "$codex_settings" "$user_codex_settings"
   codex::merge_table_settings "$codex_settings" "$user_codex_settings"
 
@@ -122,6 +181,51 @@ codex::sync_config() {
   else
     log "Codex config merged (backup at config.toml.bak)"
   fi
+}
+
+# Drop deprecated [features].use_legacy_landlock and the [features] table if
+# that was its only key. Codex emits a "deprecated" warning on every run while
+# the key is present (value=false still warns). bubblewrap is the default Linux
+# sandbox now; removing the override lets Codex pick it up automatically.
+codex::scrub_deprecated_features() {
+  local user_codex_settings="$1"
+
+  [[ -f "$user_codex_settings" ]] || return 0
+  grep -q '^use_legacy_landlock[[:space:]]*=' "$user_codex_settings" || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] scrub deprecated [features].use_legacy_landlock from $user_codex_settings"
+    return
+  fi
+
+  local tmp="$user_codex_settings.tmp"
+  awk '
+    in_features {
+      if (/^\[/) {
+        in_features = 0
+        if (keep) { print header; printf "%s", body }
+        print
+        next
+      }
+      if (/^use_legacy_landlock[[:space:]]*=/) next
+      body = body $0 "\n"
+      if (/[^[:space:]]/) keep = 1
+      next
+    }
+    /^\[features\][[:space:]]*$/ {
+      in_features = 1
+      header = $0
+      body = ""
+      keep = 0
+      next
+    }
+    { print }
+    END {
+      if (in_features && keep) { print header; printf "%s", body }
+    }
+  ' "$user_codex_settings" > "$tmp" && mv "$tmp" "$user_codex_settings"
+
+  log "Codex: scrubbed deprecated [features].use_legacy_landlock"
 }
 
 codex::merge_top_level_settings() {
