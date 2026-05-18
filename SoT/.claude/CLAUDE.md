@@ -86,7 +86,23 @@ When adding a new agent: use kebab-case name matching filename, CSO-compliant de
 ## Agentic Engineering Discipline
 
 1. **State assumptions before coding.** If a requirement is ambiguous, surface the ambiguity and propose 1–2 concrete interpretations in your first message. Do not silently pick one and proceed.
-2. **Minimum code that solves the stated problem.** No speculative features, no abstractions without a second caller, no comments that restate what the code says.
+2. **Minimum code that solves the stated problem.** Each named pattern below is a defect — catch it during generation, not after:
+
+   **Code slop**
+   - **Defensive guards** around internally-trusted calls (`try`, `if x != null`). Validate at system boundaries only.
+   - **Speculative abstraction.** No helper for one caller; no interface for one implementer. Three similar lines beats premature DRY.
+   - **Backwards-compat shims** without a caller — re-exports, deprecation aliases, untoggled feature flags. Just change the code.
+   - **Half-finished stubs.** `TODO handle later`, `throw new Error('not implemented')`. Implement or remove the path.
+   - **Underscore-rename of unused vars.** Delete the var.
+
+   **Comment slop**
+   - **Restate-the-code.** `// increment i`. The identifier already says it.
+   - **Provenance.** `// added for ticket X`, `// used by Y`. Belongs in the PR description; rots in code.
+   - **Tombstones.** `// removed Z`, `// previously did W`. Git remembers.
+   - **Docstring bloat** on self-evident functions. One line, only when the WHY isn't obvious from the name.
+
+   **Output slop**
+   - **End-of-turn diff-restatement.** One or two sentences: what changed, what's next. Don't recap what's in the diff.
 3. **Surgical changes only.** Do not modify code, comments, or formatting outside the explicit scope of the request. Surface unrelated issues as follow-ups — do not fix inline.
 4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works.
 
