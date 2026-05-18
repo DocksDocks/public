@@ -9,10 +9,11 @@ TARGET_FILTER_SET=${TARGET_FILTER_SET:-0}
 SYNC_CLAUDE=${SYNC_CLAUDE:-0}
 SYNC_CODEX=${SYNC_CODEX:-0}
 SYNC_AGENTS=${SYNC_AGENTS:-0}
+AGENTS_DIR="${AGENTS_DIR:-$HOME/.agents}"
 
-log()  { printf "\033[1;32m[ok]\033[0m %s\n" "$1"; }
-warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$1"; }
-err()  { printf "\033[1;31m[err]\033[0m %s\n" "$1" >&2; }
+log()  { printf "\033[1;32m[ok]\033[0m %s\n"   "$1" >&2; }
+warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$1" >&2; }
+err()  { printf "\033[1;31m[err]\033[0m %s\n"  "$1" >&2; }
 
 common::usage() {
   echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--claude] [--codex] [--agents]"

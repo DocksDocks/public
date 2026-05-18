@@ -1,9 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# Source-order guards: this lib depends on common.sh's log/warn/err and on
+# sync.sh's REPO_DIR. Fail fast with a clear message if sourced standalone.
+declare -F log >/dev/null 2>&1 || { printf '\033[1;31m[err]\033[0m %s\n' "lib/codex.sh must be sourced after lib/common.sh" >&2; exit 1; }
+[[ -n "${REPO_DIR:-}" ]] || { printf '\033[1;31m[err]\033[0m %s\n' "REPO_DIR must be set before sourcing lib/codex.sh" >&2; exit 1; }
+
 codex::sync() {
   CODEX_DIR="$HOME/.codex"
-  AGENTS_DIR="$HOME/.agents"
   CODEX_SYNCED=1
 
   local codex_settings="$REPO_DIR/SoT/.codex/config.toml"
@@ -18,24 +22,10 @@ codex::sync() {
   local codex_marketplace="$REPO_DIR/SoT/.codex/plugins/marketplace.json"
   local user_codex_marketplace="$AGENTS_DIR/plugins/marketplace.json"
 
+  # Per-stage dry-run pattern: each helper owns its own [[ DRY_RUN ]] echo +
+  # early return. codex::sync is the dispatcher and never inspects DRY_RUN.
   codex::ensure_bubblewrap
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    [[ -f "$codex_settings" ]] && echo "[dry-run] merge $codex_settings -> $user_codex_settings"
-    [[ -d "$codex_rules_dir" ]] && echo "[dry-run] cp $codex_rules_dir/*.rules -> $user_codex_rules_dir/"
-    [[ -f "$codex_agents_md" ]] && echo "[dry-run] cp $codex_agents_md -> $user_codex_agents_md"
-    if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 0 ]]; then
-      echo "[dry-run] refresh Codex RTK.md with rtk init -g --codex"
-    else
-      echo "[dry-run] skip Codex RTK init (--no-rtk)"
-    fi
-    [[ -f "$codex_bin" ]] && echo "[dry-run] install $codex_bin -> $user_codex_bin"
-    [[ -f "$codex_marketplace" ]] && echo "[dry-run] cp $codex_marketplace -> $user_codex_marketplace"
-    echo "[dry-run] bootstrap Codex marketplace DocksDocks/docks when codex CLI is available"
-    return
-  fi
-
-  mkdir -p "$CODEX_DIR"
+  [[ "$DRY_RUN" -eq 0 ]] && mkdir -p "$CODEX_DIR"
   codex::sync_config "$codex_settings" "$user_codex_settings"
   codex::sync_rules "$codex_rules_dir" "$user_codex_rules_dir"
   codex::sync_agents_md "$codex_agents_md" "$user_codex_agents_md"
@@ -47,37 +37,21 @@ codex::sync() {
 
 # Codex uses bubblewrap as its Linux sandbox runtime. macOS uses Seatbelt natively.
 codex::ensure_bubblewrap() {
-  case "$(uname -s)" in
-    Darwin*) return ;;
-    Linux*) ;;
-    *) warn "Unknown OS — skipping bubblewrap check; Codex sandbox may not work"; return ;;
-  esac
-
-  if command -v bwrap >/dev/null 2>&1; then
-    return
-  fi
-
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] would install bubblewrap (Codex Linux sandbox prerequisite)"
+    echo "[dry-run] verify bubblewrap installed (Codex Linux sandbox prerequisite)"
     return
   fi
+
+  codex::_bwrap_supported_os || return
+  command -v bwrap >/dev/null 2>&1 && return
 
   if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
     warn "bubblewrap not installed (--no-rtk skips auto-install). Codex Linux sandbox will fail. Install manually: sudo apt install -y bubblewrap"
     return
   fi
 
-  local pm_install=""
-  if command -v apt-get >/dev/null 2>&1; then
-    pm_install="sudo apt-get install -y bubblewrap"
-  elif command -v dnf >/dev/null 2>&1; then
-    pm_install="sudo dnf install -y bubblewrap"
-  elif command -v pacman >/dev/null 2>&1; then
-    pm_install="sudo pacman -S --noconfirm bubblewrap"
-  elif command -v zypper >/dev/null 2>&1; then
-    pm_install="sudo zypper install -y bubblewrap"
-  fi
-
+  local pm_install
+  pm_install=$(codex::_bwrap_detect_pm_install_cmd)
   if [[ -z "$pm_install" ]]; then
     warn "bubblewrap not installed and no supported package manager found (apt-get/dnf/pacman/zypper). Codex Linux sandbox requires it — install manually."
     return
@@ -94,6 +68,36 @@ codex::ensure_bubblewrap() {
     return
   fi
 
+  codex::_bwrap_verify_userns
+}
+
+# Returns 0 if the current OS supports bubblewrap (Linux); 1 otherwise. macOS
+# uses Seatbelt natively so bwrap is not needed; unknown OSes get a warning.
+codex::_bwrap_supported_os() {
+  case "$(uname -s)" in
+    Darwin*) return 1 ;;
+    Linux*) return 0 ;;
+    *) warn "Unknown OS — skipping bubblewrap check; Codex sandbox may not work"; return 1 ;;
+  esac
+}
+
+# Echoes the `sudo <pm> install -y bubblewrap` command for the first PM found
+# on PATH (apt-get -> dnf -> pacman -> zypper); empty string if none found.
+codex::_bwrap_detect_pm_install_cmd() {
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "sudo apt-get install -y bubblewrap"
+  elif command -v dnf >/dev/null 2>&1; then
+    echo "sudo dnf install -y bubblewrap"
+  elif command -v pacman >/dev/null 2>&1; then
+    echo "sudo pacman -S --noconfirm bubblewrap"
+  elif command -v zypper >/dev/null 2>&1; then
+    echo "sudo zypper install -y bubblewrap"
+  fi
+}
+
+# Probe whether unprivileged user namespaces work — bubblewrap needs them at
+# runtime. On Ubuntu 24+ AppArmor blocks them by default.
+codex::_bwrap_verify_userns() {
   if unshare -Ur true >/dev/null 2>&1; then
     log "bubblewrap installed and functional ($(bwrap --version 2>/dev/null | head -1))"
   else
@@ -107,6 +111,11 @@ codex::sync_rules() {
   local rule_file user_rule_file rules_synced=0
 
   [[ -d "$codex_rules_dir" ]] || return
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] cp $codex_rules_dir/*.rules -> $user_codex_rules_dir/"
+    return
+  fi
 
   mkdir -p "$user_codex_rules_dir"
   while IFS= read -r rule_file; do
@@ -126,6 +135,11 @@ codex::sync_agents_md() {
 
   [[ -f "$codex_agents_md" ]] || return
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] cp $codex_agents_md -> $user_codex_agents_md"
+    return
+  fi
+
   cp "$codex_agents_md" "$user_codex_agents_md"
   log "Codex AGENTS.md synced"
 }
@@ -136,6 +150,15 @@ codex::sync_rtk() {
   local user_codex_rtk_md="$3"
 
   [[ -f "$codex_agents_md" ]] || return
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 0 ]]; then
+      echo "[dry-run] refresh Codex RTK.md with rtk init -g --codex"
+    else
+      echo "[dry-run] skip Codex RTK init (--no-rtk)"
+    fi
+    return
+  fi
 
   if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
     warn "Skipping Codex RTK init (--no-rtk)"
@@ -165,6 +188,11 @@ codex::sync_config() {
 
   [[ -f "$codex_settings" ]] || return
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] merge $codex_settings -> $user_codex_settings"
+    return
+  fi
+
   if [[ ! -f "$user_codex_settings" ]]; then
     cp "$codex_settings" "$user_codex_settings"
     log "Codex config installed"
@@ -172,9 +200,14 @@ codex::sync_config() {
   fi
 
   cp "$user_codex_settings" "$user_codex_settings.bak"
-  codex::scrub_deprecated_features "$user_codex_settings"
-  codex::merge_top_level_settings "$codex_settings" "$user_codex_settings"
-  codex::merge_table_settings "$codex_settings" "$user_codex_settings"
+
+  # Stage list is the OCP extension point: append a new stage here to grow the
+  # merge pipeline without editing the loop. Order matters — scrub deprecated
+  # keys before merging so SoT keys don't re-introduce a scrubbed table.
+  local stages=(scrub_deprecated_features merge_top_level_settings merge_table_settings) stage
+  for stage in "${stages[@]}"; do
+    "codex::$stage" "$codex_settings" "$user_codex_settings"
+  done
 
   if [[ "$FORCE" -eq 1 ]]; then
     log "Codex config reconciled (backup at config.toml.bak; runtime tables preserved)"
@@ -188,15 +221,11 @@ codex::sync_config() {
 # the key is present (value=false still warns). bubblewrap is the default Linux
 # sandbox now; removing the override lets Codex pick it up automatically.
 codex::scrub_deprecated_features() {
-  local user_codex_settings="$1"
+  # Unified stage signature: (codex_settings, user_codex_settings). $1 is unused.
+  local user_codex_settings="$2"
 
   [[ -f "$user_codex_settings" ]] || return 0
   grep -q '^use_legacy_landlock[[:space:]]*=' "$user_codex_settings" || return 0
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] scrub deprecated [features].use_legacy_landlock from $user_codex_settings"
-    return
-  fi
 
   local tmp="$user_codex_settings.tmp"
   awk '
@@ -307,6 +336,11 @@ codex::install_launcher() {
 
   [[ -f "$codex_bin" ]] || return
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] install $codex_bin -> $user_codex_bin"
+    return
+  fi
+
   mkdir -p "$HOME/.local/bin"
   if [[ ! -e "$user_codex_bin" ]] || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin" 2>/dev/null; then
     cp "$codex_bin" "$user_codex_bin"
@@ -322,6 +356,11 @@ codex::sync_marketplace() {
   local user_codex_marketplace="$2"
 
   [[ -f "$codex_marketplace" ]] || return
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] cp $codex_marketplace -> $user_codex_marketplace"
+    return
+  fi
 
   mkdir -p "$AGENTS_DIR/plugins"
   jq . "$codex_marketplace" >/dev/null
@@ -358,11 +397,16 @@ codex::sync_marketplace() {
 codex::bootstrap_marketplace() {
   local codex_add_out
 
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] bootstrap Codex marketplace DocksDocks/docks when codex CLI is available"
+    return
+  fi
+
   if command -v codex >/dev/null 2>&1; then
     codex_add_out=$(codex plugin marketplace add DocksDocks/docks 2>&1 || true)
-    if echo "$codex_add_out" | grep -q 'could not find a Codex CLI binary'; then
+    if [[ "$codex_add_out" == *"could not find a Codex CLI binary"* ]]; then
       warn "Codex launcher is installed, but no npm Codex binary was found — install with: npm install -g @openai/codex"
-    elif echo "$codex_add_out" | grep -q "already added from a different source"; then
+    elif [[ "$codex_add_out" == *"already added from a different source"* ]]; then
       if codex plugin marketplace remove docks >/dev/null 2>&1 && codex plugin marketplace add DocksDocks/docks >/dev/null 2>&1; then
         log "Codex Docks marketplace reconciled"
       else

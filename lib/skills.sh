@@ -1,12 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+# Source-order guards: this lib depends on common.sh's log/warn/err and on
+# sync.sh's REPO_DIR. Fail fast with a clear message if sourced standalone.
+declare -F log >/dev/null 2>&1 || { printf '\033[1;31m[err]\033[0m %s\n' "lib/skills.sh must be sourced after lib/common.sh" >&2; exit 1; }
+[[ -n "${REPO_DIR:-}" ]] || { printf '\033[1;31m[err]\033[0m %s\n' "REPO_DIR must be set before sourcing lib/skills.sh" >&2; exit 1; }
+
 # Universal AI-agent skills bootstrap (agentskills.io standard).
 # Reads SoT/.agents/skills.txt, runs `npx skills add` for each missing slug.
 # Idempotent: pre-checks ~/.agents/skills/<basename> and skips if present.
 
 skills::sync() {
-  AGENTS_DIR="$HOME/.agents"
+  # AGENTS_DIR is initialized in lib/common.sh as a kit-global with env override.
   # The kit installs each skill for claude-code + codex (its SoT support
   # matrix). Naming two agents makes the CLI keep the canonical copy at the
   # universal ~/.agents/skills/ path — that's what our checks track.
@@ -37,28 +42,26 @@ skills::sync_universal() {
     return
   fi
 
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    while IFS= read -r slug; do
-      [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
-      slug="${slug%%#*}"
-      slug="${slug// /}"
-      basename="${slug##*/}"
-      if [[ -d "$SKILLS_DIR/$basename" ]]; then
-        echo "[dry-run] universal skill present: $basename"
-        skills::heal_claude_symlink "$basename" || true
-      else
-        echo "[dry-run] npx skills add $slug -g -y -a claude-code codex"
-      fi
-    done < "$SKILLS_MANIFEST"
-    return
-  fi
-
+  # Single loop: full 4-step strip + post-strip empty guard apply uniformly to
+  # dry-run and real branches. Branching on DRY_RUN happens only at the action
+  # point, eliminating the previous divergence where whitespace-only manifest
+  # lines emitted "[dry-run] npx skills add  -g -y -a ..." with an empty slug.
   while IFS= read -r slug; do
     [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
     slug="${slug%%#*}"
     slug="${slug// /}"
     [[ -z "$slug" ]] && continue
     basename="${slug##*/}"
+
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      if [[ -d "$SKILLS_DIR/$basename" ]]; then
+        echo "[dry-run] universal skill present: $basename"
+        skills::heal_claude_symlink "$basename" || true
+      else
+        echo "[dry-run] npx skills add $slug -g -y -a claude-code codex"
+      fi
+      continue
+    fi
 
     if [[ -d "$SKILLS_DIR/$basename" ]]; then
       already=$((already + 1))
@@ -79,6 +82,8 @@ skills::sync_universal() {
       failed=$((failed + 1))
     fi
   done < "$SKILLS_MANIFEST"
+
+  [[ "$DRY_RUN" -eq 1 ]] && return
 
   SKILLS_PRESENT=$((added + already))
 
@@ -182,11 +187,40 @@ skills::sync_agent_browser_cli() {
   fi
 }
 
+# Populate <array_name> with stripped, non-empty slugs from <file>. Supports
+# both manifest format (4-step strip + comment handling) and snapshot format
+# (one slug per line, no comments — strip is a safe no-op).
+skills::_load_slug_list() {
+  local file="$1" array_name="$2" slug
+  while IFS= read -r slug; do
+    [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
+    slug="${slug%%#*}"
+    slug="${slug// /}"
+    [[ -n "$slug" ]] && eval "$array_name+=(\"\$slug\")"
+  done < "$file"
+}
+
+# Uninstall a single snapshot slug from the universal CLI. Increments the
+# caller's <ok_var>/<fail_var> via eval (bash 3.2-safe; no namerefs).
+skills::_remove_one_slug() {
+  local slug="$1" ok_var="$2" fail_var="$3" basename="${1##*/}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] kit-managed skill no longer in SoT — would remove: $basename"
+    return
+  fi
+  if npx --yes skills remove --global -y -a '*' -s "$basename" >/dev/null 2>&1; then
+    eval "$ok_var=\$(( \$$ok_var + 1 ))"
+  else
+    warn "Failed to remove kit-managed skill: $basename"
+    eval "$fail_var=\$(( \$$fail_var + 1 ))"
+  fi
+}
+
 skills::reconcile_removals() {
   # Uninstall kit-managed skills (tracked in $SKILLS_SNAPSHOT) that are no longer
   # declared in $SKILLS_MANIFEST. Never touches user-installed skills (not in
   # snapshot) or CLI auto-installed meta-skills like find-skills.
-  local slug basename removed=0 failed=0
+  local slug removed=0 failed=0
   local -a current_slugs=()
   local -a snapshot_slugs=()
 
@@ -197,32 +231,14 @@ skills::reconcile_removals() {
     return
   fi
 
-  while IFS= read -r slug; do
-    [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
-    slug="${slug%%#*}"
-    slug="${slug// /}"
-    [[ -n "$slug" ]] && current_slugs+=("$slug")
-  done < "$SKILLS_MANIFEST"
-
-  while IFS= read -r slug; do
-    [[ -n "$slug" ]] && snapshot_slugs+=("$slug")
-  done < "$SKILLS_SNAPSHOT"
+  skills::_load_slug_list "$SKILLS_MANIFEST" current_slugs
+  skills::_load_slug_list "$SKILLS_SNAPSHOT" snapshot_slugs
 
   for slug in ${snapshot_slugs[@]+"${snapshot_slugs[@]}"}; do
     if [[ ${#current_slugs[@]} -gt 0 ]] && printf '%s\n' "${current_slugs[@]}" | grep -qx "$slug"; then
       continue
     fi
-    basename="${slug##*/}"
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-      echo "[dry-run] kit-managed skill no longer in SoT — would remove: $basename"
-      continue
-    fi
-    if npx --yes skills remove --global -y -a '*' -s "$basename" >/dev/null 2>&1; then
-      removed=$((removed + 1))
-    else
-      warn "Failed to remove kit-managed skill: $basename"
-      failed=$((failed + 1))
-    fi
+    skills::_remove_one_slug "$slug" removed failed
   done
 
   if [[ "$removed" -gt 0 ]]; then
