@@ -23,8 +23,11 @@ file_mtime() {
 # --- get access token (cached) ---
 token=""
 if [ -f "$TOKEN_CACHE" ]; then
-  age=$(( $(date +%s) - $(file_mtime "$TOKEN_CACHE") ))
-  if [ "$age" -lt "$TOKEN_MAX_AGE" ]; then
+  cache_mtime=$(file_mtime "$TOKEN_CACHE")
+  age=$(( $(date +%s) - cache_mtime ))
+  creds_mtime=0
+  [ -f "$CREDS_FILE" ] && creds_mtime=$(file_mtime "$CREDS_FILE")
+  if [ "$age" -lt "$TOKEN_MAX_AGE" ] && [ "$creds_mtime" -le "$cache_mtime" ]; then
     token=$(cat "$TOKEN_CACHE")
   fi
 fi
