@@ -32,7 +32,8 @@ codex::sync() {
   codex::sync_rtk "$codex_agents_md" "$user_codex_agents_md" "$user_codex_rtk_md"
   codex::install_launcher "$codex_bin" "$user_codex_bin"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
-  codex::bootstrap_marketplace
+  codex::remove_legacy_docks_marketplace
+  codex::sync_plugins "$codex_settings"
 }
 
 # Codex uses bubblewrap as its Linux sandbox runtime. macOS uses Seatbelt natively.
@@ -394,31 +395,136 @@ codex::sync_marketplace() {
   fi
 }
 
-codex::bootstrap_marketplace() {
-  local codex_add_out
+codex::_marketplace_source() {
+  local marketplace="$1"
+  local config_file="$2"
 
+  [[ -f "$config_file" ]] || return
+
+  awk -v marketplace="$marketplace" '
+    $0 == "[marketplaces." marketplace "]" {
+      in_marketplace = 1
+      next
+    }
+    /^\[/ {
+      in_marketplace = 0
+    }
+    in_marketplace && /^[[:space:]]*source[[:space:]]*=/ {
+      source = $0
+      sub(/^[^=]+=[[:space:]]*/, "", source)
+      sub(/[[:space:]]*#.*/, "", source)
+      gsub(/^"|"$/, "", source)
+      print source
+      exit
+    }
+  ' "$config_file"
+}
+
+codex::remove_legacy_docks_marketplace() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] bootstrap Codex marketplace DocksDocks/docks when codex CLI is available"
+    echo "[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed"
     return
   fi
 
-  if command -v codex >/dev/null 2>&1; then
-    codex_add_out=$(codex plugin marketplace add DocksDocks/docks 2>&1 || true)
-    if [[ "$codex_add_out" == *"could not find a Codex CLI binary"* ]]; then
-      warn "Codex launcher is installed, but no npm Codex binary was found — install with: npm install -g @openai/codex"
-    elif [[ "$codex_add_out" == *"already added from a different source"* ]]; then
-      if codex plugin marketplace remove docks >/dev/null 2>&1 && codex plugin marketplace add DocksDocks/docks >/dev/null 2>&1; then
-        log "Codex Docks marketplace reconciled"
+  if ! command -v codex >/dev/null 2>&1; then
+    return
+  fi
+
+  case "$(codex::_marketplace_source docks "$CODEX_DIR/config.toml")" in
+    "https://github.com/DocksDocks/docks.git"|"DocksDocks/docks")
+      if codex plugin marketplace remove docks >/dev/null 2>&1; then
+        log "Removed legacy configured Codex Docks marketplace; using personal marketplace file"
       else
-        warn "Codex marketplace reconcile failed; run: codex plugin marketplace remove docks && codex plugin marketplace add DocksDocks/docks"
-      fi
-    elif echo "$codex_add_out" | grep -qi 'error\|failed'; then
-      warn "Codex marketplace add failed; open /plugins after restart and use the DocksDocks marketplace"
-    else
-      log "Codex Docks marketplace added"
-    fi
+        warn "Failed to remove legacy configured Codex Docks marketplace"
+      fi ;;
+    *) ;;
+  esac
+}
+
+codex::_first_line() {
+  local text="$1"
+  text="${text%%$'\n'*}"
+  printf '%s\n' "$text"
+}
+
+codex::_manual_plugin_refresh_command() {
+  local codex_settings="$1"
+  local first_plugin
+
+  first_plugin="$(codex::_enabled_plugin_ids "$codex_settings" | head -n 1)"
+  if [[ -n "$first_plugin" ]]; then
+    printf 'codex plugin add %s\n' "$first_plugin"
   else
-    warn "codex CLI not in PATH — deployed marketplace config; manual install command: codex plugin marketplace add DocksDocks/docks"
+    printf 'codex plugin add <plugin@marketplace>\n'
+  fi
+}
+
+codex::_enabled_plugin_ids() {
+  local codex_settings="$1"
+
+  [[ -f "$codex_settings" ]] || return
+
+  awk '
+    function flush_plugin() {
+      if (plugin != "" && enabled == 1) print plugin
+    }
+    /^\[plugins\."[^"]+"\][[:space:]]*$/ {
+      flush_plugin()
+      plugin = $0
+      sub(/^\[plugins\."/,"",plugin)
+      sub(/"\][[:space:]]*$/,"",plugin)
+      enabled = 0
+      next
+    }
+    /^\[/ {
+      flush_plugin()
+      plugin = ""
+      enabled = 0
+      next
+    }
+    plugin != "" && /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*true([[:space:]]*(#.*)?)?$/ {
+      enabled = 1
+    }
+    END {
+      flush_plugin()
+    }
+  ' "$codex_settings"
+}
+
+codex::sync_plugins() {
+  local codex_settings="$1"
+  local plugin_id refreshed_plugins=0 failed=0 add_out failure_line
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] add enabled Codex plugins from SoT"
+    return
+  fi
+
+  if ! command -v codex >/dev/null 2>&1; then
+    warn "codex CLI not in PATH — deployed config/marketplace only; manual plugin refresh command: $(codex::_manual_plugin_refresh_command "$codex_settings")"
+    return
+  fi
+
+  while IFS= read -r plugin_id; do
+    [[ -z "$plugin_id" ]] && continue
+
+    if add_out=$(codex plugin add "$plugin_id" 2>&1); then
+      refreshed_plugins=$((refreshed_plugins + 1))
+    elif [[ "$add_out" == *"could not find a Codex CLI binary"* ]]; then
+      warn "Codex launcher is installed, but no npm Codex binary was found — install with: npm install -g @openai/codex"
+      failed=$((failed + 1))
+    else
+      failure_line="$(codex::_first_line "$add_out")"
+      warn "Codex plugin refresh failed for $plugin_id: ${failure_line:-unknown error}; run manually: codex plugin add $plugin_id"
+      failed=$((failed + 1))
+    fi
+  done < <(codex::_enabled_plugin_ids "$codex_settings")
+
+  if [[ "$refreshed_plugins" -gt 0 ]]; then
+    log "Codex plugins synced (plugins: ~$refreshed_plugins)"
+  fi
+  if [[ "$failed" -gt 0 ]]; then
+    warn "$failed Codex plugin operation(s) failed — re-run sync or install manually"
   fi
 }
 
@@ -436,5 +542,5 @@ codex::summary() {
 
 codex::next_steps() {
   [[ "${CODEX_SYNCED:-0}" -eq 1 ]] || return
-  echo "In Codex, restart and open /plugins to install or verify the Docks plugin."
+  echo "Restart Codex to load any refreshed plugins, skills, or tools."
 }
