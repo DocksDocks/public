@@ -1,8 +1,5 @@
 #!/bin/bash
-# Fetches Claude API usage stats and caches them locally.
-# Called by Stop hook (async) to keep usage data fresh.
-# Based on claude-watch (https://github.com/xleddyl/claude-watch).
-# Cross-platform: works on both macOS and Linux.
+# Async Stop hook: refreshes the /oauth/usage stats the statusline reads.
 
 exec 2>/dev/null
 
@@ -11,7 +8,6 @@ TOKEN_CACHE="/tmp/.claude_token_cache"
 CREDS_FILE="$HOME/.claude/.credentials.json"
 TOKEN_MAX_AGE=900 # 15 minutes
 
-# --- platform-aware file age ---
 file_mtime() {
   if [ "$(uname)" = "Darwin" ]; then
     stat -f %m "$1" 2>/dev/null || echo 0
@@ -20,24 +16,28 @@ file_mtime() {
   fi
 }
 
-# --- get access token (cached) ---
+# Newer credentials than the usage cache => possible account switch; drop it to avoid showing the previous account.
+if [ -f "$CACHE_FILE" ] && [ -f "$CREDS_FILE" ] \
+   && [ "$(file_mtime "$CREDS_FILE")" -ge "$(file_mtime "$CACHE_FILE")" ]; then
+  rm -f "$CACHE_FILE"
+fi
+
 token=""
 if [ -f "$TOKEN_CACHE" ]; then
   cache_mtime=$(file_mtime "$TOKEN_CACHE")
   age=$(( $(date +%s) - cache_mtime ))
   creds_mtime=0
   [ -f "$CREDS_FILE" ] && creds_mtime=$(file_mtime "$CREDS_FILE")
-  if [ "$age" -lt "$TOKEN_MAX_AGE" ] && [ "$creds_mtime" -le "$cache_mtime" ]; then
+  if [ "$age" -lt "$TOKEN_MAX_AGE" ] && [ "$creds_mtime" -lt "$cache_mtime" ]; then
     token=$(cat "$TOKEN_CACHE")
   fi
 fi
 
 if [ -z "$token" ]; then
-  # Try credentials file first (works everywhere)
   if [ -f "$CREDS_FILE" ]; then
     token=$(jq -r '.claudeAiOauth.accessToken // empty' "$CREDS_FILE")
   fi
-  # Fallback: macOS Keychain
+  # macOS Keychain fallback
   if [ -z "$token" ] && command -v security >/dev/null 2>&1; then
     creds=$(security find-generic-password -s "Claude Code-credentials" -w 2>/dev/null)
     [ -n "$creds" ] && token=$(echo "$creds" | jq -r '.claudeAiOauth.accessToken // empty')
@@ -46,7 +46,6 @@ if [ -z "$token" ]; then
   echo "$token" > "$TOKEN_CACHE"
 fi
 
-# --- fetch usage from API ---
 response=$(curl -s --max-time 3 \
   -H "Authorization: Bearer $token" \
   -H "anthropic-beta: oauth-2025-04-20" \
@@ -54,14 +53,12 @@ response=$(curl -s --max-time 3 \
 
 [ -z "$response" ] && exit 0
 
-# --- parse and cache ---
 five_h=$(echo "$response" | jq -r '.five_hour.utilization // empty' | awk '{printf "%.0f", $1}')
 seven_d=$(echo "$response" | jq -r '.seven_day.utilization // empty' | awk '{printf "%.0f", $1}')
 five_h_reset=$(echo "$response" | jq -r '.five_hour.resets_at // empty')
 seven_d_reset=$(echo "$response" | jq -r '.seven_day.resets_at // empty')
 
-# Only write if we got valid numeric data in 0-100 range (guards against
-# silent cache corruption if the API schema changes)
+# Numeric-range guard: a schema change would otherwise poison the cache silently.
 if [ -n "$five_h" ] && [ -n "$seven_d" ] \
    && echo "$five_h"  | grep -qE '^[0-9]+$' && [ "$five_h"  -ge 0 ] && [ "$five_h"  -le 100 ] 2>/dev/null \
    && echo "$seven_d" | grep -qE '^[0-9]+$' && [ "$seven_d" -ge 0 ] && [ "$seven_d" -le 100 ] 2>/dev/null; then
