@@ -16,7 +16,6 @@ codex::sync() {
   local user_codex_rules_dir="$CODEX_DIR/rules"
   local codex_agents_md="$REPO_DIR/SoT/.codex/AGENTS.md"
   local user_codex_agents_md="$CODEX_DIR/AGENTS.md"
-  local user_codex_rtk_md="$CODEX_DIR/RTK.md"
   local codex_bin="$REPO_DIR/SoT/.codex/bin/codex"
   local user_codex_bin="$HOME/.local/bin/codex"
   local codex_marketplace="$REPO_DIR/SoT/.codex/plugins/marketplace.json"
@@ -29,7 +28,6 @@ codex::sync() {
   codex::sync_config "$codex_settings" "$user_codex_settings"
   codex::sync_rules "$codex_rules_dir" "$user_codex_rules_dir"
   codex::sync_agents_md "$codex_agents_md" "$user_codex_agents_md"
-  codex::sync_rtk "$codex_agents_md" "$user_codex_agents_md" "$user_codex_rtk_md"
   codex::install_launcher "$codex_bin" "$user_codex_bin"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
   codex::remove_legacy_docks_marketplace
@@ -143,44 +141,6 @@ codex::sync_agents_md() {
 
   cp "$codex_agents_md" "$user_codex_agents_md"
   log "Codex AGENTS.md synced"
-}
-
-codex::sync_rtk() {
-  local codex_agents_md="$1"
-  local user_codex_agents_md="$2"
-  local user_codex_rtk_md="$3"
-
-  [[ -f "$codex_agents_md" ]] || return
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 0 ]]; then
-      echo "[dry-run] refresh Codex RTK.md with rtk init -g --codex"
-    else
-      echo "[dry-run] skip Codex RTK init (--no-rtk)"
-    fi
-    return
-  fi
-
-  if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
-    warn "Skipping Codex RTK init (--no-rtk)"
-    cp "$codex_agents_md" "$user_codex_agents_md"
-    log "Codex AGENTS.md restored"
-    return
-  fi
-
-  if ! command -v rtk >/dev/null 2>&1; then
-    warn "rtk not in PATH — Codex AGENTS.md imports @RTK.md, but RTK.md was not generated"
-    return
-  fi
-
-  if rtk init -g --codex >/dev/null 2>&1; then
-    log "Codex RTK refreshed (rtk init -g --codex)"
-  else
-    warn "Failed to initialize Codex RTK.md via rtk init -g --codex"
-  fi
-
-  cp "$codex_agents_md" "$user_codex_agents_md"
-  log "Codex AGENTS.md restored after RTK init"
 }
 
 codex::sync_config() {

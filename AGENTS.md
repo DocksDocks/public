@@ -28,7 +28,7 @@ Codex SoT notes:
 - `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - `SoT/.codex/bin/codex` deploys to `~/.local/bin/codex` as a launcher for npm/NVM Codex installs in non-interactive shells.
-- `SoT/.codex/AGENTS.md` imports `@RTK.md`; `sync.sh` lets `rtk init -g --codex` generate `~/.codex/RTK.md`, then restores the SoT-managed `AGENTS.md` so RTK owns only generated RTK content.
+- `SoT/.codex/AGENTS.md` deliberately does not import `@RTK.md`: RTK's published Codex integration is prompt-file based rather than hook based, so importing it leaks implementation detail into agent-visible context. Use Codex hooks for RTK only after the kit installs a hook-backed Codex integration.
 
 For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT directory.
 

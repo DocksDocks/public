@@ -1,7 +1,5 @@
 # AGENTS.md
 
-@RTK.md
-
 ## Research Before Implementation
 
 IMPORTANT: Before writing or modifying code that uses any framework, library, or external API, research current documentation first.
