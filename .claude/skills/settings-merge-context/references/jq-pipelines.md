@@ -2,11 +2,11 @@
 
 ## Critical Constraints
 
-- Write to `.tmp` first, then `mv .tmp target`. Never write directly to the target. (lib/claude.sh:82-87)
-- Run `jq empty` before merge to guard against corrupt input. (lib/claude.sh:76)
+- Write to `.tmp` first, then `mv .tmp target`. Never write directly to the target. (lib/claude.sh:112-117)
+- Run `jq empty` before merge to guard against corrupt input. (lib/claude.sh:72)
 - `$user * $repo` means repo wins on conflicts (jq object merge semantics: right-hand side wins).
 
-## Default Additive Merge (lib/claude.sh:91-97)
+## Default Additive Merge (lib/claude.sh:106-112)
 
 ```bash
 jq -s '
@@ -26,7 +26,7 @@ Step-by-step:
 
 Result: user-added `Bash(custom-tool *)` entries survive; SoT entries win on scalar conflicts; no permissions are lost.
 
-## Force Reconcile (lib/claude.sh:81-82)
+## Force Reconcile (lib/claude.sh:91-92)
 
 ```bash
 jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
@@ -49,7 +49,7 @@ Result: user-added custom permissions are wiped. User-only top-level keys (e.g. 
 
 The kit always writes `$user * $repo` so SoT changes propagate forward. If the kit wrote `$repo * $user`, SoT key changes would be silently ignored on non-force syncs.
 
-## `~/.claude.json` jq (lib/claude.sh:120)
+## `~/.claude.json` jq (lib/claude.sh:160)
 
 ```bash
 jq '.showTurnDuration = true' "$claude_json" > "$claude_json.tmp"

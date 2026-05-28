@@ -2,11 +2,11 @@
 
 ## Critical Constraints
 
-- Pass 1 (top-level) and Pass 2 (tables) are SEQUENTIAL. Run in order: scrub → top-level → tables. (lib/codex.sh:175-177)
-- Table blocks are replaced WHOLESALE. No field-level merge. (lib/codex.sh:274-301)
-- Write to `.tmp` then `mv` — never write directly to the target. (lib/codex.sh:241, 266, 295)
+- Pass 1 (top-level) and Pass 2 (tables) are SEQUENTIAL. Run in order: scrub → top-level → tables. (lib/codex.sh:168-171)
+- Table blocks are replaced WHOLESALE. No field-level merge. (lib/codex.sh:264-292)
+- Write to `.tmp` then `mv` — never write directly to the target. (lib/codex.sh:256, 285, 288)
 
-## Pass 1: Top-Level Key Replacement (lib/codex.sh:231-272)
+## Pass 1: Top-Level Key Replacement (lib/codex.sh:221-262)
 
 ### Source extraction (what keys to merge in)
 
@@ -42,7 +42,7 @@ Edge cases:
 - Key in user config but not in SoT: user's line is printed unchanged (falls through to `{ print }`)
 - Key absent from user config: appended at `END` (after all table headers, at file end) OR before first `[` if there are no tables
 
-## Pass 2: Wholesale Table Replacement (lib/codex.sh:274-301)
+## Pass 2: Wholesale Table Replacement (lib/codex.sh:264-292)
 
 ### Table header extraction
 
@@ -76,7 +76,7 @@ awk -v header="$table_header" '
 
 ```bash
 {
-  printf '\n'             # blank-line separator (lib/codex.sh:298)
+  printf '\n'             # blank-line separator (lib/codex.sh:288)
   printf '%s\n' "$table_block"
 } >> "$user_codex_settings"
 ```

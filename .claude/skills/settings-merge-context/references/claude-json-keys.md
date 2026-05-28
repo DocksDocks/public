@@ -2,14 +2,14 @@
 
 ## Critical Constraint
 
-Adding `showTurnDuration` to `settings.json` triggers a schema validation warning. It belongs ONLY in `~/.claude.json`. `sync.sh` handles this automatically via `claude::sync_claude_json`. (lib/claude.sh:107-130)
+Adding `showTurnDuration` to `settings.json` triggers a schema validation warning. It belongs ONLY in `~/.claude.json`. `sync.sh` handles this automatically via `claude::sync_claude_json`. (lib/claude.sh:147-170)
 
 ## Key Location Table
 
 | Key | File | Sync owner | Reason |
 |-----|------|-----------|--------|
 | All standard config (env, permissions, hooks, plugins) | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code schema |
-| `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json` (lib/claude.sh:120) | Schema validation error if in settings.json |
+| `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json` (lib/claude.sh:160) | Schema validation error if in settings.json |
 | `projects[$cwd].disabledMcpServers` | `~/.claude.json` | `disable-claudeai-connectors.sh` (line 29-33) | Must survive per-project auth-sync round-trips |
 | `skipAutoPermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Standard schema — fine here |
 | `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Ignored in project-level settings (safety) |
@@ -17,7 +17,7 @@ Adding `showTurnDuration` to `settings.json` triggers a schema validation warnin
 ## How `~/.claude.json` Gets Created
 
 ```bash
-# lib/claude.sh:126-128
+# lib/claude.sh:166-168
 else
   echo '{"showTurnDuration": true}' > "$claude_json"
 fi
@@ -34,7 +34,7 @@ The `settings.json` path for disabling MCP servers does not survive Claude.ai au
 | Target file | Approach |
 |------------|----------|
 | `~/.claude/settings.json` | Add to `SoT/.claude/settings.json`; it will propagate on next sync via `$user * $repo` |
-| `~/.claude.json` | Add a `jq '.newKey = value'` line to `claude::sync_claude_json` (lib/claude.sh:107-130) |
+| `~/.claude.json` | Add a `jq '.newKey = value'` line to `claude::sync_claude_json` (lib/claude.sh:147-170) |
 
 ## Gotchas
 

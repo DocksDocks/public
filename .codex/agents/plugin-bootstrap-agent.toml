@@ -1,10 +1,8 @@
----
-name: plugin-bootstrap-agent
-description: Use when modifying `claude::sync_plugins` (six-pass reconciler), the `enabledPlugins` tri-state semantics, `extraKnownMarketplaces` entries, `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, `codex::sync_plugins`, or the `claude-plugins-official` removal protection. Not for `~/.claude/settings.json` key merge (use `settings-json-agent`) or universal skill install (use `skills-bootstrap-agent`).
-tools: Read, Grep, Glob, Bash
-model: sonnet
----
-
+name = "plugin-bootstrap-agent"
+description = "Use when modifying claude::sync_plugins (six-pass reconciler), the enabledPlugins tri-state semantics, extraKnownMarketplaces entries, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or the claude-plugins-official removal protection. Not for ~/.claude/settings.json key merge (use settings-json-agent) or universal skill install (use skills-bootstrap-agent)."
+model = "gpt-5.3-codex"
+sandbox_mode = "read-only"
+developer_instructions = '''
 # Plugin Bootstrap Agent
 
 Owns the six-pass Claude plugin reconcile, `enabledPlugins` tri-state semantics, Codex marketplace merge, and removal protection logic.
@@ -94,3 +92,4 @@ Read these for detailed knowledge:
 - `false`-valued `enabledPlugins` entries are kept by `--remove-plugins` (via `has($n)`). To remove a plugin: delete the key entirely, then run `--remove-plugins`.
 - The Codex launcher at `~/.local/bin/codex` may exist before npm Codex is installed. `command -v codex` finds the shim, but the shim wraps a missing binary — `codex plugin marketplace add` fails. Re-run `./sync.sh --codex` after npm Codex is installed.
 - Passing `claude plugin marketplace add` a repo path already in `known_marketplaces.json` under a different key creates duplicate marketplace entries under different names — not caught by the pre-check.
+'''

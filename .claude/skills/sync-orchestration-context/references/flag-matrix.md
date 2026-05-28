@@ -2,9 +2,9 @@
 
 ## Critical Constraints
 
-- `--force` and `--remove-plugins` are ORTHOGONAL layers. Each operates independently. (lib/common.sh:44-45)
-- Target flags (`--claude`, `--codex`, `--agents`) can be combined. `TARGET_FILTER_SET=1` suppresses the default-all-three path. (lib/common.sh:29-36)
-- Unknown flags: `exit 2` immediately, no partial sync. (lib/common.sh:52-53)
+- `--force` and `--remove-plugins` are ORTHOGONAL layers. Each operates independently. (lib/common.sh:45-46)
+- Target flags (`--claude`, `--codex`, `--agents`) can be combined. `common::select_target` sets `TARGET_FILTER_SET=1` (lib/common.sh:30-37), which suppresses the default-all-three path (lib/common.sh:57-61).
+- Unknown flags: `exit 2` immediately, no partial sync. (lib/common.sh:53)
 
 ## Full Truth Table
 
@@ -55,5 +55,5 @@ Pre-setting as env var: `FORCE=1 ./sync.sh` is equivalent to `./sync.sh --force`
 
 ## Gotchas
 
-- `--no-rtk` sets `SKIP_OPTIONAL_BOOTSTRAP=1` which also skips bubblewrap auto-install in `codex::ensure_bubblewrap` (lib/codex.sh:65-66). Both RTK and bubblewrap are gated on this one variable.
+- `--no-rtk` sets `SKIP_OPTIONAL_BOOTSTRAP=1` which also skips bubblewrap auto-install in `codex::ensure_bubblewrap` (lib/codex.sh:47) and the RTK bootstrap in `claude::sync_rtk` (lib/claude.sh:354). Both RTK and bubblewrap are gated on this one variable.
 - Combining `--dry-run` with `--force --remove-plugins`: all three flags are active simultaneously; dry-run preview shows what both destructive layers would do.

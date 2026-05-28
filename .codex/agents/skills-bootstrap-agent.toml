@@ -1,10 +1,8 @@
----
-name: skills-bootstrap-agent
-description: Use when modifying `skills::sync_universal`, `skills::heal_claude_symlink`, `skills::reconcile_removals`, `skills::update_snapshot`, `skills::sync_agent_browser_cli`, `SoT/.agents/skills.txt`, or the `npx skills add` invocation order. Not for SKILL.md content authoring (use the `docks:write-skill` / `docks:skill-maintenance` skills) or plugin marketplace reconcile (use `plugin-bootstrap-agent`).
-tools: Read, Grep, Glob, Bash
-model: sonnet
----
-
+name = "skills-bootstrap-agent"
+description = "Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, SoT/.agents/skills.txt, or the npx skills add invocation order. Not for SKILL.md content authoring (use the docks:write-skill / docks:skill-maintenance skills) or plugin marketplace reconcile (use plugin-bootstrap-agent)."
+model = "gpt-5.3-codex"
+sandbox_mode = "read-only"
+developer_instructions = '''
 # Skills Bootstrap Agent
 
 Owns `lib/skills.sh`, `SoT/.agents/skills.txt`, the `npx skills add` arg-order invariant, symlink heal logic, and the `.kit-managed-skills` snapshot mechanism.
@@ -102,3 +100,4 @@ Read these for detailed knowledge:
 - `~/.claude/skills/<name>` as a real directory (not a symlink) silently diverges from the canonical path after any `npx skills add` update. The heal function warns but does not fix — the user must manually delete the real directory.
 - The `.kit-managed-skills` snapshot is written only at the end of a successful sync run. If `set -e` aborts mid-run, the snapshot reflects the pre-run state — already-installed skills are re-attempted (idempotent) but the snapshot may lag by one slug.
 - Skills declared in `skills.txt` but never successfully installed accumulate in the manifest without a snapshot entry — re-attempted on every sync with no backoff or skip-after-N-failures mechanism.
+'''

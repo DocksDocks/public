@@ -1,10 +1,8 @@
----
-name: codex-config-agent
-description: Use when modifying `codex::sync_config`, `codex::scrub_deprecated_features`, the awk-based `merge_top_level_settings` / `merge_table_settings` passes, `codex::ensure_bubblewrap`, `codex::sync_rules`, `SoT/.codex/config.toml` keys, or `SoT/.codex/rules/*.rules` policy entries. Not for Claude settings.json merge (use `settings-json-agent`) or plugin install (use `plugin-bootstrap-agent`).
-tools: Read, Grep, Glob, Bash
-model: sonnet
----
-
+name = "codex-config-agent"
+description = "Use when modifying codex::sync_config, codex::scrub_deprecated_features, the awk-based merge_top_level_settings / merge_table_settings passes, codex::ensure_bubblewrap, codex::sync_rules, SoT/.codex/config.toml keys, or SoT/.codex/rules/*.rules policy entries. Not for Claude settings.json merge (use settings-json-agent) or plugin install (use plugin-bootstrap-agent)."
+model = "gpt-5.3-codex"
+sandbox_mode = "read-only"
+developer_instructions = '''
 # Codex Config Agent
 
 Owns `codex::sync_config`, the two-pass awk TOML merger, `codex::ensure_bubblewrap`, `codex::sync_rules`, and `SoT/.codex/rules/*.rules` policy.
@@ -112,3 +110,4 @@ Read these for detailed knowledge:
 - The table-block delete awk uses exact string match on the header line. If the SoT has `[tui]` but the user has `[tui]  ` (trailing spaces), the delete pass skips it — resulting in a duplicate table block after append.
 - `codex::sync_config` is not idempotent when called twice in the same run — the delete+append cycle results in a double append before the first delete fires on the second pass.
 - `codex::ensure_bubblewrap` validates with `unshare -Ur true`. On Ubuntu 24+ with AppArmor restrictions, this fails even after successful `bwrap` install — the warn is correct but may alarm users who think bubblewrap is broken when AppArmor is the actual blocker.
+'''

@@ -1,10 +1,8 @@
----
-name: sync-mechanic-agent
-description: Use when editing `sync.sh`, `lib/common.sh`, the flag parser (`--force` / `--remove-plugins` / `--no-rtk` / `--dry-run` / `--claude` / `--codex` / `--agents`), the `TARGET_FILTER_SET` default-all-three logic, or any cross-cutting sync invariant. Not for tool-specific JSON merge (use `settings-json-agent`), plugin reconcile (use `plugin-bootstrap-agent`), or skill SKILL.md authoring (use the `docks:write-skill` skill).
-tools: Read, Grep, Glob, Bash
-model: sonnet
----
-
+name = "sync-mechanic-agent"
+description = "Use when editing sync.sh, lib/common.sh, the flag parser (--force / --remove-plugins / --no-rtk / --dry-run / --claude / --codex / --agents), the TARGET_FILTER_SET default-all-three logic, or any cross-cutting sync invariant. Not for tool-specific JSON merge (use settings-json-agent), plugin reconcile (use plugin-bootstrap-agent), or skill SKILL.md authoring (use the docks:write-skill skill)."
+model = "gpt-5.3-codex"
+sandbox_mode = "read-only"
+developer_instructions = '''
 # Sync Mechanic Agent
 
 Owns `sync.sh`, `lib/common.sh`, flag parsing, target dispatch, and cross-cutting idempotency invariants.
@@ -96,3 +94,4 @@ Read these for detailed knowledge:
 - Adding a new tool dispatch without the SoT-presence guard causes sync to fail on partial checkouts.
 - Sourcing a new `lib/<tool>.sh` at the top of `sync.sh` instead of inside the conditional fails even when `--<tool>` was not requested.
 - `--claude` and `--codex` together set `TARGET_FILTER_SET=1` — if `--agents` is not given, `SYNC_AGENTS` stays 0. Correct behavior, but confusing when debugging.
+'''

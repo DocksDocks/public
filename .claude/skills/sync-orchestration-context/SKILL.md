@@ -8,13 +8,13 @@ metadata:
       lines: "1-55"
     - path: lib/common.sh
       lines: "1-71"
-  updated: "2026-05-17"
+  updated: "2026-05-28"
 ---
 
 # sync.sh Orchestration
 
 <constraint>
-Every new sync step MUST include a `[[ "$DRY_RUN" -eq 1 ]]` guard that prints `[dry-run] <what would happen>` and returns — without it, `./sync.sh --dry-run` executes the step for real. (lib/claude.sh:22-26 pattern)
+Every new sync step MUST include a `[[ "$DRY_RUN" -eq 1 ]]` guard that prints `[dry-run] <what would happen>` and returns — without it, `./sync.sh --dry-run` executes the step for real. (lib/claude.sh:27-30 pattern)
 </constraint>
 
 <constraint>
@@ -22,7 +22,7 @@ Never construct SoT paths from `pwd`. All SoT paths MUST be prefixed with `$REPO
 </constraint>
 
 <constraint>
-Any command that can legitimately fail non-fatally under `set -euo pipefail` (sync.sh:4) MUST append `|| true` or `|| warn "…"`. Unguarded failures terminate the entire sync run. (lib/claude.sh:183 example: `claude plugin marketplace update >/dev/null 2>&1 || true`)
+Any command that can legitimately fail non-fatally under `set -euo pipefail` (sync.sh:4) MUST append `|| true` or `|| warn "…"`. Unguarded failures terminate the entire sync run. (lib/claude.sh:230 example: `claude::_cli plugin marketplace update >/dev/null 2>&1 || true`)
 </constraint>
 
 <constraint>
@@ -43,21 +43,21 @@ Flag variables are initialized in lib/common.sh:4-11 via `${VAR:-0}`. Never re-i
 
 | Flag | Variable set | Notes |
 |------|-------------|-------|
-| `--dry-run` | `DRY_RUN=1` | lib/common.sh:42 |
-| `--no-rtk` | `SKIP_OPTIONAL_BOOTSTRAP=1` | lib/common.sh:43 |
-| `--force` | `FORCE=1` | lib/common.sh:44 — settings layer only |
-| `--remove-plugins` | `REMOVE_PLUGINS=1` | lib/common.sh:45 — plugin+skills layer only |
-| `--claude` | `SYNC_CLAUDE=1`, `TARGET_FILTER_SET=1` | lib/common.sh:46 |
-| `--codex` | `SYNC_CODEX=1`, `TARGET_FILTER_SET=1` | lib/common.sh:47 |
-| `--agents` | `SYNC_AGENTS=1`, `TARGET_FILTER_SET=1` | lib/common.sh:48 |
-| (none) | `SYNC_CLAUDE=SYNC_CODEX=SYNC_AGENTS=1` | lib/common.sh:56-60 — TARGET_FILTER_SET remains 0 |
+| `--dry-run` | `DRY_RUN=1` | lib/common.sh:43 |
+| `--no-rtk` | `SKIP_OPTIONAL_BOOTSTRAP=1` | lib/common.sh:44 |
+| `--force` | `FORCE=1` | lib/common.sh:45 — settings layer only |
+| `--remove-plugins` | `REMOVE_PLUGINS=1` | lib/common.sh:46 — plugin+skills layer only |
+| `--claude` | `SYNC_CLAUDE=1`, `TARGET_FILTER_SET=1` | lib/common.sh:47 |
+| `--codex` | `SYNC_CODEX=1`, `TARGET_FILTER_SET=1` | lib/common.sh:48 |
+| `--agents` | `SYNC_AGENTS=1`, `TARGET_FILTER_SET=1` | lib/common.sh:49 |
+| (none) | `SYNC_CLAUDE=SYNC_CODEX=SYNC_AGENTS=1` | lib/common.sh:57-61 — TARGET_FILTER_SET remains 0 |
 
-Unknown flags: `err "Unknown arg: $arg"; exit 2` (lib/common.sh:52-53).
+Unknown flags: `err "Unknown arg: $arg"; exit 2` (lib/common.sh:53).
 
 ### Default-All-Three Logic
 
 ```bash
-# lib/common.sh:56-60
+# lib/common.sh:57-61
 if [[ "$TARGET_FILTER_SET" -eq 0 ]]; then
   SYNC_CLAUDE=1
   SYNC_CODEX=1
@@ -86,14 +86,14 @@ if declare -F claude::summary >/dev/null 2>&1; then
 fi
 ```
 
-Functions guarded with `[[ "${CLAUDE_SYNCED:-0}" -eq 1 ]] || return` (lib/claude.sh:293) also skip if the tool was not synced.
+Functions guarded with `[[ "${CLAUDE_SYNCED:-0}" -eq 1 ]] || return` (lib/claude.sh:399) also skip if the tool was not synced.
 
 ### Preflight Checks
 
 | Condition | Checks | lib/common.sh line |
 |-----------|--------|--------------------|
-| `SYNC_CLAUDE=1` OR `SYNC_CODEX=1` | `jq` in PATH | 64-65 |
-| `SYNC_CLAUDE=1` | `curl` in PATH | 67-68 |
+| `SYNC_CLAUDE=1` OR `SYNC_CODEX=1` | `jq` in PATH | 65-66 |
+| `SYNC_CLAUDE=1` | `curl` in PATH | 68-69 |
 
 ### Dry-Run Template for New Functions
 
@@ -125,10 +125,10 @@ my_tool::sync_foo() {
 
 ## Gotchas
 
-- **`return` vs `exit` in dry-run blocks**: using `exit` instead of `return` terminates the entire script, not just the current function. Every dry-run block MUST use `return`. (lib/claude.sh:26 uses `return`.)
-- **Forgetting `|| true` on legitimately-fallible commands**: `set -euo pipefail` at sync.sh:4 means any unguarded non-zero exit aborts the run. `claude plugin marketplace update` at lib/claude.sh:183 demonstrates the `|| true` guard.
-- **Tool-scoped summary mismatch**: if `claude::summary` is added to a lib file that checks `CLAUDE_SYNCED` but the sync function never sets `CLAUDE_SYNCED=1`, summary is always silently skipped. Check lib/claude.sh:6 for the assignment location.
-- **Unknown flags exit 2**: passing a mistyped flag (e.g. `--not-a-real-flag`) exits with code 2 immediately (lib/common.sh:52-53). No partial sync occurs.
+- **`return` vs `exit` in dry-run blocks**: using `exit` instead of `return` terminates the entire script, not just the current function. Every dry-run block MUST use `return`. (lib/claude.sh:30 uses `return`.)
+- **Forgetting `|| true` on legitimately-fallible commands**: `set -euo pipefail` at sync.sh:4 means any unguarded non-zero exit aborts the run. `claude::_cli plugin marketplace update` at lib/claude.sh:230 demonstrates the `|| true` guard.
+- **Tool-scoped summary mismatch**: if `claude::summary` is added to a lib file that checks `CLAUDE_SYNCED` but the sync function never sets `CLAUDE_SYNCED=1`, summary is always silently skipped. Check lib/claude.sh:11 for the assignment location.
+- **Unknown flags exit 2**: passing a mistyped flag (e.g. `--not-a-real-flag`) exits with code 2 immediately (lib/common.sh:53). No partial sync occurs.
 
 ## References
 

@@ -5,24 +5,24 @@ user-invocable: false
 metadata:
   source_files:
     - path: lib/skills.sh
-      lines: "1-263"
+      lines: "1-278"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-05-17"
+  updated: "2026-05-28"
 ---
 
 # Universal Skills Bootstrap
 
 <constraint>
-The `<slug>` argument MUST precede `-a` in `npx skills add`. The `-a/--agent` flag is variadic and consumes all following positional arguments as agent names. If slug is placed after `-a`, it is treated as an agent name and the install exits 0 with nothing installed. (lib/skills.sh:71-75)
+The `<slug>` argument MUST precede `-a` in `npx skills add`. The `-a/--agent` flag is variadic and consumes all following positional arguments as agent names. If slug is placed after `-a`, it is treated as an agent name and the install exits 0 with nothing installed. (lib/skills.sh:74-78)
 </constraint>
 
 <constraint>
-Always name BOTH agents: `-a claude-code codex`. Naming only one agent triggers a copy-direct shortcut: the CLI writes directly into that tool's per-tool directory instead of `~/.agents/skills/<name>/`. The canonical path is never created; the symlink mechanism never fires; Codex gets no coverage. (lib/skills.sh:11-13 comment)
+Always name BOTH agents: `-a claude-code codex`. Naming only one agent triggers a copy-direct shortcut: the CLI writes directly into that tool's per-tool directory instead of `~/.agents/skills/<name>/`. The canonical path is never created; the symlink mechanism never fires; Codex gets no coverage. (lib/skills.sh:15-17 comment)
 </constraint>
 
 <constraint>
-`skills::update_snapshot` MUST run last (lib/skills.sh:29). If aborted mid-run, the snapshot reflects the previous known-good state, not a partial state. Never move `update_snapshot` before `sync_universal` or `reconcile_removals`.
+`skills::update_snapshot` MUST run last (lib/skills.sh:34). If aborted mid-run, the snapshot reflects the previous known-good state, not a partial state. Never move `update_snapshot` before `sync_universal` or `reconcile_removals`.
 </constraint>
 
 ## When to Use
@@ -44,9 +44,9 @@ Always name BOTH agents: `-a claude-code codex`. Naming only one agent triggers 
 ~/.codex/skills/<basename>          ← (handled by Codex natively from ~/.agents/)
 ```
 
-Source: lib/skills.sh:9-13, lib/skills.sh:98-110. Relative symlink target `../../.agents/skills/<basename>` matches `installer.ts:createSymlink` from the upstream vercel-labs/skills CLI.
+Source: lib/skills.sh:18-22, lib/skills.sh:110-143. Relative symlink target `../../.agents/skills/<basename>` matches `installer.ts:createSymlink` from the upstream vercel-labs/skills CLI.
 
-### Correct `npx skills add` Invocation (lib/skills.sh:75)
+### Correct `npx skills add` Invocation (lib/skills.sh:78)
 
 ```bash
 npx --yes skills add "$slug" -g -y -a claude-code codex
@@ -61,7 +61,7 @@ npx --yes skills add "$slug" -g -y -a claude-code codex
 | `claude-code` | first agent | triggers multi-agent mode |
 | `codex` | second agent | triggers multi-agent mode |
 
-### `skills.txt` Comment Stripping (lib/skills.sh:56-60)
+### `skills.txt` Comment Stripping (lib/skills.sh:50-53)
 
 ```bash
 [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
@@ -72,7 +72,7 @@ slug="${slug// /}"     # strip spaces
 
 Both whole-line `# comments` and `slug # inline comments` are supported. Strip happens before `basename` extraction. Missing this step causes `npx skills add` to receive `owner/repo # comment text` as the slug.
 
-### Idempotency Pre-Check (lib/skills.sh:63-68)
+### Idempotency Pre-Check (lib/skills.sh:66-72)
 
 ```bash
 if [[ -d "$SKILLS_DIR/$basename" ]]; then
@@ -86,27 +86,27 @@ fi
 
 `-d` checks the canonical `~/.agents/skills/<basename>` directory. Even when the skill exists, `heal_claude_symlink` is called to repair the per-tool symlink if missing.
 
-### `skills::heal_claude_symlink` Repair Logic (lib/skills.sh:105-138)
+### `skills::heal_claude_symlink` Repair Logic (lib/skills.sh:110-143)
 
 ```bash
-local rel_target="../../.agents/skills/$basename"   # line 110
+local rel_target="../../.agents/skills/$basename"   # line 115
 
 if [[ -L "$claude_link" ]]; then
   current="$(readlink "$claude_link")"
   if [[ "$current" == "$rel_target" ]]; then
     return 1    # already correct
   fi
-  rm -f "$claude_link"    # replace stale symlink (line 124)
+  rm -f "$claude_link"    # replace stale symlink (line 129)
 elif [[ -e "$claude_link" ]]; then
-  warn "… exists as a real path — leaving alone"   # line 126
+  warn "… exists as a real path — leaving alone"   # line 131
   return 1
 fi
-# … ln -s "$rel_target" "$claude_link"   # line 136
+# … ln -s "$rel_target" "$claude_link"   # line 141
 ```
 
 Three cases: (a) symlink with correct target — no-op; (b) symlink with wrong target — replace; (c) real directory — warn and skip (never destroys user content).
 
-### `.kit-managed-skills` Snapshot (lib/skills.sh:236-247)
+### `.kit-managed-skills` Snapshot (lib/skills.sh:252-264)
 
 ```bash
 # skills::update_snapshot
@@ -119,7 +119,7 @@ awk '
 
 Written to `~/.agents/.kit-managed-skills`. Format: one slug per line, sorted. Compared against current `skills.txt` in `skills::reconcile_removals` to detect removed slugs.
 
-### Removal Flow (lib/skills.sh:185-234)
+### Removal Flow (lib/skills.sh:219-251)
 
 1. Parse current slugs from `skills.txt` → `current_slugs` array
 2. Read `~/.agents/.kit-managed-skills` → `snapshot_slugs` array
@@ -129,17 +129,17 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 
 ## Key Decisions
 
-- Snapshot write is always last (lib/skills.sh:29) — prevents partial-state snapshots on aborted runs.
-- `skills::heal_claude_symlink` is called on EVERY sync for already-present skills (lib/skills.sh:65) — symlinks can drift without the user noticing.
-- `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (lib/skills.sh:140-143).
-- `SKILLS_PRESENT` tally (lib/skills.sh:83) counts installed + already-present for the summary; does NOT re-scan `~/.agents/skills/` (which would include user-installed skills).
+- Snapshot write is always last (lib/skills.sh:34) — prevents partial-state snapshots on aborted runs.
+- `skills::heal_claude_symlink` is called on EVERY sync for already-present skills (lib/skills.sh:68) — symlinks can drift without the user noticing.
+- `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (lib/skills.sh:145-192).
+- `SKILLS_PRESENT` tally (lib/skills.sh:88) counts installed + already-present for the summary; does NOT re-scan `~/.agents/skills/` (which would include user-installed skills).
 
 ## Gotchas
 
-- **Slug after `-a` fails silently**: `npx skills add -a claude-code codex "$slug"` exits 0 and installs nothing. The canonical directory is never created; every sync re-attempts the add and always fails silently. (lib/skills.sh:71-74 comment)
-- **Real directory at `~/.claude/skills/<name>`**: `heal_claude_symlink` warns and skips (lib/skills.sh:126). The two copies diverge silently. Fix: manually `rm -rf ~/.claude/skills/<name>` then re-run sync.
-- **First `--remove-plugins` with no snapshot**: `reconcile_removals` returns early if `~/.agents/.kit-managed-skills` does not exist (lib/skills.sh:193-197). No removal occurs. Run a real sync first to write the snapshot, then `--remove-plugins` to reconcile.
-- **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (lib/skills.sh:146).
+- **Slug after `-a` fails silently**: `npx skills add -a claude-code codex "$slug"` exits 0 and installs nothing. The canonical directory is never created; every sync re-attempts the add and always fails silently. (lib/skills.sh:74-77 comment)
+- **Real directory at `~/.claude/skills/<name>`**: `heal_claude_symlink` warns and skips (lib/skills.sh:131). The two copies diverge silently. Fix: manually `rm -rf ~/.claude/skills/<name>` then re-run sync.
+- **First `--remove-plugins` with no snapshot**: `reconcile_removals` returns early if `~/.agents/.kit-managed-skills` does not exist (lib/skills.sh:227-232). No removal occurs. Run a real sync first to write the snapshot, then `--remove-plugins` to reconcile.
+- **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (lib/skills.sh:151).
 
 ## References
 

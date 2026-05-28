@@ -1,10 +1,8 @@
----
-name: settings-json-agent
-description: Use when modifying `claude::sync_settings`, `claude::sync_claude_json`, the dual-mode jq merge for `~/.claude/settings.json`, the `~/.claude.json` carve-outs (`showTurnDuration`, per-project `disabledMcpServers`), or `disable-claudeai-connectors.sh` hook logic. Not for plugin install/uninstall (use `plugin-bootstrap-agent`) or Codex TOML merge (use `codex-config-agent`).
-tools: Read, Grep, Glob, Bash
-model: sonnet
----
-
+name = "settings-json-agent"
+description = "Use when modifying claude::sync_settings, claude::sync_claude_json, the dual-mode jq merge for ~/.claude/settings.json, the ~/.claude.json carve-outs (showTurnDuration, per-project disabledMcpServers), or disable-claudeai-connectors.sh hook logic. Not for plugin install/uninstall (use plugin-bootstrap-agent) or Codex TOML merge (use codex-config-agent)."
+model = "gpt-5.3-codex"
+sandbox_mode = "read-only"
+developer_instructions = '''
 # Settings JSON Agent
 
 Owns `claude::sync_settings`, `claude::sync_claude_json`, jq merge pipelines, and `~/.claude.json` carve-outs.
@@ -95,3 +93,4 @@ Read these for detailed knowledge:
 - Validity guard uses `2>/dev/null` — corrupted `settings.json` silently skips the entire sync. The `err` message is emitted but the function returns; callers may not notice without inspecting the log.
 - `disabledMcpServers` hook reads `cwd` from stdin JSON, not `$PWD`. If stdin is closed or empty, `CWD` is empty and the hook exits 0 silently — connectors reappear.
 - `unique` in jq preserves first-occurrence ordering, not alphabetical. New entries append at the end after dedup.
+'''
