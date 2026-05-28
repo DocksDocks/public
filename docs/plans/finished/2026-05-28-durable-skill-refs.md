@@ -1,13 +1,13 @@
 ---
 title: Convert skill/agent lib:line refs to durable function anchors
-status: ongoing
+status: finished
 created: 2026-05-28
 updated: 2026-05-28
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
-ship_commit: null
+ship_commit: 2e8961b89010a8f3d529baa957b10f7c6badbb5a
 ---
 
 # Convert skill/agent lib:line refs to durable function anchors
