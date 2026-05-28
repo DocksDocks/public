@@ -2,7 +2,8 @@
 title: Convert skill/agent lib:line refs to durable function anchors
 status: finished
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-05-28T17:58:20-03:00
+review_status: passed
 assignee: null
 blockers: []
 blocked_reason: null
@@ -165,3 +166,13 @@ The convention note (criterion 7) landed in this repo's `AGENTS.md` § Skills as
 a `<constraint>` — the `docks:write-skill` / `docks:skill-maintenance` guidance
 lives in the separate plugin repo, so per the kit's "pipeline content lives in
 the plugin, not here" rule, the repo-local skill docs are the correct home.
+
+## Review
+
+- **Goal met:** yes — all 7 acceptance criteria independently verified against the `ship_commit` diff (25 target files + the plan move). Zero residual `lib/<file>.sh:NNN` / `sync.sh:NNN` refs across the 25 files (own grep, excluding `~line` hints); all 5 `.codex/agents/*.toml` parse via `tomllib` with the 3 required keys + `model`/`sandbox_mode`; all 5 `.md` bodies byte-identical to their `.toml` `developer_instructions` (own `awk` strip + `tomllib` extract diff, not just the helper's word); sampled anchors resolve to real defs (`claude::_plugins_uninstall`→`lib/claude.sh:247`, `claude::sync_plugins`→`lib/claude.sh:292`, `claude::_cli`→`lib/claude.sh:176`, `codex::sync_marketplace`→`lib/codex.sh:315`, `codex::remove_legacy_docks_marketplace`→`lib/codex.sh:383`, `codex::sync_plugins`→`lib/codex.sh:454`); each skill carries one coarse `metadata.source_files[].lines` range bracketing real function spans (e.g. plugin-bootstrap `176-329` covers `_cli`@176…`sync_plugins`@292); convention `<constraint>` landed in `AGENTS.md:65`.
+- **Regressions:** none. The helper's `function-existence=FAIL` on `claude::_plugins_*` is a false positive — reproduced all 4 occurrences (`SKILL.md:3,38,55`, `six-pass-flow.md:3`) and each is a literal trailing-`*` wildcard in prose ("five `claude::_plugins_*` helpers"), collective shorthand for the helper family, never cited as a single resolvable def. Ship-commit added lines re-introduce zero numeric refs (own grep: 0).
+- **CI:** n/a (no `scripts/ci.sh` in this repo).
+- **Follow-ups:** none.
+- Filed by: plan-review on 2026-05-28T17:58:20-03:00
+
+**Verification note on criterion 6:** the diff shows no `updated:` delta for the 5 SKILL.md files — `metadata.updated` was already `"2026-05-28"` (today, set by the same-day `skills-audit` refresh `a8138e4`) and the value correctly reflects this change's date. A same-day bump to the identical value would be churn; the criterion is satisfied in substance, not violated. All 5 SKILL.md bodies were substantively edited in the ship commit (16/34/23/29/22 lines each).
