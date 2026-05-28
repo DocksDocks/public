@@ -62,7 +62,7 @@ Skills follow the [agentskills.io](https://agentskills.io) open standard:
 - **Discovery**: Claude Code scans `.claude/skills/*/SKILL.md` at session start, loads only `name` + `description` (~100 tokens per skill)
 - **Triggering**: Claude semantically matches descriptions against user tasks, invokes via `Skill` tool — no `@import` or pointer tables needed
 - **CSO (Claude Search Optimization)**: descriptions MUST start with "Use when..." and describe trigger conditions, not capabilities
-- **Third-party / vendored skills**: add an `upstream:` frontmatter block (`source`, `license`, `vendored_at: "YYYY-MM-DD"`) when vendoring a skill from an external repo. This signals `guard-skills.sh` / `score-skills.sh` to relax kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) so the skill's body can be preserved verbatim from upstream. Universal structural checks (fenced frontmatter, name matches directory, description length, 500-line body cap) still apply.
+- **Third-party / vendored skills**: add an `upstream:` frontmatter block (`source`, `license`, `vendored_at: "YYYY-MM-DD"`) when vendoring a skill from an external repo. The block marks the skill as vendored so kit-specific checks (CSO start-prefix, `user-invocable`, `metadata.updated`) are relaxed and the skill's body is preserved verbatim from upstream. Universal structural checks (fenced frontmatter, name matches directory, description length, 500-line body cap) still apply.
 
 <constraint>
 After any code change affecting documented patterns, update the relevant skill in `.claude/skills/` and its `metadata.updated` frontmatter field. When introducing something new, create a skill or add a `references/` file to an existing skill.
@@ -78,10 +78,8 @@ Agent files follow this structure:
 - **Model-selection resolution** (per Claude Code docs): `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` param → agent frontmatter `model:` → parent conversation. The env var is NOT set in this kit, so per-agent frontmatter controls selection.
 
 <constraint>
-When adding a new agent: use kebab-case name matching filename, CSO-compliant description (starts "Use when…", contains a "Not" exclusion clause), explicit `model` and `tools`. Run `bash guard-agents.sh` to verify.
+When adding a new agent: use kebab-case name matching filename, CSO-compliant description (starts "Use when…", contains a "Not" exclusion clause), explicit `model` and `tools`.
 </constraint>
-
-**Validators:** `bash guard-agents.sh` (structural), `bash score-agents.sh` (quality, mirrors `score-skills.sh`).
 
 ## Agentic Engineering Discipline
 
