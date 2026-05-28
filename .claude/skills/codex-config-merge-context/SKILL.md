@@ -16,15 +16,15 @@ metadata:
 # Codex Config Merge
 
 <constraint>
-TOML has no `jq` equivalent. Do NOT attempt to use `jq` on `config.toml`. The kit uses two sequential awk passes: top-level key replacement (`codex::merge_top_level_settings`) then wholesale table replacement (`codex::merge_table_settings`). (lib/codex.sh:221-292)
+TOML has no `jq` equivalent. Do NOT attempt to use `jq` on `config.toml`. The kit uses two sequential awk passes: top-level key replacement (`codex::merge_top_level_settings`) then wholesale table replacement (`codex::merge_table_settings`).
 </constraint>
 
 <constraint>
-Table blocks are ALWAYS replaced wholesale — there is no field-level merge within a TOML `[table]`. Adding a new field to a SoT `[table]` block replaces the entire user table, losing any user-added fields in that table. (lib/codex.sh:264-292)
+Table blocks are ALWAYS replaced wholesale — there is no field-level merge within a TOML `[table]`. Adding a new field to a SoT `[table]` block replaces the entire user table, losing any user-added fields in that table.
 </constraint>
 
 <constraint>
-`codex::ensure_bubblewrap` is the ONLY place in the kit that issues a `sudo`-requiring command (`if ! eval "$pm_install"; then` at lib/codex.sh:60). It runs before any Codex sync step. `--no-rtk` (`SKIP_OPTIONAL_BOOTSTRAP=1`) skips auto-install but warns. (lib/codex.sh:47-50)
+`codex::ensure_bubblewrap` is the ONLY place in the kit that issues a `sudo`-requiring command (`if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap`). It runs before any Codex sync step. `--no-rtk` (`SKIP_OPTIONAL_BOOTSTRAP=1`) skips auto-install but warns.
 </constraint>
 
 ## When to Use
@@ -38,7 +38,7 @@ Table blocks are ALWAYS replaced wholesale — there is no field-level merge wit
 
 ## Core Patterns
 
-### `codex::sync_config` Call Sequence (lib/codex.sh:146-178)
+### `codex::sync_config` Call Sequence
 
 ```
 codex::sync_config
@@ -49,7 +49,7 @@ codex::sync_config
 └── codex::merge_table_settings        (awk pass 2: replace [table] blocks wholesale)
 ```
 
-### Pass 1: Top-Level Key Replacement (`codex::merge_top_level_settings`, lib/codex.sh:221-262)
+### Pass 1: Top-Level Key Replacement (`codex::merge_top_level_settings`)
 
 For each `key = value` line from the SoT (extracted before the first `[table]` boundary):
 
@@ -65,7 +65,7 @@ awk -v key="$setting_key" -v replacement="$setting_line" '
 
 Effect: existing `key = value` in user config is replaced; if key absent, it's appended. Only applies to lines BEFORE the first `[table]` header.
 
-### Pass 2: Wholesale Table Replacement (`codex::merge_table_settings`, lib/codex.sh:264-292)
+### Pass 2: Wholesale Table Replacement (`codex::merge_table_settings`)
 
 ```bash
 # Extract table block from SoT
@@ -91,7 +91,7 @@ printf '%s\n' "$table_block"
 
 The `printf '\n'` before the block ensures a blank-line separator — omitting it concatenates the last line of the prior section with the table header.
 
-### Deprecated Feature Scrubber (lib/codex.sh:184-219)
+### Deprecated Feature Scrubber (`codex::scrub_deprecated_features`)
 
 Removes `use_legacy_landlock = …` line AND the now-empty `[features]` table. The `keep` variable in awk tracks whether any non-landlock content exists in the `[features]` block:
 
@@ -101,19 +101,19 @@ grep -q '^use_legacy_landlock[[:space:]]*=' "$user_codex_settings" || return 0
 
 Returns early (no-op) if `use_legacy_landlock` not present. Only runs when the deprecated key is detected.
 
-### `codex::ensure_bubblewrap` (lib/codex.sh:38-71)
+### `codex::ensure_bubblewrap`
 
 | OS | Action |
 |----|--------|
-| macOS (`Darwin*`) | `return` — uses Seatbelt natively (line 77) |
+| macOS (`Darwin*`) | `return` — uses Seatbelt natively (`codex::_bwrap_supported_os`) |
 | Linux | Probe `command -v bwrap`; if absent, detect PM and install |
-| Other | `warn` and `return` (line 79) |
+| Other | `warn` and `return` (`codex::_bwrap_supported_os`) |
 
-Package manager detection precedence: `apt-get` → `dnf` → `pacman` → `zypper` (lib/codex.sh:85-95).
+Package manager detection precedence: `apt-get` → `dnf` → `pacman` → `zypper` (`codex::_bwrap_detect_pm_install_cmd`).
 
-Validation after install: `unshare -Ur true` (lib/codex.sh:100) — tests unprivileged user namespaces. Ubuntu 24+ AppArmor restriction produces a false-negative; warn message includes the `sysctl` workaround.
+Validation after install: `unshare -Ur true` (`codex::_bwrap_verify_userns`) — tests unprivileged user namespaces. Ubuntu 24+ AppArmor restriction produces a false-negative; warn message includes the `sysctl` workaround.
 
-### `codex::sync_rules` (lib/codex.sh:107-129)
+### `codex::sync_rules`
 
 ```bash
 while IFS= read -r rule_file; do
@@ -143,13 +143,13 @@ Pattern arrays use exact prefix matching on command argv. `["git", "status"]` ma
 ## Key Decisions
 
 - TOML merge is two sequential passes, not one — top-level keys and table blocks are structurally different and require different awk logic.
-- Table blocks are replaced wholesale (lib/codex.sh:287-290) because field-level TOML merge via awk would be extremely fragile. Trade-off: user-added fields inside kit-managed tables are silently wiped on sync.
-- `scrub_deprecated_features` runs BEFORE both merge passes (lib/codex.sh:168) — ensures deprecated keys don't survive the merge step.
+- Table blocks are replaced wholesale (`codex::merge_table_settings`) because field-level TOML merge via awk would be extremely fragile. Trade-off: user-added fields inside kit-managed tables are silently wiped on sync.
+- `scrub_deprecated_features` runs BEFORE both merge passes (`codex::sync_config`) — ensures deprecated keys don't survive the merge step.
 - `default.rules` is never in `SoT/.codex/rules/` — Codex writes its own learned approvals there and the kit must not overwrite them.
 
 ## Gotchas
 
-- **Table block append accumulates blank lines**: `printf '\n'` at lib/codex.sh:288 adds a blank line separator before each appended block. If the SoT table block itself ends with a blank line, repeated syncs accumulate extra blank lines between tables. Symptom: growing blank-line gaps in `~/.codex/config.toml` between `[tui]` and `[plugins."docks@docks"]`.
+- **Table block append accumulates blank lines**: `printf '\n'` in `codex::merge_table_settings` adds a blank line separator before each appended block. If the SoT table block itself ends with a blank line, repeated syncs accumulate extra blank lines between tables. Symptom: growing blank-line gaps in `~/.codex/config.toml` between `[tui]` and `[plugins."docks@docks"]`.
 - **Pass 2 is not idempotent on re-entry**: the delete-then-append pattern means calling `merge_table_settings` twice on the same file appends the block twice. In a single sync run this is fine (delete pass removes the block from the previous run). Calling the function directly outside `codex::sync_config` may produce duplicate tables.
 - **User-added `[table]` blocks**: any user-added `[plugins."custom@marketplace"]` block in `~/.codex/config.toml` is preserved ONLY if the table header is absent from the SoT. If a SoT table header matches the user's, the user's block is deleted and replaced.
 - **`unshare -Ur true` false-negative on Ubuntu 24+**: bubblewrap may be installed and functional but `unshare` fails due to AppArmor restriction. The sync warns and continues — Codex may still work depending on AppArmor config.

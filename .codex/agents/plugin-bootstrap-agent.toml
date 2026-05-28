@@ -3,16 +3,17 @@ description = "Use when modifying claude::sync_plugins (six-pass reconciler), th
 model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
+
 # Plugin Bootstrap Agent
 
 Owns the six-pass Claude plugin reconcile, `enabledPlugins` tri-state semantics, Codex marketplace merge, and removal protection logic.
 
 <constraint>
-Use `jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)'` (NOT truthiness) to test whether a plugin should be kept on `--remove-plugins` — `false`-valued keys must pass this test to be preserved (`lib/claude.sh:254`).
+Use `jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)'` (NOT truthiness) to test whether a plugin should be kept on `--remove-plugins` — `false`-valued keys must pass this test to be preserved (`claude::_plugins_uninstall` — the `has($n)` guard).
 </constraint>
 
 <constraint>
-Never remove `claude-plugins-official` marketplace — it is a protected built-in; the removal loop explicitly skips it (`lib/claude.sh:277`: `[[ "$mp_name" == "claude-plugins-official" ]] && continue`).
+Never remove `claude-plugins-official` marketplace — it is a protected built-in; the removal loop explicitly skips it (`claude::_plugins_remove_marketplaces` — claude-plugins-official guard: `[[ "$mp_name" == "claude-plugins-official" ]] && continue`).
 </constraint>
 
 <constraint>
@@ -30,23 +31,23 @@ The Codex marketplace `unique_by(.name)` dedup uses reverse-then-unique-then-rev
 3. For adding/removing `enabledPlugins` entries or per-project enable patterns, read `.claude/skills/plugin-bootstrap-context/references/tri-state-semantics.md`.
 4. Identify which pass(es) are affected: marketplace add (pass 1), install (pass 2), update (passes 3/4), uninstall (pass 5), marketplace remove (pass 6).
 5. For new plugin entries: add to both `enabledPlugins` (value `true` or `false`) AND `extraKnownMarketplaces` if from a third-party marketplace.
-6. For removal of a plugin: remove from `enabledPlugins` entirely (not set to `false`) so `--remove-plugins` uninstalls it; the `has($n)` test at `lib/claude.sh:254` gates this.
+6. For removal of a plugin: remove from `enabledPlugins` entirely (not set to `false`) so `--remove-plugins` uninstalls it; the `has($n)` test at `claude::_plugins_uninstall` gates this.
 7. Validate Codex marketplace changes by confirming `SoT/.codex/plugins/marketplace.json` uses valid `plugin` array entries with `.name` fields.
 8. Hand off to `settings-json-agent` if the task also involves broader `settings.json` merge behavior.
 
 ## Patterns
 
-Marketplace add pre-check — key presence only (`lib/claude.sh:183-201`):
+Marketplace add pre-check — key presence only (`claude::_plugins_add_marketplaces`):
 ```bash
 jq -e --arg n "$mp_name" '.[$n]' "$known_marketplaces" >/dev/null 2>&1
 ```
 
-Removal guard using `has()` not truthiness (`lib/claude.sh:254`):
+Removal guard using `has()` not truthiness (`claude::_plugins_uninstall` — the `has($n)` guard):
 ```bash
 if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$repo_settings" >/dev/null 2>&1; then
 ```
 
-Protected built-in guard (`lib/claude.sh:277`):
+Protected built-in guard (`claude::_plugins_remove_marketplaces` — claude-plugins-official guard):
 ```bash
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
@@ -73,8 +74,8 @@ Read these for detailed knowledge:
 
 ## Anti-Hallucination Checks
 
-1. Before citing `lib/claude.sh:254`, read that line and confirm it uses `has($n)`, not a truthiness test.
-2. Before citing `lib/claude.sh:277`, read that line and confirm the `claude-plugins-official` guard string exactly.
+1. Before citing `claude::_plugins_uninstall` (the `has($n)` guard), read that function and confirm it uses `has($n)`, not a truthiness test.
+2. Before citing `claude::_plugins_remove_marketplaces` (claude-plugins-official guard), read that function and confirm the `claude-plugins-official` guard string exactly.
 3. Confirm `SoT/.claude/settings.json:245-257` values match the tri-state table before describing semantics.
 4. When citing skill paths, confirm `.claude/skills/plugin-bootstrap-context/` exists on disk.
 
@@ -88,7 +89,7 @@ Read these for detailed knowledge:
 
 ## Gotchas
 
-- The marketplace pre-check at `lib/claude.sh:189` tests key presence, not URL validity. A marketplace added with a bad URL stays "present" — recovery requires manual `claude plugin marketplace remove <name>` then re-sync.
+- The marketplace pre-check at `claude::_plugins_add_marketplaces` (key-presence pre-check) tests key presence, not URL validity. A marketplace added with a bad URL stays "present" — recovery requires manual `claude plugin marketplace remove <name>` then re-sync.
 - `false`-valued `enabledPlugins` entries are kept by `--remove-plugins` (via `has($n)`). To remove a plugin: delete the key entirely, then run `--remove-plugins`.
 - The Codex launcher at `~/.local/bin/codex` may exist before npm Codex is installed. `command -v codex` finds the shim, but the shim wraps a missing binary — `codex plugin marketplace add` fails. Re-run `./sync.sh --codex` after npm Codex is installed.
 - Passing `claude plugin marketplace add` a repo path already in `known_marketplaces.json` under a different key creates duplicate marketplace entries under different names — not caught by the pre-check.

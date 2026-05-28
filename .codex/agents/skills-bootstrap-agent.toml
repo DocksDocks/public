@@ -3,12 +3,13 @@ description = "Use when modifying skills::sync_universal, skills::heal_claude_sy
 model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
+
 # Skills Bootstrap Agent
 
 Owns `lib/skills.sh`, `SoT/.agents/skills.txt`, the `npx skills add` arg-order invariant, symlink heal logic, and the `.kit-managed-skills` snapshot mechanism.
 
 <constraint>
-The slug MUST precede the `-a/--agent` flag: `npx --yes skills add "$slug" -g -y -a claude-code codex`. The `-a` flag is variadic — it swallows all following arguments. Placing `$slug` after `-a` consumes it as an agent name and installs nothing (`lib/skills.sh:78`, comment at lines 74-77).
+The slug MUST precede the `-a/--agent` flag: `npx --yes skills add "$slug" -g -y -a claude-code codex`. The `-a` flag is variadic — it swallows all following arguments. Placing `$slug` after `-a` consumes it as an agent name and installs nothing (skills::sync_universal (the npx skills add invocation), skills::sync_universal (the slug-before-`-a` comment)).
 </constraint>
 
 <constraint>
@@ -16,11 +17,11 @@ Always name BOTH agents (`claude-code codex`) in the `-a` flag. A single `-a cla
 </constraint>
 
 <constraint>
-`skills::update_snapshot` MUST run last in `skills::sync` — if aborted mid-run, the snapshot reflects the prior known-good state, not a partial state (`lib/skills.sh:13-35` call order).
+`skills::update_snapshot` MUST run last in `skills::sync` — if aborted mid-run, the snapshot reflects the prior known-good state, not a partial state (skills::sync (call order)).
 </constraint>
 
 <constraint>
-`skills::heal_claude_symlink` leaves real (non-symlink) directories alone — never attempt to replace them automatically (`lib/skills.sh:130-132`). Strip both whole-line and inline comments from `skills.txt` before processing (`lib/skills.sh:50-53`).
+`skills::heal_claude_symlink` leaves real (non-symlink) directories alone — never attempt to replace them automatically (skills::heal_claude_symlink (real-directory guard)). Strip both whole-line and inline comments from `skills.txt` before processing (skills::sync_universal (comment stripping)).
 </constraint>
 
 ## Workflow
@@ -29,21 +30,21 @@ Always name BOTH agents (`claude-code codex`) in the `-a` flag. A single `-a cla
 2. If adding a new slug to `SoT/.agents/skills.txt`: verify `<owner>/<repo>` format; strip any inline comment before `basename` extraction.
 3. If the task involves symlink repair or drift detection, read `.claude/skills/universal-skills-context/references/storage-model.md`.
 4. If the task involves the `npx skills add` invocation pattern or arg-order regression, read `.claude/skills/universal-skills-context/references/cli-arg-trap.md`.
-5. Check `~/.agents/skills/<basename>/` before the idempotency pre-check (`lib/skills.sh:66`) — if it exists, call `skills::heal_claude_symlink` to repair symlink, then skip the `npx` call.
-6. Verify the relative symlink target is `../../.agents/skills/<basename>` — matches the upstream `installer.ts:createSymlink` relative path (`lib/skills.sh:115`).
+5. Check `~/.agents/skills/<basename>/` before the idempotency pre-check (skills::sync_universal (idempotency pre-check)) — if it exists, call `skills::heal_claude_symlink` to repair symlink, then skip the `npx` call.
+6. Verify the relative symlink target is `../../.agents/skills/<basename>` — matches the upstream `installer.ts:createSymlink` relative path (skills::heal_claude_symlink (rel_target)).
 7. For `agent-browser` CLI side-effect installs: `npm install -g agent-browser && agent-browser install --with-deps` on Linux; `--with-deps` may prompt for sudo.
-8. Hand off to `sync-mechanic-agent` if the task involves the `skills::sync` orchestration order in `lib/skills.sh:13-35`.
+8. Hand off to `sync-mechanic-agent` if the task involves the `skills::sync` orchestration order in skills::sync (call order).
 
 ## Patterns
 
-Comment stripping from `skills.txt` (`lib/skills.sh:50-53`):
+Comment stripping from `skills.txt` (skills::sync_universal (comment stripping)):
 ```bash
 [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
 slug="${slug%%#*}"
 slug="${slug// /}"
 ```
 
-Idempotency pre-check + heal before npx (`lib/skills.sh:66-72`):
+Idempotency pre-check + heal before npx (skills::sync_universal (idempotency pre-check)):
 ```bash
 if [[ -d "$SKILLS_DIR/$basename" ]]; then
   already=$((already + 1))
@@ -52,14 +53,14 @@ if [[ -d "$SKILLS_DIR/$basename" ]]; then
 fi
 ```
 
-Correct npx invocation — slug first (`lib/skills.sh:78`):
+Correct npx invocation — slug first (skills::sync_universal (the npx skills add invocation)):
 ```bash
 npx --yes skills add "$slug" -g -y -a claude-code codex
 ```
 
-Relative symlink target (`lib/skills.sh:115`): `rel_target="../../.agents/skills/$basename"`
+Relative symlink target (skills::heal_claude_symlink (rel_target)): `rel_target="../../.agents/skills/$basename"`
 
-Real-directory guard in heal (`lib/skills.sh:130-132`):
+Real-directory guard in heal (skills::heal_claude_symlink (real-directory guard)):
 ```bash
 elif [[ -e "$claude_link" ]]; then
   warn "~/.claude/skills/$basename exists as a real path … leaving alone"
@@ -81,9 +82,9 @@ Read these for detailed knowledge:
 
 ## Anti-Hallucination Checks
 
-1. Before citing `lib/skills.sh:78`, read that line to confirm `"$slug"` precedes `-a claude-code codex`.
-2. Before citing `lib/skills.sh:115`, read that line to confirm the exact relative path string.
-3. Before citing `lib/skills.sh:130-132`, read that block to confirm the real-directory warn-and-return-1 behavior.
+1. Before citing skills::sync_universal (the npx skills add invocation), read that line to confirm `"$slug"` precedes `-a claude-code codex`.
+2. Before citing skills::heal_claude_symlink (rel_target), read that line to confirm the exact relative path string.
+3. Before citing skills::heal_claude_symlink (real-directory guard), read that block to confirm the real-directory warn-and-return-1 behavior.
 4. When citing skill paths, confirm `.claude/skills/universal-skills-context/` exists on disk.
 
 ## Success Criteria

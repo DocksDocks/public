@@ -2,9 +2,9 @@
 
 ## Critical Constraints
 
-- `--force` and `--remove-plugins` are ORTHOGONAL layers. Each operates independently. (lib/common.sh:45-46)
-- Target flags (`--claude`, `--codex`, `--agents`) can be combined. `common::select_target` sets `TARGET_FILTER_SET=1` (lib/common.sh:30-37), which suppresses the default-all-three path (lib/common.sh:57-61).
-- Unknown flags: `exit 2` immediately, no partial sync. (lib/common.sh:53)
+- `--force` and `--remove-plugins` are ORTHOGONAL layers. Each operates independently. (common::parse_args)
+- Target flags (`--claude`, `--codex`, `--agents`) can be combined. `common::select_target` sets `TARGET_FILTER_SET=1`, which suppresses the default-all-three path (common::parse_args (default-all-three)).
+- Unknown flags: `exit 2` immediately, no partial sync. (common::parse_args (unknown-flag exit 2))
 
 ## Full Truth Table
 
@@ -20,7 +20,7 @@
 | 0 | 1 | 0 | 1 | Uninstall kit-managed Claude plugins not in SoT |
 | 1 | 0 | 1 | 0 | Preview what reconcile would do (no writes) |
 
-## Variable Defaults (lib/common.sh:4-11)
+## Variable Defaults (common.sh (flag-var init block))
 
 ```bash
 DRY_RUN=${DRY_RUN:-0}
@@ -55,5 +55,5 @@ Pre-setting as env var: `FORCE=1 ./sync.sh` is equivalent to `./sync.sh --force`
 
 ## Gotchas
 
-- `--no-rtk` sets `SKIP_OPTIONAL_BOOTSTRAP=1` which also skips bubblewrap auto-install in `codex::ensure_bubblewrap` (lib/codex.sh:47) and the RTK bootstrap in `claude::sync_rtk` (lib/claude.sh:354). Both RTK and bubblewrap are gated on this one variable.
+- `--no-rtk` sets `SKIP_OPTIONAL_BOOTSTRAP=1` which also skips bubblewrap auto-install in `codex::ensure_bubblewrap` and the RTK bootstrap in `claude::sync_rtk`. Both RTK and bubblewrap are gated on this one variable.
 - Combining `--dry-run` with `--force --remove-plugins`: all three flags are active simultaneously; dry-run preview shows what both destructive layers would do.

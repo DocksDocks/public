@@ -1,6 +1,6 @@
 ---
 title: Convert skill/agent lib:line refs to durable function anchors
-status: planned
+status: ongoing
 created: 2026-05-28
 updated: 2026-05-28
 assignee: null
@@ -70,20 +70,20 @@ change, and the twin re-validated with `tomllib`.
 
 ## Acceptance criteria
 
-- [ ] Zero inline `lib/<file>.sh:NNN` or `sync.sh:NNN` refs remain in the 15
+- [x] Zero inline `lib/<file>.sh:NNN` or `sync.sh:NNN` refs remain in the 15
       skill files (grep `(lib/(claude|codex|skills|common)\.sh|sync\.sh):[0-9]` → 0,
       excluding any explicitly-marked "(~line N)" approximate hints).
-- [ ] Same for the 5 agent `.md` files and the 5 `.codex/agents/*.toml`.
-- [ ] Every converted ref names a function that actually exists in the cited
+- [x] Same for the 5 agent `.md` files and the 5 `.codex/agents/*.toml`.
+- [x] Every converted ref names a function that actually exists in the cited
       `lib/*.sh` / `sync.sh` (verify each function name via `grep -n '^<fn>()'`).
-- [ ] Each file's `metadata.source_files[].lines` re-derived to the current
+- [x] Each file's `metadata.source_files[].lines` re-derived to the current
       enclosing-function span (skills only; agents have no source_files).
-- [ ] All 5 `.codex/agents/*.toml` still parse via `tomllib` with the 3 required
+- [x] All 5 `.codex/agents/*.toml` still parse via `tomllib` with the 3 required
       keys, and each `developer_instructions` remains byte-identical to its
       `.md` twin body.
-- [ ] `metadata.updated` bumped to the change date on every skill file actually
+- [x] `metadata.updated` bumped to the change date on every skill file actually
       edited (no churn-only bumps).
-- [ ] A short "ref convention" note added to the `docks:write-skill` /
+- [x] A short "ref convention" note added to the `docks:write-skill` /
       `docks:skill-maintenance` guidance OR this repo's skill docs, so new
       skills follow the function-anchor style and the regression does not recur.
 
@@ -120,3 +120,48 @@ None — actionable immediately.
   (`docs/plans/finished/2026-05-28-skills-audit.md`, ship `a8138e4`); surfaced
   in its "Phase 8 finding — refactor-wide staleness" and the `## Review`
   follow-ups.
+
+## Implementation
+
+Converted by 5 domain workers (one per skill family: codex-config,
+plugin-bootstrap, settings-merge, sync-orchestration, universal-skills), each
+owning its `SKILL.md` + `references/` + wrapper `.md` agent + `.codex/*.toml`
+twin, then centrally verified and reconciled. Per-domain ref counts converted:
+
+| Domain | SKILL.md | references/ | agent `.md` (= `.toml`) |
+|---|---|---|---|
+| codex-config | 14 | 5 + 3 | 11 |
+| plugin-bootstrap | 18 | 12 + 2 | 7 |
+| settings-merge | 13 | 5 + 6 | 8 |
+| sync-orchestration | 18 | 14 + 5 | 12 |
+| universal-skills | 16 | 5 + 6 | 13 |
+
+**Conversions applied beyond plain inline refs:**
+- plugin-bootstrap `SKILL.md` six-pass table: dropped the `(NNN)` start-line
+  parentheticals from the "Helper (def)" column and replaced the raw-line-number
+  "Op line" column with a semantic "Operation" column (`marketplace add`,
+  `plugin install`, …).
+- sync-orchestration `dispatch-flow.md` tree: stripped the redundant
+  `; lib/x.sh:NNN` fragments from nodes that already name their function.
+- `sync.sh` (flat, no functions) refs → section anchors (e.g.
+  `sync.sh (Claude dispatch block)`, `sync.sh (summary/next_steps declare-F guards)`).
+- hook-file refs (`disable-claudeai-connectors.sh:NN`, bare `(line NN)`) →
+  section anchors (e.g. `(the disabledMcpServers jq patch)`).
+
+**Central verification (`/tmp/verify_refs.py`):**
+- Residual numeric source refs across all 25 files: **0**.
+- All 5 `.codex/agents/*.toml` parse via `tomllib`; required keys
+  (`name`/`description`/`developer_instructions`) + `model`/`sandbox_mode` present.
+- 48 distinct `tool::function` anchors referenced; **47 resolve to a real
+  `lib/*.sh` def**, the 48th being the literal wildcard `claude::_plugins_*`
+  (collective prose, not a single function) — not a broken ref.
+- All 5 `.md` bodies **byte-identical** to their `.toml` `developer_instructions`
+  after reconciling the post-frontmatter leading blank line into the 3 TOMLs
+  (`settings-json`, `skills-bootstrap`, `sync-mechanic`) that lacked it.
+- `metadata.source_files[].lines` ranges verified current (unchanged since the
+  audit set them to coarse function-span ranges; `lib/*.sh` untouched since).
+
+The convention note (criterion 7) landed in this repo's `AGENTS.md` § Skills as
+a `<constraint>` — the `docks:write-skill` / `docks:skill-maintenance` guidance
+lives in the separate plugin repo, so per the kit's "pipeline content lives in
+the plugin, not here" rule, the repo-local skill docs are the correct home.

@@ -2,7 +2,7 @@
 
 ## Critical Constraint
 
-`~/.codex/rules/default.rules` (user-learned approvals) is NEVER overwritten by the kit. Only kit-managed `*.rules` files from `SoT/.codex/rules/` are deployed. (lib/codex.sh:107-129)
+`~/.codex/rules/default.rules` (user-learned approvals) is NEVER overwritten by the kit. Only kit-managed `*.rules` files from `SoT/.codex/rules/` are deployed. (`codex::sync_rules`)
 
 ## `prefix_rule` Syntax
 
@@ -58,8 +58,8 @@ prefix_rule(pattern=["gh", "pr", "list"], decision="allow")
 ## Adding New Kit-Managed Rules
 
 1. Add `SoT/.codex/rules/<name>.rules` with `prefix_rule(…)` entries
-2. `lib/codex.sh:codex::sync_rules` automatically deploys any `*.rules` file in `SoT/.codex/rules/` (lib/codex.sh:124)
-3. Backup of the old `<name>.rules` is written to `<name>.rules.bak` before overwrite (lib/codex.sh:123)
+2. `codex::sync_rules` automatically deploys any `*.rules` file in `SoT/.codex/rules/`
+3. Backup of the old `<name>.rules` is written to `<name>.rules.bak` before overwrite (`codex::sync_rules`)
 
 ## Gotchas
 

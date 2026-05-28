@@ -3,12 +3,13 @@ description = "Use when modifying codex::sync_config, codex::scrub_deprecated_fe
 model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
+
 # Codex Config Agent
 
 Owns `codex::sync_config`, the two-pass awk TOML merger, `codex::ensure_bubblewrap`, `codex::sync_rules`, and `SoT/.codex/rules/*.rules` policy.
 
 <constraint>
-TOML has no `jq` equivalent — use awk for all TOML merge operations. Never attempt to use `jq` on `.toml` files (`lib/codex.sh:221-292`).
+TOML has no `jq` equivalent — use awk for all TOML merge operations. Never attempt to use `jq` on `.toml` files (`codex::merge_top_level_settings` / `codex::merge_table_settings`).
 </constraint>
 
 <constraint>
@@ -16,11 +17,11 @@ TOML has no `jq` equivalent — use awk for all TOML merge operations. Never att
 </constraint>
 
 <constraint>
-The `sudo`-issuing `if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap` is the ONLY place in the entire kit that runs sudo directly — never add sudo-requiring commands elsewhere without explicit justification (`lib/codex.sh:60`).
+The `sudo`-issuing `if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap` is the ONLY place in the entire kit that runs sudo directly — never add sudo-requiring commands elsewhere without explicit justification.
 </constraint>
 
 <constraint>
-Kit-managed `*.rules` files deploy from `SoT/.codex/rules/`; `~/.codex/rules/default.rules` is user-learned and MUST NOT be touched (`lib/codex.sh:107-129`). `codex::sync_config` call order is fixed: `scrub_deprecated_features` → `merge_top_level_settings` → `merge_table_settings`.
+Kit-managed `*.rules` files deploy from `SoT/.codex/rules/`; `~/.codex/rules/default.rules` is user-learned and MUST NOT be touched (`codex::sync_rules`). `codex::sync_config` call order is fixed: `scrub_deprecated_features` → `merge_top_level_settings` → `merge_table_settings`.
 </constraint>
 
 ## Workflow
@@ -31,12 +32,12 @@ Kit-managed `*.rules` files deploy from `SoT/.codex/rules/`; `~/.codex/rules/def
 4. For `codex::ensure_bubblewrap` changes: confirm macOS early-return is still at the top; verify package-manager detection order (apt-get → dnf → pacman → zypper).
 5. For `codex::sync_rules` changes: confirm `find … -name '*.rules'` loop skips `default.rules` (it does because `default.rules` is not in `SoT/.codex/rules/`).
 6. For a new TOML top-level key in `SoT/.codex/config.toml`: verify `codex::merge_top_level_settings` picks it up (it processes all `key = value` lines from the SoT file).
-7. For a new TOML table in `SoT/.codex/config.toml`: verify `codex::merge_table_settings` picks it up (it processes all `^\[[^]]+\]` headers via grep at `lib/codex.sh:291`).
+7. For a new TOML table in `SoT/.codex/config.toml`: verify `codex::merge_table_settings` picks it up (it processes all `^\[[^]]+\]` headers via grep at the end of `codex::merge_table_settings`).
 8. After any change to `lib/codex.sh`, run `bash -n lib/codex.sh` to syntax-check before testing.
 
 ## Patterns
 
-Table block extraction via awk (`lib/codex.sh:272-278`):
+Table block extraction via awk (`codex::merge_table_settings`):
 ```bash
 table_block="$(
   awk -v header="$table_header" '
@@ -47,7 +48,7 @@ table_block="$(
 )"
 ```
 
-Delete existing block before append (`lib/codex.sh:281-285`):
+Delete existing block before append (`codex::merge_table_settings`):
 ```bash
 awk -v header="$table_header" '
   $0 == header { skip = 1; next }
@@ -56,22 +57,22 @@ awk -v header="$table_header" '
 ' "$user_codex_settings" > "$tmp_file" && mv "$tmp_file" "$user_codex_settings"
 ```
 
-Blank-line separator before block append (`lib/codex.sh:287-290`):
+Blank-line separator before block append (`codex::merge_table_settings`):
 ```bash
 { printf '\n'; printf '%s\n' "$table_block"; } >> "$user_codex_settings"
 ```
 
-Managed-file marker guard (`lib/codex.sh:306`):
+Managed-file marker guard (`codex::install_launcher`):
 ```bash
 if [[ ! -e "$user_codex_bin" ]] || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin"
 ```
 
-Deprecated-feature scrubber trigger (`lib/codex.sh:189`):
+Deprecated-feature scrubber trigger (`codex::scrub_deprecated_features`):
 ```bash
 grep -q '^use_legacy_landlock[[:space:]]*=' "$user_codex_settings" || return 0
 ```
 
-Bubblewrap install (`lib/codex.sh:60`):
+Bubblewrap install (`codex::ensure_bubblewrap`):
 ```bash
 if ! eval "$pm_install"; then
 ```
@@ -91,9 +92,9 @@ Read these for detailed knowledge:
 
 ## Anti-Hallucination Checks
 
-1. Before citing `lib/codex.sh:272-278`, read that offset and confirm the awk `printing` extraction pattern.
-2. Before citing `lib/codex.sh:60`, read that line and confirm it is the `if ! eval "$pm_install"; then` sudo invocation.
-3. Before citing `lib/codex.sh:189`, read that line and confirm the `use_legacy_landlock` grep trigger.
+1. Before citing `codex::merge_table_settings`, read the block-extraction awk and confirm the `printing` extraction pattern.
+2. Before citing `codex::ensure_bubblewrap`, read the function and confirm it is the `if ! eval "$pm_install"; then` sudo invocation.
+3. Before citing `codex::scrub_deprecated_features`, read the function and confirm the `use_legacy_landlock` grep trigger.
 4. When citing skill paths, confirm `.claude/skills/codex-config-merge-context/` exists on disk.
 
 ## Success Criteria

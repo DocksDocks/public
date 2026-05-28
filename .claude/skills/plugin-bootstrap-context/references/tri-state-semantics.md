@@ -2,7 +2,7 @@
 
 ## Critical Constraint
 
-The removal guard is `has($n)` NOT truthiness. `false`-valued keys PASS `has()` and are KEPT on `--remove-plugins`. (lib/claude.sh:254)
+The removal guard is `has($n)` NOT truthiness. `false`-valued keys PASS `has()` and are KEPT on `--remove-plugins`. (`claude::_plugins_uninstall` — the `has($n)` guard)
 
 ## Value × Scenario Matrix
 
@@ -45,4 +45,4 @@ Without `--force`, the key survives in `~/.claude/settings.json` (additive merge
 ## Gotchas
 
 - Official plugins auto-installed by Claude Code (context7, frontend-design, etc.) are not in `enabledPlugins`. They survive `--remove-plugins` because Pass 5 reads installed plugins from `installed_plugins.json` and checks them against `enabledPlugins`. If an official auto-install is not in SoT `enabledPlugins`, it IS uninstalled by Pass 5. Add it to `enabledPlugins: true` to protect it.
-- `claude-plugins-official` marketplace is unconditionally protected in Pass 6 (lib/claude.sh:277) — it is never removed regardless of SoT content.
+- `claude-plugins-official` marketplace is unconditionally protected in Pass 6 (`claude::_plugins_remove_marketplaces` — claude-plugins-official guard) — it is never removed regardless of SoT content.

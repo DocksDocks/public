@@ -18,15 +18,15 @@ metadata:
 # Plugin Bootstrap
 
 <constraint>
-The `--remove-plugins` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (lib/claude.sh:254)
+The `--remove-plugins` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (`claude::_plugins_uninstall` — the `has($n)` guard)
 </constraint>
 
 <constraint>
-`claude-plugins-official` is NEVER removed, even on `--remove-plugins` runs. The guard at lib/claude.sh:277 (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
+`claude-plugins-official` is NEVER removed, even on `--remove-plugins` runs. The guard at `claude::_plugins_remove_marketplaces` (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
 </constraint>
 
 <constraint>
-Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mcp-skills@n8n-mcp-skills`). The `enabledPlugins` key must use this exact format. The install loop reads keys via `jq -r '.enabledPlugins // {} | keys[]'` (lib/claude.sh:219).
+Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mcp-skills@n8n-mcp-skills`). The `enabledPlugins` key must use this exact format. The install loop reads keys via `jq -r '.enabledPlugins // {} | keys[]'` (`claude::_plugins_install` — keys read).
 </constraint>
 
 ## When to Use
@@ -48,40 +48,40 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 | `false` | Yes | No | Yes (project settings.json) | Yes (`has()` passes) |
 | absent | No | — | No (nothing to flip) | No (uninstalled by `--remove-plugins`) |
 
-Source: lib/claude.sh:254 (`has($n)` test), SoT/.claude/settings.json:245-257 (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
+Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json:245-257 (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
 
-### Six-Pass Reconcile (`claude::sync_plugins` orchestrator, lib/claude.sh:292-329)
+### Six-Pass Reconcile (`claude::sync_plugins` orchestrator)
 
-The orchestrator dispatches five `claude::_plugins_*` helpers (passes 3+4 share one helper). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at lib/claude.sh:312-317.
+The orchestrator dispatches five `claude::_plugins_*` helpers (passes 3+4 share one helper). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block).
 
-| Pass | Condition | Action | Helper (def) | Op line |
-|------|-----------|--------|--------------|---------|
-| 1 | Always | `claude plugin marketplace add` for missing `extraKnownMarketplaces` | `_plugins_add_marketplaces` (183) | 192 |
-| 2 | Always | `claude plugin install` for missing `enabledPlugins` keys | `_plugins_install` (204) | 213 |
-| 3 | Always | `claude plugin marketplace update` (refresh manifests) | `_plugins_update` (226) | 230 |
-| 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` (226) | 235 |
-| 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y` for installed plugins not in `enabledPlugins` via `has()` | `_plugins_uninstall` (247) | 255 |
-| 6 | `REMOVE_PLUGINS=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` (270) | 279 |
+| Pass | Condition | Action | Helper (def) | Operation |
+|------|-----------|--------|--------------|-----------|
+| 1 | Always | `claude plugin marketplace add` for missing `extraKnownMarketplaces` | `_plugins_add_marketplaces` | marketplace add |
+| 2 | Always | `claude plugin install` for missing `enabledPlugins` keys | `_plugins_install` | plugin install |
+| 3 | Always | `claude plugin marketplace update` (refresh manifests) | `_plugins_update` | marketplace update |
+| 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
+| 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y` for installed plugins not in `enabledPlugins` via `has()` | `_plugins_uninstall` | plugin uninstall |
+| 6 | `REMOVE_PLUGINS=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
 
-Passes 5+6 are gated on `REMOVE_PLUGINS` at lib/claude.sh:315. Pass 3 uses `|| true` (lib/claude.sh:230) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (lib/claude.sh:235) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter (lib/claude.sh:236).
+Passes 5+6 are gated on `REMOVE_PLUGINS` at `claude::sync_plugins` (REMOVE_PLUGINS gate). Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
 
 ### Pass 1 — Marketplace Pre-Check
 
 ```bash
-# lib/claude.sh:189
+# claude::_plugins_add_marketplaces (key-presence pre-check)
 if [[ -f "$known_marketplaces" ]] && jq -e --arg n "$mp_name" '.[$n]' "$known_marketplaces" >/dev/null 2>&1; then
   continue
 fi
 ```
 
-Checks key presence in `known_marketplaces.json`, not URL validity. A broken marketplace URL already in the file is NOT re-added. The repo/source pair is read via `jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo)"'` (lib/claude.sh:198).
+Checks key presence in `known_marketplaces.json`, not URL validity. A broken marketplace URL already in the file is NOT re-added. The repo/source pair is read via `jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo)"'` (`claude::_plugins_add_marketplaces` — extraKnownMarketplaces read).
 
 ### Pass 5 — `has($n)` Removal Guard
 
 ```bash
-# lib/claude.sh:254
+# claude::_plugins_uninstall (the has($n) guard)
 if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$repo_settings" >/dev/null 2>&1; then
-  claude::_cli plugin uninstall -y "$plugin_id" …   # line 255
+  claude::_cli plugin uninstall -y "$plugin_id" …
 fi
 ```
 
@@ -90,12 +90,12 @@ fi
 ### Pass 6 — `claude-plugins-official` Protection
 
 ```bash
-# lib/claude.sh:276-277
+# claude::_plugins_remove_marketplaces (claude-plugins-official guard)
 [[ -z "$mp_name" ]] && continue
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
 
-### Codex Marketplace Merge (`codex::sync_marketplace`, lib/codex.sh:315-356)
+### Codex Marketplace Merge (`codex::sync_marketplace`)
 
 ```bash
 jq -s '
@@ -110,36 +110,36 @@ jq -s '
 ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"
 ```
 
-`reverse + unique_by(.name) + reverse` (lib/codex.sh:340-342) — last entry for a given `.name` survives `unique_by`. Since user array is first, reversing puts user entries LAST, `unique_by` keeps last = user entry wins on name collision. Second `reverse` restores original order. Write-to-`.tmp`-then-`mv` (lib/codex.sh:344, 349). Runs the merge branch only when the user file exists and `FORCE=0` (lib/codex.sh:329); otherwise installs wholesale.
+`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — last entry for a given `.name` survives `unique_by`. Since user array is first, reversing puts user entries LAST, `unique_by` keeps last = user entry wins on name collision. Second `reverse` restores original order. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the merge branch only when the user file exists and `FORCE=0` (`codex::sync_marketplace` — FORCE guard); otherwise installs wholesale.
 
-### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`, lib/codex.sh:383-402)
+### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`)
 
-Older sync versions ran `codex plugin marketplace add DocksDocks/docks`, creating a configured Git marketplace named `docks` alongside the implicit personal marketplace file at `~/.agents/plugins/marketplace.json`. The kit now uses the personal marketplace as the single source. `codex::_marketplace_source` (lib/codex.sh:358-381) awk-parses the `source =` line from the `[marketplaces.docks]` table; if it points at `https://github.com/DocksDocks/docks.git` or `DocksDocks/docks`, sync removes the configured source with `codex plugin marketplace remove docks` (lib/codex.sh:395).
+Older sync versions ran `codex plugin marketplace add DocksDocks/docks`, creating a configured Git marketplace named `docks` alongside the implicit personal marketplace file at `~/.agents/plugins/marketplace.json`. The kit now uses the personal marketplace as the single source. `codex::_marketplace_source` awk-parses the `source =` line from the `[marketplaces.docks]` table; if it points at `https://github.com/DocksDocks/docks.git` or `DocksDocks/docks`, sync removes the configured source with `codex plugin marketplace remove docks` (`codex::remove_legacy_docks_marketplace` — marketplace remove).
 
-### Codex Plugin Refresh (`codex::sync_plugins`, lib/codex.sh:454-489)
+### Codex Plugin Refresh (`codex::sync_plugins`)
 
-`codex::_enabled_plugin_ids` (lib/codex.sh:422-452) awk-parses enabled `[plugins."name@marketplace"]` tables from `SoT/.codex/config.toml` (only tables whose body has `enabled = true`). `codex::sync_plugins` then:
+`codex::_enabled_plugin_ids` awk-parses enabled `[plugins."name@marketplace"]` tables from `SoT/.codex/config.toml` (only tables whose body has `enabled = true`). `codex::sync_plugins` then:
 
 | Step | Action | Failure mode |
 |------|--------|--------------|
-| 1 | `codex plugin add <plugin@marketplace>` for every enabled plugin (lib/codex.sh:471) | Warn with the first CLI error line and count failure (lib/codex.sh:477-478) |
+| 1 | `codex plugin add <plugin@marketplace>` for every enabled plugin (`codex::sync_plugins` — plugin add loop) | Warn with the first CLI error line and count failure (`codex::sync_plugins` — failure counter) |
 
 This pass is intentionally run on every sync. `codex plugin add` is the Codex CLI's install/reinstall command, and re-running it refreshes a stale installed cache from the personal marketplace's current Git source.
 
 ## Key Decisions
 
-- Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at lib/claude.sh:180-182) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at lib/claude.sh:319.
-- `|| true` on passes 3 and 4 (lib/claude.sh:230, 235) — marketplace update and plugin updates are best-effort; failures must not abort the sync run.
-- `claude` CLI is checked with `command -v claude` (lib/claude.sh:307) before the dispatch block. If absent, the whole reconcile is skipped with a warning.
-- `codex::sync_plugins` checks `command -v codex` (lib/codex.sh:463) before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command` (lib/codex.sh:410-420).
+- Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at `claude::_cli` — portability note) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at `claude::sync_plugins` (failure sum).
+- `|| true` on passes 3 and 4 (`claude::_plugins_update` — marketplace-update `|| true`, plugin-update `|| true`) — marketplace update and plugin updates are best-effort; failures must not abort the sync run.
+- `claude` CLI is checked with `command -v claude` (`claude::sync_plugins` — CLI presence check) before the dispatch block. If absent, the whole reconcile is skipped with a warning.
+- `codex::sync_plugins` checks `command -v codex` before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command`.
 - Codex sync does NOT call `codex plugin marketplace add DocksDocks/docks`; `SoT/.codex/plugins/marketplace.json` already provides the implicit personal marketplace.
 - Per-project plugin enable lives in the project's `.claude/settings.json` `enabledPlugins` block. The user-scope key must remain present (as `false`) — Claude Code ignores project-level entries whose key is absent from user settings.
 
 ## Gotchas
 
-- **Marketplace pre-check checks presence, not validity** (lib/claude.sh:189): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
-- **`false`-keyed plugins ARE installed** (pass 2, lib/claude.sh:208-219): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled."
-- **Codex `command -v codex` matches the kit's own launcher**: if the kit launcher is present but the npm Codex binary is not, `codex plugin add` fails with "could not find a Codex CLI binary" — the helper warns with the npm install fallback (lib/codex.sh:473-474).
+- **Marketplace pre-check checks presence, not validity** (`claude::_plugins_add_marketplaces` — key-presence pre-check): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
+- **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled."
+- **Codex `command -v codex` matches the kit's own launcher**: if the kit launcher is present but the npm Codex binary is not, `codex plugin add` fails with "could not find a Codex CLI binary" — the helper warns with the npm install fallback (`codex::sync_plugins` — missing-binary warning).
 - **Per-project `enabledPlugins: true` is silently ignored** if the user-scope key is absent — Claude Code requires the key to exist in user settings (even as `false`) before a project-level override can activate it.
 
 ## References

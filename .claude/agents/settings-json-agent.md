@@ -10,19 +10,19 @@ model: sonnet
 Owns `claude::sync_settings`, `claude::sync_claude_json`, jq merge pipelines, and `~/.claude.json` carve-outs.
 
 <constraint>
-Never write directly to `~/.claude/settings.json` — always write to `.tmp` then `mv .tmp` to target; backup to `.bak` before any `jq` invocation (`lib/claude.sh:90-97`, `lib/claude.sh:105-117`).
+Never write directly to `~/.claude/settings.json` — always write to `.tmp` then `mv .tmp` to target; backup to `.bak` before any `jq` invocation (`claude::_settings_reconcile (backup + atomic .tmp/mv)`, `claude::_settings_merge (backup + atomic .tmp/mv)`).
 </constraint>
 
 <constraint>
-Always run `jq empty "$user_settings"` before any merge — skip with `err` if invalid JSON (`lib/claude.sh:72-74`). Never attempt to merge into a file that fails the validity guard.
+Always run `jq empty "$user_settings"` before any merge — skip with `err` if invalid JSON (`claude::_settings_validate (jq empty guard)`). Never attempt to merge into a file that fails the validity guard.
 </constraint>
 
 <constraint>
-`showTurnDuration` belongs in `~/.claude.json`, NOT `settings.json` — placing it in `settings.json` causes a schema validation error (`lib/claude.sh:147-170`). Hook commands in `settings.json` must use absolute `$HOME` paths, not `~/`.
+`showTurnDuration` belongs in `~/.claude.json`, NOT `settings.json` — placing it in `settings.json` causes a schema validation error (`claude::sync_claude_json`). Hook commands in `settings.json` must use absolute `$HOME` paths, not `~/`.
 </constraint>
 
 <constraint>
-In default (non-force) merge, `permissions.allow/deny/ask` are unioned via `concat + unique`, not replaced. In `--force` mode, permissions arrays are replaced wholesale by SoT values (`lib/claude.sh:106-112` vs `lib/claude.sh:91-92`).
+In default (non-force) merge, `permissions.allow/deny/ask` are unioned via `concat + unique`, not replaced. In `--force` mode, permissions arrays are replaced wholesale by SoT values (`claude::_settings_merge (the jq union)` vs `claude::_settings_reconcile (the jq $user*$repo)`).
 </constraint>
 
 ## Workflow
@@ -38,7 +38,7 @@ In default (non-force) merge, `permissions.allow/deny/ask` are unioned via `conc
 
 ## Patterns
 
-Default additive merge with permission union (`lib/claude.sh:106-112`):
+Default additive merge with permission union (`claude::_settings_merge (the jq union)`):
 ```bash
 jq -s '
   .[0] as $repo | .[1] as $user |
@@ -49,14 +49,14 @@ jq -s '
 ' "$repo_settings" "$user_settings" > "$user_settings.tmp"
 ```
 
-Force reconcile — repo wins, arrays replaced (`lib/claude.sh:91-92`):
+Force reconcile — repo wins, arrays replaced (`claude::_settings_reconcile (the jq $user*$repo)`):
 ```bash
 jq -s '.[0] as $repo | .[1] as $user | $user * $repo'
 ```
 
-Validity guard (`lib/claude.sh:72`): `jq empty "$user_settings" 2>/dev/null`
+Validity guard (`claude::_settings_validate (jq empty guard)`): `jq empty "$user_settings" 2>/dev/null`
 
-Atomic `~/.claude.json` edit (`lib/claude.sh:160`):
+Atomic `~/.claude.json` edit (`claude::sync_claude_json (the showTurnDuration jq)`):
 ```bash
 jq '.showTurnDuration = true' "$claude_json" > "$claude_json.tmp"
 ```
@@ -78,7 +78,7 @@ Read these for detailed knowledge:
 
 1. Before citing any `lib/claude.sh` line, read that offset to confirm the code matches.
 2. Confirm the jq operand order: `$user * $repo` means repo wins (right operand wins in jq `*`). Verify before describing merge direction.
-3. Confirm `lib/claude.sh:254` is `has($n)` before describing `plugin-bootstrap-agent` boundary — do not conflate settings and plugin logic.
+3. Confirm `claude::_plugins_uninstall (has($n) guard)` is `has($n)` before describing `plugin-bootstrap-agent` boundary — do not conflate settings and plugin logic.
 4. When citing skill paths, confirm `.claude/skills/settings-merge-context/` exists on disk.
 
 ## Success Criteria
