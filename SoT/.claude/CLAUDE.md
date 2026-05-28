@@ -42,7 +42,7 @@ Research the codebase before editing. Never change code you haven't read.
 
 **8. Todo hygiene.** Use TaskCreate for items with meaningful outcome (≥5 min, distinct deliverable). Never include operational sub-actions (linting, testing, searching, examining the codebase) as their own todos — those are sub-steps in service of higher-level tasks. Mark complete immediately when done, never in batches.
 
-**9. Literal-instruction rule (Opus 4.7-specific).** Opus 4.7 follows instructions literally — it does not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative.
+**9. Literal-instruction rule (Opus 4.7+/4.8-specific).** Opus 4.7 and 4.8 follow instructions literally — they do not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative.
 
 **10. Cache-invariance.** Don't insert timestamps, mutable state, or rotating tool definitions into the cached prefix (system prompt, tool sets, opening user message) — they break cache and force cold-start writes. Put dynamic context inside `<system-reminder>` tags within user messages instead. Cache breaks cost ~5× over a clean session. Caches are also per-model: switching Opus→Sonnet mid-session forces a cold-start cache write — use subagents for cross-model work instead.
 
