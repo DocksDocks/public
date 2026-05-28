@@ -2,12 +2,13 @@
 title: Audit project skills + emit Codex agent TOMLs
 status: finished
 created: 2026-05-28
-updated: 2026-05-28
+updated: 2026-05-28T17:19:28-03:00
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
 ship_commit: a8138e44ee803fc7bb742cc64cc2af9b414aed13
+review_status: passed
 ---
 
 # Audit project skills + emit Codex agent TOMLs
@@ -320,3 +321,11 @@ Every `lib:line` ref re-derived from current source and verified (content + in-r
 - Root-cause: durable skills should cite function names + one `source_files` range, not dozens of inline line numbers (candidate plan).
 
 **Not committed** — changes staged/working-tree only; awaiting user go-ahead to commit + ship (move to `finished/`, set `ship_commit`).
+
+## Review
+
+- **Goal met:** yes — ship_commit `a8138e4` delivers all four manifest buckets plus the Phase 8 "Full refresh" rescope. Verified against current source (claude.sh 420 / codex.sh 506 / skills.sh 278 / common.sh 71 / sync.sh 54): (1) 5 keeper skills + 8 `references/` files refreshed, all `updated: "2026-05-28"`; `source_files` ranges re-derived (codex `38-292`, claude `69-170` settings, claude `176-329` + codex `315-489` plugin-bootstrap, skills `1-278`); (2) D2 cascade — `.claude/skills/skill-maintenance/` and `.claude/agents/skill-author-agent.md` deleted; (3) 5 keeper Claude agents ref-refreshed; (4) 5 `.codex/agents/*.toml` twins created (`model="gpt-5.3-codex"`, `sandbox_mode="read-only"`). All 5 TOMLs parse via tomllib with the 3 required keys (`name`/`description`/`developer_instructions`), and each `developer_instructions` is byte-identical to its corrected `.md` body post-frontmatter (verbatim claim confirmed).
+- **Regressions:** none — 316 `lib:line` refs across all shipped skills+agents are in-range (0 out-of-range); named anchors content-verified against current source (e.g. `lib/claude.sh:69` `claude::_settings_validate`, `:103` `_settings_merge`, `:121` `sync_settings`, `:147` `sync_claude_json`, `:292` `sync_plugins`; `lib/codex.sh:38` `ensure_bubblewrap`, `:315` `sync_marketplace`, `:383` `remove_legacy_docks_marketplace`, `:454` `sync_plugins`; `lib/skills.sh:110` `heal_claude_symlink`, `:219` `reconcile_removals`). Dangling-ref greps clean across `.claude`/`.codex`: no `bootstrap_marketplace`, `codex::sync_rtk`, `skill-author-agent`, `.claude/skills/skill-maintenance` path, `/home/vagrant`, or `guard-*.sh`/`score-*.sh` refs remain.
+- **CI:** n/a — repo has no `scripts/ci.sh` and AGENTS.md states "No automated tests yet". Substituted regression scan (per ship-review request): (a) all 316 `lib:line` refs validated in-range + anchor-verified against current source; (b) 5 `.codex/agents/*.toml` parse-valid via `tomllib` with all 3 required keys. Both substitute gates pass.
+- **Follow-ups:** none required for goal. Plan-flagged out-of-scope items remain open (carried verbatim, not created here): `scrub-stale-validator-refs` (`CLAUDE.md` cites missing `guard-skills.sh`/`score-skills.sh`/`guard-agents.sh`/`score-agents.sh` — create the validators or scrub the refs; also `AGENTS.md:62` "skill-maintenance meta" phrase), `durable-skill-refs-design` (root-cause: `*-context` skills hardcode dozens of `lib:line` refs that break on every refactor — cite function names + one `source_files` range instead).
+- Filed by: plan-review on 2026-05-28T17:19:28-03:00
