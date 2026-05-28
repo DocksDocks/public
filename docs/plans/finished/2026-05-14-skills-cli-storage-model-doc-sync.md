@@ -1,13 +1,13 @@
 ---
 title: Update kit docs for skills CLI v1.5 storage model and Codex reach
-status: ongoing
+status: finished
 created: 2026-05-14
-updated: 2026-05-14
+updated: 2026-05-28
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
-ship_commit: null
+ship_commit: b51a9b791922cb465a17d1cf83b531b591e98eae
 ---
 
 # Update kit docs for skills CLI v1.5 storage model and Codex reach
@@ -68,20 +68,20 @@ below:
 Tri-state: `[~]` = done + verified but uncommitted; flips to `[x]` on the
 ship commit.
 
-- [~] `lib/skills.sh` invokes `npx skills add <slug> -g -y -a claude-code codex`
+- [x] `lib/skills.sh` invokes `npx skills add <slug> -g -y -a claude-code codex`
       (source-first, both agents) in all three spots; `SKILLS_DIR` points
       at `~/.agents/skills`
-- [~] After `./sync.sh --agents`: `~/.agents/skills/agent-browser/` is a
+- [x] After `./sync.sh --agents`: `~/.agents/skills/agent-browser/` is a
       real dir and `~/.claude/skills/agent-browser` is a symlink to it.
       Codex coverage is structural, not CLI-reported — the canonical skill
       lives at `~/.agents/skills/<name>/`, which OpenAI's Codex docs
       confirm Codex reads as a user-level skill source. (`npx skills ls`
       can't surface Codex here: it lists per-tool-dir presence, and Codex
       has no per-tool skills dir — it reads the canonical path directly.)
-- [~] `./sync.sh --agents` is idempotent — a second run reports
+- [x] `./sync.sh --agents` is idempotent — a second run reports
       "Universal skills already in sync (1 present)" / "1 universal
       skill(s) installed", exit 0
-- [~] `AGENTS.md` § Skills and `SoT/.agents/skills.txt` describe the
+- [x] `AGENTS.md` § Skills and `SoT/.agents/skills.txt` describe the
       verified v1.5.7 layout — corrected invocation, canonical
       `~/.agents/skills/`, universal-vs-symlinked split — with no stale
       arg-order or "copies into ~/.claude/skills" claims
