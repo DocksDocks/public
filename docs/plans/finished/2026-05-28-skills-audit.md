@@ -1,13 +1,13 @@
 ---
 title: Audit project skills + emit Codex agent TOMLs
-status: ongoing
+status: finished
 created: 2026-05-28
 updated: 2026-05-28
 assignee: null
 blockers: []
 blocked_reason: null
 blocked_since: null
-ship_commit: null
+ship_commit: a8138e44ee803fc7bb742cc64cc2af9b414aed13
 ---
 
 # Audit project skills + emit Codex agent TOMLs
