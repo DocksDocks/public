@@ -311,13 +311,13 @@ Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cau
 
 #### [2026-04-24] Opus 4.7+/4.8 thinking summaries not rendered
 
-**Status:** Open — confirmed bug, no fix in Claude Code 2.1.154 (latest, last verified 2026-05-28). Carries forward to Opus 4.8 (released 2026-05-28).
+**Status:** Open — confirmed bug, no fix in Claude Code 2.1.156 (latest, last verified 2026-05-29). Carries forward to Opus 4.8 (released 2026-05-28).
 
 **Symptom:** `"showThinkingSummaries": true` in `settings.json` does not produce visible thinking content on Opus 4.7 or 4.8. The thinking block header (token count, elapsed time) renders, but the expand toggle reveals empty content.
 
 **Root cause:** Opus 4.7 flipped the API default for `thinking.display` from `"summarized"` (4.6 behavior) to `"omitted"` (faster time-to-first-token on streaming); 4.8 inherits this default. Claude Code's harness does NOT currently translate `showThinkingSummaries: true` into `"display": "summarized"` on 4.7+/4.8 requests, so the client receives empty thinking blocks and has nothing to render.
 
-**Upstream issues** (status re-checked 2026-05-28):
+**Upstream issues** (status re-checked 2026-05-29):
 - [anthropics/claude-code#49268](https://github.com/anthropics/claude-code/issues/49268) — "harness doesn't set display: summarized" (root cause, **OPEN**)
 - [anthropics/claude-code#49708](https://github.com/anthropics/claude-code/issues/49708) — thinking empty despite `showThinkingSummaries: true` (closed 2026-04-17 as duplicate of #49268, no code fix)
 - [anthropics/claude-code#49322](https://github.com/anthropics/claude-code/issues/49322) — VS Code extension variant (**OPEN**)
@@ -325,7 +325,7 @@ Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cau
 - [anthropics/claude-code#52376](https://github.com/anthropics/claude-code/issues/52376) — feature request for subscription sessions to honor `thinking.display` (closed 2026-04-27 as duplicate of #49268; no code fix shipped — tracked under root cause)
 - Model-side reference: [What's new in Claude Opus 4.8](https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8)
 
-**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; still required on 2.1.154). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
+**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; still required on 2.1.156). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
 
 ```bash
 alias claude='claude --thinking-display summarized'
