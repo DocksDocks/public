@@ -162,7 +162,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Hooks
 
-- **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, pinned opus model, subagent model) so agents don't rely on training data cutoff
+- **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
 - **SessionStart (no matcher — fires on every event: `startup`/`resume`/`compact`/`clear`)**: Runs `~/.claude/hooks/disable-claudeai-connectors.sh` (sourced from `SoT/.claude/hooks/`) — auto-patches `~/.claude.json` `projects[$cwd].disabledMcpServers` for the current project, keeping unwanted Claude.ai connectors out of context. Workaround for the still-broken `ENABLE_CLAUDEAI_MCP_SERVERS` env var (see [issue #45158](https://github.com/anthropics/claude-code/issues/45158), [#20412](https://github.com/anthropics/claude-code/issues/20412)). Edit the `CONNECTORS` array in the script to change the disable list. Idempotent — safe to run on every event. **Why no `startup` matcher**: a `startup`-only hook never re-runs on resumed/compacted sessions, so any project the user opens via `--resume` or auto-compact never gets its `disabledMcpServers` entry. Symptom: connectors keep showing up in `/plugin` even after they were "disabled" in another session. Firing on every SessionStart event eliminates the gap; cost is one cheap `jq` patch per event
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
@@ -192,9 +192,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 #### Model selection
 
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `claude-opus-4-8` | Pins the opus model version for the main orchestrator. 4.8 launched 2026-05-28 with further agentic-coding gains, fewer compactions, and same pricing as 4.7. Requires Claude Code 2.1.154+. |
+No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to the latest Opus on Anthropic API ([model config docs](https://code.claude.com/docs/en/model-config)). Future Opus releases land instantly on a kit-synced machine with no manual env-var bump. Trade-off accepted: no per-release rollout control if a future Opus ships a breaking default change (4.7→4.8 dropped the default effort from `xhigh` to `high`, which the kit's `CLAUDE_CODE_EFFORT_LEVEL=xhigh` pin already overrides). To temporarily pin during a known-bad release, set `ANTHROPIC_DEFAULT_OPUS_MODEL` in `~/.claude/settings.local.json`.
 
 **Subagent model selection:** not an env var. The docks plugin declares per-agent `model:` (sonnet/opus) in each agent's frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over agent frontmatter.
 
