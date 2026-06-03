@@ -252,7 +252,8 @@
     "skill-creator@claude-plugins-official": true,
     "php-lsp@claude-plugins-official": true,
     "supabase@claude-plugins-official": false,
-    "docks@docks": true
+    "docks@docks": true,
+    "effect-kit@effect-kit": true
   },
   "extraKnownMarketplaces": {
     "n8n-mcp-skills": {
@@ -265,6 +266,12 @@
       "source": {
         "source": "github",
         "repo": "DocksDocks/docks"
+      }
+    },
+    "effect-kit": {
+      "source": {
+        "source": "github",
+        "repo": "DocksDocks/effect-kit"
       }
     }
   },

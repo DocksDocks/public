@@ -1,14 +1,14 @@
 ---
 name: universal-skills-context
-description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add <slug> -g -y -a claude-code codex invocation order (variadic -a would swallow the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/<name>/ + ~/.claude/skills/<name> symlink vs copy-direct), the relative symlink target ../../.agents/skills/<basename> matching the upstream CLI installer.ts, the ~/.agents/.kit-managed-skills snapshot diff for removals, and the agent-browser install --with-deps Linux sudo prompt.
+description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, skills::sync_effect_solutions_cli, skills::_find_bun, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add <slug> -g -y -a claude-code codex invocation order (variadic -a would swallow the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/<name>/ + ~/.claude/skills/<name> symlink vs copy-direct), the relative symlink target ../../.agents/skills/<basename> matching the upstream CLI installer.ts, the ~/.agents/.kit-managed-skills snapshot diff for removals, the agent-browser install --with-deps Linux sudo prompt, and the Bun-based effect-solutions CLI install (gated on effect-kit enabled, auto-installs Bun download-then-run, symlinks bun + CLI into ~/.local/bin to clear ~/.bashrc's non-interactive guard).
 user-invocable: false
 metadata:
   source_files:
     - path: lib/skills.sh
-      lines: "1-278"
+      lines: "1-358"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-05-28"
+  updated: "2026-06-03"
 ---
 
 # Universal Skills Bootstrap
@@ -133,6 +133,7 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 - `skills::heal_claude_symlink` is called on EVERY sync for already-present skills (skills::sync_universal (heal call in pre-check)) — symlinks can drift without the user noticing.
 - `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (skills::sync_agent_browser_cli).
 - `SKILLS_PRESENT` tally (skills::sync_universal (SKILLS_PRESENT tally)) counts installed + already-present for the summary; does NOT re-scan `~/.agents/skills/` (which would include user-installed skills).
+- The optional `effect-solutions` CLI has its own helper (`skills::sync_effect_solutions_cli`), gated on effect-kit being enabled in SoT (a `grep` for `"effect-kit@effect-kit": true` in `SoT/.claude/settings.json`). It symlinks BOTH `bun` and the CLI into `~/.local/bin` (`skills::sync_effect_solutions_cli` (ln -sf both binaries)) — linking only the CLI fails at run time because its `#!/usr/bin/env bun` shebang needs `bun` on PATH too. `bun pm -g bin` is the authoritative global-bin query (it varies with `BUN_INSTALL`/`XDG_CACHE_HOME`); `skills::_find_bun` resolves bun itself, which also lives off the non-interactive PATH.
 
 ## Gotchas
 
@@ -140,6 +141,7 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 - **Real directory at `~/.claude/skills/<name>`**: `heal_claude_symlink` warns and skips (skills::heal_claude_symlink (real-directory guard)). The two copies diverge silently. Fix: manually `rm -rf ~/.claude/skills/<name>` then re-run sync.
 - **First `--remove-plugins` with no snapshot**: `reconcile_removals` returns early if `~/.agents/.kit-managed-skills` does not exist (skills::reconcile_removals (missing-snapshot early return)). No removal occurs. Run a real sync first to write the snapshot, then `--remove-plugins` to reconcile.
 - **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (skills::sync_agent_browser_cli (Linux --with-deps)).
+- **effect-solutions unreachable in agent shells**: bun's global bin (`~/.cache/.bun/bin` when `BUN_INSTALL` is unset, else `~/.bun/bin`) and `~/.bun/bin` itself sit off the non-interactive PATH, and `~/.bashrc`'s `*i*) ;; *) return;;` guard means rc PATH edits never reach non-interactive (sync/agent) shells. `skills::sync_effect_solutions_cli` sidesteps this by symlinking into `~/.local/bin` (already on the agent PATH — same as the Codex launcher). Do NOT "fix" a missing CLI by editing `~/.bashrc`; non-interactive shells never read past the guard.
 
 ## References
 

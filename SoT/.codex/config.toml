@@ -17,3 +17,6 @@ status_line = [
 
 [plugins."docks@docks"]
 enabled = true
+
+[plugins."effect-kit@docks"]
+enabled = true

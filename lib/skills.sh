@@ -31,6 +31,7 @@ skills::sync() {
     skills::reconcile_removals
   fi
   skills::sync_agent_browser_cli
+  skills::sync_effect_solutions_cli
   skills::update_snapshot
 }
 
@@ -184,6 +185,85 @@ skills::sync_agent_browser_cli() {
     log "agent-browser CLI ready ($(agent-browser --version 2>/dev/null || echo 'version unknown'))"
   else
     warn "agent-browser install failed. Re-run manually: agent-browser install ${install_flags[*]:-}"
+  fi
+}
+
+# Resolve a usable `bun` binary. `bun` lives in ~/.bun/bin, which is off the
+# non-interactive PATH that sync/agent shells use, so `command -v` alone misses
+# a perfectly good install. Fall back to the known install locations.
+skills::_find_bun() {
+  local c
+  c="$(command -v bun 2>/dev/null || true)"
+  [[ -n "$c" ]] && { printf '%s\n' "$c"; return 0; }
+  for c in "${BUN_INSTALL:-$HOME/.bun}/bin/bun" "$HOME/.bun/bin/bun"; do
+    [[ -x "$c" ]] && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
+# effect-solutions is the optional ground-truth Effect docs CLI the effect-kit
+# skills consult opportunistically. It ships as a Bun bin with a
+# `#!/usr/bin/env bun` shebang, so BOTH `bun` and the CLI must be on PATH to
+# run it. bun's global bin (~/.cache/.bun/bin or ~/.bun/bin, depending on
+# BUN_INSTALL/XDG_CACHE_HOME) and bun itself sit off the non-interactive PATH,
+# and ~/.bashrc's "if not interactive, return" guard means rc PATH edits never
+# reach agent shells. So we symlink both binaries into ~/.local/bin — already
+# first on the agent PATH (same trick as the Codex launcher). Gated on
+# effect-kit being enabled in SoT; auto-installs Bun when absent (download-
+# then-run, per the kit's no-`curl|bash` rule).
+skills::sync_effect_solutions_cli() {
+  local settings="$REPO_DIR/SoT/.claude/settings.json"
+  grep -Eq '"effect-kit@effect-kit"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    if command -v effect-solutions >/dev/null 2>&1; then
+      echo "[dry-run] effect-solutions CLI present"
+    else
+      echo "[dry-run] would install Bun (if absent) + bun add -g effect-solutions@latest; link bun + effect-solutions into ~/.local/bin"
+    fi
+    return
+  fi
+
+  if command -v effect-solutions >/dev/null 2>&1; then
+    log "effect-solutions CLI present"
+    return
+  fi
+
+  local bun tmp_bun_installer
+  if ! bun="$(skills::_find_bun)"; then
+    if ! command -v curl >/dev/null 2>&1; then
+      warn "Bun and curl both missing — cannot install effect-solutions CLI. Install Bun, then re-run sync."
+      return
+    fi
+    warn "Bun not found — installing Bun for the effect-solutions CLI..."
+    tmp_bun_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
+    curl -fsSL https://bun.sh/install -o "$tmp_bun_installer" && bash "$tmp_bun_installer" >/dev/null 2>&1 || true
+    rm -f "$tmp_bun_installer"
+    if ! bun="$(skills::_find_bun)"; then
+      warn "Bun install failed — skipping effect-solutions CLI. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh"
+      return
+    fi
+    log "Bun installed ($("$bun" --version 2>/dev/null || echo 'version unknown'))"
+  fi
+
+  log "Installing effect-solutions CLI via bun..."
+  if ! "$bun" add -g effect-solutions@latest >/dev/null 2>&1; then
+    warn "bun add -g effect-solutions failed. Try manually: bun add -g effect-solutions@latest"
+    return
+  fi
+
+  # `bun pm -g bin` is the authoritative global-bin query (path varies with
+  # BUN_INSTALL/XDG_CACHE_HOME). Link the CLI and bun itself so the shebang
+  # resolves in non-interactive agent shells.
+  local gbin
+  gbin="$("$bun" pm -g bin 2>/dev/null || true)"
+  if [[ -n "$gbin" && -x "$gbin/effect-solutions" ]]; then
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$bun" "$HOME/.local/bin/bun"
+    ln -sf "$gbin/effect-solutions" "$HOME/.local/bin/effect-solutions"
+    log "effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)"
+  else
+    warn "effect-solutions installed but binary not found under '${gbin:-<unknown>}' — link it onto PATH manually"
   fi
 }
 
