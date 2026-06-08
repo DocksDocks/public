@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "minimumVersion": "2.1.166",
   "respectGitignore": true,
   "cleanupPeriodDays": 14,
   "skillListingBudgetFraction": 0.05,
@@ -70,7 +71,6 @@
       "Bash(cut *)",
       "Bash(tr *)",
       "Bash(tee *)",
-      "Bash(xargs *)",
       "Bash(echo *)",
       "Bash(printf *)",
       "Bash(env *)",

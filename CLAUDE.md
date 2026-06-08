@@ -157,6 +157,8 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 - Protected paths (`.git`, `.claude`, `.mcp.json`, etc.) route to the classifier rather than being auto-approved.
 - Dropped rules are restored the moment you leave auto mode.
 
+**Cutting auto-mode false positives — `autoMode.environment`:** the classifier blocks anything aimed *outside* your environment; out of the box it trusts only the working dir and the current repo's remotes. To stop it flagging routine pushes to your other org repos or writes to trusted buckets, add an `autoMode.environment` array (prose entries; include the literal `"$defaults"` to keep the built-ins) to **`~/.claude/settings.local.json`** — not the shared SoT: the classifier ignores `autoMode` in checked-in project `.claude/settings.json`, and trusted-infra is machine-specific. The block also accepts `allow`/`soft_deny`/`hard_deny` prose lists, but `permissions.deny` (which runs *before* the classifier) stays the only unbypassable gate. Inspect the effective rules with `claude auto-mode config`; critique custom rules with `claude auto-mode critique`. Docs: https://code.claude.com/docs/en/auto-mode-config.
+
 **Fallbacks baked in**: 3 consecutive classifier blocks or 20 total in a session pause auto mode and resume prompting. Approving the prompted action resumes auto. Not configurable.
 
 **When to bail out of auto mode**: classifier outage, sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` cycles away from auto.
@@ -197,11 +199,14 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 
 **Subagent model selection:** not an env var. The docks plugin declares per-agent `model:` (sonnet/opus) in each agent's frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over agent frontmatter.
 
+**No `fallbackModel`:** the kit stays strictly Opus-only on the main thread. `fallbackModel` (v2.1.166) would degrade to Sonnet on an Opus overload (529) rather than dropping the turn, but a mid-session model switch cold-starts the per-model prompt cache — so the kit accepts a retried turn over a silent model swap. Sonnet subagents are spawned deliberately via agent frontmatter, not as a fallback. To opt in per-machine during a known-bad-availability stretch, set `fallbackModel` in `~/.claude/settings.local.json`.
+
 #### Output & UI
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session. Subagents remain capped at 32K regardless. |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `96000` | Max output tokens per response for the main session. Opus 4.8's real output ceiling is 128K; 96K leaves headroom while absorbing the 4.7+ tokenizer's higher token counts (raise toward `128000` only if synthesis-tier output ever truncates). Subagents remain capped at 32K regardless. |
+| `CLAUDE_CODE_FORK_SUBAGENT` | `1` | Enables `/fork <directive>` (v2.1.117+) — a subagent that inherits the full conversation, system prompt, tools, and model, with the first request reusing the parent's prompt cache. Ad-hoc exploration only; the docks pipeline commands intentionally isolate phases instead (see Session Management). |
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
 
@@ -214,6 +219,7 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 | `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable. Press `Ctrl+O` to cycle to `verbose` on demand. Enum: `default`/`verbose`/`focus`. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
 | `skillListingBudgetFraction` | `0.05` | Cap on system-prompt budget for skill descriptions (decimal 0–1, ~5% of the model's context window). Default `0.01` was dropping ~25 descriptions; `0.025` still dropped ~22 in projects with heavier plugin stacks (e.g. `supabase` + `docks:*` forks + `claude-plugins-official`), with `/doctor` reporting ~3.4% needed. `0.05` (~50K tokens on 1M Opus, ~12.5% of the 400K compact window) gives durable headroom for future skill additions and absorbs the ~7K-token opt-in cost `/doctor` cites for the dropped 22. Added in Claude Code 2.1.129+. To verify the warning is gone, run `/doctor` after sync; "Skill listing will be truncated" should not appear. |
+| `minimumVersion` | `2.1.166` | Floor for auto-updates and `claude update` — a stale install upgrades to ≥2.1.166 on next launch, guaranteeing every synced machine carries the features the kit relies on (Opus 4.8 needs 2.1.154; `skillListingBudgetFraction` needs 2.1.129; 2.1.166 also covers the latest auto-mode/classifier hardening). Distinct from the managed-only `requiredMinimumVersion`. |
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max`.
 
