@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-08 — Remove the non-functional claude.ai connector hook
+
+Deleted `SoT/.claude/hooks/disable-claudeai-connectors.sh` and its SessionStart entry in `settings.json`. It patched `disabledMcpServers`, which gates only `.mcp.json`/`claude mcp add` servers — never claude.ai cloud connectors — so it did nothing. The working replacement (`ENABLE_CLAUDEAI_MCP_SERVERS=false` shell export via `claude::sync_connector_env`) shipped in the entry below. CLAUDE.md (Hooks bullet, repo-structure table, Open Concern) updated to past tense.
+
+Note: `sync.sh` rsyncs hooks without `--delete`, so a previously-synced `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly (now unreferenced) until manually removed; any stale `claude.ai *` names it wrote to `~/.claude.json` `disabledMcpServers` are likewise inert.
+
 ## 2026-06-08 — Automate the real claude.ai connector disable (sync.sh)
 
 Deeper research (prompted by "the disables don't work") found the `disable-claudeai-connectors.sh` hook is **non-functional**: it patches `disabledMcpServers`, which gates only `.mcp.json`/`claude mcp add` servers — claude.ai cloud connectors are fetched from the account at startup and consult no local config. The actual fix is `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a **shell** env var (the official method); it's inert only in the settings.json `env` block, which the kit had conflated with "broken".

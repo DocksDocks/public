@@ -166,15 +166,6 @@
             "timeout": 5
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -x \"$HOME/.claude/hooks/disable-claudeai-connectors.sh\" ] && \"$HOME/.claude/hooks/disable-claudeai-connectors.sh\" || true",
-            "timeout": 5
-          }
-        ]
       }
     ],
     "Notification": [

@@ -10,7 +10,7 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 |------|---------|
 | `SoT/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `SoT/.claude/settings.json` | Permissions, hooks, plugins, env vars, token limits |
-| `SoT/.claude/hooks/` | SessionStart hook scripts (e.g. `disable-claudeai-connectors.sh`) |
+| `SoT/.claude/hooks/` | Hook scripts (e.g. `notify.sh` — the Notification completion sound) |
 | `SoT/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `SoT/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 
@@ -166,7 +166,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 ### Hooks
 
 - **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
-- **Claude.ai connector disable** — the **working** mechanism is `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `sync.sh` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The legacy **SessionStart** hook `~/.claude/hooks/disable-claudeai-connectors.sh` is **non-functional** — it patches `disabledMcpServers`, which gates only `.mcp.json`/`claude mcp add` servers, *not* account-synced connectors — and is retained only pending removal. See Open Concern [2026-06-08]
+- **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `sync.sh` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 - **Stop**: Fetches API usage stats (async) to keep status line data fresh
@@ -366,7 +366,7 @@ alias claude='claude --thinking-display summarized'
 
 **Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `sync.sh` does this via `claude::sync_connector_env`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
 
-The legacy `disable-claudeai-connectors.sh` hook (+ its SessionStart entry in `SoT/.claude/settings.json`) patches `disabledMcpServers`, which does NOT apply to cloud connectors — it is non-functional and slated for removal once the env-var fix is confirmed clearing `/mcp`.
+The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. (`sync.sh` rsyncs hooks without `--delete`, so a previously-synced copy at `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly until manually deleted.)
 
 **Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./sync.sh`, confirm `/mcp` is clean, then drop the `claude::sync_connector_env` shell-rc edit and this entry.
 
