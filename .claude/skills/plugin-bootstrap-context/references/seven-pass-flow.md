@@ -91,17 +91,23 @@ while IFS= read -r mp_name; do
 done < <(jq -r '. | keys[]' "$known_marketplaces")  # known marketplaces read
 ```
 
-## Pass 7: Re-Assert SoT Enabled-State (`claude::_plugins_reassert_enabled_state`)
+## Pass 7: Enforce SoT Enabled-State (`claude::_plugins_reassert_enabled_state`)
 
 ```bash
 [[ -f "$user_settings" ]] || return 0
+# 1. authoritative: disable each SoT-false plugin currently enabled
+while IFS= read -r plugin_id; do
+  jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$user_settings" >/dev/null 2>&1 || continue
+  claude::_cli plugin disable "$plugin_id" >/dev/null 2>&1 || warn "...will retry next sync"
+done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == false) | .key' "$repo_settings")
+# 2. normalize: SoT-declared keys win, user-only keys preserved
 jq -s '.[0].enabledPlugins as $sot | .[1]
        | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
    "$repo_settings" "$user_settings" > "$user_settings.tmp" \
   && mv "$user_settings.tmp" "$user_settings"   # else rm tmp + warn
 ```
 
-`claude plugin install` (pass 2) installs at its default `--scope user` and ENABLES the plugin — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote earlier in the same run. Pass 7 re-applies the SoT values (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved), the same invariant `claude::_settings_merge` establishes. Built-in `claude-plugins-official` plugins take a different install path and are NOT flipped — only marketplace-installed plugins (e.g. `n8n-mcp-skills`) exhibited the bug. Unlike passes 1–6, this helper mutates the file directly and echoes no counter.
+`claude plugin install` (pass 2) installs at its default `--scope user` and ENABLES the plugin — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote earlier in the same run. A bare jq rewrite back to `false` LOSES A RACE: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix issues the CLI's own `claude plugin disable` for SoT-`false` plugins first (authoritative — sticks in one pass), guarded on the plugin being currently `true` (re-disabling an already-disabled plugin is a CLI error, exit 1), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved), the same invariant `claude::_settings_merge` establishes. This affects EVERY plugin installed via `claude plugin install` — built-in `claude-plugins-official` plugins included: `supabase` (a `false`-keyed official plugin) is re-enabled on fresh install and disabled by this pass. Unlike passes 1–6, this helper mutates the file directly and echoes no counter.
 
 ## Failure Counters
 
