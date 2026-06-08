@@ -174,13 +174,13 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Environment Variables
 
-All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + max effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7+/4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
+All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context (as headroom) + 250K compact window + xhigh effort + sonnet subagents** — keep the working set inside the high-fidelity zone by compacting *before* context rot sets in, while keeping token cost sane. Tuned for Opus 4.7+/4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
 
 #### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `400000` | Cap the effective window at 400K regardless of the model's real capacity. Compaction fires at the default ~95% → ~380K. Per Anthropic's Thariq Shihipar (2026-04-15 blog + tweet): a good compromise on 1M Opus. Value is capped at the model's real window, so it's safe on 200K models too. Docs: https://code.claude.com/docs/en/env-vars. |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `250000` | Cap the effective window at 250K; full autocompact fires at the default ~95% → ~237K. Lowered from 400K to fight **context rot** — accuracy/recall degrade as tokens accumulate (Anthropic: "more context isn't automatically better"), empirically observable at 300–400K on 1M models (Chroma Context Rot report; Opus 4.8 GraphWalks F1 at 1M is only ~68%). The old ~380K trigger summarized *inside* the rot zone, when the model is least able to choose what to keep; ~237K keeps the full-compact safety-net below rot onset while microcompact clears tool-result bulk continuously. 1M stays enabled as headroom — rot tracks tokens *used*, not window size. Capped at the model's real window, so safe on 200K models. Docs: https://code.claude.com/docs/en/env-vars, https://platform.claude.com/docs/en/build-with-claude/context-windows. |
 | (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7/4.8. Note: 4.7 introduced a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text (carried forward in 4.8) — another reason to cap the compact window in absolute tokens rather than as a percentage. |
 
 The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
@@ -205,7 +205,7 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `96000` | Max output tokens per response for the main session. Opus 4.8's real output ceiling is 128K; 96K leaves headroom while absorbing the 4.7+ tokenizer's higher token counts (raise toward `128000` only if synthesis-tier output ever truncates). Subagents remain capped at 32K regardless. |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session — Anthropic's recommended starting point for Opus 4.8 at xhigh/max effort. A higher cap *reduces the effective input context before auto-compaction* (per the env-vars doc), so the earlier 96K bump traded input headroom for output sizes coding turns rarely reach. Subagents are capped at 32K regardless, so this main-thread value never affected synthesis-tier output (the original reason for the bump). Opus 4.8's hard ceiling is 128K; raise only if real outputs truncate. |
 | `CLAUDE_CODE_FORK_SUBAGENT` | `1` | Enables `/fork <directive>` (v2.1.117+) — a subagent that inherits the full conversation, system prompt, tools, and model, with the first request reusing the parent's prompt cache. Ad-hoc exploration only; the docks pipeline commands intentionally isolate phases instead (see Session Management). |
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |

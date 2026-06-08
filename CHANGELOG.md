@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-06-08 — Context-rot optimization (Opus 4.8)
+
+Follow-up deep-research pass (parallel research agents + primary Anthropic docs + the Chroma "Context Rot" report) on whether the context/output settings are optimal for Opus 4.8. Both agents converged independently.
+
+### settings.json
+
+- **Compact earlier**: `CLAUDE_CODE_AUTO_COMPACT_WINDOW` 400000 → 250000. The old ~380K autocompact trigger fired *inside* the 300–400K context-rot zone where 1M-context models measurably lose accuracy — so the summary was generated while the model was already degraded (contradicting CLAUDE.md heuristic #11). 250K fires the full-compact safety-net (~237K) below rot onset; microcompact still clears tool-result bulk continuously, and 1M stays enabled as headroom. Anthropic's own API compaction default is 150K, so 250K is still generous.
+- **Right-size output reservation**: `CLAUDE_CODE_MAX_OUTPUT_TOKENS` 96000 → 64000. Anthropic's Opus 4.8 effort guide recommends a 64K starting point, and the env-vars doc confirms a higher cap *shrinks the effective input context before auto-compaction*. The earlier 96K bump was justified by "synthesis subagents truncating," but subagents are hard-capped at 32K regardless of this main-thread value — so it never helped them.
+
+### Docs (CLAUDE.md)
+
+- Rewrote the `CLAUDE_CODE_AUTO_COMPACT_WINDOW` and `CLAUDE_CODE_MAX_OUTPUT_TOKENS` rows with the context-rot rationale and sources.
+- Updated the "centerpiece strategy" line (250K window, xhigh effort, 1M-as-headroom framing; also fixed a stale "max effort" → "xhigh").
+
+### Validated, kept as-is
+
+- `CLAUDE_CODE_EFFORT_LEVEL=xhigh` — exactly Anthropic's recommended default for Opus 4.8 agentic coding (`max` risks overthinking).
+- 1M context enabled — rot tracks tokens *used*, not window size; disabling it would only force more lossy compactions.
+- `minimumVersion`, the `xargs` dedup, and the `PostToolUseFailure` hook event all re-verified correct.
+
+Primary sources: Anthropic Context windows / Compaction / Effort / What's-new-4.8 docs; Chroma "Context Rot" (2025); NoLiMa; Lost in the Middle.
+
 ## 2026-06-08 — Opus 4.8 settings refresh
 
 Audit of `SoT/.claude/` against the current Claude Code settings schema and Opus 4.8 behavior.
