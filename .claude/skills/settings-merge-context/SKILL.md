@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "71-303"
+      lines: "71-313"
     - path: SoT/.claude/settings.json
       lines: "1-13"
   updated: "2026-06-08"
@@ -130,6 +130,7 @@ present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select
 - **`$schema` key position after merge**: jq does not preserve key order. The `$schema` key from `settings.json:1` may appear anywhere in the merged output. This is cosmetic only; Claude Code does not require it at position 0.
 - **`getpath` must bind the root in `claude::_prune_json_keys`**: after `$k[]` the jq `.` context is the key *string*, so `getpath($p)` must run against a captured `. as $doc` — otherwise the present-count is always 0 and the `present > 0` guard skips the prune (the `delpaths` itself is unaffected). (`claude::_prune_json_keys (the present-count jq)`)
 - **`jq empty` guard returns silently on corrupt JSON**: `claude::_settings_validate` returns 1 (caller returns early) on corrupt settings.json (`claude::_settings_validate (jq empty guard)`). The corrupt file is left in place — the user must fix it manually. Symptom: sync reports no settings changes but the file is unchanged.
+- **`claude::sync_removals` dry-run branch must `return 0` explicitly**: it ends with `[[ "$skeys" -gt 0 ]] && echo ...; [[ "$cjkeys" -gt 0 ]] && echo ...; return`. When both counts are 0 (the steady state) the trailing `[[ ]]` test leaves `$?=1`, and a bare `return` propagates it — so the whole sync exits 1 under `set -e`, aborting before `sync_plugins`/`sync_rtk` (and aborting any `set -e` caller, e.g. a web-env setup script). The fix is an explicit `return 0`. (`claude::sync_removals (the dry-run return)`)
 
 ## References
 

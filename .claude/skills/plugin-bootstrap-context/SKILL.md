@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "320-489"
+      lines: "315-506"
     - path: lib/codex.sh
       lines: "315-489"
     - path: SoT/.claude/settings.json
@@ -26,7 +26,7 @@ The `--remove-plugins` guard for `enabledPlugins` uses `has($n)` — not truthin
 </constraint>
 
 <constraint>
-Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this re-assert is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--remove-plugins`/`--force`, silently re-enables every globally-disabled plugin.
+Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this enforce step is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--remove-plugins`/`--force`, silently re-enables every globally-disabled plugin. It MUST disable SoT-`false` plugins via the CLI's own `claude plugin disable` verb (authoritative — sticks in one pass) BEFORE the jq-normalize: a bare jq rewrite of the value back to `false` loses a race against the CLI and only takes effect on the *next* sync (the historical two-sync bug). The disable is guarded on the plugin being currently `true` — re-disabling an already-disabled plugin is a CLI error (exit 1).
 </constraint>
 
 <constraint>
@@ -66,7 +66,7 @@ The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share o
 | 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
 | 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y` for installed plugins not in `enabledPlugins` via `has()` | `_plugins_uninstall` | plugin uninstall |
 | 6 | `REMOVE_PLUGINS=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
-| 7 | Always | Re-assert SoT enabled-state into `~/.claude/settings.json` (`(.enabledPlugins // {}) * $sot`), undoing pass 2's user-scope enable side effect | `_plugins_reassert_enabled_state` | settings rewrite |
+| 7 | Always | Enforce SoT enabled-state: `claude plugin disable` each SoT-`false` plugin currently enabled (authoritative, single-pass), then jq-normalize `(.enabledPlugins // {}) * $sot` | `_plugins_reassert_enabled_state` | CLI disable + settings rewrite |
 
 Passes 5+6 are gated on `REMOVE_PLUGINS` at `claude::sync_plugins` (REMOVE_PLUGINS gate); pass 7 runs unconditionally after them. Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
 
@@ -100,16 +100,23 @@ fi
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
 
-### Pass 7 — Enabled-State Re-Assert
+### Pass 7 — Enforce Enabled-State
 
 ```bash
-# claude::_plugins_reassert_enabled_state (SoT-wins enabledPlugins rewrite)
+# claude::_plugins_reassert_enabled_state
+# 1. authoritative: disable each SoT-false plugin that is currently enabled
+jq -r '.enabledPlugins // {} | to_entries[] | select(.value == false) | .key' "$repo_settings" |
+while read -r plugin_id; do
+  jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$user_settings" >/dev/null 2>&1 || continue
+  claude::_cli plugin disable "$plugin_id"   # sticks in ONE pass; CLI owns the file
+done
+# 2. normalize: SoT-declared values win, user-only keys preserved
 jq -s '.[0].enabledPlugins as $sot | .[1]
        | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
    "$repo_settings" "$user_settings" > "$user_settings.tmp" && mv ...
 ```
 
-`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`. That clobbers the `false` `claude::sync_settings` wrote moments earlier (settings sync runs at `claude::sync` step 4, plugins at step 8). Without pass 7, every `false`-keyed third-party plugin ships globally **enabled**, breaking the per-project scoping contract. The `(.enabledPlugins // {}) * $sot` merge makes SoT-declared values win while preserving user-only `enabledPlugins` keys — the same SoT-wins invariant `claude::_settings_merge` establishes, re-applied after the plugin CLI mutated the file. Built-in `claude-plugins-official` plugins (e.g. `supabase`) take a different install path and are NOT flipped, which is why only marketplace-installed plugins exhibited the bug.
+`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote moments earlier (settings sync runs at `claude::sync` step 4, plugins at step 8). A bare jq rewrite of that back to `false` **loses a race**: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix disables SoT-`false` plugins through the CLI's own `claude plugin disable` verb first (authoritative — sticks in a single pass), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved). The disable is guarded on the plugin being currently `true` because re-disabling an already-disabled plugin is a CLI error (exit 1); that keeps steady-state syncs silent. If `claude plugin disable` is unavailable the jq-normalize still runs, degrading to the old two-sync behavior rather than breaking. This affects **every** plugin installed via `claude plugin install`, built-in `claude-plugins-official` ones included — `supabase` (a `false`-keyed official plugin) is re-enabled on fresh install and disabled by this pass.
 
 ### Codex Marketplace Merge (`codex::sync_marketplace`)
 

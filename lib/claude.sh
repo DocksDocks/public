@@ -302,7 +302,9 @@ claude::sync_removals() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
     [[ "$skeys" -gt 0 ]]  && echo "[dry-run] del $skeys stale key(s) from $CLAUDE_DIR/settings.json"
     [[ "$cjkeys" -gt 0 ]] && echo "[dry-run] del $cjkeys stale key(s) from $HOME/.claude.json"
-    return
+    # Explicit 0: the trailing [[ ]] tests above leave $?=1 when their counts are
+    # 0, and a bare `return` would propagate that — aborting sync under `set -e`.
+    return 0
   fi
 
   if [[ $((hooks_removed + files_removed + skeys + cjkeys)) -gt 0 ]]; then
@@ -430,14 +432,29 @@ claude::_plugins_remove_marketplaces() {
   echo "$removed $failed"
 }
 
-# Pass 6 — re-assert SoT enabled-state in ~/.claude/settings.json. `claude
-# plugin install` (pass 2) enables at user scope as a side effect, clobbering
-# false-keyed plugins back to true and undoing the SoT value claude::sync_settings
-# already wrote. Restores that invariant; SoT-declared keys win, user-only
-# enabledPlugins entries are preserved. Idempotent — safe to run every sync.
+# Pass 6 — enforce SoT enabled-state in ~/.claude/settings.json. `claude plugin
+# install` (pass 2) enables at user scope as a side effect. A plain jq rewrite of
+# that back to false loses a race: the CLI owns settings.json and reverts the
+# external edit, so the false value only sticks on a SECOND sync (once the plugin
+# is already installed and pass 2 skips it). Fix: disable SoT-false plugins
+# through the CLI's own `plugin disable` verb — authoritative, sticks in one pass
+# — THEN jq-normalize so every SoT-declared value wins and user-only
+# enabledPlugins entries are preserved. The disable is guarded on the plugin
+# being currently enabled (re-disabling an already-disabled plugin is a CLI
+# error), which keeps steady-state syncs quiet. If `plugin disable` is missing or
+# fails the jq-normalize still runs, degrading to the old two-sync behavior
+# rather than breaking. Idempotent — safe to run every sync.
 claude::_plugins_reassert_enabled_state() {
-  local repo_settings="$1" user_settings="$2"
+  local repo_settings="$1" user_settings="$2" plugin_id
   [[ -f "$user_settings" ]] || return 0
+
+  while IFS= read -r plugin_id; do
+    [[ -z "$plugin_id" ]] && continue
+    jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$user_settings" >/dev/null 2>&1 || continue
+    claude::_cli plugin disable "$plugin_id" >/dev/null 2>&1 \
+      || warn "Failed to disable SoT-false plugin: $plugin_id (will retry next sync)"
+  done < <(jq -r '.enabledPlugins // {} | to_entries[] | select(.value == false) | .key' "$repo_settings")
+
   if jq -s '.[0].enabledPlugins as $sot | .[1]
             | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
        "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
