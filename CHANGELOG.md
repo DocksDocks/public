@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-08 — Drop the rsync dependency (portable cp for hook sync)
+
+`claude::sync_hooks` used `rsync -a`, which isn't coreutils and is absent on minimal images — the Claude-Code-on-the-web **Ubuntu 24.04 sandbox has no `rsync`**, so a remote setup script running `./sync.sh` failed with **exit 127** at that line. Replaced with portable `cp -R "$SRC/." "$DST/"` (additive, same as rsync without `--delete`; the following `chmod +x` re-sets the exec bit), so the kit needs no external tool. Updated the living-doc "rsync has no --delete" mentions to "cp -R never deletes". Validated with `rsync` absent from PATH: hooks deploy + are executable, idempotent, dry-run safe.
+
+Remote note: installing it in a web-env setup script also works (`apt-get install -y rsync` — setup scripts run as root on Ubuntu 24.04 and the Trusted network reaches the Ubuntu mirrors), but this fix removes the need.
+
 ## 2026-06-08 — Prune stale kit env vars via the `removed` manifest
 
 Added four env vars the kit no longer sets to `claude::_removed_manifest` `settingsKeys`, so drift from older kit versions is cleaned from the kit-managed `settings.json` on sync: `CLAUDE_CODE_SUBAGENT_MODEL` (kit now uses per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled).
