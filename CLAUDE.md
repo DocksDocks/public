@@ -344,3 +344,32 @@ alias claude='claude --thinking-display summarized'
 5. If rendered: remove this Open Concerns entry + the shell alias.
 
 **Fallback if the flag doesn't help:** The closed-as-dup [#52376](https://github.com/anthropics/claude-code/issues/52376) describes a related subscription-side concern — on Max/Team/Enterprise, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions are documented to honor it). It was rolled into #49268 without an independent fix. If the alias doesn't work, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6.
+
+---
+
+#### [2026-06-08] claude.ai account connectors auto-load into every session
+
+**Status:** Open — no clean user-level off-switch as of Claude Code 2.1.166 (latest). Multiple feature requests open; absence confirmed against the official settings schema.
+
+**Symptom:** Every connector enabled in the Claude.ai web/desktop app (Figma, Google Drive, Gmail, Notion, …) OAuth-syncs into *every* Claude Code session and loads its tool definitions + system instructions into context — even connectors you never call (~100K tokens of silent bloat). They reappear on every restart and ignore per-project intent.
+
+**Root cause:** claude.ai account connectors sync to Claude Code via the authenticated login and are gated server-side by the `tengu_claudeai_mcp_connectors` Statsig flag, not a user setting. The intended toggle `ENABLE_CLAUDEAI_MCP_SERVERS` has no effect from `settings.json`. `permissions.deny: ["mcp__claude_ai_*"]` blocks tool *calls* but does NOT prevent loading/context bloat. There is **no `disabledCloudMcpServers` settings key** (some search results claim one — confirmed absent from the official settings schema); `allowAllClaudeAiMcps` is managed-only.
+
+**Upstream issues** (checked 2026-06-08 via web search; none resolved):
+- [anthropics/claude-code#50062](https://github.com/anthropics/claude-code/issues/50062) — ~100K tokens of silent context bloat, no per-environment opt-out (**OPEN**)
+- [anthropics/claude-code#20412](https://github.com/anthropics/claude-code/issues/20412) — auto-injected without opt-in, OOM on constrained systems (**OPEN**)
+- [anthropics/claude-code#45158](https://github.com/anthropics/claude-code/issues/45158) — [FEATURE] disable at project level (**OPEN**)
+- [anthropics/claude-code#58453](https://github.com/anthropics/claude-code/issues/58453) — allow disabling from Claude Code settings (**OPEN**)
+- [anthropics/claude-code#22301](https://github.com/anthropics/claude-code/issues/22301) — add setting to disable cloud connectors (**OPEN**)
+- [anthropics/claude-code#47881](https://github.com/anthropics/claude-code/issues/47881) — disable per surface (Code vs Chat) (**OPEN**)
+- Partial upstream relief: v2.1.139 disables claude.ai connectors when `ANTHROPIC_API_KEY` / `apiKeyHelper` / `ANTHROPIC_AUTH_TOKEN` is set — unusable on a Max-subscription login.
+
+**Workaround:** `SoT/.claude/hooks/disable-claudeai-connectors.sh` (deployed by `./sync.sh`, fires on every SessionStart) patches `~/.claude.json` `projects[$cwd].disabledMcpServers` with a broad list of connector names — the only user-level path that survives auth-sync. Per-project by nature (the only scope that works). Edit the `CONNECTORS` array to taste; capture exact stored names with `jq -r '.projects[] | (.disabledMcpServers // [])[]' ~/.claude.json | sort -u` or `/mcp`.
+
+**Verify resolution:**
+1. Check the linked issues for a closed/merged fix or a shipped user-scope settings key (e.g. a real `disabledCloudMcpServers` or project-level toggle).
+2. `claude update`; confirm the new setting exists in https://code.claude.com/docs/en/settings.
+3. Set it in `SoT/.claude/settings.json`, `./sync.sh`, start a fresh session, run `/mcp` — connectors should be absent without the hook.
+4. If clean: retire `disable-claudeai-connectors.sh` + its SessionStart hook entry in `SoT/.claude/settings.json`, then remove this entry.
+
+**Fallback:** Disconnect connectors at claude.ai → Settings → Connected apps (removes them everywhere, including Claude.ai chat). Or authenticate Claude Code with `ANTHROPIC_API_KEY` (disables all claude.ai connectors per v2.1.139, but bypasses the Max subscription).
