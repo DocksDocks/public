@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-08 — Broaden the claude.ai connector blocklist
+
+`disable-claudeai-connectors.sh`: expanded `CONNECTORS` from 4 to 25 common claude.ai connectors — added **Figma** (the one that was still auto-loading because it was missing from the list) plus Atlassian, Box, Canva, ClickUp, Cloudflare, Dropbox, Excalidraw, HubSpot, Intercom, Linear, Microsoft Learn, Notion, PayPal, Sentry, Slack, Socket, Square, Stripe, Vercel, Zapier, on top of the existing Asana/Gmail/Google Calendar/Google Drive.
+
+Why the hook is still the mechanism: claude.ai account connectors OAuth-sync into every Claude Code session and load their tool defs into context even when unused (~100K tokens of bloat per anthropics/claude-code#50062). There is still **no clean global settings.json toggle** — `ENABLE_CLAUDEAI_MCP_SERVERS` is Statsig-gated and inert, `allowAllClaudeAiMcps` is managed-only, and `disabledCloudMcpServers` (seen in some search results) is **not a real key**. Patching per-project `disabledMcpServers` remains the only user-level path that survives auth-sync. Unknown names are harmless no-ops, so the list errs toward off; delete a line to keep a connector. Verified end-to-end (bash -n + jq merge + dedup) against a throwaway HOME.
+
 ## 2026-06-08 — Context-rot optimization (Opus 4.8)
 
 Follow-up deep-research pass (parallel research agents + primary Anthropic docs + the Chroma "Context Rot" report) on whether the context/output settings are optimal for Opus 4.8. Both agents converged independently.
