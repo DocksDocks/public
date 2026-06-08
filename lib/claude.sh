@@ -223,9 +223,11 @@ claude::sync_connector_env() {
 # the items below on every sync.
 #
 # NARROW exception to "additive by default": entries here are force-removed from
-# EVERY synced ~/.claude. List ONLY unambiguous kit-owned artifacts the kit used
-# to deploy and has since dropped — never a user-tunable key a user might set
-# themselves (e.g. CLAUDE_AUTOCOMPACT_PCT_OVERRIDE, ANTHROPIC_DEFAULT_OPUS_MODEL).
+# EVERY synced ~/.claude. List kit-owned keys the kit used to set and has since
+# dropped — they are pruned from the kit-managed settings.json. A deliberate
+# per-machine override of any of these belongs in settings.local.json, which
+# sync never touches. Do NOT list a key the kit never owned (a user's custom env
+# vars, mcpServers, theme) — the additive merge already preserves those.
 #   hooks          hook scripts under ~/.claude/hooks/ to delete (the matching
 #                  settings.json hook entry is already dropped by the SoT
 #                  settings merge, which replaces .hooks wholesale)
@@ -237,7 +239,13 @@ claude::_removed_manifest() {
 {
   "hooks":          ["disable-claudeai-connectors.sh"],
   "files":          [],
-  "settingsKeys":   ["showTurnDuration"],
+  "settingsKeys": [
+    "showTurnDuration",
+    "env.CLAUDE_CODE_SUBAGENT_MODEL",
+    "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
+    "env.CLAUDE_CODE_DISABLE_1M_CONTEXT"
+  ],
   "claudeJsonKeys": []
 }
 JSON

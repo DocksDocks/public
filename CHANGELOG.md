@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-08 — Prune stale kit env vars via the `removed` manifest
+
+Added four env vars the kit no longer sets to `claude::_removed_manifest` `settingsKeys`, so drift from older kit versions is cleaned from the kit-managed `settings.json` on sync: `CLAUDE_CODE_SUBAGENT_MODEL` (kit now uses per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled).
+
+Policy made consistent: these are pruned from the kit-managed `settings.json`; a deliberate per-machine override goes in **`settings.local.json`**, which sync never touches (the kit already uses that hatch for `ANTHROPIC_DEFAULT_OPUS_MODEL`). Updated the manifest comment, the "Pruning stale artifacts" section, and the Troubleshooting `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` bullet (now points at `settings.local.json`) so the kit no longer contradicts itself.
+
+Validated: nested `env.X` `delpaths` prune (5 keys), with the kit's active `CLAUDE_CODE_EFFORT_LEVEL`, a user custom env var, theme, and permissions all preserved; JSON valid; idempotent.
+
 ## 2026-06-08 — Add a `removed` manifest so sync prunes stale kit artifacts
 
 Default sync is additive (the jq merge keeps user-only keys; `rsync` has no `--delete`), so anything the kit *stops* shipping lingered forever on already-synced machines. New mechanism to clean that up:
