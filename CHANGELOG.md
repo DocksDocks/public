@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-08 — Add a `removed` manifest so sync prunes stale kit artifacts
+
+Default sync is additive (the jq merge keeps user-only keys; `rsync` has no `--delete`), so anything the kit *stops* shipping lingered forever on already-synced machines. New mechanism to clean that up:
+
+- **lib/claude.sh**: `claude::_removed_manifest` (declarative) + `claude::sync_removals` (+ `claude::_prune_json_keys` helper), wired into `claude::sync`. Categories: `hooks` (scripts under `~/.claude/hooks/`), `files` (other `~/.claude/` paths), `settingsKeys` (jq `delpaths` from `~/.claude/settings.json`), `claudeJsonKeys` (same for `~/.claude.json`). Idempotent (`rm -f`; `delpaths` ignores absent paths), honors `--dry-run`, bash-3.2-safe. A **narrow, deliberate exception** to "additive by default" — lists only unambiguous kit-owned artifacts, never user-tunable keys.
+- **Initial manifest**: the dead `disable-claudeai-connectors.sh` hook (cleans the leftover the previous two commits couldn't, since `rsync` has no `--delete`) + `showTurnDuration` (must not live in `settings.json` — schema warning; sync writes it to `~/.claude.json`).
+- **Docs**: CLAUDE.md § "Pruning stale artifacts"; AGENTS.md additive-by-default rule notes the exception. Also fixed a stale `CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000` → `300000` in the Troubleshooting section (drift from the earlier context-rot retune).
+
+Validated: syntax, hook deletion, settings-key prune with non-target keys preserved + JSON still valid, idempotent silent re-run, dry-run no-write, and the `sync.sh --claude --dry-run` wire-in.
+
 ## 2026-06-08 — Remove the non-functional claude.ai connector hook
 
 Deleted `SoT/.claude/hooks/disable-claudeai-connectors.sh` and its SessionStart entry in `settings.json`. It patched `disabledMcpServers`, which gates only `.mcp.json`/`claude mcp add` servers — never claude.ai cloud connectors — so it did nothing. The working replacement (`ENABLE_CLAUDEAI_MCP_SERVERS=false` shell export via `claude::sync_connector_env`) shipped in the entry below. CLAUDE.md (Hooks bullet, repo-structure table, Open Concern) updated to past tense.

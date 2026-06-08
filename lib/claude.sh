@@ -20,6 +20,7 @@ claude::sync() {
   claude::sync_settings
   claude::sync_claude_json
   claude::sync_connector_env
+  claude::sync_removals
   claude::sync_plugins
   claude::sync_rtk
 }
@@ -212,6 +213,90 @@ claude::sync_connector_env() {
 
   printf '\n%s\n%s\n' "$marker" "$line" >> "$target"
   log "claude.ai connectors disabled via $target (start a new shell to apply)"
+}
+
+# --- Removed-artifact pruning -------------------------------------------------
+# Declarative manifest of kit-owned artifacts the kit no longer ships. The
+# default sync is additive (the jq merge keeps user-only keys; rsync has no
+# --delete), so config the kit dropped in an older version would otherwise
+# linger forever on an already-synced machine. `claude::sync_removals` prunes
+# the items below on every sync.
+#
+# NARROW exception to "additive by default": entries here are force-removed from
+# EVERY synced ~/.claude. List ONLY unambiguous kit-owned artifacts the kit used
+# to deploy and has since dropped — never a user-tunable key a user might set
+# themselves (e.g. CLAUDE_AUTOCOMPACT_PCT_OVERRIDE, ANTHROPIC_DEFAULT_OPUS_MODEL).
+#   hooks          hook scripts under ~/.claude/hooks/ to delete (the matching
+#                  settings.json hook entry is already dropped by the SoT
+#                  settings merge, which replaces .hooks wholesale)
+#   files          other paths under ~/.claude/ to delete
+#   settingsKeys   dotted key paths to del() from ~/.claude/settings.json
+#   claudeJsonKeys dotted key paths to del() from ~/.claude.json
+claude::_removed_manifest() {
+  cat <<'JSON'
+{
+  "hooks":          ["disable-claudeai-connectors.sh"],
+  "files":          [],
+  "settingsKeys":   ["showTurnDuration"],
+  "claudeJsonKeys": []
+}
+JSON
+}
+
+# Delete dotted key paths from a JSON file via jq delpaths. Echoes the count of
+# keys that were actually present (and removed); echoes 0 when the file is
+# missing/invalid or no listed key exists. Honors DRY_RUN (counts, no write).
+# delpaths ignores absent paths, so this is idempotent.
+claude::_prune_json_keys() {
+  local file="$1" keys="$2" present
+  { [[ "$keys" == "[]" || ! -f "$file" ]] || ! jq empty "$file" 2>/dev/null; } && { echo 0; return; }
+  present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file" 2>/dev/null || echo 0)
+  [[ "$present" -gt 0 ]] || { echo 0; return; }
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    if jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" 2>/dev/null; then
+      mv "$file.tmp" "$file"
+    else
+      rm -f "$file.tmp"; warn "Failed to prune stale keys from $file"; echo 0; return
+    fi
+  fi
+  echo "$present"
+}
+
+claude::sync_removals() {
+  local manifest name path hooks_removed=0 files_removed=0 skeys cjkeys
+
+  manifest="$(claude::_removed_manifest)"
+
+  while IFS= read -r name; do
+    [[ -z "$name" || ! -e "$CLAUDE_DIR/hooks/$name" ]] && continue
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rm $CLAUDE_DIR/hooks/$name"
+    else
+      rm -f "$CLAUDE_DIR/hooks/$name"; hooks_removed=$((hooks_removed + 1))
+    fi
+  done < <(jq -r '.hooks[]? // empty' <<<"$manifest")
+
+  while IFS= read -r path; do
+    [[ -z "$path" || ! -e "$CLAUDE_DIR/$path" ]] && continue
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rm $CLAUDE_DIR/$path"
+    else
+      rm -f "$CLAUDE_DIR/$path"; files_removed=$((files_removed + 1))
+    fi
+  done < <(jq -r '.files[]? // empty' <<<"$manifest")
+
+  skeys=$(claude::_prune_json_keys "$CLAUDE_DIR/settings.json" "$(jq -c '.settingsKeys // []' <<<"$manifest")")
+  cjkeys=$(claude::_prune_json_keys "$HOME/.claude.json" "$(jq -c '.claudeJsonKeys // []' <<<"$manifest")")
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    [[ "$skeys" -gt 0 ]]  && echo "[dry-run] del $skeys stale key(s) from $CLAUDE_DIR/settings.json"
+    [[ "$cjkeys" -gt 0 ]] && echo "[dry-run] del $cjkeys stale key(s) from $HOME/.claude.json"
+    return
+  fi
+
+  if [[ $((hooks_removed + files_removed + skeys + cjkeys)) -gt 0 ]]; then
+    log "Pruned stale artifacts (hooks: $hooks_removed, files: $files_removed, settings keys: $skeys, claude.json keys: $cjkeys)"
+  fi
 }
 
 # Thin facade around the `claude` CLI plugin pipeline. Centralizes the kit's
