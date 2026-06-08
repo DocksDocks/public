@@ -430,6 +430,24 @@ claude::_plugins_remove_marketplaces() {
   echo "$removed $failed"
 }
 
+# Pass 6 — re-assert SoT enabled-state in ~/.claude/settings.json. `claude
+# plugin install` (pass 2) enables at user scope as a side effect, clobbering
+# false-keyed plugins back to true and undoing the SoT value claude::sync_settings
+# already wrote. Restores that invariant; SoT-declared keys win, user-only
+# enabledPlugins entries are preserved. Idempotent — safe to run every sync.
+claude::_plugins_reassert_enabled_state() {
+  local repo_settings="$1" user_settings="$2"
+  [[ -f "$user_settings" ]] || return 0
+  if jq -s '.[0].enabledPlugins as $sot | .[1]
+            | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
+       "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
+    mv "$user_settings.tmp" "$user_settings"
+  else
+    rm -f "$user_settings.tmp"
+    warn "enabledPlugins re-assert failed — false-keyed plugins may be left enabled"
+  fi
+}
+
 claude::sync_plugins() {
   local repo_settings="$REPO_DIR/SoT/.claude/settings.json"
   local known_marketplaces="$CLAUDE_DIR/plugins/known_marketplaces.json"
@@ -457,6 +475,7 @@ claude::sync_plugins() {
     read -r removed_pl f4 < <(claude::_plugins_uninstall "$repo_settings" "$installed_plugins")
     read -r removed_mp f5 < <(claude::_plugins_remove_marketplaces "$repo_settings" "$known_marketplaces")
   fi
+  claude::_plugins_reassert_enabled_state "$repo_settings" "$CLAUDE_DIR/settings.json"
   failed=$((f1 + f2 + f3 + f4 + f5))
 
   if [[ "$added_mp" -gt 0 || "$added_pl" -gt 0 || "$updated_pl" -gt 0 || "$removed_pl" -gt 0 || "$removed_mp" -gt 0 ]]; then

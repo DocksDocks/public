@@ -1,6 +1,6 @@
-# Six-Pass Plugin Reconcile — Annotated Flow
+# Seven-Pass Plugin Reconcile — Annotated Flow
 
-The six logical passes are implemented as five `claude::_plugins_*` helpers (passes 3+4 share `_plugins_update`) dispatched by the `claude::sync_plugins` orchestrator. Helpers call the CLI through the `claude::_cli` wrapper and echo `"<count> <failed>"`; the orchestrator reads each via `read -r ... < <(...)` (`claude::sync_plugins` — dispatch block).
+The seven logical passes are implemented as six `claude::_plugins_*` helpers (passes 3+4 share `_plugins_update`) dispatched by the `claude::sync_plugins` orchestrator. Passes 1–6 call the CLI through the `claude::_cli` wrapper and echo `"<count> <failed>"`; the orchestrator reads each via `read -r ... < <(...)` (`claude::sync_plugins` — dispatch block). Pass 7 instead rewrites `~/.claude/settings.json` in place and returns no count.
 
 ## Critical Constraints
 
@@ -9,6 +9,7 @@ The six logical passes are implemented as five `claude::_plugins_*` helpers (pas
 - `claude-plugins-official` is protected from Pass 6 removal. (`claude::_plugins_remove_marketplaces` — claude-plugins-official guard)
 - Entire reconcile skipped if `claude` CLI not in PATH. (`claude::sync_plugins` — CLI presence check)
 - Passes 5+6 gated on `REMOVE_PLUGINS` by the orchestrator. (`claude::sync_plugins` — REMOVE_PLUGINS gate)
+- Pass 7 runs UNCONDITIONALLY after passes 5+6 — it is the only thing that keeps `false`-keyed plugins disabled after pass 2's install-side enable. (`claude::_plugins_reassert_enabled_state`)
 
 ## Pass 1: Add Missing Marketplaces (`claude::_plugins_add_marketplaces`)
 
@@ -90,9 +91,21 @@ while IFS= read -r mp_name; do
 done < <(jq -r '. | keys[]' "$known_marketplaces")  # known marketplaces read
 ```
 
+## Pass 7: Re-Assert SoT Enabled-State (`claude::_plugins_reassert_enabled_state`)
+
+```bash
+[[ -f "$user_settings" ]] || return 0
+jq -s '.[0].enabledPlugins as $sot | .[1]
+       | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
+   "$repo_settings" "$user_settings" > "$user_settings.tmp" \
+  && mv "$user_settings.tmp" "$user_settings"   # else rm tmp + warn
+```
+
+`claude plugin install` (pass 2) installs at its default `--scope user` and ENABLES the plugin — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote earlier in the same run. Pass 7 re-applies the SoT values (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved), the same invariant `claude::_settings_merge` establishes. Built-in `claude-plugins-official` plugins take a different install path and are NOT flipped — only marketplace-installed plugins (e.g. `n8n-mcp-skills`) exhibited the bug. Unlike passes 1–6, this helper mutates the file directly and echoes no counter.
+
 ## Failure Counters
 
-Each helper echoes `"<count> <failed>"`; the orchestrator sums the failures:
+Each pass-1–6 helper echoes `"<count> <failed>"`; the orchestrator sums the failures (pass 7 is not counted — it runs after the sum and only warns on a jq failure):
 
 ```bash
 # claude::sync_plugins — failure sum
