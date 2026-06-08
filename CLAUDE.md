@@ -247,16 +247,17 @@ In an active Claude Code session, run `/reload-plugins` after `./sync.sh` to act
 
 `sync.sh` auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, and installs/initializes RTK if missing (or warns when the installed RTK is older than the latest GitHub release).
 
-For plugins it runs six idempotent passes via the `claude plugin` CLI:
+For plugins it runs seven idempotent passes via the `claude plugin` CLI:
 
 | Pass | Mode | What it does |
 |------|------|--------------|
 | 1 | always | `claude plugin marketplace add` for any SoT `extraKnownMarketplaces` not yet cloned |
-| 2 | always | `claude plugin install` for any SoT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load |
+| 2 | always | `claude plugin install` for any SoT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load. **Side effect:** `claude plugin install` enables the plugin at user scope (writes `"<id>": true` into `~/.claude/settings.json`), clobbering the `false` the settings merge wrote — pass 7 corrects this |
 | 3 | always | `claude plugin marketplace update` (refresh manifests) |
 | 4 | always | `claude plugin update <name>` for each installed plugin (idempotent — no-op when already at latest) |
 | 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SoT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
 | 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SoT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
+| 7 | always | Re-assert SoT enabled-state: rewrite `~/.claude/settings.json` `enabledPlugins` so SoT-declared values win (`(.enabledPlugins // {}) * $sot`), undoing pass 2's enable side effect. Without this, every `false`-keyed third-party plugin ships globally **enabled** — defeating the per-project scoping contract. User-only `enabledPlugins` entries are preserved |
 
 For Codex plugins, after deploying `SoT/.codex/config.toml` and the personal marketplace file, sync runs `codex plugin add <plugin@marketplace>` for each enabled SoT plugin. Re-running sync therefore refreshes stale Codex plugin caches instead of only updating marketplace metadata. Sync also removes the older kit-created configured Docks marketplace source so Codex uses the personal marketplace file as the single source.
 

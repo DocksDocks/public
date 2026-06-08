@@ -1,18 +1,18 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (six-pass reconciler) or its claude::_plugins_* helpers, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the Codex unique_by(.name) dedup with user-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with user-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "176-329"
+      lines: "320-489"
     - path: lib/codex.sh
       lines: "315-489"
     - path: SoT/.claude/settings.json
       lines: "245-271"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-05-28"
+  updated: "2026-06-08"
 ---
 
 # Plugin Bootstrap
@@ -23,6 +23,10 @@ The `--remove-plugins` guard for `enabledPlugins` uses `has($n)` — not truthin
 
 <constraint>
 `claude-plugins-official` is NEVER removed, even on `--remove-plugins` runs. The guard at `claude::_plugins_remove_marketplaces` (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
+</constraint>
+
+<constraint>
+Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this re-assert is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--remove-plugins`/`--force`, silently re-enables every globally-disabled plugin.
 </constraint>
 
 <constraint>
@@ -50,9 +54,9 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 
 Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json:245-257 (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
 
-### Six-Pass Reconcile (`claude::sync_plugins` orchestrator)
+### Seven-Pass Reconcile (`claude::sync_plugins` orchestrator)
 
-The orchestrator dispatches five `claude::_plugins_*` helpers (passes 3+4 share one helper). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block).
+The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share one helper). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block). Pass 7 is the exception — it mutates `~/.claude/settings.json` in place and returns no count.
 
 | Pass | Condition | Action | Helper (def) | Operation |
 |------|-----------|--------|--------------|-----------|
@@ -62,8 +66,9 @@ The orchestrator dispatches five `claude::_plugins_*` helpers (passes 3+4 share 
 | 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
 | 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y` for installed plugins not in `enabledPlugins` via `has()` | `_plugins_uninstall` | plugin uninstall |
 | 6 | `REMOVE_PLUGINS=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
+| 7 | Always | Re-assert SoT enabled-state into `~/.claude/settings.json` (`(.enabledPlugins // {}) * $sot`), undoing pass 2's user-scope enable side effect | `_plugins_reassert_enabled_state` | settings rewrite |
 
-Passes 5+6 are gated on `REMOVE_PLUGINS` at `claude::sync_plugins` (REMOVE_PLUGINS gate). Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
+Passes 5+6 are gated on `REMOVE_PLUGINS` at `claude::sync_plugins` (REMOVE_PLUGINS gate); pass 7 runs unconditionally after them. Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
 
 ### Pass 1 — Marketplace Pre-Check
 
@@ -94,6 +99,17 @@ fi
 [[ -z "$mp_name" ]] && continue
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
+
+### Pass 7 — Enabled-State Re-Assert
+
+```bash
+# claude::_plugins_reassert_enabled_state (SoT-wins enabledPlugins rewrite)
+jq -s '.[0].enabledPlugins as $sot | .[1]
+       | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
+   "$repo_settings" "$user_settings" > "$user_settings.tmp" && mv ...
+```
+
+`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`. That clobbers the `false` `claude::sync_settings` wrote moments earlier (settings sync runs at `claude::sync` step 4, plugins at step 8). Without pass 7, every `false`-keyed third-party plugin ships globally **enabled**, breaking the per-project scoping contract. The `(.enabledPlugins // {}) * $sot` merge makes SoT-declared values win while preserving user-only `enabledPlugins` keys — the same SoT-wins invariant `claude::_settings_merge` establishes, re-applied after the plugin CLI mutated the file. Built-in `claude-plugins-official` plugins (e.g. `supabase`) take a different install path and are NOT flipped, which is why only marketplace-installed plugins exhibited the bug.
 
 ### Codex Marketplace Merge (`codex::sync_marketplace`)
 
@@ -138,11 +154,11 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 ## Gotchas
 
 - **Marketplace pre-check checks presence, not validity** (`claude::_plugins_add_marketplaces` — key-presence pre-check): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
-- **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled."
+- **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled." But `claude plugin install` *enables* what it installs (user scope), so pass 7 (`claude::_plugins_reassert_enabled_state`) must run afterward to restore the `false`; dropping pass 7 silently re-enables every globally-disabled plugin.
 - **Codex `command -v codex` matches the kit's own launcher**: if the kit launcher is present but the npm Codex binary is not, `codex plugin add` fails with "could not find a Codex CLI binary" — the helper warns with the npm install fallback (`codex::sync_plugins` — missing-binary warning).
 - **Per-project `enabledPlugins: true` is silently ignored** if the user-scope key is absent — Claude Code requires the key to exist in user settings (even as `false`) before a project-level override can activate it.
 
 ## References
 
-- `references/six-pass-flow.md` — annotated pass-by-pass walkthrough with jq and CLI invocations; read when debugging a specific pass
+- `references/seven-pass-flow.md` — annotated pass-by-pass walkthrough with jq and CLI invocations; read when debugging a specific pass
 - `references/tri-state-semantics.md` — table of value × scenario × outcome; read when deciding what value to assign a new plugin entry
