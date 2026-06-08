@@ -1,5 +1,5 @@
 name = "settings-json-agent"
-description = "Use when modifying claude::sync_settings, claude::sync_claude_json, the dual-mode jq merge for ~/.claude/settings.json, the ~/.claude.json carve-outs (showTurnDuration, per-project disabledMcpServers), or disable-claudeai-connectors.sh hook logic. Not for plugin install/uninstall (use plugin-bootstrap-agent) or Codex TOML merge (use codex-config-agent)."
+description = "Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, the dual-mode jq merge for ~/.claude/settings.json, the showTurnDuration carve-out to ~/.claude.json, the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, or the removed-artifact manifest pruning. Not for plugin install/uninstall (use plugin-bootstrap-agent) or Codex TOML merge (use codex-config-agent)."
 model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
@@ -32,7 +32,7 @@ In default (non-force) merge, `permissions.allow/deny/ask` are unioned via `conc
 4. Identify the merge mode: `[[ ! -f "$user_settings" ]]` → first install; `[[ "$FORCE" -eq 1 ]]` → reconcile; else → default additive merge.
 5. For any new key being added to `settings.json`, confirm it passes Claude Code schema validation — run `jq empty` on the result.
 6. For `~/.claude.json` changes, use `jq '.newKey = value'` with the `.tmp` + `mv` atomicity pattern.
-7. For the `disabledMcpServers` per-project hook, verify `cwd` is read from stdin JSON, not `$PWD`.
+7. For claude.ai connector disabling, route through `claude::sync_connector_env` (shell-rc `ENABLE_CLAUDEAI_MCP_SERVERS=false` export) — NOT a `settings.json`/`~/.claude.json` field; for pruning deprecated kit artifacts, use `claude::sync_removals` + `claude::_removed_manifest`.
 8. Hand off to `plugin-bootstrap-agent` if the task involves `claude::sync_plugins`, `extraKnownMarketplaces`, or `enabledPlugins`.
 
 ## Patterns
@@ -92,6 +92,6 @@ Read these for detailed knowledge:
 
 - `$user * $repo` in jq: the RIGHT operand wins. In force mode `.[1] as $user | $user * $repo` means repo wins. Reversing operand order silently inverts merge direction.
 - Validity guard uses `2>/dev/null` — corrupted `settings.json` silently skips the entire sync. The `err` message is emitted but the function returns; callers may not notice without inspecting the log.
-- `disabledMcpServers` hook reads `cwd` from stdin JSON, not `$PWD`. If stdin is closed or empty, `CWD` is empty and the hook exits 0 silently — connectors reappear.
+- `claude::_prune_json_keys` present-count must bind the root with `. as $doc` before `getpath($p)` — after `$k[]` the `.` context is the key string, so an unbound `getpath` always counts 0 and the `present > 0` guard silently skips the prune (the `delpaths` itself is unaffected).
 - `unique` in jq preserves first-occurrence ordering, not alphabetical. New entries append at the end after dedup.
 '''

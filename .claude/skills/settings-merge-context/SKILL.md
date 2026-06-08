@@ -1,16 +1,14 @@
 ---
 name: settings-merge-context
-description: Use when modifying claude::sync_settings, claude::sync_claude_json, or the JSON-merge behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, and the per-project projects[$cwd].disabledMcpServers patching by disable-claudeai-connectors.sh.
+description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "69-170"
+      lines: "71-303"
     - path: SoT/.claude/settings.json
-      lines: "1-10"
-    - path: SoT/.claude/hooks/disable-claudeai-connectors.sh
-      lines: "1-35"
-  updated: "2026-05-28"
+      lines: "1-13"
+  updated: "2026-06-08"
 ---
 
 # Settings Merge
@@ -33,7 +31,8 @@ Run `jq empty "$user_settings"` before any merge operation. An invalid JSON sett
 - Changing how permissions arrays are unioned (additive) vs replaced (`--force`)
 - Debugging why a user's custom permission survived or was wiped after sync
 - Modifying `claude::sync_claude_json` to write a new key to `~/.claude.json`
-- Understanding why `disable-claudeai-connectors.sh` patches `~/.claude.json` instead of `settings.json`
+- Disabling claude.ai cloud connectors via the `ENABLE_CLAUDEAI_MCP_SERVERS` shell-rc export (`claude::sync_connector_env`)
+- Pruning a newly-deprecated kit artifact via the `removed` manifest (`claude::sync_removals`)
 
 ## Core Patterns
 
@@ -90,37 +89,46 @@ Recovery: if merge fails, original is unchanged. `.bak` is the last-known-good c
 | Key | File | Owner | Why |
 |-----|------|-------|-----|
 | `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json` | Schema validation error if placed in settings.json |
-| `disabledMcpServers` (per project) | `~/.claude.json` | `disable-claudeai-connectors.sh (the disabledMcpServers jq patch)` | Survives auth-sync round-trips; `settings.json` path does not |
 | Everything else | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code settings schema |
 
-### SessionStart Hook: `disable-claudeai-connectors.sh`
+claude.ai cloud connectors are **not** disabled via any file here — see the connector-env section below.
+
+### Disabling claude.ai cloud connectors (`claude::sync_connector_env`)
+
+Cloud connectors (Figma/Drive/Gmail) are fetched from the claude.ai account at startup; **no `~/.claude.json` / `settings.json` field disables them** — `disabledMcpServers` gates only `.mcp.json`/`claude mcp add` servers. The only working lever is `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a REAL shell var (inert in the settings.json `env` block, applied too late). `claude::sync_connector_env` appends it to the active shell rc, idempotently:
 
 ```bash
-# disable-claudeai-connectors.sh (cwd read + jq patch)
-CWD=$(jq -r '.cwd // empty' < /dev/stdin 2>/dev/null || true)
-[ -z "$CWD" ] || [ "$CWD" = "null" ] && exit 0
-
-jq --arg cwd "$CWD" --argjson connectors "$CONNECTORS" '
-  .projects[$cwd].disabledMcpServers = (
-    (.projects[$cwd].disabledMcpServers // []) + $connectors | unique
-  )
-' "$CLAUDE_JSON" > "$TMP" && mv "$TMP" "$CLAUDE_JSON"
+# claude::sync_connector_env — verify-if-present across rc files, then append
+for f in "${candidates[@]}"; do
+  [[ -f "$f" ]] && grep -q 'ENABLE_CLAUDEAI_MCP_SERVERS' "$f" && return  # never duplicate/clobber
+done
+case "$(basename "${SHELL:-bash}")" in zsh) target=~/.zshrc;; bash) target=~/.bashrc;; *) target=~/.profile;; esac
+printf '\n%s\n%s\n' "$marker" "export ENABLE_CLAUDEAI_MCP_SERVERS=false" >> "$target"
 ```
 
-Fires on every `SessionStart` event (not just `startup`) to catch `resume`/`compact`/`clear` sessions.
+### Pruning stale artifacts (`claude::sync_removals`)
+
+Default sync is additive (merge keeps user keys; rsync has no `--delete`), so kit-dropped artifacts linger. `claude::sync_removals` reads the declarative `claude::_removed_manifest` and force-prunes them on every sync — a **narrow exception to additive-by-default**, so it lists only unambiguous kit-owned artifacts (hooks/files/settingsKeys/claudeJsonKeys). `claude::_prune_json_keys` deletes dotted key paths via `delpaths`:
+
+```bash
+# claude::_prune_json_keys — count present keys (BIND ROOT first!), then delpaths
+present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file")
+[[ "$present" -gt 0 ]] && jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+```
 
 ## Key Decisions
 
 - Default merge uses `$user * $repo` (`claude::_settings_merge ($user*$repo)`) — repo wins on scalar/object conflicts. User-added env vars, custom permissions entries, and mcpServers survive because those keys don't exist in repo settings.
 - Permissions arrays use concat+unique (`claude::_settings_merge (permissions concat+unique)`) in default mode — a user-added `Bash(my-tool *)` survives sync. With `--force`, the repo's permissions arrays replace the user's wholesale (no union step).
 - `claude::sync_claude_json` creates `~/.claude.json` from scratch if absent (`claude::sync_claude_json (the create-from-scratch branch)`) with just `{"showTurnDuration": true}`.
-- `disable-claudeai-connectors.sh` reads `cwd` from stdin JSON (`disable-claudeai-connectors.sh (cwd-from-stdin read)`), not `$PWD` — because hook execution context may differ from shell `$PWD`.
+- The connector disable lives in the shell rc, not `settings.json`/`~/.claude.json` — `claude::sync_connector_env` is surgical (only claude.ai connectors, MCP source #5; plugin/project servers untouched) and non-clobbering (skips if `ENABLE_CLAUDEAI_MCP_SERVERS` is already set to any value).
+- `claude::sync_removals` runs on every sync but only touches the curated `claude::_removed_manifest`; `delpaths` makes key removal idempotent (absent paths are ignored).
 
 ## Gotchas
 
 - **Missing `// []` in permissions concat**: if either `$user.permissions.allow` or `$repo.permissions.allow` is null (key absent), the concat `+` would fail without the `// []` fallback. (`claude::_settings_merge (permissions concat+unique)`)
 - **`$schema` key position after merge**: jq does not preserve key order. The `$schema` key from `settings.json:1` may appear anywhere in the merged output. This is cosmetic only; Claude Code does not require it at position 0.
-- **Hook reads `cwd` from stdin, not `$PWD`**: if the Claude Code event payload ever stops including `cwd`, the hook exits 0 silently and connectors re-appear. The `[ -z "$CWD" ] … && exit 0` guard at `disable-claudeai-connectors.sh (empty-cwd exit guard)` is the silent-failure path.
+- **`getpath` must bind the root in `claude::_prune_json_keys`**: after `$k[]` the jq `.` context is the key *string*, so `getpath($p)` must run against a captured `. as $doc` — otherwise the present-count is always 0 and the `present > 0` guard skips the prune (the `delpaths` itself is unaffected). (`claude::_prune_json_keys (the present-count jq)`)
 - **`jq empty` guard returns silently on corrupt JSON**: `claude::_settings_validate` returns 1 (caller returns early) on corrupt settings.json (`claude::_settings_validate (jq empty guard)`). The corrupt file is left in place — the user must fix it manually. Symptom: sync reports no settings changes but the file is unchanged.
 
 ## References

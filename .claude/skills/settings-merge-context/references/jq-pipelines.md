@@ -58,17 +58,16 @@ mv "$claude_json.tmp" "$claude_json"
 
 Single-key set, no merge. Does not touch other keys in `~/.claude.json`.
 
-## `disable-claudeai-connectors.sh` jq (`disable-claudeai-connectors.sh (the disabledMcpServers jq patch)`)
+## Removed-key prune jq (`claude::_prune_json_keys (the delpaths)`)
 
 ```bash
-jq --arg cwd "$CWD" --argjson connectors "$CONNECTORS" '
-  .projects[$cwd].disabledMcpServers = (
-    (.projects[$cwd].disabledMcpServers // []) + $connectors | unique
-  )
-' "$CLAUDE_JSON" > "$TMP" && mv "$TMP" "$CLAUDE_JSON"
+# count keys actually present — BIND ROOT (. as $doc) before getpath
+present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file")
+# delete each dotted path; delpaths ignores absent paths (idempotent)
+jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
 ```
 
-Idempotent: existing entries plus new entries, deduped by `unique`.
+`split(".")` turns `"env.FOO"` into `["env","FOO"]` for `delpaths`/`getpath`. The present-count must capture `. as $doc` first: after `$k[]`, the `.` context is the key string, not the document — see the Gotcha in SKILL.md.
 
 ## Good / Bad Patterns
 
