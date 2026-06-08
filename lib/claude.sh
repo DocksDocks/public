@@ -19,6 +19,8 @@ claude::sync() {
   claude::sync_claude_md
   claude::sync_settings
   claude::sync_claude_json
+  claude::sync_connector_env
+  claude::sync_removals
   claude::sync_plugins
   claude::sync_rtk
 }
@@ -167,6 +169,142 @@ claude::sync_claude_json() {
     echo '{"showTurnDuration": true}' > "$claude_json"
   fi
   log "~/.claude.json updated (showTurnDuration)"
+}
+
+# Ensure ENABLE_CLAUDEAI_MCP_SERVERS=false is exported as a REAL shell env var.
+# This is the only working way to suppress claude.ai cloud connectors (Figma,
+# Drive, Gmail, ...): they're fetched from the account at session start and
+# IGNORE the settings.json `env` block (applied too late), so the var must be
+# present in the process before `claude` launches — i.e. in the shell rc.
+# Surgical: disables ONLY claude.ai connectors (MCP source #5 in Claude Code's
+# scope hierarchy). Local/project/user/plugin servers (supabase, n8n, .mcp.json)
+# are untouched. Idempotent + non-clobbering: if the var is already set in any
+# common rc (any value), it's left as-is — set it to `true` yourself to keep
+# connectors. Multi-platform: targets ~/.zshrc (zsh) or ~/.bashrc (bash),
+# ~/.profile otherwise.
+claude::sync_connector_env() {
+  local line="export ENABLE_CLAUDEAI_MCP_SERVERS=false"
+  local marker="# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
+  local -a candidates=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" "$HOME/.zshenv")
+  local f target shell_name
+
+  for f in "${candidates[@]}"; do
+    if [[ -f "$f" ]] && grep -q 'ENABLE_CLAUDEAI_MCP_SERVERS' "$f" 2>/dev/null; then
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in $f — would skip"
+      else
+        log "claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in $f (left as-is)"
+      fi
+      return
+    fi
+  done
+
+  shell_name="$(basename "${SHELL:-bash}")"
+  case "$shell_name" in
+    zsh)  target="$HOME/.zshrc" ;;
+    bash) target="$HOME/.bashrc" ;;
+    *)    target="$HOME/.profile" ;;
+  esac
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to $target"
+    return
+  fi
+
+  printf '\n%s\n%s\n' "$marker" "$line" >> "$target"
+  log "claude.ai connectors disabled via $target (start a new shell to apply)"
+}
+
+# --- Removed-artifact pruning -------------------------------------------------
+# Declarative manifest of kit-owned artifacts the kit no longer ships. The
+# default sync is additive (the jq merge keeps user-only keys; rsync has no
+# --delete), so config the kit dropped in an older version would otherwise
+# linger forever on an already-synced machine. `claude::sync_removals` prunes
+# the items below on every sync.
+#
+# NARROW exception to "additive by default": entries here are force-removed from
+# EVERY synced ~/.claude. List kit-owned keys the kit used to set and has since
+# dropped — they are pruned from the kit-managed settings.json. A deliberate
+# per-machine override of any of these belongs in settings.local.json, which
+# sync never touches. Do NOT list a key the kit never owned (a user's custom env
+# vars, mcpServers, theme) — the additive merge already preserves those.
+#   hooks          hook scripts under ~/.claude/hooks/ to delete (the matching
+#                  settings.json hook entry is already dropped by the SoT
+#                  settings merge, which replaces .hooks wholesale)
+#   files          other paths under ~/.claude/ to delete
+#   settingsKeys   dotted key paths to del() from ~/.claude/settings.json
+#   claudeJsonKeys dotted key paths to del() from ~/.claude.json
+claude::_removed_manifest() {
+  cat <<'JSON'
+{
+  "hooks":          ["disable-claudeai-connectors.sh"],
+  "files":          [],
+  "settingsKeys": [
+    "showTurnDuration",
+    "env.CLAUDE_CODE_SUBAGENT_MODEL",
+    "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
+    "env.CLAUDE_CODE_DISABLE_1M_CONTEXT"
+  ],
+  "claudeJsonKeys": []
+}
+JSON
+}
+
+# Delete dotted key paths from a JSON file via jq delpaths. Echoes the count of
+# keys that were actually present (and removed); echoes 0 when the file is
+# missing/invalid or no listed key exists. Honors DRY_RUN (counts, no write).
+# delpaths ignores absent paths, so this is idempotent.
+claude::_prune_json_keys() {
+  local file="$1" keys="$2" present
+  { [[ "$keys" == "[]" || ! -f "$file" ]] || ! jq empty "$file" 2>/dev/null; } && { echo 0; return; }
+  present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file" 2>/dev/null || echo 0)
+  [[ "$present" -gt 0 ]] || { echo 0; return; }
+  if [[ "$DRY_RUN" -eq 0 ]]; then
+    if jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" 2>/dev/null; then
+      mv "$file.tmp" "$file"
+    else
+      rm -f "$file.tmp"; warn "Failed to prune stale keys from $file"; echo 0; return
+    fi
+  fi
+  echo "$present"
+}
+
+claude::sync_removals() {
+  local manifest name path hooks_removed=0 files_removed=0 skeys cjkeys
+
+  manifest="$(claude::_removed_manifest)"
+
+  while IFS= read -r name; do
+    [[ -z "$name" || ! -e "$CLAUDE_DIR/hooks/$name" ]] && continue
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rm $CLAUDE_DIR/hooks/$name"
+    else
+      rm -f "$CLAUDE_DIR/hooks/$name"; hooks_removed=$((hooks_removed + 1))
+    fi
+  done < <(jq -r '.hooks[]? // empty' <<<"$manifest")
+
+  while IFS= read -r path; do
+    [[ -z "$path" || ! -e "$CLAUDE_DIR/$path" ]] && continue
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rm $CLAUDE_DIR/$path"
+    else
+      rm -f "$CLAUDE_DIR/$path"; files_removed=$((files_removed + 1))
+    fi
+  done < <(jq -r '.files[]? // empty' <<<"$manifest")
+
+  skeys=$(claude::_prune_json_keys "$CLAUDE_DIR/settings.json" "$(jq -c '.settingsKeys // []' <<<"$manifest")")
+  cjkeys=$(claude::_prune_json_keys "$HOME/.claude.json" "$(jq -c '.claudeJsonKeys // []' <<<"$manifest")")
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    [[ "$skeys" -gt 0 ]]  && echo "[dry-run] del $skeys stale key(s) from $CLAUDE_DIR/settings.json"
+    [[ "$cjkeys" -gt 0 ]] && echo "[dry-run] del $cjkeys stale key(s) from $HOME/.claude.json"
+    return
+  fi
+
+  if [[ $((hooks_removed + files_removed + skeys + cjkeys)) -gt 0 ]]; then
+    log "Pruned stale artifacts (hooks: $hooks_removed, files: $files_removed, settings keys: $skeys, claude.json keys: $cjkeys)"
+  fi
 }
 
 # Thin facade around the `claude` CLI plugin pipeline. Centralizes the kit's

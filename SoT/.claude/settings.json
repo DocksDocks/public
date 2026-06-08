@@ -1,12 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "minimumVersion": "2.1.166",
   "respectGitignore": true,
   "cleanupPeriodDays": 14,
   "skillListingBudgetFraction": 0.05,
   "env": {
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "96000",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "400000",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000",
     "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
     "CLAUDE_CODE_NO_FLICKER": "1",
     "CLAUDE_CODE_FORK_SUBAGENT": "1"
@@ -70,7 +71,6 @@
       "Bash(cut *)",
       "Bash(tr *)",
       "Bash(tee *)",
-      "Bash(xargs *)",
       "Bash(echo *)",
       "Bash(printf *)",
       "Bash(env *)",
@@ -163,15 +163,6 @@
           {
             "type": "command",
             "command": "SKILL_COUNT=$(find .claude/skills -name 'SKILL.md' -mindepth 2 -maxdepth 2 2>/dev/null | wc -l); [ \"$SKILL_COUNT\" -gt 0 ] && echo \"[SKILLS] $SKILL_COUNT project skills available in .claude/skills/. Claude Code loads them on demand via Skill tool. After code changes affecting documented patterns, update the relevant skill and its metadata.updated field.\" || true",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "[ -x \"$HOME/.claude/hooks/disable-claudeai-connectors.sh\" ] && \"$HOME/.claude/hooks/disable-claudeai-connectors.sh\" || true",
             "timeout": 5
           }
         ]

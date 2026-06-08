@@ -10,7 +10,6 @@ Adding `showTurnDuration` to `settings.json` triggers a schema validation warnin
 |-----|------|-----------|--------|
 | All standard config (env, permissions, hooks, plugins) | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code schema |
 | `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json (the showTurnDuration jq)` | Schema validation error if in settings.json |
-| `projects[$cwd].disabledMcpServers` | `~/.claude.json` | `disable-claudeai-connectors.sh (the disabledMcpServers jq patch)` | Must survive per-project auth-sync round-trips |
 | `skipAutoPermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Standard schema — fine here |
 | `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Ignored in project-level settings (safety) |
 
@@ -25,9 +24,9 @@ fi
 
 If `~/.claude.json` is absent, `claude::sync_claude_json` creates it with a single key. Other keys written by Claude Code itself (e.g. `projects`) accumulate in this file over time.
 
-## Why `disabledMcpServers` Lives in `~/.claude.json`
+## Disabling claude.ai cloud connectors (NOT via these files)
 
-The `settings.json` path for disabling MCP servers does not survive Claude.ai auth-sync round-trips (see upstream issues #45158, #20412). Only `~/.claude.json`'s `projects[$cwd].disabledMcpServers` array survives. The hook fires on every `SessionStart` event (startup/resume/compact/clear) to ensure the patch is applied even in resumed sessions. (`disable-claudeai-connectors.sh`)
+Cloud connectors (Figma/Drive/Gmail) are account-synced and fetched at startup; **no `~/.claude.json` or `settings.json` field disables them**. `disabledMcpServers`/`disabledMcpjsonServers` gate only `.mcp.json`/`claude mcp add` servers — they never matched cloud connectors (the kit's old `disable-claudeai-connectors.sh` hook was a no-op and has been removed). The working lever is the env var `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in the shell rc by `claude::sync_connector_env` (upstream issues #45158, #20412, #58453 still want a native settings toggle).
 
 ## Adding a New Key to the Kit
 
@@ -39,5 +38,5 @@ The `settings.json` path for disabling MCP servers does not survive Claude.ai au
 ## Gotchas
 
 - `~/.claude.json` is written by Claude Code itself for project state. `sync.sh` patches it minimally — never replaces it wholesale.
-- The `disable-claudeai-connectors.sh` hook reads `cwd` from stdin JSON (`disable-claudeai-connectors.sh (cwd-from-stdin read)`), not from `$PWD`. If the event schema stops including `cwd`, `$CWD` is empty and the hook exits 0 silently (`disable-claudeai-connectors.sh (empty-cwd exit guard)`). Connectors re-appear. Test by checking: `jq -r '.cwd' <<< '{"cwd":"/test"}'`.
+- `claude::sync_removals` can prune stale keys from `~/.claude.json` too (`claudeJsonKeys` in `claude::_removed_manifest`), but only that curated list — it never touches `projects` state or user keys. `delpaths` ignores absent paths, so re-runs are silent no-ops.
 - `sync.sh` does NOT write `mcpServers` to `settings.json`. Those are Claude Code's own runtime entries, not kit-managed.

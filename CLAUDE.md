@@ -10,7 +10,7 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 |------|---------|
 | `SoT/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `SoT/.claude/settings.json` | Permissions, hooks, plugins, env vars, token limits |
-| `SoT/.claude/hooks/` | SessionStart hook scripts (e.g. `disable-claudeai-connectors.sh`) |
+| `SoT/.claude/hooks/` | Hook scripts (e.g. `notify.sh` — the Notification completion sound) |
 | `SoT/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `SoT/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
 
@@ -157,6 +157,8 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 - Protected paths (`.git`, `.claude`, `.mcp.json`, etc.) route to the classifier rather than being auto-approved.
 - Dropped rules are restored the moment you leave auto mode.
 
+**Cutting auto-mode false positives — `autoMode.environment`:** the classifier blocks anything aimed *outside* your environment; out of the box it trusts only the working dir and the current repo's remotes. To stop it flagging routine pushes to your other org repos or writes to trusted buckets, add an `autoMode.environment` array (prose entries; include the literal `"$defaults"` to keep the built-ins) to **`~/.claude/settings.local.json`** — not the shared SoT: the classifier ignores `autoMode` in checked-in project `.claude/settings.json`, and trusted-infra is machine-specific. The block also accepts `allow`/`soft_deny`/`hard_deny` prose lists, but `permissions.deny` (which runs *before* the classifier) stays the only unbypassable gate. Inspect the effective rules with `claude auto-mode config`; critique custom rules with `claude auto-mode critique`. Docs: https://code.claude.com/docs/en/auto-mode-config.
+
 **Fallbacks baked in**: 3 consecutive classifier blocks or 20 total in a session pause auto mode and resume prompting. Approving the prompted action resumes auto. Not configurable.
 
 **When to bail out of auto mode**: classifier outage, sensitive production work, CI migrations, anything where you want to review each step. `Shift+Tab` cycles away from auto.
@@ -164,7 +166,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 ### Hooks
 
 - **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
-- **SessionStart (no matcher — fires on every event: `startup`/`resume`/`compact`/`clear`)**: Runs `~/.claude/hooks/disable-claudeai-connectors.sh` (sourced from `SoT/.claude/hooks/`) — auto-patches `~/.claude.json` `projects[$cwd].disabledMcpServers` for the current project, keeping unwanted Claude.ai connectors out of context. Workaround for the still-broken `ENABLE_CLAUDEAI_MCP_SERVERS` env var (see [issue #45158](https://github.com/anthropics/claude-code/issues/45158), [#20412](https://github.com/anthropics/claude-code/issues/20412)). Edit the `CONNECTORS` array in the script to change the disable list. Idempotent — safe to run on every event. **Why no `startup` matcher**: a `startup`-only hook never re-runs on resumed/compacted sessions, so any project the user opens via `--resume` or auto-compact never gets its `disabledMcpServers` entry. Symptom: connectors keep showing up in `/plugin` even after they were "disabled" in another session. Firing on every SessionStart event eliminates the gap; cost is one cheap `jq` patch per event
+- **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `sync.sh` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
 - **Notification**: Plays `alert_bubble.mp3` via `ffplay` when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 - **Stop**: Fetches API usage stats (async) to keep status line data fresh
@@ -172,13 +174,13 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Environment Variables
 
-All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context + 400K compact window + max effort + sonnet subagents** — maximizes usable context before compaction while keeping token cost sane. Tuned for Opus 4.7+/4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
+All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context (as headroom) + 300K compact window + xhigh effort + sonnet subagents** — keep the working set inside the high-fidelity zone by compacting *before* context rot sets in, while keeping token cost sane. Tuned for Opus 4.7+/4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
 
 #### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `400000` | Cap the effective window at 400K regardless of the model's real capacity. Compaction fires at the default ~95% → ~380K. Per Anthropic's Thariq Shihipar (2026-04-15 blog + tweet): a good compromise on 1M Opus. Value is capped at the model's real window, so it's safe on 200K models too. Docs: https://code.claude.com/docs/en/env-vars. |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `300000` | Cap the effective window at 300K; full autocompact fires at the default ~95% → ~285K. Lowered from 400K so the auto-generated compaction *summary* isn't produced at a heavily-degraded context, and so sessions don't ride to 95% of a 1M window. **Context rot is gradual, not a cliff** — roughly linear (~2% effectiveness loss per 100K tokens, and the Chroma study found Claude decays *slowest* of all models; Opus 4.6 still scores ~76% on 1M-token multi-needle retrieval). So a tighter 250K (~237K trigger) buys only ~1% less rot than 285K — not worth the extra lossy compactions, especially since Opus 4.8 is tuned for "fewer compactions, better recovery." 285K is the balance point: out of the deep-degradation tail without over-compacting. 1M stays enabled as headroom — rot tracks tokens *used*, not window size. Capped at the model's real window. Docs: https://code.claude.com/docs/en/env-vars, https://research.trychroma.com/context-rot. |
 | (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7/4.8. Note: 4.7 introduced a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text (carried forward in 4.8) — another reason to cap the compact window in absolute tokens rather than as a percentage. |
 
 The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
@@ -197,11 +199,14 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 
 **Subagent model selection:** not an env var. The docks plugin declares per-agent `model:` (sonnet/opus) in each agent's frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over agent frontmatter.
 
+**No `fallbackModel`:** the kit stays strictly Opus-only on the main thread. `fallbackModel` (v2.1.166) would degrade to Sonnet on an Opus overload (529) rather than dropping the turn, but a mid-session model switch cold-starts the per-model prompt cache — so the kit accepts a retried turn over a silent model swap. Sonnet subagents are spawned deliberately via agent frontmatter, not as a fallback. To opt in per-machine during a known-bad-availability stretch, set `fallbackModel` in `~/.claude/settings.local.json`.
+
 #### Output & UI
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session. Subagents remain capped at 32K regardless. |
+| `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session — Anthropic's recommended starting point for Opus 4.8 at xhigh/max effort. A higher cap *reduces the effective input context before auto-compaction* (per the env-vars doc), so the earlier 96K bump traded input headroom for output sizes coding turns rarely reach. Subagents are capped at 32K regardless, so this main-thread value never affected synthesis-tier output (the original reason for the bump). Opus 4.8's hard ceiling is 128K; raise only if real outputs truncate. |
+| `CLAUDE_CODE_FORK_SUBAGENT` | `1` | Enables `/fork <directive>` (v2.1.117+) — a subagent that inherits the full conversation, system prompt, tools, and model, with the first request reusing the parent's prompt cache. Ad-hoc exploration only; the docks pipeline commands intentionally isolate phases instead (see Session Management). |
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
 
@@ -214,6 +219,7 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 | `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable. Press `Ctrl+O` to cycle to `verbose` on demand. Enum: `default`/`verbose`/`focus`. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
 | `skillListingBudgetFraction` | `0.05` | Cap on system-prompt budget for skill descriptions (decimal 0–1, ~5% of the model's context window). Default `0.01` was dropping ~25 descriptions; `0.025` still dropped ~22 in projects with heavier plugin stacks (e.g. `supabase` + `docks:*` forks + `claude-plugins-official`), with `/doctor` reporting ~3.4% needed. `0.05` (~50K tokens on 1M Opus, ~12.5% of the 400K compact window) gives durable headroom for future skill additions and absorbs the ~7K-token opt-in cost `/doctor` cites for the dropped 22. Added in Claude Code 2.1.129+. To verify the warning is gone, run `/doctor` after sync; "Skill listing will be truncated" should not appear. |
+| `minimumVersion` | `2.1.166` | Floor for auto-updates and `claude update` — a stale install upgrades to ≥2.1.166 on next launch, guaranteeing every synced machine carries the features the kit relies on (Opus 4.8 needs 2.1.154; `skillListingBudgetFraction` needs 2.1.129; 2.1.166 also covers the latest auto-mode/classifier hardening). Distinct from the managed-only `requiredMinimumVersion`. |
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max`.
 
@@ -283,12 +289,25 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' SoT/.claude/settings.json) \
 
 User-added permissions arrays are discarded by `--force` (kit owns the permission model); user-added plugins and kit-managed skills missing from SoT are discarded by `--remove-plugins`. User-only top-level settings (custom env vars, mcpServers, theme overrides) and user-installed skills (not in `SoT/.agents/skills.txt`) are preserved — the kit only reconciles what it declares. If you want a locally-added permission or plugin to survive, add it to the SoT first.
 
+#### Pruning stale artifacts (the `removed` manifest)
+
+Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the jq merge keeps user-only keys and `rsync` runs without `--delete`. To clean those up, `lib/claude.sh` carries a declarative **`removed` manifest** (`claude::_removed_manifest`) that `claude::sync_removals` prunes on **every** sync:
+
+| Category | Removes |
+|----------|---------|
+| `hooks` | hook scripts under `~/.claude/hooks/` (the matching `settings.json` hook entry is already dropped by the merge, which replaces `.hooks` wholesale) |
+| `files` | other paths under `~/.claude/` |
+| `settingsKeys` | dotted key paths `del()`-ed from `~/.claude/settings.json` |
+| `claudeJsonKeys` | dotted key paths `del()`-ed from `~/.claude.json` |
+
+This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent (`rm -f`; `delpaths` ignores absent paths) and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled). Add a newly-deprecated artifact by editing `claude::_removed_manifest`.
+
 ### Troubleshooting
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
-- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=400000`, which caps the effective window and fires compaction at ~95% of that (~380K). To delay, raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N`. Both env vars at https://code.claude.com/docs/en/env-vars.
-- **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` handles this automatically.
+- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000`, which caps the effective window and fires compaction at ~95% of that (~285K). To delay, raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
+- **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **`@RTK.md` import missing** — generated by `rtk init -g`. If RTK is not installed, run `./sync.sh --no-rtk` to strip the import cleanly.
 - **`/plugin marketplace add DocksDocks/docks` fails with "marketplace.json not found"** — clear the partial cache: `/plugin marketplace remove DocksDocks-docks` then re-add.
@@ -338,3 +357,30 @@ alias claude='claude --thinking-display summarized'
 5. If rendered: remove this Open Concerns entry + the shell alias.
 
 **Fallback if the flag doesn't help:** The closed-as-dup [#52376](https://github.com/anthropics/claude-code/issues/52376) describes a related subscription-side concern — on Max/Team/Enterprise, the server may silently ignore `display: "summarized"` even when the client sends it (only API-key sessions are documented to honor it). It was rolled into #49268 without an independent fix. If the alias doesn't work, switch to `/model claude-opus-4-6` temporarily; thinking renders correctly on 4.6.
+
+---
+
+#### [2026-06-08] claude.ai account connectors auto-load into every session
+
+**Status:** Workaround found + automated (2026-06-08). `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported as a real **shell** env var disables all claude.ai cloud connectors; `sync.sh` now ensures it (`claude::sync_connector_env`). Residual gap (still Open): no settings.json key, no per-connector or per-surface (Code-vs-Chat) control — those feature requests remain unresolved.
+
+**Symptom:** Every connector enabled in the Claude.ai web/desktop app (Figma, Google Drive, Gmail, Notion, …) OAuth-syncs into *every* Claude Code session and loads its tool definitions + system instructions into context — even connectors you never call (~100K tokens of silent bloat). They reappear on every restart and ignore per-project intent.
+
+**Root cause:** claude.ai account connectors sync via the authenticated login and load at session start before local config is consulted. The toggle the kit long assumed was "broken" — `ENABLE_CLAUDEAI_MCP_SERVERS` — actually **works as a real shell env var** (the official MCP docs prescribe `ENABLE_CLAUDEAI_MCP_SERVERS=false claude`); it's inert *only* when placed in the settings.json `env` block, which Claude Code applies too late. `permissions.deny: ["mcp__claude_ai_*"]` blocks tool *calls* but not loading. `disabledMcpServers`/`disabledMcpjsonServers` gate only `.mcp.json`/`claude mcp add` servers, **not** cloud connectors — so the old hook's approach never worked. There is **no `disabledCloudMcpServers` key** (absent from the official schema); `allowAllClaudeAiMcps` is managed-only.
+
+**Upstream issues** (checked 2026-06-08 via web search; none resolved):
+- [anthropics/claude-code#50062](https://github.com/anthropics/claude-code/issues/50062) — ~100K tokens of silent context bloat, no per-environment opt-out (**OPEN**)
+- [anthropics/claude-code#20412](https://github.com/anthropics/claude-code/issues/20412) — auto-injected without opt-in, OOM on constrained systems (**OPEN**)
+- [anthropics/claude-code#45158](https://github.com/anthropics/claude-code/issues/45158) — [FEATURE] disable at project level (**OPEN**)
+- [anthropics/claude-code#58453](https://github.com/anthropics/claude-code/issues/58453) — allow disabling from Claude Code settings (**OPEN**)
+- [anthropics/claude-code#22301](https://github.com/anthropics/claude-code/issues/22301) — add setting to disable cloud connectors (**OPEN**)
+- [anthropics/claude-code#47881](https://github.com/anthropics/claude-code/issues/47881) — disable per surface (Code vs Chat) (**OPEN**)
+- Partial upstream relief: v2.1.139 disables claude.ai connectors when `ANTHROPIC_API_KEY` / `apiKeyHelper` / `ANTHROPIC_AUTH_TOKEN` is set — unusable on a Max-subscription login.
+
+**Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `sync.sh` does this via `claude::sync_connector_env`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
+
+The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. (`sync.sh` rsyncs hooks without `--delete`, so a previously-synced copy at `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly until manually deleted.)
+
+**Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./sync.sh`, confirm `/mcp` is clean, then drop the `claude::sync_connector_env` shell-rc edit and this entry.
+
+**Fallback (nuclear):** Disconnect connectors at claude.ai → Settings → Connected apps (removes them everywhere, including Claude.ai chat). Or authenticate with `ANTHROPIC_API_KEY` (disables all connectors per v2.1.139, but bypasses the Max subscription).
