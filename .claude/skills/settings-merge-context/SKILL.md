@@ -108,7 +108,7 @@ printf '\n%s\n%s\n' "$marker" "export ENABLE_CLAUDEAI_MCP_SERVERS=false" >> "$ta
 
 ### Pruning stale artifacts (`claude::sync_removals`)
 
-Default sync is additive (merge keeps user keys; rsync has no `--delete`), so kit-dropped artifacts linger. `claude::sync_removals` reads the declarative `claude::_removed_manifest` and force-prunes them on every sync — a **narrow exception to additive-by-default**, so it lists only unambiguous kit-owned artifacts (hooks/files/settingsKeys/claudeJsonKeys). `claude::_prune_json_keys` deletes dotted key paths via `delpaths`:
+Default sync is additive (merge keeps user keys; `cp -R` never deletes), so kit-dropped artifacts linger. `claude::sync_removals` reads the declarative `claude::_removed_manifest` and force-prunes them on every sync — a **narrow exception to additive-by-default**, so it lists only unambiguous kit-owned artifacts (hooks/files/settingsKeys/claudeJsonKeys). `claude::_prune_json_keys` deletes dotted key paths via `delpaths`:
 
 ```bash
 # claude::_prune_json_keys — count present keys (BIND ROOT first!), then delpaths

@@ -44,12 +44,15 @@ claude::sync_hooks() {
   [[ -d "$REPO_DIR/SoT/.claude/hooks" ]] || return
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] rsync -a $REPO_DIR/SoT/.claude/hooks/ $CLAUDE_DIR/hooks/"
+    echo "[dry-run] cp -R $REPO_DIR/SoT/.claude/hooks/. $CLAUDE_DIR/hooks/"
     return
   fi
 
   mkdir -p "$CLAUDE_DIR/hooks"
-  rsync -a "$REPO_DIR/SoT/.claude/hooks/" "$CLAUDE_DIR/hooks/"
+  # cp -R (not rsync — rsync is not coreutils and is absent on minimal images
+  # like the Claude-Code-on-the-web Ubuntu sandbox). `src/.` copies contents
+  # (incl. dotfiles) into dst; additive, like rsync without --delete.
+  cp -R "$REPO_DIR/SoT/.claude/hooks/." "$CLAUDE_DIR/hooks/"
   find "$CLAUDE_DIR/hooks" -maxdepth 1 -name '*.sh' -exec chmod +x {} +
   hook_count=$(find "$CLAUDE_DIR/hooks" -maxdepth 1 -name '*.sh' 2>/dev/null | wc -l)
   log "Hooks synced ($hook_count scripts)"
@@ -217,8 +220,8 @@ claude::sync_connector_env() {
 
 # --- Removed-artifact pruning -------------------------------------------------
 # Declarative manifest of kit-owned artifacts the kit no longer ships. The
-# default sync is additive (the jq merge keeps user-only keys; rsync has no
-# --delete), so config the kit dropped in an older version would otherwise
+# default sync is additive (the jq merge keeps user-only keys; cp -R never
+# deletes), so config the kit dropped in an older version would otherwise
 # linger forever on an already-synced machine. `claude::sync_removals` prunes
 # the items below on every sync.
 #

@@ -291,7 +291,7 @@ User-added permissions arrays are discarded by `--force` (kit owns the permissio
 
 #### Pruning stale artifacts (the `removed` manifest)
 
-Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the jq merge keeps user-only keys and `rsync` runs without `--delete`. To clean those up, `lib/claude.sh` carries a declarative **`removed` manifest** (`claude::_removed_manifest`) that `claude::sync_removals` prunes on **every** sync:
+Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the jq merge keeps user-only keys and `cp -R` never deletes. To clean those up, `lib/claude.sh` carries a declarative **`removed` manifest** (`claude::_removed_manifest`) that `claude::sync_removals` prunes on **every** sync:
 
 | Category | Removes |
 |----------|---------|
@@ -379,7 +379,7 @@ alias claude='claude --thinking-display summarized'
 
 **Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `sync.sh` does this via `claude::sync_connector_env`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
 
-The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. (`sync.sh` rsyncs hooks without `--delete`, so a previously-synced copy at `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly until manually deleted.)
+The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. (`sync.sh` copies hooks without deleting, so a previously-synced copy at `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly until manually deleted.)
 
 **Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./sync.sh`, confirm `/mcp` is clean, then drop the `claude::sync_connector_env` shell-rc edit and this entry.
 
