@@ -19,6 +19,7 @@ claude::sync() {
   claude::sync_claude_md
   claude::sync_settings
   claude::sync_claude_json
+  claude::sync_connector_env
   claude::sync_plugins
   claude::sync_rtk
 }
@@ -167,6 +168,50 @@ claude::sync_claude_json() {
     echo '{"showTurnDuration": true}' > "$claude_json"
   fi
   log "~/.claude.json updated (showTurnDuration)"
+}
+
+# Ensure ENABLE_CLAUDEAI_MCP_SERVERS=false is exported as a REAL shell env var.
+# This is the only working way to suppress claude.ai cloud connectors (Figma,
+# Drive, Gmail, ...): they're fetched from the account at session start and
+# IGNORE the settings.json `env` block (applied too late), so the var must be
+# present in the process before `claude` launches — i.e. in the shell rc.
+# Surgical: disables ONLY claude.ai connectors (MCP source #5 in Claude Code's
+# scope hierarchy). Local/project/user/plugin servers (supabase, n8n, .mcp.json)
+# are untouched. Idempotent + non-clobbering: if the var is already set in any
+# common rc (any value), it's left as-is — set it to `true` yourself to keep
+# connectors. Multi-platform: targets ~/.zshrc (zsh) or ~/.bashrc (bash),
+# ~/.profile otherwise.
+claude::sync_connector_env() {
+  local line="export ENABLE_CLAUDEAI_MCP_SERVERS=false"
+  local marker="# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
+  local -a candidates=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" "$HOME/.zshenv")
+  local f target shell_name
+
+  for f in "${candidates[@]}"; do
+    if [[ -f "$f" ]] && grep -q 'ENABLE_CLAUDEAI_MCP_SERVERS' "$f" 2>/dev/null; then
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        echo "[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in $f — would skip"
+      else
+        log "claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in $f (left as-is)"
+      fi
+      return
+    fi
+  done
+
+  shell_name="$(basename "${SHELL:-bash}")"
+  case "$shell_name" in
+    zsh)  target="$HOME/.zshrc" ;;
+    bash) target="$HOME/.bashrc" ;;
+    *)    target="$HOME/.profile" ;;
+  esac
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to $target"
+    return
+  fi
+
+  printf '\n%s\n%s\n' "$marker" "$line" >> "$target"
+  log "claude.ai connectors disabled via $target (start a new shell to apply)"
 }
 
 # Thin facade around the `claude` CLI plugin pipeline. Centralizes the kit's
