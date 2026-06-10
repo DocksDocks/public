@@ -42,14 +42,18 @@ Research the codebase before editing. Never change code you haven't read.
 
 **8. Todo hygiene.** Use TaskCreate for items with meaningful outcome (≥5 min, distinct deliverable). Never include operational sub-actions (linting, testing, searching, examining the codebase) as their own todos — those are sub-steps in service of higher-level tasks. Mark complete immediately when done, never in batches.
 
-**9. Literal-instruction rule (Opus 4.7+/4.8-specific).** Opus 4.7 and 4.8 follow instructions literally — they do not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative.
+**9. Literal-instruction rule.** Current frontier models follow instructions literally — they do not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative.
 
 **10. Cache-invariance.** Don't insert timestamps, mutable state, or rotating tool definitions into the cached prefix (system prompt, tool sets, opening user message) — they break cache and force cold-start writes. Put dynamic context inside `<system-reminder>` tags within user messages instead. Cache breaks cost ~5× over a clean session. Caches are also per-model: switching Opus→Sonnet mid-session forces a cold-start cache write — use subagents for cross-model work instead.
 
 **11. Compact proactively, not reactively.** Run `/compact` at 50–60% of the compact window rather than waiting for autocompact. The model is at its least intelligent when compaction fires under context rot — reactive compaction loses the very signal you wanted preserved. For wrong-path detours, prefer `/rewind` to a previous turn over chained corrections (corrections accumulate noise; rewinds preserve the prefix and discard the bad branch).
 
+**12. Autonomy calibration.** For minor choices (naming, formatting, default values, which of two equivalent approaches), pick a reasonable option and note it — don't ask. Ask first only for scope changes, destructive actions, or decisions that change the deliverable. Don't close a finished task with "Want me to also…?" — run the obvious verification, then stop cleanly.
+
+**13. Capability triggering.** When the answer depends on current or version-specific information, search or fetch before answering — never answer from memory. When work fans out across independent items (many files to read, many tests to run, many candidates to check), delegate to parallel subagents; never spawn one for work you can complete directly. On tasks longer than a few turns, keep a running notes file and re-read it before each phase.
+
 <constraint>
-Treat the 11 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
+Treat the 13 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
 </constraint>
 
 ## Project Skills
@@ -83,7 +87,7 @@ When adding a new agent: use kebab-case name matching filename, CSO-compliant de
 
 ## Agentic Engineering Discipline
 
-1. **State assumptions before coding.** If a requirement is ambiguous, surface the ambiguity and propose 1–2 concrete interpretations in your first message. Do not silently pick one and proceed.
+1. **State assumptions; push back when warranted.** If a requirement is ambiguous in a way that changes the deliverable, surface the ambiguity and propose 1–2 concrete interpretations in your first message — do not silently pick one and run with it. Surface inconsistencies and confusion instead of guessing past them; present tradeoffs when approaches genuinely differ; push back when the request looks wrong. Agreeable-but-wrong is the failure mode, not disagreement.
 2. **Minimum code that solves the stated problem.** Each named pattern below is a defect — catch it during generation, not after:
 
    **Code slop**
@@ -92,6 +96,7 @@ When adding a new agent: use kebab-case name matching filename, CSO-compliant de
    - **Backwards-compat shims** without a caller — re-exports, deprecation aliases, untoggled feature flags. Just change the code.
    - **Half-finished stubs.** `TODO handle later`, `throw new Error('not implemented')`. Implement or remove the path.
    - **Underscore-rename of unused vars.** Delete the var.
+   - **Dead code left behind.** After a refactor, delete the paths, helpers, and imports the change made unreachable.
 
    **Comment slop**
    - **Restate-the-code.** `// increment i`. The identifier already says it.
@@ -101,9 +106,11 @@ When adding a new agent: use kebab-case name matching filename, CSO-compliant de
 
    **Output slop**
    - **End-of-turn diff-restatement.** One or two sentences: what changed, what's next. Don't recap what's in the diff.
+   - **Narration tics.** "Now I'll…", "Let me check…", play-by-play between tool calls. Default to silence between tool calls; one sentence only when something load-bearing happens (a finding, a direction change, a blocker).
 3. **Surgical changes only.** Do not modify code, comments, or formatting outside the explicit scope of the request. Surface unrelated issues as follow-ups — do not fix inline.
-4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works.
+4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works. Prefer executable criteria — a test that fails before and passes after, a command with expected output — over judgment calls, and keep each change small enough that its diff is reviewable in one sitting.
+5. **Reviews report coverage, not verdicts.** When reviewing code, report every issue found — including uncertain and low-severity ones — each with a confidence level and severity; filtering and ranking happen downstream, never at the finding stage.
 
 <constraint>
-Treat the four rules above as preventive (during generation), not remedial (after the fact). Self-correct if a turn drifts.
+Treat the five rules above as preventive (during generation), not remedial (after the fact). Self-correct if a turn drifts.
 </constraint>
