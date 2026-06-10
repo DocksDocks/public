@@ -152,8 +152,8 @@ claude::sync_settings() {
 }
 
 # Deploy-time modifier (--fable): raise the DEPLOYED autocompact window to 1M
-# for Fable 5 sessions, which hold long-context fidelity well past the 350K cap
-# tuned for Opus-era context rot. Touches only ~/.claude/settings.json — the SoT
+# for Fable 5 sessions in disposable containers — host machines stay on the SoT
+# cap. Touches only ~/.claude/settings.json — the SoT
 # stays at its cap and the model selection is never changed (pick Fable with
 # /model fable). A later flag-less sync restores the SoT value via the
 # repo-wins merge, so re-pass --fable on machines that should keep 1M.

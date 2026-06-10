@@ -122,7 +122,7 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 
 ### Session Management
 
-Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 350K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
+Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 468K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
 
 | Signal | Action | Why |
 |--------|--------|-----|
@@ -177,13 +177,13 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Environment Variables
 
-All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: best` (Fable 5 where the org has access, latest Opus otherwise) + 350K compact window (per-machine `--fable` raises it to 1M for Fable sessions) + xhigh effort + per-agent-tiered subagents** — ceiling-level reasoning with the compact trigger as the per-machine knob; capability first, token cost second. Tuned for Fable 5 / Opus 4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
+All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: best` (Fable 5 where the org has access, latest Opus otherwise) + 468K compact window (`--fable` raises it to 1M for disposable containers) + xhigh effort + per-agent-tiered subagents** — ceiling-level reasoning with the compact trigger as the per-machine knob; capability first, token cost second. Tuned for Fable 5 / Opus 4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
 
 #### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `350000` | Cap the effective window at 350K; full autocompact fires at the default ~95% → ~332K. Tuned for Opus-era context rot (**rot is gradual and continuous, steepest early; the exact slope is task-dependent** — the Chroma study found Claude decays slowest of all models, measured on Opus 4 / Sonnet 4). 1M stays enabled as headroom — rot tracks tokens *used*, not window size. On machines where `best` resolves to Fable 5, raise to 1M with `./sync.sh --claude --fable`: Fable's long-horizon retention is exactly the capability the cap would otherwise discard. The SoT deliberately keeps the conservative default so Opus-fallback machines aren't penalized. Docs: https://code.claude.com/docs/en/env-vars, https://research.trychroma.com/context-rot. |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `468000` | Cap the effective window at 468K; full autocompact fires at the default ~95% → ~445K. Raised from the Opus-era 350K on 2026-06-10: Fable 5's resolution holds well to ~468K in observed host-machine sessions, so the Opus-rot cap was discarding usable retention. Context rot still applies (**rot is gradual and continuous, steepest early; the exact slope is task-dependent** — the Chroma study found Claude decays slowest of all models, measured on Opus 4 / Sonnet 4); 1M stays enabled as headroom — rot tracks tokens *used*, not window size. The full-1M `./sync.sh --claude --fable` override is for disposable containers only, never host machines. Drop back to `350000` when the primary machine returns to Opus (expected ~2026-06-22). Docs: https://code.claude.com/docs/en/env-vars, https://research.trychroma.com/context-rot. |
 | (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Fable 5 / Opus 4.7+. Note: 4.7 introduced a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text (carried forward in 4.8) — a reason to keep the compact window in absolute tokens rather than as a percentage. |
 
 The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
@@ -307,7 +307,7 @@ Unlike `--force`/`--remove-plugins` (which reconcile toward SoT), these two flag
 
 | Flag | Changes (deployed only) | Use when |
 |------|-------------------------|----------|
-| `--fable` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → `1000000` | Machines where `model: best` resolves to Fable 5. The SoT's 350K cap is tuned for Opus-era context rot (Chroma study measured Opus 4 / Sonnet 4); Fable 5's headline improvement is long-horizon retention — at 1M tokens the Mythos/Fable class scores 79.4 F1 on GraphWalks BFS vs Opus 4.8's 68.1 — so the cap would discard the capability the model buys. The flag does **not** select the model — only the compact trigger. Don't pass it on Opus-fallback machines: there the wider window just means later, lossier compactions |
+| `--fable` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → `1000000` | **Disposable containers/sandboxes** where `model: best` resolves to Fable 5 — never host machines, which stay on the SoT's 468K cap (the observed fidelity ceiling for interactive host sessions). Fable 5's headline improvement is long-horizon retention — at 1M tokens the Mythos/Fable class scores 79.4 F1 on GraphWalks BFS vs Opus 4.8's 68.1 — so in a container running long autonomous work the cap would discard the capability the model buys. The flag does **not** select the model — only the compact trigger. Don't pass it on Opus-fallback machines: there the wider window just means later, lossier compactions |
 | `--permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. `git push` drops out of `ask` and is covered by the existing `Bash(git *)` allow rule, so commits and pushes run unattended. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
 #### Pruning stale artifacts (the `removed` manifest)
@@ -327,7 +327,7 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
-- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=350000` (compaction at ~95% → ~332K). To delay (e.g. for Fable sessions), pass `./sync.sh --claude --fable` or raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
+- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=468000` (compaction at ~95% → ~445K). To delay (containers only), pass `./sync.sh --claude --fable` or raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **Fable session silently running on Opus** — Fable 5's safety classifiers flagged a message and auto-switched the session to Opus 4.8 (`switchModelsOnFlag`). Check the status line model name; `/model fable` to return. `claude --safe-mode` isolates whether kit customizations trip the first-request flag.
