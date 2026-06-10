@@ -18,6 +18,8 @@ claude::sync() {
   claude::sync_hooks
   claude::sync_claude_md
   claude::sync_settings
+  claude::sync_fable
+  claude::sync_permissive
   claude::sync_claude_json
   claude::sync_connector_env
   claude::sync_removals
@@ -147,6 +149,59 @@ claude::sync_settings() {
   else
     claude::_settings_merge "$repo_settings" "$user_settings"
   fi
+}
+
+# Deploy-time modifier (--fable): raise the DEPLOYED autocompact window to 1M
+# for Fable 5 sessions, which hold long-context fidelity well past the 350K cap
+# tuned for Opus-era context rot. Touches only ~/.claude/settings.json — the SoT
+# stays at its cap and the model selection is never changed (pick Fable with
+# /model fable). A later flag-less sync restores the SoT value via the
+# repo-wins merge, so re-pass --fable on machines that should keep 1M.
+claude::sync_fable() {
+  local user_settings="$CLAUDE_DIR/settings.json"
+
+  [[ "$FABLE" -eq 1 ]] || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] (--fable) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 in $user_settings"
+    return
+  fi
+
+  [[ -f "$user_settings" ]] || { warn "(--fable) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--fable) $user_settings is not valid JSON — skipped"; return; }
+  if ! jq '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "1000000"' "$user_settings" > "$user_settings.tmp"; then
+    rm -f "$user_settings.tmp"
+    err "(--fable) jq edit failed — settings unchanged"
+    return
+  fi
+  mv "$user_settings.tmp" "$user_settings"
+  log "Fable mode: autocompact window set to 1M in deployed settings (SoT and model unchanged)"
+}
+
+# Deploy-time modifier (--permissive): for disposable sandboxes/containers.
+# Empties permissions.ask and permissions.deny in the DEPLOYED settings so no
+# rule prompts or blocks — git push drops out of ask and is covered by the
+# existing Bash(git *) allow rule, so commits and pushes run unattended. The SoT
+# arrays are untouched; a later flag-less sync re-unions them back in.
+claude::sync_permissive() {
+  local user_settings="$CLAUDE_DIR/settings.json"
+
+  [[ "$PERMISSIVE" -eq 1 ]] || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] (--permissive) empty permissions.ask and permissions.deny in $user_settings"
+    return
+  fi
+
+  [[ -f "$user_settings" ]] || { warn "(--permissive) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--permissive) $user_settings is not valid JSON — skipped"; return; }
+  if ! jq '.permissions.ask = [] | .permissions.deny = []' "$user_settings" > "$user_settings.tmp"; then
+    rm -f "$user_settings.tmp"
+    err "(--permissive) jq edit failed — settings unchanged"
+    return
+  fi
+  mv "$user_settings.tmp" "$user_settings"
+  log "Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)"
 }
 
 claude::sync_claude_json() {

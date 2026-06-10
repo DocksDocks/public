@@ -241,6 +241,8 @@ cd ~/projects/public
 ./sync.sh --force                # replace ~/.claude/settings.json wholesale (settings layer only)
 ./sync.sh --remove-plugins       # uninstall plugins/marketplaces not in SoT (plugin layer only)
 ./sync.sh --force --remove-plugins   # full reset to SoT (both layers)
+./sync.sh --claude --fable       # deploy-time: raise autocompact window to 1M for Fable 5 sessions (model unchanged)
+./sync.sh --claude --permissive  # deploy-time: empty permissions.ask/deny — unattended commits/pushes in sandboxes
 ```
 
 In an active Claude Code session, run `/reload-plugins` after `./sync.sh` to activate any newly installed plugins without restarting.
@@ -289,6 +291,15 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' SoT/.claude/settings.json) \
 ```
 
 User-added permissions arrays are discarded by `--force` (kit owns the permission model); user-added plugins and kit-managed skills missing from SoT are discarded by `--remove-plugins`. User-only top-level settings (custom env vars, mcpServers, theme overrides) and user-installed skills (not in `SoT/.agents/skills.txt`) are preserved — the kit only reconciles what it declares. If you want a locally-added permission or plugin to survive, add it to the SoT first.
+
+#### Deploy-time modifiers: `--fable` and `--permissive`
+
+Unlike `--force`/`--remove-plugins` (which reconcile toward SoT), these two flags push the **deployed** `~/.claude/settings.json` *away* from SoT for a specific machine profile. The SoT is never touched, and a later flag-less sync reverts both (the repo-wins merge restores the SoT compact window; the array union re-adds the SoT ask/deny entries) — re-pass the flag on machines that should keep the override. Both run after the settings merge (`claude::sync_fable` / `claude::sync_permissive` in `lib/claude.sh`), are idempotent, and honor `--dry-run`.
+
+| Flag | Changes (deployed only) | Use when |
+|------|-------------------------|----------|
+| `--fable` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → `1000000` | Running Fable 5 sessions (`/model fable`). The kit's 350K cap was tuned for Opus-era context rot (Chroma study measured Opus 4 / Sonnet 4); Fable 5's headline improvement is long-horizon retention — Anthropic's docs lead with "strong instruction retention across long, complex tasks", and at 1M tokens the Mythos/Fable class scores 79.4 F1 on GraphWalks BFS vs Opus 4.8's 68.1. The flag does **not** select the model — only the compact trigger. On Opus sessions the wider window just means later, lossier compactions, so don't pass it on machines that default to Opus |
+| `--permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. `git push` drops out of `ask` and is covered by the existing `Bash(git *)` allow rule, so commits and pushes run unattended. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
 #### Pruning stale artifacts (the `removed` manifest)
 

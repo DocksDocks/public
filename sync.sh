@@ -1,6 +1,6 @@
 #!/bin/bash
 # sync.sh — portable AI coding agent config sync
-# Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--claude] [--codex] [--agents]
+# Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--fable] [--permissive] [--claude] [--codex] [--agents]
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"

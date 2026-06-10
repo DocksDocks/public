@@ -1,14 +1,14 @@
 ---
 name: settings-merge-context
-description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
+description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, the deploy-time modifiers claude::sync_fable / claude::sync_permissive (--fable 1M autocompact window, --permissive empty ask/deny), or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "71-313"
+      lines: "71-368"
     - path: SoT/.claude/settings.json
       lines: "1-13"
-  updated: "2026-06-08"
+  updated: "2026-06-10"
 ---
 
 # Settings Merge
@@ -33,6 +33,7 @@ Run `jq empty "$user_settings"` before any merge operation. An invalid JSON sett
 - Modifying `claude::sync_claude_json` to write a new key to `~/.claude.json`
 - Disabling claude.ai cloud connectors via the `ENABLE_CLAUDEAI_MCP_SERVERS` shell-rc export (`claude::sync_connector_env`)
 - Pruning a newly-deprecated kit artifact via the `removed` manifest (`claude::sync_removals`)
+- Adding or changing a deploy-time modifier that mutates deployed settings away from SoT (`claude::sync_fable`, `claude::sync_permissive`)
 
 ## Core Patterns
 
@@ -115,6 +116,17 @@ Default sync is additive (merge keeps user keys; `cp -R` never deletes), so kit-
 present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file")
 [[ "$present" -gt 0 ]] && jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
 ```
+
+### Deploy-time modifiers (`claude::sync_fable`, `claude::sync_permissive`)
+
+Gated on `FABLE=1` / `PERMISSIVE=1` (set by `--fable` / `--permissive` in `common::parse_args`), these run in `claude::sync` immediately AFTER `claude::sync_settings` and mutate only the DEPLOYED `~/.claude/settings.json` — the opposite direction of every other pass (away from SoT, not toward it):
+
+| Function | jq mutation | Intent |
+|----------|------------|--------|
+| `claude::sync_fable` | `.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "1000000"` | 1M autocompact window for Fable 5 sessions; model selection untouched |
+| `claude::sync_permissive` | `.permissions.ask = [] \| .permissions.deny = []` | Sandbox/container profile — no prompts; `Bash(git *)` allow already covers push once ask is emptied |
+
+Both follow the full settings-write contract: flag-off `return 0` first, then dry-run guard, then existence + `jq empty` guards, then atomic `.tmp`/`mv` (`claude::sync_fable (the atomic .tmp/mv)`). Reverted by the next flag-less sync: the repo-wins merge restores the SoT window value; the permissions union re-adds SoT ask/deny entries. No `.bak` is written — `claude::sync_settings` created one moments earlier in the same run.
 
 ## Key Decisions
 
