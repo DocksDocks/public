@@ -1,8 +1,13 @@
 model_reasoning_effort = "xhigh"
 plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+personality = "pragmatic"
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
+
+[tools]
+web_search = true
 
 [tui]
 status_line_use_colors = true

@@ -24,7 +24,7 @@ Tool-specific instructions live alongside this file:
 
 Codex SoT notes:
 - `SoT/.codex/AGENTS.md` deploys to `~/.codex/AGENTS.md` as global Codex instructions.
-- `SoT/.codex/config.toml` sets Codex approval/sandbox defaults and enables the Docks plugin as `docks@docks`.
+- `SoT/.codex/config.toml` sets Codex approval/sandbox defaults, reasoning effort/summaries (`xhigh` + `detailed`), `personality`, the `web_search` tool, and enables the Docks plugin as `docks@docks`.
 - `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - `SoT/.codex/bin/codex` deploys to `~/.local/bin/codex` as a launcher for npm/NVM Codex installs in non-interactive shells.
