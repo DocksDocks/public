@@ -1,8 +1,24 @@
 model_reasoning_effort = "xhigh"
 plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "medium"
+personality = "pragmatic"
+web_search = "live"
+project_doc_max_bytes = 65536
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 approvals_reviewer = "auto_review"
+
+[features]
+memories = true
+
+[memories]
+dedicated_tools = true
+max_rollout_age_days = 30
+
+[agents]
+max_threads = 12
+max_depth = 2
 
 [tui]
 status_line_use_colors = true
