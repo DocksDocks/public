@@ -1,16 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "minimumVersion": "2.1.166",
+  "minimumVersion": "2.1.170",
+  "model": "best",
   "respectGitignore": true,
   "cleanupPeriodDays": 14,
   "skillListingBudgetFraction": 0.05,
   "env": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "64000",
     "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "350000",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000",
     "CLAUDE_CODE_EFFORT_LEVEL": "xhigh",
-    "CLAUDE_CODE_NO_FLICKER": "1",
-    "CLAUDE_CODE_FORK_SUBAGENT": "1"
+    "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "permissions": {
     "defaultMode": "auto",

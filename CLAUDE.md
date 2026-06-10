@@ -122,7 +122,7 @@ Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached t
 
 ### Session Management
 
-Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 400K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
+Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 1M compact window is a *fallback*; the habits below keep sessions crisp in the first place.
 
 | Signal | Action | Why |
 |--------|--------|-----|
@@ -131,7 +131,7 @@ Based on https://claude.com/blog/using-claude-code-session-management-and-1m-con
 | Wrong path, same task | **`/rewind`** (double-tap `Esc`) | Undo the detour before it pollutes context |
 | Same task, context getting heavy | **`/compact` with steering** | Direct Claude what to keep ("preserve the failing test + stack trace; drop the exploration") |
 | Work will produce output you only need the conclusion of | **Subagent** | Keeps verbose output out of the parent context |
-| Side task that needs the full conversation context | **`/fork <directive>`** (experimental, requires `CLAUDE_CODE_FORK_SUBAGENT=1`, Claude Code v2.1.117+) | Spawns a subagent inheriting full message history, system prompt, tools, and model. First request reuses the parent's prompt cache. |
+| Side task that needs the full conversation context | **`/fork <directive>`** (enabled by default since Claude Code v2.1.161) | Spawns a subagent inheriting full message history, system prompt, tools, and model. First request reuses the parent's prompt cache. |
 
 Rule of thumb: if a turn starts with "that didn't work, try X instead," reach for `/rewind` before retrying — the failed attempt is context rot you're otherwise carrying forward.
 
@@ -147,7 +147,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 **Requirements** for auto mode (the kit meets them on a Max subscription):
 - Plan: Max / Team / Enterprise / API (not Pro)
-- Model: on Max, **Opus 4.8 only** (the kit pins this); on other plans Sonnet 4.6 / Opus 4.6 / Opus 4.7 / Opus 4.8
+- Model: **Opus 4.6 or later, or Sonnet 4.6** (the earlier Max-specific "Opus 4.8 only" restriction is gone from the current permission-modes doc). Fable 5 is not yet explicitly listed — if the classifier rejects a Fable session, `Shift+Tab` away or `/model opus` until the doc catches up
 - Provider: Anthropic API only (not Bedrock, Vertex, Foundry)
 - Claude Code v2.1.83+
 
@@ -174,16 +174,16 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Environment Variables
 
-All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **1M context (as headroom) + 350K compact window + xhigh effort + sonnet subagents** — keep the working set inside the high-fidelity zone by compacting *before* context rot sets in, while keeping token cost sane. Tuned for Opus 4.7+/4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
+All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: best` (Fable 5 where the org has access, latest Opus otherwise) + full 1M compact window + xhigh effort + per-agent-tiered subagents** — give the frontier model its whole window and ceiling-level reasoning; capability first, token cost second. Tuned for Fable 5 / Opus 4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
 
 #### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `350000` | Cap the effective window at 350K; full autocompact fires at the default ~95% → ~332K. Relaxed from 300K toward the upper end of the defensible 300–400K range to favor session continuity — made safer by Opus 4.8's "fewer compactions, better compaction recovery." **Context rot is gradual and continuous, not a cliff — but steepest early; the exact slope is task-dependent, not a published constant** (the Chroma study found Claude decays *slowest* of all models, though it measured Opus 4 / Sonnet 4, not 4.8). A tighter 250K buys only marginal rot reduction at the cost of ~17% more lossy compactions — not worth it. 1M stays enabled as headroom — rot tracks tokens *used*, not window size. Capped at the model's real window. Docs: https://code.claude.com/docs/en/env-vars, https://research.trychroma.com/context-rot. |
-| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Opus 4.7/4.8. Note: 4.7 introduced a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text (carried forward in 4.8) — another reason to cap the compact window in absolute tokens rather than as a percentage. |
+| `CLAUDE_CODE_AUTO_COMPACT_WINDOW` | `1000000` | Full 1M window; autocompact fires at the default ~95% → ~950K. Raised from 350K when the kit's default model became `best` (Fable 5 first): the 350K cap was tuned for Opus-era context rot (the Chroma study measured Opus 4 / Sonnet 4), while Fable 5's headline improvement is long-horizon retention at 1M (79.4 F1 on GraphWalks BFS vs Opus 4.8's 68.1) — capping the window would discard exactly the capability the model upgrade buys. On a machine deliberately pinned to Opus (via `settings.local.json`), set the window back to `350000` there too — on Opus the wide window just means later, lossier compactions. Docs: https://code.claude.com/docs/en/env-vars, https://research.trychroma.com/context-rot. |
+| (implicit) 1M context | enabled by default | `CLAUDE_CODE_DISABLE_1M_CONTEXT` is **not** set, so 1M is active on Max/Team/Enterprise plans for Fable 5 / Opus 4.7+. Note: 4.7 introduced a new tokenizer that may consume up to 1.35× more tokens than 4.6 on the same text (carried forward in 4.8) — a reason to keep the compact window in absolute tokens rather than as a percentage. |
 
-The status bar keeps showing context usage against the model's full window (1M); `CLAUDE_CODE_AUTO_COMPACT_WINDOW` decouples the compact trigger from `used_percentage`. Intentional: you still see real consumption; compaction just fires earlier.
+The status bar shows context usage against the model's full window (1M). With the compact window now equal to the full window, `CLAUDE_CODE_AUTO_COMPACT_WINDOW` only changes behavior when lowered (e.g. on Opus-pinned machines via `settings.local.json`).
 
 #### Thinking & reasoning
 
@@ -191,22 +191,21 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `CLAUDE_CODE_EFFORT_LEVEL` | `xhigh` | One tier below `max`. Valid: `low`/`medium`/`high`/`xhigh`/`max`/`auto`. Env var takes precedence over `/effort` and the `effortLevel` settings key. Opus 4.8's *new* default is `high` (per 2.1.154 release notes, which suggest `xhigh` for "hardest tasks"); the kit picks `xhigh` as the steady-state ceiling. Bump to `max` only when truly needed — `max` can overthink structured tasks. |
+| `CLAUDE_CODE_EFFORT_LEVEL` | `xhigh` | One tier below `max`. Valid: `low`/`medium`/`high`/`xhigh`/`max`/`auto`. Env var takes precedence over `/effort` and the `effortLevel` settings key. Both Opus 4.8 and Fable 5 default to `high`; Anthropic recommends `xhigh` for the hardest coding/agentic work, and the kit picks it as the steady-state ceiling. Fable quirk: the first Fable run resets the *settings*-level effort to `high` — the env-var pin is what keeps `xhigh` in force. Bump to `max` only when truly needed — `max` can overthink structured tasks. |
 
 #### Model selection
 
-No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to the latest Opus on Anthropic API ([model config docs](https://code.claude.com/docs/en/model-config)). Future Opus releases land instantly on a kit-synced machine with no manual env-var bump. Trade-off accepted: no per-release rollout control if a future Opus ships a breaking default change (4.7→4.8 dropped the default effort from `xhigh` to `high`, which the kit's `CLAUDE_CODE_EFFORT_LEVEL=xhigh` pin already overrides). To temporarily pin during a known-bad release, set `ANTHROPIC_DEFAULT_OPUS_MODEL` in `~/.claude/settings.local.json`.
+The kit sets **`"model": "best"`** in settings.json (Claude Code 2.1.170+): the alias resolves to **Fable 5** where the org has access and to the **latest Opus** otherwise — maximum-capability tier with a graceful fallback, and future top-tier releases land automatically. Cost is accepted (Fable 5 is $10/$50 vs Opus's $5/$25 per MTok; on subscriptions Fable draws usage credits after the launch window) — this kit optimizes capability first. To drop one machine back to Opus, set `"model": "opus"` in `~/.claude/settings.local.json` (and lower the compact window — see above). `ANTHROPIC_DEFAULT_OPUS_MODEL` stays unpinned so the Opus fallback also auto-tracks; to pin during a known-bad release, set it in `settings.local.json`.
 
 **Subagent model selection:** not an env var. The docks plugin declares per-agent `model:` (sonnet/opus) in each agent's frontmatter. `CLAUDE_CODE_SUBAGENT_MODEL` is intentionally NOT set — it would override all per-agent declarations (it's priority 1 in Claude Code's resolution order per the [subagents doc](https://code.claude.com/docs/en/sub-agents#choose-a-model)) and block per-phase tiering. To force all subagents to one model temporarily (rollback), export `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` — it wins over agent frontmatter.
 
-**No `fallbackModel`:** the kit stays strictly Opus-only on the main thread. `fallbackModel` (v2.1.166) would degrade to Sonnet on an Opus overload (529) rather than dropping the turn, but a mid-session model switch cold-starts the per-model prompt cache — so the kit accepts a retried turn over a silent model swap. Sonnet subagents are spawned deliberately via agent frontmatter, not as a fallback. To opt in per-machine during a known-bad-availability stretch, set `fallbackModel` in `~/.claude/settings.local.json`.
+**No `fallbackModel`:** the kit stays on the `best`-resolved model for the whole main thread. `fallbackModel` (v2.1.166+; accepts a chain of up to 3 models) would degrade to a lesser model on an overload (529) rather than dropping the turn, but a mid-session model switch cold-starts the per-model prompt cache — so the kit accepts a retried turn over a silent model swap. Sonnet subagents are spawned deliberately via agent frontmatter, not as a fallback. To opt in per-machine during a known-bad-availability stretch, set `fallbackModel` in `~/.claude/settings.local.json`.
 
 #### Output & UI
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
 | `CLAUDE_CODE_MAX_OUTPUT_TOKENS` | `64000` | Max output tokens per response for the main session — Anthropic's recommended starting point for Opus 4.8 at xhigh/max effort. A higher cap *reduces the effective input context before auto-compaction* (per the env-vars doc), so the earlier 96K bump traded input headroom for output sizes coding turns rarely reach. Subagents are capped at 32K regardless, so this main-thread value never affected synthesis-tier output (the original reason for the bump). Opus 4.8's hard ceiling is 128K; raise only if real outputs truncate. |
-| `CLAUDE_CODE_FORK_SUBAGENT` | `1` | Enables `/fork <directive>` (v2.1.117+) — a subagent that inherits the full conversation, system prompt, tools, and model, with the first request reusing the parent's prompt cache. Ad-hoc exploration only; the docks pipeline commands intentionally isolate phases instead (see Session Management). |
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
 
@@ -214,12 +213,13 @@ No `ANTHROPIC_DEFAULT_OPUS_MODEL` pin — the bare `opus` alias auto-resolves to
 
 | Key | Value | Notes |
 |-----|-------|-------|
-| `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. |
+| `model` | `best` | Model alias pin (2.1.170+): Fable 5 where the org has access, latest Opus otherwise. See § Model selection for rationale and per-machine rollback. |
+| `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. Moot on Fable 5 (thinking cannot be disabled there), still load-bearing on the Opus fallback. |
 | `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. On 4.7, thinking content is omitted by default at the API layer; Claude Code opts in when this is true. |
 | `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable. Press `Ctrl+O` to cycle to `verbose` on demand. Enum: `default`/`verbose`/`focus`. |
 | `skipDangerousModePermissionPrompt` | `true` | Suppresses `--dangerously-skip-permissions` warning. Ignored in project-level settings for safety. |
 | `skillListingBudgetFraction` | `0.05` | Cap on system-prompt budget for skill descriptions (decimal 0–1, ~5% of the model's context window). Default `0.01` was dropping ~25 descriptions; `0.025` still dropped ~22 in projects with heavier plugin stacks (e.g. `supabase` + `docks:*` forks + `claude-plugins-official`), with `/doctor` reporting ~3.4% needed. `0.05` (~50K tokens on 1M Opus, ~12.5% of the 400K compact window) gives durable headroom for future skill additions and absorbs the ~7K-token opt-in cost `/doctor` cites for the dropped 22. Added in Claude Code 2.1.129+. To verify the warning is gone, run `/doctor` after sync; "Skill listing will be truncated" should not appear. |
-| `minimumVersion` | `2.1.166` | Floor for auto-updates and `claude update` — a stale install upgrades to ≥2.1.166 on next launch, guaranteeing every synced machine carries the features the kit relies on (Opus 4.8 needs 2.1.154; `skillListingBudgetFraction` needs 2.1.129; 2.1.166 also covers the latest auto-mode/classifier hardening). Distinct from the managed-only `requiredMinimumVersion`. |
+| `minimumVersion` | `2.1.170` | Floor for auto-updates and `claude update` — a stale install upgrades to ≥2.1.170 on next launch, guaranteeing every synced machine carries the features the kit relies on (Fable 5 + the `best` model alias + `advisorModel: "fable"` need 2.1.170; Opus 4.8 needs 2.1.154; `skillListingBudgetFraction` needs 2.1.129). Distinct from the managed-only `requiredMinimumVersion`. |
 
 Effort is controlled **only** via `CLAUDE_CODE_EFFORT_LEVEL` (env var). The top-level `effortLevel` key's schema only accepts `low`/`medium`/`high`/`xhigh` — the env var is required to reach `max`.
 
@@ -241,7 +241,7 @@ cd ~/projects/public
 ./sync.sh --force                # replace ~/.claude/settings.json wholesale (settings layer only)
 ./sync.sh --remove-plugins       # uninstall plugins/marketplaces not in SoT (plugin layer only)
 ./sync.sh --force --remove-plugins   # full reset to SoT (both layers)
-./sync.sh --claude --fable       # deploy-time: raise autocompact window to 1M for Fable 5 sessions (model unchanged)
+./sync.sh --claude --fable       # deploy-time: force autocompact window to 1M (no-op since SoT now defaults to 1M; kept for divergent machines)
 ./sync.sh --claude --permissive  # deploy-time: empty permissions.ask/deny — unattended commits/pushes in sandboxes
 ```
 
@@ -298,7 +298,7 @@ Unlike `--force`/`--remove-plugins` (which reconcile toward SoT), these two flag
 
 | Flag | Changes (deployed only) | Use when |
 |------|-------------------------|----------|
-| `--fable` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → `1000000` | Running Fable 5 sessions (`/model fable`). The kit's 350K cap was tuned for Opus-era context rot (Chroma study measured Opus 4 / Sonnet 4); Fable 5's headline improvement is long-horizon retention — Anthropic's docs lead with "strong instruction retention across long, complex tasks", and at 1M tokens the Mythos/Fable class scores 79.4 F1 on GraphWalks BFS vs Opus 4.8's 68.1. The flag does **not** select the model — only the compact trigger. On Opus sessions the wider window just means later, lossier compactions, so don't pass it on machines that default to Opus |
+| `--fable` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → `1000000` | **No-op on a default sync since the SoT itself moved to `model: best` + a 1M window** — kept for machines whose `settings.local.json` lowers the window or pins Opus and that occasionally want a Fable session at full width. The flag does **not** select the model — only the compact trigger |
 | `--permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. `git push` drops out of `ask` and is covered by the existing `Bash(git *)` allow rule, so commits and pushes run unattended. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
 #### Pruning stale artifacts (the `removed` manifest)
@@ -312,13 +312,13 @@ Default sync is additive, so anything the kit *stops* shipping (a deprecated hoo
 | `settingsKeys` | dotted key paths `del()`-ed from `~/.claude/settings.json` |
 | `claudeJsonKeys` | dotted key paths `del()`-ed from `~/.claude.json` |
 
-This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent (`rm -f`; `delpaths` ignores absent paths) and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled). Add a newly-deprecated artifact by editing `claude::_removed_manifest`.
+This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent (`rm -f`; `delpaths` ignores absent paths) and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled), `CLAUDE_CODE_FORK_SUBAGENT` (`/fork` enabled by default since 2.1.161). Add a newly-deprecated artifact by editing `claude::_removed_manifest`.
 
 ### Troubleshooting
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. If it goes stale: `rm /tmp/.claude_usage_cache`.
-- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=350000`, which caps the effective window and fires compaction at ~95% of that (~332K). To delay, raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
+- **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000` (full window; compaction at ~95% → ~950K). To fire earlier (e.g. on an Opus-pinned machine), lower the value or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `sync.sh` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **`@RTK.md` import missing** — generated by `rtk init -g`. If RTK is not installed, run `./sync.sh --no-rtk` to strip the import cleanly.
@@ -339,9 +339,9 @@ Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cau
 
 ---
 
-#### [2026-04-24] Opus 4.7+/4.8 thinking summaries not rendered
+#### [2026-04-24] Opus 4.7+/4.8/Fable 5 thinking summaries not rendered
 
-**Status:** Open — confirmed bug, no fix in Claude Code 2.1.156 (latest, last verified 2026-05-29). Carries forward to Opus 4.8 (released 2026-05-28).
+**Status:** Open — confirmed bug, no fix in Claude Code 2.1.170 (latest, last verified 2026-06-10; root-cause issue #49268 re-verified OPEN). Carries forward to Opus 4.8 (released 2026-05-28) and applies to Fable 5 (released 2026-06-09): `thinking.display` defaults to `omitted` there too, and Fable never returns raw CoT.
 
 **Symptom:** `"showThinkingSummaries": true` in `settings.json` does not produce visible thinking content on Opus 4.7 or 4.8. The thinking block header (token count, elapsed time) renders, but the expand toggle reveals empty content.
 
@@ -355,7 +355,7 @@ Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cau
 - [anthropics/claude-code#52376](https://github.com/anthropics/claude-code/issues/52376) — feature request for subscription sessions to honor `thinking.display` (closed 2026-04-27 as duplicate of #49268; no code fix shipped — tracked under root cause)
 - Model-side reference: [What's new in Claude Opus 4.8](https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8)
 
-**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; still required on 2.1.156). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
+**Workaround:** Launch Claude Code with the hidden flag `--thinking-display summarized` (added in 2.1.111, not shown in `--help`; still required on 2.1.170). Persistent via shell alias in `~/.bashrc` or `~/.zshrc`:
 
 ```bash
 alias claude='claude --thinking-display summarized'
