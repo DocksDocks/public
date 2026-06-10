@@ -303,7 +303,8 @@ claude::_removed_manifest() {
     "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
     "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
     "env.CLAUDE_CODE_DISABLE_1M_CONTEXT",
-    "env.CLAUDE_CODE_FORK_SUBAGENT"
+    "env.CLAUDE_CODE_FORK_SUBAGENT",
+    "env.CLAUDE_CODE_EFFORT_LEVEL"
   ],
   "claudeJsonKeys": []
 }
