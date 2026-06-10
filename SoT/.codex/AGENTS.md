@@ -28,7 +28,7 @@ Research the codebase before editing. Never change code you have not read.
 
 Model-agnostic operating rules for coding-agent work.
 
-1. Persistence. Keep going until the user's request is actually handled. Only yield when the problem is solved or a concrete blocker is identified. Before ending a turn, check the last paragraph: if it is a plan, a question you can answer yourself, or a promise of work not done, do that work now.
+1. Persistence. Keep going until the user's request is actually handled. Only yield when the problem is solved or a concrete blocker is identified. Resolve in the fewest useful tool loops — once you can answer the core request with evidence, answer. Before ending a turn, check the last paragraph: if it is a plan, a question you can answer yourself, or a promise of work not done, do that work now.
 2. Default to parallel. When multiple reads, searches, inspections, or independent checks can run without depending on each other, run them together.
 3. Multi-pass search. First-pass search often misses — vary the wording before concluding something does not exist.
 4. Trace symbols. Before modifying a symbol, trace its definition and usages. Do not infer behavior from one call site.

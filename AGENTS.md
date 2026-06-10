@@ -24,7 +24,7 @@ Tool-specific instructions live alongside this file:
 
 Codex SoT notes:
 - `SoT/.codex/AGENTS.md` deploys to `~/.codex/AGENTS.md` as global Codex instructions.
-- `SoT/.codex/config.toml` sets Codex approval/sandbox defaults, reasoning effort/summaries (`xhigh` + `detailed`), `personality`, the `web_search` tool, and enables the Docks plugin as `docks@docks`.
+- `SoT/.codex/config.toml` sets Codex approval/sandbox defaults, reasoning effort/summaries (`xhigh` + `detailed`), `model_verbosity = "medium"` (Codex ships gpt-5.5 at `low`; medium restores the API default), `personality`, live `web_search` (the top-level enum key — `[tools] web_search = true` booleans are silently discarded by Codex ≥0.130), cross-session `memories` (+ dedicated note tools), `[agents]` subagent limits (`max_threads = 12`, `max_depth = 2` — do not combine with `multi_agent_v2`, which hard-conflicts with `max_threads`), a 64 KiB `project_doc_max_bytes` budget for the repo-side AGENTS.md chain (the global `~/.codex/AGENTS.md` is uncapped and not counted), and enables the Docks plugin as `docks@docks`.
 - `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - `SoT/.codex/bin/codex` deploys to `~/.local/bin/codex` as a launcher for npm/NVM Codex installs in non-interactive shells.
