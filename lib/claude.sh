@@ -299,6 +299,7 @@ claude::_removed_manifest() {
   "files":          [],
   "settingsKeys": [
     "showTurnDuration",
+    "advisorModel",
     "env.CLAUDE_CODE_SUBAGENT_MODEL",
     "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
     "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",

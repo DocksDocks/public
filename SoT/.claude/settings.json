@@ -3,7 +3,6 @@
   "minimumVersion": "2.1.170",
   "model": "best",
   "effortLevel": "xhigh",
-  "advisorModel": "fable",
   "autoMemoryEnabled": true,
   "skillListingMaxDescChars": 2048,
   "respectGitignore": true,
