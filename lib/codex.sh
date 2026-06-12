@@ -303,7 +303,12 @@ codex::install_launcher() {
   fi
 
   mkdir -p "$HOME/.local/bin"
-  if [[ ! -e "$user_codex_bin" ]] || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin" 2>/dev/null; then
+  # Adopt when never deployed, marked as kit-managed, or a pre-marker kit
+  # deploy: the launcher's own error string is kit-authored, so its presence
+  # identifies a legacy kit copy rather than a user script.
+  if [[ ! -e "$user_codex_bin" ]] \
+    || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin" 2>/dev/null \
+    || grep -q 'codex launcher could not find a Codex CLI binary' "$user_codex_bin" 2>/dev/null; then
     cp "$codex_bin" "$user_codex_bin"
     chmod +x "$user_codex_bin"
     log "Codex launcher installed (~/.local/bin/codex)"

@@ -8,7 +8,7 @@ metadata:
       lines: "1-55"
     - path: lib/common.sh
       lines: "1-77"
-  updated: "2026-06-10"
+  updated: "2026-06-12"
 ---
 
 # sync.sh Orchestration

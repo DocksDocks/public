@@ -26,7 +26,7 @@ sync.sh
 │   ├── codex::sync_config        (TOML merge)
 │   ├── codex::sync_rules         (*.rules deployment)
 │   ├── codex::sync_agents_md     (SoT AGENTS.md copy)
-│   ├── codex::install_launcher   (managed-marker guard)
+│   ├── codex::install_launcher   (managed-marker / legacy-fingerprint guard)
 │   ├── codex::sync_marketplace   (jq unique_by merge)
 │   ├── codex::remove_legacy_docks_marketplace (drop legacy configured marketplace)
 │   └── codex::sync_plugins       (codex plugin add refresh)
@@ -50,7 +50,7 @@ Every step is designed as a no-op when already applied:
 | `claude plugin marketplace add` | `jq -e '.[$n]' known_marketplaces.json` (claude::_plugins_add_marketplaces) |
 | `claude plugin install` | `jq -e '.plugins[$n]' installed_plugins.json` (claude::_plugins_install) |
 | `npx skills add` | `[[ -d "$SKILLS_DIR/$basename" ]]` (skills::sync_universal) |
-| `codex::install_launcher` | `grep -q 'Managed by DocksDocks'` (codex::install_launcher) |
+| `codex::install_launcher` | `grep -q 'Managed by DocksDocks'`, with a legacy-fingerprint fallback on the launcher's kit-authored error string for pre-marker deploys (codex::install_launcher) |
 
 ## New Tool Addition Checklist
 
