@@ -24,6 +24,7 @@ claude::sync() {
   claude::sync_connector_env
   claude::sync_removals
   claude::sync_plugins
+  claude::sync_lsp_servers
   claude::sync_rtk
 }
 
@@ -560,6 +561,53 @@ claude::sync_plugins() {
   fi
   if [[ "$failed" -gt 0 ]]; then
     warn "$failed plugin operation(s) failed — re-run sync or install manually"
+  fi
+}
+
+# The php-lsp / typescript-lsp plugins only register lspServers config (it
+# ships in the marketplace manifest) — the language-server binaries are
+# separate npm globals, without which the plugins are silent no-ops. Gated on
+# key presence in SoT enabledPlugins (true OR false: false-keyed plugins can
+# be enabled per-project, so the binary must still exist).
+claude::sync_lsp_servers() {
+  local sot_settings="$REPO_DIR/SoT/.claude/settings.json"
+  local missing=()
+
+  jq -e '.enabledPlugins | has("php-lsp@claude-plugins-official") or has("typescript-lsp@claude-plugins-official")' \
+    "$sot_settings" >/dev/null 2>&1 || return 0
+
+  if jq -e '.enabledPlugins | has("php-lsp@claude-plugins-official")' "$sot_settings" >/dev/null 2>&1; then
+    command -v intelephense >/dev/null 2>&1 || missing+=(intelephense)
+  fi
+  if jq -e '.enabledPlugins | has("typescript-lsp@claude-plugins-official")' "$sot_settings" >/dev/null 2>&1; then
+    command -v typescript-language-server >/dev/null 2>&1 || missing+=(typescript-language-server)
+    command -v tsc >/dev/null 2>&1 || missing+=(typescript)
+  fi
+
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] LSP server binaries present"
+    else
+      log "LSP server binaries present"
+    fi
+    return
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] would install: npm install -g ${missing[*]}"
+    return
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    warn "npm not found — cannot install LSP servers (${missing[*]}); the php-lsp/typescript-lsp plugins stay no-ops. Install Node.js, then re-run sync."
+    return
+  fi
+
+  log "Installing LSP servers via npm: ${missing[*]}..."
+  if npm install -g "${missing[@]}" >/dev/null 2>&1; then
+    log "LSP servers installed (${missing[*]})"
+  else
+    warn "npm install -g ${missing[*]} failed. Try manually: npm install -g ${missing[*]}"
   fi
 }
 

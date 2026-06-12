@@ -1,5 +1,5 @@
 name = "plugin-bootstrap-agent"
-description = "Use when modifying claude::sync_plugins (six-pass reconciler), the enabledPlugins tri-state semantics, extraKnownMarketplaces entries, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or the claude-plugins-official removal protection. Not for ~/.claude/settings.json key merge (use settings-json-agent) or universal skill install (use skills-bootstrap-agent)."
+description = "Use when modifying claude::sync_plugins (six-pass reconciler), claude::sync_lsp_servers (LSP-binary bootstrap), the enabledPlugins tri-state semantics, extraKnownMarketplaces entries, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or the claude-plugins-official removal protection. Not for ~/.claude/settings.json key merge (use settings-json-agent) or universal skill install (use skills-bootstrap-agent)."
 model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''

@@ -1,18 +1,18 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with user-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with user-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "315-506"
+      lines: "377-612"
     - path: lib/codex.sh
       lines: "315-489"
     - path: SoT/.claude/settings.json
-      lines: "245-271"
+      lines: "237-268"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-06-08"
+  updated: "2026-06-12"
 ---
 
 # Plugin Bootstrap
@@ -40,6 +40,7 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 - Changing a plugin from globally-enabled (`true`) to globally-disabled (`false`)
 - Debugging a marketplace add failure
 - Modifying any `claude::_plugins_*` helper or the `claude::sync_plugins` orchestrator
+- Adding/removing an LSP plugin or changing which language-server binaries `claude::sync_lsp_servers` auto-installs
 - Modifying `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, or `codex::sync_plugins`
 
 ## Core Patterns
@@ -118,6 +119,10 @@ jq -s '.[0].enabledPlugins as $sot | .[1]
 
 `claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote moments earlier (settings sync runs at `claude::sync` step 4, plugins at step 8). A bare jq rewrite of that back to `false` **loses a race**: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix disables SoT-`false` plugins through the CLI's own `claude plugin disable` verb first (authoritative — sticks in a single pass), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved). The disable is guarded on the plugin being currently `true` because re-disabling an already-disabled plugin is a CLI error (exit 1); that keeps steady-state syncs silent. If `claude plugin disable` is unavailable the jq-normalize still runs, degrading to the old two-sync behavior rather than breaking. This affects **every** plugin installed via `claude plugin install`, built-in `claude-plugins-official` ones included — `supabase` (a `false`-keyed official plugin) is re-enabled on fresh install and disabled by this pass.
 
+### LSP Server Binary Bootstrap (`claude::sync_lsp_servers`)
+
+Runs after `claude::sync_plugins` in `claude::sync`. The official LSP plugins (`php-lsp`, `typescript-lsp`) only carry `lspServers` config (shipped in the marketplace manifest, not the plugin files) — the language-server binaries are separate npm globals, without which the plugins are silent no-ops. The helper maps SoT `enabledPlugins` keys to binaries (`php-lsp` → `intelephense`; `typescript-lsp` → `typescript-language-server` + `tsc` from the `typescript` package), collects the missing ones, and runs a single `npm install -g`. Gated on key *presence* (`has()`, not truthiness) for the same reason as pass 5: a `false`-keyed LSP plugin can be enabled per-project, so its binary must still exist. When npm is absent it warns and skips (`claude::sync_lsp_servers` — the npm presence guard); when no LSP plugin key is declared it returns silently.
+
 ### Codex Marketplace Merge (`codex::sync_marketplace`)
 
 ```bash
@@ -164,6 +169,7 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 - **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled." But `claude plugin install` *enables* what it installs (user scope), so pass 7 (`claude::_plugins_reassert_enabled_state`) must run afterward to restore the `false`; dropping pass 7 silently re-enables every globally-disabled plugin.
 - **Codex `command -v codex` matches the kit's own launcher**: if the kit launcher is present but the npm Codex binary is not, `codex plugin add` fails with "could not find a Codex CLI binary" — the helper warns with the npm install fallback (`codex::sync_plugins` — missing-binary warning).
 - **Per-project `enabledPlugins: true` is silently ignored** if the user-scope key is absent — Claude Code requires the key to exist in user settings (even as `false`) before a project-level override can activate it.
+- **LSP binaries installed via nvm-backed npm are only on interactive-shell PATHs** — normally-launched Claude Code sessions see them; headless/cron agents may not. `claude::sync_lsp_servers` checks `command -v`, so a binary visible to sync but not to a headless session won't be re-installed by re-running sync there.
 
 ## References
 
