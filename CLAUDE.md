@@ -57,7 +57,9 @@ Reference examples in this repo:
 
 The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `SoT/.claude/settings.json`, then run `./sync.sh`. To pick up the new plugin in an active session, run `/reload-plugins`.
 
-Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `claude-md-management`, `skill-creator`, `php-lsp`, `code-simplifier`) are auto-installed by Claude Code from the built-in `claude-plugins-official` marketplace; the `enabledPlugins` declarations just keep them enabled.
+Official plugins (`context7`, `frontend-design`, `agent-sdk-dev`, `commit-commands`, `php-lsp`, `typescript-lsp`) are auto-installed by Claude Code from the built-in `claude-plugins-official` marketplace; the `enabledPlugins` declarations just keep them enabled. `claude-md-management` and `skill-creator` are deliberately absent — the docks plugin's skill-authoring surface (`docks:write-skill`, `docks:skill-maintenance`) covers them; `code-simplifier` was dropped as unused.
+
+The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost — their `lspServers` config ships in the marketplace manifest (the plugin dirs on GitHub contain only a README; that's expected, not a broken install) and registers go-to-definition / find-references / post-edit diagnostics for `.php` and `.ts`/`.tsx`/`.js`/`.jsx` files. They are a no-op until the language-server binary is on PATH — per machine: `npm install -g intelephense typescript-language-server typescript`. nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
 
 **Manual fallback** (only if the `claude` CLI isn't on PATH during sync — sync prints a warning and skips bootstrap):
 
@@ -177,7 +179,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Environment Variables
 
-All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: best` (Fable 5 where the org has access, latest Opus otherwise) + 468K compact window (`--fable` raises it to 1M for disposable containers) + xhigh effort + per-agent-tiered subagents** — ceiling-level reasoning with the compact trigger as the per-machine knob; capability first, token cost second. Tuned for Fable 5 / Opus 4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
+All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: best` (Fable 5 where the org has access, latest Opus otherwise) + 468K compact window (`--fable` raises it to 1M for disposable containers) + high effort (Fable-period pin; revert to xhigh on Opus) + per-agent-tiered subagents** — ceiling-level reasoning with the compact trigger as the per-machine knob; capability first, token cost second. Tuned for Fable 5 / Opus 4.8, which removed `budget_tokens` and made adaptive thinking the only thinking-on mode.
 
 #### Context management
 
@@ -194,7 +196,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `effortLevel` (top-level key, NOT the env var) | `xhigh` | Valid: `low`/`medium`/`high`/`xhigh`. Both Opus 4.8 and Fable 5 default to `high`; Anthropic recommends `xhigh` for the hardest coding/agentic work, and the kit pins it as the steady-state ceiling. **Deliberately the settings key, not `CLAUDE_CODE_EFFORT_LEVEL`**: the env var is priority 1 in effort resolution and overrides per-skill/per-subagent `effort:` frontmatter (added 2.1.78–2.1.80), which would kill plugin-declared effort tiering — the settings key sets the session baseline while frontmatter wins when a skill/agent is active. Trade-off: only the env var can persist `max`; the kit deliberately stays at `xhigh` (`max` can overthink structured tasks). Model-transition quirk: a new model's first run may reset settings-level effort to the model default — sync re-asserts `xhigh`; confirm with `/effort`. |
+| `effortLevel` (top-level key, NOT the env var) | `high` | Valid: `low`/`medium`/`high`/`xhigh`. Both Opus 4.8 and Fable 5 default to `high`. Lowered from `xhigh` on 2026-06-12 for the Fable-5 access window: Anthropic's Fable 5 guidance is "start with `high` for most tasks" — lower effort on Fable 5 often exceeds `xhigh` on prior models, and `xhigh`'s stated niche is 30-min+ runs with token budgets in the millions (ultracode pairs `xhigh` for those anyway). **Revert to `xhigh` when the primary machine returns to Opus (expected ~2026-06-22)** — on Opus 4.7/4.8 the official recommendation for coding/agentic work remains `xhigh` ([effort doc](https://platform.claude.com/docs/en/build-with-claude/effort)). **Deliberately the settings key, not `CLAUDE_CODE_EFFORT_LEVEL`**: the env var is priority 1 in effort resolution and overrides per-skill/per-subagent `effort:` frontmatter (added 2.1.78–2.1.80), which would kill plugin-declared effort tiering — the settings key sets the session baseline while frontmatter wins when a skill/agent is active. Trade-off: only the env var can persist `max`; the kit deliberately avoids it (`max` can overthink structured tasks). Model-transition quirk: a new model's first run may reset settings-level effort to the model default — sync re-asserts the SoT value; confirm with `/effort`. |
 
 #### Model selection
 
@@ -219,7 +221,7 @@ The kit sets **`"model": "best"`** in settings.json (Claude Code 2.1.170+): the 
 | Key | Value | Notes |
 |-----|-------|-------|
 | `model` | `best` | Model alias pin (2.1.170+): Fable 5 where the org has access, latest Opus otherwise. See § Model selection for rationale and per-machine rollback. |
-| `effortLevel` | `xhigh` | See § Thinking & reasoning — settings-key pin chosen over the env var so plugin `effort:` frontmatter still applies. |
+| `effortLevel` | `high` | See § Thinking & reasoning — settings-key pin chosen over the env var so plugin `effort:` frontmatter still applies. |
 | `autoMemoryEnabled` | `true` | Explicit pin of the default: Claude writes per-repo notes to `~/.claude/projects/<project>/memory/` (first 200 lines / 25KB of MEMORY.md auto-loads each session; topic files load on demand). Pinned so a stray disable can't drift in — cross-session recall backs the prompt files' running-notes rule. |
 | `skillListingMaxDescChars` | `2048` | Per-skill description char cap in the skill listing (default 1536). Several docks/effect-kit CSO descriptions exceed 1536 and would truncate mid-trigger-condition; 2048 keeps them intact. Context budget already covered by `skillListingBudgetFraction: 0.05`. |
 | `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. Moot on Fable 5 (thinking cannot be disabled there), still load-bearing on the Opus fallback. |
