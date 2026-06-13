@@ -44,14 +44,29 @@ fi
 
 # --- usage stats from cache ---
 USAGE_CACHE="/tmp/.claude_usage_cache"
+CREDS_FILE="$HOME/.claude/.credentials.json"
+FETCH_MARKER="/tmp/.claude_usage_fetching"
+
+# At most one spawn per 5s window: redraws come ~every 300ms but the fetch
+# takes up to 3s, so an unthrottled spawn here piles up overlapping curls.
+spawn_usage_fetch() {
+  if [ $(( $(date +%s) - $(file_mtime "$FETCH_MARKER") )) -ge 5 ]; then
+    touch "$FETCH_MARKER"
+    bash ~/.claude/fetch-usage.sh > /dev/null 2>&1 &
+  fi
+}
+
+# Credentials newer than the cache => account switch; the cached numbers
+# belong to the previous account. Treat as missing rather than display them.
 five_h="" seven_d="" five_h_reset="" seven_d_reset=""
-if [ -f "$USAGE_CACHE" ]; then
+if [ -f "$USAGE_CACHE" ] \
+   && { [ ! -f "$CREDS_FILE" ] || [ "$(file_mtime "$CREDS_FILE")" -lt "$(file_mtime "$USAGE_CACHE")" ]; }; then
   five_h=$(sed -n '1p' "$USAGE_CACHE")
   seven_d=$(sed -n '2p' "$USAGE_CACHE")
   five_h_reset=$(sed -n '3p' "$USAGE_CACHE")
   seven_d_reset=$(sed -n '4p' "$USAGE_CACHE")
 else
-  bash ~/.claude/fetch-usage.sh > /dev/null 2>&1 &
+  spawn_usage_fetch
 fi
 
 # --- format token count in thousands → "Xk" under 1000, "XM"/"X.XM" at/above ---
