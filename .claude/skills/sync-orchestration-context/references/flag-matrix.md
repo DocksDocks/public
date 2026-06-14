@@ -27,7 +27,7 @@ DRY_RUN=${DRY_RUN:-0}
 SKIP_OPTIONAL_BOOTSTRAP=${SKIP_OPTIONAL_BOOTSTRAP:-0}
 FORCE=${FORCE:-0}
 REMOVE_PLUGINS=${REMOVE_PLUGINS:-0}
-FABLE=${FABLE:-0}
+WINDOW_680K=${WINDOW_680K:-0}
 PERMISSIVE=${PERMISSIVE:-0}
 TARGET_FILTER_SET=${TARGET_FILTER_SET:-0}
 SYNC_CLAUDE=${SYNC_CLAUDE:-0}
@@ -55,13 +55,13 @@ Pre-setting as env var: `FORCE=1 ./sync.sh` is equivalent to `./sync.sh --force`
 | Plugin installs | No effect | Uninstall kit-managed not in SoT | Additive install only |
 | `~/.agents/skills/` | No effect | Remove slugs in snapshot but not in skills.txt | Additive install only |
 
-## Deploy-Time Modifiers (`--fable`, `--permissive`)
+## Deploy-Time Modifiers (`--680k`, `--permissive`)
 
 Run AFTER the settings merge and mutate only the DEPLOYED `~/.claude/settings.json` — the opposite direction of `--force` (away from SoT, not toward it). A later flag-less sync reverts both: the repo-wins merge restores the SoT compact window, the array union re-adds SoT ask/deny.
 
 | Flag | Variable | Mutation | Consumer |
 |------|----------|----------|----------|
-| `--fable` | `FABLE=1` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "1000000"` | `claude::sync_fable` |
+| `--680k` | `WINDOW_680K=1` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "680000"` | `claude::sync_680k` |
 | `--permissive` | `PERMISSIVE=1` | `permissions.ask = []`, `permissions.deny = []` | `claude::sync_permissive` |
 
 Both are Claude-layer only (no-ops under `--codex`/`--agents`-only runs since `claude::sync` never executes), idempotent, and dry-run guarded.

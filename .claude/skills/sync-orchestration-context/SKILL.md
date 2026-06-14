@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: Use when editing sync.sh, lib/common.sh, or any flag in --force / --remove-plugins / --fable / --permissive / --no-rtk / --dry-run / --claude / --codex / --agents; covers TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of FORCE and REMOVE_PLUGINS env vars, the FABLE/PERMISSIVE deploy-time modifiers, SKIP_OPTIONAL_BOOTSTRAP semantics, common::parse_args and common::preflight invariants, and the requirement that every lib/<tool>.sh step remain idempotent across re-runs.
+description: Use when editing sync.sh, lib/common.sh, or any flag in --force / --remove-plugins / --680k / --permissive / --no-rtk / --dry-run / --claude / --codex / --agents; covers TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of FORCE and REMOVE_PLUGINS env vars, the WINDOW_680K/PERMISSIVE deploy-time modifiers, SKIP_OPTIONAL_BOOTSTRAP semantics, common::parse_args and common::preflight invariants, and the requirement that every lib/<tool>.sh step remain idempotent across re-runs.
 user-invocable: false
 metadata:
   source_files:
@@ -8,7 +8,7 @@ metadata:
       lines: "1-55"
     - path: lib/common.sh
       lines: "1-77"
-  updated: "2026-06-12"
+  updated: "2026-06-14"
 ---
 
 # sync.sh Orchestration
@@ -47,7 +47,7 @@ Flag variables are initialized in common.sh (flag-var init block) via `${VAR:-0}
 | `--no-rtk` | `SKIP_OPTIONAL_BOOTSTRAP=1` | common::parse_args |
 | `--force` | `FORCE=1` | common::parse_args — settings layer only |
 | `--remove-plugins` | `REMOVE_PLUGINS=1` | common::parse_args — plugin+skills layer only |
-| `--fable` | `FABLE=1` | common::parse_args — deploy-time modifier, consumed by claude::sync_fable |
+| `--680k` | `WINDOW_680K=1` | common::parse_args — deploy-time modifier, consumed by claude::sync_680k |
 | `--permissive` | `PERMISSIVE=1` | common::parse_args — deploy-time modifier, consumed by claude::sync_permissive |
 | `--claude` | `SYNC_CLAUDE=1`, `TARGET_FILTER_SET=1` | common::parse_args |
 | `--codex` | `SYNC_CODEX=1`, `TARGET_FILTER_SET=1` | common::parse_args |

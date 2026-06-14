@@ -5,7 +5,7 @@ DRY_RUN=${DRY_RUN:-0}
 SKIP_OPTIONAL_BOOTSTRAP=${SKIP_OPTIONAL_BOOTSTRAP:-0}
 FORCE=${FORCE:-0}
 REMOVE_PLUGINS=${REMOVE_PLUGINS:-0}
-FABLE=${FABLE:-0}
+WINDOW_680K=${WINDOW_680K:-0}
 PERMISSIVE=${PERMISSIVE:-0}
 TARGET_FILTER_SET=${TARGET_FILTER_SET:-0}
 SYNC_CLAUDE=${SYNC_CLAUDE:-0}
@@ -18,14 +18,14 @@ warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$1" >&2; }
 err()  { printf "\033[1;31m[err]\033[0m %s\n"  "$1" >&2; }
 
 common::usage() {
-  echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--fable] [--permissive] [--claude] [--codex] [--agents]"
+  echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--680k] [--permissive] [--claude] [--codex] [--agents]"
   echo ""
   echo "  --claude          sync only Claude Code SoT (can be combined with other target flags)"
   echo "  --codex           sync only Codex SoT (can be combined with other target flags)"
   echo "  --agents          sync only universal agent skills (can be combined with other target flags)"
   echo "  --force           reconcile kit-owned settings with SoT (SoT-declared keys win; user-only keys preserved; permissions arrays replaced)"
   echo "  --remove-plugins  uninstall kit-managed installs not in SoT (plugins, marketplaces, skills declared in SoT/.agents/skills.txt)"
-  echo "  --fable           raise deployed autocompact window to 1M for Fable 5 sessions (deployed settings only; model unchanged)"
+  echo "  --680k            raise deployed autocompact window to 680K for disposable sessions (deployed settings only; model unchanged)"
   echo "  --permissive      empty permissions.ask/deny in deployed settings for sandboxes/containers (unattended commits + pushes)"
   echo "  --no-rtk          skip optional tool bootstrap"
   echo "  --dry-run         preview without applying"
@@ -48,7 +48,7 @@ common::parse_args() {
       --no-rtk)          SKIP_OPTIONAL_BOOTSTRAP=1 ;;
       --force)           FORCE=1 ;;
       --remove-plugins)  REMOVE_PLUGINS=1 ;;
-      --fable)           FABLE=1 ;;
+      --680k)            WINDOW_680K=1 ;;
       --permissive)      PERMISSIVE=1 ;;
       --claude)          common::select_target claude ;;
       --codex)           common::select_target codex ;;

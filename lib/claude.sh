@@ -18,7 +18,7 @@ claude::sync() {
   claude::sync_hooks
   claude::sync_claude_md
   claude::sync_settings
-  claude::sync_fable
+  claude::sync_680k
   claude::sync_permissive
   claude::sync_claude_json
   claude::sync_connector_env
@@ -152,31 +152,30 @@ claude::sync_settings() {
   fi
 }
 
-# Deploy-time modifier (--fable): raise the DEPLOYED autocompact window to 1M
-# for Fable 5 sessions in disposable containers — host machines stay on the SoT
-# cap. Touches only ~/.claude/settings.json — the SoT
-# stays at its cap and the model selection is never changed (pick Fable with
-# /model fable). A later flag-less sync restores the SoT value via the
-# repo-wins merge, so re-pass --fable on machines that should keep 1M.
-claude::sync_fable() {
+# Deploy-time modifier (--680k): raise the DEPLOYED autocompact window to 680K
+# for disposable containers — host machines stay on the SoT cap. Touches only
+# ~/.claude/settings.json — the SoT stays at its cap and the model selection is
+# never changed. A later flag-less sync restores the SoT value via the repo-wins
+# merge, so re-pass --680k on machines that should keep 680K.
+claude::sync_680k() {
   local user_settings="$CLAUDE_DIR/settings.json"
 
-  [[ "$FABLE" -eq 1 ]] || return 0
+  [[ "$WINDOW_680K" -eq 1 ]] || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] (--fable) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000 in $user_settings"
+    echo "[dry-run] (--680k) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in $user_settings"
     return
   fi
 
-  [[ -f "$user_settings" ]] || { warn "(--fable) $user_settings missing — skipped"; return; }
-  jq empty "$user_settings" 2>/dev/null || { err "(--fable) $user_settings is not valid JSON — skipped"; return; }
-  if ! jq '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "1000000"' "$user_settings" > "$user_settings.tmp"; then
+  [[ -f "$user_settings" ]] || { warn "(--680k) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--680k) $user_settings is not valid JSON — skipped"; return; }
+  if ! jq '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "680000"' "$user_settings" > "$user_settings.tmp"; then
     rm -f "$user_settings.tmp"
-    err "(--fable) jq edit failed — settings unchanged"
+    err "(--680k) jq edit failed — settings unchanged"
     return
   fi
   mv "$user_settings.tmp" "$user_settings"
-  log "Fable mode: autocompact window set to 1M in deployed settings (SoT and model unchanged)"
+  log "680K mode: autocompact window set to 680K in deployed settings (SoT and model unchanged)"
 }
 
 # Deploy-time modifier (--permissive): for disposable sandboxes/containers.
