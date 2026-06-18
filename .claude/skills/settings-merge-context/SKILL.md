@@ -1,14 +1,16 @@
 ---
 name: settings-merge-context
-description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, the deploy-time modifiers claude::sync_680k / claude::sync_permissive (--680k 680K autocompact window, --permissive empty ask/deny), or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
+description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, the deploy-time modifiers claude::sync_680k / claude::sync_permissive (--680k 680K autocompact window, --permissive empty ask/deny), or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --force reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the additive user-scoped mcpServers merge from SoT/.claude/mcp-servers.json into ~/.claude.json (settings.json rejects an mcpServers key), the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "71-368"
+      lines: "71-390"
     - path: SoT/.claude/settings.json
       lines: "1-13"
-  updated: "2026-06-14"
+    - path: SoT/.claude/mcp-servers.json
+      lines: "1-9"
+  updated: "2026-06-18"
 ---
 
 # Settings Merge
@@ -31,6 +33,7 @@ Run `jq empty "$user_settings"` before any merge operation. An invalid JSON sett
 - Changing how permissions arrays are unioned (additive) vs replaced (`--force`)
 - Debugging why a user's custom permission survived or was wiped after sync
 - Modifying `claude::sync_claude_json` to write a new key to `~/.claude.json`
+- Adding or changing a user-scoped MCP server in `SoT/.claude/mcp-servers.json` (merged into `~/.claude.json` by `claude::sync_claude_json`)
 - Disabling claude.ai cloud connectors via the `ENABLE_CLAUDEAI_MCP_SERVERS` shell-rc export (`claude::sync_connector_env`)
 - Pruning a newly-deprecated kit artifact via the `removed` manifest (`claude::sync_removals`)
 - Adding or changing a deploy-time modifier that mutates deployed settings away from SoT (`claude::sync_680k`, `claude::sync_permissive`)
@@ -90,7 +93,10 @@ Recovery: if merge fails, original is unchanged. `.bak` is the last-known-good c
 | Key | File | Owner | Why |
 |-----|------|-------|-----|
 | `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json` | Schema validation error if placed in settings.json |
+| `mcpServers` (user scope) | `~/.claude.json` | `claude::sync_claude_json` | settings.json schema rejects an `mcpServers` key; servers declared in `SoT/.claude/mcp-servers.json` |
 | Everything else | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code settings schema |
+
+`claude::sync_claude_json` merges `mcpServers` **additively** — `.mcpServers = ((.mcpServers // {}) * ($mcp[0].mcpServers // {}))` — so SoT-declared servers win per key while a user's own servers survive. The SoT file is read via `--slurpfile mcp`, guarded by `[[ -f ]] && jq empty` (absent/invalid → mcp merge skipped, `showTurnDuration` still written). Like every sync layer, dropping a server from the SoT file does NOT remove it from `~/.claude.json` (additive; prune via `claudeJsonKeys` in `claude::_removed_manifest`).
 
 claude.ai cloud connectors are **not** disabled via any file here — see the connector-env section below.
 
@@ -132,7 +138,7 @@ Both follow the full settings-write contract: flag-off `return 0` first, then dr
 
 - Default merge uses `$user * $repo` (`claude::_settings_merge ($user*$repo)`) — repo wins on scalar/object conflicts. User-added env vars, custom permissions entries, and mcpServers survive because those keys don't exist in repo settings.
 - Permissions arrays use concat+unique (`claude::_settings_merge (permissions concat+unique)`) in default mode — a user-added `Bash(my-tool *)` survives sync. With `--force`, the repo's permissions arrays replace the user's wholesale (no union step).
-- `claude::sync_claude_json` creates `~/.claude.json` from scratch if absent (`claude::sync_claude_json (the create-from-scratch branch)`) with just `{"showTurnDuration": true}`.
+- `claude::sync_claude_json` creates `~/.claude.json` from scratch if absent (`claude::sync_claude_json (the create-from-scratch branch)`) via `jq -n "{} | $filter"` — `showTurnDuration: true` plus any SoT-declared `mcpServers`. The empty-array `jq_args` is expanded with the `"${jq_args[@]+"${jq_args[@]}"}"` guard so it doesn't trip `set -u` on bash 3.2 (macOS).
 - The connector disable lives in the shell rc, not `settings.json`/`~/.claude.json` — `claude::sync_connector_env` is surgical (only claude.ai connectors, MCP source #5; plugin/project servers untouched) and non-clobbering (skips if `ENABLE_CLAUDEAI_MCP_SERVERS` is already set to any value).
 - `claude::sync_removals` runs on every sync but only touches the curated `claude::_removed_manifest`; `delpaths` makes key removal idempotent (absent paths are ignored).
 

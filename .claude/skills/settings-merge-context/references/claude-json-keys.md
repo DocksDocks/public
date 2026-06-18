@@ -10,6 +10,7 @@ Adding `showTurnDuration` to `settings.json` triggers a schema validation warnin
 |-----|------|-----------|--------|
 | All standard config (env, permissions, hooks, plugins) | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code schema |
 | `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json (the showTurnDuration jq)` | Schema validation error if in settings.json |
+| `mcpServers` (user scope) | `~/.claude.json` | `claude::sync_claude_json (the mcpServers merge)` | settings.json schema rejects `mcpServers`; declared in `SoT/.claude/mcp-servers.json` |
 | `skipAutoPermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Standard schema — fine here |
 | `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | `claude::sync_settings` | Ignored in project-level settings (safety) |
 
@@ -18,11 +19,11 @@ Adding `showTurnDuration` to `settings.json` triggers a schema validation warnin
 ```bash
 # claude::sync_claude_json (the create-from-scratch branch)
 else
-  echo '{"showTurnDuration": true}' > "$claude_json"
+  jq -n "${jq_args[@]+"${jq_args[@]}"}" "{} | $filter" > "$claude_json"
 fi
 ```
 
-If `~/.claude.json` is absent, `claude::sync_claude_json` creates it with a single key. Other keys written by Claude Code itself (e.g. `projects`) accumulate in this file over time.
+If `~/.claude.json` is absent, `claude::sync_claude_json` builds it with `jq -n` — `showTurnDuration: true` plus any `mcpServers` declared in `SoT/.claude/mcp-servers.json` (the `$filter` string and `--slurpfile mcp` args are assembled earlier in the function). Other keys written by Claude Code itself (e.g. `projects`) accumulate in this file over time.
 
 ## Disabling claude.ai cloud connectors (NOT via these files)
 
@@ -33,10 +34,11 @@ Cloud connectors (Figma/Drive/Gmail) are account-synced and fetched at startup; 
 | Target file | Approach |
 |------------|----------|
 | `~/.claude/settings.json` | Add to `SoT/.claude/settings.json`; it will propagate on next sync via `$user * $repo` |
-| `~/.claude.json` | Add a `jq '.newKey = value'` line to `claude::sync_claude_json` |
+| `~/.claude.json` (scalar/object key) | Add a `jq '.newKey = value'` line to `claude::sync_claude_json` |
+| `~/.claude.json` `mcpServers` (user-scoped MCP) | Add the server block to `SoT/.claude/mcp-servers.json`; `claude::sync_claude_json` merges it additively |
 
 ## Gotchas
 
 - `~/.claude.json` is written by Claude Code itself for project state. `sync.sh` patches it minimally — never replaces it wholesale.
 - `claude::sync_removals` can prune stale keys from `~/.claude.json` too (`claudeJsonKeys` in `claude::_removed_manifest`), but only that curated list — it never touches `projects` state or user keys. `delpaths` ignores absent paths, so re-runs are silent no-ops.
-- `sync.sh` does NOT write `mcpServers` to `settings.json`. Those are Claude Code's own runtime entries, not kit-managed.
+- `sync.sh` never writes `mcpServers` to `settings.json` (the schema rejects the key). User-scoped `mcpServers` in `~/.claude.json` ARE kit-managed when declared in `SoT/.claude/mcp-servers.json` — additive merge, so a user's own servers (and any Claude Code wrote itself) are preserved.

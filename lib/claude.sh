@@ -206,9 +206,23 @@ claude::sync_permissive() {
 
 claude::sync_claude_json() {
   local claude_json="$HOME/.claude.json"
+  local mcp_sot="$REPO_DIR/SoT/.claude/mcp-servers.json"
+  local jq_args=() filter='.showTurnDuration = true' have_mcp=0
+
+  # settings.json cannot hold mcpServers (schema rejects it), so user-scoped MCP
+  # servers the kit manages live here in ~/.claude.json. Merge is additive:
+  # `(.mcpServers // {}) * SoT` — the user's own servers survive, SoT wins per
+  # server key. Dropping a server from the SoT file does NOT remove it (additive
+  # by default, like every other sync layer).
+  if [[ -f "$mcp_sot" ]] && jq empty "$mcp_sot" 2>/dev/null; then
+    have_mcp=1
+    jq_args=(--slurpfile mcp "$mcp_sot")
+    filter+=' | .mcpServers = ((.mcpServers // {}) * ($mcp[0].mcpServers // {}))'
+  fi
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] set showTurnDuration=true in ~/.claude.json"
+    [[ "$have_mcp" -eq 1 ]] && echo "[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json"
     return
   fi
 
@@ -217,16 +231,16 @@ claude::sync_claude_json() {
       err "Skipping ~/.claude.json edit: not valid JSON. Fix or delete it."
       return
     fi
-    if ! jq '.showTurnDuration = true' "$claude_json" > "$claude_json.tmp"; then
+    if ! jq "${jq_args[@]+"${jq_args[@]}"}" "$filter" "$claude_json" > "$claude_json.tmp"; then
       rm -f "$claude_json.tmp"
       err "jq edit of ~/.claude.json failed — file unchanged"
       return
     fi
     mv "$claude_json.tmp" "$claude_json"
   else
-    echo '{"showTurnDuration": true}' > "$claude_json"
+    jq -n "${jq_args[@]+"${jq_args[@]}"}" "{} | $filter" > "$claude_json"
   fi
-  log "~/.claude.json updated (showTurnDuration)"
+  log "~/.claude.json updated (showTurnDuration$([[ "$have_mcp" -eq 1 ]] && printf ', mcpServers'))"
 }
 
 # Ensure ENABLE_CLAUDEAI_MCP_SERVERS=false is exported as a REAL shell env var.

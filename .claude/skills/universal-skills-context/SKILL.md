@@ -1,14 +1,14 @@
 ---
 name: universal-skills-context
-description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, skills::sync_effect_solutions_cli, skills::_find_bun, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add <slug> -g -y -a claude-code codex invocation order (variadic -a would swallow the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/<name>/ + ~/.claude/skills/<name> symlink vs copy-direct), the relative symlink target ../../.agents/skills/<basename> matching the upstream CLI installer.ts, the ~/.agents/.kit-managed-skills snapshot diff for removals, the agent-browser install --with-deps Linux sudo prompt, and the Bun-based effect-solutions CLI install (gated on effect-kit enabled, auto-installs Bun download-then-run, symlinks bun + CLI into ~/.local/bin to clear ~/.bashrc's non-interactive guard).
+description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, skills::_agent_browser_newer_npm, skills::sync_effect_solutions_cli, skills::_find_bun, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add <slug> -g -y -a claude-code codex invocation order (variadic -a would swallow the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/<name>/ + ~/.claude/skills/<name> symlink vs copy-direct), the relative symlink target ../../.agents/skills/<basename> matching the upstream CLI installer.ts, the ~/.agents/.kit-managed-skills snapshot diff for removals, the agent-browser install --with-deps Linux sudo prompt plus its self-upgrade-to-npm-latest check (numeric version sort, never downgrades), and the Bun-based effect-solutions CLI install (gated on effect-kit enabled, auto-installs Bun download-then-run, symlinks bun + CLI into ~/.local/bin to clear ~/.bashrc's non-interactive guard).
 user-invocable: false
 metadata:
   source_files:
     - path: lib/skills.sh
-      lines: "1-358"
+      lines: "1-391"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-06-03"
+  updated: "2026-06-18"
 ---
 
 # Universal Skills Bootstrap
@@ -131,7 +131,7 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 
 - Snapshot write is always last (skills::sync (update_snapshot runs last)) — prevents partial-state snapshots on aborted runs.
 - `skills::heal_claude_symlink` is called on EVERY sync for already-present skills (skills::sync_universal (heal call in pre-check)) — symlinks can drift without the user noticing.
-- `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (skills::sync_agent_browser_cli).
+- `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (skills::sync_agent_browser_cli). Unlike the install-once skills, it also **self-upgrades**: when the binary is present it compares the installed version against `npm view agent-browser version` (`skills::_agent_browser_newer_npm`, the numeric per-field sort borrowed from `claude::_warn_rtk_outdated`) and re-runs `npm install -g agent-browser` only when strictly older — a locally-newer pre-release is never downgraded, and a missing/offline npm skips the check. The Chrome download (`agent-browser install`) is NOT repeated on upgrade, so routine syncs don't re-trigger the Linux `--with-deps` sudo prompt.
 - `SKILLS_PRESENT` tally (skills::sync_universal (SKILLS_PRESENT tally)) counts installed + already-present for the summary; does NOT re-scan `~/.agents/skills/` (which would include user-installed skills).
 - The optional `effect-solutions` CLI has its own helper (`skills::sync_effect_solutions_cli`), gated on effect-kit being enabled in SoT (a `grep` for `"effect-kit@effect-kit": true` in `SoT/.claude/settings.json`). It symlinks BOTH `bun` and the CLI into `~/.local/bin` (`skills::sync_effect_solutions_cli` (ln -sf both binaries)) — linking only the CLI fails at run time because its `#!/usr/bin/env bun` shebang needs `bun` on PATH too. `bun pm -g bin` is the authoritative global-bin query (it varies with `BUN_INSTALL`/`XDG_CACHE_HOME`); `skills::_find_bun` resolves bun itself, which also lives off the non-interactive PATH.
 
@@ -140,7 +140,8 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 - **Slug after `-a` fails silently**: `npx skills add -a claude-code codex "$slug"` exits 0 and installs nothing. The canonical directory is never created; every sync re-attempts the add and always fails silently. (skills::sync_universal (the slug-before-`-a` comment))
 - **Real directory at `~/.claude/skills/<name>`**: `heal_claude_symlink` warns and skips (skills::heal_claude_symlink (real-directory guard)). The two copies diverge silently. Fix: manually `rm -rf ~/.claude/skills/<name>` then re-run sync.
 - **First `--remove-plugins` with no snapshot**: `reconcile_removals` returns early if `~/.agents/.kit-managed-skills` does not exist (skills::reconcile_removals (missing-snapshot early return)). No removal occurs. Run a real sync first to write the snapshot, then `--remove-plugins` to reconcile.
-- **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (skills::sync_agent_browser_cli (Linux --with-deps)).
+- **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (skills::sync_agent_browser_cli (Linux --with-deps)). It runs only on FIRST install — the self-upgrade path bumps the npm package without re-running it, so upgrades don't re-prompt for sudo.
+- **Self-upgrade adds one network call per sync**: when `agent-browser` is present, `skills::_agent_browser_newer_npm` runs `npm view agent-browser version` every sync. It is best-effort — a `command -v npm` guard and `|| true` on the npm call mean an offline/npm-less machine logs "present" and skips the upgrade instead of erroring. (`skills::_agent_browser_newer_npm`)
 - **effect-solutions unreachable in agent shells**: bun's global bin (`~/.cache/.bun/bin` when `BUN_INSTALL` is unset, else `~/.bun/bin`) and `~/.bun/bin` itself sit off the non-interactive PATH, and `~/.bashrc`'s `*i*) ;; *) return;;` guard means rc PATH edits never reach non-interactive (sync/agent) shells. `skills::sync_effect_solutions_cli` sidesteps this by symlinking into `~/.local/bin` (already on the agent PATH — same as the Codex launcher). Do NOT "fix" a missing CLI by editing `~/.bashrc`; non-interactive shells never read past the guard.
 
 ## References

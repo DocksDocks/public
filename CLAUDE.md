@@ -13,6 +13,7 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 | `SoT/.claude/hooks/` | Hook scripts (e.g. `notify.sh` — the Notification completion sound) |
 | `SoT/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
 | `SoT/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
+| `SoT/.claude/mcp-servers.json` | User-scoped MCP server definitions merged into `~/.claude.json` by `claude::sync_claude_json` (settings.json can't hold `mcpServers`) |
 
 ### Plugins
 
@@ -70,6 +71,18 @@ The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost
 /plugin install n8n-mcp-skills@n8n-mcp-skills
 /reload-plugins
 ```
+
+### MCP Servers
+
+MCP server *definitions* cannot live in `settings.json` — the schema rejects an `mcpServers` key (only the control keys `enabledMcpjsonServers` / `disabledMcpjsonServers` / `enableAllProjectMcpServers` are valid there). User-scoped servers live in `~/.claude.json`; project-scoped ones in a checked-in `.mcp.json`.
+
+The kit declares **user-scoped** MCP servers in `SoT/.claude/mcp-servers.json`, and `claude::sync_claude_json` merges them into `~/.claude.json` alongside `showTurnDuration`. The merge is **additive** — `(.mcpServers // {}) * <SoT>` — so a server you add manually survives and SoT wins per server key. Like every other sync layer, dropping a server from the SoT file does NOT remove it from `~/.claude.json` (additive by default; delete it there by hand or add it to the `removed` manifest's `claudeJsonKeys`).
+
+| Server | Source | Purpose |
+|--------|--------|---------|
+| `chrome-devtools` | `ChromeDevTools/chrome-devtools-mcp` (official Google Chrome team), launched via `npx -y chrome-devtools-mcp@latest` | Deep browser debugging the `agent-browser` CLI can't do: performance traces, Lighthouse audits, network/console inspection, heap snapshots. The `-y` flag stops a first-run `npx` install prompt from hanging the stdio launch. |
+
+**Relationship to `agent-browser`:** complementary, not redundant. `agent-browser` (CLI skill, lazy-loaded, idle-zero, lean per-op responses) is the default path for automation, scraping, form-filling, and parallel multi-session work; `chrome-devtools` MCP is the specialist for perf/Lighthouse/heap/network debugging. Both stay cheap to keep enabled because Claude Code's **Tool Search** (default-on) defers MCP tool schemas until invoked — the ~40 chrome-devtools tool definitions are not loaded into context at session start (confirmed: they surface only via the on-demand schema fetch, not the cached prefix).
 
 ### RTK (Rust Token Killer)
 

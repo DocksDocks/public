@@ -143,6 +143,20 @@ skills::heal_claude_symlink() {
   return 0
 }
 
+# Echo agent-browser's latest npm version when it is strictly newer than the
+# installed one; echo nothing when up-to-date or unverifiable (no npm/offline).
+# Numeric per-field sort mirrors claude::_warn_rtk_outdated so a locally-newer
+# pre-release never triggers a downgrade.
+skills::_agent_browser_newer_npm() {
+  local installed="$1" latest newer
+  command -v npm >/dev/null 2>&1 || return 0
+  latest=$(npm view agent-browser version 2>/dev/null || true)
+  [[ -n "$latest" && -n "$installed" && "$latest" != "$installed" ]] || return 0
+  newer=$(printf '%s\n%s\n' "$installed" "$latest" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
+  [[ "$newer" == "$latest" ]] && printf '%s' "$latest"
+  return 0
+}
+
 skills::sync_agent_browser_cli() {
   # The agent-browser SKILL.md alone is just instructions — the CLI binary
   # is what drives Chrome. Auto-install on first run because the slug is
@@ -156,7 +170,14 @@ skills::sync_agent_browser_cli() {
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     if command -v agent-browser >/dev/null 2>&1; then
-      echo "[dry-run] agent-browser CLI present"
+      local cur newer_dr
+      cur=$(agent-browser --version 2>/dev/null | awk '{print $NF}')
+      newer_dr=$(skills::_agent_browser_newer_npm "$cur")
+      if [[ -n "$newer_dr" ]]; then
+        echo "[dry-run] would upgrade agent-browser CLI ($cur -> $newer_dr): npm install -g agent-browser"
+      else
+        echo "[dry-run] agent-browser CLI present (${cur:-version unknown})"
+      fi
     else
       echo "[dry-run] would install: npm install -g agent-browser"
       echo "[dry-run] would install: agent-browser install ${install_flags[*]:-}"
@@ -165,7 +186,19 @@ skills::sync_agent_browser_cli() {
   fi
 
   if command -v agent-browser >/dev/null 2>&1; then
-    log "agent-browser CLI present ($(agent-browser --version 2>/dev/null || echo 'version unknown'))"
+    local cur latest_av
+    cur=$(agent-browser --version 2>/dev/null | awk '{print $NF}')
+    latest_av=$(skills::_agent_browser_newer_npm "$cur")
+    if [[ -n "$latest_av" ]]; then
+      log "Upgrading agent-browser CLI ($cur -> $latest_av)..."
+      if npm install -g agent-browser >/dev/null 2>&1; then
+        log "agent-browser CLI upgraded ($(agent-browser --version 2>/dev/null | awk '{print $NF}'))"
+      else
+        warn "agent-browser upgrade failed (staying on $cur). Try manually: npm install -g agent-browser"
+      fi
+    else
+      log "agent-browser CLI present (${cur:-version unknown})"
+    fi
     return
   fi
 
