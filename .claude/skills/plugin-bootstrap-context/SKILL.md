@@ -7,12 +7,12 @@ metadata:
     - path: lib/claude.sh
       lines: "377-612"
     - path: lib/codex.sh
-      lines: "315-489"
+      lines: "292-470"
     - path: SoT/.claude/settings.json
       lines: "237-268"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-06-12"
+  updated: "2026-06-23"
 ---
 
 # Plugin Bootstrap
@@ -159,7 +159,7 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 - Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at `claude::_cli` — portability note) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at `claude::sync_plugins` (failure sum).
 - `|| true` on passes 3 and 4 (`claude::_plugins_update` — marketplace-update `|| true`, plugin-update `|| true`) — marketplace update and plugin updates are best-effort; failures must not abort the sync run.
 - `claude` CLI is checked with `command -v claude` (`claude::sync_plugins` — CLI presence check) before the dispatch block. If absent, the whole reconcile is skipped with a warning.
-- `codex::sync_plugins` checks `command -v codex` before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command`.
+- `codex::sync_plugins` checks `command -v codex` before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the official standalone installer fallback from `codex::_standalone_install_command` plus the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command`.
 - Codex sync does NOT call `codex plugin marketplace add DocksDocks/docks`; `SoT/.codex/plugins/marketplace.json` already provides the implicit personal marketplace.
 - Per-project plugin enable lives in the project's `.claude/settings.json` `enabledPlugins` block. The user-scope key must remain present (as `false`) — Claude Code ignores project-level entries whose key is absent from user settings.
 
@@ -167,7 +167,7 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 
 - **Marketplace pre-check checks presence, not validity** (`claude::_plugins_add_marketplaces` — key-presence pre-check): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
 - **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled." But `claude plugin install` *enables* what it installs (user scope), so pass 7 (`claude::_plugins_reassert_enabled_state`) must run afterward to restore the `false`; dropping pass 7 silently re-enables every globally-disabled plugin.
-- **Codex `command -v codex` matches the kit's own launcher**: if the kit launcher is present but the npm Codex binary is not, `codex plugin add` fails with "could not find a Codex CLI binary" — the helper warns with the npm install fallback (`codex::sync_plugins` — missing-binary warning).
+- **Codex CLI missing or stale wrapper on PATH**: if `command -v codex` is absent, sync deploys config/marketplace files and prints the official standalone installer plus manual `codex plugin add` fallback. If a stale wrapper is found and emits "could not find a Codex CLI binary", the refresh pass warns with the same standalone installer fallback (`codex::sync_plugins` — missing-binary warning).
 - **Per-project `enabledPlugins: true` is silently ignored** if the user-scope key is absent — Claude Code requires the key to exist in user settings (even as `false`) before a project-level override can activate it.
 - **LSP binaries installed via nvm-backed npm are only on interactive-shell PATHs** — normally-launched Claude Code sessions see them; headless/cron agents may not. `claude::sync_lsp_servers` checks `command -v`, so a binary visible to sync but not to a headless session won't be re-installed by re-running sync there.
 

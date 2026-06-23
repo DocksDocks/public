@@ -8,7 +8,7 @@ metadata:
       lines: "1-391"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-06-18"
+  updated: "2026-06-23"
 ---
 
 # Universal Skills Bootstrap
@@ -142,7 +142,7 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 - **First `--remove-plugins` with no snapshot**: `reconcile_removals` returns early if `~/.agents/.kit-managed-skills` does not exist (skills::reconcile_removals (missing-snapshot early return)). No removal occurs. Run a real sync first to write the snapshot, then `--remove-plugins` to reconcile.
 - **`agent-browser install --with-deps` on Linux**: may prompt for `sudo` to install system libs (`libnss3`, `libatk`, etc.) via the package manager. The `--with-deps` flag is Linux-only (skills::sync_agent_browser_cli (Linux --with-deps)). It runs only on FIRST install — the self-upgrade path bumps the npm package without re-running it, so upgrades don't re-prompt for sudo.
 - **Self-upgrade adds one network call per sync**: when `agent-browser` is present, `skills::_agent_browser_newer_npm` runs `npm view agent-browser version` every sync. It is best-effort — a `command -v npm` guard and `|| true` on the npm call mean an offline/npm-less machine logs "present" and skips the upgrade instead of erroring. (`skills::_agent_browser_newer_npm`)
-- **effect-solutions unreachable in agent shells**: bun's global bin (`~/.cache/.bun/bin` when `BUN_INSTALL` is unset, else `~/.bun/bin`) and `~/.bun/bin` itself sit off the non-interactive PATH, and `~/.bashrc`'s `*i*) ;; *) return;;` guard means rc PATH edits never reach non-interactive (sync/agent) shells. `skills::sync_effect_solutions_cli` sidesteps this by symlinking into `~/.local/bin` (already on the agent PATH — same as the Codex launcher). Do NOT "fix" a missing CLI by editing `~/.bashrc`; non-interactive shells never read past the guard.
+- **effect-solutions unreachable in agent shells**: bun's global bin (`~/.cache/.bun/bin` when `BUN_INSTALL` is unset, else `~/.bun/bin`) and `~/.bun/bin` itself sit off the non-interactive PATH, and `~/.bashrc`'s `*i*) ;; *) return;;` guard means rc PATH edits never reach non-interactive (sync/agent) shells. `skills::sync_effect_solutions_cli` sidesteps this by symlinking into `~/.local/bin` (already on the agent PATH, matching Codex's official standalone install path). Do NOT "fix" a missing CLI by editing `~/.bashrc`; non-interactive shells never read past the guard.
 
 ## References
 

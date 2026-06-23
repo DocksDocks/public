@@ -1,6 +1,5 @@
 name = "codex-config-agent"
 description = "Use when modifying codex::sync_config, codex::scrub_deprecated_features, the awk-based merge_top_level_settings / merge_table_settings passes, codex::ensure_bubblewrap, codex::sync_rules, SoT/.codex/config.toml keys, or SoT/.codex/rules/*.rules policy entries. Not for Claude settings.json merge (use settings-json-agent) or plugin install (use plugin-bootstrap-agent)."
-model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
 
@@ -17,7 +16,7 @@ TOML has no `jq` equivalent — use awk for all TOML merge operations. Never att
 </constraint>
 
 <constraint>
-The `sudo`-issuing `if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap` is the ONLY place in the entire kit that runs sudo directly — never add sudo-requiring commands elsewhere without explicit justification.
+The `sudo`-issuing `if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap` is the ONLY place in the entire kit that runs sudo directly — never add sudo-requiring commands elsewhere without explicit justification. System bubblewrap is recommended on Linux, but Codex can fall back to its bundled helper when user namespaces work.
 </constraint>
 
 <constraint>
@@ -60,11 +59,6 @@ awk -v header="$table_header" '
 Blank-line separator before block append (`codex::merge_table_settings`):
 ```bash
 { printf '\n'; printf '%s\n' "$table_block"; } >> "$user_codex_settings"
-```
-
-Managed-file marker guard (`codex::install_launcher`):
-```bash
-if [[ ! -e "$user_codex_bin" ]] || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin"
 ```
 
 Deprecated-feature scrubber trigger (`codex::scrub_deprecated_features`):
@@ -110,5 +104,5 @@ Read these for detailed knowledge:
 - `codex::merge_table_settings` appends with `printf '\n'` before the block. If the awk capture of the SoT block includes a trailing blank line, repeated `--force` syncs accumulate extra blank lines between table sections in `~/.codex/config.toml`.
 - The table-block delete awk uses exact string match on the header line. If the SoT has `[tui]` but the user has `[tui]  ` (trailing spaces), the delete pass skips it — resulting in a duplicate table block after append.
 - `codex::sync_config` is not idempotent when called twice in the same run — the delete+append cycle results in a double append before the first delete fires on the second pass.
-- `codex::ensure_bubblewrap` validates with `unshare -Ur true`. On Ubuntu 24+ with AppArmor restrictions, this fails even after successful `bwrap` install — the warn is correct but may alarm users who think bubblewrap is broken when AppArmor is the actual blocker.
+- `codex::ensure_bubblewrap` validates with `unshare -Ur true`. On Ubuntu 24.04+ with AppArmor restrictions, this can fail after successful `bwrap` install because user namespaces are blocked. Prefer the `bwrap-userns-restrict` AppArmor profile before the broader sysctl fallback.
 '''

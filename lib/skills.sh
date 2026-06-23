@@ -241,7 +241,7 @@ skills::_find_bun() {
 # BUN_INSTALL/XDG_CACHE_HOME) and bun itself sit off the non-interactive PATH,
 # and ~/.bashrc's "if not interactive, return" guard means rc PATH edits never
 # reach agent shells. So we symlink both binaries into ~/.local/bin — already
-# first on the agent PATH (same trick as the Codex launcher). Gated on
+# first on the agent PATH, matching Codex's official standalone install path. Gated on
 # effect-kit being enabled in SoT; auto-installs Bun when absent (download-
 # then-run, per the kit's no-`curl|bash` rule).
 skills::sync_effect_solutions_cli() {

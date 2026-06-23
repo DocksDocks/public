@@ -1,6 +1,5 @@
 name = "skills-bootstrap-agent"
 description = "Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, SoT/.agents/skills.txt, or the npx skills add invocation order. Not for SKILL.md content authoring (use the docks:write-skill / docks:skill-maintenance skills) or plugin marketplace reconcile (use plugin-bootstrap-agent)."
-model = "gpt-5.3-codex"
 sandbox_mode = "read-only"
 developer_instructions = '''
 

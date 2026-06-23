@@ -16,8 +16,6 @@ codex::sync() {
   local user_codex_rules_dir="$CODEX_DIR/rules"
   local codex_agents_md="$REPO_DIR/SoT/.codex/AGENTS.md"
   local user_codex_agents_md="$CODEX_DIR/AGENTS.md"
-  local codex_bin="$REPO_DIR/SoT/.codex/bin/codex"
-  local user_codex_bin="$HOME/.local/bin/codex"
   local codex_marketplace="$REPO_DIR/SoT/.codex/plugins/marketplace.json"
   local user_codex_marketplace="$AGENTS_DIR/plugins/marketplace.json"
 
@@ -28,16 +26,16 @@ codex::sync() {
   codex::sync_config "$codex_settings" "$user_codex_settings"
   codex::sync_rules "$codex_rules_dir" "$user_codex_rules_dir"
   codex::sync_agents_md "$codex_agents_md" "$user_codex_agents_md"
-  codex::install_launcher "$codex_bin" "$user_codex_bin"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
   codex::remove_legacy_docks_marketplace
   codex::sync_plugins "$codex_settings"
 }
 
-# Codex uses bubblewrap as its Linux sandbox runtime. macOS uses Seatbelt natively.
+# Codex prefers a system bubblewrap on Linux, then falls back to its bundled
+# helper when user namespaces allow it. macOS uses Seatbelt natively.
 codex::ensure_bubblewrap() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] verify bubblewrap installed (Codex Linux sandbox prerequisite)"
+    echo "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)"
     return
   fi
 
@@ -45,18 +43,18 @@ codex::ensure_bubblewrap() {
   command -v bwrap >/dev/null 2>&1 && return
 
   if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
-    warn "bubblewrap not installed (--no-rtk skips auto-install). Codex Linux sandbox will fail. Install manually: sudo apt install -y bubblewrap"
+    warn "bubblewrap not installed (--no-rtk skips auto-install). Codex may use its bundled helper if user namespaces work; recommended install: sudo apt install -y bubblewrap"
     return
   fi
 
   local pm_install
   pm_install=$(codex::_bwrap_detect_pm_install_cmd)
   if [[ -z "$pm_install" ]]; then
-    warn "bubblewrap not installed and no supported package manager found (apt-get/dnf/pacman/zypper). Codex Linux sandbox requires it — install manually."
+    warn "bubblewrap not installed and no supported package manager found (apt-get/dnf/pacman/zypper). Codex may use its bundled helper if user namespaces work; install system bubblewrap manually when possible."
     return
   fi
 
-  warn "bubblewrap not installed — required for Codex Linux sandbox. Running: $pm_install (sudo prompt may appear)"
+  warn "bubblewrap not installed - recommended for Codex Linux sandbox. Running: $pm_install (sudo prompt may appear)"
   if ! eval "$pm_install"; then
     warn "Failed to auto-install bubblewrap. Install manually: $pm_install"
     return
@@ -94,13 +92,13 @@ codex::_bwrap_detect_pm_install_cmd() {
   fi
 }
 
-# Probe whether unprivileged user namespaces work — bubblewrap needs them at
-# runtime. On Ubuntu 24+ AppArmor blocks them by default.
+# Probe whether unprivileged user namespaces work - system bubblewrap and the
+# bundled Codex helper both depend on them at runtime.
 codex::_bwrap_verify_userns() {
   if unshare -Ur true >/dev/null 2>&1; then
     log "bubblewrap installed and functional ($(bwrap --version 2>/dev/null | head -1))"
   else
-    warn "bubblewrap installed but unprivileged user namespaces blocked. On Ubuntu 24+ try: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
+    warn "bubblewrap installed but unprivileged user namespaces appear blocked. On Ubuntu 24.04+, prefer loading the AppArmor bwrap-userns-restrict profile; fallback: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
   fi
 }
 
@@ -291,32 +289,6 @@ codex::merge_table_settings() {
   done < <(grep -E '^\[[^]]+\]' "$codex_settings")
 }
 
-codex::install_launcher() {
-  local codex_bin="$1"
-  local user_codex_bin="$2"
-
-  [[ -f "$codex_bin" ]] || return
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] install $codex_bin -> $user_codex_bin"
-    return
-  fi
-
-  mkdir -p "$HOME/.local/bin"
-  # Adopt when never deployed, marked as kit-managed, or a pre-marker kit
-  # deploy: the launcher's own error string is kit-authored, so its presence
-  # identifies a legacy kit copy rather than a user script.
-  if [[ ! -e "$user_codex_bin" ]] \
-    || grep -q 'Managed by DocksDocks/public sync.sh' "$user_codex_bin" 2>/dev/null \
-    || grep -q 'codex launcher could not find a Codex CLI binary' "$user_codex_bin" 2>/dev/null; then
-    cp "$codex_bin" "$user_codex_bin"
-    chmod +x "$user_codex_bin"
-    log "Codex launcher installed (~/.local/bin/codex)"
-  else
-    warn "~/.local/bin/codex exists and is not managed by this kit — leaving it unchanged"
-  fi
-}
-
 codex::sync_marketplace() {
   local codex_marketplace="$1"
   local user_codex_marketplace="$2"
@@ -412,6 +384,10 @@ codex::_first_line() {
   printf '%s\n' "$text"
 }
 
+codex::_standalone_install_command() {
+  printf 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"\n'
+}
+
 codex::_manual_plugin_refresh_command() {
   local codex_settings="$1"
   local first_plugin
@@ -466,7 +442,7 @@ codex::sync_plugins() {
   fi
 
   if ! command -v codex >/dev/null 2>&1; then
-    warn "codex CLI not in PATH — deployed config/marketplace only; manual plugin refresh command: $(codex::_manual_plugin_refresh_command "$codex_settings")"
+    warn "codex CLI not in PATH - deployed config/marketplace only; install current standalone Codex with: $(codex::_standalone_install_command); then run: $(codex::_manual_plugin_refresh_command "$codex_settings")"
     return
   fi
 
@@ -476,7 +452,7 @@ codex::sync_plugins() {
     if add_out=$(codex plugin add "$plugin_id" 2>&1); then
       refreshed_plugins=$((refreshed_plugins + 1))
     elif [[ "$add_out" == *"could not find a Codex CLI binary"* ]]; then
-      warn "Codex launcher is installed, but no npm Codex binary was found — install with: npm install -g @openai/codex"
+      warn "Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: $(codex::_standalone_install_command)"
       failed=$((failed + 1))
     else
       failure_line="$(codex::_first_line "$add_out")"

@@ -1,16 +1,16 @@
 ---
 name: codex-config-merge-context
-description: Use when modifying codex::sync_config, codex::scrub_deprecated_features, codex::merge_top_level_settings, codex::merge_table_settings, codex::ensure_bubblewrap, codex::sync_rules, or any TOML in SoT/.codex/config.toml and SoT/.codex/rules/*.rules; covers the two-pass awk merger (top-level key replacement before [table] boundary, wholesale [table] block replacement), the [features].use_legacy_landlock scrubber that also removes the now-empty [features] table, the unshare -Ur true unprivileged-namespace validation for bubblewrap, the kit-managed *.rules deployment that preserves user-learned ~/.codex/rules/default.rules, and the prefix_rule(pattern=[...], decision=...) format in docks.rules.
+description: Use when modifying codex::sync_config, codex::scrub_deprecated_features, codex::merge_top_level_settings, codex::merge_table_settings, codex::ensure_bubblewrap, codex::sync_rules, or any TOML in SoT/.codex/config.toml and SoT/.codex/rules/*.rules; covers the two-pass awk merger (top-level key replacement before [table] boundary, wholesale [table] block replacement), the [features].use_legacy_landlock scrubber that also removes the now-empty [features] table, the unshare -Ur true user-namespace validation for system bubblewrap and Codex's bundled helper fallback, the kit-managed *.rules deployment that preserves user-learned ~/.codex/rules/default.rules, and the prefix_rule(pattern=[...], decision=...) format in docks.rules.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/codex.sh
-      lines: "38-292"
+      lines: "36-290"
     - path: SoT/.codex/config.toml
       lines: "1-19"
     - path: SoT/.codex/rules/docks.rules
       lines: "1-50"
-  updated: "2026-05-28"
+  updated: "2026-06-23"
 ---
 
 # Codex Config Merge
@@ -24,7 +24,7 @@ Table blocks are ALWAYS replaced wholesale — there is no field-level merge wit
 </constraint>
 
 <constraint>
-`codex::ensure_bubblewrap` is the ONLY place in the kit that issues a `sudo`-requiring command (`if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap`). It runs before any Codex sync step. `--no-rtk` (`SKIP_OPTIONAL_BOOTSTRAP=1`) skips auto-install but warns.
+`codex::ensure_bubblewrap` is the ONLY place in the kit that issues a `sudo`-requiring command (`if ! eval "$pm_install"; then` in `codex::ensure_bubblewrap`). It runs before any Codex sync step. System bubblewrap is recommended on Linux, but Codex can fall back to its bundled helper when unprivileged user namespaces work. `--no-rtk` (`SKIP_OPTIONAL_BOOTSTRAP=1`) skips auto-install but warns.
 </constraint>
 
 ## When to Use
@@ -106,12 +106,12 @@ Returns early (no-op) if `use_legacy_landlock` not present. Only runs when the d
 | OS | Action |
 |----|--------|
 | macOS (`Darwin*`) | `return` — uses Seatbelt natively (`codex::_bwrap_supported_os`) |
-| Linux | Probe `command -v bwrap`; if absent, detect PM and install |
+| Linux | Probe `command -v bwrap`; if absent, detect PM and install recommended system bubblewrap |
 | Other | `warn` and `return` (`codex::_bwrap_supported_os`) |
 
 Package manager detection precedence: `apt-get` → `dnf` → `pacman` → `zypper` (`codex::_bwrap_detect_pm_install_cmd`).
 
-Validation after install: `unshare -Ur true` (`codex::_bwrap_verify_userns`) — tests unprivileged user namespaces. Ubuntu 24+ AppArmor restriction produces a false-negative; warn message includes the `sysctl` workaround.
+Validation after install: `unshare -Ur true` (`codex::_bwrap_verify_userns`) — tests unprivileged user namespaces used by system bubblewrap and the bundled Codex helper. Ubuntu 24.04+ AppArmor restrictions can block this; the warning should point to the `bwrap-userns-restrict` profile first and the `kernel.apparmor_restrict_unprivileged_userns=0` sysctl only as a fallback.
 
 ### `codex::sync_rules`
 
@@ -152,7 +152,7 @@ Pattern arrays use exact prefix matching on command argv. `["git", "status"]` ma
 - **Table block append accumulates blank lines**: `printf '\n'` in `codex::merge_table_settings` adds a blank line separator before each appended block. If the SoT table block itself ends with a blank line, repeated syncs accumulate extra blank lines between tables. Symptom: growing blank-line gaps in `~/.codex/config.toml` between `[tui]` and `[plugins."docks@docks"]`.
 - **Pass 2 is not idempotent on re-entry**: the delete-then-append pattern means calling `merge_table_settings` twice on the same file appends the block twice. In a single sync run this is fine (delete pass removes the block from the previous run). Calling the function directly outside `codex::sync_config` may produce duplicate tables.
 - **User-added `[table]` blocks**: any user-added `[plugins."custom@marketplace"]` block in `~/.codex/config.toml` is preserved ONLY if the table header is absent from the SoT. If a SoT table header matches the user's, the user's block is deleted and replaced.
-- **`unshare -Ur true` false-negative on Ubuntu 24+**: bubblewrap may be installed and functional but `unshare` fails due to AppArmor restriction. The sync warns and continues — Codex may still work depending on AppArmor config.
+- **`unshare -Ur true` blocked on Ubuntu 24.04+**: bubblewrap may be installed but AppArmor can block unprivileged user namespaces. The sync warns and continues; prefer the `bwrap-userns-restrict` AppArmor profile before using the broader sysctl fallback.
 
 ## References
 
