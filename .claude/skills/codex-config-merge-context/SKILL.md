@@ -7,7 +7,7 @@ metadata:
     - path: lib/codex.sh
       lines: "36-290"
     - path: SoT/.codex/config.toml
-      lines: "1-19"
+      lines: "1-23"
     - path: SoT/.codex/rules/docks.rules
       lines: "1-50"
   updated: "2026-06-23"
