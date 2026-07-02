@@ -1,9 +1,10 @@
 ---
 title: Make claude plugin sync scope-aware for the per-scope install registry
 goal: Pass-2 install and pass-5 uninstall treat only user-scope records in installed_plugins.json as kit-installed, so a project/local-scope install can no longer break the tri-state contract.
-status: in_review
+status: finished
 created: "2026-07-02T12:42:58-03:00"
-updated: "2026-07-02T13:20:36-03:00"
+updated: "2026-07-02T13:28:30-03:00"
+ship_commit: ce76906cfe712c54e6434094256d8f8ebb0200d5
 in_review_since: "2026-07-02T13:20:36-03:00"
 started_at: "2026-07-02T13:15:32-03:00"
 assignee: null
@@ -13,7 +14,7 @@ affected_paths:
   - .claude/skills/plugin-bootstrap-context/
   - CLAUDE.md
 related_plans: []
-review_status: null
+review_status: passed
 planned_at_commit: 3f88657ab19406d2617534a43f19d1de0bb899e8
 ---
 
@@ -71,4 +72,8 @@ Score: 89/100 · trajectory 89 · stopped: single pass (≤6 steps, no risk flag
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — the scope-aware predicate `claude::_plugin_user_scope_installed` (lib/claude.sh:422-428) now gates BOTH pass-2 install (lib/claude.sh:437) and the uninstall pass (lib/claude.sh:482-483, `--scope user`); fixtures confirm a project/local/legacy-object record no longer counts as installed, so a per-scope record can't break the tri-state contract.
+- **Regressions:** none — `bash -n lib/claude.sh` exits 0; the bare `.plugins[$n] // empty` presence test now survives ONLY inside the new predicate (lib/claude.sh:426), and the plan's exact audit grep `plugins\[\$n\] // empty' ` returns no match.
+- **CI:** n/a (no automated CI in repo). Ran as gates, all green: `./sync.sh --claude --dry-run` exit 0; `bash -n lib/claude.sh` exit 0; predicate over the 4 fixtures — user-only→0, both→0, project-only→1, legacy-object→1 (plus absent-key→4), matching "true only for user-scope". Criterion-3 caveat: steady-state never emits the literal `plugins: +0 ~0 -0` — the summary is count-gated (lib/claude.sh:583-586) and prints `Plugins already in sync` at zero deltas; the no-re-install-loop INTENT is met (three consecutive steady-state syncs, no warns, dry-run exit 0).
+- **Follow-ups:** none — optional plan-authoring nit: reword acceptance criterion 3 to expect `Plugins already in sync` (or make the summary line unconditional), not an implementation gap.
+- Filed by: plan-review (completion mode) 2026-07-02T13:25:04-03:00
