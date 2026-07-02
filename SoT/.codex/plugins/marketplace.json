@@ -19,6 +19,20 @@
       "category": "Productivity"
     },
     {
+      "name": "session-relay",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/DocksDocks/docks.git",
+        "path": "./plugins/session-relay",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "effect-kit",
       "source": {
         "source": "git-subdir",

@@ -244,6 +244,7 @@
     "typescript-lsp@claude-plugins-official": true,
     "supabase@claude-plugins-official": false,
     "docks@docks": true,
+    "session-relay@docks": true,
     "effect-kit@effect-kit": true
   },
   "extraKnownMarketplaces": {
