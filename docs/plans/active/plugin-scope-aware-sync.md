@@ -1,9 +1,10 @@
 ---
 title: Make claude plugin sync scope-aware for the per-scope install registry
 goal: Pass-2 install and pass-5 uninstall treat only user-scope records in installed_plugins.json as kit-installed, so a project/local-scope install can no longer break the tri-state contract.
-status: ongoing
+status: in_review
 created: "2026-07-02T12:42:58-03:00"
-updated: "2026-07-02T13:15:32-03:00"
+updated: "2026-07-02T13:20:36-03:00"
+in_review_since: "2026-07-02T13:20:36-03:00"
 started_at: "2026-07-02T13:15:32-03:00"
 assignee: null
 tags: [sync, plugins, claude]
@@ -30,11 +31,11 @@ Observed failure (2026-07-02, healed manually): a SoT-`false` plugin had only a 
 
 | # | Task | Depends | Status |
 |---|------|---------|--------|
-| 1 | Scope-aware install predicate in `claude::_plugins_install`: replace the skip test `jq -e '.plugins[$n] // empty'` with a user-scope test — `.plugins[$n] // empty | (if type == "array" then . else [.] end) | any(.scope? == "user")` (the type guard tolerates any legacy single-object format) | — | planned |
-| 2 | Scope-aware uninstall in `claude::_plugins_uninstall`: pass `--scope user` explicitly, and only attempt uninstall when a user-scope record exists (reuse the step-1 predicate); project/local records are project-owned and out of the kit's jurisdiction | 1 | planned |
-| 3 | Fixture verification: write 4 synthetic `installed_plugins.json` fixtures to a temp dir (user-only, project-only, both, legacy-object) and run the step-1 jq predicate against each; then `bash -n lib/claude.sh` and `./sync.sh --claude --dry-run` | 1, 2 | planned |
-| 4 | Docs/skill sync: update `.claude/skills/plugin-bootstrap-context/references/seven-pass-flow.md` (quotes the old pass-2 jq verbatim in its Pass 2 snippet), the SKILL.md pass table if wording changes, bump `metadata.updated`; adjust the CLAUDE.md "Install plugins on a new machine" sentence ("anything missing from installed_plugins.json" → "anything without a user-scope install record") | 1, 2 | planned |
-| 5 | Steady-state idempotence check: run `./sync.sh --claude` twice; second run must report `plugins: +0 ~0 -0` | 3 | planned |
+| 1 | Scope-aware install predicate in `claude::_plugins_install`: replace the skip test `jq -e '.plugins[$n] // empty'` with a user-scope test — `.plugins[$n] // empty | (if type == "array" then . else [.] end) | any(.scope? == "user")` (the type guard tolerates any legacy single-object format) | — | done |
+| 2 | Scope-aware uninstall in `claude::_plugins_uninstall`: pass `--scope user` explicitly, and only attempt uninstall when a user-scope record exists (reuse the step-1 predicate); project/local records are project-owned and out of the kit's jurisdiction | 1 | done |
+| 3 | Fixture verification: write 4 synthetic `installed_plugins.json` fixtures to a temp dir (user-only, project-only, both, legacy-object) and run the step-1 jq predicate against each; then `bash -n lib/claude.sh` and `./sync.sh --claude --dry-run` | 1, 2 | done |
+| 4 | Docs/skill sync: update `.claude/skills/plugin-bootstrap-context/references/seven-pass-flow.md` (quotes the old pass-2 jq verbatim in its Pass 2 snippet), the SKILL.md pass table if wording changes, bump `metadata.updated`; adjust the CLAUDE.md "Install plugins on a new machine" sentence ("anything missing from installed_plugins.json" → "anything without a user-scope install record") | 1, 2 | done |
+| 5 | Steady-state idempotence check: run `./sync.sh --claude` twice; second run must report `plugins: +0 ~0 -0` | 3 | done |
 
 ## Acceptance criteria
 
