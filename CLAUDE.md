@@ -54,7 +54,7 @@ Reference examples in this repo:
 
 #### Install plugins on a new machine
 
-`./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SoT and runs `claude plugin marketplace add` + `claude plugin install` for anything missing from `~/.claude/plugins/known_marketplaces.json` / `installed_plugins.json`. Both CLI commands are idempotent, so reruns are no-ops.
+`./sync.sh` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SoT and runs `claude plugin marketplace add` for anything missing from `~/.claude/plugins/known_marketplaces.json` and `claude plugin install` for anything lacking a **user-scope** record in `installed_plugins.json` (records are per-scope arrays on Claude Code ≥2.1.198; a project-scope install elsewhere doesn't count). Both CLI commands are idempotent, so reruns are no-ops.
 
 The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `SoT/.claude/settings.json`, then run `./sync.sh`. To pick up the new plugin in an active session, run `/reload-plugins`.
 
@@ -277,10 +277,10 @@ For plugins it runs seven idempotent passes via the `claude plugin` CLI:
 | Pass | Mode | What it does |
 |------|------|--------------|
 | 1 | always | `claude plugin marketplace add` for any SoT `extraKnownMarketplaces` not yet cloned |
-| 2 | always | `claude plugin install` for any SoT `enabledPlugins` key (true OR false) not in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load. **Side effect:** `claude plugin install` enables the plugin at user scope (writes `"<id>": true` into `~/.claude/settings.json`), clobbering the `false` the settings merge wrote — pass 7 corrects this |
+| 2 | always | `claude plugin install` for any SoT `enabledPlugins` key (true OR false) without a **user-scope** record in `installed_plugins.json`. `false`-keyed plugins still get installed so per-project enable has something to load. **Side effect:** `claude plugin install` enables the plugin at user scope (writes `"<id>": true` into `~/.claude/settings.json`), clobbering the `false` the settings merge wrote — pass 7 corrects this |
 | 3 | always | `claude plugin marketplace update` (refresh manifests) |
 | 4 | always | `claude plugin update <name>` for each installed plugin (idempotent — no-op when already at latest) |
-| 5 | `--remove-plugins` | `claude plugin uninstall -y <name>` for installed plugins whose key is **absent** from SoT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed) |
+| 5 | `--remove-plugins` | `claude plugin uninstall -y --scope user <name>` for installed plugins whose key is **absent** from SoT `enabledPlugins`. `false`-keyed plugins are preserved (intentionally listed as globally-disabled-but-installed); project/local-scope install records are project-owned and never touched |
 | 6 | `--remove-plugins` | `claude plugin marketplace remove <name>` for marketplaces **not** in SoT `extraKnownMarketplaces` (built-in `claude-plugins-official` is never removed) |
 | 7 | always | Re-assert SoT enabled-state: rewrite `~/.claude/settings.json` `enabledPlugins` so SoT-declared values win (`(.enabledPlugins // {}) * $sot`), undoing pass 2's enable side effect. Without this, every `false`-keyed third-party plugin ships globally **enabled** — defeating the per-project scoping contract. User-only `enabledPlugins` entries are preserved |
 

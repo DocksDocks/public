@@ -35,14 +35,22 @@ Data source: `SoT/.claude/settings.json` `.extraKnownMarketplaces`. Format: `<na
 ```bash
 while IFS= read -r plugin_id; do
   [[ -z "$plugin_id" ]] && continue
-  if [[ -f "$installed_plugins" ]] && jq -e --arg n "$plugin_id" '.plugins[$n] // empty' "$installed_plugins" >/dev/null 2>&1; then
-    continue   # already installed (claude::_plugins_install — installed pre-check)
+  if claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id"; then
+    continue   # already installed at user scope (claude::_plugins_install — installed pre-check)
   fi
   claude::_cli plugin install "$plugin_id" >/dev/null 2>&1 …  # plugin install
 done < <(jq -r '.enabledPlugins // {} | keys[]' "$repo_settings")  # claude::_plugins_install — keys read
 ```
 
-Reads ALL keys from `enabledPlugins` (both `true` and `false` values). Pre-check: key presence in `installed_plugins.json`.
+The pre-check is the scope-aware predicate (`claude::_plugin_user_scope_installed`):
+
+```bash
+jq -e --arg n "$plugin_id" \
+  '.plugins[$n] // empty | (if type == "array" then . else [.] end) | any(.scope? == "user")' \
+  "$installed_plugins" >/dev/null 2>&1
+```
+
+Reads ALL keys from `enabledPlugins` (both `true` and `false` values). Pre-check: a **user-scope** record in `installed_plugins.json` — registry values are per-scope record arrays (Claude Code ≥2.1.198, `scope: user|project|local`); the type guard tolerates the legacy single-object form. A project/local-scope-only record does NOT count as installed, so it can't suppress the user-scope install the tri-state contract promises.
 
 ## Pass 3: Marketplace Update (`claude::_plugins_update`)
 
@@ -72,12 +80,13 @@ Iterates ALL installed plugins (not just kit-managed). Each update is `|| true`;
 while IFS= read -r plugin_id; do
   [[ -z "$plugin_id" ]] && continue
   if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$repo_settings" >/dev/null 2>&1; then  # claude::_plugins_uninstall — the has($n) guard
-    claude::_cli plugin uninstall -y "$plugin_id" >/dev/null 2>&1 …  # plugin uninstall
+    claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id" || continue  # user-scope records only
+    claude::_cli plugin uninstall -y --scope user "$plugin_id" >/dev/null 2>&1 …  # plugin uninstall
   fi
 done < <(jq -r '.plugins | keys[]' "$installed_plugins")  # installed plugins read
 ```
 
-`has($n)` = key present in object, regardless of value. `false`-valued keys PASS `has()`.
+`has($n)` = key present in object, regardless of value. `false`-valued keys PASS `has()`. The kit uninstalls **user-scope records only** (explicit `--scope user`, gated on the scope-aware predicate) — a project/local-scope install is project-owned and never touched, even when its key is absent from SoT.
 
 ## Pass 6: Remove Extra Marketplaces (`claude::_plugins_remove_marketplaces`) — `--remove-plugins` only
 

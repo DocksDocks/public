@@ -415,14 +415,26 @@ claude::_plugins_add_marketplaces() {
   echo "$added $failed"
 }
 
-# Pass 2 — install any SoT-enabled plugin not yet installed.
+# True when installed_plugins.json records a USER-scope install for the plugin.
+# Registry values are per-scope record arrays (Claude Code >= 2.1.198); the
+# type guard tolerates the older single-object form. A project/local-scope
+# record does NOT count — the kit's tri-state contract requires user scope.
+claude::_plugin_user_scope_installed() {
+  local installed_plugins="$1" plugin_id="$2"
+  [[ -f "$installed_plugins" ]] || return 1
+  jq -e --arg n "$plugin_id" \
+    '.plugins[$n] // empty | (if type == "array" then . else [.] end) | any(.scope? == "user")' \
+    "$installed_plugins" >/dev/null 2>&1
+}
+
+# Pass 2 — install any SoT-enabled plugin not yet installed at user scope.
 claude::_plugins_install() {
   local repo_settings="$1" installed_plugins="$2"
   local plugin_id added=0 failed=0
 
   while IFS= read -r plugin_id; do
     [[ -z "$plugin_id" ]] && continue
-    if [[ -f "$installed_plugins" ]] && jq -e --arg n "$plugin_id" '.plugins[$n] // empty' "$installed_plugins" >/dev/null 2>&1; then
+    if claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id"; then
       continue
     fi
     if claude::_cli plugin install "$plugin_id" >/dev/null 2>&1; then
@@ -467,7 +479,8 @@ claude::_plugins_uninstall() {
     while IFS= read -r plugin_id; do
       [[ -z "$plugin_id" ]] && continue
       if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$repo_settings" >/dev/null 2>&1; then
-        if claude::_cli plugin uninstall -y "$plugin_id" >/dev/null 2>&1; then
+        claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id" || continue
+        if claude::_cli plugin uninstall -y --scope user "$plugin_id" >/dev/null 2>&1; then
           removed=$((removed + 1))
         else
           warn "Failed to uninstall plugin: $plugin_id"
