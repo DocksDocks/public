@@ -88,7 +88,7 @@ The kit declares **user-scoped** MCP servers in `SoT/.claude/mcp-servers.json`, 
 
 Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
 
-*Verified working: **rtk 0.42.4** ([release notes](https://github.com/rtk-ai/rtk/releases/tag/v0.42.4), 2026-06-12). Upgrade rationale and supply-chain notes live in commit messages; only the current verified version is recorded here.*
+*Verified working: **rtk 0.43.0** ([release notes](https://github.com/rtk-ai/rtk/releases/tag/v0.43.0), 2026-07-02). Upgrade rationale and supply-chain notes live in commit messages; only the current verified version is recorded here.*
 
 `rtk init -g` generates `~/.claude/RTK.md` and the `@RTK.md` import in `~/.claude/CLAUDE.md`. The PreToolUse hook entry comes from this kit's SoT (`SoT/.claude/settings.json`) — the command is `rtk hook claude` (direct, no shim script). RTK 0.38.0 dropped the previous `~/.claude/hooks/rtk-rewrite.sh` shim; older docs that mention it are stale.
 
