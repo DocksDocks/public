@@ -1,10 +1,10 @@
 ---
 title: Make claude plugin sync scope-aware for the per-scope install registry
 goal: Pass-2 install and pass-5 uninstall treat only user-scope records in installed_plugins.json as kit-installed, so a project/local-scope install can no longer break the tri-state contract.
-status: planned
+status: ongoing
 created: "2026-07-02T12:42:58-03:00"
-updated: "2026-07-02T12:42:58-03:00"
-started_at: null
+updated: "2026-07-02T13:15:32-03:00"
+started_at: "2026-07-02T13:15:32-03:00"
 assignee: null
 tags: [sync, plugins, claude]
 affected_paths:
