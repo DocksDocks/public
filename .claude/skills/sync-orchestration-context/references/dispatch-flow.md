@@ -13,7 +13,7 @@ sync.sh
 ├── common::preflight             (sync.sh (common::preflight call) — checks jq + curl)
 │
 ├── [[ SYNC_CLAUDE && -d SoT/.claude ]] → source lib/claude.sh → claude::sync
-│   ├── claude::sync_scripts      (statusline.sh, fetch-usage.sh, alert_bubble.mp3)
+│   ├── claude::sync_scripts      (statusline.sh, fetch-usage.sh, notification.mp3)
 │   ├── claude::sync_hooks        (SoT/.claude/hooks/ → ~/.claude/hooks/)
 │   ├── claude::sync_claude_md    (SoT/.claude/CLAUDE.md → ~/.claude/CLAUDE.md)
 │   ├── claude::sync_settings     (dual-mode merge)

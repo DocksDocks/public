@@ -30,14 +30,14 @@ claude::sync() {
 
 claude::sync_scripts() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] cp statusline.sh, fetch-usage.sh, alert_bubble.mp3"
+    echo "[dry-run] cp statusline.sh, fetch-usage.sh, notification.mp3"
     return
   fi
 
   cp "$REPO_DIR/SoT/.claude/statusline.sh" "$CLAUDE_DIR/"
   cp "$REPO_DIR/SoT/.claude/fetch-usage.sh" "$CLAUDE_DIR/"
   chmod +x "$CLAUDE_DIR/statusline.sh" "$CLAUDE_DIR/fetch-usage.sh"
-  [[ -f "$REPO_DIR/alert_bubble.mp3" ]] && cp "$REPO_DIR/alert_bubble.mp3" "$CLAUDE_DIR/"
+  [[ -f "$REPO_DIR/notification.mp3" ]] && cp "$REPO_DIR/notification.mp3" "$CLAUDE_DIR/"
   log "Scripts synced (statusline, fetch-usage, alert)"
 }
 
@@ -310,7 +310,7 @@ claude::_removed_manifest() {
   cat <<'JSON'
 {
   "hooks":          ["disable-claudeai-connectors.sh"],
-  "files":          [],
+  "files":          ["alert_bubble.mp3"],
   "settingsKeys": [
     "showTurnDuration",
     "advisorModel",

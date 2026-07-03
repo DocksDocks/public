@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SOUND="$HOME/.claude/alert_bubble.mp3"
+SOUND="$HOME/.claude/notification.mp3"
 [ -f "$SOUND" ] || exit 0
 
 if [ "$(uname)" = "Darwin" ]; then

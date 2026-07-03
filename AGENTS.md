@@ -17,7 +17,7 @@ Tool-specific instructions live alongside this file:
 | `sync.sh` | Multi-tool deploy script. Detects which SoT directories exist and dispatches per-tool sync. Idempotent; flag-gated for destructive reconciliation |
 | `lib/` | Shared sync helpers — `common.sh` for argument parsing/preflight, plus per-tool `claude.sh` / `codex.sh` / `skills.sh` sync implementations |
 | `SoT/.agents/skills.txt` | Universal-skill manifest. One [agentskills.io](https://agentskills.io) slug per line; `lib/skills.sh` runs `npx skills add` for each missing entry into `~/.agents/skills/`, where Codex et al. discover it natively and Claude Code follows a symlink at `~/.claude/skills/` |
-| `alert_bubble.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
+| `notification.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
 | `docs/plans/` | Multi-commit work-item plans (`active/` with status in frontmatter, plus `finished/` archive). Convention: `docs/plans/AGENTS.md` |
 | `CLAUDE.md` | Claude-specific instructions; imports this `AGENTS.md` |
 | `AGENTS.md` | This file — tool-agnostic instructions |
