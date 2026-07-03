@@ -36,7 +36,7 @@
       "name": "effect-kit",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/DocksDocks/effect-kit.git",
+        "url": "https://github.com/DocksDocks/docks.git",
         "path": "./plugins/effect-kit",
         "ref": "main"
       },

@@ -245,7 +245,7 @@
     "supabase@claude-plugins-official": false,
     "docks@docks": true,
     "session-relay@docks": true,
-    "effect-kit@effect-kit": true
+    "effect-kit@docks": true
   },
   "extraKnownMarketplaces": {
     "n8n-mcp-skills": {
@@ -258,12 +258,6 @@
       "source": {
         "source": "github",
         "repo": "DocksDocks/docks"
-      }
-    },
-    "effect-kit": {
-      "source": {
-        "source": "github",
-        "repo": "DocksDocks/effect-kit"
       }
     }
   },

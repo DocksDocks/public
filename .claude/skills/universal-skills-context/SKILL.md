@@ -8,7 +8,7 @@ metadata:
       lines: "1-391"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-06-23"
+  updated: "2026-07-03"
 ---
 
 # Universal Skills Bootstrap
@@ -133,7 +133,7 @@ The `-a '*'` in the remove command removes from ALL agent tool directories. The 
 - `skills::heal_claude_symlink` is called on EVERY sync for already-present skills (skills::sync_universal (heal call in pre-check)) — symlinks can drift without the user noticing.
 - `agent-browser` has its own install helper (`skills::sync_agent_browser_cli`) because the SKILL.md alone provides instructions but the CLI binary drives Chrome (skills::sync_agent_browser_cli). Unlike the install-once skills, it also **self-upgrades**: when the binary is present it compares the installed version against `npm view agent-browser version` (`skills::_agent_browser_newer_npm`, the numeric per-field sort borrowed from `claude::_warn_rtk_outdated`) and re-runs `npm install -g agent-browser` only when strictly older — a locally-newer pre-release is never downgraded, and a missing/offline npm skips the check. The Chrome download (`agent-browser install`) is NOT repeated on upgrade, so routine syncs don't re-trigger the Linux `--with-deps` sudo prompt.
 - `SKILLS_PRESENT` tally (skills::sync_universal (SKILLS_PRESENT tally)) counts installed + already-present for the summary; does NOT re-scan `~/.agents/skills/` (which would include user-installed skills).
-- The optional `effect-solutions` CLI has its own helper (`skills::sync_effect_solutions_cli`), gated on effect-kit being enabled in SoT (a `grep` for `"effect-kit@effect-kit": true` in `SoT/.claude/settings.json`). It symlinks BOTH `bun` and the CLI into `~/.local/bin` (`skills::sync_effect_solutions_cli` (ln -sf both binaries)) — linking only the CLI fails at run time because its `#!/usr/bin/env bun` shebang needs `bun` on PATH too. `bun pm -g bin` is the authoritative global-bin query (it varies with `BUN_INSTALL`/`XDG_CACHE_HOME`); `skills::_find_bun` resolves bun itself, which also lives off the non-interactive PATH.
+- The optional `effect-solutions` CLI has its own helper (`skills::sync_effect_solutions_cli`), gated on effect-kit being enabled in SoT (a `grep` for `"effect-kit@docks": true` in `SoT/.claude/settings.json`). It symlinks BOTH `bun` and the CLI into `~/.local/bin` (`skills::sync_effect_solutions_cli` (ln -sf both binaries)) — linking only the CLI fails at run time because its `#!/usr/bin/env bun` shebang needs `bun` on PATH too. `bun pm -g bin` is the authoritative global-bin query (it varies with `BUN_INSTALL`/`XDG_CACHE_HOME`); `skills::_find_bun` resolves bun itself, which also lives off the non-interactive PATH.
 
 ## Gotchas
 

@@ -246,7 +246,7 @@ skills::_find_bun() {
 # then-run, per the kit's no-`curl|bash` rule).
 skills::sync_effect_solutions_cli() {
   local settings="$REPO_DIR/SoT/.claude/settings.json"
-  grep -Eq '"effect-kit@effect-kit"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
+  grep -Eq '"effect-kit@docks"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     if command -v effect-solutions >/dev/null 2>&1; then
