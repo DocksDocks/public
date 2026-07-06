@@ -3,7 +3,7 @@ title: Fix 12 code-level defects in lib/*.sh & SoT surfaced by the skills audit
 goal: Tier and fix the sync-kit bugs (RTK hook wipe, unguarded cp, silent no-op target, missing .bak, --force no-op, rule-gate gaps) found by the 2026-07-06 audit.
 status: finished
 created: "2026-07-06T12:25:43-03:00"
-updated: "2026-07-06T13:02:26-03:00"
+updated: "2026-07-06T13:03:42-03:00"
 started_at: "2026-07-06T12:41:11-03:00"
 ship_commit: "a657d7617303fdd8fcba41d13b9f3aef48410ffe"
 assignee: null
@@ -15,9 +15,11 @@ affected_paths:
   - lib/skills.sh
   - SoT/.codex/rules/docks.rules
   - SoT/.claude/settings.json
+  - .claude/skills/plugin-bootstrap-context/SKILL.md
+  - .claude/skills/codex-config-merge-context/references/rules-format.md
 related_plans:
   - finished/2026-07-06-skills-agents-audit.md
-review_status: null
+review_status: passed
 ---
 
 ## Goal
@@ -135,4 +137,8 @@ Per-finding notes on the two policy fixes:
 
 ## Review
 
-_(filled by plan-review on completion)_
+- **Goal met:** yes — all 12 findings (F1–F12) land as real code changes in the three tier commits and each addresses its defect; the 4 decided directions (Q1→B re-assert hook, Q2→Dir 1 preserve, Q3→Opt 1 demote rg/sed -n, Q4→A shared normalizer) are honored verbatim.
+- **Regressions:** none — F1 jq merge preserves SessionStart/Stop/rtkKey (verified by simulated merge); F5 FORCE removal touched only the two intended functions (no other reset path lost); F6 leaves bare tail/grep/sort/head allow; docks.rules brackets 103/103, quotes even.
+- **CI:** n/a (no project CI command) — stated loop `./sync.sh --dry-run` (exit 0), `bash -n lib/*.sh sync.sh` (clean), `jq empty SoT/.claude/settings.json` (valid), F3 bogus target exit 2 all green.
+- **Follow-ups:** none — optional nit: two doc files changed are announced in the body but absent from frontmatter `affected_paths`.
+- Filed by: plan-review on 2026-07-06T13:03:42-03:00
