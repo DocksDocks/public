@@ -133,15 +133,30 @@ Each pass-1–6 helper echoes `"<count> <failed>"`; the orchestrator sums the fa
 failed=$((f1 + f2 + f3 + f4 + f5))
 ```
 
-Non-zero `failed` triggers a `warn` after the dispatch (`claude::sync_plugins` — post-dispatch warn). The sync is not aborted — caller continues. The helpers return counts via stdout (not namerefs) for bash 3.2 / macOS `/bin/bash` portability (comment at `claude::_cli` — portability note).
+Non-zero `failed` triggers a `warn` after the dispatch (`claude::sync_plugins` — post-dispatch warn). The sync is not aborted — caller continues. The helpers return counts via stdout (not namerefs) for bash 3.2 / macOS `/bin/bash` portability (comment at `claude::_plugins_add_marketplaces` — echo-return portability note).
 
 ## Codex Marketplace Dedup Logic (`codex::sync_marketplace` — unique_by dedup)
 
 ```
-user_plugins + repo_plugins
-→ reverse (user entries now at end)
-→ unique_by(.name) (last entry for a name wins = user entry wins)
-→ reverse (restore order)
+user_plugins + repo_plugins        (user first, repo last)
+→ reverse                          (repo entries now first)
+→ unique_by(.name)                 (keeps FIRST occurrence → repo/SoT entry wins on collision)
+→ reverse                          (restore order)
 ```
 
-Effect: user customizations to an existing plugin entry survive merge. Repo-only new plugins are appended.
+Effect: on a `.name` collision the SoT/repo entry wins; user-only plugins (no collision) survive additively. Repo-only new plugins are appended.
+
+## Codex Enabled-Plugin Parser (`codex::_enabled_plugin_ids`)
+
+An awk state machine over `SoT/.codex/config.toml` that emits `name@marketplace` for each plugin table whose body carries `enabled = true`. Feeds `codex::sync_plugins`' add loop.
+
+| awk rule | Trigger | Effect |
+|----------|---------|--------|
+| `flush_plugin()` | New `[plugins."name@mp"]` header, any other `[…]` table boundary, and `END` | Prints `plugin` only when `enabled == 1`; the header rule then captures the next name and resets `enabled = 0` |
+| enabled test | `plugin != ""` and a line matching `^[[:space:]]*enabled[[:space:]]*=[[:space:]]*true([[:space:]]*(#.*)?)?$` | Sets `enabled = 1` |
+
+Invariants (`codex::_enabled_plugin_ids` — the awk block):
+
+- **Flush on every table boundary and at END.** A plugin's verdict is committed the moment the next `[` header appears (or the file ends), so each table is emitted at most once.
+- **Comment-tolerant enabled match.** The regex allows trailing whitespace and a `# comment` after `true`, so `enabled = true  # note` still counts.
+- **Omitted `enabled` line defaults to DISABLED.** `enabled` resets to `0` on each new table header and only `= true` sets `1`; a plugin table with no `enabled` line is never printed.

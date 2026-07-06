@@ -18,7 +18,7 @@ sync.sh
 │   ├── claude::sync_claude_md    (SoT/.claude/CLAUDE.md → ~/.claude/CLAUDE.md)
 │   ├── claude::sync_settings     (dual-mode merge)
 │   ├── claude::sync_claude_json  (showTurnDuration → ~/.claude.json)
-│   ├── claude::sync_plugins      (six-pass reconcile)
+│   ├── claude::sync_plugins      (seven-pass reconcile)
 │   └── claude::sync_rtk          (RTK install + init gate)
 │
 ├── [[ SYNC_CODEX && -d SoT/.codex ]] → source lib/codex.sh → codex::sync
@@ -47,7 +47,7 @@ Every step is designed as a no-op when already applied:
 |------|-----------|
 | `cp repo_settings user_settings` | `[[ ! -f "$user_settings" ]]` (claude::sync_settings) |
 | `claude plugin marketplace add` | `jq -e '.[$n]' known_marketplaces.json` (claude::_plugins_add_marketplaces) |
-| `claude plugin install` | `jq -e '.plugins[$n]' installed_plugins.json` (claude::_plugins_install) |
+| `claude plugin install` | `jq -e '.plugins[$n] // empty \| … \| any(.scope? == "user")'` — requires a **user-scope** install record, not merely any record (claude::_plugin_user_scope_installed, the `any(.scope? == "user")` test; called by claude::_plugins_install) |
 | `npx skills add` | `[[ -d "$SKILLS_DIR/$basename" ]]` (skills::sync_universal) |
 
 ## New Tool Addition Checklist

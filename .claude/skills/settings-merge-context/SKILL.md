@@ -10,7 +10,7 @@ metadata:
       lines: "1-13"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-9"
-  updated: "2026-06-18"
+  updated: "2026-07-06"
 ---
 
 # Settings Merge
@@ -144,8 +144,8 @@ Both follow the full settings-write contract: flag-off `return 0` first, then dr
 
 ## Gotchas
 
-- **Missing `// []` in permissions concat**: if either `$user.permissions.allow` or `$repo.permissions.allow` is null (key absent), the concat `+` would fail without the `// []` fallback. (`claude::_settings_merge (permissions concat+unique)`)
-- **`$schema` key position after merge**: jq does not preserve key order. The `$schema` key from `settings.json:1` may appear anywhere in the merged output. This is cosmetic only; Claude Code does not require it at position 0.
+- **Missing `// []` in permissions concat**: jq's `+` handles a single-sided null fine (`null + [...]` is the array), so one absent key is harmless. The `// []` fallback matters only when BOTH sides lack the key — `null + null` yields `null`, and the following `| unique` then errors (`Cannot iterate over null`). (`claude::_settings_merge (permissions concat+unique)`)
+- **`$schema` key position after merge**: jq does not preserve key order. The `$schema` key at the top of settings.json may appear anywhere in the merged output. This is cosmetic only; Claude Code does not require it at position 0.
 - **`getpath` must bind the root in `claude::_prune_json_keys`**: after `$k[]` the jq `.` context is the key *string*, so `getpath($p)` must run against a captured `. as $doc` — otherwise the present-count is always 0 and the `present > 0` guard skips the prune (the `delpaths` itself is unaffected). (`claude::_prune_json_keys (the present-count jq)`)
 - **`jq empty` guard returns silently on corrupt JSON**: `claude::_settings_validate` returns 1 (caller returns early) on corrupt settings.json (`claude::_settings_validate (jq empty guard)`). The corrupt file is left in place — the user must fix it manually. Symptom: sync reports no settings changes but the file is unchanged.
 - **`claude::sync_removals` dry-run branch must `return 0` explicitly**: it ends with `[[ "$skeys" -gt 0 ]] && echo ...; [[ "$cjkeys" -gt 0 ]] && echo ...; return`. When both counts are 0 (the steady state) the trailing `[[ ]]` test leaves `$?=1`, and a bare `return` propagates it — so the whole sync exits 1 under `set -e`, aborting before `sync_plugins`/`sync_rtk` (and aborting any `set -e` caller, e.g. a web-env setup script). The fix is an explicit `return 0`. (`claude::sync_removals (the dry-run return)`)

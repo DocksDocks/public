@@ -20,12 +20,12 @@ Plugin IDs follow the `<name>@<marketplace>` format. Using just `<name>` without
 </constraint>
 
 <constraint>
-The Codex marketplace `unique_by(.name)` dedup uses reverse-then-unique-then-reverse to let user entries win over SoT entries for the same `.name`. Reversing the order changes whose entry wins.
+The Codex marketplace `unique_by(.name)` dedup concatenates `$user.plugins + $repo.plugins`, then reverse-unique-reverse keeps the last-in-original occurrence on a `.name` collision — so the SoT/repo entry (concatenated last) wins; user-only plugins with no colliding `.name` survive additively (`codex::sync_marketplace`).
 </constraint>
 
 ## Workflow
 
-1. Read `.claude/skills/plugin-bootstrap-context/SKILL.md` for the six-pass structure and tri-state semantics.
+1. Read `.claude/skills/plugin-bootstrap-context/SKILL.md` for the seven-pass structure and tri-state semantics.
 2. For detailed pass logic or Codex marketplace dedup, read `.claude/skills/plugin-bootstrap-context/references/seven-pass-flow.md`.
 3. For adding/removing `enabledPlugins` entries or per-project enable patterns, read `.claude/skills/plugin-bootstrap-context/references/tri-state-semantics.md`.
 4. Identify which pass(es) are affected: marketplace add (pass 1), install (pass 2), update (passes 3/4), uninstall (pass 5), marketplace remove (pass 6).
@@ -51,7 +51,7 @@ Protected built-in guard (`claude::_plugins_remove_marketplaces` — claude-plug
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
 
-Tri-state examples (`SoT/.claude/settings.json:245-257`):
+Tri-state examples (the `enabledPlugins` block in `SoT/.claude/settings.json`):
 ```json
 "docks@docks": true,
 "n8n-mcp-skills@n8n-mcp-skills": false,
@@ -75,7 +75,7 @@ Read these for detailed knowledge:
 
 1. Before citing `claude::_plugins_uninstall` (the `has($n)` guard), read that function and confirm it uses `has($n)`, not a truthiness test.
 2. Before citing `claude::_plugins_remove_marketplaces` (claude-plugins-official guard), read that function and confirm the `claude-plugins-official` guard string exactly.
-3. Confirm `SoT/.claude/settings.json:245-257` values match the tri-state table before describing semantics.
+3. Confirm the `enabledPlugins` block values in `SoT/.claude/settings.json` match the tri-state table before describing semantics.
 4. When citing skill paths, confirm `.claude/skills/plugin-bootstrap-context/` exists on disk.
 
 ## Success Criteria

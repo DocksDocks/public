@@ -9,8 +9,8 @@ metadata:
     - path: SoT/.codex/config.toml
       lines: "1-23"
     - path: SoT/.codex/rules/docks.rules
-      lines: "1-50"
-  updated: "2026-06-23"
+      lines: "1-115"
+  updated: "2026-07-06"
 ---
 
 # Codex Config Merge
@@ -111,6 +111,13 @@ Returns early (no-op) if `use_legacy_landlock` not present. Only runs when the d
 
 Package manager detection precedence: `apt-get` → `dnf` → `pacman` → `zypper` (`codex::_bwrap_detect_pm_install_cmd`).
 
+**Sub-helpers** (both called by `codex::ensure_bubblewrap`):
+
+| Helper | Role | Behavior |
+|--------|------|----------|
+| `codex::_bwrap_supported_os` | OS gate | `Darwin*` → `return 1` (Seatbelt native, skip); `Linux*` → `return 0` (proceed); unknown OS → `warn` + `return 1` |
+| `codex::_bwrap_detect_pm_install_cmd` | PM install matrix | Echoes the first-found package manager's `sudo … install` command (probe order `apt-get` → `dnf` → `pacman` → `zypper`); empty string when none found |
+
 Validation after install: `unshare -Ur true` (`codex::_bwrap_verify_userns`) — tests unprivileged user namespaces used by system bubblewrap and the bundled Codex helper. Ubuntu 24.04+ AppArmor restrictions can block this; the warning should point to the `bwrap-userns-restrict` profile first and the `kernel.apparmor_restrict_unprivileged_userns=0` sysctl only as a fallback.
 
 ### `codex::sync_rules`
@@ -126,7 +133,7 @@ done < <(find "$codex_rules_dir" -maxdepth 1 -type f -name '*.rules' | sort)
 
 Kit-managed `*.rules` files are copied wholesale (not merged). `~/.codex/rules/default.rules` (user-learned Codex approvals) is never touched — it's not in `SoT/.codex/rules/`.
 
-### `docks.rules` Format (SoT/.codex/rules/docks.rules:1-50)
+### `docks.rules` Format
 
 ```
 prefix_rule(pattern=["<cmd>", "<subcommand>"], decision="<allow|prompt|forbidden>")

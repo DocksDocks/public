@@ -1,6 +1,6 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with user-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
 user-invocable: false
 metadata:
   source_files:
@@ -12,7 +12,7 @@ metadata:
       lines: "237-268"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-07-05"
+  updated: "2026-07-06"
 ---
 
 # Plugin Bootstrap
@@ -53,7 +53,7 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 | `false` | Yes | No | Yes (project settings.json) | Yes (`has()` passes) |
 | absent | No | — | No (nothing to flip) | No (uninstalled by `--remove-plugins`) |
 
-Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json:245-257 (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
+Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
 
 ### Seven-Pass Reconcile (`claude::sync_plugins` orchestrator)
 
@@ -118,7 +118,7 @@ jq -s '.[0].enabledPlugins as $sot | .[1]
    "$repo_settings" "$user_settings" > "$user_settings.tmp" && mv ...
 ```
 
-`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote moments earlier (settings sync runs at `claude::sync` step 4, plugins at step 8). A bare jq rewrite of that back to `false` **loses a race**: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix disables SoT-`false` plugins through the CLI's own `claude plugin disable` verb first (authoritative — sticks in a single pass), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved). The disable is guarded on the plugin being currently `true` because re-disabling an already-disabled plugin is a CLI error (exit 1); that keeps steady-state syncs silent. If `claude plugin disable` is unavailable the jq-normalize still runs, degrading to the old two-sync behavior rather than breaking. This affects **every** plugin installed via `claude plugin install`, built-in `claude-plugins-official` ones included — `supabase` (a `false`-keyed official plugin) is re-enabled on fresh install and disabled by this pass.
+`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote moments earlier (in `claude::sync`, `claude::sync_settings` runs before `claude::sync_plugins`). A bare jq rewrite of that back to `false` **loses a race**: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix disables SoT-`false` plugins through the CLI's own `claude plugin disable` verb first (authoritative — sticks in a single pass), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved). The disable is guarded on the plugin being currently `true` because re-disabling an already-disabled plugin is a CLI error (exit 1); that keeps steady-state syncs silent. If `claude plugin disable` is unavailable the jq-normalize still runs, degrading to the old two-sync behavior rather than breaking. This affects **every** plugin installed via `claude plugin install`, built-in `claude-plugins-official` ones included — `supabase` (a `false`-keyed official plugin) is re-enabled on fresh install and disabled by this pass.
 
 ### LSP Server Binary Bootstrap (`claude::sync_lsp_servers`)
 
@@ -139,7 +139,7 @@ jq -s '
 ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"
 ```
 
-`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — last entry for a given `.name` survives `unique_by`. Since user array is first, reversing puts user entries LAST, `unique_by` keeps last = user entry wins on name collision. Second `reverse` restores original order. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the merge branch only when the user file exists and `FORCE=0` (`codex::sync_marketplace` — FORCE guard); otherwise installs wholesale.
+`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the merge branch only when the user file exists and `FORCE=0` (`codex::sync_marketplace` — FORCE guard); otherwise installs wholesale.
 
 ### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`)
 
@@ -157,7 +157,7 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 
 ## Key Decisions
 
-- Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at `claude::_cli` — portability note) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at `claude::sync_plugins` (failure sum).
+- Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at `claude::_plugins_add_marketplaces` — echo-return portability note) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at `claude::sync_plugins` (failure sum).
 - `|| true` on passes 3 and 4 (`claude::_plugins_update` — marketplace-update `|| true`, plugin-update `|| true`) — marketplace update and plugin updates are best-effort; failures must not abort the sync run.
 - `claude` CLI is checked with `command -v claude` (`claude::sync_plugins` — CLI presence check) before the dispatch block. If absent, the whole reconcile is skipped with a warning.
 - `codex::sync_plugins` checks `command -v codex` before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the official standalone installer fallback from `codex::_standalone_install_command` plus the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command`.

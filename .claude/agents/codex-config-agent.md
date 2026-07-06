@@ -30,7 +30,7 @@ Kit-managed `*.rules` files deploy from `SoT/.codex/rules/`; `~/.codex/rules/def
 1. Read `.claude/skills/codex-config-merge-context/SKILL.md` for the two-pass awk merger, deprecated-feature scrubber, and rules deployment.
 2. If modifying the awk merge logic, read `.claude/skills/codex-config-merge-context/references/awk-merger.md` for pass-1 and pass-2 annotated awk with edge cases.
 3. If adding or modifying Codex command policy rules, read `.claude/skills/codex-config-merge-context/references/rules-format.md` for `prefix_rule` format and decision tier table.
-4. For `codex::ensure_bubblewrap` changes: confirm macOS early-return is still at the top; verify package-manager detection order (apt-get → dnf → pacman → zypper).
+4. For `codex::ensure_bubblewrap` changes: confirm the macOS early-return lives in the `codex::_bwrap_supported_os` OS gate (the `Darwin*) return 1` case) that `ensure_bubblewrap` calls first; verify the package-manager install order (apt-get → dnf → pacman → zypper) in `codex::_bwrap_detect_pm_install_cmd`.
 5. For `codex::sync_rules` changes: confirm `find … -name '*.rules'` loop skips `default.rules` (it does because `default.rules` is not in `SoT/.codex/rules/`).
 6. For a new TOML top-level key in `SoT/.codex/config.toml`: verify `codex::merge_top_level_settings` picks it up (it processes all `key = value` lines from the SoT file).
 7. For a new TOML table in `SoT/.codex/config.toml`: verify `codex::merge_table_settings` picks it up (it processes all `^\[[^]]+\]` headers via grep at the end of `codex::merge_table_settings`).

@@ -94,4 +94,4 @@ Read these for detailed knowledge:
 - `$user * $repo` in jq: the RIGHT operand wins. In force mode `.[1] as $user | $user * $repo` means repo wins. Reversing operand order silently inverts merge direction.
 - Validity guard uses `2>/dev/null` — corrupted `settings.json` silently skips the entire sync. The `err` message is emitted but the function returns; callers may not notice without inspecting the log.
 - `claude::_prune_json_keys` present-count must bind the root with `. as $doc` before `getpath($p)` — after `$k[]` the `.` context is the key string, so an unbound `getpath` always counts 0 and the `present > 0` guard silently skips the prune (the `delpaths` itself is unaffected).
-- `unique` in jq preserves first-occurrence ordering, not alphabetical. New entries append at the end after dedup.
+- `unique` in jq SORTS its input (lexicographic for the permission strings) then removes duplicates, so the merged `permissions.allow/deny/ask` arrays are emitted in sorted order — not first-occurrence or append order (`claude::_settings_merge (the jq union)`).

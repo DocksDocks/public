@@ -19,7 +19,7 @@ prefix_rule(pattern=[<argv>], decision="<allow|prompt|forbidden>")
 |------|-------|---------|--------------------------|
 | Read-only ops | `allow` | Auto-approved, no user prompt | `ls`, `cat`, `git status`, `git diff`, `grep`, `jq` |
 | Mutating ops | `prompt` | User must confirm before execution | `rm`, `git push`, `sed -i`, `docker run`, `mv` |
-| Destructive/escalation | `forbidden` | Never approved, always blocked | `sudo`, `eval`, `mkfs`, `dd`, `git push --force-with-lease` (to main) |
+| Destructive/escalation | `forbidden` | Never approved, always blocked | `sudo`, `eval`, `mkfs`, `dd`, `git push --force origin main` |
 
 ## Pattern Matching Rules
 
@@ -37,7 +37,7 @@ prefix_rule(pattern=["sed", "-n"], decision="allow")
 Matches: `sed -n '/pattern/p' file` (read-only sed)
 Does not match: `sed -i 's/a/b/' file` (in-place edit; different second token → falls through to `prompt`)
 
-## Real Examples from `docks.rules` (lines 1-50)
+## Real Examples from `docks.rules`
 
 ```
 prefix_rule(pattern=["pwd"], decision="allow")

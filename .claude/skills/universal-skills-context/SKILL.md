@@ -1,6 +1,6 @@
 ---
 name: universal-skills-context
-description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, skills::_agent_browser_newer_npm, skills::sync_effect_solutions_cli, skills::_find_bun, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add <slug> -g -y -a claude-code codex invocation order (variadic -a would swallow the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/<name>/ + ~/.claude/skills/<name> symlink vs copy-direct), the relative symlink target ../../.agents/skills/<basename> matching the upstream CLI installer.ts, the ~/.agents/.kit-managed-skills snapshot diff for removals, the agent-browser install --with-deps Linux sudo prompt plus its self-upgrade-to-npm-latest check (numeric version sort, never downgrades), and the Bun-based effect-solutions CLI install (gated on effect-kit enabled, auto-installs Bun download-then-run, symlinks bun + CLI into ~/.local/bin to clear ~/.bashrc's non-interactive guard).
+description: Use when modifying skills::sync_universal, skills::heal_claude_symlink, skills::reconcile_removals, skills::update_snapshot, skills::sync_agent_browser_cli, skills::_agent_browser_newer_npm, skills::sync_effect_solutions_cli, skills::_find_bun, or any entry in SoT/.agents/skills.txt; covers the source-first npx skills add slug -g -y -a claude-code codex order (variadic -a swallows the slug if placed last), the two-agent vs single-agent storage model (canonical ~/.agents/skills/ + ~/.claude/skills/ symlink vs copy-direct), the ~/.agents/.kit-managed-skills snapshot diff for removals, the agent-browser install --with-deps Linux sudo prompt plus its self-upgrade-to-npm-latest check (numeric sort, never downgrades), and the Bun-based effect-solutions CLI install (gated on effect-kit enabled, auto-installs Bun, symlinks bun + CLI into ~/.local/bin to clear ~/.bashrc non-interactive guard).
 user-invocable: false
 metadata:
   source_files:
@@ -8,7 +8,7 @@ metadata:
       lines: "1-391"
     - path: SoT/.agents/skills.txt
       lines: "1-14"
-  updated: "2026-07-03"
+  updated: "2026-07-06"
 ---
 
 # Universal Skills Bootstrap

@@ -71,9 +71,11 @@ Read these for detailed knowledge:
 
 ## Integration
 
-- Hand off to `settings-json-agent` when change enters `claude::sync_settings`, `claude::sync_claude_json`, or `claude::sync_plugins`
-- Hand off to `codex-config-agent` when change enters any `codex::` function
+- Hand off to `settings-json-agent` when change enters `claude::sync_settings` or `claude::sync_claude_json`
+- Hand off to `plugin-bootstrap-agent` when change enters `claude::sync_plugins` or the codex plugin passes (`codex::sync_marketplace` / `codex::sync_plugins`)
+- Hand off to `codex-config-agent` when change enters any other `codex::` function
 - Hand off to `skills-bootstrap-agent` when change enters `skills::sync_universal` or `lib/skills.sh`
+- RTK bootstrap (`claude::sync_rtk`) is documented in the `sync-orchestration-context` skill
 
 ## Anti-Hallucination Checks
 

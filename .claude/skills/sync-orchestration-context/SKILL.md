@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: Use when editing sync.sh, lib/common.sh, or any flag in --force / --remove-plugins / --680k / --permissive / --no-rtk / --dry-run / --claude / --codex / --agents; covers TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of FORCE and REMOVE_PLUGINS env vars, the WINDOW_680K/PERMISSIVE deploy-time modifiers, SKIP_OPTIONAL_BOOTSTRAP semantics, common::parse_args and common::preflight invariants, and the requirement that every lib/<tool>.sh step remain idempotent across re-runs.
+description: Use when editing sync.sh, lib/common.sh, or any flag in --force / --remove-plugins / --680k / --permissive / --no-rtk / --dry-run / --claude / --codex / --agents; covers TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of FORCE and REMOVE_PLUGINS env vars, the WINDOW_680K/PERMISSIVE deploy-time modifiers, SKIP_OPTIONAL_BOOTSTRAP semantics, common::parse_args and common::preflight invariants, and the requirement that every lib/<tool>.sh step remain idempotent across re-runs. Also covers the claude::sync_rtk / _warn_rtk_outdated RTK bootstrap.
 user-invocable: false
 metadata:
   source_files:
@@ -8,7 +8,9 @@ metadata:
       lines: "1-55"
     - path: lib/common.sh
       lines: "1-77"
-  updated: "2026-07-03"
+    - path: lib/claude.sh
+      lines: "650-710"
+  updated: "2026-07-06"
 ---
 
 # sync.sh Orchestration
@@ -131,6 +133,27 @@ my_tool::sync_foo() {
 - **Forgetting `|| true` on legitimately-fallible commands**: `set -euo pipefail` at sync.sh (set -euo pipefail) means any unguarded non-zero exit aborts the run. `claude::_cli plugin marketplace update` at claude::_plugins_update demonstrates the `|| true` guard.
 - **Tool-scoped summary mismatch**: if `claude::summary` is added to a lib file that checks `CLAUDE_SYNCED` but the sync function never sets `CLAUDE_SYNCED=1`, summary is always silently skipped. Check claude::sync for the assignment location.
 - **Unknown flags exit 2**: passing a mistyped flag (e.g. `--not-a-real-flag`) exits with code 2 immediately (common::parse_args (unknown-flag exit 2)). No partial sync occurs.
+
+## RTK bootstrap
+
+`claude::sync_rtk` is the LAST pass in `claude::sync` — it installs the RTK binary, advises on outdated versions, and initializes RTK only when not already initialized. `--no-rtk` (`SKIP_OPTIONAL_BOOTSTRAP=1`) short-circuits the whole pass.
+
+| Concern | Behavior | Anchor |
+|---------|----------|--------|
+| Skip gate | `SKIP_OPTIONAL_BOOTSTRAP=1` → warn + early return before any install | claude::sync_rtk (SKIP_OPTIONAL_BOOTSTRAP early-return) |
+| `@RTK.md` strip | On `--no-rtk`, the `@RTK.md` import line is removed from `~/.claude/CLAUDE.md` — DRY_RUN-gated, so preview never strips | claude::sync_rtk (grep -v '^@RTK.md$' branch) |
+| Install | Download-then-run: `curl … -o <tmp>` then `bash <tmp>` then `rm` — never `curl \| bash` (stream-truncation guard) | claude::sync_rtk (mktemp installer branch) |
+| PATH export | Post-install `export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"` so the fresh `rtk` resolves in-process | claude::sync_rtk (PATH export) |
+| Outdated advisory | Only when already installed: fetch latest GitHub release tag, warn only when strictly older | claude::_warn_rtk_outdated |
+| Init gate | `rtk init --global` runs ONLY when `~/.claude/RTK.md` is absent — the idempotency gate | claude::sync_rtk (RTK.md absence check) |
+
+### Version-sort (shared with agent-browser)
+
+`claude::_warn_rtk_outdated` fetches the latest release tag with a 5s ceiling (`curl --max-time 5`), then decides "strictly older" via a per-field numeric version sort — `sort -t. -k1,1n -k2,2n -k3,3n | tail -n1` — warning only when the latest tag sorts last (is newer). This is the SAME numeric-sort pattern as `skills::_agent_browser_newer_npm` (lib/skills.sh) — treat it as the shared anchor when touching either. Field-by-field numeric sort avoids the lexical bug where `0.9.0` would rank above `0.43.0`.
+
+### Gotcha: RTK hook wiped on the first sync of a fresh machine
+
+`rtk init --global` clears `hooks.PreToolUse` to `[]`. Because `claude::sync_rtk` runs LAST — after `claude::sync_settings` has already written the `rtk hook claude` PreToolUse entry — a fresh machine (no `~/.claude/RTK.md`) has that hook WIPED on its first sync, when the init gate fires. A second `./sync.sh` restores it: RTK.md now exists so the gate skips `rtk init --global`, and `claude::sync_settings` re-merges the RTK hook back into settings.json.
 
 ## References
 
