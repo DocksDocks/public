@@ -91,6 +91,8 @@ prefix_rule(pattern=["docker-compose", "down"], decision="prompt")
 prefix_rule(pattern=["docker-compose", "rm"], decision="prompt")
 prefix_rule(pattern=["docker-compose", "stop"], decision="prompt")
 
+# Load-bearing security escalations — not duplicates of the bare tail/rg rules; do not prune.
+# `tail -f`/`--follow` never returns and hangs the agent; `rg --pre` runs an arbitrary preprocessor binary (code exec).
 prefix_rule(pattern=["tail", "-f"], decision="prompt")
 prefix_rule(pattern=["tail", "--follow"], decision="prompt")
 prefix_rule(pattern=["rg", "--pre"], decision="prompt")

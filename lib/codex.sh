@@ -137,6 +137,7 @@ codex::sync_agents_md() {
     return
   fi
 
+  [[ -f "$user_codex_agents_md" ]] && cp "$user_codex_agents_md" "$user_codex_agents_md.bak"
   cp "$codex_agents_md" "$user_codex_agents_md"
   log "Codex AGENTS.md synced"
 }
@@ -470,12 +471,13 @@ codex::sync_plugins() {
 }
 
 codex::summary() {
-  local codex_plugin_count
+  local codex_config codex_plugin_count
 
   [[ "${CODEX_SYNCED:-0}" -eq 1 ]] || return
   echo "Codex:    ${CODEX_DIR:-$HOME/.codex}"
   if [[ "$DRY_RUN" -eq 0 ]]; then
-    codex_plugin_count=$(grep -c '^\[plugins\."' "${CODEX_DIR:-$HOME/.codex}/config.toml" 2>/dev/null || true)
+    codex_config="${CODEX_DIR:-$HOME/.codex}/config.toml"
+    codex_plugin_count=$(codex::_enabled_plugin_ids "$codex_config" | grep -c . || true)
     codex_plugin_count=${codex_plugin_count:-0}
     echo "Codex plugins: $codex_plugin_count enabled in config.toml"
   fi

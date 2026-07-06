@@ -34,11 +34,10 @@ claude::sync_scripts() {
     return
   fi
 
-  cp "$REPO_DIR/SoT/.claude/statusline.sh" "$CLAUDE_DIR/"
-  cp "$REPO_DIR/SoT/.claude/fetch-usage.sh" "$CLAUDE_DIR/"
-  chmod +x "$CLAUDE_DIR/statusline.sh" "$CLAUDE_DIR/fetch-usage.sh"
+  [[ -f "$REPO_DIR/SoT/.claude/statusline.sh" ]] && { cp "$REPO_DIR/SoT/.claude/statusline.sh" "$CLAUDE_DIR/"; chmod +x "$CLAUDE_DIR/statusline.sh"; }
+  [[ -f "$REPO_DIR/SoT/.claude/fetch-usage.sh" ]] && { cp "$REPO_DIR/SoT/.claude/fetch-usage.sh" "$CLAUDE_DIR/"; chmod +x "$CLAUDE_DIR/fetch-usage.sh"; }
   [[ -f "$REPO_DIR/notification.mp3" ]] && cp "$REPO_DIR/notification.mp3" "$CLAUDE_DIR/"
-  log "Scripts synced (statusline, fetch-usage, alert)"
+  log "Scripts synced (statusline, fetch-usage, notification)"
 }
 
 claude::sync_hooks() {
@@ -654,7 +653,7 @@ claude::_warn_rtk_outdated() {
     | jq -r '.tag_name // empty' 2>/dev/null | sed 's/^v//' || true)
   [[ -n "$latest_tag" && -n "$installed_ver" && "$latest_tag" != "$installed_ver" ]] || return 0
 
-  newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
+  newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -V | tail -n1)
   [[ "$newer" == "$latest_tag" ]] || return 0
 
   warn "RTK $installed_ver is outdated (latest $latest_tag).

@@ -32,12 +32,13 @@ common::usage() {
 }
 
 common::select_target() {
-  TARGET_FILTER_SET=1
   case "$1" in
     claude) SYNC_CLAUDE=1 ;;
     codex)  SYNC_CODEX=1 ;;
     agents) SYNC_AGENTS=1 ;;
+    *)      err "Unknown sync target: $1"; exit 2 ;;
   esac
+  TARGET_FILTER_SET=1
 }
 
 common::parse_args() {
