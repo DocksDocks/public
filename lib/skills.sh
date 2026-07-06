@@ -35,6 +35,17 @@ skills::sync() {
   skills::update_snapshot
 }
 
+# Emit one cleaned slug per line from a manifest: skip blank/comment lines, strip
+# inline #comments and ALL whitespace. Single source of truth so sync_universal,
+# _load_slug_list, and update_snapshot can never diverge on parsing.
+skills::_normalize_manifest() {
+  awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    { sub(/[[:space:]]*#.*$/, ""); gsub(/[[:space:]]+/, ""); if (length($0)) print }
+  ' "$1"
+}
+
 skills::sync_universal() {
   local slug basename added=0 already=0 failed=0 healed=0
 
@@ -43,15 +54,9 @@ skills::sync_universal() {
     return
   fi
 
-  # Single loop: full 4-step strip + post-strip empty guard apply uniformly to
-  # dry-run and real branches. Branching on DRY_RUN happens only at the action
-  # point, eliminating the previous divergence where whitespace-only manifest
-  # lines emitted "[dry-run] npx skills add  -g -y -a ..." with an empty slug.
+  # DRY_RUN branches only at the action point, so dry-run and real see the same
+  # normalized slug set from skills::_normalize_manifest.
   while IFS= read -r slug; do
-    [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
-    slug="${slug%%#*}"
-    slug="${slug// /}"
-    [[ -z "$slug" ]] && continue
     basename="${slug##*/}"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -82,7 +87,7 @@ skills::sync_universal() {
       warn "Failed to install universal skill: $slug"
       failed=$((failed + 1))
     fi
-  done < "$SKILLS_MANIFEST"
+  done < <(skills::_normalize_manifest "$SKILLS_MANIFEST")
 
   [[ "$DRY_RUN" -eq 1 ]] && return
 
@@ -306,11 +311,8 @@ skills::sync_effect_solutions_cli() {
 skills::_load_slug_list() {
   local file="$1" array_name="$2" slug
   while IFS= read -r slug; do
-    [[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
-    slug="${slug%%#*}"
-    slug="${slug// /}"
-    [[ -n "$slug" ]] && eval "$array_name+=(\"\$slug\")"
-  done < "$file"
+    eval "$array_name+=(\"\$slug\")"
+  done < <(skills::_normalize_manifest "$file")
 }
 
 # Uninstall a single snapshot slug from the universal CLI. Increments the
@@ -368,11 +370,7 @@ skills::update_snapshot() {
   [[ "$DRY_RUN" -eq 1 ]] && return
 
   mkdir -p "$AGENTS_DIR"
-  awk '
-    /^[[:space:]]*#/ { next }
-    /^[[:space:]]*$/ { next }
-    { sub(/[[:space:]]*#.*$/, ""); gsub(/[[:space:]]+/, ""); if (length($0)) print }
-  ' "$SKILLS_MANIFEST" | sort -u > "$SKILLS_SNAPSHOT"
+  skills::_normalize_manifest "$SKILLS_MANIFEST" | sort -u > "$SKILLS_SNAPSHOT"
 }
 
 skills::summary() {

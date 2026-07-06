@@ -663,6 +663,21 @@ claude::_warn_rtk_outdated() {
   (RTK runs as a PreToolUse bash hook — supply-chain risk warrants review before upgrading)"
 }
 
+claude::_rtk_reassert_hook() {
+  # rtk init --global wipes hooks.PreToolUse; re-apply the SoT hook (other hook blocks preserved).
+  local repo_settings="$REPO_DIR/SoT/.claude/settings.json"
+  local user_settings="$CLAUDE_DIR/settings.json"
+  [[ -f "$user_settings" && -f "$repo_settings" ]] || return 0
+  cp "$user_settings" "$user_settings.bak"
+  if jq -s '.[1] * {hooks: {PreToolUse: .[0].hooks.PreToolUse}}' \
+       "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
+    mv "$user_settings.tmp" "$user_settings"
+  else
+    rm -f "$user_settings.tmp"
+    err "jq re-assert of RTK PreToolUse hook failed (backup at settings.json.bak)"
+  fi
+}
+
 claude::sync_rtk() {
   local tmp installed_ver tmp_rtk_installer
 
@@ -701,7 +716,8 @@ claude::sync_rtk() {
   if command -v rtk >/dev/null 2>&1; then
     if [[ ! -f "$CLAUDE_DIR/RTK.md" ]]; then
       rtk init --global
-      log "RTK initialized (RTK.md generated)"
+      claude::_rtk_reassert_hook
+      log "RTK initialized (RTK.md generated; PreToolUse hook re-asserted)"
     else
       log "RTK already initialized"
     fi
