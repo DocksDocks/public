@@ -31,11 +31,13 @@ Matches: `git status`, `git status --short`, `git status -sb`
 Does not match: `git stash` (different second token)
 
 ```
-prefix_rule(pattern=["sed", "-n"], decision="allow")
+prefix_rule(pattern=["git", "branch", "--show-current"], decision="allow")
 ```
 
-Matches: `sed -n '/pattern/p' file` (read-only sed)
-Does not match: `sed -i 's/a/b/' file` (in-place edit; different second token → falls through to `prompt`)
+Matches: `git branch --show-current` (read-only)
+Does not match: `git branch -D feat` (no allow rule for it → falls through to `prompt`)
+
+Adding tokens narrows the match — but a prefix rule can only gate a flag that appears as a **distinct later argv token**. It cannot gate a flag folded into an earlier token, nor one that turns a read into an exec. That is why `sed -n` and `rg` are `prompt`, NOT `allow`: `sed -n '/p/p' f` (read) and `sed -n 'e reboot' f` (runs a shell command via GNU sed's `e`) share the identical prefix `["sed", "-n"]`, and `rg pat --pre=CMD` runs an arbitrary preprocessor binary. Only allow-list a command when NO reachable flag can turn it into a write or an exec.
 
 ## Real Examples from `docks.rules`
 

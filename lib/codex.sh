@@ -169,11 +169,9 @@ codex::sync_config() {
     "codex::$stage" "$codex_settings" "$user_codex_settings"
   done
 
-  if [[ "$FORCE" -eq 1 ]]; then
-    log "Codex config reconciled (backup at config.toml.bak; runtime tables preserved)"
-  else
-    log "Codex config merged (backup at config.toml.bak)"
-  fi
+  # Merge is always additive (SoT keys/tables win; user-only keys and [table] blocks
+  # preserved). --force does NOT wholesale-reset Codex config, unlike Claude settings.
+  log "Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)"
 }
 
 # Drop deprecated [features].use_legacy_landlock and the [features] table if
@@ -304,7 +302,7 @@ codex::sync_marketplace() {
   mkdir -p "$AGENTS_DIR/plugins"
   jq . "$codex_marketplace" >/dev/null
 
-  if [[ -f "$user_codex_marketplace" && "$FORCE" -eq 0 ]]; then
+  if [[ -f "$user_codex_marketplace" ]]; then
     if ! jq empty "$user_codex_marketplace" 2>/dev/null; then
       err "Skipping marketplace sync: $user_codex_marketplace is not valid JSON. Fix or delete it."
       return
@@ -327,7 +325,6 @@ codex::sync_marketplace() {
     mv "$user_codex_marketplace.tmp" "$user_codex_marketplace"
     log "Codex marketplace merged (backup at marketplace.json.bak)"
   else
-    [[ -f "$user_codex_marketplace" ]] && cp "$user_codex_marketplace" "$user_codex_marketplace.bak"
     cp "$codex_marketplace" "$user_codex_marketplace"
     log "Codex marketplace installed"
   fi

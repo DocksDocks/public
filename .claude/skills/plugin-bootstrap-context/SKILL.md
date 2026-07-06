@@ -139,7 +139,7 @@ jq -s '
 ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"
 ```
 
-`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the merge branch only when the user file exists and `FORCE=0` (`codex::sync_marketplace` — FORCE guard); otherwise installs wholesale.
+`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the additive merge branch whenever the user file exists — `--force` does NOT wholesale-replace the marketplace, so user-added plugin entries survive a forced sync (`codex::sync_marketplace` — user-file guard); the plain `cp` install runs only on first sync, when no user file exists yet.
 
 ### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`)
 

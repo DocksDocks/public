@@ -5,9 +5,7 @@ prefix_rule(pattern=["head"], decision="allow")
 prefix_rule(pattern=["tail"], decision="allow")
 prefix_rule(pattern=["wc"], decision="allow")
 prefix_rule(pattern=["nl"], decision="allow")
-prefix_rule(pattern=["rg"], decision="allow")
 prefix_rule(pattern=["grep"], decision="allow")
-prefix_rule(pattern=["sed", "-n"], decision="allow")
 prefix_rule(pattern=["sort"], decision="allow")
 prefix_rule(pattern=["uniq"], decision="allow")
 prefix_rule(pattern=["diff"], decision="allow")
@@ -91,16 +89,17 @@ prefix_rule(pattern=["docker-compose", "down"], decision="prompt")
 prefix_rule(pattern=["docker-compose", "rm"], decision="prompt")
 prefix_rule(pattern=["docker-compose", "stop"], decision="prompt")
 
-# Load-bearing security escalations — not duplicates of the bare tail/rg rules; do not prune.
-# `tail -f`/`--follow` never returns and hangs the agent; `rg --pre` runs an arbitrary preprocessor binary (code exec).
+# `tail -f`/`--follow` never returns and hangs the agent (bare `tail` stays allowed above).
 prefix_rule(pattern=["tail", "-f"], decision="prompt")
 prefix_rule(pattern=["tail", "--follow"], decision="prompt")
-prefix_rule(pattern=["rg", "--pre"], decision="prompt")
+# rg and `sed -n` are prompt, NOT allow: argv-prefix matching cannot gate their
+# code-exec forms (rg --pre=CMD or a reordered --pre; sed -n 'e CMD' / -ni) while a
+# shorter allow prefix would auto-approve the whole command.
+prefix_rule(pattern=["rg"], decision="prompt")
+prefix_rule(pattern=["sed", "-n"], decision="prompt")
 prefix_rule(pattern=["find"], decision="prompt")
 prefix_rule(pattern=["sed", "-i"], decision="prompt")
 prefix_rule(pattern=["sed", "--in-place"], decision="prompt")
-prefix_rule(pattern=["sed", "-n", "-i"], decision="prompt")
-prefix_rule(pattern=["sed", "-n", "--in-place"], decision="prompt")
 prefix_rule(pattern=["awk"], decision="prompt")
 prefix_rule(pattern=["xargs"], decision="prompt")
 prefix_rule(pattern=["tee"], decision="prompt")
