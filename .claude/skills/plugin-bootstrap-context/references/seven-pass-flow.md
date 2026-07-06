@@ -38,9 +38,15 @@ while IFS= read -r plugin_id; do
   if claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id"; then
     continue   # already installed at user scope (claude::_plugins_install — installed pre-check)
   fi
+  if [[ "$refreshed" -eq 0 ]]; then                            # claude::_plugins_install — stale-manifest guard
+    claude::_cli plugin marketplace update >/dev/null 2>&1 || true
+    refreshed=1
+  fi
   claude::_cli plugin install "$plugin_id" >/dev/null 2>&1 …  # plugin install
 done < <(jq -r '.enabledPlugins // {} | keys[]' "$repo_settings")  # claude::_plugins_install — keys read
 ```
+
+The stale-manifest guard refreshes marketplace manifests once, lazily, before the first install attempt: an already-cloned marketplace may predate a plugin later added to it, and pass 3's refresh runs after this pass — too late for the install. Steady-state syncs (nothing to install) never trigger it.
 
 The pre-check is the scope-aware predicate (`claude::_plugin_user_scope_installed`):
 

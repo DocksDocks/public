@@ -430,12 +430,19 @@ claude::_plugin_user_scope_installed() {
 # Pass 2 — install any SoT-enabled plugin not yet installed at user scope.
 claude::_plugins_install() {
   local repo_settings="$1" installed_plugins="$2"
-  local plugin_id added=0 failed=0
+  local plugin_id added=0 failed=0 refreshed=0
 
   while IFS= read -r plugin_id; do
     [[ -z "$plugin_id" ]] && continue
     if claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id"; then
       continue
+    fi
+    # Stale-manifest guard: an already-cloned marketplace may predate a plugin
+    # later added to it, and pass 3's manifest refresh runs after this pass —
+    # too late for the install. Refresh once before the first install attempt.
+    if [[ "$refreshed" -eq 0 ]]; then
+      claude::_cli plugin marketplace update >/dev/null 2>&1 || true
+      refreshed=1
     fi
     if claude::_cli plugin install "$plugin_id" >/dev/null 2>&1; then
       added=$((added + 1))

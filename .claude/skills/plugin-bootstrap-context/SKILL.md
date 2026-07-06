@@ -5,14 +5,14 @@ user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "377-649"
+      lines: "377-648"
     - path: lib/codex.sh
       lines: "292-470"
     - path: SoT/.claude/settings.json
       lines: "237-268"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-07-02"
+  updated: "2026-07-05"
 ---
 
 # Plugin Bootstrap
@@ -62,7 +62,7 @@ The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share o
 | Pass | Condition | Action | Helper (def) | Operation |
 |------|-----------|--------|--------------|-----------|
 | 1 | Always | `claude plugin marketplace add` for missing `extraKnownMarketplaces` | `_plugins_add_marketplaces` | marketplace add |
-| 2 | Always | `claude plugin install` for `enabledPlugins` keys lacking a **user-scope** install record (`claude::_plugin_user_scope_installed`) | `_plugins_install` | plugin install |
+| 2 | Always | `claude plugin install` for `enabledPlugins` keys lacking a **user-scope** install record (`claude::_plugin_user_scope_installed`); refreshes marketplace manifests once before the first install (`claude::_plugins_install` — stale-manifest guard) | `_plugins_install` | marketplace update + plugin install |
 | 3 | Always | `claude plugin marketplace update` (refresh manifests) | `_plugins_update` | marketplace update |
 | 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
 | 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y --scope user` for installed plugins not in `enabledPlugins` via `has()` — user-scope records only | `_plugins_uninstall` | plugin uninstall |
@@ -167,6 +167,7 @@ This pass is intentionally run on every sync. `codex plugin add` is the Codex CL
 ## Gotchas
 
 - **Install records are per-scope arrays** (Claude Code ≥2.1.198): `installed_plugins.json` maps each plugin id to an array of records carrying `scope: user|project|local`. Passes 2 and 5 test for a **user-scope** record via `claude::_plugin_user_scope_installed` — a project-scope-only record (from `claude plugin install --scope project` in some repo) does NOT count as installed. Before this predicate, such a record silently suppressed the user-scope install and every other project carried an orphaned `enabledPlugins` reference (`/doctor`: "enabled in project settings but isn't installed").
+- **Pass 2 must refresh manifests before installing** (`claude::_plugins_install` — stale-manifest guard): an already-cloned marketplace may predate a plugin later added to it, and pass 3's `marketplace update` runs after pass 2 — too late. Without the guard, the first sync after a marketplace gains a new plugin fails with "not found in marketplace" and only the *next* sync succeeds. The refresh is lazy (`refreshed` flag) — it runs at most once and only when at least one install is actually needed, so steady-state syncs pay nothing.
 - **Marketplace pre-check checks presence, not validity** (`claude::_plugins_add_marketplaces` — key-presence pre-check): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
 - **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled." But `claude plugin install` *enables* what it installs (user scope), so pass 7 (`claude::_plugins_reassert_enabled_state`) must run afterward to restore the `false`; dropping pass 7 silently re-enables every globally-disabled plugin.
 - **Codex CLI missing or stale wrapper on PATH**: if `command -v codex` is absent, sync deploys config/marketplace files and prints the official standalone installer plus manual `codex plugin add` fallback. If a stale wrapper is found and emits "could not find a Codex CLI binary", the refresh pass warns with the same standalone installer fallback (`codex::sync_plugins` — missing-binary warning).
