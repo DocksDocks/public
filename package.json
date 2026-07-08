@@ -1,0 +1,39 @@
+{
+  "name": "docks-kit",
+  "version": "0.1.0",
+  "description": "Portable AI coding agent config kit — SoT sync engine + typed CLI for Claude Code, Codex, and universal agent skills",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DocksDocks/public.git"
+  },
+  "bin": {
+    "docks-kit": "cli/src/main.ts"
+  },
+  "files": [
+    "cli/src",
+    "cli/docs",
+    "cli/tsconfig.json",
+    "lib",
+    "SoT",
+    "notification.mp3",
+    "docks-kit",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p cli",
+    "build:binaries": "bash cli/build-binaries.sh"
+  },
+  "dependencies": {
+    "@effect/cli": "0.75.2",
+    "@effect/platform": "0.96.1",
+    "@effect/platform-bun": "0.90.0",
+    "effect": "3.21.4"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.7.2"
+  }
+}

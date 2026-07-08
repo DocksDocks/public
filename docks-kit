@@ -1,0 +1,53 @@
+#!/bin/bash
+# docks-kit — launcher. Resolution order:
+#   1. compiled binary in cli/dist/ (bun build --compile output)
+#   2. Bun from source (auto-installs Bun + node_modules when missing)
+# Zero-dependency escape hatch (no Bun at all): bash lib/engine.sh <args>
+set -euo pipefail
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+case "$(uname -s)-$(uname -m)" in
+  Linux-x86_64)   KIT_BIN="docks-kit-linux-x64" ;;
+  Linux-aarch64)  KIT_BIN="docks-kit-linux-arm64" ;;
+  Darwin-x86_64)  KIT_BIN="docks-kit-darwin-x64" ;;
+  Darwin-arm64)   KIT_BIN="docks-kit-darwin-arm64" ;;
+  *)              KIT_BIN="" ;;
+esac
+if [[ -n "$KIT_BIN" && -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
+  exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
+fi
+
+# Locate bun: PATH, then the known install locations that sit off the
+# non-interactive PATH (~/.bun/bin, ~/.local/bin).
+find_bun() {
+  local c
+  c="$(command -v bun 2>/dev/null || true)"
+  [[ -n "$c" ]] && { printf '%s\n' "$c"; return 0; }
+  for c in "${BUN_INSTALL:-$HOME/.bun}/bin/bun" "$HOME/.bun/bin/bun" "$HOME/.local/bin/bun"; do
+    [[ -x "$c" ]] && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
+if ! BUN="$(find_bun)"; then
+  echo "[docks-kit] Bun not found — installing (download-then-run)..." >&2
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "[docks-kit] curl missing too. Install Bun manually (https://bun.sh) or use the escape hatch: bash $REPO_DIR/lib/engine.sh" >&2
+    exit 1
+  fi
+  tmp_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
+  curl -fsSL https://bun.sh/install -o "$tmp_installer" && bash "$tmp_installer" >/dev/null 2>&1 || true
+  rm -f "$tmp_installer"
+  if ! BUN="$(find_bun)"; then
+    echo "[docks-kit] Bun install failed. Escape hatch: bash $REPO_DIR/lib/engine.sh <args>" >&2
+    exit 1
+  fi
+fi
+
+if [[ ! -d "$REPO_DIR/node_modules" ]]; then
+  echo "[docks-kit] Installing CLI dependencies (bun install --frozen-lockfile)..." >&2
+  (cd "$REPO_DIR" && "$BUN" install --frozen-lockfile >/dev/null)
+fi
+
+exec "$BUN" "$REPO_DIR/cli/src/main.ts" "$@"
