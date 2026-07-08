@@ -1,0 +1,48 @@
+name: release-cli
+
+# Builds the five docks-kit standalone binaries + SHA256SUMS and attaches them
+# to the GitHub release for the pushed cli-v* tag, then publishes to npm when
+# NPM_TOKEN is configured (optional — the publish step is skipped without it).
+#
+# Cut a release:
+#   git tag cli-v0.1.0 && git push origin cli-v0.1.0
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit -p cli
+
+      - name: Build binaries (all five targets)
+        run: bash cli/build-binaries.sh
+
+      - name: Attach binaries to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" --generate-notes || true
+          gh release upload "${GITHUB_REF_NAME}" cli/dist/docks-kit-* cli/dist/SHA256SUMS --clobber
+
+      - name: Publish to npm (skipped when NPM_TOKEN is not configured)
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun publish --access public
