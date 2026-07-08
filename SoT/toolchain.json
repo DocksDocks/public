@@ -11,7 +11,7 @@
     "bwrap":  { "kind": "check", "os": "linux", "note": "Codex Linux sandbox runtime" },
     "intelephense": { "kind": "check", "verified": "1.18.5", "note": "php-lsp server binary; `verified` pins claude::sync_lsp_servers' npm install" },
     "typescript-language-server": { "kind": "check", "verified": "5.3.0", "note": "typescript-lsp server binary; `verified` pins claude::sync_lsp_servers' npm install" },
-    "tsc":    { "kind": "check", "verified": "6.0.3", "note": "typescript-lsp dependency (npm package `typescript`); `verified` pins claude::sync_lsp_servers' npm install" },
+    "tsc":    { "kind": "check", "verified": "6.0.3", "note": "typescript-lsp dependency (npm package `typescript`); `verified` pins claude::sync_lsp_servers' npm install. Deliberately on the 6.x line: typescript-language-server embeds TypeScript's programmatic API, which TS7 (native) doesn't yet expose — the repo's own devDependency runs TS7 for tsc --noEmit" },
     "rtk":    { "kind": "managed", "policy": "track", "floor": "0.43.0", "verified": "0.43.0", "pinnable": true,
                 "note": "PreToolUse hook — supply-chain review before unverified upgrades; installer honors RTK_VERSION=vX.Y.Z pin" },
     "bun":    { "kind": "managed", "policy": "present", "verified": "1.3.14", "pinnable": true,
