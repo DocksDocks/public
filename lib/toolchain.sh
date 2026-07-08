@@ -16,7 +16,9 @@ toolchain::_manifest() { printf '%s' "$REPO_DIR/SoT/toolchain.json"; }
 
 toolchain::field() {
   local tool="$1" field="$2"
-  jq -r --arg t "$tool" --arg f "$field" '.tools[$t][$f] // empty' "$(toolchain::_manifest)" 2>/dev/null
+  # tr -d '\r': jq on Windows emits CRLF — a trailing \r turns "linux" into
+  # "linux\r" and breaks every == comparison (caught by the windows-smoke CI).
+  jq -r --arg t "$tool" --arg f "$field" '.tools[$t][$f] // empty' "$(toolchain::_manifest)" 2>/dev/null | tr -d '\r'
 }
 
 # Strictly-newer semver-ish compare (numeric per dotted field, like the old
@@ -219,5 +221,5 @@ toolchain::report() {
     fi
     printf '%-28s %-9s %-14s %-9s %-9s %s\n' \
       "$tool" "${kind:--}" "${installed:-?}" "${floor:--}" "${verified:--}" "$status"
-  done < <(jq -r '.tools | keys[]' "$(toolchain::_manifest)")
+  done < <(jq -r '.tools | keys[]' "$(toolchain::_manifest)" | tr -d '\r')
 }
