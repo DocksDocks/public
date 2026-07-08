@@ -108,6 +108,11 @@ How to apply:
 Using gpt-5.5 inside workflows and subagents (the `model` parameter takes only Claude models, so wrap it):
 - Spawn a thin Claude wrapper agent with `model: 'sonnet', effort: 'low'` whose prompt tells it to write a self-contained Codex prompt, run `codex exec` via Bash, and return Codex's output verbatim. The wrapper only shuttles the prompt and result — gpt-5.5 does the work.
 
+Reaching gpt-5.5 (or a full-context worker in another project) as a persistent session — the `session-relay` skill (shared bus + `relay` CLI, Claude ⇄ Codex):
+- `codex exec` is one-shot and stateless. When the offload must be resumable, span several turns, or run in another project with that project's own config, spawn a real session instead: `relay spawn <dir> --tool codex --model gpt-5.5 --effort xhigh` (or `--tool claude --model opus` for a Claude worker), then continue it with `send` / `wake`.
+- Two independent perspectives on a plan = the red-team pair spawn: a gpt-5.5 worker and an opus worker debate over the bus, orchestrator writes the verdict — the concrete form of the "second independent perspective" review above.
+- Pin `--model`/`--effort` on every spawn/wake; never leave an unattended relay child on a top interactive default (e.g. Fable). Each spawn/wake bills the target's subscription — spawn deliberately, never in loops.
+
 ## Agentic Engineering Discipline
 
 1. **State assumptions; push back when warranted.** If a requirement is ambiguous in a way that changes the deliverable, surface the ambiguity and propose 1–2 concrete interpretations in your first message — do not silently pick one and run with it. Surface inconsistencies and confusion instead of guessing past them; present tradeoffs when approaches genuinely differ; push back when the request looks wrong. Agreeable-but-wrong is the failure mode, not disagreement.
