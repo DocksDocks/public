@@ -52,9 +52,14 @@ the in-repo tracker.
 
 ## Open questions
 
-- npm publish needs an `NPM_TOKEN` repo secret (workflow skips without it) — user to configure when ready to publish
-- LICENSE file absent at repo root while package.json declares MIT — add one before the first npm publish
-- Windows Tier-1 (Git Bash) support is documented-experimental — needs a real Windows machine to verify (docs/platforms topic states this)
+- (resolved 2026-07-08) ~~npm publish needs an `NPM_TOKEN` repo secret~~ —
+  switched to tokenless OIDC trusted publishing; remaining one-time user
+  steps: manual first `npm publish` (new packages can't pre-register a
+  trusted publisher), then configure the trusted publisher on npmjs.com
+  (repo DocksDocks/public, workflow release-cli.yml). Name `docks-kit` is
+  free on npm (404 checked 2026-07-08)
+- (resolved 2026-07-08) ~~LICENSE file absent~~ — MIT LICENSE added
+- Windows support moved to its own follow-up plan: `windows-support`
 
 ## Notes
 

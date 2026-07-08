@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # npm OIDC trusted publishing (tokenless)
 
 jobs:
   release:
@@ -41,14 +42,22 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" --generate-notes || true
           gh release upload "${GITHUB_REF_NAME}" cli/dist/docks-kit-* cli/dist/SHA256SUMS --clobber
 
-      - name: Publish to npm (skipped when NPM_TOKEN is not configured)
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # Secrets can't be referenced in `if:` conditionals (GitHub Actions
-        # restriction), so the skip is a shell guard on the env-mapped value.
+      # Tokenless npm publish via OIDC trusted publishing — no NPM_TOKEN secret.
+      # One-time setup (in order):
+      #   1. First-ever publish must be manual (npm can't attach a trusted
+      #      publisher to a package that doesn't exist): npm login && npm publish
+      #   2. npmjs.com -> docks-kit -> Settings -> Trusted Publisher: GitHub
+      #      Actions, repo DocksDocks/public, workflow release-cli.yml
+      # Until step 2 is done, publish fails here and is downgraded to a warning
+      # so binaries-only releases stay green. npm CLI >= 11.5.1 required for
+      # OIDC (bun publish doesn't do OIDC), hence setup-node + npm upgrade.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Publish to npm (OIDC trusted publishing)
         run: |
-          if [ -z "$NPM_CONFIG_TOKEN" ]; then
-            echo "NPM_TOKEN secret not configured — skipping npm publish"
+          npm install -g npm@latest
+          npm publish --provenance --access public || {
+            echo "::warning::npm publish failed — if the trusted publisher isn't configured yet, see the setup comment in this workflow"
             exit 0
-          fi
-          bun publish --access public
+          }
