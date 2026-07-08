@@ -1,9 +1,11 @@
 name: parity
 
-# The EngineBash/EngineNative parity gates (windows-support plan, step 4).
-# Until EngineNative lands (step 5) these run in self-parity mode — which
-# still guards hermeticity/determinism of the engine and proves the harness
-# can fail (prove-red). Step 5 adds --native runs as each module ports.
+# The EngineBash/EngineNative parity gates (windows-support plan, steps 4+5).
+# Self-parity (bash vs bash) guards engine hermeticity/determinism; --native
+# runs EngineNative as side B — the step-6 flip precondition. Native runs are
+# Linux-only until step 7: on Windows the bash-script stubs aren't spawnable
+# by the native engine (CreateProcess can't exec shebang scripts), which is
+# solved together with the PowerShell-native CI there.
 
 on:
   push:
@@ -59,3 +61,11 @@ jobs:
 
       - name: Mutation parity can fail (prove-red)
         run: bun cli/test/parity-mutation.ts --prove-red
+
+      - name: Dry-run parity (native)
+        if: runner.os == 'Linux'
+        run: bun cli/test/parity-dryrun.ts --native
+
+      - name: Mutation parity (native)
+        if: runner.os == 'Linux'
+        run: bun cli/test/parity-mutation.ts --native

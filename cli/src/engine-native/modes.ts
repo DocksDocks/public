@@ -12,6 +12,7 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { echo, err, warn } from "./output"
+import { rtkInstall } from "./claudeSync"
 import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
 
@@ -118,10 +119,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
   }
   switch (tool) {
     case "rtk":
-      return ensure(ctx, "rtk", (mode) => {
-        err(`EngineNative: rtk ${mode} is not ported yet — run with DOCKS_KIT_ENGINE=bash`)
-        return 1
-      })
+      return ensure(ctx, "rtk", rtkInstall(ctx))
     case "bun":
       // skills::_bun_bootstrap >/dev/null — the found-bun stdout is discarded.
       return bunBootstrap(ctx) !== "" ? 0 : 1

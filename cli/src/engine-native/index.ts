@@ -13,10 +13,11 @@ import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 
 import { kitHome } from "../kitHome"
+import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { echo, err } from "./output"
+import { echo } from "./output"
 import { ExitError, parseArgs, preflight, validateModelFlags } from "./parseArgs"
 
 export interface Ctx {
@@ -69,12 +70,9 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   preflight(ctx)
   validateModelFlags(ctx)
 
-  // Ported-surface gate: refuse BEFORE any step mutates state — a partial
-  // native sync would violate the parity contract.
-  if (ctx.syncClaude && existsSync(p(ctx.repoDir, "SoT", ".claude"))) {
-    err("EngineNative: 'sync claude' is not ported yet — unset DOCKS_KIT_ENGINE (or set it to 'bash') to use the bash engine")
-    return 2
-  }
+  const claudeRan = ctx.syncClaude && existsSync(p(ctx.repoDir, "SoT", ".claude"))
+  if (claudeRan) claudeSync(ctx)
+
   const codexRan = ctx.syncCodex && existsSync(p(ctx.repoDir, "SoT", ".codex"))
   if (codexRan) codexSync(ctx)
 
@@ -83,10 +81,12 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   echo("")
   echo("--- Sync complete ---")
   echo(`Repo:     ${ctx.repoDir}`)
+  if (claudeRan) claudeSummary(ctx)
   if (codexRan) codexSummary(ctx)
   if (skillsState !== undefined) skillsSummary(ctx, skillsState)
 
   echo("")
+  if (claudeRan) claudeNextSteps()
   if (codexRan) codexNextSteps()
   if (skillsState !== undefined) skillsNextSteps()
   return 0
