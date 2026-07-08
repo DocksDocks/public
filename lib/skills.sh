@@ -27,7 +27,7 @@ skills::sync() {
   [[ "$DRY_RUN" -eq 1 ]] || mkdir -p "$SKILLS_DIR"
 
   skills::sync_universal
-  if [[ "$REMOVE_PLUGINS" -eq 1 ]]; then
+  if [[ "$PRUNE" -eq 1 ]]; then
     skills::reconcile_removals
   fi
   skills::sync_agent_browser_cli
@@ -341,7 +341,7 @@ skills::reconcile_removals() {
 
   if [[ ! -f "$SKILLS_SNAPSHOT" ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
-      echo "[dry-run] (--remove-plugins) no kit-managed-skills snapshot yet; first real sync writes $SKILLS_SNAPSHOT, then future --remove-plugins runs reconcile against it"
+      echo "[dry-run] (--prune) no kit-managed-skills snapshot yet; first real sync writes $SKILLS_SNAPSHOT, then future --prune runs reconcile against it"
     fi
     return
   fi
@@ -360,7 +360,7 @@ skills::reconcile_removals() {
     log "Kit-managed skills removed (-$removed)"
   fi
   if [[ "$failed" -gt 0 ]]; then
-    warn "$failed skill remove(s) failed — re-run with --remove-plugins or run: npx skills remove -g -y -a '*' -s <name>"
+    warn "$failed skill remove(s) failed — re-run with --prune or run: npx skills remove -g -y -a '*' -s <name>"
   fi
 }
 

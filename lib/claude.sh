@@ -18,8 +18,9 @@ claude::sync() {
   claude::sync_hooks
   claude::sync_claude_md
   claude::sync_settings
-  claude::sync_680k
+  claude::sync_compact_window
   claude::sync_permissive
+  claude::sync_model
   claude::sync_claude_json
   claude::sync_connector_env
   claude::sync_removals
@@ -133,7 +134,7 @@ claude::sync_settings() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
     if [[ ! -f "$user_settings" ]]; then
       echo "[dry-run] install $repo_settings -> $user_settings"
-    elif [[ "$FORCE" -eq 1 ]]; then
+    elif [[ "$RECONCILE" -eq 1 ]]; then
       echo "[dry-run] reconcile $repo_settings -> $user_settings (SoT keys win; permissions arrays replaced; user-only keys preserved)"
     else
       echo "[dry-run] merge $repo_settings -> $user_settings (SoT keys win; permissions arrays unioned; user-only keys preserved)"
@@ -145,63 +146,99 @@ claude::sync_settings() {
 
   if [[ ! -f "$user_settings" ]]; then
     claude::_settings_install "$repo_settings" "$user_settings"
-  elif [[ "$FORCE" -eq 1 ]]; then
+  elif [[ "$RECONCILE" -eq 1 ]]; then
     claude::_settings_reconcile "$repo_settings" "$user_settings"
   else
     claude::_settings_merge "$repo_settings" "$user_settings"
   fi
 }
 
-# Deploy-time modifier (--680k): raise the DEPLOYED autocompact window to 680K
-# for disposable containers — host machines stay on the SoT cap. Touches only
-# ~/.claude/settings.json — the SoT stays at its cap and the model selection is
-# never changed. A later flag-less sync restores the SoT value via the repo-wins
-# merge, so re-pass --680k on machines that should keep 680K.
-claude::sync_680k() {
-  local user_settings="$CLAUDE_DIR/settings.json"
+# Deploy-time modifier (--claude-compact-window=<tokens>): set the DEPLOYED
+# autocompact window (e.g. 680k for disposable containers) — host machines stay
+# on the SoT cap. Touches only ~/.claude/settings.json — the SoT stays at its
+# cap and the model selection is never changed. A later flag-less sync restores
+# the SoT value via the repo-wins merge, so re-pass the flag on machines that
+# should keep the override.
+claude::sync_compact_window() {
+  local user_settings="${CLAUDE_DIR:-$HOME/.claude}/settings.json"
 
-  [[ "$WINDOW_680K" -eq 1 ]] || return 0
+  [[ -n "$CLAUDE_COMPACT_WINDOW" ]] || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] (--680k) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in $user_settings"
+    echo "[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=$CLAUDE_COMPACT_WINDOW in $user_settings"
     return
   fi
 
-  [[ -f "$user_settings" ]] || { warn "(--680k) $user_settings missing — skipped"; return; }
-  jq empty "$user_settings" 2>/dev/null || { err "(--680k) $user_settings is not valid JSON — skipped"; return; }
-  if ! jq '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = "680000"' "$user_settings" > "$user_settings.tmp"; then
+  [[ -f "$user_settings" ]] || { warn "(--claude-compact-window) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--claude-compact-window) $user_settings is not valid JSON — skipped"; return; }
+  if ! jq --arg w "$CLAUDE_COMPACT_WINDOW" '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = $w' "$user_settings" > "$user_settings.tmp"; then
     rm -f "$user_settings.tmp"
-    err "(--680k) jq edit failed — settings unchanged"
+    err "(--claude-compact-window) jq edit failed — settings unchanged"
     return
   fi
   mv "$user_settings.tmp" "$user_settings"
-  log "680K mode: autocompact window set to 680K in deployed settings (SoT and model unchanged)"
+  log "Compact window: set to $CLAUDE_COMPACT_WINDOW tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)"
 }
 
-# Deploy-time modifier (--permissive): for disposable sandboxes/containers.
+# Deploy-time modifier (--claude-permissive): for disposable sandboxes/containers.
 # Empties permissions.ask and permissions.deny in the DEPLOYED settings so no
 # rule prompts or blocks — git push drops out of ask and is covered by the
 # existing Bash(git *) allow rule, so commits and pushes run unattended. The SoT
 # arrays are untouched; a later flag-less sync re-unions them back in.
 claude::sync_permissive() {
-  local user_settings="$CLAUDE_DIR/settings.json"
+  local user_settings="${CLAUDE_DIR:-$HOME/.claude}/settings.json"
 
-  [[ "$PERMISSIVE" -eq 1 ]] || return 0
+  [[ "$CLAUDE_PERMISSIVE" -eq 1 ]] || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] (--permissive) empty permissions.ask and permissions.deny in $user_settings"
+    echo "[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in $user_settings"
     return
   fi
 
-  [[ -f "$user_settings" ]] || { warn "(--permissive) $user_settings missing — skipped"; return; }
-  jq empty "$user_settings" 2>/dev/null || { err "(--permissive) $user_settings is not valid JSON — skipped"; return; }
+  [[ -f "$user_settings" ]] || { warn "(--claude-permissive) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--claude-permissive) $user_settings is not valid JSON — skipped"; return; }
   if ! jq '.permissions.ask = [] | .permissions.deny = []' "$user_settings" > "$user_settings.tmp"; then
     rm -f "$user_settings.tmp"
-    err "(--permissive) jq edit failed — settings unchanged"
+    err "(--claude-permissive) jq edit failed — settings unchanged"
     return
   fi
   mv "$user_settings.tmp" "$user_settings"
   log "Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)"
+}
+
+# Deploy-time modifier (--claude-model=<m>): set the DEPLOYED model selection.
+# Same contract as the other modifiers: only ~/.claude/settings.json changes,
+# the SoT keeps its own pin, and a later flag-less sync restores the SoT value
+# via the repo-wins merge. 'default' deletes the key so the account default
+# applies. Also callable standalone (docks-kit model claude <m>) — hence the
+# ${CLAUDE_DIR:-} fallback, since claude::sync may not have run.
+claude::sync_model() {
+  local user_settings="${CLAUDE_DIR:-$HOME/.claude}/settings.json"
+
+  [[ -n "$CLAUDE_MODEL" ]] || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    if [[ "$CLAUDE_MODEL" == "default" ]]; then
+      echo "[dry-run] (--claude-model) delete .model in $user_settings (account default applies)"
+    else
+      echo "[dry-run] (--claude-model) set .model=$CLAUDE_MODEL in $user_settings"
+    fi
+    return
+  fi
+
+  [[ -f "$user_settings" ]] || { warn "(--claude-model) $user_settings missing — skipped"; return; }
+  jq empty "$user_settings" 2>/dev/null || { err "(--claude-model) $user_settings is not valid JSON — skipped"; return; }
+  if [[ "$CLAUDE_MODEL" == "default" ]]; then
+    jq 'del(.model)' "$user_settings" > "$user_settings.tmp"
+  else
+    jq --arg m "$CLAUDE_MODEL" '.model = $m' "$user_settings" > "$user_settings.tmp"
+  fi || {
+    rm -f "$user_settings.tmp"
+    err "(--claude-model) jq edit failed — settings unchanged"
+    return
+  }
+  mv "$user_settings.tmp" "$user_settings"
+  log "Model: deployed settings model set to $CLAUDE_MODEL (SoT unchanged; flag-less sync reverts)"
 }
 
 claude::sync_claude_json() {
@@ -477,7 +514,7 @@ claude::_plugins_update() {
 }
 
 # Pass 4 — uninstall any installed plugin no longer declared in SoT. Gated by
-# REMOVE_PLUGINS by the caller; helper assumes it should run.
+# PRUNE by the caller; helper assumes it should run.
 claude::_plugins_uninstall() {
   local repo_settings="$1" installed_plugins="$2"
   local plugin_id removed=0 failed=0
@@ -566,8 +603,8 @@ claude::sync_plugins() {
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] bootstrap + update plugin marketplaces + plugins from SoT"
-    if [[ "$REMOVE_PLUGINS" -eq 1 ]]; then
-      echo "[dry-run] (--remove-plugins) would also uninstall plugins not in SoT and remove extra marketplaces"
+    if [[ "$PRUNE" -eq 1 ]]; then
+      echo "[dry-run] (--prune) would also uninstall plugins not in SoT and remove extra marketplaces"
     fi
     return
   fi
@@ -580,7 +617,7 @@ claude::sync_plugins() {
   read -r added_mp f1 < <(claude::_plugins_add_marketplaces "$repo_settings" "$known_marketplaces")
   read -r added_pl f2 < <(claude::_plugins_install "$repo_settings" "$installed_plugins")
   read -r updated_pl f3 < <(claude::_plugins_update "$installed_plugins")
-  if [[ "$REMOVE_PLUGINS" -eq 1 ]]; then
+  if [[ "$PRUNE" -eq 1 ]]; then
     read -r removed_pl f4 < <(claude::_plugins_uninstall "$repo_settings" "$installed_plugins")
     read -r removed_mp f5 < <(claude::_plugins_remove_marketplaces "$repo_settings" "$known_marketplaces")
   fi
@@ -600,10 +637,10 @@ claude::sync_plugins() {
 # --- Optional (flag-gated) plugins --------------------------------------------
 # supabase and n8n are kept OUT of the SoT entirely — neither key is in
 # enabledPlugins, so a flag-less sync installs, loads, and enables neither (an
-# absent plugin is simply not installed; only `--remove-plugins` uninstalls one
-# already present). n8n's marketplace is dropped from the SoT too; supabase's is
-# the built-in claude-plugins-official one, which stays. `--supabase` / `--n8n`
-# opt one in on THIS machine — add its marketplace when third-party, install it,
+# absent plugin is simply not installed; only `--prune` uninstalls one already
+# present). n8n's marketplace is dropped from the SoT too; supabase's is the
+# built-in claude-plugins-official one, which stays. `--claude-plugin=<name>`
+# opts one in on THIS machine — add its marketplace when third-party, install it,
 # enable it — a sticky, install-once opt-in that survives later flag-less syncs
 # (both keys are absent from the SoT, so the pass-7 reassert never touches them).
 claude::_enable_optional_plugin() {
@@ -637,23 +674,23 @@ claude::_enable_optional_plugin() {
 }
 
 claude::sync_optional_plugins() {
-  [[ "$WANT_SUPABASE" -eq 1 || "$WANT_N8N" -eq 1 ]] || return 0
+  [[ -n "$CLAUDE_PLUGINS" ]] || return 0
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    [[ "$WANT_SUPABASE" -eq 1 ]] && echo "[dry-run] (--supabase) install + enable supabase@claude-plugins-official in deployed settings"
-    [[ "$WANT_N8N" -eq 1 ]]      && echo "[dry-run] (--n8n) add czlonkowski/n8n-skills marketplace + install + enable n8n-mcp-skills@n8n-mcp-skills"
+    common::claude_plugin_wanted supabase && echo "[dry-run] (--claude-plugin=supabase) install + enable supabase@claude-plugins-official in deployed settings"
+    common::claude_plugin_wanted n8n      && echo "[dry-run] (--claude-plugin=n8n) add czlonkowski/n8n-skills marketplace + install + enable n8n-mcp-skills@n8n-mcp-skills"
     return 0
   fi
 
   if ! command -v claude >/dev/null 2>&1; then
-    warn "claude CLI not in PATH — cannot opt in optional plugins (--supabase/--n8n)"
+    warn "claude CLI not in PATH — cannot opt in optional plugins (--claude-plugin)"
     return
   fi
 
-  if [[ "$WANT_SUPABASE" -eq 1 ]]; then
+  if common::claude_plugin_wanted supabase; then
     claude::_enable_optional_plugin "supabase@claude-plugins-official" ""
   fi
-  if [[ "$WANT_N8N" -eq 1 ]]; then
+  if common::claude_plugin_wanted n8n; then
     claude::_enable_optional_plugin "n8n-mcp-skills@n8n-mcp-skills" "czlonkowski/n8n-skills"
   fi
   return 0
@@ -744,8 +781,8 @@ claude::_rtk_reassert_hook() {
 claude::sync_rtk() {
   local tmp installed_ver tmp_rtk_installer
 
-  if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
-    warn "Skipping RTK (--no-rtk)"
+  if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
+    warn "Skipping RTK (--skip-rtk)"
     if [[ "$DRY_RUN" -eq 0 && -f "$CLAUDE_DIR/CLAUDE.md" ]] && grep -q '^@RTK\.md$' "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null; then
       tmp="$CLAUDE_DIR/CLAUDE.md.tmp"
       grep -v '^@RTK\.md$' "$CLAUDE_DIR/CLAUDE.md" > "$tmp" && mv "$tmp" "$CLAUDE_DIR/CLAUDE.md"

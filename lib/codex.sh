@@ -24,6 +24,7 @@ codex::sync() {
   codex::ensure_bubblewrap
   [[ "$DRY_RUN" -eq 0 ]] && mkdir -p "$CODEX_DIR"
   codex::sync_config "$codex_settings" "$user_codex_settings"
+  codex::sync_model
   codex::sync_rules "$codex_rules_dir" "$user_codex_rules_dir"
   codex::sync_agents_md "$codex_agents_md" "$user_codex_agents_md"
   codex::sync_marketplace "$codex_marketplace" "$user_codex_marketplace"
@@ -42,8 +43,8 @@ codex::ensure_bubblewrap() {
   codex::_bwrap_supported_os || return
   command -v bwrap >/dev/null 2>&1 && return
 
-  if [[ "${SKIP_OPTIONAL_BOOTSTRAP:-0}" -eq 1 ]]; then
-    warn "bubblewrap not installed (--no-rtk skips auto-install). Codex may use its bundled helper if user namespaces work; recommended install: sudo apt install -y bubblewrap"
+  if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
+    warn "bubblewrap not installed (--skip-rtk skips auto-install). Codex may use its bundled helper if user namespaces work; recommended install: sudo apt install -y bubblewrap"
     return
   fi
 
@@ -215,47 +216,78 @@ codex::scrub_deprecated_features() {
   log "Codex: scrubbed deprecated [features].use_legacy_landlock"
 }
 
+# Replace (or insert) one top-level `key = value` line in a user config.toml,
+# never touching [table] blocks: an existing pre-table line for the key is
+# replaced in place; otherwise the line is inserted just before the first table
+# header (or appended when no tables exist). Shared by the SoT merge loop and
+# the --codex-model deploy-time modifier.
+codex::_replace_top_level_setting() {
+  local user_codex_settings="$1" setting_key="$2" setting_line="$3"
+  local tmp_file="$user_codex_settings.tmp"
+
+  awk -v key="$setting_key" -v replacement="$setting_line" '
+    BEGIN { in_table = 0; replaced = 0 }
+    /^\[/ {
+      if (!replaced) {
+        print replacement
+        replaced = 1
+      }
+      in_table = 1
+      print
+      next
+    }
+    !in_table && $0 ~ ("^" key "[[:space:]]*=") {
+      if (!replaced) {
+        print replacement
+        replaced = 1
+      }
+      next
+    }
+    { print }
+    END {
+      if (!replaced) {
+        print replacement
+      }
+    }
+  ' "$user_codex_settings" > "$tmp_file" && mv "$tmp_file" "$user_codex_settings"
+}
+
 codex::merge_top_level_settings() {
   local codex_settings="$1"
   local user_codex_settings="$2"
-  local setting_line setting_key tmp_file
+  local setting_line setting_key
 
   while IFS= read -r setting_line; do
     [[ -z "$setting_line" ]] && continue
     setting_key="${setting_line%%=*}"
     setting_key="${setting_key%"${setting_key##*[![:space:]]}"}"
 
-    tmp_file="$user_codex_settings.tmp"
-    awk -v key="$setting_key" -v replacement="$setting_line" '
-      BEGIN { in_table = 0; replaced = 0 }
-      /^\[/ {
-        if (!replaced) {
-          print replacement
-          replaced = 1
-        }
-        in_table = 1
-        print
-        next
-      }
-      !in_table && $0 ~ ("^" key "[[:space:]]*=") {
-        if (!replaced) {
-          print replacement
-          replaced = 1
-        }
-        next
-      }
-      { print }
-      END {
-        if (!replaced) {
-          print replacement
-        }
-      }
-    ' "$user_codex_settings" > "$tmp_file" && mv "$tmp_file" "$user_codex_settings"
+    codex::_replace_top_level_setting "$user_codex_settings" "$setting_key" "$setting_line"
   done < <(awk '
     /^\[/ { exit }
     /^[[:space:]]*($|#)/ { next }
     /^[A-Za-z0-9_.-]+[[:space:]]*=/ { print }
   ' "$codex_settings")
+}
+
+# Deploy-time modifier (--codex-model=<m>): set the DEPLOYED model line. Same
+# contract as the Claude modifiers: only ~/.codex/config.toml changes, the SoT
+# keeps its pin, and a later flag-less sync restores the SoT value (the merge
+# re-asserts every SoT top-level key). Also callable standalone
+# (docks-kit model codex <m>) — hence the ${CODEX_DIR:-} fallback.
+codex::sync_model() {
+  local user_codex_settings="${CODEX_DIR:-$HOME/.codex}/config.toml"
+
+  [[ -n "$CODEX_MODEL" ]] || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] (--codex-model) set model = \"$CODEX_MODEL\" in $user_codex_settings"
+    return
+  fi
+
+  [[ -f "$user_codex_settings" ]] || { warn "(--codex-model) $user_codex_settings missing — skipped"; return; }
+  codex::_replace_top_level_setting "$user_codex_settings" "model" "model = \"$CODEX_MODEL\""
+  log "Model: deployed Codex model set to $CODEX_MODEL (SoT unchanged; flag-less sync reverts)"
 }
 
 codex::merge_table_settings() {

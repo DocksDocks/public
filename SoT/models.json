@@ -1,0 +1,28 @@
+{
+  "$comment": "Kit-verified model catalog — single source for the engine validators (lib/common.sh), the docks-kit CLI (models/model commands, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. The catalog informs, it doesn't imprison: well-formed IDs outside it (claude-* / codex charset) apply with a warning.",
+  "claude": {
+    "verified": "2026-07-08",
+    "models": [
+      { "id": "best", "kind": "alias", "note": "Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170) — the kit SoT default" },
+      { "id": "opus", "kind": "alias", "note": "latest Opus (currently Opus 4.8)" },
+      { "id": "fable", "kind": "alias", "note": "Fable 5 — needs org access + Claude Code >=2.1.170" },
+      { "id": "sonnet", "kind": "alias", "note": "latest Sonnet (currently Sonnet 5)" },
+      { "id": "haiku", "kind": "alias", "note": "latest Haiku (currently Haiku 4.5)" },
+      { "id": "default", "kind": "alias", "note": "engine pseudo-value: deletes the deployed model key so the account default applies" },
+      { "id": "claude-fable-5", "kind": "id", "note": "Fable 5" },
+      { "id": "claude-opus-4-8", "kind": "id", "note": "Opus 4.8" },
+      { "id": "claude-sonnet-5", "kind": "id", "note": "Sonnet 5" },
+      { "id": "claude-haiku-4-5-20251001", "kind": "id", "note": "Haiku 4.5" }
+    ]
+  },
+  "codex": {
+    "verified": "2026-07-08",
+    "models": [
+      { "id": "gpt-5.5", "kind": "id", "note": "Codex default — the kit SoT pin" },
+      { "id": "gpt-5.5-codex", "kind": "id", "note": "codex-tuned gpt-5.5" },
+      { "id": "gpt-5.1", "kind": "id", "note": "previous generation" },
+      { "id": "gpt-5", "kind": "id", "note": "previous generation" },
+      { "id": "gpt-5-codex", "kind": "id", "note": "codex-tuned gpt-5" }
+    ]
+  }
+}

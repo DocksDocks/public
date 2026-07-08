@@ -1,6 +1,8 @@
 #!/bin/bash
 # sync.sh — portable AI coding agent config sync
-# Usage: ./sync.sh [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--680k] [--permissive] [--supabase] [--n8n] [--claude] [--codex] [--agents]
+# Usage: ./sync.sh [claude] [codex] [agents] [--dry-run] [--skip-rtk] [--reconcile] [--prune] [--yes]
+#                  [--claude-model=M] [--claude-compact-window=N] [--claude-permissive] [--claude-plugin=X]
+#                  [--codex-model=M]
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -10,6 +12,7 @@ source "$REPO_DIR/lib/common.sh"
 
 common::parse_args "$@"
 common::preflight
+common::validate_model_flags
 
 if [[ "$SYNC_CLAUDE" -eq 1 && -d "$REPO_DIR/SoT/.claude" ]]; then
   # shellcheck source=lib/claude.sh
