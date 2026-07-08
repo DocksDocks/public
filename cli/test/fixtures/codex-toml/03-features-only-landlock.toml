@@ -1,0 +1,4 @@
+model = "gpt-5"
+
+[features]
+use_legacy_landlock = true

@@ -1,0 +1,4 @@
+# leading comment
+model = "gpt-4" # inline comment
+# comment between keys
+approval_policy = "never"

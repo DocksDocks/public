@@ -1,0 +1,1 @@
+{ "showTurnDuration": false, "mcpServers": { "user-server": { "type": "stdio", "command": "echo", "args": [] } } }

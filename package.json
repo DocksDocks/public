@@ -24,7 +24,9 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit -p cli",
-    "build:binaries": "bash cli/build-binaries.sh"
+    "build:binaries": "bash cli/build-binaries.sh",
+    "parity:dryrun": "bun cli/test/parity-dryrun.ts",
+    "parity:mutation": "bun cli/test/parity-mutation.ts"
   },
   "dependencies": {
     "@effect/cli": "0.75.2",

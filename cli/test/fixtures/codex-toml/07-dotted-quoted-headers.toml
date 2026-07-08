@@ -1,0 +1,7 @@
+model = "gpt-5"
+
+[plugins."docks@docks"]
+enabled = false
+
+[plugins."user-custom@somewhere"]
+enabled = true

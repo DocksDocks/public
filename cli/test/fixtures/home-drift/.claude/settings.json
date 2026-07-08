@@ -1,0 +1,6 @@
+{
+  "model": "sonnet",
+  "env": { "MY_CUSTOM_VAR": "1" },
+  "permissions": { "allow": ["Bash(my-tool *)"], "deny": [], "ask": [] },
+  "enabledPlugins": { "user-plugin@userplace": true }
+}

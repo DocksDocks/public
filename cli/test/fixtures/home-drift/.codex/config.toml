@@ -1,0 +1,12 @@
+# user comment above model
+model = "gpt-5"
+custom_user_key = "keepme"
+
+[features]
+use_legacy_landlock = false
+
+[user_only.table]
+keep = true
+
+[agents]
+max_threads = 4

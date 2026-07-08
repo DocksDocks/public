@@ -1,0 +1,5 @@
+model = "gpt-5"
+
+[user_only.table]
+keep = "yes"
+nested = 1

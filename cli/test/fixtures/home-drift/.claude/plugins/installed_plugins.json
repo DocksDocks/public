@@ -1,0 +1,1 @@
+{ "plugins": { "user-plugin@userplace": [{ "scope": "user", "version": "1.0.0" }] } }

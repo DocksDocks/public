@@ -1,0 +1,6 @@
+model = "gpt-5"
+
+[agents]
+max_threads = 1
+max_depth = 9
+stale_key = true
