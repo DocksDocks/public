@@ -16,8 +16,11 @@ const nativeSelected = (): boolean => process.env["DOCKS_KIT_ENGINE"] !== "bash"
 // bun build --compile runs the embedded entry from a virtual path
 // ("/$bunfs/root/…" on POSIX, "B:\~BUN\root\…" on Windows). There
 // process.execPath IS the CLI, so a re-spawn must not pass main.ts.
+// The Windows check is anchored to the drive-rooted "~BUN" segment so a
+// real checkout under a ~BUN-named directory can't false-positive.
 const compiled =
-  process.argv[1] !== undefined && (process.argv[1].startsWith("/$bunfs/") || process.argv[1].includes("~BUN"))
+  process.argv[1] !== undefined &&
+  (process.argv[1].startsWith("/$bunfs/") || /^[A-Za-z]:[\\/]~BUN[\\/]/i.test(process.argv[1]))
 
 export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -46,6 +49,9 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
           encoding: "utf8",
           stdio: ["ignore", "pipe", "inherit"]
         })
+        if (res.error !== undefined || res.status !== 0) {
+          process.stderr.write(`\x1b[1;33m[warn]\x1b[0m engine capture failed (${args.join(" ")} exited ${res.status ?? "spawn-error"})\n`)
+        }
         return res.stdout ?? ""
       })
     : Subprocess.make("bash", join("lib/engine.sh"), ...args).pipe(

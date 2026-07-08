@@ -16,12 +16,14 @@ on:
       - "cli/**"
       - "package.json"
       - "bun.lock"
+      - "SoT/**"
       - ".github/workflows/windows-entrypoints.yml"
   pull_request:
     paths:
       - "cli/**"
       - "package.json"
       - "bun.lock"
+      - "SoT/**"
       - ".github/workflows/windows-entrypoints.yml"
   workflow_dispatch:
 
@@ -85,6 +87,8 @@ jobs:
       - name: exe status (compiled re-spawn seam)
         # engineCapture in a compiled binary re-spawns process.execPath
         # WITHOUT the main.ts path — regression guard for that argv contract.
+        # The npm-row assertion is the real proof: engineCapture returns ""
+        # on a failed child, so "Kit home:" alone would pass vacuously.
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
           $out = .\docks-kit-windows-x64.exe status 2>&1 | Out-String
@@ -92,6 +96,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "exe status exited $LASTEXITCODE" }
           if ($out -notmatch "Kit home:") { throw "status output missing the kit-home line" }
           if ($out -match "Unknown arg") { throw "compiled re-spawn passed a stray main.ts arg" }
+          if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "toolchain table lost - compiled engineCapture child failed" }
 
   # The "#!/usr/bin/env bun" bin installed globally: bun must create a
   # working Windows shim, and kit-home must resolve from the package's own
