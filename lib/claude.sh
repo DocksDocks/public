@@ -598,16 +598,14 @@ claude::sync_plugins() {
 }
 
 # --- Optional (flag-gated) plugins --------------------------------------------
-# The lean default keeps supabase and n8n OFF. supabase sits in SoT
-# enabledPlugins as `false` (official plugins default ON when absent, so `false`
-# is what actually disables it — the reassert pass enforces it via `claude
-# plugin disable`); n8n is absent from SoT entirely, plugin and marketplace both.
-# A flag-less sync therefore never loads, downloads, or uninstalls either one.
-# `--supabase` / `--n8n` opt one in on THIS machine: install it (adding its
-# marketplace when third-party) and enable it. Like --680k / --permissive this
-# touches the DEPLOYED config only — a later flag-less sync reverts it (the
-# reassert re-disables SoT-false supabase; n8n is left installed-but-unmanaged),
-# so re-pass the flag on machines that should keep the plugin.
+# supabase and n8n are kept OUT of the SoT entirely — neither key is in
+# enabledPlugins, so a flag-less sync installs, loads, and enables neither (an
+# absent plugin is simply not installed; only `--remove-plugins` uninstalls one
+# already present). n8n's marketplace is dropped from the SoT too; supabase's is
+# the built-in claude-plugins-official one, which stays. `--supabase` / `--n8n`
+# opt one in on THIS machine — add its marketplace when third-party, install it,
+# enable it — a sticky, install-once opt-in that survives later flag-less syncs
+# (both keys are absent from the SoT, so the pass-7 reassert never touches them).
 claude::_enable_optional_plugin() {
   local plugin_id="$1" marketplace_repo="$2"
   local installed_plugins="$CLAUDE_DIR/plugins/installed_plugins.json"
@@ -627,10 +625,10 @@ claude::_enable_optional_plugin() {
       || { warn "Failed to install optional plugin $plugin_id"; return; }
   fi
 
-  # Authoritative enable: `plugin install` enables as a side effect, but supabase
-  # is SoT-false so the reassert pass (run just before this) disabled it again.
-  # `plugin enable` re-enables it and the CLI persists true into settings.json —
-  # a plain jq edit would lose the CLI-owns-settings.json race.
+  # `plugin install` enables as a side effect, but call `plugin enable`
+  # explicitly so an already-installed-but-disabled plugin (e.g. supabase left
+  # `false` on a machine by an earlier kit version) also flips on. The CLI owns
+  # settings.json, so this persists where a plain jq edit would lose the race.
   if claude::_cli plugin enable "$plugin_id" >/dev/null 2>&1; then
     log "Optional plugin opted in: $plugin_id"
   else
