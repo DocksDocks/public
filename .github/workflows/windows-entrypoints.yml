@@ -1,0 +1,132 @@
+name: windows-entrypoints
+
+# Step 8 (windows-support plan): verify the supported Windows command
+# surfaces. The compiled docks-kit-windows-x64.exe is THE no-toolchain path
+# (no Bun, no Git Bash — the exe embeds the runtime; it still needs a kit
+# checkout or DOCKS_KIT_HOME for the SoT it deploys). The bun add -g shim
+# covers the "#!/usr/bin/env bun" bin on Windows. install.sh remains
+# documented Unix-only — it is deliberately not exercised here.
+#
+# Runner is the pinned label windows-2025, never the floating *-latest.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cli/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/windows-entrypoints.yml"
+  pull_request:
+    paths:
+      - "cli/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/windows-entrypoints.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-exe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14 # keep in step with SoT/toolchain.json tools.bun.verified
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Cross-compile the Windows binary
+        run: bash cli/build-binaries.sh windows-x64
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docks-kit-windows-x64
+          path: cli/dist/docks-kit-windows-x64.exe
+          if-no-files-found: error
+
+  # The exe on a clean runner: NO setup-bun on purpose — the binary embeds
+  # the runtime. Git Bash exists on the GitHub image (unremovable) but is
+  # never invoked: EngineNative runs in-process.
+  exe-smoke:
+    needs: build-exe
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: docks-kit-windows-x64
+
+      - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
+        run: |
+          $kitHome = Join-Path $env:RUNNER_TEMP "exe-home"
+          New-Item -ItemType Directory -Force -Path (Join-Path $kitHome ".claude") | Out-Null
+          Copy-Item "SoT/.claude/settings.json" (Join-Path $kitHome ".claude/settings.json")
+          "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: exe sync --dry-run (no Bun installed)
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = .\docks-kit-windows-x64.exe sync --dry-run 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "exe sync --dry-run exited $LASTEXITCODE" }
+          if ($out -notmatch "exe-home") { throw "output never references the USERPROFILE-derived home" }
+          if ($out -match "Unknown OS") { throw "unknown-OS warning leaked" }
+
+      - name: exe status (compiled re-spawn seam)
+        # engineCapture in a compiled binary re-spawns process.execPath
+        # WITHOUT the main.ts path — regression guard for that argv contract.
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = .\docks-kit-windows-x64.exe status 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "exe status exited $LASTEXITCODE" }
+          if ($out -notmatch "Kit home:") { throw "status output missing the kit-home line" }
+          if ($out -match "Unknown arg") { throw "compiled re-spawn passed a stray main.ts arg" }
+
+  # The "#!/usr/bin/env bun" bin installed globally: bun must create a
+  # working Windows shim, and kit-home must resolve from the package's own
+  # bundled SoT when run outside any checkout.
+  bun-shim:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14 # keep in step with SoT/toolchain.json tools.bun.verified
+
+      - name: Pack and install globally from the tarball
+        run: |
+          bun pm pack --destination $env:RUNNER_TEMP
+          $tgz = Get-ChildItem (Join-Path $env:RUNNER_TEMP "*.tgz") | Select-Object -First 1
+          bun add -g $tgz.FullName
+          if ($LASTEXITCODE -ne 0) { throw "bun add -g failed" }
+
+      - name: Shim works from a foreign cwd (bundled-SoT kit-home)
+        run: |
+          Set-Location $env:RUNNER_TEMP
+          $out = docks-kit models claude 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "docks-kit models claude exited $LASTEXITCODE" }
+          if ($out -notmatch "claude-opus-4-8") { throw "models catalog missing - bundled SoT not resolved" }
+
+      - name: Shim drives the engine (toolchain check)
+        run: |
+          Set-Location $env:RUNNER_TEMP
+          $out = docks-kit toolchain check 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "docks-kit toolchain check exited $LASTEXITCODE" }
+          if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "npm row has no version" }

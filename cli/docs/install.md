@@ -26,7 +26,7 @@ versioned config snapshots. Kit-home resolution: `DOCKS_KIT_HOME` env →
 nearest ancestor directory containing `SoT/` (a checkout wins over the
 bundled copy) → the package's own bundled SoT.
 
-## 3. curl installer
+## 3. curl installer (Unix-only)
 
 ```
 curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
@@ -36,6 +36,22 @@ bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh
 Download-then-run, never `curl | bash` — stream truncation has bitten this
 kit before. The installer bootstraps Bun when absent, runs
 `bun add -g docks-kit`, and links the binary into `~/.local/bin`.
+**Linux/macOS only** — on Windows use the compiled `.exe` or `bun add -g`
+(both CI-verified; see below).
+
+## Windows entrypoints
+
+Two supported paths (CI-verified on windows-2025, native PowerShell):
+
+- **Compiled binary** — `docks-kit-windows-x64.exe` release asset. No Bun,
+  no Git Bash: the exe embeds the runtime and EngineNative runs in-process.
+  It still needs the SoT it deploys — run it from inside a kit checkout, or
+  point `DOCKS_KIT_HOME` at one.
+- **`bun add -g docks-kit`** — bun creates a working shim for the
+  `#!/usr/bin/env bun` bin; outside a checkout the package's own bundled
+  SoT is used.
+
+`install.sh` is not a Windows path.
 
 ## Zero-dependency escape hatch
 

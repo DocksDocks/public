@@ -104,7 +104,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |----------|-----|-------------|
 | Linux | ✅ native | ✅ native |
 | macOS (x64/arm64) | ✅ native | ✅ native |
-| Windows | ✅ native binary | ⚠️ experimental via Git Bash today; native TS engine (EngineNative) in progress — RTK hooks are already native (rtk ≥0.37.2) |
+| Windows | ✅ native binary (`.exe` and `bun add -g` CI-verified) | ✅ EngineNative (TS, default engine — no Git Bash); real-machine verify pending — RTK hooks are native too (rtk ≥0.37.2) |
 
 Details: `docks-kit docs platforms`.
 

@@ -2,31 +2,44 @@
 
 | Platform | CLI (docks-kit) | Sync engine | Notes |
 |----------|-----------------|-------------|-------|
-| Linux | native | native | Primary target |
-| macOS | native (x64 + arm64) | native | bash 3.2-compatible engine |
-| Windows | native (binary/Bun) | **experimental via Git Bash**; full hooks under WSL | See below |
+| Linux | native | EngineNative (TS) | Primary target |
+| macOS | native (x64 + arm64) | EngineNative (TS) | bash escape hatch is 3.2-compatible |
+| Windows | native (`.exe` / `bun add -g`, CI-verified) | EngineNative (TS) — no Git Bash | Real-machine verify pending |
+
+EngineNative is the default engine on all platforms; `DOCKS_KIT_ENGINE=bash`
+opts a machine back onto the feature-frozen bash engine (`lib/engine.sh`),
+which also remains the zero-dependency escape hatch.
 
 ## Windows detail
 
+Supported entrypoints (both verified in CI on windows-2025 under native
+PowerShell — see `.github/workflows/windows-entrypoints.yml`):
+
+- **`docks-kit-windows-x64.exe`** (release asset) — the no-toolchain path.
+  No Bun, no Git Bash; the exe embeds the runtime and EngineNative runs
+  in-process. It still needs the SoT it deploys: run from a kit checkout or
+  set `DOCKS_KIT_HOME`.
+- **`bun add -g docks-kit`** — bun creates a working Windows shim for the
+  `#!/usr/bin/env bun` bin; outside a checkout kit-home resolves to the
+  package's own bundled SoT.
+- `install.sh` is **Unix-only** and not a Windows path.
+
 The managed tools all run natively on Windows: Claude Code (requires Git
-Bash for its Bash tool — so Git Bash is present on any Windows machine
-running Claude Code), Codex CLI (native PowerShell + Windows sandbox),
-RTK (native binaries via GitHub releases/winget; since rtk 0.37.2 the
-PreToolUse hook is a native binary command — `rtk hook claude`, no shell
-or jq — so the hook works on Windows too. Only the kit's *auto-installer*
-is Unix-only: install rtk natively, then sync).
+Bash for its own Bash tool — that requirement is Claude Code's, not this
+kit's), Codex CLI (native PowerShell + Windows sandbox), RTK (native
+binaries; since rtk 0.37.2 the PreToolUse hook is a native binary command —
+`rtk hook claude`, no shell or jq. Only the kit's *auto-installer* is
+Unix-only: install rtk natively, then sync).
 
-The kit's bash engine runs under Git Bash on Windows. Status:
-**experimental and not yet verified on a real Windows machine** — known
-gates are in place (LF-pinned scripts, Windows launcher binary selection,
-bwrap skip, symlink copy-fallback), with rough edges expected around
-shell-rc env exports (`setx` translation pending).
+CI coverage (all on the pinned windows-2025 label): EngineNative PowerShell
+smoke with `HOME` unset — `%USERPROFILE%` path resolution, `.cmd` tool
+spawning (npm), toolchain gate branches (`.github/workflows/parity.yml`,
+`native-windows` job); the bash escape hatch under Git Bash
+(`windows-smoke.yml`); the two entrypoints above
+(`windows-entrypoints.yml`). Deployed hook/statusline assets stay bash by
+design — Claude Code on Windows executes them through its own Git Bash.
 
-## Roadmap
-
-The engine is being ported to native TypeScript (EngineNative) behind the
-CLI's `engine.ts` seam, gated by dry-run parity against the bash engine.
-Once parity holds it becomes the default on all platforms — removing the
-Git Bash requirement on Windows entirely. The bash engine is feature-frozen
-(bug fixes only) and remains as the no-Bun escape hatch. Tracked in the
-`windows-support` plan.
+**Status: supported, pending one manual gate** — a real-machine interactive
+verify (Claude Code loads the synced `%USERPROFILE%\.claude`, the rtk hook
+fires, hook/statusline commands run or are knowingly skipped) tracked as
+step 9 of the `windows-support` plan.

@@ -13,6 +13,12 @@ import { kitHome } from "./kitHome"
  */
 const nativeSelected = (): boolean => process.env["DOCKS_KIT_ENGINE"] !== "bash"
 
+// bun build --compile runs the embedded entry from a virtual path
+// ("/$bunfs/root/…" on POSIX, "B:\~BUN\root\…" on Windows). There
+// process.execPath IS the CLI, so a re-spawn must not pass main.ts.
+const compiled =
+  process.argv[1] !== undefined && (process.argv[1].startsWith("/$bunfs/") || process.argv[1].includes("~BUN"))
+
 export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     const code = nativeSelected()
@@ -35,7 +41,7 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
     ? Effect.sync(() => {
         // Child process (raw channel): runEngineNative writes straight to
         // process.stdout, so in-process capture isn't possible.
-        const res = spawnSync(process.execPath, [`${kitHome()}/cli/src/main.ts`, ...args], {
+        const res = spawnSync(process.execPath, compiled ? [...args] : [`${kitHome()}/cli/src/main.ts`, ...args], {
           env: { ...process.env, DOCKS_KIT_ENGINE: "native-raw" },
           encoding: "utf8",
           stdio: ["ignore", "pipe", "inherit"]
