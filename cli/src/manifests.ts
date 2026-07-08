@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync, readlinkSync, existsSync } from "node:fs"
+import { homedir } from "node:os"
 import { join } from "node:path"
 import { kitHome } from "./kitHome"
+
+export { homedir }
 
 export interface ModelEntry {
   readonly id: string
@@ -43,8 +46,6 @@ export const sotCodexModel = (): string | undefined =>
 
 export const deployedCodexModel = (): string | undefined =>
   tomlModel(join(homedir(), ".codex", "config.toml"))
-
-export const homedir = (): string => process.env["HOME"] ?? "~"
 
 /** Installed plugins (user scope) vs SoT enabledPlugins tri-state. */
 export const pluginsView = (): Array<{

@@ -35,12 +35,16 @@ codex::sync() {
 # Codex prefers a system bubblewrap on Linux, then falls back to its bundled
 # helper when user namespaces allow it. macOS uses Seatbelt natively.
 codex::ensure_bubblewrap() {
+  # OS gate BEFORE the dry-run echo, so non-Linux dry-runs don't advertise a
+  # Linux-only check. `|| return 0`, not bare `|| return` — propagating the
+  # gate's 1 would abort codex::sync under set -e on non-Linux.
+  codex::_bwrap_supported_os || return 0
+
   if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)"
     return
   fi
 
-  codex::_bwrap_supported_os || return
   command -v bwrap >/dev/null 2>&1 && return
 
   if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
@@ -75,6 +79,7 @@ codex::_bwrap_supported_os() {
   case "$(uname -s)" in
     Darwin*) return 1 ;;
     Linux*) return 0 ;;
+    MINGW*|MSYS*|CYGWIN*) return 1 ;;  # Windows: Codex ships its own native sandbox — bwrap n/a, known skip
     *) warn "Unknown OS — skipping bubblewrap check; Codex sandbox may not work"; return 1 ;;
   esac
 }

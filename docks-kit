@@ -12,6 +12,9 @@ case "$(uname -s)-$(uname -m)" in
   Linux-aarch64)  KIT_BIN="docks-kit-linux-arm64" ;;
   Darwin-x86_64)  KIT_BIN="docks-kit-darwin-x64" ;;
   Darwin-arm64)   KIT_BIN="docks-kit-darwin-arm64" ;;
+  # Git Bash unames look like MINGW64_NT-10.0-19045-x86_64. The compiled
+  # binary is the supported Windows path; the Bun fallback below is Unix-shaped.
+  MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) KIT_BIN="docks-kit-windows-x64.exe" ;;
   *)              KIT_BIN="" ;;
 esac
 if [[ -n "$KIT_BIN" && -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then

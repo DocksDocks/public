@@ -191,8 +191,9 @@ toolchain::report() {
     os=$(toolchain::field "$tool" os)
     if [[ -n "$os" ]]; then
       case "$(uname -s)" in
-        Linux*)  [[ "$os" == "linux" ]]  || continue ;;
-        Darwin*) [[ "$os" == "darwin" ]] || continue ;;
+        Linux*)               [[ "$os" == "linux" ]]   || continue ;;
+        Darwin*)              [[ "$os" == "darwin" ]]  || continue ;;
+        MINGW*|MSYS*|CYGWIN*) [[ "$os" == "windows" ]] || continue ;;
       esac
     fi
     kind=$(toolchain::field "$tool" kind)

@@ -1,0 +1,4 @@
+# Shell entrypoints must stay LF — a CRLF checkout (core.autocrlf=true on
+# Windows) breaks Git Bash with `/bin/bash^M` before any logic runs.
+docks-kit text eol=lf
+*.sh text eol=lf
