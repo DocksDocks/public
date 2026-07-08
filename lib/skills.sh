@@ -148,82 +148,44 @@ skills::heal_claude_symlink() {
   return 0
 }
 
-# Echo agent-browser's latest npm version when it is strictly newer than the
-# installed one; echo nothing when up-to-date or unverifiable (no npm/offline).
-# Numeric per-field sort mirrors claude::_warn_rtk_outdated so a locally-newer
-# pre-release never triggers a downgrade.
-skills::_agent_browser_newer_npm() {
-  local installed="$1" latest newer
-  command -v npm >/dev/null 2>&1 || return 0
-  latest=$(npm view agent-browser version 2>/dev/null || true)
-  [[ -n "$latest" && -n "$installed" && "$latest" != "$installed" ]] || return 0
-  newer=$(printf '%s\n%s\n' "$installed" "$latest" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n1)
-  [[ "$newer" == "$latest" ]] && printf '%s' "$latest"
-  return 0
+# toolchain::ensure callback for agent-browser. Upgrade = npm refresh only (the
+# Chrome download is not repeated); first install also pulls Chrome for Testing.
+skills::_agent_browser_install() {
+  local mode="$1" verb="Installing"
+  [[ "$mode" == "upgrade" ]] && verb="Upgrading"
+  local install_flags=()
+  case "$(uname -s)" in
+    Linux*) install_flags+=(--with-deps) ;;  # may prompt sudo for libnss3/libatk
+  esac
+
+  log "$verb agent-browser CLI via npm..."
+  if ! npm install -g agent-browser >/dev/null 2>&1; then
+    warn "npm install -g agent-browser failed. Try manually: npm install -g agent-browser"
+    return 1
+  fi
+
+  if [[ "$mode" == "install" ]]; then
+    log "Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)..."
+    if ! agent-browser install ${install_flags[@]+"${install_flags[@]}"}; then
+      warn "agent-browser install failed. Re-run manually: agent-browser install ${install_flags[*]:-}"
+      return 1
+    fi
+  fi
+  log "agent-browser CLI ready ($(agent-browser --version 2>/dev/null | awk '{print $NF}' || echo 'version unknown'))"
 }
 
 skills::sync_agent_browser_cli() {
   # The agent-browser SKILL.md alone is just instructions — the CLI binary
   # is what drives Chrome. Auto-install on first run because the slug is
   # declared in skills.txt (declaration = "I want this on every machine").
-  local install_flags=()
-  case "$(uname -s)" in
-    Linux*) install_flags+=(--with-deps) ;;  # may prompt sudo for libnss3/libatk
-  esac
-
   grep -q '^vercel-labs/agent-browser$' "$SKILLS_MANIFEST" 2>/dev/null || return 0
 
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    if command -v agent-browser >/dev/null 2>&1; then
-      local cur newer_dr
-      cur=$(agent-browser --version 2>/dev/null | awk '{print $NF}')
-      newer_dr=$(skills::_agent_browser_newer_npm "$cur")
-      if [[ -n "$newer_dr" ]]; then
-        echo "[dry-run] would upgrade agent-browser CLI ($cur -> $newer_dr): npm install -g agent-browser"
-      else
-        echo "[dry-run] agent-browser CLI present (${cur:-version unknown})"
-      fi
-    else
-      echo "[dry-run] would install: npm install -g agent-browser"
-      echo "[dry-run] would install: agent-browser install ${install_flags[*]:-}"
-    fi
-    return
-  fi
-
-  if command -v agent-browser >/dev/null 2>&1; then
-    local cur latest_av
-    cur=$(agent-browser --version 2>/dev/null | awk '{print $NF}')
-    latest_av=$(skills::_agent_browser_newer_npm "$cur")
-    if [[ -n "$latest_av" ]]; then
-      log "Upgrading agent-browser CLI ($cur -> $latest_av)..."
-      if npm install -g agent-browser >/dev/null 2>&1; then
-        log "agent-browser CLI upgraded ($(agent-browser --version 2>/dev/null | awk '{print $NF}'))"
-      else
-        warn "agent-browser upgrade failed (staying on $cur). Try manually: npm install -g agent-browser"
-      fi
-    else
-      log "agent-browser CLI present (${cur:-version unknown})"
-    fi
-    return
-  fi
-
   if ! command -v npm >/dev/null 2>&1; then
-    warn "npm not found — cannot auto-install agent-browser CLI. Install Node.js, then re-run sync."
+    [[ "$DRY_RUN" -eq 1 ]] || warn "npm not found — cannot auto-install agent-browser CLI. Install Node.js, then re-run sync."
     return
   fi
 
-  log "Installing agent-browser CLI via npm..."
-  if ! npm install -g agent-browser >/dev/null 2>&1; then
-    warn "npm install -g agent-browser failed. Try manually: npm install -g agent-browser"
-    return
-  fi
-
-  log "Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)..."
-  if agent-browser install ${install_flags[@]+"${install_flags[@]}"}; then
-    log "agent-browser CLI ready ($(agent-browser --version 2>/dev/null || echo 'version unknown'))"
-  else
-    warn "agent-browser install failed. Re-run manually: agent-browser install ${install_flags[*]:-}"
-  fi
+  toolchain::ensure agent-browser skills::_agent_browser_install
 }
 
 # Resolve a usable `bun` binary. `bun` lives in ~/.bun/bin, which is off the
@@ -249,51 +211,51 @@ skills::_find_bun() {
 # first on the agent PATH, matching Codex's official standalone install path. Gated on
 # effect-kit being enabled in SoT; auto-installs Bun when absent (download-
 # then-run, per the kit's no-`curl|bash` rule).
-skills::sync_effect_solutions_cli() {
-  local settings="$REPO_DIR/SoT/.claude/settings.json"
-  grep -Eq '"effect-kit@docks"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
-
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    if command -v effect-solutions >/dev/null 2>&1; then
-      echo "[dry-run] effect-solutions CLI present"
-    else
-      echo "[dry-run] would install Bun (if absent) + bun add -g effect-solutions@latest; link bun + effect-solutions into ~/.local/bin"
-    fi
-    return
-  fi
-
-  if command -v effect-solutions >/dev/null 2>&1; then
-    log "effect-solutions CLI present"
-    return
-  fi
-
+# Bootstrap Bun itself (download-then-run, per the kit's no-`curl|bash` rule).
+# Echoes the bun path on success. Shared toolchain callback material: also used
+# directly when only Bun is missing.
+skills::_bun_bootstrap() {
   local bun tmp_bun_installer
-  if ! bun="$(skills::_find_bun)"; then
-    if ! command -v curl >/dev/null 2>&1; then
-      warn "Bun and curl both missing — cannot install effect-solutions CLI. Install Bun, then re-run sync."
-      return
-    fi
-    warn "Bun not found — installing Bun for the effect-solutions CLI..."
-    tmp_bun_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
-    curl -fsSL https://bun.sh/install -o "$tmp_bun_installer" && bash "$tmp_bun_installer" >/dev/null 2>&1 || true
-    rm -f "$tmp_bun_installer"
-    if ! bun="$(skills::_find_bun)"; then
-      warn "Bun install failed — skipping effect-solutions CLI. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh"
-      return
-    fi
-    log "Bun installed ($("$bun" --version 2>/dev/null || echo 'version unknown'))"
+  if bun="$(skills::_find_bun)"; then
+    printf '%s\n' "$bun"
+    return 0
   fi
+  if ! command -v curl >/dev/null 2>&1; then
+    warn "Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync."
+    return 1
+  fi
+  warn "Bun not found — installing Bun..."
+  tmp_bun_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
+  curl -fsSL https://bun.sh/install -o "$tmp_bun_installer" && bash "$tmp_bun_installer" >/dev/null 2>&1 || true
+  rm -f "$tmp_bun_installer"
+  if ! bun="$(skills::_find_bun)"; then
+    warn "Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh"
+    return 1
+  fi
+  log "Bun installed ($("$bun" --version 2>/dev/null || echo 'version unknown'))"
+  printf '%s\n' "$bun"
+}
 
-  log "Installing effect-solutions CLI via bun..."
+# toolchain::ensure callback for effect-solutions: install and upgrade are the
+# same idempotent `bun add -g @latest` (bun resolves the newest release either
+# way) — the toolchain `track` policy is what finally gives this CLI the
+# self-upgrade that agent-browser always had.
+skills::_effect_solutions_install() {
+  local mode="$1" verb="Installing"
+  [[ "$mode" == "upgrade" ]] && verb="Upgrading"
+  local bun gbin
+
+  bun="$(skills::_bun_bootstrap)" || return 1
+
+  log "$verb effect-solutions CLI via bun..."
   if ! "$bun" add -g effect-solutions@latest >/dev/null 2>&1; then
     warn "bun add -g effect-solutions failed. Try manually: bun add -g effect-solutions@latest"
-    return
+    return 1
   fi
 
   # `bun pm -g bin` is the authoritative global-bin query (path varies with
   # BUN_INSTALL/XDG_CACHE_HOME). Link the CLI and bun itself so the shebang
   # resolves in non-interactive agent shells.
-  local gbin
   gbin="$("$bun" pm -g bin 2>/dev/null || true)"
   if [[ -n "$gbin" && -x "$gbin/effect-solutions" ]]; then
     mkdir -p "$HOME/.local/bin"
@@ -303,6 +265,13 @@ skills::sync_effect_solutions_cli() {
   else
     warn "effect-solutions installed but binary not found under '${gbin:-<unknown>}' — link it onto PATH manually"
   fi
+}
+
+skills::sync_effect_solutions_cli() {
+  local settings="$REPO_DIR/SoT/.claude/settings.json"
+  grep -Eq '"effect-kit@docks"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
+
+  toolchain::ensure effect-solutions skills::_effect_solutions_install
 }
 
 # Populate <array_name> with stripped, non-empty slugs from <file>. Supports

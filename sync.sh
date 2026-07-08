@@ -9,6 +9,8 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # shellcheck source=lib/common.sh
 source "$REPO_DIR/lib/common.sh"
+# shellcheck source=lib/toolchain.sh
+source "$REPO_DIR/lib/toolchain.sh"
 
 common::parse_args "$@"
 common::preflight

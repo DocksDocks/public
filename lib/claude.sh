@@ -14,6 +14,11 @@ claude::sync() {
     mkdir -p "$CLAUDE_DIR"
   fi
 
+  # Toolchain before config: on a first-ever install `rtk init --global`
+  # rewrites ~/.claude/settings.json (clears hooks.PreToolUse), so it must run
+  # BEFORE the settings merge + deploy-time modifiers — the merge then
+  # normalizes whatever rtk wrote and the modifiers land last, unclobberable.
+  claude::sync_rtk
   claude::sync_scripts
   claude::sync_hooks
   claude::sync_claude_md
@@ -27,7 +32,6 @@ claude::sync() {
   claude::sync_plugins
   claude::sync_optional_plugins
   claude::sync_lsp_servers
-  claude::sync_rtk
 }
 
 claude::sync_scripts() {
@@ -743,43 +747,30 @@ claude::sync_lsp_servers() {
   fi
 }
 
-# Fetch the latest published RTK release tag and warn the user if the locally
-# installed version is older. Network call has a 5s ceiling; any failure
-# silently drops the check (best-effort advisory, not a hard gate).
-claude::_warn_rtk_outdated() {
-  local installed_ver="$1" latest_tag newer
+# toolchain::ensure callback: download-then-run install/upgrade of RTK, with an
+# optional exact-version pin via the installer's RTK_VERSION env (empty = latest).
+# RTK runs as a PreToolUse bash hook, so unverified upgrades are gated by the
+# toolchain verified pin (SoT/toolchain.json) — review releases before bumping it.
+claude::_rtk_install() {
+  local mode="$1" version="${2:-}"
+  local tmp_rtk_installer
 
-  latest_tag=$(curl -fsSL --max-time 5 "https://api.github.com/repos/rtk-ai/rtk/releases/latest" 2>/dev/null \
-    | jq -r '.tag_name // empty' 2>/dev/null | sed 's/^v//' || true)
-  [[ -n "$latest_tag" && -n "$installed_ver" && "$latest_tag" != "$installed_ver" ]] || return 0
-
-  newer=$(printf '%s\n%s\n' "$installed_ver" "$latest_tag" | sort -V | tail -n1)
-  [[ "$newer" == "$latest_tag" ]] || return 0
-
-  warn "RTK $installed_ver is outdated (latest $latest_tag).
-  Review:   https://github.com/rtk-ai/rtk/releases/tag/v$latest_tag (changelog + release author)
-  Research: ask Claude to web-search 'rtk-ai/rtk v$latest_tag' for any compromise/CVE reports
-  Install:  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh && bash /tmp/rtk-install.sh && rm /tmp/rtk-install.sh
-  (RTK runs as a PreToolUse bash hook — supply-chain risk warrants review before upgrading)"
-}
-
-claude::_rtk_reassert_hook() {
-  # rtk init --global wipes hooks.PreToolUse; re-apply the SoT hook (other hook blocks preserved).
-  local repo_settings="$REPO_DIR/SoT/.claude/settings.json"
-  local user_settings="$CLAUDE_DIR/settings.json"
-  [[ -f "$user_settings" && -f "$repo_settings" ]] || return 0
-  cp "$user_settings" "$user_settings.bak"
-  if jq -s '.[1] * {hooks: {PreToolUse: .[0].hooks.PreToolUse}}' \
-       "$repo_settings" "$user_settings" > "$user_settings.tmp"; then
-    mv "$user_settings.tmp" "$user_settings"
+  [[ "$mode" == "upgrade" ]] && log "Upgrading RTK${version:+ to $version}..." || warn "RTK not found. Installing${version:+ $version}..."
+  tmp_rtk_installer=$(mktemp 2>/dev/null || echo "/tmp/rtk-install-$$.sh")
+  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o "$tmp_rtk_installer" \
+    && RTK_VERSION="${version:+v$version}" bash "$tmp_rtk_installer"
+  rm -f "$tmp_rtk_installer"
+  export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+  if command -v rtk >/dev/null 2>&1; then
+    log "RTK ready ($(rtk --version 2>/dev/null || echo 'version unknown'))"
   else
-    rm -f "$user_settings.tmp"
-    err "jq re-assert of RTK PreToolUse hook failed (backup at settings.json.bak)"
+    err "RTK install failed. Install manually: https://github.com/rtk-ai/rtk"
+    return 1
   fi
 }
 
 claude::sync_rtk() {
-  local tmp installed_ver tmp_rtk_installer
+  local tmp
 
   if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
     warn "Skipping RTK (--skip-rtk)"
@@ -791,36 +782,18 @@ claude::sync_rtk() {
     return
   fi
 
-  if [[ "$DRY_RUN" -eq 1 ]]; then
-    command -v rtk >/dev/null 2>&1 && echo "[dry-run] rtk already installed" || echo "[dry-run] would install RTK"
-    return
-  fi
+  toolchain::ensure rtk claude::_rtk_install
 
-  if ! command -v rtk >/dev/null 2>&1; then
-    warn "RTK not found. Installing..."
-    tmp_rtk_installer=$(mktemp 2>/dev/null || echo "/tmp/rtk-install-$$.sh")
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o "$tmp_rtk_installer" && bash "$tmp_rtk_installer"
-    rm -f "$tmp_rtk_installer"
-    export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
-    if command -v rtk >/dev/null 2>&1; then
-      log "RTK installed ($(rtk --version 2>/dev/null || echo 'version unknown'))"
-    else
-      err "RTK install failed. Install manually: https://github.com/rtk-ai/rtk"
+  command -v rtk >/dev/null 2>&1 || return 0
+  if [[ ! -f "$CLAUDE_DIR/RTK.md" ]]; then
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)"
+      return
     fi
-  else
-    installed_ver=$(rtk --version 2>/dev/null | awk '{print $2}')
-    log "RTK already installed (rtk ${installed_ver:-unknown})"
-    claude::_warn_rtk_outdated "$installed_ver"
-  fi
-
-  if command -v rtk >/dev/null 2>&1; then
-    if [[ ! -f "$CLAUDE_DIR/RTK.md" ]]; then
-      rtk init --global
-      claude::_rtk_reassert_hook
-      log "RTK initialized (RTK.md generated; PreToolUse hook re-asserted)"
-    else
-      log "RTK already initialized"
-    fi
+    rtk init --global
+    log "RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)"
+  elif [[ "$DRY_RUN" -eq 0 ]]; then
+    log "RTK already initialized"
   fi
 }
 

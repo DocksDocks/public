@@ -1,0 +1,21 @@
+{
+  "$comment": "Kit toolchain manifest — DATA only (versions, floors, policy); the check/install logic lives in lib/toolchain.sh and the per-tool install callbacks in each lib. kind: required (preflight hard dep) | check (doctor visibility only) | managed (kit installs/upgrades it). policy (managed only): track (upgrade toward latest, gated by `verified`) | present (install when missing, never upgrade). `verified` = last kit-tested version — anything above it prompts before install (--yes auto-accepts; non-TTY declines and falls back to the pinned `verified` when pinnable). Update `verified` after testing a new release.",
+  "tools": {
+    "jq":     { "kind": "required", "note": "settings merges + manifest reads" },
+    "curl":   { "kind": "required", "note": "installers + usage fetch" },
+    "node":   { "kind": "check", "note": "hosts npm globals (agent-browser, LSP servers)" },
+    "npm":    { "kind": "check", "note": "npm-global installer" },
+    "claude": { "kind": "check", "floor": "2.1.170", "note": "kit floor — `best` alias + Fable 5 need >=2.1.170 (mirrors settings minimumVersion)" },
+    "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
+    "ffplay": { "kind": "check", "note": "Notification hook sound (previously unchecked)" },
+    "bwrap":  { "kind": "check", "os": "linux", "note": "Codex Linux sandbox runtime" },
+    "intelephense": { "kind": "check", "note": "php-lsp server binary" },
+    "typescript-language-server": { "kind": "check", "note": "typescript-lsp server binary" },
+    "tsc":    { "kind": "check", "note": "typescript-lsp dependency" },
+    "rtk":    { "kind": "managed", "policy": "track", "floor": "0.43.0", "verified": "0.43.0", "pinnable": true,
+                "note": "PreToolUse hook — supply-chain review before unverified upgrades; installer honors RTK_VERSION=vX.Y.Z pin" },
+    "bun":    { "kind": "managed", "policy": "present", "note": "runtime for effect-solutions + the docks-kit CLI; self-updates via `bun upgrade` when wanted" },
+    "effect-solutions": { "kind": "managed", "policy": "track", "note": "Effect docs CLI (bun global) — track keeps it self-upgrading (pre-toolchain syncs only installed-when-absent)" },
+    "agent-browser":    { "kind": "managed", "policy": "track", "note": "browser-automation CLI (npm global); first install also downloads Chrome for Testing" }
+  }
+}
