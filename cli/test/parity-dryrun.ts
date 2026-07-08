@@ -13,6 +13,7 @@ import {
   banner,
   cleanup,
   diffText,
+  labelSelected,
   makeStubDir,
   parseArgs,
   runEngine,
@@ -37,6 +38,7 @@ let failures = 0
 
 for (const fixture of FIXTURES) {
   for (const cmd of COMMANDS) {
+    if (!labelSelected(`fixture=${fixture} cmd=${cmd.join(" ")}`)) continue
     const a = runEngine("bash", cmd, fixture, stubs)
     // --prove-red plants a divergence: side B runs the same command on a
     // DIFFERENT fixture — the harness must catch it or it proves nothing.
