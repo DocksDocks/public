@@ -1,32 +1,32 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_optional_plugins / claude::_enable_optional_plugin (the --supabase/--n8n flag-gated opt-ins), claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the optional-plugin opt-in (both supabase and n8n absent from the SoT — sticky --supabase/--n8n install-once flags that survive flag-less syncs because the reassert never touches an absent key; n8n's marketplace added on demand), the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_optional_plugins / claude::_enable_optional_plugin (the --claude-plugin=<name> flag-gated opt-ins driven by CLAUDE_PLUGINS / common::claude_plugin_wanted), claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --prune (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the optional-plugin opt-in (both supabase and n8n absent from the SoT — sticky --claude-plugin=supabase / --claude-plugin=n8n install-once opt-ins that survive flag-less syncs because the reassert never touches an absent key; n8n's marketplace added on demand), the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "377-709"
+      lines: "428-748"
     - path: lib/codex.sh
-      lines: "292-470"
+      lines: "323-500"
     - path: SoT/.claude/settings.json
       lines: "235-251"
     - path: SoT/.codex/plugins/marketplace.json
-      lines: "1-22"
+      lines: "1-50"
   updated: "2026-07-08"
 ---
 
 # Plugin Bootstrap
 
 <constraint>
-The `--remove-plugins` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (`claude::_plugins_uninstall` — the `has($n)` guard)
+The `--prune` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (`claude::_plugins_uninstall` — the `has($n)` guard)
 </constraint>
 
 <constraint>
-`claude-plugins-official` is NEVER removed, even on `--remove-plugins` runs. The guard at `claude::_plugins_remove_marketplaces` (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
+`claude-plugins-official` is NEVER removed, even on `--prune` runs. The guard at `claude::_plugins_remove_marketplaces` (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
 </constraint>
 
 <constraint>
-Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this enforce step is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--remove-plugins`/`--force`, silently re-enables every globally-disabled plugin. It MUST disable SoT-`false` plugins via the CLI's own `claude plugin disable` verb (authoritative — sticks in one pass) BEFORE the jq-normalize: a bare jq rewrite of the value back to `false` loses a race against the CLI and only takes effect on the *next* sync (the historical two-sync bug). The disable is guarded on the plugin being currently `true` — re-disabling an already-disabled plugin is a CLI error (exit 1).
+Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this enforce step is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--prune`/`--reconcile`, silently re-enables every globally-disabled plugin. It MUST disable SoT-`false` plugins via the CLI's own `claude plugin disable` verb (authoritative — sticks in one pass) BEFORE the jq-normalize: a bare jq rewrite of the value back to `false` loses a race against the CLI and only takes effect on the *next* sync (the historical two-sync bug). The disable is guarded on the plugin being currently `true` — re-disabling an already-disabled plugin is a CLI error (exit 1).
 </constraint>
 
 <constraint>
@@ -36,29 +36,29 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 ## When to Use
 
 - Adding a new plugin to `SoT/.claude/settings.json` `enabledPlugins`
-- Understanding why a plugin survives `--remove-plugins`
+- Understanding why a plugin survives `--prune`
 - Changing a plugin from globally-enabled (`true`) to globally-disabled (`false`)
 - Debugging a marketplace add failure
 - Modifying any `claude::_plugins_*` helper or the `claude::sync_plugins` orchestrator
 - Adding/removing an LSP plugin or changing which language-server binaries `claude::sync_lsp_servers` auto-installs
 - Modifying `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, or `codex::sync_plugins`
-- Opting an optional plugin in via `--supabase`/`--n8n`, or changing `claude::sync_optional_plugins` / `claude::_enable_optional_plugin`
+- Opting an optional plugin in via `--claude-plugin=supabase` / `--claude-plugin=n8n`, or changing `claude::sync_optional_plugins` / `claude::_enable_optional_plugin` / the `KNOWN_CLAUDE_OPTIN_PLUGINS` allow-list in common.sh
 
 ## Core Patterns
 
 ### `enabledPlugins` Tri-State Semantics
 
-| Value | Installed by kit? | Globally enabled? | Per-project can enable? | Survives `--remove-plugins`? |
+| Value | Installed by kit? | Globally enabled? | Per-project can enable? | Survives `--prune`? |
 |-------|------------------|------------------|------------------------|------------------------------|
 | `true` | Yes | Yes | N/A | Yes (`has()` passes) |
 | `false` | Yes | No | Yes (project settings.json) | Yes (`has()` passes) |
-| absent | No | — | No (nothing to flip) | No (uninstalled by `--remove-plugins`) |
+| absent | No | — | No (nothing to flip) | No (uninstalled by `--prune`) |
 
-Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (every shipped plugin is `true`, e.g. `docks@docks: true`, `context7@claude-plugins-official: true`). The SoT ships no `false`-keyed plugin today, but `false` stays a supported value for the installed-but-globally-disabled case. The tri-state governs only what the SoT ships by default — `--supabase`/`--n8n` opt-ins (see § Optional (flag-gated) plugins) sit on top of it, writing enabled-state into deployed settings only.
+Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (every shipped plugin is `true`, e.g. `docks@docks: true`, `context7@claude-plugins-official: true`). The SoT ships no `false`-keyed plugin today, but `false` stays a supported value for the installed-but-globally-disabled case. The tri-state governs only what the SoT ships by default — `--claude-plugin=<name>` opt-ins (see § Optional (flag-gated) plugins) sit on top of it, writing enabled-state into deployed settings only.
 
 ### Seven-Pass Reconcile (`claude::sync_plugins` orchestrator)
 
-The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share one helper). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block). Pass 7 is the exception — it mutates `~/.claude/settings.json` in place and returns no count.
+The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share one helper — note the code comments number the HELPERS "Pass 1"–"Pass 6", so in-code "Pass 3" covers this table's passes 3+4 and in-code "Pass 6" is this table's pass 7). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block). Pass 7 is the exception — it mutates `~/.claude/settings.json` in place and returns no count.
 
 | Pass | Condition | Action | Helper (def) | Operation |
 |------|-----------|--------|--------------|-----------|
@@ -66,11 +66,11 @@ The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share o
 | 2 | Always | `claude plugin install` for `enabledPlugins` keys lacking a **user-scope** install record (`claude::_plugin_user_scope_installed`); refreshes marketplace manifests once before the first install (`claude::_plugins_install` — stale-manifest guard) | `_plugins_install` | marketplace update + plugin install |
 | 3 | Always | `claude plugin marketplace update` (refresh manifests) | `_plugins_update` | marketplace update |
 | 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
-| 5 | `REMOVE_PLUGINS=1` | `claude plugin uninstall -y --scope user` for installed plugins not in `enabledPlugins` via `has()` — user-scope records only | `_plugins_uninstall` | plugin uninstall |
-| 6 | `REMOVE_PLUGINS=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
+| 5 | `PRUNE=1` | `claude plugin uninstall -y --scope user` for installed plugins not in `enabledPlugins` via `has()` — user-scope records only | `_plugins_uninstall` | plugin uninstall |
+| 6 | `PRUNE=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
 | 7 | Always | Enforce SoT enabled-state: `claude plugin disable` each SoT-`false` plugin currently enabled (authoritative, single-pass), then jq-normalize `(.enabledPlugins // {}) * $sot` | `_plugins_reassert_enabled_state` | CLI disable + settings rewrite |
 
-Passes 5+6 are gated on `REMOVE_PLUGINS` at `claude::sync_plugins` (REMOVE_PLUGINS gate); pass 7 runs unconditionally after them. Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
+Passes 5+6 are gated on `PRUNE` at `claude::sync_plugins` (the PRUNE gate); pass 7 runs unconditionally after them. Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
 
 ### Pass 1 — Marketplace Pre-Check
 
@@ -127,7 +127,7 @@ Runs after `claude::sync_plugins` in `claude::sync`. The official LSP plugins (`
 
 ### Optional (flag-gated) plugins (`claude::sync_optional_plugins`)
 
-Runs right after `claude::sync_plugins` in `claude::sync`. Two situational plugins are kept out of the lean default and opted in per machine via `--supabase` / `--n8n` (`WANT_SUPABASE` / `WANT_N8N`). Both keys are **absent** from the SoT `enabledPlugins`, so a flag-less sync installs, loads, and enables neither. Unlike `--680k`/`--permissive` (which a flag-less sync reverts), this opt-in is **sticky**: because the SoT has no key for either plugin, pass 7's reassert never touches them, so once a flag installs and enables one it survives every later flag-less sync — only `--remove-plugins` uninstalls (its key is absent from SoT, so `has()` fails in pass 5). Each is handled by `claude::_enable_optional_plugin plugin_id marketplace_repo`.
+Runs right after `claude::sync_plugins` in `claude::sync`. Two situational plugins are kept out of the lean default and opted in per machine via the repeatable `--claude-plugin=<name>` flag: `common::add_claude_plugin` appends each validated name (allow-list `KNOWN_CLAUDE_OPTIN_PLUGINS="supabase n8n"` in common.sh; unknown names exit 2) to the space-separated `CLAUDE_PLUGINS` list, and `claude::sync_optional_plugins` gates on `[[ -n "$CLAUDE_PLUGINS" ]]` then tests each plugin with `common::claude_plugin_wanted <name>`. Both keys are **absent** from the SoT `enabledPlugins`, so a flag-less sync installs, loads, and enables neither. Unlike `--claude-compact-window`/`--claude-permissive` (which a flag-less sync reverts), this opt-in is **sticky**: because the SoT has no key for either plugin, pass 7's reassert never touches them, so once a flag installs and enables one it survives every later flag-less sync — only `--prune` uninstalls (its key is absent from SoT, so `has()` fails in pass 5). Each is handled by `claude::_enable_optional_plugin plugin_id marketplace_repo`.
 
 | Plugin | SoT state | Flag action |
 |--------|-----------|-------------|
@@ -151,7 +151,7 @@ jq -s '
 ' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"
 ```
 
-`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the additive merge branch whenever the user file exists — `--force` does NOT wholesale-replace the marketplace, so user-added plugin entries survive a forced sync (`codex::sync_marketplace` — user-file guard); the plain `cp` install runs only on first sync, when no user file exists yet.
+`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the additive merge branch whenever the user file exists — `--reconcile` does NOT wholesale-replace the marketplace, so user-added plugin entries survive a reconcile sync (`codex::sync_marketplace` — user-file guard); the plain `cp` install runs only on first sync, when no user file exists yet.
 
 ### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`)
 

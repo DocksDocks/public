@@ -55,5 +55,5 @@ One full slug per line, sorted. Written after every real (non-dry-run) sync by `
 ## Gotchas
 
 - `~/.agents/skills/` must exist before the pre-check `[[ -d "$SKILLS_DIR/$basename" ]]` (skills::sync_universal (idempotency pre-check)). `mkdir -p "$SKILLS_DIR"` at skills::sync (mkdir SKILLS_DIR) creates it in non-dry-run mode.
-- A skill installed by the user manually into `~/.agents/skills/` WITHOUT a corresponding snapshot entry is not tracked by the kit. `--remove-plugins` will not remove it even if it's not in `skills.txt`.
+- A skill installed by the user manually into `~/.agents/skills/` WITHOUT a corresponding snapshot entry is not tracked by the kit. `--prune` will not remove it even if it's not in `skills.txt`.
 - Claude Code discovers skills at `~/.claude/skills/*/SKILL.md`. If the symlink is missing, the skill is invisible to Claude Code even though the canonical copy exists at `~/.agents/skills/`.

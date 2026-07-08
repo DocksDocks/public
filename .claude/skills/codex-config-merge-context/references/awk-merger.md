@@ -2,13 +2,14 @@
 
 ## Critical Constraints
 
-- Pass 1 (top-level) and Pass 2 (tables) are SEQUENTIAL. Run in order: scrub → top-level → tables. (`codex::sync_config`)
+- Pass 1 (top-level) and Pass 2 (tables) are SEQUENTIAL. Run in order via the stage loop: scrub → top-level → tables. (`codex::sync_config`, the `stages=(…)` array)
 - Table blocks are replaced WHOLESALE. No field-level merge. (`codex::merge_table_settings`)
-- Write to `.tmp` then `mv` — never write directly to the target. (`codex::merge_top_level_settings`, `codex::merge_table_settings`)
+- Write to `.tmp` then `mv` — never write directly to the target. (`codex::_replace_top_level_setting`, `codex::merge_table_settings`)
+- The per-key replacement awk lives in `codex::_replace_top_level_setting <file> <key> <line>` — shared by the pass-1 merge loop AND `codex::sync_model` (`--codex-model`). Edit it once; both callers change.
 
-## Pass 1: Top-Level Key Replacement (`codex::merge_top_level_settings`)
+## Pass 1: Top-Level Key Replacement (`codex::merge_top_level_settings` → `codex::_replace_top_level_setting`)
 
-### Source extraction (what keys to merge in)
+### Source extraction (what keys to merge in — `codex::merge_top_level_settings`)
 
 ```bash
 awk '
@@ -18,7 +19,7 @@ awk '
 ' "$codex_settings"
 ```
 
-### Per-key replacement awk
+### Per-key replacement awk (`codex::_replace_top_level_setting`)
 
 ```bash
 awk -v key="$setting_key" -v replacement="$setting_line" '
@@ -40,7 +41,7 @@ awk -v key="$setting_key" -v replacement="$setting_line" '
 
 Edge cases:
 - Key in user config but not in SoT: user's line is printed unchanged (falls through to `{ print }`)
-- Key absent from user config: appended at `END` (after all table headers, at file end) OR before first `[` if there are no tables
+- Key absent from user config: inserted just BEFORE the first `[table]` header (the `/^\[/` rule prints the replacement first); only when the file has no tables at all does the `END` rule append it at file end
 
 ## Pass 2: Wholesale Table Replacement (`codex::merge_table_settings`)
 

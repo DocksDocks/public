@@ -1,6 +1,6 @@
 # Seven-Pass Plugin Reconcile — Annotated Flow
 
-The seven logical passes are implemented as six `claude::_plugins_*` helpers (passes 3+4 share `_plugins_update`) dispatched by the `claude::sync_plugins` orchestrator. Passes 1–6 call the CLI through the `claude::_cli` wrapper and echo `"<count> <failed>"`; the orchestrator reads each via `read -r ... < <(...)` (`claude::sync_plugins` — dispatch block). Pass 7 instead rewrites `~/.claude/settings.json` in place and returns no count.
+The seven logical passes are implemented as six `claude::_plugins_*` helpers (passes 3+4 share `_plugins_update`) dispatched by the `claude::sync_plugins` orchestrator. Note: the code comments in lib/claude.sh number the HELPERS "Pass 1"–"Pass 6" — in-code "Pass 3" (`_plugins_update`) covers this document's passes 3+4, and in-code "Pass 6" (`_plugins_reassert_enabled_state`) is this document's pass 7. Passes 1–6 call the CLI through the `claude::_cli` wrapper and echo `"<count> <failed>"`; the orchestrator reads each via `read -r ... < <(...)` (`claude::sync_plugins` — dispatch block). Pass 7 instead rewrites `~/.claude/settings.json` in place and returns no count.
 
 ## Critical Constraints
 
@@ -8,7 +8,7 @@ The seven logical passes are implemented as six `claude::_plugins_*` helpers (pa
 - Pass 5 removal guard uses `has($n)` — `false`-keyed plugins are KEPT. (`claude::_plugins_uninstall` — the `has($n)` guard)
 - `claude-plugins-official` is protected from Pass 6 removal. (`claude::_plugins_remove_marketplaces` — claude-plugins-official guard)
 - Entire reconcile skipped if `claude` CLI not in PATH. (`claude::sync_plugins` — CLI presence check)
-- Passes 5+6 gated on `REMOVE_PLUGINS` by the orchestrator. (`claude::sync_plugins` — REMOVE_PLUGINS gate)
+- Passes 5+6 gated on `PRUNE` by the orchestrator. (`claude::sync_plugins` — the PRUNE gate)
 - Pass 7 runs UNCONDITIONALLY after passes 5+6 — it is the only thing that keeps `false`-keyed plugins disabled after pass 2's install-side enable. (`claude::_plugins_reassert_enabled_state`)
 
 ## Pass 1: Add Missing Marketplaces (`claude::_plugins_add_marketplaces`)
@@ -80,7 +80,7 @@ done < <(jq -r '.plugins | keys[]' "$installed_plugins")        # installed plug
 
 Iterates ALL installed plugins (not just kit-managed). Each update is `|| true`; only `"Successfully updated"` output bumps the counter.
 
-## Pass 5: Uninstall Removed Plugins (`claude::_plugins_uninstall`) — `--remove-plugins` only
+## Pass 5: Uninstall Removed Plugins (`claude::_plugins_uninstall`) — `--prune` only
 
 ```bash
 while IFS= read -r plugin_id; do
@@ -94,7 +94,7 @@ done < <(jq -r '.plugins | keys[]' "$installed_plugins")  # installed plugins re
 
 `has($n)` = key present in object, regardless of value. `false`-valued keys PASS `has()`. The kit uninstalls **user-scope records only** (explicit `--scope user`, gated on the scope-aware predicate) — a project/local-scope install is project-owned and never touched, even when its key is absent from SoT.
 
-## Pass 6: Remove Extra Marketplaces (`claude::_plugins_remove_marketplaces`) — `--remove-plugins` only
+## Pass 6: Remove Extra Marketplaces (`claude::_plugins_remove_marketplaces`) — `--prune` only
 
 ```bash
 while IFS= read -r mp_name; do

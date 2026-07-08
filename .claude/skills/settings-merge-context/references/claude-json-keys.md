@@ -2,7 +2,7 @@
 
 ## Critical Constraint
 
-Adding `showTurnDuration` to `settings.json` triggers a schema validation warning. It belongs ONLY in `~/.claude.json`. `sync.sh` handles this automatically via `claude::sync_claude_json`.
+Adding `showTurnDuration` to `settings.json` triggers a schema validation warning. It belongs ONLY in `~/.claude.json`. The sync engine (`lib/engine.sh` → `claude::sync`) handles this automatically via `claude::sync_claude_json`.
 
 ## Key Location Table
 
@@ -39,6 +39,6 @@ Cloud connectors (Figma/Drive/Gmail) are account-synced and fetched at startup; 
 
 ## Gotchas
 
-- `~/.claude.json` is written by Claude Code itself for project state. `sync.sh` patches it minimally — never replaces it wholesale.
+- `~/.claude.json` is written by Claude Code itself for project state. The sync engine patches it minimally — never replaces it wholesale.
 - `claude::sync_removals` can prune stale keys from `~/.claude.json` too (`claudeJsonKeys` in `claude::_removed_manifest`), but only that curated list — it never touches `projects` state or user keys. `delpaths` ignores absent paths, so re-runs are silent no-ops.
-- `sync.sh` never writes `mcpServers` to `settings.json` (the schema rejects the key). User-scoped `mcpServers` in `~/.claude.json` ARE kit-managed when declared in `SoT/.claude/mcp-servers.json` — additive merge, so a user's own servers (and any Claude Code wrote itself) are preserved.
+- The sync engine never writes `mcpServers` to `settings.json` (the schema rejects the key). User-scoped `mcpServers` in `~/.claude.json` ARE kit-managed when declared in `SoT/.claude/mcp-servers.json` — additive merge, so a user's own servers (and any Claude Code wrote itself) are preserved.

@@ -26,7 +26,7 @@ Step-by-step:
 
 Result: user-added `Bash(custom-tool *)` entries survive; SoT entries win on scalar conflicts; no permissions are lost.
 
-## Force Reconcile (`claude::_settings_reconcile (the jq $user*$repo)`)
+## Reconcile — `--reconcile` mode (`claude::_settings_reconcile (the jq $user*$repo)`)
 
 ```bash
 jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
@@ -47,7 +47,7 @@ Result: user-added custom permissions are wiped. User-only top-level keys (e.g. 
 | `$user * $repo` | repo (right-hand) |
 | `$repo * $user` | user (right-hand) |
 
-The kit always writes `$user * $repo` so SoT changes propagate forward. If the kit wrote `$repo * $user`, SoT key changes would be silently ignored on non-force syncs.
+The kit always writes `$user * $repo` so SoT changes propagate forward. If the kit wrote `$repo * $user`, SoT key changes would be silently ignored on non-reconcile syncs.
 
 ## `~/.claude.json` jq (`claude::sync_claude_json (the showTurnDuration jq)`)
 

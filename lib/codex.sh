@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Source-order guards: this lib depends on common.sh's log/warn/err and on
-# sync.sh's REPO_DIR. Fail fast with a clear message if sourced standalone.
+# the entry script's REPO_DIR. Fail fast with a clear message if sourced standalone.
 declare -F log >/dev/null 2>&1 || { printf '\033[1;31m[err]\033[0m %s\n' "lib/codex.sh must be sourced after lib/common.sh" >&2; exit 1; }
 [[ -n "${REPO_DIR:-}" ]] || { printf '\033[1;31m[err]\033[0m %s\n' "REPO_DIR must be set before sourcing lib/codex.sh" >&2; exit 1; }
 

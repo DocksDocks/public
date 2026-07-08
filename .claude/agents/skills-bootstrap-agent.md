@@ -1,6 +1,6 @@
 ---
 name: skills-bootstrap-agent
-description: Use when modifying `skills::sync_universal`, `skills::heal_claude_symlink`, `skills::reconcile_removals`, `skills::update_snapshot`, `skills::sync_agent_browser_cli`, `SoT/.agents/skills.txt`, or the `npx skills add` invocation order. Not for SKILL.md content authoring (use the `docks:write-skill` / `docks:skill-maintenance` skills) or plugin marketplace reconcile (use `plugin-bootstrap-agent`).
+description: Use when modifying `skills::sync_universal`, `skills::heal_claude_symlink`, `skills::reconcile_removals`, `skills::update_snapshot`, `skills::_normalize_manifest`, `skills::sync_agent_browser_cli` / `skills::_agent_browser_install`, `skills::sync_effect_solutions_cli` / `skills::_effect_solutions_install`, `skills::_bun_bootstrap`, `SoT/.agents/skills.txt`, or the `npx skills add` invocation order. Not for SKILL.md content authoring (use the `docks:write-skill` / `docks:skill-maintenance` skills), the toolchain version-gate machinery (use the `toolchain-context` skill), or plugin marketplace reconcile (use `plugin-bootstrap-agent`).
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -22,7 +22,7 @@ Always name BOTH agents (`claude-code codex`) in the `-a` flag. A single `-a cla
 </constraint>
 
 <constraint>
-`skills::heal_claude_symlink` leaves real (non-symlink) directories alone — never attempt to replace them automatically (skills::heal_claude_symlink (real-directory guard)). Strip both whole-line and inline comments from `skills.txt` before processing (skills::sync_universal (comment stripping)).
+`skills::heal_claude_symlink` leaves real (non-symlink) directories alone — never attempt to replace them automatically (skills::heal_claude_symlink (real-directory guard)). All `skills.txt` parsing goes through `skills::_normalize_manifest` (whole-line + inline comment strip) — never parse the manifest ad hoc; `sync_universal`, `_load_slug_list`, and `update_snapshot` must share it.
 </constraint>
 
 ## Workflow
@@ -33,16 +33,18 @@ Always name BOTH agents (`claude-code codex`) in the `-a` flag. A single `-a cla
 4. If the task involves the `npx skills add` invocation pattern or arg-order regression, read `.claude/skills/universal-skills-context/references/cli-arg-trap.md`.
 5. Check `~/.agents/skills/<basename>/` before the idempotency pre-check (skills::sync_universal (idempotency pre-check)) — if it exists, call `skills::heal_claude_symlink` to repair symlink, then skip the `npx` call.
 6. Verify the relative symlink target is `../../.agents/skills/<basename>` — matches the upstream `installer.ts:createSymlink` relative path (skills::heal_claude_symlink (rel_target)).
-7. For `agent-browser` CLI side-effect installs: `npm install -g agent-browser && agent-browser install --with-deps` on Linux; `--with-deps` may prompt for sudo.
-8. Hand off to `sync-mechanic-agent` if the task involves the `skills::sync` orchestration order in skills::sync (call order).
+7. For the CLI binary bootstraps: both are thin `toolchain::ensure` callers — `skills::sync_agent_browser_cli` → `toolchain::ensure agent-browser skills::_agent_browser_install`, `skills::sync_effect_solutions_cli` → `toolchain::ensure effect-solutions skills::_effect_solutions_install`. Callbacks take `<install|upgrade>`: agent-browser runs `npm install -g` always and pulls Chrome (`agent-browser install`, `--with-deps` on Linux, may prompt sudo) only in `install` mode; effect-solutions runs the same idempotent `bun add -g effect-solutions@latest` in both modes after `skills::_bun_bootstrap`, then symlinks bun + CLI into `~/.local/bin`. `skills::_agent_browser_newer_npm` is DELETED — version compares live in `toolchain::_is_newer`.
+8. Hand off to `sync-mechanic-agent` if the task involves the `skills::sync` orchestration order in skills::sync (call order), or the `PRUNE` gate before `reconcile_removals`.
 
 ## Patterns
 
-Comment stripping from `skills.txt` (skills::sync_universal (comment stripping)):
+Manifest normalization — the single shared parser (skills::_normalize_manifest):
 ```bash
-[[ -z "$slug" || "$slug" =~ ^[[:space:]]*# ]] && continue
-slug="${slug%%#*}"
-slug="${slug// /}"
+awk '
+  /^[[:space:]]*#/ { next }
+  /^[[:space:]]*$/ { next }
+  { sub(/[[:space:]]*#.*$/, ""); gsub(/[[:space:]]+/, ""); if (length($0)) print }
+' "$1"
 ```
 
 Idempotency pre-check + heal before npx (skills::sync_universal (idempotency pre-check)):
@@ -77,9 +79,9 @@ Read these for detailed knowledge:
 
 ## Integration
 
-- Hand off to `sync-mechanic-agent` when task involves the `skills::sync` call order or the `SYNC_AGENTS` flag in `sync.sh`
+- Hand off to `sync-mechanic-agent` when task involves the `skills::sync` call order or the `SYNC_AGENTS` variable in `lib/common.sh` / `lib/engine.sh`
 - Use the `docks:write-skill` / `docks:skill-maintenance` skills when a task requires creating or updating a skill's `SKILL.md` or `references/` files after a bootstrap change
-- Hand off to `plugin-bootstrap-agent` when a skills-related change also affects `--remove-plugins` behavior for plugins (distinct systems, same flag)
+- Hand off to `plugin-bootstrap-agent` when a skills-related change also affects `--prune` behavior for plugins (distinct systems, same flag)
 
 ## Anti-Hallucination Checks
 
@@ -94,7 +96,7 @@ Read these for detailed knowledge:
 - `npx skills add` invocation has slug before `-a` and names both `claude-code codex`.
 - `skills::update_snapshot` call is the last step in any modified `skills::sync` sequence.
 - `bash -n lib/skills.sh` passes after changes.
-- `./sync.sh --dry-run --agents` emits `[dry-run]` lines for the new skill without executing `npx`.
+- `bash lib/engine.sh sync agents --dry-run` emits `[dry-run]` lines for the new skill without executing `npx`.
 
 ## Gotchas
 

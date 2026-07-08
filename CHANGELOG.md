@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-08 — docks-kit CLI: typed front-end, tool-scoped flags, toolchain floors (sync.sh removed)
+
+The kit's entry point is now **`./docks-kit`** — an Effect-TS CLI (Bun; effect 3.21.4 + @effect/cli 0.75.2 — v3 stable because @effect/cli has no Effect-v4-beta-compatible release) over the unchanged bash engine. `sync.sh` is **deleted** (clean break); the zero-dependency escape hatch is `bash lib/engine.sh <same args>`. All mutation still lives in `lib/*.sh`; the CLI adds typed flags, an interactive model picker, `--json` outputs, shell completions/wizard, and 9 bundled self-documentation topics (`docks-kit docs`).
+
+**Flag taxonomy (breaking — old flags exit 2 with a rename hint, no compat behavior):**
+
+| Old | New |
+|-----|-----|
+| `--claude` / `--codex` / `--agents` | positional targets: `docks-kit sync claude codex agents` |
+| `--force` | `--reconcile` |
+| `--remove-plugins` | `--prune` |
+| `--680k` | `--claude-compact-window=<tokens>` (any value: `680k`/`680000`) |
+| `--permissive` | `--claude-permissive` |
+| `--supabase` / `--n8n` | `--claude-plugin=<name>` (repeatable; unknown names exit 2) |
+| `--no-rtk` | `--skip-rtk` |
+| (new) | `--claude-model=<m>`, `--codex-model=<m>`, `--yes` |
+
+**New model layer:** `SoT/models.json` (kit-verified catalog) drives validation (fail-fast, pre-mutation; codex charset gate blocks TOML-quote injection), `docks-kit models`, the TTY picker, and the bare-flag helper. `--claude-model=` / `--codex-model=` are deploy-time modifiers (deployed config only; flag-less sync reverts); `docks-kit model <tool> [value]` is the standalone get/set over the same engine functions (`claude::sync_model`, `codex::sync_model`; `default` deletes the deployed key). `codex::_replace_top_level_setting` was extracted from `merge_top_level_settings` (deployed-config output verified byte-identical) and shared with the codex modifier. `claude::sync_680k` → `claude::sync_compact_window`.
+
+**New toolchain layer:** `SoT/toolchain.json` (kind/policy/floor/verified/pinnable) + `lib/toolchain.sh` (present/version/compare/gate/ensure/report). Installs/upgrades above the kit-verified pin prompt on a TTY, `--yes` auto-accepts, non-TTY declines fall back to the pinned verified version when pinnable (RTK supports `RTK_VERSION=vX.Y.Z`, verified upstream). Fixes two standing defects: **effect-solutions never self-upgraded** (now `track` policy, like agent-browser — verified live, unknown→0.5.3), and **`rtk init --global` on a fresh machine clobbered deploy-time modifiers** (rtk now runs FIRST in `claude::sync`, so the settings merge normalizes its rewrite; `claude::_rtk_reassert_hook` and `claude::_warn_rtk_outdated` deleted as superseded). New doctor coverage: `docks-kit toolchain check` / `docks-kit status` (ffplay, bwrap, LSP binaries, claude floor).
+
+**Packaging:** root `package.json` (npm name `docks-kit`, confirmed available) bundles `cli/` + `lib/` + `SoT/` — releases are versioned config snapshots. `cli/build-binaries.sh` compiles five standalone binaries (docs embedded; linux-x64 verified); `.github/workflows/release-cli.yml` (repo's first workflow) attaches them + SHA256SUMS on `cli-v*` tags and npm-publishes when `NPM_TOKEN` exists. `install.sh` = download-then-run global install (Bun bootstrap + `bun add -g docks-kit`). New root `README.md`.
+
+Verified: dry-run step-list parity old-vs-new byte-identical; `bunx tsc --noEmit` clean; model round-trips (set → revert-on-sync → `default` deletes key) on live configs; all toolchain gate branches unit-tested; node_modules self-heal; `bun link` global smoke from outside the repo. Docs/skills/agents swept for the rename (tracked in `docs/plans/active/docks-kit-cli.md`).
+
 ## 2026-06-08 — Re-assert SoT plugin enabled-state after install (pass 7)
 
 `claude plugin install` installs at its default `--scope user` and **enables** what it installs — writing `"<id>": true` into `~/.claude/settings.json`. The kit's plugin bootstrap (pass 2, `claude::_plugins_install`) deliberately installs `false`-keyed plugins too ("globally disabled, per-project enable has something to load"), so on a fresh machine the install flipped every `false`-keyed third-party plugin back to **enabled** — clobbering the `false` `claude::sync_settings` had written one step earlier (settings sync is `claude::sync` step 4; plugins step 8). Observed in a Claude-Code-on-the-web sandbox: `n8n-mcp-skills@n8n-mcp-skills` shipped `true` in `~/.claude/settings.json` despite SoT declaring `false`, while `supabase@claude-plugins-official` (built-in marketplace, different install path) correctly stayed `false`. The single plugin that got an actual `claude plugin install` was the only one flipped.

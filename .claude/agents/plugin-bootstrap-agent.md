@@ -1,6 +1,6 @@
 ---
 name: plugin-bootstrap-agent
-description: Use when modifying `claude::sync_plugins` (seven-pass reconciler), `claude::sync_optional_plugins` (the `--supabase`/`--n8n` opt-ins), `claude::sync_lsp_servers` (LSP-binary bootstrap), the `enabledPlugins` tri-state semantics, `extraKnownMarketplaces` entries, `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, `codex::sync_plugins`, or the `claude-plugins-official` removal protection. Not for `~/.claude/settings.json` key merge (use `settings-json-agent`) or universal skill install (use `skills-bootstrap-agent`).
+description: Use when modifying `claude::sync_plugins` (seven-pass reconciler), `claude::sync_optional_plugins` (the `--claude-plugin=<name>` opt-ins driven by `CLAUDE_PLUGINS` / `common::claude_plugin_wanted`), `claude::sync_lsp_servers` (LSP-binary bootstrap), the `enabledPlugins` tri-state semantics, `extraKnownMarketplaces` entries, `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, `codex::sync_plugins`, or the `claude-plugins-official` removal protection. Not for `~/.claude/settings.json` key merge (use `settings-json-agent`) or universal skill install (use `skills-bootstrap-agent`).
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -10,7 +10,7 @@ model: sonnet
 Owns the seven-pass Claude plugin reconcile, `enabledPlugins` tri-state semantics, Codex marketplace merge, and removal protection logic.
 
 <constraint>
-Use `jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)'` (NOT truthiness) to test whether a plugin should be kept on `--remove-plugins` — `false`-valued keys must pass this test to be preserved (`claude::_plugins_uninstall` — the `has($n)` guard).
+Use `jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)'` (NOT truthiness) to test whether a plugin should be kept on `--prune` — `false`-valued keys must pass this test to be preserved (`claude::_plugins_uninstall` — the `has($n)` guard). Passes 5+6 are gated on `PRUNE=1` (`claude::sync_plugins` — the PRUNE gate).
 </constraint>
 
 <constraint>
@@ -32,7 +32,8 @@ The Codex marketplace `unique_by(.name)` dedup concatenates `$user.plugins + $re
 3. For adding/removing `enabledPlugins` entries or per-project enable patterns, read `.claude/skills/plugin-bootstrap-context/references/tri-state-semantics.md`.
 4. Identify which pass(es) are affected: marketplace add (pass 1), install (pass 2), update (passes 3/4), uninstall (pass 5), marketplace remove (pass 6).
 5. For new plugin entries: add to both `enabledPlugins` (value `true` or `false`) AND `extraKnownMarketplaces` if from a third-party marketplace.
-6. For removal of a plugin: remove from `enabledPlugins` entirely (not set to `false`) so `--remove-plugins` uninstalls it; the `has($n)` test at `claude::_plugins_uninstall` gates this.
+6. For removal of a plugin: remove from `enabledPlugins` entirely (not set to `false`) so `--prune` uninstalls it; the `has($n)` test at `claude::_plugins_uninstall` gates this.
+6b. For optional opt-ins: `--claude-plugin=<name>` appends to `CLAUDE_PLUGINS` via `common::add_claude_plugin` (allow-list `KNOWN_CLAUDE_OPTIN_PLUGINS="supabase n8n"` in common.sh); `claude::sync_optional_plugins` gates on a non-empty `CLAUDE_PLUGINS` and tests each name with `common::claude_plugin_wanted` before calling `claude::_enable_optional_plugin`. The opt-in is sticky (key absent from SoT, so nothing reverts it; only `--prune` uninstalls).
 7. Validate Codex marketplace changes by confirming `SoT/.codex/plugins/marketplace.json` uses valid `plugin` array entries with `.name` fields.
 8. Hand off to `settings-json-agent` if the task also involves broader `settings.json` merge behavior.
 
@@ -70,7 +71,7 @@ Read these for detailed knowledge:
 ## Integration
 
 - Hand off to `settings-json-agent` when task also modifies broader `settings.json` merge behavior outside plugin keys
-- Hand off to `sync-mechanic-agent` when task involves `--remove-plugins` flag parsing or orchestration
+- Hand off to `sync-mechanic-agent` when task involves `--prune`/`--claude-plugin=` flag parsing or orchestration
 - Use the `docks:skill-maintenance` / `docks:write-skill` skills when `plugin-bootstrap-context` SKILL.md needs updating
 
 ## Anti-Hallucination Checks
@@ -91,6 +92,6 @@ Read these for detailed knowledge:
 ## Gotchas
 
 - The marketplace pre-check at `claude::_plugins_add_marketplaces` (key-presence pre-check) tests key presence, not URL validity. A marketplace added with a bad URL stays "present" — recovery requires manual `claude plugin marketplace remove <name>` then re-sync.
-- `false`-valued `enabledPlugins` entries are kept by `--remove-plugins` (via `has($n)`). To remove a plugin: delete the key entirely, then run `--remove-plugins`.
+- `false`-valued `enabledPlugins` entries are kept by `--prune` (via `has($n)`). To remove a plugin: delete the key entirely, then run `--prune`.
 - If the Codex CLI is missing, sync still deploys config/marketplace files and prints the official standalone installer plus manual `codex plugin add` fallback. If a stale wrapper on PATH emits "could not find a Codex CLI binary", `codex::sync_plugins` warns with the same standalone installer fallback.
 - Passing `claude plugin marketplace add` a repo path already in `known_marketplaces.json` under a different key creates duplicate marketplace entries under different names — not caught by the pre-check.

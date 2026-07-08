@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Source-order guards: this lib depends on common.sh's log/warn/err and on
-# sync.sh's REPO_DIR. Fail fast with a clear message if sourced standalone.
+# the entry script's REPO_DIR. Fail fast with a clear message if sourced standalone.
 declare -F log >/dev/null 2>&1 || { printf '\033[1;31m[err]\033[0m %s\n' "lib/claude.sh must be sourced after lib/common.sh" >&2; exit 1; }
 [[ -n "${REPO_DIR:-}" ]] || { printf '\033[1;31m[err]\033[0m %s\n' "REPO_DIR must be set before sourcing lib/claude.sh" >&2; exit 1; }
 
@@ -645,7 +645,7 @@ claude::sync_plugins() {
 # built-in claude-plugins-official one, which stays. `--claude-plugin=<name>`
 # opts one in on THIS machine — add its marketplace when third-party, install it,
 # enable it — a sticky, install-once opt-in that survives later flag-less syncs
-# (both keys are absent from the SoT, so the pass-7 reassert never touches them).
+# (both keys are absent from the SoT, so the pass-6 reassert never touches them).
 claude::_enable_optional_plugin() {
   local plugin_id="$1" marketplace_repo="$2"
   local installed_plugins="$CLAUDE_DIR/plugins/installed_plugins.json"

@@ -1,0 +1,72 @@
+---
+title: docks-kit CLI — typed front-end, tool-scoped flags, toolchain floors
+goal: Replace sync.sh with a self-documenting Effect-TS CLI over the bash engine, with renamed tool-scoped flags, model catalog, and verified-version toolchain floors
+status: ongoing
+created: "2026-07-08T13:00:00-03:00"
+updated: "2026-07-08T14:30:00-03:00"
+started_at: "2026-07-08T13:00:00-03:00"
+assignee: null
+tags: [cli, engine, toolchain, packaging]
+affected_paths:
+  - lib/
+  - cli/
+  - SoT/models.json
+  - SoT/toolchain.json
+  - docks-kit
+  - install.sh
+  - .github/workflows/release-cli.yml
+  - README.md
+related_plans: []
+review_status: null
+---
+
+## Goal
+
+One coherent CLI (`./docks-kit`) managing both SoTs, plugins, skills, models,
+and the external toolchain — self-documenting enough that a fresh agent learns
+the kit from `docks-kit docs` alone. Clean break from `sync.sh` and its opaque
+flags (`--680k`, `--force`). Full design + rationale: the approved plan lives
+at `~/.claude/plans/dazzling-hatching-lagoon.md` (session-local); this file is
+the in-repo tracker.
+
+## Steps
+
+| # | Task | Depends | Status |
+|---|------|---------|--------|
+| 1 | Engine flag taxonomy (tool-scoped, positional targets, rename hints) + SoT/models.json + claude/codex model deploy-time modifiers + codex awk extraction | — | done (3f34e2f) |
+| 2 | SoT/toolchain.json + lib/toolchain.sh (verified-version gate) + rtk/bun/effect-solutions/agent-browser rewiring + RTK-first reorder | 1 | done (f8760b6) |
+| 3 | Effect-TS CLI (cli/, 8 commands, 9 docs topics) + ./docks-kit launcher + lib/engine.sh + delete sync.sh | 1,2 | done (ae8b90f) |
+| 4 | Packaging: build-binaries.sh, install.sh, release-cli.yml, npm layout | 3 | done (15fd69f) |
+| 5 | Docs sweep: README.md, CLAUDE.md/AGENTS.md reference rewrite, skills + wrapper agents, toolchain-context skill, CHANGELOG | 3 | in-flight |
+| 6 | Repo pin (model opus + advisor fable in .claude/settings.local.json) + end-to-end verification matrix | 5 | planned |
+
+## Acceptance criteria
+
+- `grep -rn "sync\.sh" CLAUDE.md AGENTS.md README.md .claude/skills/ .claude/agents/` → zero rows (CHANGELOG/finished plans exempt)
+- `bash -n` + `bunx tsc --noEmit -p cli` clean
+- `./docks-kit sync --dry-run` step list ≡ pre-refactor `./sync.sh --dry-run` capture (verified byte-identical at step 3)
+- Old flags exit 2 with rename hints; `--claude-model=bogus` exits 2 pre-mutation; bare `--claude-model` prints the catalog
+- Round-trips: `model claude opus` → set → flag-less sync reverts to SoT `best`; codex mirror (model line exactly once, tables untouched)
+- Toolchain gate branches verified (TTY prompt path excepted — needs interactive run); effect-solutions self-upgrade fired live (unknown → 0.5.3)
+- Fresh session in this repo shows Opus main + fable advisor
+
+## Open questions
+
+- npm publish needs an `NPM_TOKEN` repo secret (workflow skips without it) — user to configure when ready to publish
+- LICENSE file absent at repo root while package.json declares MIT — add one before the first npm publish
+- Windows Tier-1 (Git Bash) support is documented-experimental — needs a real Windows machine to verify (docs/platforms topic states this)
+
+## Notes
+
+- Effect v3 stable chosen over v4 beta: @effect/cli@0.75.2 peer-depends on
+  effect ^3.21.2; no v4-compatible CLI release exists (checked 2026-07-08)
+- RTK installer supports exact-version pinning via `RTK_VERSION=vX.Y.Z`
+  (verified in upstream install.sh) — enables the non-TTY pinned-verified
+  fallback in the toolchain gate
+- Follow-up candidates (not this plan): TS-native engine port for Windows
+  (EngineNative behind the cli/src/engine.ts seam), `toolchain check --json`,
+  a toolchain wrapper agent
+
+## Review
+
+(filled by plan-review on completion)
