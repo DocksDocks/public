@@ -5,13 +5,13 @@ import { runEngineNative } from "./engine-native"
 import { kitHome } from "./kitHome"
 
 /**
- * The single seam between the typed CLI and the engine. `DOCKS_KIT_ENGINE=
- * native` routes to EngineNative (in-process) AFTER @effect/cli has parsed —
- * pickers, `--flag value` forms, and non-engine commands stay intact; the
- * default runs lib/engine.sh, which also stays independently usable as the
- * zero-dependency escape hatch. Step 6 flips the default here, nowhere else.
+ * The single seam between the typed CLI and the engine. EngineNative is the
+ * default (in-process, routed AFTER @effect/cli has parsed — pickers,
+ * `--flag value` forms, and non-engine commands stay intact);
+ * `DOCKS_KIT_ENGINE=bash` opts out to lib/engine.sh, which also stays
+ * independently usable as the zero-dependency escape hatch.
  */
-const nativeSelected = (): boolean => process.env["DOCKS_KIT_ENGINE"] === "native"
+const nativeSelected = (): boolean => process.env["DOCKS_KIT_ENGINE"] !== "bash"
 
 export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {

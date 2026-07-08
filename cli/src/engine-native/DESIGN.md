@@ -11,7 +11,7 @@ file the rest of the CLI knows about. Plan: `docs/plans/active/windows-support.m
 - **Pre-flip** (plan step 5): default `bash`; `native` is opt-in — this is
   what lets the PowerShell CI job (step 7) exercise EngineNative before the
   flip.
-- **Post-flip** (step 6): default `native` on every platform; `bash` is the
+- **Post-flip** (step 6 — the current state): default `native` on every platform; `bash` is the
   one-line per-machine revert. The bash engine stays the no-Bun escape hatch
   (`bash lib/engine.sh …`, unchanged vocabulary).
 

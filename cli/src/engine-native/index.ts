@@ -2,11 +2,11 @@
  * EngineNative — TypeScript port of lib/engine.sh (windows-support plan,
  * step 5; module map in ./DESIGN.md).
  *
- * Selected by `DOCKS_KIT_ENGINE=native` (cli/src/main.ts bypasses @effect/cli
- * and hands the raw engine argv here, so both engines are exercised through
- * the identical vocabulary the parity harnesses drive). Bash remains the
- * default until step 6 flips it; until a command surface is fully ported,
- * dispatch refuses loudly rather than half-running it.
+ * The default engine since the step-6 flip (`DOCKS_KIT_ENGINE=bash` opts out
+ * at the cli/src/engine.ts seam). The parity harnesses drive it through
+ * main.ts's harness-private `native-raw` channel, which bypasses @effect/cli
+ * so both engines see the identical raw argv vocabulary. Until a command
+ * surface is fully ported, dispatch refuses loudly rather than half-running it.
  */
 import { p } from "./exec"
 import { existsSync } from "node:fs"
