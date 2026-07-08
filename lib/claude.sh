@@ -68,12 +68,24 @@ claude::sync_hooks() {
 
 claude::sync_claude_md() {
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md"
+    if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
+      echo "[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (stripping @RTK.md import: --skip-rtk)"
+    else
+      echo "[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md"
+    fi
     return
   fi
 
-  cp "$REPO_DIR/SoT/.claude/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
-  log "CLAUDE.md synced"
+  # The strip must happen HERE, on the file being written: sync_rtk runs
+  # earlier (toolchain-before-config), so a strip there would be clobbered
+  # by this copy.
+  if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
+    grep -v '^@RTK\.md$' "$REPO_DIR/SoT/.claude/CLAUDE.md" > "$CLAUDE_DIR/CLAUDE.md"
+    log "CLAUDE.md synced (@RTK.md import stripped: --skip-rtk)"
+  else
+    cp "$REPO_DIR/SoT/.claude/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+    log "CLAUDE.md synced"
+  fi
 }
 
 # Validate that the existing user settings file is parseable. Returns 0 if
@@ -769,15 +781,10 @@ claude::_rtk_install() {
 }
 
 claude::sync_rtk() {
-  local tmp
-
   if [[ "${SKIP_RTK:-0}" -eq 1 ]]; then
+    # The @RTK.md import strip lives in claude::sync_claude_md (which runs
+    # after this and would clobber a strip done here).
     warn "Skipping RTK (--skip-rtk)"
-    if [[ "$DRY_RUN" -eq 0 && -f "$CLAUDE_DIR/CLAUDE.md" ]] && grep -q '^@RTK\.md$' "$CLAUDE_DIR/CLAUDE.md" 2>/dev/null; then
-      tmp="$CLAUDE_DIR/CLAUDE.md.tmp"
-      grep -v '^@RTK\.md$' "$CLAUDE_DIR/CLAUDE.md" > "$tmp" && mv "$tmp" "$CLAUDE_DIR/CLAUDE.md"
-      log "Stripped @RTK.md import from CLAUDE.md"
-    fi
     return
   fi
 

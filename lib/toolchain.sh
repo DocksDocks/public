@@ -132,7 +132,20 @@ toolchain::ensure() {
       echo "[dry-run] would install $tool (${latest:-latest}, gated by toolchain.json verified pin)"
       return 0
     fi
-    target=$(toolchain::_gate "$tool" install "$latest") || return 0
+    if [[ -z "$latest" ]]; then
+      # Latest unknown (offline/rate-limited): the gate can't compare, so an
+      # empty target would install unverified latest. Pin the kit-verified
+      # version when we can; otherwise install latest with an explicit warn.
+      target=$(toolchain::field "$tool" verified)
+      if [[ -n "$target" && "$(toolchain::field "$tool" pinnable)" == "true" ]]; then
+        warn "$tool latest version unknown (offline?) — installing kit-verified $target instead"
+      else
+        target=""
+        warn "$tool latest version unknown (offline?) and not pinnable — installing latest unverified"
+      fi
+    else
+      target=$(toolchain::_gate "$tool" install "$latest") || return 0
+    fi
     "$install_fn" install "$target"
     return $?
   fi

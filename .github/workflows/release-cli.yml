@@ -42,7 +42,13 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" cli/dist/docks-kit-* cli/dist/SHA256SUMS --clobber
 
       - name: Publish to npm (skipped when NPM_TOKEN is not configured)
-        if: ${{ secrets.NPM_TOKEN != '' }}
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun publish --access public
+        # Secrets can't be referenced in `if:` conditionals (GitHub Actions
+        # restriction), so the skip is a shell guard on the env-mapped value.
+        run: |
+          if [ -z "$NPM_CONFIG_TOKEN" ]; then
+            echo "NPM_TOKEN secret not configured — skipping npm publish"
+            exit 0
+          fi
+          bun publish --access public

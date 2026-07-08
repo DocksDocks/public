@@ -48,4 +48,13 @@ const cli = Command.run(root, {
   version: "0.1.0"
 })
 
-cli(process.argv).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain)
+// @effect/cli's Options.repeated does not accept `--flag=value` syntax (only
+// `--flag value`), but the documented form for the repeatable opt-in is
+// `--claude-plugin=<name>` — normalize it here so both spellings work.
+const argv = process.argv.flatMap((a) =>
+  a.startsWith("--claude-plugin=")
+    ? ["--claude-plugin", a.slice("--claude-plugin=".length)]
+    : [a]
+)
+
+cli(argv).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain)
