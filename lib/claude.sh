@@ -716,6 +716,14 @@ claude::sync_optional_plugins() {
 # separate npm globals, without which the plugins are silent no-ops. Gated on
 # key presence in SoT enabledPlugins (true OR false: false-keyed plugins can
 # be enabled per-project, so the binary must still exist).
+# npm install spec for an LSP tool, pinned to its toolchain.json `verified`
+# version when declared: <manifest tool key> <npm package name>.
+claude::_lsp_pkg() {
+  local tool="$1" pkg="$2" v
+  v="$(toolchain::field "$tool" verified 2>/dev/null || true)"
+  printf '%s' "$pkg${v:+@$v}"
+}
+
 claude::sync_lsp_servers() {
   local sot_settings="$REPO_DIR/SoT/.claude/settings.json"
   local missing=()
@@ -723,12 +731,14 @@ claude::sync_lsp_servers() {
   jq -e '.enabledPlugins | has("php-lsp@claude-plugins-official") or has("typescript-lsp@claude-plugins-official")' \
     "$sot_settings" >/dev/null 2>&1 || return 0
 
+  # Install specs are pinned to the manifest `verified` versions (supply-chain:
+  # no floating npm globals). Manifest tool key first, npm package name second.
   if jq -e '.enabledPlugins | has("php-lsp@claude-plugins-official")' "$sot_settings" >/dev/null 2>&1; then
-    command -v intelephense >/dev/null 2>&1 || missing+=(intelephense)
+    command -v intelephense >/dev/null 2>&1 || missing+=("$(claude::_lsp_pkg intelephense intelephense)")
   fi
   if jq -e '.enabledPlugins | has("typescript-lsp@claude-plugins-official")' "$sot_settings" >/dev/null 2>&1; then
-    command -v typescript-language-server >/dev/null 2>&1 || missing+=(typescript-language-server)
-    command -v tsc >/dev/null 2>&1 || missing+=(typescript)
+    command -v typescript-language-server >/dev/null 2>&1 || missing+=("$(claude::_lsp_pkg typescript-language-server typescript-language-server)")
+    command -v tsc >/dev/null 2>&1 || missing+=("$(claude::_lsp_pkg tsc typescript)")
   fi
 
   if [[ ${#missing[@]} -eq 0 ]]; then
@@ -765,10 +775,14 @@ claude::sync_lsp_servers() {
 claude::_rtk_install() {
   local mode="$1" version="${2:-}"
   local tmp_rtk_installer
+  # Pinned installs fetch the installer from the version TAG, not master —
+  # otherwise the pinned binary is still bootstrapped by a mutable script.
+  local installer_ref="refs/heads/master"
+  [[ -n "$version" ]] && installer_ref="refs/tags/v$version"
 
   [[ "$mode" == "upgrade" ]] && log "Upgrading RTK${version:+ to $version}..." || warn "RTK not found. Installing${version:+ $version}..."
   tmp_rtk_installer=$(mktemp 2>/dev/null || echo "/tmp/rtk-install-$$.sh")
-  curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o "$tmp_rtk_installer" \
+  curl -fsSL "https://raw.githubusercontent.com/rtk-ai/rtk/$installer_ref/install.sh" -o "$tmp_rtk_installer" \
     && RTK_VERSION="${version:+v$version}" bash "$tmp_rtk_installer"
   rm -f "$tmp_rtk_installer"
   export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"

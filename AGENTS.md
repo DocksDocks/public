@@ -62,6 +62,7 @@ For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT d
 
 - No secrets in SoT. The kit's SoT directories are committed; treat them as declarative config only.
 - Treat external installers (RTK, plugin marketplaces) as untrusted input. Prefer download-then-run over `curl … | bash` — stream truncation has bitten this kit before (see `CLAUDE.md` § RTK).
+- **Pin, never float.** Every kit-driven install is pinned to a `SoT/toolchain.json` `verified` version or gated by one — no `@latest` npm/bun installs (Shai-Hulud-class worm surface), no mutable action tags in workflows (commit SHAs only), installer scripts fetched from version tags where upstream supports it. New install surface ⇒ manifest pin first. Details: the `toolchain-context` skill and `cli/docs/toolchain.md`.
 
 ## Testing
 

@@ -146,7 +146,9 @@ toolchain::ensure() {
     else
       target=$(toolchain::_gate "$tool" install "$latest") || return 0
     fi
-    "$install_fn" install "$target"
+    # ${target:-$latest}: install the exact version the gate approved, not a
+    # floating "latest" that may have moved since the check.
+    "$install_fn" install "${target:-$latest}"
     return $?
   fi
 
@@ -172,7 +174,7 @@ toolchain::ensure() {
       return 0
     fi
     target=$(toolchain::_gate "$tool" upgrade "$latest") || return 0
-    "$install_fn" upgrade "$target"
+    "$install_fn" upgrade "${target:-$latest}"
     return $?
   fi
 
@@ -196,6 +198,12 @@ toolchain::report() {
     kind=$(toolchain::field "$tool" kind)
     floor=$(toolchain::field "$tool" floor)
     verified=$(toolchain::field "$tool" verified)
+    if [[ "$kind" == "pin" ]]; then
+      # No binary to probe — the tool is invoked via npx at the pinned version.
+      printf '%-28s %-9s %-14s %-9s %-9s %s\n' \
+        "$tool" "$kind" "(npx)" "${floor:--}" "${verified:--}" "pinned"
+      continue
+    fi
     if toolchain::present "$tool"; then
       installed=$(toolchain::installed_version "$tool")
       status="ok"

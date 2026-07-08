@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit toolchain manifest — DATA only (versions, floors, policy); the check/install logic lives in lib/toolchain.sh and the per-tool install callbacks in each lib. kind: required (preflight hard dep) | check (doctor visibility only) | managed (kit installs/upgrades it). policy (managed only): track (upgrade toward latest, gated by `verified`) | present (install when missing, never upgrade). `verified` = last kit-tested version — anything above it prompts before install (--yes auto-accepts; non-TTY declines and falls back to the pinned `verified` when pinnable). Update `verified` after testing a new release.",
+  "$comment": "Kit toolchain manifest — DATA only (versions, floors, policy); the check/install logic lives in lib/toolchain.sh and the per-tool install callbacks in each lib. kind: required (preflight hard dep) | check (doctor visibility only) | managed (kit installs/upgrades it) | pin (no binary probe — a version pin for a tool the kit invokes via npx). policy (managed only): track (upgrade toward latest, gated by `verified`) | present (install when missing, never upgrade). `verified` = last kit-tested version — anything above it prompts before install (--yes auto-accepts; non-TTY declines and falls back to the pinned `verified` when pinnable). Supply-chain stance: every kit-driven install is pinned to `verified` or gated by it — never floating @latest (npm-worm/Shai-Hulud surface). Update `verified` after testing a new release.",
   "tools": {
     "jq":     { "kind": "required", "note": "settings merges + manifest reads" },
     "curl":   { "kind": "required", "note": "installers + usage fetch" },
@@ -9,13 +9,18 @@
     "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
     "ffplay": { "kind": "check", "note": "Notification hook sound (previously unchecked)" },
     "bwrap":  { "kind": "check", "os": "linux", "note": "Codex Linux sandbox runtime" },
-    "intelephense": { "kind": "check", "note": "php-lsp server binary" },
-    "typescript-language-server": { "kind": "check", "note": "typescript-lsp server binary" },
-    "tsc":    { "kind": "check", "note": "typescript-lsp dependency" },
+    "intelephense": { "kind": "check", "verified": "1.18.5", "note": "php-lsp server binary; `verified` pins claude::sync_lsp_servers' npm install" },
+    "typescript-language-server": { "kind": "check", "verified": "5.3.0", "note": "typescript-lsp server binary; `verified` pins claude::sync_lsp_servers' npm install" },
+    "tsc":    { "kind": "check", "verified": "6.0.3", "note": "typescript-lsp dependency (npm package `typescript`); `verified` pins claude::sync_lsp_servers' npm install" },
     "rtk":    { "kind": "managed", "policy": "track", "floor": "0.43.0", "verified": "0.43.0", "pinnable": true,
                 "note": "PreToolUse hook — supply-chain review before unverified upgrades; installer honors RTK_VERSION=vX.Y.Z pin" },
-    "bun":    { "kind": "managed", "policy": "present", "note": "runtime for effect-solutions + the docks-kit CLI; self-updates via `bun upgrade` when wanted" },
-    "effect-solutions": { "kind": "managed", "policy": "track", "note": "Effect docs CLI (bun global) — track keeps it self-upgrading (pre-toolchain syncs only installed-when-absent)" },
-    "agent-browser":    { "kind": "managed", "policy": "track", "note": "browser-automation CLI (npm global); first install also downloads Chrome for Testing" }
+    "bun":    { "kind": "managed", "policy": "present", "verified": "1.3.14", "pinnable": true,
+                "note": "runtime for effect-solutions + the docks-kit CLI; bootstrap installs the verified release (installer takes bun-vX.Y.Z); self-updates via `bun upgrade` when wanted" },
+    "effect-solutions": { "kind": "managed", "policy": "track", "verified": "0.5.3", "pinnable": true,
+                "note": "Effect docs CLI (bun global) — track keeps it self-upgrading, gated by the verified pin" },
+    "agent-browser":    { "kind": "managed", "policy": "track", "verified": "0.31.1", "pinnable": true,
+                "note": "browser-automation CLI (npm global), gated by the verified pin; first install also downloads Chrome for Testing" },
+    "skills-cli": { "kind": "pin", "verified": "1.5.15",
+                "note": "the `skills` npm package the kit runs via `npx skills@<verified>` on every agents sync (universal-skill install/remove) — pinned, never @latest" }
   }
 }

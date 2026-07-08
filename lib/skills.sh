@@ -35,6 +35,14 @@ skills::sync() {
   skills::update_snapshot
 }
 
+# The `skills` npm package spec for npx invocations, pinned to the manifest's
+# verified version (supply-chain: never run a floating @latest CLI every sync).
+skills::_skills_cli() {
+  local v
+  v="$(toolchain::field skills-cli verified 2>/dev/null || true)"
+  printf '%s' "skills${v:+@$v}"
+}
+
 # Emit one cleaned slug per line from a manifest: skip blank/comment lines, strip
 # inline #comments and ALL whitespace. Single source of truth so sync_universal,
 # _load_slug_list, and update_snapshot can never diverge on parsing.
@@ -64,7 +72,7 @@ skills::sync_universal() {
         echo "[dry-run] universal skill present: $basename"
         skills::heal_claude_symlink "$basename" || true
       else
-        echo "[dry-run] npx skills add $slug -g -y -a claude-code codex"
+        echo "[dry-run] npx $(skills::_skills_cli) add $slug -g -y -a claude-code codex"
       fi
       continue
     fi
@@ -81,7 +89,7 @@ skills::sync_universal() {
     # or --agent swallows the slug. Naming both agents (claude-code codex)
     # makes the CLI keep the canonical ~/.agents/skills/ copy and symlink it
     # into ~/.claude/skills/; a single agent would copy-direct instead.
-    if npx --yes skills add "$slug" -g -y -a claude-code codex >/dev/null 2>&1; then
+    if npx --yes "$(skills::_skills_cli)" add "$slug" -g -y -a claude-code codex >/dev/null 2>&1; then
       added=$((added + 1))
     else
       warn "Failed to install universal skill: $slug"
@@ -151,16 +159,17 @@ skills::heal_claude_symlink() {
 # toolchain::ensure callback for agent-browser. Upgrade = npm refresh only (the
 # Chrome download is not repeated); first install also pulls Chrome for Testing.
 skills::_agent_browser_install() {
-  local mode="$1" verb="Installing"
+  local mode="$1" version="${2:-}" verb="Installing"
   [[ "$mode" == "upgrade" ]] && verb="Upgrading"
+  local pkg="agent-browser${version:+@$version}"
   local install_flags=()
   case "$(uname -s)" in
     Linux*) install_flags+=(--with-deps) ;;  # may prompt sudo for libnss3/libatk
   esac
 
-  log "$verb agent-browser CLI via npm..."
-  if ! npm install -g agent-browser >/dev/null 2>&1; then
-    warn "npm install -g agent-browser failed. Try manually: npm install -g agent-browser"
+  log "$verb agent-browser CLI via npm${version:+ (pinned $version)}..."
+  if ! npm install -g "$pkg" >/dev/null 2>&1; then
+    warn "npm install -g $pkg failed. Try manually: npm install -g $pkg"
     return 1
   fi
 
@@ -217,7 +226,7 @@ skills::_find_bun() {
 # Echoes the bun path on success. Shared toolchain callback material: also used
 # directly when only Bun is missing.
 skills::_bun_bootstrap() {
-  local bun tmp_bun_installer
+  local bun tmp_bun_installer pin
   if bun="$(skills::_find_bun)"; then
     printf '%s\n' "$bun"
     return 0
@@ -226,9 +235,13 @@ skills::_bun_bootstrap() {
     warn "Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync."
     return 1
   fi
-  warn "Bun not found — installing Bun..."
+  # The installer takes a release tag (bun-vX.Y.Z) as $1 — install the
+  # kit-verified version, not floating latest.
+  pin="$(toolchain::field bun verified 2>/dev/null || true)"
+  warn "Bun not found — installing Bun${pin:+ $pin (kit-verified)}..."
   tmp_bun_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
-  curl -fsSL https://bun.sh/install -o "$tmp_bun_installer" && bash "$tmp_bun_installer" >/dev/null 2>&1 || true
+  curl -fsSL https://bun.sh/install -o "$tmp_bun_installer" \
+    && bash "$tmp_bun_installer" ${pin:+"bun-v$pin"} >/dev/null 2>&1 || true
   rm -f "$tmp_bun_installer"
   if ! bun="$(skills::_find_bun)"; then
     warn "Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh"
@@ -239,19 +252,19 @@ skills::_bun_bootstrap() {
 }
 
 # toolchain::ensure callback for effect-solutions: install and upgrade are the
-# same idempotent `bun add -g @latest` (bun resolves the newest release either
-# way) — the toolchain `track` policy is what finally gives this CLI the
-# self-upgrade that agent-browser always had.
+# same idempotent `bun add -g effect-solutions@<version>` (the gate-approved
+# version arrives as $2) — the toolchain `track` policy is what finally gives
+# this CLI the self-upgrade that agent-browser always had.
 skills::_effect_solutions_install() {
-  local mode="$1" verb="Installing"
+  local mode="$1" version="${2:-}" verb="Installing"
   [[ "$mode" == "upgrade" ]] && verb="Upgrading"
-  local bun gbin
+  local pkg="effect-solutions@${version:-latest}" bun gbin
 
   bun="$(skills::_bun_bootstrap)" || return 1
 
-  log "$verb effect-solutions CLI via bun..."
-  if ! "$bun" add -g effect-solutions@latest >/dev/null 2>&1; then
-    warn "bun add -g effect-solutions failed. Try manually: bun add -g effect-solutions@latest"
+  log "$verb effect-solutions CLI via bun${version:+ (pinned $version)}..."
+  if ! "$bun" add -g "$pkg" >/dev/null 2>&1; then
+    warn "bun add -g $pkg failed. Try manually: bun add -g $pkg"
     return 1
   fi
 
@@ -294,7 +307,7 @@ skills::_remove_one_slug() {
     echo "[dry-run] kit-managed skill no longer in SoT — would remove: $basename"
     return
   fi
-  if npx --yes skills remove --global -y -a '*' -s "$basename" >/dev/null 2>&1; then
+  if npx --yes "$(skills::_skills_cli)" remove --global -y -a '*' -s "$basename" >/dev/null 2>&1; then
     eval "$ok_var=\$(( \$$ok_var + 1 ))"
   else
     warn "Failed to remove kit-managed skill: $basename"

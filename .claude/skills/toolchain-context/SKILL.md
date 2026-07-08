@@ -31,19 +31,26 @@ Version comparison is `toolchain::_is_newer` — numeric per-dotted-field sort (
 
 ## Design split
 
-- **`SoT/toolchain.json` holds DATA only** — kind (`required`/`check`/`managed`),
-  policy (`track`/`present`), `floor`, `verified`, `pinnable`, notes. Consumed by
-  bash (jq) and the TS CLI alike. No shell commands in the manifest (no eval).
+- **`SoT/toolchain.json` holds DATA only** — kind (`required`/`check`/`managed`/
+  `pin`), policy (`track`/`present`), `floor`, `verified`, `pinnable`, notes.
+  Consumed by bash (jq) and the TS CLI alike. No shell commands in the manifest
+  (no eval). Kind `pin` is a version pin with no binary probe — for tools the
+  kit invokes via npx (`skills-cli` → `npx skills@<verified>`); the report
+  prints them as `pinned` without a presence check.
 - **`lib/toolchain.sh` owns the generic machinery** — presence probe, version
   probes, compare, gate, ensure, report.
 - **Tool-specific install commands stay in the owning lib** and are passed to
   `toolchain::ensure <tool> <install_fn>` as callbacks invoked as
-  `<install_fn> <install|upgrade> <version>` (empty version = latest):
-  `claude::_rtk_install` (RTK_VERSION=vX.Y.Z pin support),
-  `skills::_agent_browser_install` (install mode also pulls Chrome for Testing),
-  `skills::_effect_solutions_install` (idempotent `bun add -g @latest` — this is
-  what finally gave effect-solutions the self-upgrade agent-browser had),
-  `skills::_bun_bootstrap` (download-then-run Bun).
+  `<install_fn> <install|upgrade> <version>`. `ensure` passes
+  `${target:-$latest}` — the exact gate-approved version, never a floating
+  "latest" that could move between the gate check and the install:
+  `claude::_rtk_install` (RTK_VERSION=vX.Y.Z pin; pinned installs also fetch
+  the installer script from the version TAG, not mutable master),
+  `skills::_agent_browser_install` (`npm install -g agent-browser@<v>`;
+  install mode also pulls Chrome for Testing),
+  `skills::_effect_solutions_install` (`bun add -g effect-solutions@<v>`),
+  `skills::_bun_bootstrap` (download-then-run Bun, pinned via the installer's
+  `bun-vX.Y.Z` release-tag argument from `tools.bun.verified`).
 
 ## The gate (`toolchain::_gate`, the verified-pin policy)
 
@@ -56,10 +63,23 @@ Candidate above `verified`:
 | non-TTY declined, mode=install, `pinnable: true` | install the pinned `verified` version (the machine still needs the tool) |
 | non-TTY declined, mode=upgrade | stay on installed, warn |
 
-At or below `verified` (or no `verified` field): silent proceed. Bumping
-`verified` in SoT/toolchain.json after testing a release is the
-"kit-approved" act — RTK is supply-chain sensitive (PreToolUse hook), so
-review releases before bumping its pin.
+At or below `verified` (or no `verified` field): silent proceed. Missing tool
+with an EMPTY latest probe (offline/rate-limited): install the pinned
+`verified` when pinnable, else latest with an explicit warn — an empty probe
+must never silently become an ungated latest install. Bumping `verified` in
+SoT/toolchain.json after testing a release is the "kit-approved" act — RTK is
+supply-chain sensitive (PreToolUse hook), so review releases before bumping
+its pin.
+
+<constraint>
+Supply-chain rule (Shai-Hulud-class npm worms): every kit-driven install must
+be pinned to a manifest `verified` version or gated by one — never a floating
+`@latest`. This covers the install callbacks, `npx skills@<verified>`
+(`skills::_skills_cli`), `chrome-devtools-mcp@<v>` in
+SoT/.claude/mcp-servers.json, the Bun bootstrap pins, and SHA-pinned actions +
+exact tool versions in .github/workflows/release-cli.yml. Adding a new install
+surface? Pin it through the manifest first.
+</constraint>
 
 ## ensure flow (`toolchain::ensure`)
 

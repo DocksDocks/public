@@ -4,7 +4,7 @@
 
 | Field | Meaning |
 |-------|---------|
-| `kind` | `required` (preflight hard dep) / `check` (doctor visibility) / `managed` (kit installs + upgrades) |
+| `kind` | `required` (preflight hard dep) / `check` (doctor visibility) / `managed` (kit installs + upgrades) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
 | `policy` | `track` (upgrade toward latest, gated by `verified`) / `present` (install when missing, never upgrade) |
 | `floor` | Minimum acceptable version (below → upgrade automatically) |
 | `verified` | Last kit-tested version — the gate line |
@@ -28,10 +28,22 @@ now kit-approved" act.
 
 - **rtk** — PreToolUse hook (supply-chain sensitive: review releases before
   bumping `verified`). Runs FIRST in the claude sync so `rtk init`'s
-  settings rewrite is normalized by the merge that follows.
-- **bun** — policy `present`: bootstrap only, never auto-upgraded.
+  settings rewrite is normalized by the merge that follows. Pinned installs
+  fetch the installer script from the version tag, not mutable master.
+- **bun** — policy `present`: bootstrap only (pinned to `verified` via the
+  installer's `bun-vX.Y.Z` release-tag argument), never auto-upgraded.
 - **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
-  toward npm latest.
+  toward npm latest, gated by their `verified` pins.
+
+## Supply-chain stance
+
+Every kit-driven install is pinned to a `verified` version or gated by one —
+never floating `@latest` (the npm-worm / Shai-Hulud attack surface). That
+includes the `npx skills@<verified>` invocations on every agents sync, the
+`chrome-devtools-mcp` MCP server pin in SoT/.claude/mcp-servers.json, and the
+release workflow (actions pinned to commit SHAs, exact bun/npm versions).
+Callbacks receive the exact gate-approved version; an offline "latest unknown"
+probe falls back to the pinned `verified`, never to an ungated latest.
 
 ## Commands
 
