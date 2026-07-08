@@ -1,18 +1,18 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_optional_plugins / claude::_enable_optional_plugin (the --supabase/--n8n flag-gated opt-ins), claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --remove-plugins (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the optional-plugin opt-in (supabase disabled-by-false then re-enabled past the reassert; n8n absent-from-SoT with its marketplace added on demand), the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
 user-invocable: false
 metadata:
   source_files:
     - path: lib/claude.sh
-      lines: "377-648"
+      lines: "377-712"
     - path: lib/codex.sh
       lines: "292-470"
     - path: SoT/.claude/settings.json
-      lines: "237-268"
+      lines: "235-254"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-22"
-  updated: "2026-07-06"
+  updated: "2026-07-08"
 ---
 
 # Plugin Bootstrap
@@ -42,6 +42,7 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 - Modifying any `claude::_plugins_*` helper or the `claude::sync_plugins` orchestrator
 - Adding/removing an LSP plugin or changing which language-server binaries `claude::sync_lsp_servers` auto-installs
 - Modifying `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, or `codex::sync_plugins`
+- Opting an optional plugin in via `--supabase`/`--n8n`, or changing `claude::sync_optional_plugins` / `claude::_enable_optional_plugin`
 
 ## Core Patterns
 
@@ -53,7 +54,7 @@ Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mc
 | `false` | Yes | No | Yes (project settings.json) | Yes (`has()` passes) |
 | absent | No | — | No (nothing to flip) | No (uninstalled by `--remove-plugins`) |
 
-Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (examples: `docks@docks: true`, `n8n-mcp-skills@n8n-mcp-skills: false`, `supabase@claude-plugins-official: false`).
+Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (examples: `docks@docks: true`, `agent-sdk-dev@claude-plugins-official: false`, `supabase@claude-plugins-official: false`). Note the tri-state governs only what the SoT ships by default — `--supabase`/`--n8n` opt-ins (see § Optional (flag-gated) plugins) sit on top of it, writing enabled-state into deployed settings only.
 
 ### Seven-Pass Reconcile (`claude::sync_plugins` orchestrator)
 
@@ -123,6 +124,21 @@ jq -s '.[0].enabledPlugins as $sot | .[1]
 ### LSP Server Binary Bootstrap (`claude::sync_lsp_servers`)
 
 Runs after `claude::sync_plugins` in `claude::sync`. The official LSP plugins (`php-lsp`, `typescript-lsp`) only carry `lspServers` config (shipped in the marketplace manifest, not the plugin files) — the language-server binaries are separate npm globals, without which the plugins are silent no-ops. The helper maps SoT `enabledPlugins` keys to binaries (`php-lsp` → `intelephense`; `typescript-lsp` → `typescript-language-server` + `tsc` from the `typescript` package), collects the missing ones, and runs a single `npm install -g`. Gated on key *presence* (`has()`, not truthiness) for the same reason as pass 5: a `false`-keyed LSP plugin can be enabled per-project, so its binary must still exist. When npm is absent it warns and skips (`claude::sync_lsp_servers` — the npm presence guard); when no LSP plugin key is declared it returns silently.
+
+### Optional (flag-gated) plugins (`claude::sync_optional_plugins`)
+
+Runs right after `claude::sync_plugins` in `claude::sync`. Two situational plugins are kept out of the lean default and opted in per machine via `--supabase` / `--n8n` (`WANT_SUPABASE` / `WANT_N8N`) — deploy-time only, like `--680k`/`--permissive` (touch deployed settings, never the SoT; a flag-less sync reverts them). Each is handled by `claude::_enable_optional_plugin plugin_id marketplace_repo`.
+
+| Plugin | SoT state | Flag action |
+|--------|-----------|-------------|
+| `supabase@claude-plugins-official` | `enabledPlugins: false` | Official/built-in → empty `marketplace_repo`, no marketplace add. Already installed → `claude plugin enable`. MUST run after pass 7 (the reassert just disabled the SoT-`false` supabase); this is the override |
+| `n8n-mcp-skills@n8n-mcp-skills` | absent (plugin + marketplace) | `claude plugin marketplace add czlonkowski/n8n-skills` (only if the marketplace name `${plugin_id##*@}` = `n8n-mcp-skills` isn't already known), then `plugin install`, then `plugin enable` |
+
+Why supabase is `false`-in-SoT but n8n is absent: official plugins **default ON when their key is absent**, so dropping the supabase key would leave it loading — `false` is the only way to keep it off, and the pass-7 reassert enforces that via `claude plugin disable`. n8n is third-party; with its marketplace removed from the SoT it can't load, so absent is enough. A flag-less sync therefore never loads, downloads, or uninstalls either one; only `--remove-plugins` uninstalls (supabase survives via `has()`; n8n, absent from SoT, would be removed).
+
+<constraint>
+`claude::sync_optional_plugins` MUST run after `claude::sync_plugins` (whose last step is the pass-7 reassert). `claude plugin install` enables supabase as a user-scope side effect, then the reassert disables it again (SoT-`false`) — so only a post-reassert `claude plugin enable` makes `--supabase` stick. Enabling via a plain jq edit instead would lose the CLI-owns-settings.json race (same reason pass 7 uses `plugin disable`, not jq).
+</constraint>
 
 ### Codex Marketplace Merge (`codex::sync_marketplace`)
 

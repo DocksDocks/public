@@ -1,6 +1,6 @@
 ---
 name: sync-mechanic-agent
-description: Use when editing `sync.sh`, `lib/common.sh`, the flag parser (`--force` / `--remove-plugins` / `--no-rtk` / `--dry-run` / `--claude` / `--codex` / `--agents`), the `TARGET_FILTER_SET` default-all-three logic, or any cross-cutting sync invariant. Not for tool-specific JSON merge (use `settings-json-agent`), plugin reconcile (use `plugin-bootstrap-agent`), or skill SKILL.md authoring (use the `docks:write-skill` skill).
+description: Use when editing `sync.sh`, `lib/common.sh`, the flag parser (`--force` / `--remove-plugins` / `--supabase` / `--n8n` / `--no-rtk` / `--dry-run` / `--claude` / `--codex` / `--agents`), the `TARGET_FILTER_SET` default-all-three logic, or any cross-cutting sync invariant. Not for tool-specific JSON merge (use `settings-json-agent`), plugin reconcile (use `plugin-bootstrap-agent`), or skill SKILL.md authoring (use the `docks:write-skill` skill).
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

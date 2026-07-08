@@ -24,6 +24,7 @@ claude::sync() {
   claude::sync_connector_env
   claude::sync_removals
   claude::sync_plugins
+  claude::sync_optional_plugins
   claude::sync_lsp_servers
   claude::sync_rtk
 }
@@ -594,6 +595,70 @@ claude::sync_plugins() {
   if [[ "$failed" -gt 0 ]]; then
     warn "$failed plugin operation(s) failed — re-run sync or install manually"
   fi
+}
+
+# --- Optional (flag-gated) plugins --------------------------------------------
+# The lean default keeps supabase and n8n OFF. supabase sits in SoT
+# enabledPlugins as `false` (official plugins default ON when absent, so `false`
+# is what actually disables it — the reassert pass enforces it via `claude
+# plugin disable`); n8n is absent from SoT entirely, plugin and marketplace both.
+# A flag-less sync therefore never loads, downloads, or uninstalls either one.
+# `--supabase` / `--n8n` opt one in on THIS machine: install it (adding its
+# marketplace when third-party) and enable it. Like --680k / --permissive this
+# touches the DEPLOYED config only — a later flag-less sync reverts it (the
+# reassert re-disables SoT-false supabase; n8n is left installed-but-unmanaged),
+# so re-pass the flag on machines that should keep the plugin.
+claude::_enable_optional_plugin() {
+  local plugin_id="$1" marketplace_repo="$2"
+  local installed_plugins="$CLAUDE_DIR/plugins/installed_plugins.json"
+  local known_marketplaces="$CLAUDE_DIR/plugins/known_marketplaces.json"
+  local mp_name="${plugin_id##*@}"
+
+  # Third-party plugins need their marketplace known first; official plugins
+  # (claude-plugins-official) are built in, so marketplace_repo is empty.
+  if [[ -n "$marketplace_repo" ]] \
+     && ! { [[ -f "$known_marketplaces" ]] && jq -e --arg n "$mp_name" '.[$n]' "$known_marketplaces" >/dev/null 2>&1; }; then
+    claude::_cli plugin marketplace add "$marketplace_repo" >/dev/null 2>&1 \
+      || { warn "Failed to add marketplace $marketplace_repo for $plugin_id"; return; }
+  fi
+
+  if ! claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id"; then
+    claude::_cli plugin install "$plugin_id" >/dev/null 2>&1 \
+      || { warn "Failed to install optional plugin $plugin_id"; return; }
+  fi
+
+  # Authoritative enable: `plugin install` enables as a side effect, but supabase
+  # is SoT-false so the reassert pass (run just before this) disabled it again.
+  # `plugin enable` re-enables it and the CLI persists true into settings.json —
+  # a plain jq edit would lose the CLI-owns-settings.json race.
+  if claude::_cli plugin enable "$plugin_id" >/dev/null 2>&1; then
+    log "Optional plugin opted in: $plugin_id"
+  else
+    warn "Failed to enable optional plugin $plugin_id"
+  fi
+}
+
+claude::sync_optional_plugins() {
+  [[ "$WANT_SUPABASE" -eq 1 || "$WANT_N8N" -eq 1 ]] || return 0
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    [[ "$WANT_SUPABASE" -eq 1 ]] && echo "[dry-run] (--supabase) install + enable supabase@claude-plugins-official in deployed settings"
+    [[ "$WANT_N8N" -eq 1 ]]      && echo "[dry-run] (--n8n) add czlonkowski/n8n-skills marketplace + install + enable n8n-mcp-skills@n8n-mcp-skills"
+    return 0
+  fi
+
+  if ! command -v claude >/dev/null 2>&1; then
+    warn "claude CLI not in PATH — cannot opt in optional plugins (--supabase/--n8n)"
+    return
+  fi
+
+  if [[ "$WANT_SUPABASE" -eq 1 ]]; then
+    claude::_enable_optional_plugin "supabase@claude-plugins-official" ""
+  fi
+  if [[ "$WANT_N8N" -eq 1 ]]; then
+    claude::_enable_optional_plugin "n8n-mcp-skills@n8n-mcp-skills" "czlonkowski/n8n-skills"
+  fi
+  return 0
 }
 
 # The php-lsp / typescript-lsp plugins only register lspServers config (it
