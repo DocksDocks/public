@@ -95,8 +95,11 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
+        # The dir name carries a space on purpose — C:\Users\First Last is
+        # the common real-world shape, so every path the engine builds from
+        # the home gets quoting coverage for free.
         run: |
-          $kitHome = Join-Path $env:RUNNER_TEMP "kit-home"
+          $kitHome = Join-Path $env:RUNNER_TEMP "kit home"
           New-Item -ItemType Directory -Force -Path (Join-Path $kitHome ".claude") | Out-Null
           Copy-Item "SoT/.claude/settings.json" (Join-Path $kitHome ".claude/settings.json")
           "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -107,16 +110,21 @@ jobs:
           $out = bun cli/src/main.ts sync --dry-run 2>&1 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "sync --dry-run exited $LASTEXITCODE" }
-          if ($out -notmatch "kit-home") { throw "output never references the USERPROFILE-derived home" }
+          if ($out -notmatch "kit home") { throw "output never references the USERPROFILE-derived home" }
           if ($out -match "Unknown OS") { throw "unknown-OS warning leaked" }
           if ($out -match "bubblewrap") { throw "bubblewrap check ran on Windows (should be a known skip)" }
 
-      - name: status --json parses
+      - name: status --json parses and carries the captured toolchain table
+        # The toolchain table travels through engineCapture (a native-raw
+        # child re-spawn), which returns "" on a failed child — so parsing
+        # alone would pass vacuously. Assert the table content made it.
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
           $out = bun cli/src/main.ts status --json | Out-String
           if ($LASTEXITCODE -ne 0) { throw "status --json exited $LASTEXITCODE" }
-          $null = $out | ConvertFrom-Json
+          $json = $out | ConvertFrom-Json
+          if ($json.toolchainTable -notmatch "(?m)^npm\s+check\s+\d") { throw "toolchainTable lost the npm row - engineCapture child failed on Windows" }
+          if ($json.toolchainTable -match "(?m)^bwrap") { throw "bwrap row present in the captured toolchain table" }
 
       - name: plugins list
         run: |
@@ -141,35 +149,53 @@ jobs:
           if ($out -match "(?m)^bwrap") { throw "bwrap row present in the Windows toolchain report" }
           if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "npm row has no version - EngineNative cannot spawn npm.cmd on Windows" }
 
-      - name: Write npm gate stub (latest above kit-verified)
+      - name: Write npm gate stub (latest above kit-verified, argv-recording)
         run: |
           $stub = Join-Path $env:RUNNER_TEMP "gate-stubs"
           New-Item -ItemType Directory -Force -Path $stub | Out-Null
           @'
           @echo off
+          rem redirection-first: args end in digits (…@0.99.0) and a digit
+          rem before >> would parse as a file-descriptor redirect
+          >> "%RUNNER_TEMP%\npm-argv.log" echo npm %*
           if "%1"=="view" echo 0.99.0
           exit /b 0
           '@ | Out-File -FilePath (Join-Path $stub "npm.cmd") -Encoding ascii
           "GATE_STUBS=$stub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      # The two gate steps assert the SELECTED VERSION via the recorded npm
+      # argv, not just the warning text — a gate that logs one branch but
+      # returns the other target must fail here.
       - name: toolchain ensure gate — non-TTY pinned fallback
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
           $env:Path = "$env:GATE_STUBS;$env:Path"
+          Remove-Item (Join-Path $env:RUNNER_TEMP "npm-argv.log") -ErrorAction SilentlyContinue
+          $verified = (Get-Content SoT/toolchain.json | ConvertFrom-Json).tools.'agent-browser'.verified
           $out = bun cli/src/main.ts toolchain ensure agent-browser 2>&1 | Out-String
           Write-Host $out
           if ($out -notmatch "installing kit-verified agent-browser .* instead of 0\.99\.0") {
             throw "non-TTY pinned-fallback gate branch did not fire"
           }
-          exit 0 # bun exits 1 (stub npm installs nothing) - the gate line above is the assertion
+          if ($out -match "anyway\? \[y/N\]") { throw "TTY prompt appeared in a non-TTY run" }
+          $argv = Get-Content (Join-Path $env:RUNNER_TEMP "npm-argv.log") -Raw
+          if ($argv -notmatch [regex]::Escape("install -g agent-browser@$verified")) {
+            throw "gate selected the wrong target - npm argv was: $argv"
+          }
+          exit 0 # bun exits 1 (stub npm installs nothing) - the assertions above are the gate
 
       - name: toolchain ensure gate — --yes accepts above-verified
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
           $env:Path = "$env:GATE_STUBS;$env:Path"
+          Remove-Item (Join-Path $env:RUNNER_TEMP "npm-argv.log") -ErrorAction SilentlyContinue
           $out = bun cli/src/main.ts toolchain ensure agent-browser --yes 2>&1 | Out-String
           Write-Host $out
           if ($out -notmatch "newer than kit-verified .* proceeding \(--yes\)") {
             throw "--yes gate branch did not fire"
           }
-          exit 0 # bun exits 1 (stub npm installs nothing) - the gate line above is the assertion
+          $argv = Get-Content (Join-Path $env:RUNNER_TEMP "npm-argv.log") -Raw
+          if ($argv -notmatch [regex]::Escape("install -g agent-browser@0.99.0")) {
+            throw "--yes did not install latest - npm argv was: $argv"
+          }
+          exit 0 # bun exits 1 (stub npm installs nothing) - the assertions above are the gate
