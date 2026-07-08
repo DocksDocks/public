@@ -6,25 +6,25 @@
  */
 import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
-import { capture, commandExists } from "./exec"
+import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { echo, err, log, warn } from "./output"
 
 export function codexSync(ctx: Ctx): void {
-  const codexDir = join(ctx.home, ".codex")
-  const sotConfig = join(ctx.repoDir, "SoT", ".codex", "config.toml")
-  const userConfig = join(codexDir, "config.toml")
+  const codexDir = p(ctx.home, ".codex")
+  const sotConfig = p(ctx.repoDir, "SoT", ".codex", "config.toml")
+  const userConfig = p(codexDir, "config.toml")
 
   ensureBubblewrap(ctx)
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true })
   syncConfig(ctx, sotConfig, userConfig)
   syncCodexModel(ctx, ctx.codexModel)
-  syncRules(ctx, join(ctx.repoDir, "SoT", ".codex", "rules"), join(codexDir, "rules"))
-  syncAgentsMd(ctx, join(ctx.repoDir, "SoT", ".codex", "AGENTS.md"), join(codexDir, "AGENTS.md"))
-  syncMarketplace(ctx, join(ctx.repoDir, "SoT", ".codex", "plugins", "marketplace.json"), join(ctx.agentsDir, "plugins", "marketplace.json"))
+  syncRules(ctx, p(ctx.repoDir, "SoT", ".codex", "rules"), p(codexDir, "rules"))
+  syncAgentsMd(ctx, p(ctx.repoDir, "SoT", ".codex", "AGENTS.md"), p(codexDir, "AGENTS.md"))
+  syncMarketplace(ctx, p(ctx.repoDir, "SoT", ".codex", "plugins", "marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
   removeLegacyDocksMarketplace(ctx, userConfig)
   syncPlugins(ctx, sotConfig)
 }
@@ -221,10 +221,10 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
   let rulesSynced = false
   const ruleFiles = readdirSync(sotRulesDir, { withFileTypes: true })
     .filter((e) => e.isFile() && e.name.endsWith(".rules"))
-    .map((e) => join(sotRulesDir, e.name))
+    .map((e) => p(sotRulesDir, e.name))
     .sort(compareCodepoints)
   for (const ruleFile of ruleFiles) {
-    const userRuleFile = join(userRulesDir, ruleFile.slice(ruleFile.lastIndexOf("/") + 1))
+    const userRuleFile = p(userRulesDir, ruleFile.slice(ruleFile.lastIndexOf("/") + 1))
     if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`)
     copyFileSync(ruleFile, userRuleFile)
     rulesSynced = true
@@ -255,7 +255,7 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
     return
   }
 
-  mkdirSync(join(ctx.agentsDir, "plugins"), { recursive: true })
+  mkdirSync(p(ctx.agentsDir, "plugins"), { recursive: true })
   const repo = parseJson(readFileSync(sotMarketplace, "utf8"))
   if (repo === undefined) throw new Error(`invalid SoT marketplace JSON: ${sotMarketplace}`)
 
@@ -423,10 +423,10 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 // -------------------------------------------------------------- summary ----
 
 export function codexSummary(ctx: Ctx): void {
-  const codexDir = join(ctx.home, ".codex")
+  const codexDir = p(ctx.home, ".codex")
   echo(`Codex:    ${codexDir}`)
   if (!ctx.dryRun) {
-    const count = enabledPluginIds(join(codexDir, "config.toml")).length
+    const count = enabledPluginIds(p(codexDir, "config.toml")).length
     echo(`Codex plugins: ${count} enabled in config.toml`)
   }
 }

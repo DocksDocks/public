@@ -6,8 +6,8 @@
  * Mirrors bash control flow via ExitError (bash `exit N` inside parsing) —
  * caught once in runEngineNative.
  */
-import { join } from "node:path"
-import { commandExists } from "./exec"
+
+import { commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { echo, err, warn } from "./output"
@@ -21,7 +21,7 @@ export class ExitError extends Error {
 const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
 
 function usage(ctx: Ctx): void {
-  const argv0 = join(ctx.repoDir, "lib", "engine.sh")
+  const argv0 = p(ctx.repoDir, "lib", "engine.sh")
   echo(`Usage: ${argv0} [claude] [codex] [agents] [flags]`)
   echo("")
   echo("Targets (positional; default: all three)")

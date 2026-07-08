@@ -3,15 +3,17 @@
  * engine::toolchain. Same arg vocabulary, byte-exact messages, same exit
  * codes.
  */
+import { p } from "./exec"
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
+
 import { syncClaudeModel } from "./claudeModel"
 import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { echo, err, warn } from "./output"
-import { ensure, present, report } from "./toolchain"
+import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
+import { ensure, report } from "./toolchain"
 
 export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
   let tool = ""
@@ -31,21 +33,21 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
 
   if (value === "") {
     if (tool === "claude") {
-      const deployed = join(ctx.home, ".claude", "settings.json")
+      const deployed = p(ctx.home, ".claude", "settings.json")
       if (!fileReadable(deployed)) {
         warn("~/.claude/settings.json missing")
         return 0
       }
       echo(`deployed: ${jsonModelField(deployed)}`)
-      echo(`SoT:      ${jsonModelField(join(ctx.repoDir, "SoT", ".claude", "settings.json"))}`)
+      echo(`SoT:      ${jsonModelField(p(ctx.repoDir, "SoT", ".claude", "settings.json"))}`)
     } else {
-      const deployed = join(ctx.home, ".codex", "config.toml")
+      const deployed = p(ctx.home, ".codex", "config.toml")
       if (!fileReadable(deployed)) {
         warn("~/.codex/config.toml missing")
         return 0
       }
       echo(`deployed: ${tomlModelField(deployed)}`)
-      echo(`SoT:      ${tomlModelField(join(ctx.repoDir, "SoT", ".codex", "config.toml"))}`)
+      echo(`SoT:      ${tomlModelField(p(ctx.repoDir, "SoT", ".codex", "config.toml"))}`)
     }
     printModels(ctx.repoDir, tool)
     return 0
@@ -116,17 +118,17 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
   }
   switch (tool) {
     case "rtk":
-    case "effect-solutions":
-    case "agent-browser":
-      return ensure(ctx, tool, (mode) => {
-        err(`EngineNative: ${tool} ${mode} is not ported yet — run with DOCKS_KIT_ENGINE=bash`)
+      return ensure(ctx, "rtk", (mode) => {
+        err(`EngineNative: rtk ${mode} is not ported yet — run with DOCKS_KIT_ENGINE=bash`)
         return 1
       })
     case "bun":
-      // skills::_bun_bootstrap >/dev/null — found-bun path prints nothing.
-      if (present(ctx, "bun")) return 0
-      err("EngineNative: bun bootstrap is not ported yet — run with DOCKS_KIT_ENGINE=bash")
-      return 1
+      // skills::_bun_bootstrap >/dev/null — the found-bun stdout is discarded.
+      return bunBootstrap(ctx) !== "" ? 0 : 1
+    case "effect-solutions":
+      return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
+    case "agent-browser":
+      return ensure(ctx, "agent-browser", agentBrowserInstall)
     default:
       err("toolchain ensure supports managed tools only (rtk, bun, effect-solutions, agent-browser)")
       return 2

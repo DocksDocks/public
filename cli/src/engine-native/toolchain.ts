@@ -4,8 +4,8 @@
  * uses (argv parity); message strings are byte-exact.
  */
 import { readFileSync, readSync } from "node:fs"
-import { join } from "node:path"
-import { capture, commandExists, isExecutable } from "./exec"
+
+import { capture, commandExists, isExecutable, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
 import { echo, log, warn } from "./output"
@@ -13,7 +13,7 @@ import { echo, log, warn } from "./output"
 type InstallFn = (mode: "install" | "upgrade", version: string) => number
 
 function manifest(ctx: Ctx): { [k: string]: Json } {
-  const doc = parseJson(readFileSync(join(ctx.repoDir, "SoT", "toolchain.json"), "utf8"))
+  const doc = parseJson(readFileSync(p(ctx.repoDir, "SoT", "toolchain.json"), "utf8"))
   const tools = doc !== undefined && isObject(doc) ? doc["tools"] : undefined
   return tools !== undefined && isObject(tools) ? tools : {}
 }
@@ -42,8 +42,8 @@ export function present(ctx: Ctx, tool: string): boolean {
   if (tool === "bun") {
     return (
       commandExists("bun") ||
-      isExecutable(join(process.env["BUN_INSTALL"] ?? join(ctx.home, ".bun"), "bin", "bun")) ||
-      isExecutable(join(ctx.home, ".bun", "bin", "bun"))
+      isExecutable(p(process.env["BUN_INSTALL"] ?? p(ctx.home, ".bun"), "bin", "bun")) ||
+      isExecutable(p(ctx.home, ".bun", "bin", "bun"))
     )
   }
   return commandExists(tool)
@@ -64,11 +64,11 @@ export function installedVersion(ctx: Ctx, tool: string): string {
     case "codex":
       return firstLineField(capture("codex", ["--version"]), -1)
     case "bun":
-      return commandExists("bun") ? capture("bun", ["--version"]) : capture(join(ctx.home, ".bun", "bin", "bun"), ["--version"])
+      return commandExists("bun") ? capture("bun", ["--version"]) : capture(p(ctx.home, ".bun", "bin", "bun"), ["--version"])
     case "agent-browser":
       return firstLineField(capture("agent-browser", ["--version"]), -1)
     case "effect-solutions": {
-      const bunbin = commandExists("bun") ? "bun" : join(ctx.home, ".bun", "bin", "bun")
+      const bunbin = commandExists("bun") ? "bun" : p(ctx.home, ".bun", "bin", "bun")
       if (bunbin !== "bun" && !isExecutable(bunbin)) return ""
       const m = /effect-solutions@([0-9][0-9.]*)/.exec(capture(bunbin, ["pm", "-g", "ls"]))
       return m?.[1] ?? ""

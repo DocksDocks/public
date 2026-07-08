@@ -3,14 +3,15 @@
  * (common::_models_from_manifest / print_models / _validate_claude_model /
  * _validate_codex_model). Message strings are byte-exact.
  */
+import { p } from "./exec"
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
+
 import { isObject, parseJson, type Json } from "./jq"
 import { warn } from "./output"
 
 function catalog(repoDir: string): Json | undefined {
   try {
-    return parseJson(readFileSync(join(repoDir, "SoT", "models.json"), "utf8"))
+    return parseJson(readFileSync(p(repoDir, "SoT", "models.json"), "utf8"))
   } catch {
     return undefined
   }
@@ -38,7 +39,7 @@ export function modelsFromManifest(repoDir: string, tool: string): Array<string>
 export function printModels(repoDir: string, tool: string): void {
   const entry = toolEntry(repoDir, tool)
   if (entry === undefined) {
-    warn(`Model catalog unavailable (${join(repoDir, "SoT", "models.json")})`)
+    warn(`Model catalog unavailable (${p(repoDir, "SoT", "models.json")})`)
     return
   }
   const verified = typeof entry["verified"] === "string" ? entry["verified"] : "?"

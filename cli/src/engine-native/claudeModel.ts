@@ -2,14 +2,15 @@
  * Port of claude::sync_model (lib/claude.sh) — the --claude-model deploy-time
  * modifier, shared with the `model claude <value>` direct mode.
  */
+import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+
 import type { Ctx } from "./index"
 import { isObject, jqStringify, parseJson } from "./jq"
 import { echo, err, log, warn } from "./output"
 
 export function syncClaudeModel(ctx: Ctx, model: string): void {
-  const userSettings = join(ctx.home, ".claude", "settings.json")
+  const userSettings = p(ctx.home, ".claude", "settings.json")
 
   if (model === "") return
 

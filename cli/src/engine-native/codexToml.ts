@@ -5,8 +5,9 @@
  * program record-for-record, including its quirks (the key is used as a raw
  * regex fragment, exactly like awk's `"^" key "[[:space:]]*="`).
  */
+import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+
 import type { Ctx } from "./index"
 import { echo, log, warn } from "./output"
 
@@ -47,7 +48,7 @@ export function replaceTopLevelSettingInFile(file: string, key: string, replacem
 }
 
 export function syncCodexModel(ctx: Ctx, model: string): void {
-  const userCodexSettings = join(ctx.home, ".codex", "config.toml")
+  const userCodexSettings = p(ctx.home, ".codex", "config.toml")
 
   if (model === "") return
 

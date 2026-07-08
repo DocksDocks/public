@@ -8,11 +8,13 @@
  * default until step 6 flips it; until a command surface is fully ported,
  * dispatch refuses loudly rather than half-running it.
  */
+import { p } from "./exec"
 import { existsSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+
 import { kitHome } from "../kitHome"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
+import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
 import { echo, err } from "./output"
 import { ExitError, parseArgs, preflight, validateModelFlags } from "./parseArgs"
@@ -44,7 +46,7 @@ function makeCtx(): Ctx {
   return {
     repoDir: kitHome(),
     home,
-    agentsDir: env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== "" ? env["AGENTS_DIR"] : join(home, ".agents"),
+    agentsDir: env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== "" ? env["AGENTS_DIR"] : p(home, ".agents"),
     dryRun: env["DRY_RUN"] === "1",
     skipRtk: env["SKIP_RTK"] === "1",
     reconcile: env["RECONCILE"] === "1",
@@ -69,25 +71,24 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
 
   // Ported-surface gate: refuse BEFORE any step mutates state — a partial
   // native sync would violate the parity contract.
-  if (ctx.syncClaude && existsSync(join(ctx.repoDir, "SoT", ".claude"))) {
+  if (ctx.syncClaude && existsSync(p(ctx.repoDir, "SoT", ".claude"))) {
     err("EngineNative: 'sync claude' is not ported yet — unset DOCKS_KIT_ENGINE (or set it to 'bash') to use the bash engine")
     return 2
   }
-  if (ctx.syncAgents && existsSync(join(ctx.repoDir, "SoT", ".agents"))) {
-    err("EngineNative: 'sync agents' is not ported yet — unset DOCKS_KIT_ENGINE (or set it to 'bash') to use the bash engine")
-    return 2
-  }
-
-  const codexRan = ctx.syncCodex && existsSync(join(ctx.repoDir, "SoT", ".codex"))
+  const codexRan = ctx.syncCodex && existsSync(p(ctx.repoDir, "SoT", ".codex"))
   if (codexRan) codexSync(ctx)
+
+  const skillsState = ctx.syncAgents && existsSync(p(ctx.repoDir, "SoT", ".agents")) ? skillsSync(ctx) : undefined
 
   echo("")
   echo("--- Sync complete ---")
   echo(`Repo:     ${ctx.repoDir}`)
   if (codexRan) codexSummary(ctx)
+  if (skillsState !== undefined) skillsSummary(ctx, skillsState)
 
   echo("")
   if (codexRan) codexNextSteps()
+  if (skillsState !== undefined) skillsNextSteps()
   return 0
 }
 
