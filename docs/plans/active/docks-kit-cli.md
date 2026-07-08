@@ -3,7 +3,7 @@ title: docks-kit CLI — typed front-end, tool-scoped flags, toolchain floors
 goal: Replace sync.sh with a self-documenting Effect-TS CLI over the bash engine, with renamed tool-scoped flags, model catalog, and verified-version toolchain floors
 status: ongoing
 created: "2026-07-08T13:00:00-03:00"
-updated: "2026-07-08T14:30:00-03:00"
+updated: "2026-07-08T14:55:00-03:00"
 started_at: "2026-07-08T13:00:00-03:00"
 assignee: null
 tags: [cli, engine, toolchain, packaging]
@@ -37,8 +37,8 @@ the in-repo tracker.
 | 2 | SoT/toolchain.json + lib/toolchain.sh (verified-version gate) + rtk/bun/effect-solutions/agent-browser rewiring + RTK-first reorder | 1 | done (f8760b6) |
 | 3 | Effect-TS CLI (cli/, 8 commands, 9 docs topics) + ./docks-kit launcher + lib/engine.sh + delete sync.sh | 1,2 | done (ae8b90f) |
 | 4 | Packaging: build-binaries.sh, install.sh, release-cli.yml, npm layout | 3 | done (15fd69f) |
-| 5 | Docs sweep: README.md, CLAUDE.md/AGENTS.md reference rewrite, skills + wrapper agents, toolchain-context skill, CHANGELOG | 3 | in-flight |
-| 6 | Repo pin (model opus + advisor fable in .claude/settings.local.json) + end-to-end verification matrix | 5 | planned |
+| 5 | Docs sweep: README.md, CLAUDE.md/AGENTS.md reference rewrite, skills + wrapper agents, toolchain-context skill, CHANGELOG | 3 | done (9468a69) |
+| 6 | SoT model stance (model opus + advisorModel fable + effortLevel xhigh in SoT/.claude/settings.json — user corrected: SoT, not a local pin) + end-to-end verification matrix | 5 | done (4a00f27 + this file's commit) |
 
 ## Acceptance criteria
 
@@ -46,9 +46,9 @@ the in-repo tracker.
 - `bash -n` + `bunx tsc --noEmit -p cli` clean
 - `./docks-kit sync --dry-run` step list ≡ pre-refactor `./sync.sh --dry-run` capture (verified byte-identical at step 3)
 - Old flags exit 2 with rename hints; `--claude-model=bogus` exits 2 pre-mutation; bare `--claude-model` prints the catalog
-- Round-trips: `model claude opus` → set → flag-less sync reverts to SoT `best`; codex mirror (model line exactly once, tables untouched)
+- Round-trips: `model claude <value>` → set → flag-less sync reverts to the SoT value (verified when SoT was `best`; SoT is `opus` since 4a00f27); codex mirror (model line exactly once, tables untouched)
 - Toolchain gate branches verified (TTY prompt path excepted — needs interactive run); effect-solutions self-upgrade fired live (unknown → 0.5.3)
-- Fresh session in this repo shows Opus main + fable advisor
+- Fresh session in this repo shows Opus main + fable advisor — **user-side check, pending** (deploy done; requires a new interactive session)
 
 ## Open questions
 
@@ -66,6 +66,17 @@ the in-repo tracker.
 - Follow-up candidates (not this plan): TS-native engine port for Windows
   (EngineNative behind the cli/src/engine.ts seam), `toolchain check --json`,
   a toolchain wrapper agent
+- Phase-6 verification run (2026-07-08): grep gates clean (sync.sh/old-flag
+  refs only in CHANGELOG + finished plans); `bash -n` all shell + shellcheck
+  clean (SC2088 excluded — intentional `~/` display strings); `bunx tsc
+  --noEmit -p cli` exit 0; `./docks-kit sync --dry-run` exit 0; real
+  `./docks-kit sync claude` deployed SoT → `~/.claude/settings.json` shows
+  model=opus, advisorModel=fable, effortLevel=xhigh; `docks-kit status`
+  reports zero drift on all four tracked keys and toolchain all-ok (ffplay
+  missing — check-only; notification sound needs `sudo apt install ffmpeg`)
+- Compact-window open decision: CLAUDE.md says "drop back to 350000 when the
+  primary machine returns to Opus"; SoT is now Opus-main but the window stays
+  468000 pending an explicit user call (flagged, not silently changed)
 
 ## Review
 
