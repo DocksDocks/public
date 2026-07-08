@@ -35,6 +35,25 @@ skills::sync() {
   skills::update_snapshot
 }
 
+# Create <link> pointing at <target>: a real symlink where the filesystem
+# supports it, copy fallback otherwise (Git Bash `ln -s` silently copies
+# unless Developer Mode + MSYS=winsymlinks:nativestrict are set — user
+# decision 2026-07-08: detect and prefer real links). Returns 1 only when
+# neither works.
+skills::_link_or_copy() {
+  local target="$1" link="$2"
+  ln -sf "$target" "$link" 2>/dev/null || true
+  if [[ -L "$link" ]]; then
+    return 0
+  fi
+  if [[ -e "$link" ]]; then
+    warn "symlinks unsupported here — $link is a copy (refreshed on sync; enable Windows Developer Mode for real links)"
+    return 0
+  fi
+  warn "could not create $link (symlink and copy both failed)"
+  return 1
+}
+
 # The `skills` npm package spec for npx invocations, pinned to the manifest's
 # verified version (supply-chain: never run a floating @latest CLI every sync).
 skills::_skills_cli() {
@@ -152,8 +171,7 @@ skills::heal_claude_symlink() {
   fi
 
   mkdir -p "$claude_skills_dir"
-  ln -s "$rel_target" "$claude_link"
-  return 0
+  skills::_link_or_copy "$rel_target" "$claude_link"
 }
 
 # toolchain::ensure callback for agent-browser. Upgrade = npm refresh only (the
@@ -274,8 +292,8 @@ skills::_effect_solutions_install() {
   gbin="$("$bun" pm -g bin 2>/dev/null || true)"
   if [[ -n "$gbin" && -x "$gbin/effect-solutions" ]]; then
     mkdir -p "$HOME/.local/bin"
-    ln -sf "$bun" "$HOME/.local/bin/bun"
-    ln -sf "$gbin/effect-solutions" "$HOME/.local/bin/effect-solutions"
+    skills::_link_or_copy "$bun" "$HOME/.local/bin/bun"
+    skills::_link_or_copy "$gbin/effect-solutions" "$HOME/.local/bin/effect-solutions"
     log "effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)"
   else
     warn "effect-solutions installed but binary not found under '${gbin:-<unknown>}' — link it onto PATH manually"

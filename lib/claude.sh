@@ -802,9 +802,21 @@ claude::sync_rtk() {
     return
   fi
 
-  # `|| warn` (not a plain call): under set -e a failed install would otherwise
-  # abort the whole sync — and rtk runs FIRST, so nothing would get deployed.
-  toolchain::ensure rtk claude::_rtk_install || warn "RTK bootstrap failed — continuing sync without it"
+  # Windows (Git Bash): the hook itself is native since rtk 0.37.2 (`rtk hook
+  # claude`, no shell/jq), but the kit's auto-installer is a bash script from
+  # upstream — install/upgrade natively (winget or the GitHub release zip).
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*)
+      if ! command -v rtk >/dev/null 2>&1; then
+        warn "rtk not installed — the kit's auto-install is Unix-only. Install natively (winget, or the rtk-*-windows-msvc.zip release), then re-run sync"
+        return 0
+      fi ;;
+    *)
+      # `|| warn` (not a plain call): under set -e a failed install would
+      # otherwise abort the whole sync — and rtk runs FIRST, so nothing
+      # would get deployed.
+      toolchain::ensure rtk claude::_rtk_install || warn "RTK bootstrap failed — continuing sync without it" ;;
+  esac
 
   command -v rtk >/dev/null 2>&1 || return 0
   if [[ ! -f "$CLAUDE_DIR/RTK.md" ]]; then
