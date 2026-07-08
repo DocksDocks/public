@@ -1,11 +1,14 @@
 name: parity
 
-# The EngineBash/EngineNative parity gates (windows-support plan, steps 4+5).
+# The EngineBash/EngineNative parity gates (windows-support plan, steps 4+5)
+# plus the Windows-native PowerShell smoke (step 7).
 # Self-parity (bash vs bash) guards engine hermeticity/determinism; --native
-# runs EngineNative as side B — the step-6 flip precondition. Native runs are
-# Linux-only until step 7: on Windows the bash-script stubs aren't spawnable
-# by the native engine (CreateProcess can't exec shebang scripts), which is
-# solved together with the PowerShell-native CI there.
+# runs EngineNative as side B — the step-6 flip precondition. The stub-based
+# parity legs are POSIX-only by design: the stubs are shebang scripts a
+# native win32 CreateProcess can't exec, and porting them to .exe would test
+# the stubs, not the engine. EngineNative's Windows behavior is covered by
+# the native-windows job below (real PowerShell, HOME unset, %USERPROFILE%
+# resolution, .cmd tool spawning) and by the real-machine verify (step 9).
 
 on:
   push:
@@ -69,3 +72,104 @@ jobs:
       - name: Mutation parity (native)
         if: runner.os == 'Linux'
         run: bun cli/test/parity-mutation.ts --native
+
+  # Step 7: EngineNative under native PowerShell — no Git Bash in the loop.
+  # HOME is deliberately unset so every path resolves via %USERPROFILE%
+  # (pointed at a hermetic temp dir). The npm-stub steps exercise the
+  # toolchain gate branches (--yes vs non-TTY pinned fallback) AND double as
+  # the .cmd spawn canary: on Windows npm IS npm.cmd, so if the engine can't
+  # spawn .cmd files these steps fail loudly instead of silently skipping.
+  native-windows:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14 # keep in step with SoT/toolchain.json tools.bun.verified
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
+        run: |
+          $kitHome = Join-Path $env:RUNNER_TEMP "kit-home"
+          New-Item -ItemType Directory -Force -Path (Join-Path $kitHome ".claude") | Out-Null
+          Copy-Item "SoT/.claude/settings.json" (Join-Path $kitHome ".claude/settings.json")
+          "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: sync --dry-run resolves %USERPROFILE% paths
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = bun cli/src/main.ts sync --dry-run 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "sync --dry-run exited $LASTEXITCODE" }
+          if ($out -notmatch "kit-home") { throw "output never references the USERPROFILE-derived home" }
+          if ($out -match "Unknown OS") { throw "unknown-OS warning leaked" }
+          if ($out -match "bubblewrap") { throw "bubblewrap check ran on Windows (should be a known skip)" }
+
+      - name: status --json parses
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = bun cli/src/main.ts status --json | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "status --json exited $LASTEXITCODE" }
+          $null = $out | ConvertFrom-Json
+
+      - name: plugins list
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          bun cli/src/main.ts plugins list
+          if ($LASTEXITCODE -ne 0) { throw "plugins list exited $LASTEXITCODE" }
+
+      - name: model claude (get)
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = bun cli/src/main.ts model claude 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "model claude exited $LASTEXITCODE" }
+          if ($out -notmatch "SoT:") { throw "model get output missing the SoT line" }
+
+      - name: toolchain check (npm row is the .cmd spawn canary)
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = bun cli/src/main.ts toolchain check 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "toolchain check exited $LASTEXITCODE" }
+          if ($out -match "(?m)^bwrap") { throw "bwrap row present in the Windows toolchain report" }
+          if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "npm row has no version - EngineNative cannot spawn npm.cmd on Windows" }
+
+      - name: Write npm gate stub (latest above kit-verified)
+        run: |
+          $stub = Join-Path $env:RUNNER_TEMP "gate-stubs"
+          New-Item -ItemType Directory -Force -Path $stub | Out-Null
+          @'
+          @echo off
+          if "%1"=="view" echo 0.99.0
+          exit /b 0
+          '@ | Out-File -FilePath (Join-Path $stub "npm.cmd") -Encoding ascii
+          "GATE_STUBS=$stub" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: toolchain ensure gate — non-TTY pinned fallback
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $env:Path = "$env:GATE_STUBS;$env:Path"
+          $out = bun cli/src/main.ts toolchain ensure agent-browser 2>&1 | Out-String
+          Write-Host $out
+          if ($out -notmatch "installing kit-verified agent-browser .* instead of 0\.99\.0") {
+            throw "non-TTY pinned-fallback gate branch did not fire"
+          }
+          exit 0 # bun exits 1 (stub npm installs nothing) - the gate line above is the assertion
+
+      - name: toolchain ensure gate — --yes accepts above-verified
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $env:Path = "$env:GATE_STUBS;$env:Path"
+          $out = bun cli/src/main.ts toolchain ensure agent-browser --yes 2>&1 | Out-String
+          Write-Host $out
+          if ($out -notmatch "newer than kit-verified .* proceeding \(--yes\)") {
+            throw "--yes gate branch did not fire"
+          }
+          exit 0 # bun exits 1 (stub npm installs nothing) - the gate line above is the assertion
