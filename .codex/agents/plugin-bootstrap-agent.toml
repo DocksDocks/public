@@ -1,5 +1,5 @@
 name = "plugin-bootstrap-agent"
-description = "Use when modifying claude::sync_plugins (seven-pass reconciler), claude::sync_lsp_servers (LSP-binary bootstrap), the enabledPlugins tri-state semantics, extraKnownMarketplaces entries, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or the claude-plugins-official removal protection. Not for ~/.claude/settings.json key merge (use settings-json-agent) or universal skill install (use skills-bootstrap-agent)."
+description = "Use when modifying claude::sync_plugins (seven-pass reconciler), claude::sync_optional_plugins (the --supabase/--n8n opt-ins), claude::sync_lsp_servers (LSP-binary bootstrap), the enabledPlugins tri-state semantics, extraKnownMarketplaces entries, codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or the claude-plugins-official removal protection. Not for ~/.claude/settings.json key merge (use settings-json-agent) or universal skill install (use skills-bootstrap-agent)."
 sandbox_mode = "read-only"
 developer_instructions = '''
 
@@ -51,11 +51,11 @@ Protected built-in guard (`claude::_plugins_remove_marketplaces` — claude-plug
 [[ "$mp_name" == "claude-plugins-official" ]] && continue
 ```
 
-Tri-state examples (the `enabledPlugins` block in `SoT/.claude/settings.json`):
+Tri-state examples — every entry the SoT ships is `true`; `false` is a supported value the kit doesn't currently use:
 ```json
 "docks@docks": true,
-"n8n-mcp-skills@n8n-mcp-skills": false,
-"supabase@claude-plugins-official": false
+"context7@claude-plugins-official": true,
+"some-plugin@marketplace": false
 ```
 
 ## Context
@@ -75,7 +75,7 @@ Read these for detailed knowledge:
 
 1. Before citing `claude::_plugins_uninstall` (the `has($n)` guard), read that function and confirm it uses `has($n)`, not a truthiness test.
 2. Before citing `claude::_plugins_remove_marketplaces` (claude-plugins-official guard), read that function and confirm the `claude-plugins-official` guard string exactly.
-3. Confirm the `enabledPlugins` block values in `SoT/.claude/settings.json` match the tri-state table before describing semantics.
+3. Confirm the `true`-valued example entries match `SoT/.claude/settings.json`; the SoT ships no `false` entry today, so treat any `false` example as illustrative of the supported value, not a shipped one.
 4. When citing skill paths, confirm `.claude/skills/plugin-bootstrap-context/` exists on disk.
 
 ## Success Criteria

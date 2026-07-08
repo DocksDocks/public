@@ -7,6 +7,8 @@ FORCE=${FORCE:-0}
 REMOVE_PLUGINS=${REMOVE_PLUGINS:-0}
 WINDOW_680K=${WINDOW_680K:-0}
 PERMISSIVE=${PERMISSIVE:-0}
+WANT_SUPABASE=${WANT_SUPABASE:-0}
+WANT_N8N=${WANT_N8N:-0}
 TARGET_FILTER_SET=${TARGET_FILTER_SET:-0}
 SYNC_CLAUDE=${SYNC_CLAUDE:-0}
 SYNC_CODEX=${SYNC_CODEX:-0}
@@ -18,7 +20,7 @@ warn() { printf "\033[1;33m[warn]\033[0m %s\n" "$1" >&2; }
 err()  { printf "\033[1;31m[err]\033[0m %s\n"  "$1" >&2; }
 
 common::usage() {
-  echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--680k] [--permissive] [--claude] [--codex] [--agents]"
+  echo "Usage: $0 [--dry-run] [--no-rtk] [--force] [--remove-plugins] [--680k] [--permissive] [--supabase] [--n8n] [--claude] [--codex] [--agents]"
   echo ""
   echo "  --claude          sync only Claude Code SoT (can be combined with other target flags)"
   echo "  --codex           sync only Codex SoT (can be combined with other target flags)"
@@ -27,6 +29,8 @@ common::usage() {
   echo "  --remove-plugins  uninstall kit-managed installs not in SoT (plugins, marketplaces, skills declared in SoT/.agents/skills.txt)"
   echo "  --680k            raise deployed autocompact window to 680K for disposable sessions (deployed settings only; model unchanged)"
   echo "  --permissive      empty permissions.ask/deny in deployed settings for sandboxes/containers (unattended commits + pushes)"
+  echo "  --supabase        opt the supabase plugin into this machine (install + enable in deployed settings only)"
+  echo "  --n8n             opt the n8n-mcp-skills plugin in (add its marketplace + install + enable in deployed settings only)"
   echo "  --no-rtk          skip optional tool bootstrap"
   echo "  --dry-run         preview without applying"
 }
@@ -51,6 +55,8 @@ common::parse_args() {
       --remove-plugins)  REMOVE_PLUGINS=1 ;;
       --680k)            WINDOW_680K=1 ;;
       --permissive)      PERMISSIVE=1 ;;
+      --supabase)        WANT_SUPABASE=1 ;;
+      --n8n)             WANT_N8N=1 ;;
       --claude)          common::select_target claude ;;
       --codex)           common::select_target codex ;;
       --agents)          common::select_target agents ;;

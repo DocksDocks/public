@@ -6,7 +6,7 @@ Before writing or modifying code that uses an API, hook, method, or config surfa
 
 **Research workflow:**
 1. Use `resolve-library-id` → `query-docs` (context7) to fetch up-to-date docs for the specific library/framework
-2. If context7 doesn't cover it, use `WebFetch` on official documentation
+2. If context7 doesn't cover it, read the official docs with `agent-browser` (it reaches JS-rendered, auth-walled, and login-gated pages); fall back to `WebFetch` for a simple static page
 3. Only then proceed to implementation
 
 **When to research:**
@@ -82,6 +82,36 @@ Agent files follow this structure:
 <constraint>
 When adding a new agent: use kebab-case name matching filename, CSO-compliant description (starts "Use when…", contains a "Not" exclusion clause), explicit `model` and `tools`.
 </constraint>
+
+## Picking the right models for workflows and subagents
+
+Rankings, higher = better. Intelligence is how hard a problem the model can be handed unsupervised. Taste covers UI/UX, code quality, API design, and copy. Cost is relative spend — a tie-breaker only.
+
+| model    | cost | intelligence | taste |
+|----------|------|--------------|-------|
+| gpt-5.5  | 9    | 8            | 5     |
+| opus-4.8 | 4    | 7            | 8     |
+| sonnet-5 | 5    | 5            | 7     |
+
+Fable 5 outranks all three on intelligence and taste, but its limits are spent for now — treat opus-4.8 as the ceiling until Fable access returns, then Fable takes the top intelligence+taste slot.
+
+How to apply:
+- These are defaults, not limits. Standing permission to override: if a cheaper model's output misses the bar, rerun with a smarter one without asking. Judge the output, not the price tag — escalating costs less than shipping mediocre work.
+- Cost is a tie-breaker only; when axes conflict for anything that ships, intelligence > taste > cost.
+- Bulk/mechanical work (clear-spec implementation, data analysis, migrations): gpt-5.5.
+- Anything user-facing (UI, copy, API design) needs taste ≥ 7 → opus-4.8 (sonnet-5 when Opus is saturated).
+- Reviews of plans/implementations: opus-4.8, optionally gpt-5.5 as a second independent perspective.
+- Never use Haiku.
+- gpt-5.5 is reachable only through the Codex CLI (`~/.codex/config.toml` defaults to gpt-5.5): `codex exec` for headless implementation/analysis, `codex review` for diff review, `codex exec -s read-only` with a self-contained prompt for ad-hoc investigation, UI verification, or data analysis. Codex is more efficient than Claude on well-specced execution and stronger at computer-use and UI/UX verification — offload those and report results back.
+- Claude models run via the Agent/Workflow `model` parameter (`opus`, `sonnet`).
+
+Using gpt-5.5 inside workflows and subagents (the `model` parameter takes only Claude models, so wrap it):
+- Spawn a thin Claude wrapper agent with `model: 'sonnet', effort: 'low'` whose prompt tells it to write a self-contained Codex prompt, run `codex exec` via Bash, and return Codex's output verbatim. The wrapper only shuttles the prompt and result — gpt-5.5 does the work.
+
+Reaching gpt-5.5 (or a full-context worker in another project) as a persistent session — the `session-relay` skill (shared bus + `relay` CLI, Claude ⇄ Codex):
+- `codex exec` is one-shot and stateless. When the offload must be resumable, span several turns, or run in another project with that project's own config, spawn a real session instead: `relay spawn <dir> --tool codex --model gpt-5.5 --effort xhigh` (or `--tool claude --model opus` for a Claude worker), then continue it with `send` / `wake`.
+- Two independent perspectives on a plan = the red-team pair spawn: a gpt-5.5 worker and an opus worker debate over the bus, orchestrator writes the verdict — the concrete form of the "second independent perspective" review above.
+- Pin `--model`/`--effort` on every spawn/wake; never leave an unattended relay child on a top interactive default (e.g. Fable). Each spawn/wake bills the target's subscription — spawn deliberately, never in loops.
 
 ## Agentic Engineering Discipline
 
