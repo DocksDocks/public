@@ -419,8 +419,12 @@ codex::_first_line() {
   printf '%s\n' "$text"
 }
 
+# Per-OS: the sh installer is Unix-only.
 codex::_standalone_install_command() {
-  printf 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"\n'
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) printf 'npm install -g @openai/codex\n' ;;
+    *) printf 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"\n' ;;
+  esac
 }
 
 codex::_manual_plugin_refresh_command() {
@@ -477,7 +481,7 @@ codex::sync_plugins() {
   fi
 
   if ! command -v codex >/dev/null 2>&1; then
-    warn "codex CLI not in PATH - deployed config/marketplace only; install current standalone Codex with: $(codex::_standalone_install_command); then run: $(codex::_manual_plugin_refresh_command "$codex_settings")"
+    warn "codex CLI not in PATH - deployed config/marketplace only; install Codex with: $(codex::_standalone_install_command) | docs: https://developers.openai.com/codex/cli; then run: $(codex::_manual_plugin_refresh_command "$codex_settings")"
     return
   fi
 

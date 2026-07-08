@@ -344,7 +344,11 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
   }
 }
 
-const STANDALONE_INSTALL_COMMAND = 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+/** codex::_standalone_install_command — per-OS: the sh installer is Unix-only. */
+const standaloneInstallCommand = (): string =>
+  process.platform === "win32"
+    ? "npm install -g @openai/codex"
+    : 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
 export function enabledPluginIds(configFile: string): Array<string> {
@@ -390,7 +394,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 
   if (!commandExists("codex")) {
     warn(
-      `codex CLI not in PATH - deployed config/marketplace only; install current standalone Codex with: ${STANDALONE_INSTALL_COMMAND}; then run: ${manualPluginRefreshCommand(sotConfig)}`
+      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand()} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfig)}`
     )
     return
   }
@@ -404,7 +408,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
       refreshed++
     } else if (addOut.includes("could not find a Codex CLI binary")) {
       warn(
-        `Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: ${STANDALONE_INSTALL_COMMAND}`
+        `Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: ${standaloneInstallCommand()}`
       )
       failed++
     } else {

@@ -34,6 +34,16 @@ export function claudeSync(ctx: Ctx): void {
 
   if (!ctx.dryRun) mkdirSync(claudeDir, { recursive: true })
 
+  if (!commandExists("claude")) {
+    const hint =
+      process.platform === "win32"
+        ? "winget install Anthropic.ClaudeCode"
+        : "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    warn(
+      `claude CLI not found - config deploys, but plugin/LSP passes are skipped. Install Claude Code: ${hint} | docs: https://code.claude.com/docs/en/setup`
+    )
+  }
+
   syncRtk(ctx, claudeDir)
   syncScripts(ctx, claudeDir)
   syncHooks(ctx, claudeDir)
@@ -725,6 +735,8 @@ export function claudeSummary(ctx: Ctx): void {
       const installed = readJsonFile(p(claudeDir, "plugins", "installed_plugins.json"))
       const count = installed !== undefined && isObject(installed) && isObject(installed["plugins"]) ? Object.keys(installed["plugins"]).length : 0
       echo(`Plugins:  ${count} installed (from SoT enabledPlugins + Anthropic auto-installs)`)
+    } else {
+      echo("Plugins:  skipped - claude CLI not installed")
     }
   }
 }

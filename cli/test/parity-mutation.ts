@@ -93,6 +93,9 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
   // Non-happy-path stub variants — install/upgrade/gate/failure branches:
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
+  // Missing-CLI warns (install hint + summary indicator) fire identically:
+  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
+  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": AGENT_BROWSER_STALE } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
@@ -104,8 +107,12 @@ for (const { fixture, cmd, stubs: stubOverrides } of MATRIX) {
   const label = `fixture=${fixture} cmd=${cmd.join(" ")}${stubOverrides !== undefined ? ` stubs=${Object.keys(stubOverrides).join(",")}` : ""}`
   if (!labelSelected(label)) continue
   const stubDir = stubOverrides !== undefined ? makeStubDir(stubOverrides) : stubs
-  const a = runEngine("bash", cmd, fixture, stubDir)
-  const b = runEngine(sideB, cmd, proveRed ? planted(fixture) : fixture, stubDir)
+  const maskTools =
+    stubOverrides !== undefined
+      ? Object.entries(stubOverrides).filter(([, body]) => body === null).map(([name]) => name)
+      : []
+  const a = runEngine("bash", cmd, fixture, stubDir, { maskTools })
+  const b = runEngine(sideB, cmd, proveRed ? planted(fixture) : fixture, stubDir, { maskTools })
   if (proveRed && planted(fixture) === fixture) {
     cleanup([a, b])
     continue

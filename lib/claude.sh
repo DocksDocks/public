@@ -14,6 +14,15 @@ claude::sync() {
     mkdir -p "$CLAUDE_DIR"
   fi
 
+  if ! command -v claude >/dev/null 2>&1; then
+    local claude_hint
+    case "$(uname -s)" in
+      MINGW*|MSYS*|CYGWIN*) claude_hint="winget install Anthropic.ClaudeCode" ;;
+      *) claude_hint='curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh' ;;
+    esac
+    warn "claude CLI not found - config deploys, but plugin/LSP passes are skipped. Install Claude Code: $claude_hint | docs: https://code.claude.com/docs/en/setup"
+  fi
+
   # Toolchain before config: on a first-ever install `rtk init --global`
   # rewrites ~/.claude/settings.json (clears hooks.PreToolUse), so it must run
   # BEFORE the settings merge + deploy-time modifiers — the merge then
@@ -847,6 +856,8 @@ claude::summary() {
     if command -v claude >/dev/null 2>&1; then
       plugin_count=$(jq -r '.plugins | keys | length' "${CLAUDE_DIR:-$HOME/.claude}/plugins/installed_plugins.json" 2>/dev/null || echo 0)
       echo "Plugins:  $plugin_count installed (from SoT enabledPlugins + Anthropic auto-installs)"
+    else
+      echo "Plugins:  skipped - claude CLI not installed"
     fi
   fi
 }
