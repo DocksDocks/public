@@ -20,7 +20,7 @@ claude::sync() {
       MINGW*|MSYS*|CYGWIN*) claude_hint="winget install Anthropic.ClaudeCode" ;;
       *) claude_hint='curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh' ;;
     esac
-    warn "claude CLI not found - config deploys, but plugin/LSP passes are skipped. Install Claude Code: $claude_hint | docs: https://code.claude.com/docs/en/setup"
+    warn "claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: $claude_hint | docs: https://code.claude.com/docs/en/setup"
   fi
 
   # Toolchain before config: on a first-ever install `rtk init --global`

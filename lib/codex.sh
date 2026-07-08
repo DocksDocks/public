@@ -419,10 +419,10 @@ codex::_first_line() {
   printf '%s\n' "$text"
 }
 
-# Per-OS: the sh installer is Unix-only.
+# Per-OS official standalone installer.
 codex::_standalone_install_command() {
   case "$(uname -s)" in
-    MINGW*|MSYS*|CYGWIN*) printf 'npm install -g @openai/codex\n' ;;
+    MINGW*|MSYS*|CYGWIN*) printf 'powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"\n' ;;
     *) printf 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"\n' ;;
   esac
 }

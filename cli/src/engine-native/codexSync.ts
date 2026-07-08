@@ -344,10 +344,10 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
   }
 }
 
-/** codex::_standalone_install_command — per-OS: the sh installer is Unix-only. */
+/** codex::_standalone_install_command — per-OS official standalone installer. */
 const standaloneInstallCommand = (): string =>
   process.platform === "win32"
-    ? "npm install -g @openai/codex"
+    ? `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`
     : 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */

@@ -40,7 +40,7 @@ export function claudeSync(ctx: Ctx): void {
         ? "winget install Anthropic.ClaudeCode"
         : "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
     warn(
-      `claude CLI not found - config deploys, but plugin/LSP passes are skipped. Install Claude Code: ${hint} | docs: https://code.claude.com/docs/en/setup`
+      `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${hint} | docs: https://code.claude.com/docs/en/setup`
     )
   }
 

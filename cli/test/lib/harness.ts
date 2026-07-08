@@ -11,6 +11,7 @@
  */
 import { createHash } from "node:crypto"
 import {
+  copyFileSync,
   cpSync,
   chmodSync,
   existsSync,
@@ -21,6 +22,7 @@ import {
   readdirSync,
   readlinkSync,
   rmSync,
+  symlinkSync,
   writeFileSync
 } from "node:fs"
 import { tmpdir } from "node:os"
@@ -111,20 +113,40 @@ export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): st
 }
 
 /**
- * PATH minus every directory holding one of `names` — the "tool missing"
- * half of a `null` stub override. Omitting the stub alone is NOT absence:
- * PATH search falls through to the real binary on the host (observed: a
- * claude:null row ran the REAL claude CLI, which cloned a marketplace into
- * the temp HOME and diverged on git internals). System tools (bash, jq, …)
- * live in dirs that don't contain the masked names, so they survive.
+ * PATH with every directory holding one of `names` replaced by a shadow
+ * dir mirroring its other entries — the "tool missing" half of a `null`
+ * stub override. Omitting the stub alone is NOT absence: PATH search falls
+ * through to the real binary on the host (observed: a claude:null row ran
+ * the REAL claude CLI, which cloned a marketplace into the temp HOME and
+ * diverged on git internals). Shadowing (not dropping) the dir keeps its
+ * unrelated tools reachable — the real claude may live beside jq/git in
+ * /usr/local/bin, and hiding those would fail the run for the wrong reason.
  */
 function maskedPath(names: ReadonlyArray<string>): string {
   const dirs = (process.env["PATH"] ?? "").split(delimiter)
   if (names.length === 0) return dirs.join(delimiter)
   const exts = process.platform === "win32" ? ["", ".exe", ".cmd", ".bat"] : [""]
-  return dirs
-    .filter((dir) => dir === "" || !names.some((n) => exts.some((e) => existsSync(join(dir, n + e)))))
-    .join(delimiter)
+  const holdsMasked = (dir: string): boolean =>
+    dir !== "" && names.some((n) => exts.some((e) => existsSync(join(dir, n + e))))
+  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, names, exts) : dir)).join(delimiter)
+}
+
+function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArray<string>): string {
+  const shadow = mkdtempSync(join(tmpdir(), "parity-mask-"))
+  const blocked = new Set(names.flatMap((n) => exts.map((e) => (n + e).toLowerCase())))
+  for (const entry of readdirSync(dir)) {
+    if (blocked.has(entry.toLowerCase())) continue
+    try {
+      symlinkSync(join(dir, entry), join(shadow, entry))
+    } catch {
+      try {
+        copyFileSync(join(dir, entry), join(shadow, entry))
+      } catch {
+        // subdirectory or unreadable entry — PATH lookup doesn't need it
+      }
+    }
+  }
+  return shadow
 }
 
 export function runEngine(
