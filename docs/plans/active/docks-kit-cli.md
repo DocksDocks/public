@@ -76,6 +76,14 @@ the in-repo tracker.
   missing — check-only; notification sound needs `sudo apt install ffmpeg`)
 - Compact-window decision (user, 2026-07-08): keep 468000 on Opus-main — no
   350K revert; CLAUDE.md updated accordingly
+- Post-completion review round (2026-07-08): self-review found + fixed the
+  errexit abort on failed toolchain bootstrap (f21a4d3); a gpt-5.5
+  session-relay review of 6b1b86f..HEAD found 6 more (all confirmed, fixed
+  in 3ec16d7): --skip-rtk strip clobbered by the RTK-first reorder,
+  unknown-latest installs bypassing the verified pin, secrets-in-if in the
+  release workflow, launcher self-heal suppressed by partial node_modules,
+  CLI parser contract gaps (legacy hints / bare model flag / repeatable
+  --claude-plugin), stale cli/docs/models.md model stance
 
 ## Review
 
