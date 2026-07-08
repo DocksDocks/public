@@ -113,36 +113,41 @@ if (!proveRed) {
     const variant = materializeVariant("home-fresh", {
       ".codex/config.toml": readFileSync(join(TOML_DIR, shape), "utf8")
     })
-    const a = runEngine("bash", ["sync", "codex"], variant, stubs)
-    const b = runEngine(sideB, ["sync", "codex"], variant, stubs)
+    if (labelSelected(`toml=${shape}`)) {
+      const a = runEngine("bash", ["sync", "codex"], variant, stubs)
+      const b = runEngine(sideB, ["sync", "codex"], variant, stubs)
 
-    // Result invariants (checked on side A; parity transfers them to B):
-    const result = readFileSync(join(a.home, ".codex", "config.toml"), "utf8")
-    const invariantProblems: Array<string> = []
-    if (result.includes("use_legacy_landlock")) {
-      invariantProblems.push("  invariant: deprecated use_legacy_landlock survived the scrub")
+      // Result invariants (checked on side A; parity transfers them to B):
+      const result = readFileSync(join(a.home, ".codex", "config.toml"), "utf8")
+      const invariantProblems: Array<string> = []
+      if (result.includes("use_legacy_landlock")) {
+        invariantProblems.push("  invariant: deprecated use_legacy_landlock survived the scrub")
+      }
+      if (!existsSync(join(a.home, ".codex", "config.toml.bak"))) {
+        invariantProblems.push("  invariant: config.toml.bak backup missing")
+      }
+      const topLevel = result.split(/^\[/m)[0] ?? ""
+      if ((topLevel.match(/^model[ \t]*=/gm) ?? []).length !== 1) {
+        invariantProblems.push("  invariant: top-level model line count != 1")
+      }
+      if (readFileSync(join(TOML_DIR, shape), "utf8").includes("[user_only.table]") && !result.includes("[user_only.table]")) {
+        invariantProblems.push("  invariant: user-only table was destroyed")
+      }
+      if (invariantProblems.length > 0) {
+        failures++
+        banner(`TOML INVARIANT FAILURE shape=${shape}`)
+        for (const p of invariantProblems) console.log(p)
+      }
+      comparePair(`toml=${shape}`, a, b)
     }
-    if (!existsSync(join(a.home, ".codex", "config.toml.bak"))) {
-      invariantProblems.push("  invariant: config.toml.bak backup missing")
-    }
-    const topLevel = result.split(/^\[/m)[0] ?? ""
-    if ((topLevel.match(/^model[ \t]*=/gm) ?? []).length !== 1) {
-      invariantProblems.push("  invariant: top-level model line count != 1")
-    }
-    if (readFileSync(join(TOML_DIR, shape), "utf8").includes("[user_only.table]") && !result.includes("[user_only.table]")) {
-      invariantProblems.push("  invariant: user-only table was destroyed")
-    }
-    if (invariantProblems.length > 0) {
-      failures++
-      banner(`TOML INVARIANT FAILURE shape=${shape}`)
-      for (const p of invariantProblems) console.log(p)
-    }
-    comparePair(`toml=${shape}`, a, b)
 
-    // --codex-model direct mode on the same shape:
-    const a2 = runEngine("bash", ["model", "codex", "gpt-5.5"], variant, stubs)
-    const b2 = runEngine(sideB, ["model", "codex", "gpt-5.5"], variant, stubs)
-    comparePair(`toml=${shape} model codex`, a2, b2)
+    // --codex-model direct mode on the same shape (independent run on the
+    // same variant — selectable separately from the sync pair):
+    if (labelSelected(`toml=${shape} model codex`)) {
+      const a2 = runEngine("bash", ["model", "codex", "gpt-5.5"], variant, stubs)
+      const b2 = runEngine(sideB, ["model", "codex", "gpt-5.5"], variant, stubs)
+      comparePair(`toml=${shape} model codex`, a2, b2)
+    }
   }
 }
 

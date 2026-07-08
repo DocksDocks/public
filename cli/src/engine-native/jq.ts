@@ -33,7 +33,7 @@ export function uniqueStrings(arr: Array<string>): Array<string> {
   return [...new Set(arr)].sort(compareCodepoints)
 }
 
-function compareCodepoints(a: string, b: string): number {
+export function compareCodepoints(a: string, b: string): number {
   const ia = a[Symbol.iterator]()
   const ib = b[Symbol.iterator]()
   for (;;) {

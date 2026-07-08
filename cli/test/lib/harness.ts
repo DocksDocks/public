@@ -126,6 +126,9 @@ export function runEngine(
       PARITY_STUB_DIR: stubDir,
       LC_ALL: "C",
       TERM: "dumb",
+      // The native side runs under the bun runtime, which would otherwise
+      // drop its install cache inside the temp HOME and pollute the tree diff.
+      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "parity-bun-cache"),
       // env is constructed from scratch (no process.env spread), so engine
       // globals like DRY_RUN can never leak in from the invoking shell.
       AGENTS_DIR: join(home, ".agents")
@@ -182,11 +185,17 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
     const p = join(dir, e.name)
     const rel = p.slice(root.length + 1)
     if (rel === ".parity-argv.log") continue
+    // `.bun/install` is a runtime artifact of the native side's bun
+    // interpreter (module cache keyed off $HOME) — the engine never writes
+    // there. `.bun` itself is still recursed (engine bootstraps can create
+    // `.bun/bin`) but not recorded as an entry, so a cache-only `.bun`
+    // contributes nothing to the diff.
+    if (rel === ".bun/install") continue
     const st = lstatSync(p)
     if (st.isSymbolicLink()) {
       acc[rel] = `link:${readlinkSync(p)}`
     } else if (st.isDirectory()) {
-      acc[`${rel}/`] = "dir"
+      if (rel !== ".bun") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
       // Hash with CRLF canonicalized to LF: on Windows the bash engine's jq
