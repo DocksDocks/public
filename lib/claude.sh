@@ -354,7 +354,6 @@ claude::_removed_manifest() {
   "files":          ["alert_bubble.mp3"],
   "settingsKeys": [
     "showTurnDuration",
-    "advisorModel",
     "env.CLAUDE_CODE_SUBAGENT_MODEL",
     "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
     "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
