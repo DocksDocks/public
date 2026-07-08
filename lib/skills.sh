@@ -185,7 +185,9 @@ skills::sync_agent_browser_cli() {
     return
   fi
 
-  toolchain::ensure agent-browser skills::_agent_browser_install
+  # `|| warn`: a failed npm install must not abort the remaining skills sync
+  # (snapshot write, effect-solutions) under set -e.
+  toolchain::ensure agent-browser skills::_agent_browser_install || warn "agent-browser bootstrap failed — continuing sync"
 }
 
 # Resolve a usable `bun` binary. `bun` lives in ~/.bun/bin, which is off the
@@ -271,7 +273,7 @@ skills::sync_effect_solutions_cli() {
   local settings="$REPO_DIR/SoT/.claude/settings.json"
   grep -Eq '"effect-kit@docks"[[:space:]]*:[[:space:]]*true' "$settings" 2>/dev/null || return 0
 
-  toolchain::ensure effect-solutions skills::_effect_solutions_install
+  toolchain::ensure effect-solutions skills::_effect_solutions_install || warn "effect-solutions bootstrap failed — continuing sync"
 }
 
 # Populate <array_name> with stripped, non-empty slugs from <file>. Supports

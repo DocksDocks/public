@@ -781,7 +781,9 @@ claude::sync_rtk() {
     return
   fi
 
-  toolchain::ensure rtk claude::_rtk_install
+  # `|| warn` (not a plain call): under set -e a failed install would otherwise
+  # abort the whole sync — and rtk runs FIRST, so nothing would get deployed.
+  toolchain::ensure rtk claude::_rtk_install || warn "RTK bootstrap failed — continuing sync without it"
 
   command -v rtk >/dev/null 2>&1 || return 0
   if [[ ! -f "$CLAUDE_DIR/RTK.md" ]]; then
