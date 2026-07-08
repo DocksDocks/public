@@ -152,7 +152,7 @@ export function runEngine(
  * suffix is unique, so any remaining path spelling still normalizes.
  */
 export function normalizeOutput(out: string, home: string, stubDir: string): string {
-  let s = out
+  let s = out.replaceAll("\r\n", "\n")
   for (const f of pathForms(home)) s = s.replaceAll(f, "<HOME>")
   for (const f of pathForms(stubDir)) s = s.replaceAll(f, "<STUBS>")
   for (const f of pathForms(REPO_DIR)) s = s.replaceAll(f, "<REPO>")
@@ -189,7 +189,11 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
       acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
-      acc[rel] = `sha256:${createHash("sha256").update(readFileSync(p)).digest("hex")}`
+      // Hash with CRLF canonicalized to LF: on Windows the bash engine's jq
+      // writes CRLF (text-mode CRT) where EngineNative writes LF — a
+      // transport artifact, not a logic divergence the parity gate is for.
+      const body = readFileSync(p).toString("binary").replaceAll("\r\n", "\n")
+      acc[rel] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
     }
   }
   return acc

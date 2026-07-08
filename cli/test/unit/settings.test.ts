@@ -94,7 +94,9 @@ const JQ_RECONCILE = `.[0] as $repo | .[1] as $user | $user * $repo`
 function jqSlurp(program: string, docs: Array<Json>): string {
   const res = spawnSync("jq", ["-s", program], { input: docs.map((d) => JSON.stringify(d)).join("\n"), encoding: "utf8" })
   if (res.status !== 0) throw new Error(`jq failed: ${res.stderr}`)
-  return res.stdout
+  // Windows jq writes CRLF to stdout (text-mode CRT); the differential is
+  // about JSON structure/order/format, so compare canonical-LF.
+  return res.stdout.replaceAll("\r\n", "\n")
 }
 
 const hasJq = spawnSync("jq", ["--version"], { encoding: "utf8" }).status === 0
