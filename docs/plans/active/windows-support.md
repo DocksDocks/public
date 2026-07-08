@@ -1,9 +1,9 @@
 ---
 title: EngineNative — TS engine port behind engine.ts; bash frozen; Windows native
-goal: Port the sync engine to TypeScript behind cli/src/engine.ts with dry-run parity gates, make it the default on all platforms (Windows included, no Git Bash), and freeze lib/*.sh as the no-Bun escape hatch
+goal: Port the sync engine to TypeScript behind cli/src/engine.ts with dry-run AND mutation parity gates, make it the default on all platforms (Windows included, no Git Bash), and freeze lib/*.sh as the no-Bun escape hatch
 status: ongoing
 created: "2026-07-08T15:12:05-03:00"
-updated: "2026-07-08T16:55:00-03:00"
+updated: "2026-07-08T17:10:00-03:00"
 started_at: "2026-07-08T16:25:00-03:00"
 assignee: null
 tags: [windows, engine, cli, typescript]
@@ -14,6 +14,8 @@ affected_paths:
   - lib/
   - .gitattributes
   - docks-kit
+  - install.sh
+  - package.json
   - SoT/toolchain.json
   - .github/workflows/
   - cli/docs/platforms.md
@@ -28,91 +30,115 @@ Every new engine capability since the CLI shipped has been written in bash —
 the harder-to-maintain layer — while the typed CLI stayed a thin shell. User
 decision 2026-07-08 (verbatim intent: "the cli was supposed to do the job"):
 **promote the EngineNative TS port from Windows-alternative to THE engine.**
-Port module-by-module behind the existing `cli/src/engine.ts` seam, gated by
-dry-run byte-parity against the bash engine; once parity holds, EngineNative
+Port module-by-module behind the existing `cli/src/engine.ts` seam
+(`cli/src/engine.ts:10-29` — both `engine()` and `engineCapture()` spawn
+`bash lib/engine.sh` today), gated by dry-run byte-parity AND real-run
+mutation parity against the bash engine; once parity holds, EngineNative
 becomes the default on all platforms (native PowerShell on Windows — no Git
-Bash requirement). `lib/*.sh` is feature-frozen from d270f63's follow-up
-commit onward (bug fixes only; AGENTS.md § Engineering rules records the
-freeze) and remains the no-Bun escape hatch until deprecation is decided.
+Bash for the kit). `lib/*.sh` is feature-frozen (AGENTS.md § Engineering
+rules; bug fixes only) and remains the no-Bun escape hatch until
+deprecation is decided.
 
 ## Context
 
-- Phase 1 (Tier 1, DONE): the bash engine was made Windows-correct under Git
-  Bash first — those gates keep the escape hatch honest and shrank the port's
-  risk surface. Red-teamed pre-start by a gpt-5.5 relay worker (7 findings,
-  all folded in; severity list in the session transcript).
+- Phase 1 (DONE, d270f63 + cdde75d): the bash engine was made
+  Windows-correct under Git Bash first — keeps the escape hatch honest and
+  shrank the port's risk surface. Red-teamed twice by a gpt-5.5 relay worker
+  (round 1: 7 findings pre-start; round 2: 7 findings post-pivot — all
+  folded in below).
 - RTK research (2026-07-08): since rtk 0.37.2 the PreToolUse hook is a
   native binary command (`rtk hook claude` — no shell/jq), so the hook works
   on Windows; there is NO `--claude-md` mode in current RTK (stale kit-docs
-  claim, now corrected in cli/docs/platforms.md). Only the kit's
-  auto-installer (bash script) is Unix-only → Windows warns with native
-  install instructions (winget / release zip).
+  claim, corrected). Only the kit's auto-installer (bash script) is
+  Unix-only → Windows warns with native install instructions
+  (`lib/claude.sh:805-818`). Evidence: rtk README § Windows and the
+  release notes at https://github.com/rtk-ai/rtk/releases/tag/v0.37.2.
 - Symlink decision (user, 2026-07-08): detect and prefer real links —
-  `skills::_link_or_copy` tries `ln -s`, verifies with `[[ -L ]]`, accepts
-  Git Bash's silent copy with a warn, `cp` as last resort. EngineNative
-  mirrors this with `fs.symlink` + copy fallback.
-- CI runner naming: `windows-latest` is a GitHub runner-image *label* that
-  floats to the newest Windows Server image. Consistent with the kit's
-  pin-never-float stance, CI uses the pinned label **`windows-2025`**
-  (image contents still receive weekly patches — labels can only pin the
-  major image, full runner determinism isn't available).
-- Interactive real-machine verify: the user will test on their own Windows
-  machine later — kept as a manual gate, not a blocker for CI or the port.
+  `skills::_link_or_copy` (`lib/skills.sh:38-55`). EngineNative mirrors it
+  with `fs.symlink` + copy fallback.
+- **Hook/statusline assets stay bash by design**: Claude Code on Windows
+  itself requires Git Bash for its Bash tool, and deployed hook/statusline
+  commands (`SoT/.claude/settings.json` hooks + statusLine; `statusline.sh`,
+  `fetch-usage.sh`, `notify.sh`) execute through that same runtime.
+  EngineNative removes Git Bash from the KIT's engine, not from Claude
+  Code's own prerequisites. Step 9 verifies-or-skips each deployed command
+  on the real machine; porting those assets is out of scope here.
+- CI runner naming: `windows-latest` is a floating runner-image LABEL;
+  consistent with the pin-never-float stance CI uses the pinned label
+  **`windows-2025`** (image contents still patch weekly — labels only pin
+  the major image).
+- Engine selection: `DOCKS_KIT_ENGINE` env (`bash` | `native`) exists from
+  the FIRST ported module — `native` is opt-in pre-flip (lets PowerShell CI
+  exercise EngineNative before step 6), `bash` is the opt-out after.
+- Interactive real-machine verify: the user tests on their own Windows
+  machine later — manual gate, not a blocker for CI or the port.
 
 ## Phase 1 audit findings (all fixed; kept for the record)
 
 | # | Surface | Resolution |
 |---|---------|------------|
 | A1 | No `.gitattributes` → CRLF checkouts break Git Bash | `.gitattributes` pins `docks-kit` + `*.sh` to LF (d270f63) |
-| A2 | Launcher ignored `docks-kit-windows-x64.exe` | MINGW/MSYS/CYGWIN uname arm added (d270f63) |
-| A3 | bwrap reported missing / unknown-OS warn on Windows | `toolchain::report` windows arm; `codex::_bwrap_supported_os` known-skip; latent `|| return` set-e abort fixed (d270f63) |
+| A2 | Launcher ignored `docks-kit-windows-x64.exe` | MINGW/MSYS/CYGWIN uname arm (d270f63) |
+| A3 | bwrap reported missing / unknown-OS warn on Windows | report windows arm; bwrap known-skip; latent `|| return` set-e abort fixed (d270f63) |
 | A4 | TS `homedir()` was `HOME ?? "~"` | `node:os` homedir (d270f63) |
-| A5 | RTK premise stale — hook is native since 0.37.2 | installer-only Windows gate in `claude::sync_rtk`; docs corrected (this commit) |
-| A6 | Connector export reaches only Git-Bash-launched sessions | superseded: EngineNative handles Windows env natively (`setx`) — step 5 |
-| A7 | `ln -s` copies under Git Bash | `skills::_link_or_copy` detect-and-prefer (this commit) |
+| A5 | RTK premise stale — hook native since 0.37.2 | installer-only Windows gate; docs corrected (cdde75d) |
+| A6 | Connector export reaches only Git-Bash-launched sessions | EngineNative handles Windows env natively (`setx`) — step 5(b) |
+| A7 | `ln -s` copies under Git Bash | `skills::_link_or_copy` detect-and-prefer (cdde75d) |
 | A8 | notify.sh | no blocker (falls through to exit 0) |
 
 ## Steps
 
 | # | Task | Depends | Status |
 |---|------|---------|--------|
-| 1 | Phase 1: bash engine Windows-correct under Git Bash (audit A1–A8, gates, symlink strategy, RTK installer gate, doc corrections) + bash feature-freeze recorded in AGENTS.md | — | done (d270f63 + this commit) |
+| 1 | Phase 1: bash engine Windows-correct under Git Bash (A1–A8) + bash feature-freeze recorded in AGENTS.md | — | done (d270f63, cdde75d) |
 | 2 | CI smoke on `windows-2025` (Git Bash): `bash -n` all shell, `bash lib/engine.sh sync --dry-run` under a temp HOME, `toolchain check` asserting bwrap absent + no unknown-OS warn. Guards the frozen escape hatch | 1 | planned |
-| 3 | EngineNative design note (committed to the plan or docs/): module map — settings merge → native JSON; `~/.claude.json` + mcp merge; codex TOML merge → line-based TS port of the awk logic (preserves comments/format; decision: no TOML lib — see resolved tier2-toml-lib); plugin passes 1–6 + optional plugins → `child_process` to `claude` CLI; skills passes → `child_process` to `npx`/`npm`; toolchain gate → TS with same manifest; removals manifest; deploy-time modifiers. Each module names its parity oracle | 1 | planned |
-| 4 | Parity harness: fixture HOMEs (fresh machine, existing-user-drift, invalid-JSON) + a runner that diffs EngineBash vs EngineNative `sync --dry-run` output byte-for-byte (modulo path separators on win32). Lands BEFORE any module port; runs in CI on linux + windows-2025 | 3 | planned |
-| 5 | Port modules behind `cli/src/engine-native/`, one PR-sized commit each, parity-gated: (a) config/dry-run scaffold + settings merge, (b) claude.json + connector env (Windows: `setx`), (c) codex TOML merge + rules/agents-md, (d) plugin passes, (e) skills + toolchain + removals + modifiers. Bash stays default throughout | 4 | planned |
-| 6 | Flip: `engine.ts` routes to EngineNative on all platforms (env `DOCKS_KIT_ENGINE=bash` opt-out); bash remains the no-Bun escape hatch; real `sync` verified on this Linux machine against a settings backup | 5 | planned |
-| 7 | Windows-native CI: run EngineNative `sync --dry-run` + `status` + `plugins list` on `windows-2025` under PowerShell (no Git Bash) with no `HOME` exported | 5 | planned |
-| 8 | Real-machine interactive verify (user's own Windows machine, later): native PowerShell `docks-kit sync`; `%USERPROFILE%\.claude` picked up by Claude Code; rtk hook functional (`rtk gain` shows activity) | 6,7 | planned (manual, user) |
-| 9 | Docs: platforms topic + README + the five kit-mechanic skills updated to the EngineNative reality (skills describing frozen bash logic get a freeze banner instead of deletion) | 6 | planned |
+| 3 | EngineNative design note (committed text): module map — settings merge → native JSON; `~/.claude.json` + mcp merge; codex TOML merge → line-based TS port of the awk logic (no TOML lib — a library reformats user configs and breaks parity); plugin passes → `child_process` to the `claude` CLI; skills → `child_process` to `npx`/`npm`; toolchain gate → TS incl. the TTY prompt (`read -p` → TS prompt) and non-TTY/`--yes` branches; removals; deploy-time modifiers; **direct modes too**: `model` get/set, `toolchain check/ensure`, and every `engineCapture` consumer (`status` calls `engineCapture(["toolchain","check"])`). Plus the `DOCKS_KIT_ENGINE` selector design | 1 | planned |
+| 4 | Parity harnesses, landed BEFORE any port and each proven able to fail once: **(a)** dry-run byte-parity over fixture HOMEs (fresh, existing-user-drift, invalid-JSON); **(b)** mutation parity — disposable HOMEs + stub `claude`/`codex`/`npx`/`npm`/`rtk`/`bun` binaries on PATH that record argv and simulate outputs; diff resulting files, `.bak` backups, snapshots, AND captured argv across `sync claude`, `sync codex`, `sync agents`, `--reconcile`, `--prune`, `--claude-plugin=…`, `model <tool> <v>`, `toolchain ensure` (TTY-declined, non-TTY, `--yes` branches — the non-TTY pinned-verified fallback must hold); **(c)** codex TOML fixture suite: top-level keys before/after comments, insertion before first table, `[features]` with only `use_legacy_landlock`, `[features]` with other keys, user-only tables preserved, SoT table replacement, dotted/quoted headers from the real SoT, `--codex-model` direct mode | 3 | planned |
+| 5 | Port modules behind `cli/src/engine-native/`, one PR-sized commit each, gated by 4(a)+4(b): (a) scaffold + `DOCKS_KIT_ENGINE` selector + settings merge, (b) claude.json + connector env (Windows: `setx`), (c) codex TOML merge + rules/agents-md, (d) plugin passes, (e) skills + toolchain + removals + modifiers + direct modes. Bash stays the DEFAULT throughout; `DOCKS_KIT_ENGINE=native` opts in | 4 | planned |
+| 6 | Flip: `engine.ts` defaults to EngineNative on all platforms (`DOCKS_KIT_ENGINE=bash` opt-out); real `sync claude` + `model` round-trip verified on this Linux machine against a settings backup; mutation-parity suite green is a hard precondition | 5 | planned |
+| 7 | Windows-native CI on `windows-2025` under PowerShell with `HOME` unset: `$env:DOCKS_KIT_ENGINE="native"; bun cli/src/main.ts sync --dry-run`, `status --json`, `plugins list`, `model claude` (get), `toolchain check` — exact commands in the workflow; runnable pre-flip via the selector | 5 | planned |
+| 8 | Windows entrypoints: document + verify the supported Windows command surfaces — compiled `docks-kit-windows-x64.exe` (release asset; THE supported no-toolchain path), `bun add -g docks-kit` shim behavior on Windows (verify bun creates a working shim for the `#!/usr/bin/env bun` bin), `install.sh` explicitly documented Unix-only; README + platforms topic updated | 5 | planned |
+| 9 | Real-machine interactive verify (user's own Windows machine, manual): `.exe` sync from native PowerShell; `%USERPROFILE%\.claude` loaded by Claude Code; rtk hook fires (`rtk gain` shows activity); each deployed hook/statusline command executed-or-intentionally-skipped and the outcome recorded here | 6,7,8 | planned (manual, user) |
+| 10 | Docs + skills: platforms/README to "supported"; the five kit-mechanic bash skills get a feature-freeze banner (not deletion); new engine-native skill or references file | 6 | planned |
 
 ## Acceptance criteria
 
-- Step 2: `windows-2025` smoke job green; job log contains no `bwrap` row and
-  no "Unknown OS" warning.
-- Step 4: parity runner exits non-zero on any EngineBash/EngineNative dry-run
-  diff; CI proves it red on an intentionally-broken fixture once (then fixed).
-- Step 5 (each module): parity green on all fixtures on linux + windows-2025.
-- Step 6: `docks-kit sync claude` (real, this machine) via EngineNative leaves
+- Step 2: `windows-2025` Git Bash smoke green; log has no `bwrap` row and no
+  "Unknown OS" warning.
+- Step 4: both parity runners exit non-zero on an intentionally-broken
+  fixture (proven once, then fixed); mutation harness compares files +
+  backups + snapshots + recorded argv, not just stdout.
+- Step 5 (each module): dry-run AND mutation parity green on all fixtures on
+  linux + windows-2025.
+- Step 6: mutation suite green → flip; on this machine
   `diff <(jq -S . ~/.claude/settings.json.bak) <(jq -S . ~/.claude/settings.json)`
   explainable purely by SoT changes; `DOCKS_KIT_ENGINE=bash` restores the old
-  path.
-- Step 7: PowerShell job green with `HOME` unset — `status`, `plugins list`,
-  `skills list` all resolve `%USERPROFILE%` paths.
-- Step 8 (manual): user confirms Claude Code on Windows loads the synced
-  config and the rtk hook fires.
+  path; `docks-kit model claude opus` → set → flag-less sync reverts, via
+  EngineNative.
+- Step 7: PowerShell job green with `HOME` unset — every listed command
+  resolves `%USERPROFILE%` paths; `toolchain ensure` gate branches behave
+  (`--yes`, non-TTY pinned fallback) under the TS prompt implementation.
+- Step 8: release `.exe` runs `sync --dry-run` on a clean Windows runner
+  with no Bun/Git Bash preinstalled; `bun add -g` shim verified or its
+  unsupported status documented.
+- Step 9 (manual): user confirms Claude Code on Windows loads the synced
+  config, the rtk hook fires, and hook/statusline commands work or are
+  knowingly skipped.
 
 ## Failure modes / revert triggers
 
-- Module port diverges on a fixture → the parity harness blocks the commit;
-  no revert needed (bash still default until step 6).
+- Module port diverges on a fixture → parity harness blocks the commit; no
+  revert needed (bash default until step 6).
 - Post-flip regression on Linux/macOS → `DOCKS_KIT_ENGINE=bash` is the
-  immediate per-machine revert; repo revert is flipping the default back in
-  `engine.ts` (one line).
-- `claude`/`codex` CLI behavior differences when driven from TS
-  `child_process` vs bash (quoting, TTY detection) → parity fixtures must
-  include a plugin-pass dry-run; any real-run divergence reverts that module
-  to `child_process`-free bash passthrough until diagnosed.
+  immediate per-machine revert; repo revert is one line in `engine.ts`.
+- `claude`/`codex`/`npx` driven from TS `child_process` differ from bash
+  invocation (quoting, TTY detection, exit codes) → the argv-recording stubs
+  in 4(b) catch quoting; any REAL-run divergence reverts that module to the
+  bash engine until diagnosed.
+- TOML line-port corrupts a user config shape not in the fixture suite →
+  `.bak` backups written before every codex merge (existing behavior, must
+  be preserved by the port) are the recovery path; add the shape as a
+  fixture before re-attempting.
 
 ## Open questions
 
@@ -123,37 +149,49 @@ freeze) and remains the no-Bun escape hatch until deprecation is decided.
 
 ## Sources
 
-- `cli/src/engine.ts` — the seam: `engine()`/`engineCapture()` spawn
-  `bash lib/engine.sh`; swapping the implementation here reroutes every CLI
-  command.
-- `lib/claude.sh` `claude::sync` — the 14-step claude pipeline EngineNative
-  must reproduce (rtk-first ordering, merge, modifiers-last invariants).
-- `lib/codex.sh` `codex::_replace_top_level_setting` /
-  `merge_table_settings` — the awk TOML merge the TS port must match
-  byte-for-byte on user configs.
-- `lib/claude.sh` `claude::_plugins_*` passes 1–6 — shell out to the
-  `claude plugin` CLI (already cross-platform).
-- `lib/skills.sh` `skills::_link_or_copy` — the symlink-or-copy contract
-  EngineNative mirrors with `fs.symlink`.
-- RTK Windows evidence: rtk-ai/rtk README — "Since v0.37.2 the auto-rewrite
-  hook runs as a native binary command (`rtk hook claude`) — no Unix shell,
-  bash, or jq required"; supported-agents table lists Claude Code =
-  PreToolUse hook (native binary). No `--claude-md` mode exists.
-- Prior red-team: gpt-5.5 relay worker `codex-kit-review`, 2026-07-08.
+- `cli/src/engine.ts:10-29` — `engine()`/`engineCapture()` both spawn
+  `bash lib/engine.sh`; the seam the port swaps.
+- `cli/src/commands/model.ts:30-35,52-53`, `cli/src/commands/toolchain.ts:24-33`,
+  `cli/src/commands/status.ts:45-65` — direct modes + `engineCapture`
+  consumers the port must cover.
+- `lib/engine.sh:65-111` (`engine::model`), `lib/engine.sh:114-145`
+  (`engine::toolchain`) — bash direct modes.
+- `lib/claude.sh:9-35` — the claude sync pipeline (rtk-first ordering,
+  merge, modifiers-last invariants); `lib/claude.sh:632-640` — the real
+  plugin passes dry-run never exercises; `lib/claude.sh:805-818` — RTK
+  Windows installer gate.
+- `lib/codex.sh:183-221` (deprecated-key scrub), `:224-275`
+  (`_replace_top_level_setting`), `:298-325` (table merge) — the awk TOML
+  behavior the line-based TS port must match.
+- `lib/skills.sh:38-55` — `skills::_link_or_copy` (symlink-or-copy
+  contract); `lib/skills.sh:99-117` — real `npx` skill installs skipped by
+  dry-run.
+- `lib/toolchain.sh:105-118` (TTY prompt), `:129-151` (ensure branches) —
+  gate semantics incl. non-TTY pinned-verified fallback.
+- `SoT/.claude/settings.json` hooks/statusLine entries + `statusline.sh` /
+  `fetch-usage.sh` / `hooks/notify.sh` — bash assets that remain on Claude
+  Code's own Git Bash runtime (out of port scope).
+- RTK Windows evidence: rtk-ai/rtk README § Windows ("Since v0.37.2 the
+  auto-rewrite hook runs as a native binary command (`rtk hook claude`) — no
+  Unix shell, bash, or jq required");
+  https://github.com/rtk-ai/rtk/releases/tag/v0.37.2.
+- Red-team reviews: gpt-5.5 relay worker `codex-kit-review`, 2026-07-08,
+  rounds 1 (7 findings) and 2 (7 findings) — both in the session transcript.
 
 ## Self-review
 
-- Rescoped 2026-07-08 after the user challenged the hybrid ("why are we
-  maintaining via .sh instead of cli?") — EngineNative promoted from
-  Windows-only Tier 2 to the primary engine; bash frozen.
-- Resolved open questions folded in: tier2-toml-lib → line-based TS port of
-  the awk logic (preserves user-config comments/format exactly, keeps parity
-  achievable; a TOML lib would reformat); windows-verify-machine → user's own
-  machine, manual step 8; symlink-strategy → detect-and-prefer (implemented).
-- Dependency check: parity harness (4) lands before any port (5); flip (6)
-  needs all modules; CI steps guard both engines independently (2 vs 7).
-- Cold handoff: a fresh agent needs the module map from step 3 before
-  touching step 5 — step 3's deliverable is committed text, not chat.
+- Rescoped 2026-07-08 after the user challenged the hybrid; re-red-teamed
+  post-pivot. Round-2 findings folded: step-7-before-flip fixed via the
+  `DOCKS_KIT_ENGINE=native` pre-flip selector; dry-run-parity-as-oracle gap
+  closed with the mutation-parity harness 4(b) as a hard flip precondition;
+  Windows entrypoint story added (step 8); direct modes (`model`,
+  `toolchain`, `engineCapture`) pulled into scope; hook/statusline assets
+  given an explicit stays-on-Git-Bash strategy; codex TOML fixture suite
+  enumerated 4(c); Sources upgraded to file:line + durable RTK URL.
+- Dependency check: 3 → 4 → 5 → {6,7,8} → 9; CI guards both engines
+  independently (2 = frozen bash, 7 = native).
+- Cold handoff: step 3's committed design note is the prerequisite artifact
+  for any step-5 executor; fixture list for 4(c) is enumerated in the step.
 
 ## Review
 
