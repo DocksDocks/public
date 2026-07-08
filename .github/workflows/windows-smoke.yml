@@ -1,0 +1,67 @@
+name: windows-smoke
+
+# Guards the feature-frozen bash engine under Git Bash on Windows (plan:
+# windows-support step 2). Asserts the Phase-1 gates hold: no CRLF breakage
+# (LF pinned via .gitattributes), bwrap absent from the toolchain report,
+# and no unknown-OS warning from the codex sandbox check.
+#
+# Runner is the pinned label windows-2025, not the floating windows-latest
+# (kit stance: pin, never float — labels are the most pinning GitHub offers).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "docks-kit"
+      - "install.sh"
+      - "SoT/**"
+      - ".gitattributes"
+      - ".github/workflows/windows-smoke.yml"
+  pull_request:
+    paths:
+      - "lib/**"
+      - "docks-kit"
+      - "install.sh"
+      - "SoT/**"
+      - ".gitattributes"
+      - ".github/workflows/windows-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  git-bash-smoke:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Syntax-check all shell (catches CRLF breakage too)
+        run: |
+          for f in docks-kit install.sh lib/*.sh cli/build-binaries.sh; do
+            bash -n "$f"
+          done
+
+      - name: Engine full dry-run under a temp HOME
+        run: |
+          export HOME="$(mktemp -d)"
+          out="$(bash lib/engine.sh sync --dry-run 2>&1)"
+          printf '%s\n' "$out"
+          if grep -q "Unknown OS" <<<"$out"; then
+            echo "::error::unknown-OS warning leaked on Windows"; exit 1
+          fi
+          if grep -qi "bubblewrap" <<<"$out"; then
+            echo "::error::bubblewrap check ran on Windows (should be a known skip)"; exit 1
+          fi
+
+      - name: Toolchain report omits Linux-only tools
+        run: |
+          out="$(bash lib/engine.sh toolchain check 2>&1)"
+          printf '%s\n' "$out"
+          if grep -q '^bwrap' <<<"$out"; then
+            echo "::error::bwrap row present in the Windows toolchain report"; exit 1
+          fi
