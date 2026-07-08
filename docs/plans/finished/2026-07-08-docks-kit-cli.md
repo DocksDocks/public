@@ -3,7 +3,7 @@ title: docks-kit CLI — typed front-end, tool-scoped flags, toolchain floors
 goal: Replace sync.sh with a self-documenting Effect-TS CLI over the bash engine, with renamed tool-scoped flags, model catalog, and verified-version toolchain floors
 status: finished
 created: "2026-07-08T13:00:00-03:00"
-updated: "2026-07-08T15:59:17-03:00"
+updated: "2026-07-08T16:00:29-03:00"
 started_at: "2026-07-08T13:00:00-03:00"
 ship_commit: "a703a77b7c450afe3aee06d838371aa8bc24988f"
 assignee: null
@@ -18,7 +18,7 @@ affected_paths:
   - .github/workflows/release-cli.yml
   - README.md
 related_plans: []
-review_status: null
+review_status: partial
 ---
 
 ## Goal
@@ -104,4 +104,25 @@ the in-repo tracker.
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** partial — CLI replacement fully delivered (sync.sh deleted in
+  ae8b90f; Effect-TS CLI with 8 commands + 9 docs topics; tool-scoped flags,
+  legacy-flag exit-2 rename hints, model catalog, and verified-version toolchain
+  floors all present and functional). One acceptance criterion does not hold as
+  literally written: AC1 (`grep -rn "sync\.sh" ... → zero rows`, CHANGELOG/finished
+  exempt) returns **6 rows** — README.md ×1, sync-orchestration-context/SKILL.md ×3,
+  sync-mechanic-agent.md ×2 — all explanatory "sync.sh is GONE / no longer exists /
+  pre-CLI rename table" mentions added by the later doc-sweep commits, not stale
+  usages. Benign, but the criterion (and the `## Notes` phase-6 "grep gates clean")
+  now diverge from reality.
+- **Regressions:** none — `bash -n` clean across all shell + launcher; `bunx tsc
+  --noEmit -p cli` exit 0; `./docks-kit sync --dry-run` exit 0; legacy `--680k`
+  exits 2 with rename hint, `model claude bogus` exits 2 pre-mutation, bare `models`
+  prints the catalog. No scope drift (all `affected_paths` present in 3f34e2f~1..a703a77).
+- **CI:** pass — no automated test suite (AGENTS.md § Testing); verification surface
+  is `bash -n` (pass) + `bunx tsc --noEmit -p cli` (exit 0) + `./docks-kit sync
+  --dry-run` (exit 0).
+- **Cross-check:** none
+- **Follow-ups:** none — `windows-support` already tracked as its own plan; the AC1
+  grep-drift is a one-line doc reconciliation (exempt README/skills/agents "sync.sh
+  is gone" refs, or amend the phase-6 note), not a new tracked plan.
+- Filed by: plan-review on 2026-07-08T16:00:29-03:00
