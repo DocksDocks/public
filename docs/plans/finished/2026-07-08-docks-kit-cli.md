@@ -1,10 +1,11 @@
 ---
 title: docks-kit CLI — typed front-end, tool-scoped flags, toolchain floors
 goal: Replace sync.sh with a self-documenting Effect-TS CLI over the bash engine, with renamed tool-scoped flags, model catalog, and verified-version toolchain floors
-status: ongoing
+status: finished
 created: "2026-07-08T13:00:00-03:00"
-updated: "2026-07-08T14:55:00-03:00"
+updated: "2026-07-08T15:59:17-03:00"
 started_at: "2026-07-08T13:00:00-03:00"
+ship_commit: "a703a77b7c450afe3aee06d838371aa8bc24988f"
 assignee: null
 tags: [cli, engine, toolchain, packaging]
 affected_paths:
@@ -48,7 +49,7 @@ the in-repo tracker.
 - Old flags exit 2 with rename hints; `--claude-model=bogus` exits 2 pre-mutation; bare `--claude-model` prints the catalog
 - Round-trips: `model claude <value>` → set → flag-less sync reverts to the SoT value (verified when SoT was `best`; SoT is `opus` since 4a00f27); codex mirror (model line exactly once, tables untouched)
 - Toolchain gate branches verified (TTY prompt path excepted — needs interactive run); effect-solutions self-upgrade fired live (unknown → 0.5.3)
-- Fresh session in this repo shows Opus main + fable advisor — **user-side check, pending** (deploy done; requires a new interactive session)
+- Fresh session in this repo shows Opus main + fable advisor — **confirmed by user 2026-07-08** (screenshot: Opus 4.8 + xhigh in the header, "Advising using Fable 5" line, advisor read the full transcript)
 
 ## Open questions
 
@@ -81,6 +82,17 @@ the in-repo tracker.
   missing — check-only; notification sound needs `sudo apt install ffmpeg`)
 - Compact-window decision (user, 2026-07-08): keep 468000 on Opus-main — no
   350K revert; CLAUDE.md updated accordingly
+- Released 2026-07-08: docks-kit@0.1.0 published to npm (manual first publish,
+  2FA enrolled); GitHub release cli-v0.1.0 carries all five binaries +
+  SHA256SUMS (workflow green end-to-end); trusted publisher configured on
+  npmjs.com so the next cli-v* tag publishes via OIDC, tokenless; published
+  package smoke-tested via `bunx docks-kit@0.1.0 docs` from a clean directory
+- Supply-chain hardening round (user-prompted, 2026-07-08, a703a77): every
+  kit-driven install pinned to a manifest `verified` version or gated by one
+  (SHA-pinned workflow actions, pinned npx skills / MCP server / LSP / bun /
+  agent-browser / effect-solutions installs, RTK installer fetched from the
+  version tag); stance codified in AGENTS.md § Security + toolchain-context
+  skill
 - Post-completion review round (2026-07-08): self-review found + fixed the
   errexit abort on failed toolchain bootstrap (f21a4d3); a gpt-5.5
   session-relay review of 6b1b86f..HEAD found 6 more (all confirmed, fixed
