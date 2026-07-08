@@ -43,6 +43,15 @@ const root = Command.make("docks-kit", {}, () =>
   ])
 )
 
+// EngineNative selector (windows-support plan, step 5): `DOCKS_KIT_ENGINE=native`
+// bypasses @effect/cli entirely and hands the raw engine argv to the TS port,
+// so the parity harnesses drive both engines through the identical vocabulary.
+// Bash stays the default until step 6 flips it.
+if (process.env["DOCKS_KIT_ENGINE"] === "native") {
+  const { runEngineNative } = await import("./engine-native")
+  process.exit(runEngineNative(process.argv.slice(2)))
+}
+
 const cli = Command.run(root, {
   name: "docks-kit",
   version: "0.1.0"

@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Unit tests (vitest + @effect/vitest)
+        run: bun run test:unit
+
       - name: Dry-run parity (self)
         run: bun cli/test/parity-dryrun.ts
 

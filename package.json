@@ -26,7 +26,8 @@
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
     "parity:dryrun": "bun cli/test/parity-dryrun.ts",
-    "parity:mutation": "bun cli/test/parity-mutation.ts"
+    "parity:mutation": "bun cli/test/parity-mutation.ts",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@effect/cli": "0.75.2",
@@ -35,7 +36,9 @@
     "effect": "3.21.4"
   },
   "devDependencies": {
+    "@effect/vitest": "0.29.0",
     "@types/bun": "^1.3.0",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "vitest": "3.2.7"
   }
 }

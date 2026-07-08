@@ -24,7 +24,7 @@ import {
   writeFileSync
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { basename, delimiter, dirname, join, resolve } from "node:path"
+import { basename, delimiter, dirname, isAbsolute, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 
 export const REPO_DIR = resolve(import.meta.dir, "..", "..", "..")
@@ -112,7 +112,7 @@ export function runEngine(
 ): EngineRun {
   const home = mkdtempSync(join(tmpdir(), `parity-home-${kind}-`))
   rmSync(home, { recursive: true })
-  const src = fixture.startsWith("/") ? fixture : join(FIXTURES_DIR, fixture)
+  const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(src, home, { recursive: true })
   const argvLog = join(home, ".parity-argv.log")
   writeFileSync(argvLog, "")
