@@ -24,7 +24,7 @@ import {
   writeFileSync
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { basename, delimiter, dirname, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 
 export const REPO_DIR = resolve(import.meta.dir, "..", "..", "..")
@@ -121,7 +121,7 @@ export function runEngine(
     cwd: REPO_DIR,
     env: {
       HOME: home,
-      PATH: `${stubDir}:${process.env["PATH"] ?? ""}`,
+      PATH: `${stubDir}${delimiter}${process.env["PATH"] ?? ""}`,
       PARITY_ARGV_LOG: argvLog,
       PARITY_STUB_DIR: stubDir,
       LC_ALL: "C",
@@ -142,9 +142,35 @@ export function runEngine(
   }
 }
 
-/** Replace per-run temp paths so two runs' outputs are comparable. */
+/**
+ * Replace per-run temp paths so two runs' outputs are comparable.
+ *
+ * On Windows the engine runs under Git Bash, which prints MSYS-converted
+ * forms of the same directories (`C:\Users\…\Temp\x` → `/tmp/x`,
+ * `D:\a\repo` → `/d/a/repo`), so each root is scrubbed in every spelling.
+ * The temp roots additionally get a basename fallback — their mkdtemp
+ * suffix is unique, so any remaining path spelling still normalizes.
+ */
 export function normalizeOutput(out: string, home: string, stubDir: string): string {
-  return out.replaceAll(home, "<HOME>").replaceAll(stubDir, "<STUBS>").replaceAll(REPO_DIR, "<REPO>")
+  let s = out
+  for (const f of pathForms(home)) s = s.replaceAll(f, "<HOME>")
+  for (const f of pathForms(stubDir)) s = s.replaceAll(f, "<STUBS>")
+  for (const f of pathForms(REPO_DIR)) s = s.replaceAll(f, "<REPO>")
+  return s
+    .replace(new RegExp(`[^\\s'"]*${escapeRegExp(basename(home))}`, "g"), "<HOME>")
+    .replace(new RegExp(`[^\\s'"]*${escapeRegExp(basename(stubDir))}`, "g"), "<STUBS>")
+}
+
+function pathForms(p: string): Array<string> {
+  const fwd = p.replaceAll("\\", "/")
+  const forms = [p, fwd]
+  const drive = /^([A-Za-z]):\//.exec(fwd)
+  if (drive !== null) forms.push(`/${drive[1]!.toLowerCase()}${fwd.slice(2)}`) // MSYS form
+  return [...new Set(forms)]
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 // ------------------------------------------------------------ tree diff ----
@@ -207,6 +233,17 @@ export function cleanup(runs: Array<EngineRun>): void {
 
 export function parseArgs(argv: Array<string>): { native: boolean; proveRed: boolean } {
   return { native: argv.includes("--native"), proveRed: argv.includes("--prove-red") }
+}
+
+/**
+ * PARITY_FILTER (regex on the pair label) scopes a run to the command
+ * surface a partial EngineNative port claims — step 5 gates each commit on
+ * exactly its rows. Unset = everything.
+ */
+export function labelSelected(label: string): boolean {
+  const f = process.env["PARITY_FILTER"]
+  if (f === undefined || f === "") return true
+  return new RegExp(f).test(label)
 }
 
 export function banner(msg: string): void {

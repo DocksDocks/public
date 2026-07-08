@@ -23,6 +23,7 @@ import {
   cleanup,
   diffText,
   diffTrees,
+  labelSelected,
   makeStubDir,
   materializeVariant,
   parseArgs,
@@ -80,6 +81,7 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [
 ]
 
 for (const { fixture, cmd } of MATRIX) {
+  if (!labelSelected(`fixture=${fixture} cmd=${cmd.join(" ")}`)) continue
   const a = runEngine("bash", cmd, fixture, stubs)
   const b = runEngine(sideB, cmd, proveRed ? planted(fixture) : fixture, stubs)
   if (proveRed && planted(fixture) === fixture) {
