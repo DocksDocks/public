@@ -15,6 +15,13 @@ metadata:
 
 # Settings Merge
 
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
 <constraint>
 Always write to `.tmp` then `mv .tmp target`. Never write directly to the target settings file — a failed `jq` transform would produce a truncated/empty settings.json. The `.tmp` + `mv` pattern is atomic from the filesystem's perspective. (`claude::_settings_reconcile (backup + atomic .tmp/mv)`, `claude::_settings_merge (backup + atomic .tmp/mv)`)
 </constraint>

@@ -17,6 +17,13 @@ metadata:
 
 # Toolchain: verified-version floors
 
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
 <constraint>
 Every arm of `toolchain::installed_version` and `toolchain::latest_version` must end `|| true`, and both functions must `return 0`. Callers assign via `$(...)` under `set -euo pipefail` — a no-match `grep` or failing `--version` in a pipeline would otherwise abort the whole sync (this bit the first implementation: the report died at the effect-solutions probe). (`toolchain::installed_version`, the per-arm `|| true` guards)
 </constraint>

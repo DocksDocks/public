@@ -17,6 +17,13 @@ metadata:
 
 # Plugin Bootstrap
 
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
 <constraint>
 The `--prune` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (`claude::_plugins_uninstall` — the `has($n)` guard)
 </constraint>

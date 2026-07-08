@@ -13,6 +13,13 @@ metadata:
 
 # Universal Skills Bootstrap
 
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
 <constraint>
 The `<slug>` argument MUST precede `-a` in `npx skills add`. The `-a/--agent` flag is variadic and consumes all following positional arguments as agent names. If slug is placed after `-a`, it is treated as an agent name and the install exits 0 with nothing installed. (skills::sync_universal (the slug-before-`-a` comment) + skills::sync_universal (the npx skills add invocation))
 </constraint>

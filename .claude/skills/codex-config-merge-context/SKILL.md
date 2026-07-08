@@ -15,6 +15,13 @@ metadata:
 
 # Codex Config Merge
 
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
 <constraint>
 TOML has no `jq` equivalent. Do NOT attempt to use `jq` on `config.toml`. The kit uses two sequential awk passes: top-level key replacement (`codex::merge_top_level_settings`) then wholesale table replacement (`codex::merge_table_settings`).
 </constraint>

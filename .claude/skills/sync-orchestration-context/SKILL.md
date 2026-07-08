@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: Use when editing lib/engine.sh, lib/common.sh, docks-kit, cli/src/main.ts, or any flag in --reconcile / --prune / --claude-model= / --codex-model= / --claude-compact-window= / --claude-permissive / --claude-plugin= / --skip-rtk / --yes / --dry-run, or the positional targets claude/codex/agents; covers the docks-kit → cli/src/main.ts → engine seam → lib/engine.sh dispatch chain (sync.sh no longer exists), engine::sync/engine::model/engine::toolchain direct modes, TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of RECONCILE and PRUNE, the CLAUDE_COMPACT_WINDOW/CLAUDE_PERMISSIVE/CLAUDE_MODEL/CODEX_MODEL deploy-time modifiers, the CLAUDE_PLUGINS opt-in list consumed by claude::sync_optional_plugins, the renamed-legacy-flag exit-2 hint arms (--force/--remove-plugins/--680k/--permissive/--supabase/--n8n/--no-rtk), common::parse_args / common::preflight / common::validate_model_flags invariants (SoT/models.json catalog validation), and the requirement that every lib/<tool>.sh step remain idempotent across re-runs. Also covers why claude::sync_rtk now runs FIRST in claude::sync.
+description: Use when editing lib/engine.sh, lib/common.sh, docks-kit, cli/src/main.ts, or any flag in --reconcile / --prune / --claude-model= / --codex-model= / --claude-compact-window= / --claude-permissive / --claude-plugin= / --skip-rtk / --yes / --dry-run, or the positional targets claude/codex/agents; covers the docks-kit → cli/src/main.ts → engine.ts seam dispatch chain (EngineNative in-process by default; DOCKS_KIT_ENGINE=bash routes to lib/engine.sh; sync.sh no longer exists), engine::sync/engine::model/engine::toolchain direct modes, TARGET_FILTER_SET default-all-three logic, additive-vs-reconcile orthogonality of RECONCILE and PRUNE, the CLAUDE_COMPACT_WINDOW/CLAUDE_PERMISSIVE/CLAUDE_MODEL/CODEX_MODEL deploy-time modifiers, the CLAUDE_PLUGINS opt-in list consumed by claude::sync_optional_plugins, the renamed-legacy-flag exit-2 hint arms (--force/--remove-plugins/--680k/--permissive/--supabase/--n8n/--no-rtk), common::parse_args / common::preflight / common::validate_model_flags invariants (SoT/models.json catalog validation), and the requirement that every lib/<tool>.sh step remain idempotent across re-runs. Also covers why claude::sync_rtk now runs FIRST in claude::sync.
 user-invocable: false
 metadata:
   source_files:
@@ -19,7 +19,14 @@ metadata:
 
 # Sync Engine Orchestration
 
-`sync.sh` is GONE. The entry chain is now: `./docks-kit` (launcher) → `cli/src/main.ts` (Effect-TS CLI) → `cli/src/engine.ts` (the single seam, spawns `bash lib/engine.sh`) → `lib/engine.sh` (bash engine). The zero-dependency escape hatch is `bash lib/engine.sh <same subcommands/flags>` — no Bun required.
+> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
+> § Engineering rules); new capabilities land in EngineNative
+> (`cli/src/engine-native/`), the default engine since the step-6 flip of
+> the `windows-support` plan — see the `engine-native-context` skill. A bug
+> fix that changes behavior here must be mirrored in the TS port and pass
+> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+
+`sync.sh` is GONE. The entry chain is now: `./docks-kit` (launcher) → `cli/src/main.ts` (Effect-TS CLI) → `cli/src/engine.ts` (the single seam) → EngineNative in-process by DEFAULT; `DOCKS_KIT_ENGINE=bash` opts out to spawning `lib/engine.sh` (the feature-frozen bash engine). The zero-dependency escape hatch is `bash lib/engine.sh <same subcommands/flags>` — no Bun required.
 
 <constraint>
 Every new sync step MUST include a `[[ "$DRY_RUN" -eq 1 ]]` guard that prints `[dry-run] <what would happen>` and returns — without it, `bash lib/engine.sh sync --dry-run` executes the step for real. (claude::sync_scripts dry-run pattern)
@@ -38,7 +45,7 @@ Flag variables are initialized in common.sh (flag-var init block) via `${VAR:-0}
 </constraint>
 
 <constraint>
-Mutation runs ONLY through `lib/engine.sh`. The typed CLI (`cli/src/engine.ts`, the `engine`/`engineCapture` functions) spawns `bash lib/engine.sh` with the same flag vocabulary — never duplicate engine logic in TypeScript. New flags must be added in BOTH `common::parse_args` and the matching `cli/src/commands/*.ts` option list.
+Both engines speak the SAME flag vocabulary through the `cli/src/engine.ts` seam (`engine`/`engineCapture`): EngineNative (`runEngineNative`, in-process, the default) and `bash lib/engine.sh` (`DOCKS_KIT_ENGINE=bash`). A new flag must be added in THREE places — `common::parse_args`, `cli/src/engine-native/parseArgs.ts`, and the matching `cli/src/commands/*.ts` option list — and pass the parity suites.
 </constraint>
 
 ## When to Use
@@ -58,7 +65,7 @@ For `lib/toolchain.sh` / `SoT/toolchain.json` (verified-version gates, `toolchai
 |-----------|------|-------|
 | `./docks-kit <args>` | compiled binary in `cli/dist/docks-kit-<os>-<arch>` if present, else Bun-from-source (`cli/src/main.ts`); auto-installs Bun (download-then-run) + `bun install --frozen-lockfile` when missing | canonical UX (docks-kit, the KIT_BIN case + find_bun fallback) |
 | `bash lib/engine.sh <args>` | bash engine directly | zero-dependency escape hatch; same subcommands/flags |
-| `cli/src/engine.ts` | `Subprocess.make("bash", "lib/engine.sh", ...)` from `kitHome()` | the single seam; CLI-side validation failures use `bail` |
+| `cli/src/engine.ts` | `runEngineNative(args)` in-process (default) or `Subprocess.make("bash", "lib/engine.sh", ...)` under `DOCKS_KIT_ENGINE=bash` | the single seam; CLI-side validation failures use `bail` |
 
 `lib/engine.sh` direct modes (the trailing `case "${1:-}"` dispatcher; bare args default to `sync`):
 
