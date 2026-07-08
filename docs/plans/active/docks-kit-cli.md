@@ -74,9 +74,8 @@ the in-repo tracker.
   model=opus, advisorModel=fable, effortLevel=xhigh; `docks-kit status`
   reports zero drift on all four tracked keys and toolchain all-ok (ffplay
   missing — check-only; notification sound needs `sudo apt install ffmpeg`)
-- Compact-window open decision: CLAUDE.md says "drop back to 350000 when the
-  primary machine returns to Opus"; SoT is now Opus-main but the window stays
-  468000 pending an explicit user call (flagged, not silently changed)
+- Compact-window decision (user, 2026-07-08): keep 468000 on Opus-main — no
+  350K revert; CLAUDE.md updated accordingly
 
 ## Review
 
