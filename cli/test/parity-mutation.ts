@@ -56,7 +56,20 @@ function comparePair(label: string, a: EngineRun, b: EngineRun): void {
 
 // ------------------------------------------------ 4(b): command matrix ----
 
-const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [
+// Stub-body variants for the toolchain gate/install/upgrade/failure branches
+// the happy-path defaults never reach (review finding, 2026-07-08).
+const RTK_INIT_FAILS = `case "$1" in --version) echo "rtk 0.43.0";; init) exit 1;; esac`
+const AGENT_BROWSER_STALE = `case "$1" in --version) echo "agent-browser 0.30.0";; esac`
+const NPM_INSTALL_FAILS = `case "$1" in
+  view) case "$2" in agent-browser) echo "0.31.1";; esac;;
+  install) exit 1;;
+esac`
+const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
+  view) case "$2" in agent-browser) echo "0.99.0";; esac;;
+esac`
+const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
+
+const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string, string | null> }> = [
   { fixture: "home-fresh", cmd: ["sync", "claude"] },
   { fixture: "home-fresh", cmd: ["sync", "codex"] },
   { fixture: "home-fresh", cmd: ["sync", "agents"] },
@@ -77,18 +90,27 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [
   // Toolchain gate branches (stdin is not a TTY here → non-TTY paths):
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "check"] }
+  { fixture: "home-fresh", cmd: ["toolchain", "check"] },
+  // Non-happy-path stub variants — install/upgrade/gate/failure branches:
+  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": AGENT_BROWSER_STALE } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--yes"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_OFFLINE } }
 ]
 
-for (const { fixture, cmd } of MATRIX) {
-  if (!labelSelected(`fixture=${fixture} cmd=${cmd.join(" ")}`)) continue
-  const a = runEngine("bash", cmd, fixture, stubs)
-  const b = runEngine(sideB, cmd, proveRed ? planted(fixture) : fixture, stubs)
+for (const { fixture, cmd, stubs: stubOverrides } of MATRIX) {
+  const label = `fixture=${fixture} cmd=${cmd.join(" ")}${stubOverrides !== undefined ? ` stubs=${Object.keys(stubOverrides).join(",")}` : ""}`
+  if (!labelSelected(label)) continue
+  const stubDir = stubOverrides !== undefined ? makeStubDir(stubOverrides) : stubs
+  const a = runEngine("bash", cmd, fixture, stubDir)
+  const b = runEngine(sideB, cmd, proveRed ? planted(fixture) : fixture, stubDir)
   if (proveRed && planted(fixture) === fixture) {
     cleanup([a, b])
     continue
   }
-  comparePair(`fixture=${fixture} cmd=${cmd.join(" ")}`, a, b)
+  comparePair(label, a, b)
 }
 
 function planted(fixture: string): string {

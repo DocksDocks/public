@@ -102,7 +102,10 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
       echo("[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)")
       return
     }
-    spawnSync("rtk", ["init", "--global"], { stdio: "inherit" })
+    // Plain command under bash set -e: a nonzero `rtk init` aborts the whole
+    // sync before the success log and before any settings/plugin mutation.
+    const res = spawnSync("rtk", ["init", "--global"], { stdio: "inherit" })
+    if (res.error !== undefined || res.status !== 0) throw new ExitError(res.status ?? 1)
     log("RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)")
   } else if (!ctx.dryRun) {
     log("RTK already initialized")
@@ -224,7 +227,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
 }
 
 /** Shared shape of the three jq-edit modifiers (compact window, permissive). */
-function jqEditSettings(ctx: Ctx, claudeDir: string, tag: string, edit: (doc: Json) => void): void {
+function jqEditSettings(claudeDir: string, tag: string, edit: (doc: Json) => void): void {
   const userSettings = p(claudeDir, "settings.json")
   if (!existsSync(userSettings)) {
     warn(`(${tag}) ${userSettings} missing — skipped`)
@@ -248,7 +251,7 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  jqEditSettings(ctx, claudeDir, "--claude-compact-window", (doc) => {
+  jqEditSettings(claudeDir, "--claude-compact-window", (doc) => {
     if (!isObject(doc)) return
     const env = isObject(doc["env"]) ? doc["env"] : {}
     env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = ctx.claudeCompactWindow
@@ -265,7 +268,7 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  jqEditSettings(ctx, claudeDir, "--claude-permissive", (doc) => {
+  jqEditSettings(claudeDir, "--claude-permissive", (doc) => {
     if (!isObject(doc)) return
     const permissions = isObject(doc["permissions"]) ? doc["permissions"] : {}
     permissions["ask"] = []
@@ -562,7 +565,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   // Pass 6 — re-assert SoT enabled-state in the user settings.
-  reassertEnabledState(ctx, repoObj, p(claudeDir, "settings.json"))
+  reassertEnabledState(repoObj, p(claudeDir, "settings.json"))
 
   const failed = f1 + f2 + f4 + f5
   if (addedMp > 0 || addedPl > 0 || updatedPl > 0 || removedPl > 0 || removedMp > 0) {
@@ -575,7 +578,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 }
 
-function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSettingsFile: string): void {
+function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: string): void {
   if (!existsSync(userSettingsFile)) return
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
 

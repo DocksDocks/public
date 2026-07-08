@@ -70,9 +70,15 @@ exit 0`,
   unshare: `exit 0`
 }
 
-export function makeStubDir(): string {
+/**
+ * overrides: replace a stub's body per test row (exercising install/upgrade/
+ * gate/failure branches); `null` omits the stub entirely (tool missing).
+ */
+export function makeStubDir(overrides: Record<string, string | null> = {}): string {
   const dir = mkdtempSync(join(tmpdir(), "parity-stubs-"))
-  for (const [name, body] of Object.entries(STUB_BODIES)) {
+  for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
+    const body = name in overrides ? overrides[name] : defaultBody
+    if (body === null || body === undefined) continue
     const script = `#!/bin/bash
 printf '%s\\t%s\\n' "${name}" "$*" >> "\${PARITY_ARGV_LOG:-/dev/null}"
 ${body}
@@ -99,8 +105,9 @@ export type EngineKind = "bash" | "native"
 export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
   const quoted = args.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(" ")
   if (kind === "bash") return `bash '${REPO_DIR}/lib/engine.sh' ${quoted}`
-  // Absolute bun path so the PATH stub `bun` never shadows the runtime itself.
-  return `DOCKS_KIT_ENGINE=native '${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
+  // Raw harness channel (bypasses @effect/cli so both engines see identical
+  // argv); absolute bun path so the PATH stub `bun` never shadows the runtime.
+  return `DOCKS_KIT_ENGINE=native-raw '${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
 }
 
 export function runEngine(
