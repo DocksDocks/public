@@ -188,12 +188,21 @@ function channelInvariantProblems(): Array<string> {
     problems.push("  channel: summary block leaked to stderr (sync claude)")
   }
 
-  const drySplit = runEngineSplit("native", ["sync", "--dry-run"], "home-drift", defaultStubs)
+  // Dry-run under verbose env: the report must stay a complete stdout
+  // inspection artifact and no log prefix may ride along on stdout.
+  const drySplit = runEngineSplit("native", ["sync", "--dry-run"], "home-drift", defaultStubs, {
+    env: { DOCKS_KIT_VERBOSE: "1" }
+  })
   if (!drySplit.stdout.includes("[dry-run]")) {
     problems.push("  channel: no [dry-run] lines on stdout (sync --dry-run)")
   }
   if (drySplit.stderr.includes("[dry-run]")) {
     problems.push("  channel: [dry-run] lines leaked to stderr (sync --dry-run)")
+  }
+  for (const prefix of logPrefixes) {
+    if (drySplit.stdout.includes(prefix)) {
+      problems.push(`  channel: '${prefix}' log prefix leaked to stdout (verbose sync --dry-run)`)
+    }
   }
 
   // A warn-emitting run (masked git): warns must land on stderr, never stdout.
@@ -209,7 +218,7 @@ function channelInvariantProblems(): Array<string> {
     problems.push("  channel: expected git warn missing from stderr (git-masked sync claude)")
   }
 
-  const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs)
+  const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs, { env: { DOCKS_KIT_VERBOSE: "1" } })
   if (status.exitCode !== 0) {
     problems.push(`  channel: status --json exited ${status.exitCode} (stderr: ${status.stderr.slice(0, 200)})`)
   } else {
@@ -224,7 +233,8 @@ function channelInvariantProblems(): Array<string> {
   // --verbose (public flag, short alias, and raw-channel env) brings it back.
   // Exact demoted no-op shapes — NOT a loose /already/ match: change lines
   // may legitimately embed count phrasing like "(+1 new, 0 already present)".
-  const NOOP_RE = /already in sync|already initialized|already set|up to date|\bpresent \(|left as-is/
+  const NOOP_RE =
+    /already in sync|already initialized|already set|already opted in|already empty|up to date|\bpresent \(|LSP server binaries present|model already |left as-is/
   const first = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs)
   const second = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs, { reuseHome: first.home })
   if (NOOP_RE.test(second.stderr)) {
@@ -237,17 +247,34 @@ function channelInvariantProblems(): Array<string> {
   if (!NOOP_RE.test(secondVerbose.stderr)) {
     problems.push("  verbosity: DOCKS_KIT_VERBOSE=1 second run shows no no-op confirmations")
   }
-  const pubVerbose = runPublicCli(["sync", "claude", "--verbose", "--dry-run"], "home-drift", defaultStubs)
-  if (pubVerbose.exitCode !== 0) {
-    problems.push(`  verbosity: public 'sync claude --verbose --dry-run' exited ${pubVerbose.exitCode}`)
+  // Public-flag forwarding: each command surface and spelling must reach
+  // EngineNative's verbosity gate — a known verbose-only line must land on
+  // stderr (an exit-0 check alone would pass a forwarding regression).
+  const pubFirst = runPublicCli(["sync"], "home-fresh", defaultStubs)
+  // Settle the one-time settings canonicalization so the in-loop model calls
+  // hit the verbose already-unset branch instead of a formatting rewrite.
+  runPublicCli(["model", "claude", "default"], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
+  // Model legs run before the sync replays: a flag-less sync re-merges
+  // settings into merge ordering, which would turn the model no-op back
+  // into a canonicalization write.
+  for (const flag of ["--verbose", "-v"]) {
+    const model = runPublicCli(["model", "claude", "default", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
+    if (!/deployed settings model already unset/.test(model.stderr)) {
+      problems.push(`  verbosity: public 'model claude default ${flag}' shows no verbose no-op line`)
+    }
   }
-  const pubShort = runPublicCli(["toolchain", "check", "-v"], "home-drift", defaultStubs)
-  if (pubShort.exitCode !== 0) {
-    problems.push(`  verbosity: public 'toolchain check -v' exited ${pubShort.exitCode}`)
-  }
-  const pubModel = runPublicCli(["model", "claude", "-v"], "home-drift", defaultStubs)
-  if (pubModel.exitCode !== 0) {
-    problems.push(`  verbosity: public 'model claude -v' exited ${pubModel.exitCode}`)
+  for (const flag of ["--verbose", "-v"]) {
+    const replay = runPublicCli(["sync", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
+    if (!NOOP_RE.test(replay.stderr)) {
+      problems.push(`  verbosity: public 'sync ${flag}' replay shows no no-op confirmations on stderr`)
+    }
+    if (NOOP_RE.test(replay.stdout)) {
+      problems.push(`  verbosity: no-op confirmations leaked to stdout (public 'sync ${flag}')`)
+    }
+    const tc = runPublicCli(["toolchain", "ensure", "rtk", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
+    if (!/\bpresent \(|up to date/.test(tc.stderr)) {
+      problems.push(`  verbosity: public 'toolchain ensure rtk ${flag}' shows no verbose no-op line`)
+    }
   }
 
   rmSync(syncSplit.home, { recursive: true, force: true })
@@ -255,9 +282,7 @@ function channelInvariantProblems(): Array<string> {
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
   rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home
-  rmSync(pubVerbose.home, { recursive: true, force: true })
-  rmSync(pubShort.home, { recursive: true, force: true })
-  rmSync(pubModel.home, { recursive: true, force: true })
+  rmSync(pubFirst.home, { recursive: true, force: true }) // all public forwarding legs reuse this home
   return problems
 }
 

@@ -4,7 +4,7 @@
  * substitution: stdout with trailing newlines stripped, empty on failure.
  */
 import { spawnSync } from "node:child_process"
-import { accessSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { accessSync, chmodSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, join } from "node:path"
 
 /**
@@ -57,6 +57,15 @@ export function fileExists(p: string): boolean {
 // changed:boolean so unchanged repeat runs log at verbose instead of [ok].
 
 /** Write only when the content differs; returns whether a write happened. */
+/** Add missing +x bits; returns whether a repair actually happened. */
+export function ensureExecutable(path: string): boolean {
+  const mode = statSync(path).mode
+  const want = mode | 0o111
+  if (mode === want) return false
+  chmodSync(path, want)
+  return true
+}
+
 export function writeFileIfChanged(path: string, content: string): boolean {
   if (existsSync(path) && readFileSync(path, "utf8") === content) return false
   writeFileSync(path, content)

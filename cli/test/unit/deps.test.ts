@@ -6,8 +6,15 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.git.installHint("win32")).toBe("winget install Git.Git (then open a new terminal)")
   })
 
-  it("gives the unix git hint", () => {
-    expect(DEPENDENCIES.git.installHint("linux")).toBe("install git via your package manager")
+  it("gives executable unix git hints", () => {
+    expect(DEPENDENCIES.git.installHint("darwin")).toBe("brew install git")
+    expect(DEPENDENCIES.git.installHint("linux")).toBe("sudo apt install -y git (or your distro's package manager)")
+  })
+
+  it("registers the Node-shipped launchers npm and npx", () => {
+    expect(DEPENDENCIES.npm.installHint()).toContain("Node.js")
+    expect(DEPENDENCIES.npx.installHint()).toContain("Node.js")
+    expect(DEPENDENCIES.npm.requirement).toBe("optional")
   })
 
   it("gives platform-correct jq hints", () => {

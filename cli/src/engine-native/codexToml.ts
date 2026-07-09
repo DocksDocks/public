@@ -67,6 +67,7 @@ export function syncCodexModel(ctx: Ctx, model: string): void {
   }
   if (replaceTopLevelSettingInFile(userCodexSettings, "model", `model = "${model}"`)) {
     change(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+    ctx.nextStepTriggers.codexRestart = true
   } else {
     verbose(`Model: deployed Codex model already ${model}`)
   }

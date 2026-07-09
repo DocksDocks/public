@@ -36,6 +36,13 @@ export interface Ctx {
   syncClaude: boolean
   syncCodex: boolean
   syncAgents: boolean
+  /** Per-run next-step triggers (Output Policy): advice prints only when its trigger changed or --verbose. */
+  readonly nextStepTriggers: {
+    claudePlugins: boolean
+    claudeRestart: boolean
+    codexRestart: boolean
+    skillsRestart: boolean
+  }
 }
 
 /** Globals default from env using the historical ${VAR:-default} contract. */
@@ -60,7 +67,8 @@ function makeCtx(): Ctx {
     targetFilterSet: false,
     syncClaude: false,
     syncCodex: false,
-    syncAgents: false
+    syncAgents: false,
+    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false }
   }
 }
 
@@ -84,10 +92,15 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   if (codexRan) codexSummary(ctx)
   if (skillsState !== undefined) skillsSummary(ctx, skillsState)
 
-  echo("")
-  if (claudeRan) claudeNextSteps()
-  if (codexRan) codexNextSteps()
-  if (skillsState !== undefined) skillsNextSteps()
+  const advice = [
+    ...(claudeRan ? claudeNextSteps(ctx) : []),
+    ...(codexRan ? codexNextSteps(ctx) : []),
+    ...(skillsState !== undefined ? skillsNextSteps(ctx) : [])
+  ]
+  if (advice.length > 0) {
+    echo("")
+    for (const line of advice) echo(line)
+  }
   return 0
 }
 

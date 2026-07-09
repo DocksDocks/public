@@ -6,7 +6,6 @@
 import { spawnSync } from "node:child_process"
 import {
   appendFileSync,
-  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -14,13 +13,12 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
 import { DEPENDENCIES, warnMissing } from "./deps"
-import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, p, writeFileIfChanged } from "./exec"
+import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
 import { isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -63,7 +61,7 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
   return (mode, version) => {
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
 
-    if (mode === "upgrade") change(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
+    if (mode === "upgrade") verbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
     else warn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
     const installer = p(tmpdir(), `rtk-install-${process.pid}.sh`)
     const dl = spawnSync("curl", ["-fsSL", `https://raw.githubusercontent.com/rtk-ai/rtk/${installerRef}/install.sh`, "-o", installer], {
@@ -131,13 +129,15 @@ function syncScripts(ctx: Ctx, claudeDir: string): void {
     const src = p(ctx.repoDir, "SoT", ".claude", script)
     if (existsSync(src)) {
       if (copyFileIfChanged(src, p(claudeDir, script))) changed = true
-      chmodSync(p(claudeDir, script), statSync(p(claudeDir, script)).mode | 0o111)
+      if (ensureExecutable(p(claudeDir, script))) changed = true
     }
   }
   const mp3 = p(ctx.repoDir, "notification.mp3")
   if (existsSync(mp3) && copyFileIfChanged(mp3, p(claudeDir, "notification.mp3"))) changed = true
-  if (changed) change("Scripts synced (statusline, fetch-usage, notification)")
-  else verbose("Scripts already in sync (statusline, fetch-usage, notification)")
+  if (changed) {
+    change("Scripts synced (statusline, fetch-usage, notification)")
+    ctx.nextStepTriggers.claudeRestart = true
+  } else verbose("Scripts already in sync (statusline, fetch-usage, notification)")
 }
 
 function shellScriptCount(hooksDir: string): number {
@@ -159,14 +159,16 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
 
   const hooksDir = p(claudeDir, "hooks")
   mkdirSync(hooksDir, { recursive: true })
-  const changed = copyTreeIfChanged(sotHooks, hooksDir)
+  let changed = copyTreeIfChanged(sotHooks, hooksDir)
   for (const e of readdirSync(hooksDir, { withFileTypes: true })) {
     if (e.isFile() && e.name.endsWith(".sh")) {
-      chmodSync(p(hooksDir, e.name), statSync(p(hooksDir, e.name)).mode | 0o111)
+      if (ensureExecutable(p(hooksDir, e.name))) changed = true
     }
   }
-  if (changed) change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
-  else verbose(`Hooks already in sync (${shellScriptCount(hooksDir)} scripts)`)
+  if (changed) {
+    change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
+    ctx.nextStepTriggers.claudeRestart = true
+  } else verbose(`Hooks already in sync (${shellScriptCount(hooksDir)} scripts)`)
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
@@ -226,6 +228,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
   if (!existsSync(userSettings)) {
     copyFileSync(repoSettings, userSettings)
     change("Settings installed")
+    ctx.nextStepTriggers.claudeRestart = true
     return
   }
 
@@ -246,6 +249,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
   copyFileSync(userSettings, `${userSettings}.bak`)
   writeFileSync(`${userSettings}.tmp`, out)
   renameSync(`${userSettings}.tmp`, userSettings)
+  ctx.nextStepTriggers.claudeRestart = true
   if (ctx.reconcile) {
     change("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
   } else {
@@ -288,7 +292,10 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
     env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = ctx.claudeCompactWindow
     doc["env"] = env
   })
-  if (changed) change(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
+  if (changed) {
+    change(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
+    ctx.nextStepTriggers.claudeRestart = true
+  }
   else verbose(`Compact window: already set to ${ctx.claudeCompactWindow} tokens in deployed settings`)
 }
 
@@ -307,7 +314,10 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
     permissions["deny"] = []
     doc["permissions"] = permissions
   })
-  if (changed) change("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
+  if (changed) {
+    change("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
+    ctx.nextStepTriggers.claudeRestart = true
+  }
   else verbose("Permissive mode: permissions.ask/deny already empty in deployed settings")
 }
 
@@ -357,7 +367,10 @@ function syncClaudeJson(ctx: Ctx): void {
     applyFilter(obj)
     writeFileSync(claudeJson, jqStringify(obj))
   }
-  if (changed) change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
+  if (changed) {
+    change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
+    ctx.nextStepTriggers.claudeRestart = true
+  }
   else verbose(`~/.claude.json already in sync (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
 }
 
@@ -383,6 +396,7 @@ function syncConnectorEnv(ctx: Ctx): void {
     const res = spawnSync("setx", ["ENABLE_CLAUDEAI_MCP_SERVERS", "false"], { stdio: "ignore" })
     if (res.error === undefined && res.status === 0) {
       change("claude.ai connectors disabled via setx (open a new terminal to apply)")
+      ctx.nextStepTriggers.claudeRestart = true
     } else {
       warn("setx ENABLE_CLAUDEAI_MCP_SERVERS false failed — set it manually in System Properties > Environment Variables")
     }
@@ -415,6 +429,7 @@ function syncConnectorEnv(ctx: Ctx): void {
 
   appendFileSync(target, `\n${marker}\n${line}\n`)
   change(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
+  ctx.nextStepTriggers.claudeRestart = true
 }
 
 // ------------------------------------------------------------- removals ----
@@ -507,6 +522,7 @@ function syncRemovals(ctx: Ctx, claudeDir: string): void {
 
   if (hooksRemoved + filesRemoved + skeys + cjkeys > 0) {
     change(`Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys})`)
+    ctx.nextStepTriggers.claudeRestart = true
   }
 }
 
@@ -635,11 +651,15 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   // Pass 6 — re-assert SoT enabled-state in the user settings.
-  reassertEnabledState(repoObj, p(claudeDir, "settings.json"))
+  if (reassertEnabledState(repoObj, p(claudeDir, "settings.json"))) {
+    change("Plugin enable-state re-asserted from SoT in settings.json")
+    ctx.nextStepTriggers.claudePlugins = true
+  }
 
   const failed = f1 + f2 + f4 + f5
   if (addedMp > 0 || addedPl > 0 || updatedPl > 0 || removedPl > 0 || removedMp > 0) {
     change(`Plugins synced (marketplaces: +${addedMp} -${removedMp}, plugins: +${addedPl} ~${updatedPl} -${removedPl})`)
+    ctx.nextStepTriggers.claudePlugins = true
   } else {
     verbose("Plugins already in sync")
   }
@@ -648,8 +668,8 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 }
 
-function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: string): void {
-  if (!existsSync(userSettingsFile)) return
+function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: string): boolean {
+  if (!existsSync(userSettingsFile)) return false
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
 
   for (const [pluginId, value] of Object.entries(sotPlugins)) {
@@ -665,26 +685,34 @@ function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: 
   const user = readJsonFile(userSettingsFile)
   if (user === undefined || !isObject(user)) {
     warn("enabledPlugins re-assert failed — false-keyed plugins may be left enabled")
-    return
+    return false
   }
+  const beforeCanonical = jqStringify(user)
   user["enabledPlugins"] = deepMerge(isObject(user["enabledPlugins"]) ? user["enabledPlugins"] : {}, sotPlugins)
-  writeFileSync(`${userSettingsFile}.tmp`, jqStringify(user))
+  const out = jqStringify(user)
+  if (out === beforeCanonical) return false
+  writeFileSync(`${userSettingsFile}.tmp`, out)
   renameSync(`${userSettingsFile}.tmp`, userSettingsFile)
+  return true
 }
 
 // ------------------------------------------------------ optional plugins ----
 
-function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRepo: string): void {
+function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRepo: string): boolean {
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const mpName = pluginId.slice(pluginId.lastIndexOf("@") + 1)
 
+  let marketplaceAdded = false
   if (marketplaceRepo !== "") {
     const known = readJsonFile(knownMarketplaces)
     const has = known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false
-    if (!has && !cli(["plugin", "marketplace", "add", marketplaceRepo]).ok) {
-      warn(`Failed to add marketplace ${marketplaceRepo} for ${pluginId}`)
-      return
+    if (!has) {
+      if (!cli(["plugin", "marketplace", "add", marketplaceRepo]).ok) {
+        warn(`Failed to add marketplace ${marketplaceRepo} for ${pluginId}`)
+        return false
+      }
+      marketplaceAdded = true
     }
   }
 
@@ -692,17 +720,24 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
   if (!wasInstalled) {
     if (!cli(["plugin", "install", pluginId]).ok) {
       warn(`Failed to install optional plugin ${pluginId}`)
-      return
+      return marketplaceAdded
     }
   }
 
+  const settingsDoc = readJsonFile(p(claudeDir, "settings.json"))
+  const wasEnabled =
+    settingsDoc !== undefined && isObject(settingsDoc) && isObject(settingsDoc["enabledPlugins"])
+      ? (settingsDoc["enabledPlugins"] as { [k: string]: Json })[pluginId] === true
+      : false
+
   if (!cli(["plugin", "enable", pluginId]).ok) {
     warn(`Failed to enable optional plugin ${pluginId}`)
-  } else if (wasInstalled) {
-    verbose(`Optional plugin already opted in: ${pluginId} (enable re-asserted)`)
-  } else {
-    change(`Optional plugin opted in: ${pluginId}`)
+    return marketplaceAdded || !wasInstalled
   }
+  const changed = marketplaceAdded || !wasInstalled || !wasEnabled
+  if (changed) change(`Optional plugin opted in: ${pluginId}`)
+  else verbose(`Optional plugin already opted in: ${pluginId} (enable re-asserted)`)
+  return changed
 }
 
 function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
@@ -724,10 +759,10 @@ function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   if (ctx.claudePlugins.includes("supabase")) {
-    enableOptionalPlugin(claudeDir, "supabase@claude-plugins-official", "")
+    if (enableOptionalPlugin(claudeDir, "supabase@claude-plugins-official", "")) ctx.nextStepTriggers.claudePlugins = true
   }
   if (ctx.claudePlugins.includes("n8n")) {
-    enableOptionalPlugin(claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")
+    if (enableOptionalPlugin(claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")) ctx.nextStepTriggers.claudePlugins = true
   }
 }
 
@@ -769,13 +804,14 @@ function syncLspServers(ctx: Ctx): void {
   }
 
   if (!commandExists("npm")) {
-    warn(`npm not found — cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops. Install Node.js, then re-run sync.`)
+    warnMissing("npm", `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`)
     return
   }
 
-  change(`Installing LSP servers via npm: ${specs}...`)
+  verbose(`Installing LSP servers via npm: ${specs}...`)
   if (spawnSync("npm", ["install", "-g", ...missing], { stdio: "ignore" }).status === 0) {
     change(`LSP servers installed (${specs})`)
+    ctx.nextStepTriggers.claudeRestart = true
   } else {
     warn(`npm install -g ${specs} failed. Try manually: npm install -g ${specs}`)
   }
@@ -804,7 +840,13 @@ export function claudeSummary(ctx: Ctx): void {
   }
 }
 
-export function claudeNextSteps(): void {
-  echo("In a Claude Code session, run /reload-plugins to pick up newly installed plugins.")
-  echo("Restart Claude Code for hook/env-var changes to take effect.")
+export function claudeNextSteps(ctx: Ctx): Array<string> {
+  const lines: Array<string> = []
+  if (ctx.verbose || ctx.nextStepTriggers.claudePlugins) {
+    lines.push("In a Claude Code session, run /reload-plugins to pick up newly installed plugins.")
+  }
+  if (ctx.verbose || ctx.nextStepTriggers.claudeRestart) {
+    lines.push("Restart Claude Code for hook/env-var changes to take effect.")
+  }
+  return lines
 }

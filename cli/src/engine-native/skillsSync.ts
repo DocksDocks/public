@@ -7,7 +7,8 @@
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { capture, commandExists, isExecutable, p, which } from "./exec"
+import { warnMissing } from "./deps"
+import { capture, commandExists, isExecutable, p, which, writeFileIfChanged } from "./exec"
 import { isLinux, isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
@@ -59,8 +60,8 @@ function readSlugs(file: string): Array<string> {
 }
 
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
-  if (!commandExists("node")) {
-    warn("node/npx not in PATH — skipping universal skills bootstrap (install Node.js to enable)")
+  if (!commandExists("npx")) {
+    warnMissing("npx", "skipping universal skills bootstrap")
     return
   }
 
@@ -105,11 +106,13 @@ function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest
 
   if (added > 0) {
     change(`Universal skills synced (+${added} new, ${already} already present)`)
+    ctx.nextStepTriggers.skillsRestart = true
   } else {
     verbose(`Universal skills already in sync (${already} present)`)
   }
   if (healed > 0) {
     change(`Claude per-tool symlinks healed (+${healed}) — canonical present, ~/.claude/skills/<name> was missing or broken`)
+    ctx.nextStepTriggers.skillsRestart = true
   }
   if (failed > 0) {
     warn(`${failed} skill install(s) failed — re-run sync or install manually with: npx skills add <slug> -g -y -a claude-code codex`)
@@ -233,14 +236,14 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
   const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
   const installFlags = isLinux() ? ["--with-deps"] : []
 
-  change(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
+  verbose(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
   if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
     warn(`npm install -g ${pkg} failed. Try manually: npm install -g ${pkg}`)
     return 1
   }
 
   if (mode === "install") {
-    change("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
+    warn("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
     if (spawnSync("agent-browser", ["install", ...installFlags], { stdio: "inherit" }).status !== 0) {
       warn(`agent-browser install failed. Re-run manually: agent-browser install ${installFlags.join(" ")}`)
       return 1
@@ -257,7 +260,7 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
 
   if (!commandExists("npm")) {
-    if (!ctx.dryRun) warn("npm not found — cannot auto-install agent-browser CLI. Install Node.js, then re-run sync.")
+    if (!ctx.dryRun) warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
     return
   }
 
@@ -313,7 +316,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     const bun = bunBootstrap(ctx)
     if (bun === "") return 1
 
-    change(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
+    verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
     if (spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" }).status !== 0) {
       warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
       return 1
@@ -384,7 +387,10 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
     }
   }
 
-  if (removed > 0) change(`Kit-managed skills removed (-${removed})`)
+  if (removed > 0) {
+    change(`Kit-managed skills removed (-${removed})`)
+    ctx.nextStepTriggers.skillsRestart = true
+  }
   if (failed > 0) warn(`${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove -g -y -a '*' -s <name>`)
 }
 
@@ -393,7 +399,7 @@ function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string): void {
 
   mkdirSync(ctx.agentsDir, { recursive: true })
   const sorted = [...new Set(readSlugs(manifest))].sort(compareCodepoints)
-  writeFileSync(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
+  writeFileIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
 }
 
 // -------------------------------------------------------------- summary ----
@@ -405,6 +411,8 @@ export function skillsSummary(ctx: Ctx, state: SkillsState): void {
   }
 }
 
-export function skillsNextSteps(): void {
-  echo("Restart Claude Code (and Codex) to discover newly installed universal skills.")
+export function skillsNextSteps(ctx: Ctx): Array<string> {
+  return ctx.verbose || ctx.nextStepTriggers.skillsRestart
+    ? ["Restart Claude Code (and Codex) to discover newly installed universal skills."]
+    : []
 }

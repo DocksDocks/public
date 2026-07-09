@@ -7,7 +7,9 @@
  * WHICH external tools exist, whether they are required, and the one-line
  * command that installs a missing one.
  */
-import { capture, commandExists } from "./exec"
+import { spawnSync } from "node:child_process"
+
+import { commandExists } from "./exec"
 import { warn } from "./logger"
 import { rawPlatform } from "./os"
 
@@ -16,6 +18,8 @@ export type ToolId =
   | "jq"
   | "curl"
   | "node"
+  | "npm"
+  | "npx"
   | "claude"
   | "codex"
   | "rtk"
@@ -30,6 +34,7 @@ export type Requirement = "required" | "optional"
 export type ProbeResult =
   | { readonly state: "present"; readonly version: string }
   | { readonly state: "missing" }
+  | { readonly state: "broken"; readonly reason: string }
 
 export interface DependencySpec {
   readonly id: ToolId
@@ -48,7 +53,11 @@ const spec = (
 
 export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   git: spec("git", "optional", (pf = rawPlatform()) =>
-    pf === "win32" ? "winget install Git.Git (then open a new terminal)" : "install git via your package manager"
+    pf === "win32"
+      ? "winget install Git.Git (then open a new terminal)"
+      : pf === "darwin"
+        ? "brew install git"
+        : "sudo apt install -y git (or your distro's package manager)"
   ),
   jq: spec("jq", "required", (pf = rawPlatform()) =>
     pf === "win32"
@@ -61,6 +70,8 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     pf === "win32" ? "winget install cURL.cURL" : pf === "darwin" ? "brew install curl" : "sudo apt install -y curl"
   ),
   node: spec("node", "optional", () => "install Node.js via https://nodejs.org (or your package manager)"),
+  npm: spec("npm", "optional", () => "ships with Node.js — install via https://nodejs.org (or your package manager)"),
+  npx: spec("npx", "optional", () => "ships with Node.js — install via https://nodejs.org (or your package manager)"),
   claude: spec("claude", "optional", (pf = rawPlatform()) =>
     pf === "win32"
       ? "winget install Anthropic.ClaudeCode"
@@ -83,7 +94,11 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
 export function probe(id: ToolId): ProbeResult {
   const s = DEPENDENCIES[id]
   if (!commandExists(id)) return { state: "missing" }
-  return { state: "present", version: capture(id, s.versionArgs) }
+  const res = spawnSync(id, [...s.versionArgs], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+  if (res.error !== undefined || res.status !== 0) {
+    return { state: "broken", reason: `${id} ${s.versionArgs.join(" ")} exited ${res.status ?? "spawn-error"}` }
+  }
+  return { state: "present", version: (res.stdout ?? "").replace(/[\r\n]+$/, "") }
 }
 
 // One deduplicated warn per missing tool per run (Output Policy): the first

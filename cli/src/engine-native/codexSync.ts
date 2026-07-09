@@ -4,7 +4,7 @@
  * change. Guard order, message strings, and backup behavior are golden-tested.
  */
 import { spawnSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { DEPENDENCIES, warnMissing } from "./deps"
@@ -108,20 +108,29 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   if (!existsSync(userConfig)) {
     copyFileSync(sotConfig, userConfig)
     change("Codex config installed")
+    ctx.nextStepTriggers.codexRestart = true
     return
   }
 
+  // Merge into a staging copy so `.bak` is written only when the config
+  // actually changes — an unconditional early backup lets a later no-op run
+  // overwrite the recovery copy with already-merged content.
   const before = readFileSync(userConfig, "utf8")
-  copyFileSync(userConfig, `${userConfig}.bak`)
+  const staging = `${userConfig}.merge.tmp`
+  writeFileSync(staging, before)
 
-  scrubDeprecatedFeatures(userConfig)
-  mergeTopLevelSettings(sotConfig, userConfig)
-  mergeTableSettings(sotConfig, userConfig)
+  scrubDeprecatedFeatures(staging)
+  mergeTopLevelSettings(sotConfig, staging)
+  mergeTableSettings(sotConfig, staging)
 
-  if (readFileSync(userConfig, "utf8") === before) {
+  if (readFileSync(staging, "utf8") === before) {
+    rmSync(staging, { force: true })
     verbose("Codex config already in sync")
   } else {
+    copyFileSync(userConfig, `${userConfig}.bak`)
+    renameSync(staging, userConfig)
     change("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)")
+    ctx.nextStepTriggers.codexRestart = true
   }
 }
 
@@ -240,8 +249,10 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
     copyFileSync(ruleFile, userRuleFile)
     rulesChanged = true
   }
-  if (rulesChanged) change("Codex rules synced")
-  else if (sawRules) verbose("Codex rules already in sync")
+  if (rulesChanged) {
+    change("Codex rules synced")
+    ctx.nextStepTriggers.codexRestart = true
+  } else if (sawRules) verbose("Codex rules already in sync")
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
@@ -259,6 +270,7 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void
   if (existsSync(userAgentsMd)) copyFileSync(userAgentsMd, `${userAgentsMd}.bak`)
   copyFileSync(sotAgentsMd, userAgentsMd)
   change("Codex AGENTS.md synced")
+  ctx.nextStepTriggers.codexRestart = true
 }
 
 // ---------------------------------------------------------- marketplace ----
@@ -290,9 +302,11 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
     writeFileSync(`${userMarketplace}.tmp`, out)
     renameSync(`${userMarketplace}.tmp`, userMarketplace)
     change("Codex marketplace merged (backup at marketplace.json.bak)")
+    ctx.nextStepTriggers.codexRestart = true
   } else {
     copyFileSync(sotMarketplace, userMarketplace)
     change("Codex marketplace installed")
+    ctx.nextStepTriggers.codexRestart = true
   }
 }
 
@@ -360,6 +374,7 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
   const res = spawnSync("codex", ["plugin", "marketplace", "remove", "docks"], { stdio: "ignore" })
   if (res.error === undefined && res.status === 0) {
     change("Removed legacy configured Codex Docks marketplace; using personal marketplace file")
+    ctx.nextStepTriggers.codexRestart = true
   } else {
     warn("Failed to remove legacy configured Codex Docks marketplace")
   }
@@ -442,7 +457,10 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     }
   }
 
-  if (refreshed > 0) change(`Codex plugins synced (plugins: ~${refreshed})`)
+  if (refreshed > 0) {
+    change(`Codex plugins synced (plugins: ~${refreshed})`)
+    ctx.nextStepTriggers.codexRestart = true
+  }
   if (failed > 0) warn(`${failed} Codex plugin operation(s) failed — re-run sync or install manually`)
 }
 
@@ -457,6 +475,8 @@ export function codexSummary(ctx: Ctx): void {
   }
 }
 
-export function codexNextSteps(): void {
-  echo("Restart Codex to load any refreshed plugins, skills, or tools.")
+export function codexNextSteps(ctx: Ctx): Array<string> {
+  return ctx.verbose || ctx.nextStepTriggers.codexRestart
+    ? ["Restart Codex to load any refreshed plugins, skills, or tools."]
+    : []
 }
