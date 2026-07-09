@@ -79,6 +79,7 @@ describe("engine service layers", () => {
       probe: () => ({ state: "missing" }),
       version: () => "",
       path: () => "",
+      location: () => ({ path: "", binDir: "" }),
       latest: () => "",
       warnMissing: (id) => void warned.push(id)
     }

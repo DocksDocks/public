@@ -329,20 +329,20 @@ export function effectSolutionsInstall(
       return 1
     }
 
-    const gbin = services.deps.path("effect-solutions")
+    const location = services.deps.location("effect-solutions")
+    const gbin = location.binDir
     // win32: bun writes an .exe shim (not the bare Unix name), and the
     // ~/.local/bin link step below is Unix-only plumbing (non-interactive
     // agent PATH) — bun's global bin is already the Windows PATH entry.
     if (services.platform.isWindows()) {
-      const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
-      if (found) change(`effect-solutions CLI ready (${gbin})`)
+      if (location.path !== "") change(`effect-solutions CLI ready (${gbin})`)
       else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
       return 0
     }
-    if (gbin !== "") {
+    if (location.path !== "") {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
       linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)
-      linkOrCopyWithWarnings(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"), services)
+      linkOrCopyWithWarnings(location.path, p(ctx.home, ".local", "bin", "effect-solutions"), services)
       change("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
     } else {
       warn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)

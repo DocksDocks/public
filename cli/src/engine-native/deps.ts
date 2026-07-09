@@ -8,6 +8,7 @@
  * command that installs a missing one.
  */
 import { homedir } from "node:os"
+import { existsSync, readdirSync } from "node:fs"
 
 import { capture, commandExists, p, which } from "./exec"
 import { isObject, parseJson } from "./jq"
@@ -41,9 +42,13 @@ export type ToolId =
 export type Requirement = "required" | "optional"
 
 export type ProbeResult =
-  | { readonly state: "present"; readonly version: string; readonly path?: string }
+  | { readonly state: "present"; readonly path?: string }
   | { readonly state: "missing" }
-  | { readonly state: "broken"; readonly reason: string }
+
+export interface DependencyLocation {
+  readonly path: string
+  readonly binDir: string
+}
 
 export interface ProbeExecutor {
   readonly commandExists: (name: string) => boolean
@@ -57,17 +62,17 @@ export interface DependencySpec {
   readonly versionArgs: ReadonlyArray<string>
   /** Platform-correct one-line install command (param injectable for tests). */
   readonly installHint: (platform?: NodeJS.Platform) => string
-  readonly resolve?: (exec: ProbeExecutor) => ProbeResult
+  readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
   readonly version?: (exec: ProbeExecutor) => string
-  readonly locate?: (exec: ProbeExecutor) => string
+  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => DependencyLocation
   readonly latest?: (exec: ProbeExecutor) => string
 }
 
 interface SpecOptions {
   readonly versionArgs?: ReadonlyArray<string>
-  readonly resolve?: (exec: ProbeExecutor) => ProbeResult
+  readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
   readonly version?: (exec: ProbeExecutor) => string
-  readonly locate?: (exec: ProbeExecutor) => string
+  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => DependencyLocation
   readonly latest?: (exec: ProbeExecutor) => string
 }
 
@@ -90,7 +95,7 @@ const spec = (
 const pathProbe = (id: string): ((exec: ProbeExecutor) => ProbeResult) =>
   (exec) =>
     exec.commandExists(id)
-      ? { state: "present", version: "", path: exec.which(id) }
+      ? { state: "present", path: exec.which(id) }
       : { state: "missing" }
 
 const versionProbe = (
@@ -122,42 +127,54 @@ const resolveBun = (exec: ProbeExecutor): ProbeResult => {
   const bun = findBun(exec)
   return bun === undefined
     ? { state: "missing" }
-    : { state: "present", version: "", path: bun.path }
+    : { state: "present", path: bun.path }
 }
 
 const resolveEffectSolutions = (exec: ProbeExecutor): ProbeResult => {
   return exec.commandExists("effect-solutions")
-    ? { state: "present", version: "", path: exec.which("effect-solutions") }
+    ? { state: "present", path: exec.which("effect-solutions") }
     : { state: "missing" }
 }
 
+const versionBunCommand = (exec: ProbeExecutor): string =>
+  exec.commandExists("bun") ? "bun" : p(home(), ".bun", "bin", "bun")
+
 const versionEffectSolutions = (exec: ProbeExecutor): string => {
-  const bun = findBun(exec)
-  if (bun === undefined) return ""
-  const match = /effect-solutions@([0-9][0-9.]*)/.exec(exec.capture(bun.command, ["pm", "-g", "ls"]))
+  const bun = versionBunCommand(exec)
+  if (bun !== "bun" && exec.which(bun) === "") return ""
+  const match = /effect-solutions@([0-9][0-9.]*)/.exec(exec.capture(bun, ["pm", "-g", "ls"]))
   return match?.[1] ?? ""
 }
 
-const locateEffectSolutions = (exec: ProbeExecutor): string => {
+const locateEffectSolutions = (exec: ProbeExecutor, platform: NodeJS.Platform): DependencyLocation => {
   const bun = findBun(exec)
-  if (bun === undefined) return ""
+  if (bun === undefined) return { path: "", binDir: "" }
   const globalBin = exec.capture(bun.command, ["pm", "-g", "bin"])
-  const executable = ["effect-solutions", "effect-solutions.exe", "effect-solutions.cmd", "effect-solutions.bunx"].some(
-    (name) => globalBin !== "" && exec.which(p(globalBin, name)) !== ""
-  )
-  return executable ? globalBin : ""
+  const names =
+    platform === "win32"
+      ? ["effect-solutions.exe", "effect-solutions.cmd", "effect-solutions.bunx"]
+      : ["effect-solutions"]
+  const path = names.map((name) => p(globalBin, name)).find((candidate) => globalBin !== "" && exec.which(candidate) !== "")
+  return { path: path ?? "", binDir: globalBin }
 }
 
-const resolveChrome = (exec: ProbeExecutor): ProbeResult => {
-  for (const command of [
-    "chrome-for-testing",
-    "google-chrome-for-testing",
-    "google-chrome",
-    "chromium",
-    "chromium-browser"
-  ]) {
+const resolveChrome = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
+  const root = p(home(), ".agent-browser", "browsers")
+  const relative =
+    platform === "win32"
+      ? "chrome.exe"
+      : platform === "darwin"
+        ? "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+        : "chrome"
+  if (existsSync(root)) {
+    for (const directory of readdirSync(root).filter((name) => name.startsWith("chrome-")).sort().reverse()) {
+      const path = exec.which(p(root, directory, relative))
+      if (path !== "") return { state: "present", path }
+    }
+  }
+  for (const command of ["chrome-for-testing", "google-chrome-for-testing", "google-chrome", "chromium", "chromium-browser", "brave-browser", "brave"]) {
     const path = exec.which(command)
-    if (path !== "") return { state: "present", version: "", path }
+    if (path !== "") return { state: "present", path }
   }
   return { state: "missing" }
 }
@@ -233,11 +250,8 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
       pf === "win32" ? `powershell -c "irm bun.sh/install.ps1 | iex"` : "curl -fsSL https://bun.sh/install | bash",
     {
       resolve: resolveBun,
-      version: (exec) => {
-        const bun = findBun(exec)
-        return bun === undefined ? "" : exec.capture(bun.command, ["--version"])
-      },
-      locate: (exec) => findBun(exec)?.path ?? ""
+      version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
+      locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),
@@ -283,8 +297,12 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   zypper: spec("zypper", "optional", () => "install zypper via your Linux distribution")
 }
 
-export function resolveDependency(specification: DependencySpec, exec: ProbeExecutor): ProbeResult {
-  return (specification.resolve ?? pathProbe(specification.id))(exec)
+export function resolveDependency(
+  specification: DependencySpec,
+  exec: ProbeExecutor,
+  platform: NodeJS.Platform = rawPlatform()
+): ProbeResult {
+  return (specification.resolve ?? pathProbe(specification.id))(exec, platform)
 }
 
 export function resolveVersion(specification: DependencySpec, exec: ProbeExecutor): string {
@@ -292,9 +310,16 @@ export function resolveVersion(specification: DependencySpec, exec: ProbeExecuto
   return (specification.version ?? versionProbe(specification.id, specification.versionArgs))(exec)
 }
 
-export function resolvePath(specification: DependencySpec, exec: ProbeExecutor): string {
-  if (specification.locate !== undefined) return specification.locate(exec)
-  const result = resolveDependency(specification, exec)
-  if (result.state !== "present") return ""
-  return result.path ?? exec.which(specification.id)
+export function resolveLocation(
+  specification: DependencySpec,
+  exec: ProbeExecutor,
+  platform: NodeJS.Platform = rawPlatform()
+): DependencyLocation {
+  if (specification.locate !== undefined) return specification.locate(exec, platform)
+  const result = resolveDependency(specification, exec, platform)
+  return { path: result.state === "present" ? (result.path ?? exec.which(specification.id)) : "", binDir: "" }
+}
+
+export function resolvePath(specification: DependencySpec, exec: ProbeExecutor, platform?: NodeJS.Platform): string {
+  return resolveLocation(specification, exec, platform).path
 }

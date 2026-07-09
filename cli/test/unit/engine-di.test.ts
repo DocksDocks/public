@@ -57,9 +57,10 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
     probe: (id) =>
       missing.has(id)
         ? { state: "missing" }
-        : { state: "present", version: "", path: `/stub-bin/${id}` },
+        : { state: "present", path: `/stub-bin/${id}` },
     version: (id) => versions[id] ?? "",
     path: (id) => (missing.has(id) ? "" : `/stub-bin/${id}`),
+    location: (id) => ({ path: missing.has(id) ? "" : `/stub-bin/${id}`, binDir: "" }),
     latest: (id) => latest[id] ?? "",
     warnMissing: (id, currentLogger, context) => {
       if (warned.has(id)) return
