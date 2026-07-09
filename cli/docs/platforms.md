@@ -4,7 +4,7 @@
 |----------|-----------------|-------------|-------|
 | Linux | native | EngineNative (TS) | Primary target |
 | macOS | native (x64 + arm64) | EngineNative (TS) | Release binary or Bun source path |
-| Windows | native (`.exe` / `bun add -g`, CI-verified) | EngineNative (TS) — no Git Bash | Real-machine verify pending |
+| Windows | native (`.exe` / `bun add -g`, CI-verified) | EngineNative (TS) — no Git Bash | Real-machine verified 2026-07-09 |
 
 EngineNative is the only supported engine on all platforms. `DOCKS_KIT_ENGINE=bash`
 now exits with the removed-engine message and points at the `bash-engine-final`
@@ -38,7 +38,8 @@ spawning (npm), toolchain gate branches (`.github/workflows/parity.yml`,
 Deployed hook/statusline assets stay shell scripts by design — Claude Code on
 Windows executes them through its own Git Bash.
 
-**Status: supported, pending one manual gate** — a real-machine interactive
-verify (Claude Code loads the synced `%USERPROFILE%\.claude`, the rtk hook
-fires, hook/statusline commands run or are knowingly skipped) tracked as
-step 9 of the `windows-support` plan.
+**Status: supported** — real-machine verified 2026-07-09 (Claude Code loads
+the synced `%USERPROFILE%\.claude`; full sync, self-update, plugin passes,
+universal skills, and agent-browser all green on native PowerShell). Needs
+git on PATH for plugin marketplaces; rtk installs natively via its Windows
+release (the kit's auto-install is Unix-only).
