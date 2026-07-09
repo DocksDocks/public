@@ -120,6 +120,8 @@ jobs:
           if ($out -notmatch "kit home") { throw "output never references the USERPROFILE-derived home" }
           if ($out -match "Unknown OS") { throw "unknown-OS warning leaked" }
           if ($out -match "bubblewrap") { throw "bubblewrap check ran on Windows (should be a known skip)" }
+          if ($out -notmatch "setx ENABLE_CLAUDEAI_MCP_SERVERS") { throw "connector env not routed via setx on win32" }
+          if ($out -match "\.bashrc") { throw "Unix shell-rc connector path ran on Windows (real-machine step-9 regression)" }
 
       - name: status --json parses and carries the captured toolchain table
         # The toolchain table travels through engineCapture (a native-raw

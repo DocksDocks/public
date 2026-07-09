@@ -332,6 +332,31 @@ function syncClaudeJson(ctx: Ctx): void {
 // -------------------------------------------------------- connector env ----
 
 function syncConnectorEnv(ctx: Ctx): void {
+  // win32: Claude Code launches from PowerShell/GUI, so the flag must be a
+  // real user env var (setx), not a Git-Bash-only shell-rc export. Never
+  // clobbers an existing value (set =true yourself to keep connectors).
+  if (process.platform === "win32") {
+    const existing = spawnSync("reg", ["query", "HKCU\\Environment", "/v", "ENABLE_CLAUDEAI_MCP_SERVERS"], {
+      stdio: "ignore"
+    })
+    if (existing.error === undefined && existing.status === 0) {
+      if (ctx.dryRun) echo("[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in user environment — would skip")
+      else log("claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in user environment (left as-is)")
+      return
+    }
+    if (ctx.dryRun) {
+      echo("[dry-run] setx ENABLE_CLAUDEAI_MCP_SERVERS false (user environment)")
+      return
+    }
+    const res = spawnSync("setx", ["ENABLE_CLAUDEAI_MCP_SERVERS", "false"], { stdio: "ignore" })
+    if (res.error === undefined && res.status === 0) {
+      log("claude.ai connectors disabled via setx (open a new terminal to apply)")
+    } else {
+      warn("setx ENABLE_CLAUDEAI_MCP_SERVERS false failed — set it manually in System Properties > Environment Variables")
+    }
+    return
+  }
+
   const line = "export ENABLE_CLAUDEAI_MCP_SERVERS=false"
   const marker = "# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
   const candidates = [".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"].map((f) => p(ctx.home, f))
