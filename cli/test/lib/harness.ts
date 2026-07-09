@@ -1,13 +1,9 @@
 /**
- * Shared parity-harness machinery (windows-support plan, step 4).
+ * Shared golden-regression harness machinery.
  *
- * Both harnesses run the engine(s) against disposable copies of fixture
- * HOMEs with a stub-bin directory FIRST on PATH, so every external tool the
- * engine drives (claude/codex/npx/npm/rtk/bun/curl/…) is deterministic and
- * records its argv. Until EngineNative exists, runs are bash-vs-bash
- * (self-parity: proves the machinery + hermeticity); `--native` switches
- * side B to `DOCKS_KIT_ENGINE=native bun cli/src/main.ts` once step 5(a)
- * lands.
+ * Harnesses run EngineNative against disposable copies of fixture HOMEs with
+ * a stub-bin directory FIRST on PATH, so every external tool the engine drives
+ * (claude/codex/npx/npm/rtk/bun/curl/...) is deterministic and records argv.
  */
 import { createHash } from "node:crypto"
 import {
@@ -290,17 +286,28 @@ export function cleanup(runs: Array<EngineRun>): void {
   for (const r of runs) rmSync(r.home, { recursive: true, force: true })
 }
 
-export function parseArgs(argv: Array<string>): { native: boolean; proveRed: boolean } {
-  return { native: argv.includes("--native"), proveRed: argv.includes("--prove-red") }
+export function parseArgs(argv: Array<string>): { proveRed: boolean; updateGoldens: boolean } {
+  const allowed = new Set(["--prove-red", "--update-goldens"])
+  const unknown = argv.slice(2).filter((arg) => arg.startsWith("--") && !allowed.has(arg))
+  if (unknown.length > 0) {
+    console.error(`unknown option(s): ${unknown.join(", ")}`)
+    process.exit(2)
+  }
+  const proveRed = argv.includes("--prove-red")
+  const updateGoldens = argv.includes("--update-goldens")
+  if (proveRed && updateGoldens) {
+    console.error("--prove-red and --update-goldens are mutually exclusive")
+    process.exit(2)
+  }
+  return { proveRed, updateGoldens }
 }
 
 /**
- * PARITY_FILTER (regex on the pair label) scopes a run to the command
- * surface a partial EngineNative port claims — step 5 gates each commit on
- * exactly its rows. Unset = everything.
+ * GOLDEN_FILTER (regex on the case label) scopes a run to one command surface.
+ * Unset = everything.
  */
 export function labelSelected(label: string): boolean {
-  const f = process.env["PARITY_FILTER"]
+  const f = process.env["GOLDEN_FILTER"]
   if (f === undefined || f === "") return true
   return new RegExp(f).test(label)
 }
@@ -319,4 +326,18 @@ export function materializeVariant(base: string, files: Record<string, string>):
     writeFileSync(join(dir, rel), content)
   }
   return dir
+}
+
+export function stableStringify(value: unknown): string {
+  return `${JSON.stringify(stableJson(value), null, 2)}\n`
+}
+
+function stableJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJson)
+  if (value === null || typeof value !== "object") return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => [k, stableJson(v)])
+  )
 }

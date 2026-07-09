@@ -25,8 +25,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
-    "parity:dryrun": "bun cli/test/parity-dryrun.ts",
-    "parity:mutation": "bun cli/test/parity-mutation.ts",
+    "golden:dryrun": "bun cli/test/golden-dryrun.ts",
+    "golden:mutation": "bun cli/test/golden-mutation.ts",
     "test:unit": "vitest run"
   },
   "dependencies": {
