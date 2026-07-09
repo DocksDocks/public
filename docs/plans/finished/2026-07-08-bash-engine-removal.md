@@ -1,9 +1,9 @@
 ---
 title: Remove the bash engine — EngineNative becomes the only engine
 goal: Delete lib/*.sh and the bash legs of CI, converting the parity suites into golden-regression tests recorded from the parity-proven native engine, with the bash engine preserved at a git tag
-status: ongoing
+status: finished
 created: "2026-07-08T22:05:00-03:00"
-updated: "2026-07-08T23:02:51-03:00"
+updated: "2026-07-08T23:15:46-03:00"
 started_at: "2026-07-08T21:41:51-03:00"
 assignee: codex (gpt-5.5 relay worker, isolated worktree branch; Claude session reviews)
 tags: [engine, cleanup, typescript, ci]
@@ -26,6 +26,7 @@ affected_paths:
   - CLAUDE.md
   - cli/docs/
 related_plans: [windows-support]
+ship_commit: "c9755b82f37ce3cde038242053f0a48fe885c3fc"
 review_status: null
 ---
 
@@ -104,7 +105,7 @@ and re-homes the documentation that cites `lib/*.sh`.
 | 5 | Package/launcher/toolchain: `package.json` `files` drops `lib`; `docks-kit` launcher fallback messages point at release binaries instead of `bash lib/engine.sh` (lines 5, 39, 52); `SoT/toolchain.json` `jq` note updated (needed by deployed hooks/statusline, no longer by the engine); grep for `engine.sh` in `install.sh`/workflows and fix stragglers | 3 | done |
 | 6 | Docs sweep: AGENTS.md (feature-freeze rule → removed-engine note; repo-layout table; escape-hatch row → release binaries; `bash lib/engine.sh` mentions), CLAUDE.md (setup block, session/permissions references to the escape hatch), README (quick start, command table, escape-hatch line, releases section), `cli/docs/` (install.md zero-dependency section → binaries; overview, sync-layers, flags, platforms mentions), **`cli/src/engine-native/DESIGN.md`** (still documents the bash opt-out, the bash escape hatch, and "deleting the bash engine" as a non-goal — rewrite to the post-removal contract). Grep gates: (a) zero `lib/engine.sh` / `lib/claude.sh` / `lib/codex.sh` / `lib/skills.sh` / `lib/common.sh` / `lib/toolchain.sh` references outside `docs/plans/`, CHANGELOG, and git history; (b) conceptual sweep — every remaining hit for `DOCKS_KIT_ENGINE=bash`, `bash engine`, `escape hatch`, `byte-parity` is either the removed-engine error/tag documentation or a plans/CHANGELOG file (enumerate the survivors in the PR description) | 3 | done |
 | 7 | Skills + agents re-home: the six kit-mechanic skills (`sync-orchestration-context`, `settings-merge-context`, `plugin-bootstrap-context`, `codex-config-merge-context`, `universal-skills-context`, `toolchain-context`) keep their semantic content (merge behavior, tri-state, seven passes, RTK ordering, gate policy — all still true of the TS port) but every `lib/*.sh` function citation and `metadata.source_files` entry is rewritten to the matching `cli/src/engine-native/*.ts` module/function; freeze banners removed; descriptions' trigger conditions updated to the TS paths. Same for the five wrapper agents in `.claude/agents/` and their `.codex/agents/*.toml` twins. `engine-native-context` updated: byte-parity contract → golden-regression contract, "bash engine frozen" → "bash engine removed at tag bash-engine-final" | 3 | done |
-| 8 | Verification + review: full local suite (unit, golden-dryrun, golden-mutation, both prove-reds, `bunx tsc --noEmit -p cli`); **public-CLI smoke matrix** (front-door surfaces the raw golden channel bypasses): `./docks-kit sync --dry-run` byte-identical to the recorded golden; `./docks-kit sync claude --dry-run --skip-rtk --claude-plugin=supabase,n8n` exit 0 (space AND `=` forms); `./docks-kit sync --force` exits 2 with the rename hint; `DOCKS_KIT_ENGINE=bash ./docks-kit sync --dry-run` exits 2 with the removed-engine message; `./docks-kit status --json` parses with a non-empty toolchainTable; compiled linux binary `status` (toolchain rows present) + `sync --dry-run`; real `sync claude` round-trip on this machine against a settings backup; CI green on the branch. Then the Claude session reviews the full diff before merge to main | 2–7 | in-flight |
+| 8 | Verification + review: full local suite (unit, golden-dryrun, golden-mutation, both prove-reds, `bunx tsc --noEmit -p cli`); **public-CLI smoke matrix** (front-door surfaces the raw golden channel bypasses): `./docks-kit sync --dry-run` byte-identical to the recorded golden; `./docks-kit sync claude --dry-run --skip-rtk --claude-plugin=supabase,n8n` exit 0 (space AND `=` forms); `./docks-kit sync --force` exits 2 with the rename hint; `DOCKS_KIT_ENGINE=bash ./docks-kit sync --dry-run` exits 2 with the removed-engine message; `./docks-kit status --json` parses with a non-empty toolchainTable; compiled linux binary `status` (toolchain rows present) + `sync --dry-run`; real `sync claude` round-trip on this machine against a settings backup; CI green on the branch. Then the Claude session reviews the full diff before merge to main | 2–7 | done |
 
 ## Acceptance criteria
 
