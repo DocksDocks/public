@@ -1,7 +1,6 @@
 /**
- * Port of lib/toolchain.sh — the verified-version-floor layer over
- * SoT/toolchain.json. Probe commands spawn the exact argv the bash engine
- * uses (argv parity); message strings are byte-exact.
+ * Verified-version-floor layer over SoT/toolchain.json. Probe/install commands
+ * spawn deterministic argv arrays and are covered by golden regression cases.
  */
 import { readFileSync, readSync } from "node:fs"
 

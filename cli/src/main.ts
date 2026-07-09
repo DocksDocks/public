@@ -27,7 +27,7 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log("  docks-kit docs [topic]                     self-documentation")
     yield* Console.log("")
     yield* Console.log("Run 'docks-kit --help' for full option listings (also: --wizard, --completions).")
-    yield* Console.log("Zero-dependency escape hatch: bash lib/engine.sh <same subcommands/flags>")
+    yield* Console.log("No-Bun recovery path: use a platform release binary.")
   })
 ).pipe(
   Command.withDescription(
@@ -46,13 +46,11 @@ const root = Command.make("docks-kit", {}, () =>
   ])
 )
 
-// Harness-private raw channel (windows-support plan, step 5):
+// Harness-private raw channel:
 // `DOCKS_KIT_ENGINE=native-raw` bypasses @effect/cli and hands the raw engine
-// argv to the TS port, so the parity harnesses drive both engines through the
-// identical vocabulary — bash lib/engine.sh vs this. PUBLIC selection lives at
-// the engine.ts seam AFTER the CLI has parsed/normalized (pickers, --flag
-// value forms, non-engine commands intact): native by default,
-// `DOCKS_KIT_ENGINE=bash` opts out.
+// argv to EngineNative so golden tests drive the internal vocabulary directly.
+// PUBLIC engine execution lives at the engine.ts seam after the CLI has
+// parsed/normalized pickers, --flag value forms, and non-engine commands.
 if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
   const { runEngineNative } = await import("./engine-native")
   process.exit(runEngineNative(process.argv.slice(2)))

@@ -1,12 +1,8 @@
 /**
- * EngineNative port of the `~/.claude/settings.json` merge
- * (`claude::_settings_merge` / `claude::_settings_reconcile` in
- * lib/claude.sh — the jq -s programs).
- *
- * Pure functions: they take the two parsed documents and return the merged
- * document; the FS step (backup, tmp+rename, log line) lives in the sync
- * orchestrator. Byte-parity with the bash engine is enforced by the parity
- * harnesses; jq-oracle equivalence by cli/test/unit/settings.test.ts.
+ * `~/.claude/settings.json` merge helpers. Pure functions take the two parsed
+ * documents and return the merged document; the FS step (backup, tmp+rename,
+ * log line) lives in the sync orchestrator. jq-oracle equivalence is covered by
+ * cli/test/unit/settings.test.ts and deployed behavior by the golden suites.
  */
 import { deepMerge, isObject, uniqueStrings, type Json } from "./jq"
 

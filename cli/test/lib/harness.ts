@@ -31,7 +31,7 @@ export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 // ---------------------------------------------------------------- stubs ----
 
 /**
- * Canned stub behavior. Each stub appends "<name>\t<args>" to $PARITY_ARGV_LOG
+ * Canned stub behavior. Each stub appends "<name>\t<args>" to $GOLDEN_ARGV_LOG
  * and emits just enough output for the engine's probes to take a
  * deterministic branch (versions match the SoT/toolchain.json pins so every
  * `ensure` lands on "up to date").
@@ -50,7 +50,7 @@ const STUB_BODIES: Record<string, string> = {
 esac`,
   bun: `case "$1" in
   --version) echo "1.3.14";;
-  pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${PARITY_STUB_DIR}"; };;
+  pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${GOLDEN_STUB_DIR}"; };;
 esac`,
   curl: `for a in "$@"; do
   case "$a" in
@@ -73,12 +73,12 @@ exit 0`,
  * gate/failure branches); `null` omits the stub entirely (tool missing).
  */
 export function makeStubDir(overrides: Record<string, string | null> = {}): string {
-  const dir = mkdtempSync(join(tmpdir(), "parity-stubs-"))
+  const dir = mkdtempSync(join(tmpdir(), "golden-stubs-"))
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody
     if (body === null || body === undefined) continue
     const script = `#!/bin/bash
-printf '%s\\t%s\\n' "${name}" "$*" >> "\${PARITY_ARGV_LOG:-/dev/null}"
+printf '%s\\t%s\\n' "${name}" "$*" >> "\${GOLDEN_ARGV_LOG:-/dev/null}"
 ${body}
 exit 0
 `
@@ -129,7 +129,7 @@ function maskedPath(names: ReadonlyArray<string>): string {
 }
 
 function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArray<string>): string {
-  const shadow = mkdtempSync(join(tmpdir(), "parity-mask-"))
+  const shadow = mkdtempSync(join(tmpdir(), "golden-mask-"))
   const blocked = new Set(names.flatMap((n) => exts.map((e) => (n + e).toLowerCase())))
   for (const entry of readdirSync(dir)) {
     if (blocked.has(entry.toLowerCase())) continue
@@ -153,11 +153,11 @@ export function runEngine(
   stubDir: string,
   opts: { stdinTty?: boolean; maskTools?: ReadonlyArray<string> } = {}
 ): EngineRun {
-  const home = mkdtempSync(join(tmpdir(), `parity-home-${kind}-`))
+  const home = mkdtempSync(join(tmpdir(), `golden-home-${kind}-`))
   rmSync(home, { recursive: true })
   const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(src, home, { recursive: true })
-  const argvLog = join(home, ".parity-argv.log")
+  const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
   const res = spawnSync("bash", ["-c", `exec 2>&1; ${engineCommand(kind, args)}`], {
@@ -165,13 +165,13 @@ export function runEngine(
     env: {
       HOME: home,
       PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
-      PARITY_ARGV_LOG: argvLog,
-      PARITY_STUB_DIR: stubDir,
+      GOLDEN_ARGV_LOG: argvLog,
+      GOLDEN_STUB_DIR: stubDir,
       LC_ALL: "C",
       TERM: "dumb",
       // The native side runs under the bun runtime, which would otherwise
       // drop its install cache inside the temp HOME and pollute the tree diff.
-      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "parity-bun-cache"),
+      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "golden-bun-cache"),
       // env is constructed from scratch (no process.env spread), so engine
       // globals like DRY_RUN can never leak in from the invoking shell.
       AGENTS_DIR: join(home, ".agents")
@@ -227,7 +227,7 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
     const rel = p.slice(root.length + 1)
-    if (rel === ".parity-argv.log") continue
+    if (rel === ".golden-argv.log") continue
     // `.bun/install` is a runtime artifact of the native side's bun
     // interpreter (module cache keyed off $HOME) — the engine never writes
     // there. `.bun` itself is still recursed (engine bootstraps can create
@@ -241,9 +241,8 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
       if (rel !== ".bun") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
-      // Hash with CRLF canonicalized to LF: on Windows the bash engine's jq
-      // writes CRLF (text-mode CRT) where EngineNative writes LF — a
-      // transport artifact, not a logic divergence the parity gate is for.
+      // Hash with CRLF canonicalized to LF so platform text-mode transport
+      // artifacts do not count as engine regressions.
       const body = readFileSync(p).toString("binary").replaceAll("\r\n", "\n")
       acc[rel] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
     }
@@ -319,7 +318,7 @@ export function banner(msg: string): void {
 
 /** Write a fixture home variant on the fly (used by the TOML suite). */
 export function materializeVariant(base: string, files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "parity-fixture-"))
+  const dir = mkdtempSync(join(tmpdir(), "golden-fixture-"))
   rmSync(dir, { recursive: true })
   cpSync(join(FIXTURES_DIR, base), dir, { recursive: true })
   for (const [rel, content] of Object.entries(files)) {

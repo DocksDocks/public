@@ -14,9 +14,8 @@ AI-assisted dev environment on every machine.
 | `SoT/.agents/` | Universal agent skills manifest (agentskills.io standard) |
 | `SoT/models.json` | Kit-verified model catalog (see `docks-kit docs models`) |
 | `SoT/toolchain.json` | Verified-version floors for external tools (see `docks-kit docs toolchain`) |
-| `lib/*.sh` | The bash engine — all mutation logic; battle-tested, idempotent |
-| `lib/engine.sh` | Engine entry: `sync`, `model`, `toolchain` — the zero-dependency escape hatch |
-| `cli/` | This CLI (Effect-TS on Bun) — typed front-end over the engine |
+| `cli/src/engine-native/` | EngineNative mutation logic for sync/model/toolchain |
+| `cli/` | This CLI (Effect-TS on Bun) plus bundled docs |
 | `docks-kit` | Launcher: compiled binary → bun-from-source, with Bun auto-install |
 
 ## Design rules
@@ -28,7 +27,7 @@ AI-assisted dev environment on every machine.
 - **Deploy-time modifiers** mutate deployed config only — the SoT never
   changes, and a later flag-less sync reverts them (`docks-kit docs modifiers`).
 - **Engine/CLI split**: the CLI adds UX (typed flags, pickers, docs, JSON);
-  the engine owns mutation. `bash lib/engine.sh <same args>` always works.
+  EngineNative owns mutation. No-Bun recovery is a platform release binary.
 
 ## Where to go next
 

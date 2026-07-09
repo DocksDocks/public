@@ -23,13 +23,13 @@ from source via Bun — auto-installing Bun and dependencies when missing.
 Other install paths (global `bun add -g docks-kit`, curl installer) —
 see `./docks-kit docs install`.
 
-**Zero-dependency escape hatch** (no Bun, constrained sandboxes):
+**No-Bun recovery path**:
 
-```bash
-bash lib/engine.sh sync [targets] [flags]    # same flags as the CLI
-```
+Download the platform release binary from GitHub Releases and run it from a
+kit checkout, or set `DOCKS_KIT_HOME` to the checkout containing `SoT/`.
 
-Prerequisites: `bash`, `jq`, `curl` (Node/npm for npm-global tools).
+Prerequisites for source/global installs: Bun plus `jq` and `curl` for sync
+preflight; Node/npm for npm-global tools.
 
 ## CLI
 
@@ -47,8 +47,8 @@ docks-kit docs [topic]                     self-documentation (9 topics)
 ```
 
 The CLI is a typed front-end ([Effect-TS](https://effect.website) on Bun);
-**all mutation runs through the bash engine** (`lib/*.sh`) — battle-tested,
-idempotent, independently usable.
+all mutation runs through EngineNative in `cli/src/engine-native/`, with
+golden-regression coverage for dry-run output, mutation snapshots, and argv logs.
 
 ### Key flags (`docks-kit sync`)
 
@@ -92,7 +92,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Kit-verified model catalog |
 | `SoT/toolchain.json` | Verified-version floors |
-| `lib/` | Bash engine: `common`, `toolchain`, `claude`, `codex`, `skills`, `engine` |
+| `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/` | docks-kit CLI (Effect-TS on Bun) + bundled docs topics |
 | `docks-kit` | Launcher (binary → bun-from-source) |
 | `install.sh` | Global installer (Bun bootstrap + `bun add -g`) |
@@ -113,8 +113,8 @@ Details: `docks-kit docs platforms`.
 
 Tagging `cli-v*` builds five standalone binaries (+ SHA256SUMS) and attaches
 them to the GitHub release; npm publish runs when the `NPM_TOKEN` secret is
-configured. Package bundles the engine + SoT, so npm releases are versioned
-config snapshots.
+configured. Package bundles the CLI + SoT, so npm releases are versioned config
+snapshots.
 
 ## Deeper docs
 

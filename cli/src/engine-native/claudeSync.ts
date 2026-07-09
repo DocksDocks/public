@@ -1,8 +1,7 @@
 /**
- * Port of lib/claude.sh — the `sync claude` pipeline. Step order matches
- * claude::sync exactly (rtk BEFORE the settings merge; modifiers after it;
- * removals before plugins). Message strings, guard order, jq semantics, and
- * spawned argv are byte-exact.
+ * EngineNative `sync claude` pipeline. Step order is load-bearing: rtk BEFORE
+ * the settings merge, modifiers after it, removals before plugins. Message
+ * strings, guard order, JSON semantics, and spawned argv are golden-tested.
  */
 import { spawnSync } from "node:child_process"
 import {
@@ -62,7 +61,7 @@ export function claudeSync(ctx: Ctx): void {
 
 // ------------------------------------------------------------------ rtk ----
 
-/** claude::_rtk_install — toolchain::ensure callback. */
+/** RTK toolchain install callback. */
 export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string) => number {
   return (mode, version) => {
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"

@@ -1,13 +1,10 @@
 /**
- * Port of the lib/common.sh flag layer: common::parse_args / usage /
- * select_target / parse_compact_window / add_claude_plugin /
- * validate_model_flags / preflight. Messages and exit codes are byte-exact.
- *
- * Mirrors bash control flow via ExitError (bash `exit N` inside parsing) —
- * caught once in runEngineNative.
+ * EngineNative flag layer: usage / target selection / compact-window parsing /
+ * optional-plugin parsing / model validation / preflight. ExitError mirrors an
+ * early parser exit and is caught once in runEngineNative.
  */
 
-import { commandExists, p } from "./exec"
+import { commandExists } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { echo, err, warn } from "./output"
@@ -21,7 +18,7 @@ export class ExitError extends Error {
 const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
 
 function usage(ctx: Ctx): void {
-  const argv0 = p(ctx.repoDir, "lib", "engine.sh")
+  const argv0 = "docks-kit sync"
   echo(`Usage: ${argv0} [claude] [codex] [agents] [flags]`)
   echo("")
   echo("Targets (positional; default: all three)")

@@ -1,8 +1,8 @@
 /**
  * jq-semantics primitives for EngineNative.
  *
- * The bash engine's JSON mutations all go through jq, so byte-parity means
- * reproducing three jq behaviors exactly:
+ * Some deployed JSON contracts were defined by jq behavior, so EngineNative
+ * reproduces three jq behaviors exactly:
  *   - `*` (recursive object merge): right side wins; objects merge
  *     recursively; arrays and scalars are REPLACED, never concatenated;
  *     merged key order = left object's order, then right-only keys appended.

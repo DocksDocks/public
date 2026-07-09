@@ -21,10 +21,10 @@ docks-kit sync
 bunx docks-kit status
 ```
 
-The npm package bundles the engine (`lib/*.sh`) and the SoT — releases are
-versioned config snapshots. Kit-home resolution: `DOCKS_KIT_HOME` env →
-nearest ancestor directory containing `SoT/` (a checkout wins over the
-bundled copy) → the package's own bundled SoT.
+The npm package bundles the CLI and the SoT — releases are versioned config
+snapshots. Kit-home resolution: `DOCKS_KIT_HOME` env → nearest ancestor
+directory containing `SoT/` + `package.json` (a checkout wins over the bundled
+copy) → the package's own bundled SoT.
 
 ## 3. curl installer (Unix-only)
 
@@ -69,20 +69,15 @@ updates the checkout and tells you to rebuild/download the binary.
 Every `docks-kit sync` also does a best-effort behind-upstream check and
 nudges when the checkout is stale (silent offline / detached / no git).
 
-## Zero-dependency escape hatch
+## No-Bun recovery
 
-No Bun, no binary, constrained sandbox:
-
-```
-bash lib/engine.sh sync [targets] [flags]
-bash lib/engine.sh model claude opus
-bash lib/engine.sh toolchain check
-```
-
-Requires only bash + jq (+ curl for installers).
+No Bun or constrained sandbox: download the platform release binary from GitHub
+Releases and run it from inside a kit checkout, or set `DOCKS_KIT_HOME` to the
+checkout containing `SoT/`.
 
 ## Prerequisites
 
-- bash, jq, curl (hard requirements — preflight checks them)
+- jq and curl (sync preflight checks them for the deployed assets and installers)
+- Bun for source/global installs; release binaries embed the runtime
 - Node/npm for npm-global tools (agent-browser, LSP servers)
 - See `docks-kit toolchain check` for the full picture on this machine

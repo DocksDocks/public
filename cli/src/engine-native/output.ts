@@ -1,6 +1,6 @@
 /**
- * Byte-exact ports of lib/common.sh log/warn/err and the dry-run echo.
- * Prefixes go to stderr with the same ANSI codes; dry-run lines to stdout.
+ * Shared log/warn/err and dry-run emitters. Prefixes go to stderr with stable
+ * ANSI codes; dry-run lines go to stdout.
  */
 
 export function log(msg: string): void {

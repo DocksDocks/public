@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit-verified model catalog — single source for the engine validators (lib/common.sh), the docks-kit CLI (models/model commands, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. The catalog informs, it doesn't imprison: well-formed IDs outside it (claude-* / codex charset) apply with a warning.",
+  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. The catalog informs, it doesn't imprison: well-formed IDs outside it (claude-* / codex charset) apply with a warning.",
   "claude": {
     "verified": "2026-07-08",
     "models": [

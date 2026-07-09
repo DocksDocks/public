@@ -1,7 +1,6 @@
 /**
- * Port of the model-catalog helpers in lib/common.sh
- * (common::_models_from_manifest / print_models / _validate_claude_model /
- * _validate_codex_model). Message strings are byte-exact.
+ * Model-catalog helpers: manifest listing plus Claude/Codex model validation.
+ * Message strings are covered by the golden suites.
  */
 import { p } from "./exec"
 import { readFileSync } from "node:fs"

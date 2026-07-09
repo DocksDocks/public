@@ -1,18 +1,16 @@
 /**
- * Child-process + PATH primitives. Parity rule: every external probe spawns
- * the SAME binary with the SAME argv as the bash engine (the mutation
- * harness diffs recorded argv), and capture() mirrors `$(...)`: stdout with
- * trailing newlines stripped, empty on failure.
+ * Child-process + PATH primitives. Golden rule: every external probe spawns
+ * the intended binary with deterministic argv, and capture() mirrors command
+ * substitution: stdout with trailing newlines stripped, empty on failure.
  */
 import { spawnSync } from "node:child_process"
 import { accessSync, constants, existsSync, statSync } from "node:fs"
 import { delimiter, join } from "node:path"
 
 /**
- * Engine paths are built with "/" like bash string concatenation — they
- * appear verbatim in output (dry-run lines, warns), where node:path.join
- * would print "\" on Windows and break byte parity. fs accepts "/" on
- * every platform.
+ * Engine paths are built with "/" because they appear verbatim in output
+ * (dry-run lines, warns), where node:path.join would print "\" on Windows
+ * and break the golden contract. fs accepts "/" on every platform.
  */
 export function p(...parts: Array<string>): string {
   return parts.join("/")

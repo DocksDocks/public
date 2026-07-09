@@ -1,9 +1,8 @@
 /**
- * Port of codex::_replace_top_level_setting + codex::sync_model
- * (lib/codex.sh). The awk pass is line-based on purpose — a TOML library
- * would reformat user configs and break parity; this port replicates the awk
- * program record-for-record, including its quirks (the key is used as a raw
- * regex fragment, exactly like awk's `"^" key "[[:space:]]*="`).
+ * Top-level Codex TOML setting replacement plus `--codex-model`. The pass is
+ * line-based on purpose: a TOML library would reformat user configs and break
+ * the golden contract. The key is used as a raw regex fragment, preserving the
+ * historical record-oriented behavior.
  */
 import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
