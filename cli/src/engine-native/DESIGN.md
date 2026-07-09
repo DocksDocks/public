@@ -37,6 +37,58 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
 - **Backups precede mutation.** Deployed settings/config files write `.bak`
   backups before replacement.
 
+## Output Policy (log UX contract)
+
+The default run reads like a change report: only actual changes, actionable
+warnings, and the summary. Status-quo confirmations exist but are opt-in.
+(Rationale + full call-site audit: `docs/plans/active/cli-log-ux-overhaul.md`.)
+
+### Channels and levels
+
+| Emitter | Channel | Default | `--verbose` | Prefix / form |
+|---|---|---|---|---|
+| `error(msg)` | stderr | shown | shown | `[err]` red (`\x1b[1;31m`) |
+| `warn(msg)` | stderr | shown | shown | `[warn]` yellow (`\x1b[1;33m`) |
+| `change(msg)` | stderr | shown | shown | `[ok]` green (`\x1b[1;32m`) — ONLY after an operation actually mutated |
+| `verbose(msg)` | stderr | hidden | shown | `[ok]` green — no-op confirmations ("already …", "present", "up to date", "left as-is"), skips |
+| `data(line)` | stdout | shown | shown | bare — dry-run report lines, `status --json`, summary block, usage text |
+
+- stdout is data, stderr is logs — the logger NEVER writes to stdout
+  (`engineCapture` depends on it).
+- **Dry-run is a complete inspection report**: `[dry-run]` lines are `data`,
+  printed unfiltered at every verbosity.
+- Prefixes and ANSI codes are stable golden surface; the level controls
+  visibility, not the prefix.
+
+### Change detection
+
+Every mutating operation reports `changed: boolean`. A changed outcome logs
+via `change`; an unchanged outcome logs via `verbose`. Operations that today
+rewrite deployed files unconditionally may skip a provably-identical rewrite —
+each such skip is an intentional behavior change named in its golden diff.
+
+### Missing dependencies
+
+Exactly one deduplicated warn per missing tool per run, uniform shape:
+`[warn] <tool> not installed — <platform-correct install command>`, sourced
+from the dependency registry (`deps.ts`). Required tools keep their current
+exit behavior — the error carries the same install hint.
+
+### Summary and next steps
+
+The `--- Sync complete ---` block (stdout, `data`) prints on every run,
+including dry-run, with the per-target inventory lines (`Claude:`/`Hooks:`/
+`RTK:`/`Plugins:`/`Codex:`/`Skills:`). Next-step advice lines print only when
+their trigger changed this run (plugins changed → `/reload-plugins` line;
+hooks/env changed → restart line; skills changed → discovery line) or under
+`--verbose`.
+
+### Verbosity plumbing
+
+`--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands;
+`DOCKS_KIT_VERBOSE=1` selects it on the harness-private raw channel (same
+`${VAR:-default}` contract as the other `Ctx` env globals).
+
 ## Module Map
 
 | Module | Owns |
