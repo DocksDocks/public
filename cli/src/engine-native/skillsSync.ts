@@ -8,10 +8,9 @@ import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { capture, commandExists, isExecutable, p, which, writeFileIfChanged } from "./exec"
-import { isLinux, isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
-import { change as leafChange, verbose as leafVerbose, warn as leafWarn } from "./logger"
+import type { EngineServices, Platform } from "./services"
 import { ensure, field } from "./toolchain"
 
 export interface SkillsState {
@@ -161,7 +160,7 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
   }
 
   mkdirSync(claudeSkillsDir, { recursive: true })
-  return linkOrCopy(relTarget, claudeLink)
+  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services)
 }
 
 function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
@@ -206,10 +205,10 @@ function removeLink(path: string): boolean {
 }
 
 /** skills::_link_or_copy — real symlink preferred, copy fallback (Windows). */
-export function linkOrCopy(target: string, link: string): boolean {
+export function linkOrCopy(target: string, link: string, platform: Platform): boolean {
   removeLink(link)
   try {
-    symlinkSync(target, link, isWindows() ? "dir" : undefined)
+    symlinkSync(target, link, platform.isWindows() ? "dir" : undefined)
   } catch {
     // fall through to the copy fallback below
   }
@@ -221,39 +220,45 @@ export function linkOrCopy(target: string, link: string): boolean {
   } catch {
     // fall through to the existence check below
   }
-  if (existsSync(link)) {
-    leafWarn(`symlinks unsupported here — ${link} is a copy (refreshed on sync; enable Windows Developer Mode for real links)`)
-    return true
+  return existsSync(link)
+}
+
+function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): boolean {
+  const linked = linkOrCopy(target, link, services.platform)
+  if (!linked) {
+    services.logger.warn(`could not create ${link} (symlink and copy both failed)`)
+  } else if (lstat(link)?.isSymbolicLink() !== true) {
+    services.logger.warn(`symlinks unsupported here — ${link} is a copy (refreshed on sync; enable Windows Developer Mode for real links)`)
   }
-  leafWarn(`could not create ${link} (symlink and copy both failed)`)
-  return false
+  return linked
 }
 
 // ------------------------------------------------- toolchain callbacks ----
 
 /** skills::_agent_browser_install. */
-export function agentBrowserInstall(mode: "install" | "upgrade", version: string): number {
+export function agentBrowserInstall(mode: "install" | "upgrade", version: string, services: EngineServices): number {
+  const { change, verbose, warn } = services.logger
   const verb = mode === "upgrade" ? "Upgrading" : "Installing"
   const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
-  const installFlags = isLinux() ? ["--with-deps"] : []
+  const installFlags = services.platform.isLinux() ? ["--with-deps"] : []
 
-  leafVerbose(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
+  verbose(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
   if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
-    leafWarn(`npm install -g ${pkg} failed. Try manually: npm install -g ${pkg}`)
+    warn(`npm install -g ${pkg} failed. Try manually: npm install -g ${pkg}`)
     return 1
   }
 
   if (mode === "install") {
-    leafWarn("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
+    warn("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
     if (spawnSync("agent-browser", ["install", ...installFlags], { stdio: "inherit" }).status !== 0) {
-      leafWarn(`agent-browser install failed. Re-run manually: agent-browser install ${installFlags.join(" ")}`)
+      warn(`agent-browser install failed. Re-run manually: agent-browser install ${installFlags.join(" ")}`)
       return 1
     }
   }
   const out = capture("agent-browser", ["--version"])
   const fields = (out.split("\n")[0] ?? "").trim().split(/[ \t]+/)
   const version2 = out !== "" ? fields[fields.length - 1] ?? "version unknown" : "version unknown"
-  leafChange(`agent-browser CLI ready (${version2})`)
+  change(`agent-browser CLI ready (${version2})`)
   return 0
 }
 
@@ -283,16 +288,17 @@ function findBun(ctx: Ctx): string {
 }
 
 /** skills::_bun_bootstrap — bun path or "" after a failed bootstrap. */
-export function bunBootstrap(ctx: Ctx): string {
+export function bunBootstrap(ctx: Ctx, services: EngineServices): string {
+  const { change, warn } = services.logger
   let bun = findBun(ctx)
   if (bun !== "") return bun
 
   if (!commandExists("curl")) {
-    leafWarn("Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync.")
+    warn("Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync.")
     return ""
   }
   const pin = field(ctx, "bun", "verified")
-  leafWarn(`Bun not found — installing Bun${pin !== "" ? ` ${pin} (kit-verified)` : ""}...`)
+  warn(`Bun not found — installing Bun${pin !== "" ? ` ${pin} (kit-verified)` : ""}...`)
   const installer = p(tmpdir(), `bun-install-${process.pid}.sh`)
   const dl = spawnSync("curl", ["-fsSL", "https://bun.sh/install", "-o", installer], { stdio: "ignore" })
   if (dl.error === undefined && dl.status === 0) {
@@ -301,26 +307,29 @@ export function bunBootstrap(ctx: Ctx): string {
   rmSync(installer, { force: true })
   bun = findBun(ctx)
   if (bun === "") {
-    leafWarn("Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh")
+    warn("Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh")
     return ""
   }
   const v = capture(bun, ["--version"])
-  leafChange(`Bun installed (${v !== "" ? v : "version unknown"})`)
+  change(`Bun installed (${v !== "" ? v : "version unknown"})`)
   return bun
 }
 
 /** skills::_effect_solutions_install. */
-export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string) => number {
-  return (mode, version) => {
+export function effectSolutionsInstall(
+  ctx: Ctx
+): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
+  return (mode, version, services) => {
+    const { change, verbose, warn } = services.logger
     const verb = mode === "upgrade" ? "Upgrading" : "Installing"
     const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
 
-    const bun = bunBootstrap(ctx)
+    const bun = bunBootstrap(ctx, services)
     if (bun === "") return 1
 
-    leafVerbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
+    verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
     if (spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" }).status !== 0) {
-      leafWarn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
+      warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
       return 1
     }
 
@@ -328,19 +337,19 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     // win32: bun writes an .exe shim (not the bare Unix name), and the
     // ~/.local/bin link step below is Unix-only plumbing (non-interactive
     // agent PATH) — bun's global bin is already the Windows PATH entry.
-    if (isWindows()) {
+    if (services.platform.isWindows()) {
       const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
-      if (found) leafChange(`effect-solutions CLI ready (${gbin})`)
-      else leafWarn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
+      if (found) change(`effect-solutions CLI ready (${gbin})`)
+      else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
       return 0
     }
     if (gbin !== "" && isExecutable(p(gbin, "effect-solutions"))) {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
-      linkOrCopy(bun, p(ctx.home, ".local", "bin", "bun"))
-      linkOrCopy(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"))
-      leafChange("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
+      linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)
+      linkOrCopyWithWarnings(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"), services)
+      change("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
     } else {
-      leafWarn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)
+      warn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)
     }
     return 0
   }

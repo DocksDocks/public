@@ -131,7 +131,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
       return ensure(ctx, "rtk", rtkInstall(ctx))
     case "bun":
       // skills::_bun_bootstrap >/dev/null — the found-bun stdout is discarded.
-      return bunBootstrap(ctx) !== "" ? 0 : 1
+      return bunBootstrap(ctx, ctx.services) !== "" ? 0 : 1
     case "effect-solutions":
       return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
     case "agent-browser":

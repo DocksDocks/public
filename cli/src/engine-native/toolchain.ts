@@ -7,8 +7,9 @@ import { readFileSync, readSync } from "node:fs"
 import { capture, commandExists, isExecutable, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
+import type { EngineServices } from "./services"
 
-type InstallFn = (mode: "install" | "upgrade", version: string) => number
+type InstallFn = (mode: "install" | "upgrade", version: string, services: EngineServices) => number
 
 function manifest(ctx: Ctx): { [k: string]: Json } {
   const doc = parseJson(readFileSync(p(ctx.repoDir, "SoT", "toolchain.json"), "utf8"))
@@ -181,7 +182,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
       if (!g.proceed) return 0
       target = g.target
     }
-    return installFn("install", target !== "" ? target : latest)
+    return installFn("install", target !== "" ? target : latest, ctx.services)
   }
 
   const installed = installedVersion(ctx, tool)
@@ -213,7 +214,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
     }
     const g = gate(ctx, tool, "upgrade", latest)
     if (!g.proceed) return 0
-    return installFn("upgrade", g.target !== "" ? g.target : latest)
+    return installFn("upgrade", g.target !== "" ? g.target : latest, ctx.services)
   }
 
   if (ctx.dryRun) {

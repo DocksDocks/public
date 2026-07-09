@@ -20,7 +20,7 @@ import { syncClaudeModel } from "./claudeModel"
 import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { change as leafChange, err as leafErr, verbose as leafVerbose, warn as leafWarn } from "./logger"
+import type { EngineServices } from "./services"
 import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
@@ -56,12 +56,13 @@ export function claudeSync(ctx: Ctx): void {
 // ------------------------------------------------------------------ rtk ----
 
 /** RTK toolchain install callback. */
-export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string) => number {
-  return (mode, version) => {
+export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
+  return (mode, version, services) => {
+    const { change, err, verbose, warn } = services.logger
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
 
-    if (mode === "upgrade") leafVerbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
-    else leafWarn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
+    if (mode === "upgrade") verbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
+    else warn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
     const installer = p(tmpdir(), `rtk-install-${process.pid}.sh`)
     const dl = spawnSync("curl", ["-fsSL", `https://raw.githubusercontent.com/rtk-ai/rtk/${installerRef}/install.sh`, "-o", installer], {
       stdio: "inherit"
@@ -76,10 +77,10 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
     process.env["PATH"] = `${ctx.home}/.local/bin:${ctx.home}/.cargo/bin:${process.env["PATH"] ?? ""}`
     if (commandExists("rtk")) {
       const v = capture("rtk", ["--version"])
-      leafChange(`RTK ready (${v !== "" ? v : "version unknown"})`)
+      change(`RTK ready (${v !== "" ? v : "version unknown"})`)
       return 0
     }
-    leafErr("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
+    err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
     return 1
   }
 }
