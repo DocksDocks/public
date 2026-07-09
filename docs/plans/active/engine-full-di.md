@@ -3,7 +3,7 @@ title: Full engine-internal DI — route all emissions and probes through ctx.se
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
 status: planned
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T19:20:00-03:00"
+updated: "2026-07-09T19:26:00-03:00"
 started_at: null
 assignee: null
 tags: [cli, effect, solid, di, follow-up]
@@ -58,7 +58,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 | 2 | **Run-scoped Logger + services**: factory builds the Logger per run from `ctx.verbose`; migrate ctx-reachable emitter call sites to `ctx.services.logger`; `setVerbose` still exists for the leaves. Gate: typecheck + unit + BOTH golden suites byte-identical + both prove-red legs red before the next slice; any diff reverts the slice. | 1 | planned |
 | 3 | **Leaf callbacks**: change `InstallFn` and `linkOrCopy` signatures per Interfaces; migrate `rtkInstall`/`agentBrowserInstall`/`effectSolutionsInstall`/`bunBootstrap` emitters + platform picks to the passed services; update every `ensure(...)` caller. Same gate as Step 2. | 2 | planned |
 | 4 | **Zero-import cleanup**: delete `setVerbose`, the module `verboseFlag`, and the module-level logger bindings once `rg 'from "./logger"' cli/src/engine-native --include='*.ts'` matches only `services.ts`. Same gate. | 3 | planned |
-| 5 | **DependencyManager consolidation**: per-spec resolvers + injectable probe executor; route `toolchain.ts` `present`/`installedVersion` and sync-module `commandExists`/`capture` presence decisions through `ctx.services.deps`; dedup set + logger become per-manager (per run). Registry membership per the answered open question below. Same gate. | 2 | planned |
+| 5 | **DependencyManager consolidation**: per-spec resolvers + injectable probe executor; route `toolchain.ts` `present`/`installedVersion` and sync-module `commandExists`/`capture` presence decisions through `ctx.services.deps`; dedup set + logger become per-manager (per run). Registry membership DECIDED (user via picker, 2026-07-09): Chrome-for-Testing, the LSP binaries, and ffplay come INTO the registry via per-spec custom resolvers over the injectable probe executor — uniform hint-bearing dedup'd warns for every tool the engine touches; no PATH-tools-only exemption row. Same gate. | 2 | planned |
 | 6 | **Integration test (isolated)**: in-process `runEngineNative(argv, stubServices)` under a temp `HOME` + temp `AGENTS_DIR`, stub-only `PATH`, dry-run or fixture-mutation argv only, serial execution, `finally` restoration of env + stream spies. Canonical case: the original codex reproduction (custom logger captures everything, real stderr stays empty). Branch matrix: parse error, `sync --dry-run`, missing-dep warn, `model claude` get, toolchain gate decline — each with expected logger-record sequence and a zero-bypass assertion on real stdout/stderr. Two-run dedup case: same manager graph per run → one captured warn per run; three-run verbosity case: non-verbose → verbose → non-verbose, no leakage. | 4, 5 | planned |
 
 ## Acceptance criteria
@@ -75,19 +75,12 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 - New log levels; Effect generators inside engine internals; changes to golden case sets.
 - `exec.ts` PATH/X_OK primitives stay the platform-seam exemption (DESIGN.md).
 
-## Open questions
-
-- id: chrome-lsp-registry-boundary (choice)
-  Chrome-for-Testing and the LSP binaries are kit-INSTALLED artifacts, not PATH tools; ffplay is manifest-checked. Should Step 5 bring them into the DependencyManager registry (custom resolvers; hints; dedup'd warns) or keep them outside behind a documented exemption row (current parent-plan boundary)?
-  - option: Bring them in with per-spec resolvers (uniform warns everywhere) (recommended)
-  - option: Keep them exempted; registry stays PATH-tools-only
-
 ## Cold-handoff checklist
 
 - File manifest: `affected_paths` above; the parent plan (`docs/plans/finished/2026-07-09-cli-log-ux-overhaul.md`) carries the 251-row emitter audit and the Output Policy contract lives in `cli/src/engine-native/DESIGN.md` (update its Module Map + Verbosity plumbing sections in Step 4).
 - Environment & commands: Bun, repo root — the five verification commands with expected outputs are enumerated verbatim in the last acceptance criterion (run each separately; the brace-expansion shorthand `golden-{dryrun,mutation}` is NOT a valid single invocation).
 - Contracts: Interfaces & data shapes above; goldens are the behavior spec.
-- Decision rationale: run-scoped verbosity/dedup and leaf-first ordering come from the 2026-07-09 draft review (see Self-review); the models.ts channel fix is the parent plan's recorded pre-existing follow-up.
+- Decision rationale: run-scoped verbosity/dedup and leaf-first ordering come from the 2026-07-09 draft review (see Self-review); the models.ts channel fix is the parent plan's recorded pre-existing follow-up; the Chrome/LSP/ffplay registry inclusion is a user decision via picker (2026-07-09), resolving draft-review finding 13.
 - Known gotcha: `engineCapture` re-spawns a child over native-raw — injected services do not cross the process boundary; the child builds its own from the factory. Golden runs spawn the engine as a child, so module-global deletion cannot be detected by goldens alone — the Step-6 in-process suite is the real check.
 
 ## Self-review
