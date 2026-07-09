@@ -6,7 +6,7 @@ import { p } from "./exec"
 import { readFileSync } from "node:fs"
 
 import { isObject, parseJson, type Json } from "./jq"
-import { warn } from "./logger"
+import { echo, warn } from "./logger"
 
 function catalog(repoDir: string): Json | undefined {
   try {
@@ -49,7 +49,7 @@ export function printModels(repoDir: string, tool: string): void {
   }
   if (tool === "claude") lines.push("  (full claude-* model IDs outside the catalog are accepted with a warning)")
   if (tool === "codex") lines.push("  (well-formed IDs outside the catalog are accepted with a warning)")
-  process.stderr.write(`${lines.join("\n")}\n`)
+  for (const line of lines) echo(line)
 }
 
 export function validateClaudeModel(repoDir: string, m: string): boolean {

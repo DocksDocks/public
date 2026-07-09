@@ -222,6 +222,16 @@ function channelInvariantProblems(): Array<string> {
     problems.push("  channel: expected git warn missing from stderr (git-masked sync claude)")
   }
 
+  // Model catalog rows are stdout data, not logs. Pin this separately from
+  // merged goldens, which cannot distinguish the two channels.
+  const modelSplit = runEngineSplit("native", ["model", "claude"], "home-drift", defaultStubs)
+  if (!modelSplit.stdout.includes("Available claude models")) {
+    problems.push("  channel: model catalog missing from stdout (model claude)")
+  }
+  if (modelSplit.stderr.includes("Available claude models")) {
+    problems.push("  channel: model catalog leaked to stderr (model claude)")
+  }
+
   const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs, { env: { DOCKS_KIT_VERBOSE: "1" } })
   if (status.exitCode !== 0) {
     problems.push(`  channel: status --json exited ${status.exitCode} (stderr: ${status.stderr.slice(0, 200)})`)
@@ -283,6 +293,7 @@ function channelInvariantProblems(): Array<string> {
 
   rmSync(syncSplit.home, { recursive: true, force: true })
   rmSync(warnSplit.home, { recursive: true, force: true })
+  rmSync(modelSplit.home, { recursive: true, force: true })
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
   rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home

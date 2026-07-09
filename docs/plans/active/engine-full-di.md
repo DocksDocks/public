@@ -3,7 +3,7 @@ title: Full engine-internal DI — route all emissions and probes through ctx.se
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
 status: ongoing
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T19:13:26-03:00"
+updated: "2026-07-09T19:27:12-03:00"
 started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
@@ -24,6 +24,9 @@ affected_paths:
   - cli/src/engine-native/exec.ts
   - cli/src/engine-native/DESIGN.md
   - cli/test/unit/
+  - cli/test/golden-dryrun.ts
+  - cli/test/golden-mutation.ts
+  - cli/test/goldens/dryrun.json
 related_plans: [cli-log-ux-overhaul]
 review_status: null
 planned_at_commit: 8b80824a04a62d24de7b3b8ce37c285ee5ae1260
@@ -54,7 +57,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 | # | Task | Depends | Status |
 |---|---|---|---|
-| 1 | **Emission inventory + contract**: enumerate every emitter in `cli/src/engine-native/` — logger imports AND `process.stdout.write`/`process.stderr.write`/`console.*` (`rg` both patterns) — into a table (site, class, route-or-exempt). Route `models.ts:52` to the data channel (stdout via logger.echo — fixes the recorded pre-existing channel bug; this is the ONE permitted output change, named here) and `toolchain.ts:110,141` through the logger; document any TTY-prompt exemption with a test. Done-condition: the inventory table is in this plan's Notes and every row is routed or exempted. | — | planned |
+| 1 | **Emission inventory + contract**: enumerate every emitter in `cli/src/engine-native/` — logger imports AND `process.stdout.write`/`process.stderr.write`/`console.*` (`rg` both patterns) — into a table (site, class, route-or-exempt). Route `models.ts:52` to the data channel (stdout via logger.echo — fixes the recorded pre-existing channel bug; this is the ONE permitted output change, named here) and `toolchain.ts:110,141` through the logger; document any TTY-prompt exemption with a test. Done-condition: the inventory table is in this plan's Notes and every row is routed or exempted. | — | done |
 | 2 | **Run-scoped Logger + services**: factory builds the Logger per run from `ctx.verbose`; migrate ctx-reachable emitter call sites to `ctx.services.logger`; `setVerbose` still exists for the leaves. Gate: typecheck + unit + BOTH golden suites byte-identical + both prove-red legs red before the next slice; any diff reverts the slice. | 1 | planned |
 | 3 | **Leaf callbacks**: change `InstallFn` and `linkOrCopy` signatures per Interfaces; migrate `rtkInstall`/`agentBrowserInstall`/`effectSolutionsInstall`/`bunBootstrap` emitters + platform picks to the passed services; update every `ensure(...)` caller. Same gate as Step 2. | 2 | planned |
 | 4 | **Zero-import cleanup**: delete `setVerbose`, the module `verboseFlag`, and the module-level logger bindings once `rg 'from "./logger"' cli/src/engine-native --include='*.ts'` matches only `services.ts`. Same gate. | 3 | planned |
@@ -91,6 +94,30 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 ## Notes
 
 - RESOLVED (2026-07-09, orchestrator decision — implementation detail within the user-approved models.ts channel-fix scope): both halves. Step 1 is AUTHORIZED to add exactly one catalog-printing golden case — MATRIX row `{ fixture: "home-drift", cmd: ["model", "claude"] }` (valueless get prints deployed/SoT + catalog) — recorded in the same slice as the channel fix via the one permitted `--update-goldens` run; enumerate it in the commit as the additive label. AND add a split-channel invariant leg (`runEngineSplit(["model", "claude"], ...)`) asserting `Available claude models` lines land on stdout and none on stderr — that assertion, not the merged golden, is what pins the channel fix. The Out-of-scope golden-case-set freeze gets this single named carve-out; blocker raised by the implementer (gpt-5.6-sol) in commit 6d38fb3.
+
+### Step 1 emission inventory
+
+| Site found by inventory | Class | Route or exemption |
+|---|---|---|
+| `parseArgs.ts` logger import | usage + parser diagnostics | Route through `ctx.services.logger` in Step 2. |
+| `claudeModel.ts` logger import | model modifier data/change/warn/error/no-op | Route through `ctx.services.logger` in Step 2. |
+| `modes.ts` logger import | model/toolchain data/warn/error | Route through `ctx.services.logger` in Step 2. |
+| `services.ts` logger import | service construction | Retain as the sole logger import after Step 4. |
+| `index.ts` logger import | sync summary + next-step data | Route through `ctx.services.logger` in Step 2. |
+| `deps.ts` logger import | deduplicated missing-tool warning | Route through the manager-owned logger in Step 5. |
+| `codexToml.ts` logger import | Codex model data/change/warn/no-op | Route through `ctx.services.logger` in Step 2. |
+| `toolchain.ts` logger import | report/gate/install data/warn/no-op | Route through `ctx.services.logger` in Step 2. |
+| `claudeSync.ts` logger import | Claude sync data/change/warn/error/no-op | Route ctx-reachable calls in Step 2 and leaf callbacks in Step 3. |
+| `models.ts` logger import | catalog data + validation warnings | Route through the caller's `ctx.services.logger` in Step 2. |
+| `skillsSync.ts` logger import | skill sync data/change/warn/no-op | Route ctx-reachable calls in Step 2 and leaf callbacks in Step 3. |
+| `codexSync.ts` logger import | Codex sync data/change/warn/error/no-op | Route through `ctx.services.logger` in Step 2. |
+| `models.ts` catalog direct stderr write | model-catalog data | Routed in Step 1 through `logger.echo`; the split-channel invariant pins stdout-only delivery. |
+| `toolchain.ts` prompt warning direct stderr write | warning | Routed in Step 1 through `ctx.services.logger.warn`; bytes stay identical. |
+| `toolchain.ts` prompt text direct stderr write | interactive TTY prompt | Exempt: the prompt is raw stderr with no prefix or newline, which the line-oriented Logger cannot represent. `toolchain.test.ts` pins the exact bytes and CR-trimmed answer. |
+| `logger.ts` default stderr sink | logger implementation | Exempt: terminal sink owned by `makeLogger`. |
+| `logger.ts` default stdout sink | logger implementation | Exempt: terminal sink owned by `makeLogger`. |
+
+- **2026-07-09T19:27:12-03:00 — Step 1 done:** routed the model catalog to stdout, routed the interactive gate warning through the injected logger, pinned the raw prompt exemption, and added the split-channel model invariant. The one permitted `--update-goldens` run added only `fixture=home-drift cmd=model claude` (9 inserted JSON lines, no existing-case changes), so dry-run coverage intentionally moved from 21 to 22 cases. The three explicitly authorized golden paths were added to `affected_paths` because the resolved handoff required them but the frontmatter omitted them. Gates: typecheck exit 0; Vitest 20/20; dry-run 22/22; mutation 47/47; dry-run prove-red exit 1 with `prove-red OK` (22 mismatches); mutation prove-red exit 1 with `prove-red OK` (47 mismatches).
 
 ## Review
 

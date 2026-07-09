@@ -106,14 +106,18 @@ export function latestVersion(tool: string): string {
 }
 
 /** Blocking TTY prompt matching bash `read -r -p` (prompt on stderr). */
-function promptLine(prompt: string): string {
-  process.stderr.write(prompt)
+export function promptLine(
+  prompt: string,
+  write: (chunk: string) => void = (chunk) => void process.stderr.write(chunk),
+  readByte: (buffer: Buffer) => number = (buffer) => readSync(0, buffer, 0, 1, null)
+): string {
+  write(prompt)
   const buf = Buffer.alloc(1)
   let line = ""
   for (;;) {
     let n: number
     try {
-      n = readSync(0, buf, 0, 1, null)
+      n = readByte(buf)
     } catch {
       break
     }
@@ -138,7 +142,7 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
   }
 
   if (process.stdin.isTTY === true) {
-    process.stderr.write(`\x1b[1;33m[warn]\x1b[0m ${tool} ${latest} is not kit-verified (verified: ${verified}).\n`)
+    ctx.services.logger.warn(`${tool} ${latest} is not kit-verified (verified: ${verified}).`)
     const answer = promptLine(`Install ${tool} ${latest} anyway? [y/N] `)
     if (/^[yY]/.test(answer)) return { proceed: true, target: "" }
   }
