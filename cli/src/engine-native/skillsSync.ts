@@ -288,6 +288,15 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     }
 
     const gbin = capture(bun, ["pm", "-g", "bin"])
+    // win32: bun writes an .exe shim (not the bare Unix name), and the
+    // ~/.local/bin link step below is Unix-only plumbing (non-interactive
+    // agent PATH) — bun's global bin is already the Windows PATH entry.
+    if (process.platform === "win32") {
+      const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
+      if (found) log(`effect-solutions CLI ready (${gbin})`)
+      else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
+      return 0
+    }
     if (gbin !== "" && isExecutable(p(gbin, "effect-solutions"))) {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
       linkOrCopy(bun, p(ctx.home, ".local", "bin", "bun"))
