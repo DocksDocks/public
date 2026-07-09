@@ -21,6 +21,9 @@ AI-assisted dev environment on every machine.
 ## Design rules
 
 - **Idempotent**: every sync step is safe to re-run; no-change syncs are no-ops.
+- **Quiet on no-ops**: by default a re-run prints only real changes, warnings
+  (with a platform-correct install command when a tool is missing), and the
+  summary; `--verbose` / `-v` also prints the no-op confirmations.
 - **Additive by default**: user-only keys/plugins/skills survive a plain sync.
   Reconciliation toward the SoT is explicit: `--reconcile` (settings) and
   `--prune` (plugins/marketplaces/skills).

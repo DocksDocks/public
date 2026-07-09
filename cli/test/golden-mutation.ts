@@ -196,6 +196,19 @@ function channelInvariantProblems(): Array<string> {
     problems.push("  channel: [dry-run] lines leaked to stderr (sync --dry-run)")
   }
 
+  // A warn-emitting run (masked git): warns must land on stderr, never stdout.
+  // The fully-stubbed cases above emit no warns, so without this leg a
+  // stdout-routed warn would pass every channel check.
+  const warnSplit = runEngineSplit("native", ["sync", "claude"], "home-fresh", makeStubDir({ git: null }), {
+    maskTools: ["git"]
+  })
+  if (warnSplit.stdout.includes("[warn]")) {
+    problems.push("  channel: '[warn]' leaked to stdout (git-masked sync claude)")
+  }
+  if (!warnSplit.stderr.includes("git not installed —")) {
+    problems.push("  channel: expected git warn missing from stderr (git-masked sync claude)")
+  }
+
   const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs)
   if (status.exitCode !== 0) {
     problems.push(`  channel: status --json exited ${status.exitCode} (stderr: ${status.stderr.slice(0, 200)})`)
@@ -238,6 +251,7 @@ function channelInvariantProblems(): Array<string> {
   }
 
   rmSync(syncSplit.home, { recursive: true, force: true })
+  rmSync(warnSplit.home, { recursive: true, force: true })
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
   rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home

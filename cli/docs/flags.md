@@ -20,6 +20,7 @@ docks-kit sync claude agents        # two
 | `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, universal skills |
 | `--skip-rtk` | Skip optional tool bootstrap (RTK, bubblewrap) |
 | `--yes` | Auto-accept toolchain above-verified prompts (containers/CI) |
+| `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
 
 ## Per-tool flags
 

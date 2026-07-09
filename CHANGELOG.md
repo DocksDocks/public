@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-09 — log UX overhaul: quiet no-ops, `--verbose`, install hints, service seams
+
+Sync output now follows an explicit Output Policy (`cli/src/engine-native/DESIGN.md`):
+
+- **Quiet on no-ops**: operations detect changed vs unchanged; unchanged outcomes ("already in sync", "up to date", "left as-is") are hidden by default. `--verbose` / `-v` (on `sync`, `model`, `toolchain`; `DOCKS_KIT_VERBOSE=1` on the raw channel) prints them. Real changes, warnings, and errors stay always-visible on stderr; dry-run reports, summaries, and `--json` output stay unfiltered on stdout.
+- **`.bak` files are written only when a file is actually replaced**, not on every run.
+- **Missing tools warn once, with the fix**: exactly one deduplicated `[warn] <tool> not installed — <platform-correct install command>` per run, sourced from a typed dependency registry (`cli/src/engine-native/deps.ts`).
+- **Service seams (SOLID)**: a Logger with injectable sinks (`logger.ts`), a DependencyManager registry (`deps.ts`), and a Platform capability seam (`os.ts` — the single `process.platform` reader) are exposed through Effect `Context.Tag`s + live/test Layers (`cli/src/services.ts`), composed once at `main.ts`.
+- Test harness now captures stdout/stderr separately and enforces the channel contract; goldens gained same-HOME replay, verbose-leg, and missing-git cases (21 dry-run + 46 mutation cases).
+
 ## 2026-07-08 — docks-kit CLI: typed front-end, tool-scoped flags, toolchain floors (sync.sh removed)
 
 The kit's entry point is now **`./docks-kit`** — an Effect-TS CLI (Bun; effect 3.21.4 + @effect/cli 0.75.2 — v3 stable because @effect/cli has no Effect-v4-beta-compatible release) over the unchanged bash engine. `sync.sh` is **deleted** (clean break); the zero-dependency escape hatch is `bash lib/engine.sh <same args>`. All mutation still lives in `lib/*.sh`; the CLI adds typed flags, an interactive model picker, `--json` outputs, shell completions/wizard, and 9 bundled self-documentation topics (`docks-kit docs`).
