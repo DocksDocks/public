@@ -5,7 +5,7 @@
  * and the snapshot write.
  */
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { capture, commandExists, isExecutable, p, which } from "./exec"
 import type { Ctx } from "./index"
@@ -136,11 +136,17 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
   if (linkStat?.isSymbolicLink() === true) {
     const current = safeReadlink(claudeLink)
     if (current === relTarget) return false
+    // win32: `npx skills add` creates absolute symlinks/junctions — any link
+    // that RESOLVES to the canonical dir is healthy, not stale.
+    if (process.platform === "win32" && realpathEquals(claudeLink, canonical)) return false
     if (ctx.dryRun) {
       echo(`[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`)
       return true
     }
-    rmSync(claudeLink, { force: true })
+    if (!removeLink(claudeLink)) {
+      warn(`could not remove stale link ~/.claude/skills/${base} — remove it manually, then re-run sync`)
+      return false
+    }
   } else if (linkStat !== undefined) {
     warn(`~/.claude/skills/${base} exists as a real path (not a symlink) — leaving alone; remove manually if it's stale`)
     return false
@@ -169,9 +175,34 @@ function safeReadlink(path: string): string {
   }
 }
 
+function realpathEquals(a: string, b: string): boolean {
+  try {
+    return realpathSync(a) === realpathSync(b)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Remove a symlink/junction without crashing: Bun's rmSync throws EFAULT on
+ * win32 directory symlinks. unlink handles file symlinks, rmdir handles
+ * dir symlinks/junctions, rmSync is the POSIX catch-all.
+ */
+function removeLink(path: string): boolean {
+  for (const rm of [() => unlinkSync(path), () => rmdirSync(path), () => rmSync(path, { force: true })]) {
+    try {
+      rm()
+      return true
+    } catch {
+      // try the next removal shape
+    }
+  }
+  return lstat(path) === undefined
+}
+
 /** skills::_link_or_copy — real symlink preferred, copy fallback (Windows). */
 export function linkOrCopy(target: string, link: string): boolean {
-  rmSync(link, { force: true })
+  removeLink(link)
   try {
     symlinkSync(target, link, process.platform === "win32" ? "dir" : undefined)
   } catch {
