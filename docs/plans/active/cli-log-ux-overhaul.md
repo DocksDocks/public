@@ -1,9 +1,10 @@
 ---
 title: CLI log UX overhaul — verbosity discipline + Effect services (SOLID)
 goal: Default runs print only actual changes, actionable warnings with install hints, and the summary; operations report changed/unchanged and no-op confirmations move behind --verbose via injected Logger/DependencyManager/Platform services.
-status: ongoing
+status: in_review
 created: "2026-07-09T16:04:45-03:00"
-updated: "2026-07-09T18:45:00-03:00"
+updated: "2026-07-09T18:37:21-03:00"
+in_review_since: "2026-07-09T18:37:21-03:00"
 started_at: "2026-07-09T16:29:36-03:00"
 assignee: null
 tags: [cli, ux, logging, effect, solid]
