@@ -3,7 +3,7 @@ title: EngineNative — TS engine port behind engine.ts; bash frozen; Windows na
 goal: Port the sync engine to TypeScript behind cli/src/engine.ts with dry-run AND mutation parity gates, make it the default on all platforms (Windows included, no Git Bash), and freeze lib/*.sh as the no-Bun escape hatch
 status: finished
 created: "2026-07-08T15:12:05-03:00"
-updated: "2026-07-09T03:07:20-03:00"
+updated: "2026-07-09T03:11:36-03:00"
 started_at: "2026-07-08T16:25:00-03:00"
 assignee: null
 tags: [windows, engine, cli, typescript]
@@ -22,7 +22,7 @@ affected_paths:
   - AGENTS.md
 related_plans: [docks-kit-cli]
 ship_commit: "e186ada85eef44730423b458a6469a5fcb5234ea"
-review_status: null
+review_status: passed
 ---
 
 ## Goal
@@ -221,4 +221,31 @@ deprecation is decided.
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — EngineNative is the default and now sole engine at the
+  `cli/src/engine.ts` seam (`bashEngineRequested()` gates only the explicit
+  `DOCKS_KIT_ENGINE=bash` opt-out, which bails "bash engine removed"); Windows
+  runs native (no Git Bash) with `.exe` + `bun add -g` entrypoints CI-verified
+  and real-machine verified 2026-07-09 (README + `cli/docs/platforms.md`). The
+  original "freeze `lib/*.sh` as the no-Bun escape hatch" clause was superseded
+  mid-flight by the finished `2026-07-08-bash-engine-removal` plan, which
+  deleted `lib/` and turned the bash-parity harnesses into golden-regression
+  suites (recover point: git tag `bash-engine-final`); judged against that
+  documented evolution the goal holds.
+- **Regressions:** none — golden:dryrun 21/21 and golden:mutation 39/39 green,
+  `tsc --noEmit -p cli` exit 0; all per-step commit SHAs in the Steps table
+  resolve and their subjects match the module-by-module port narrative.
+- **CI:** pass — golden-regression (`.github/workflows/parity.yml`): `bun run
+  golden:dryrun` → "golden-dryrun: OK (21 case(s))" (exit 0); `bun run
+  golden:mutation` → "golden-mutation: OK (39 case(s))" (exit 0); typecheck
+  exit 0.
+- **Scope note:** `ship_commit` e186ada is the terminal `chore(release): bump to
+  0.1.5` bump (1 file) — the real work spans the per-step SHAs, so the standard
+  single-commit drift check is n/a here. `affected_paths` lists `lib/`, absent
+  on current main because the successor bash-engine-removal plan removed it (not
+  drift attributable to this plan). Minor: the step-5 prose sub-item lettering
+  (5(b) "claude.json + connector env") does not match commit 6ab58f6's subject
+  ("direct modes — model get/set + toolchain check/ensure"); the Steps-table
+  SHA mapping is authoritative and the overall port is coherent.
+- **Follow-ups:** none — the `engine-bash-deprecation` open question was
+  resolved by the finished `2026-07-08-bash-engine-removal` plan.
+- Filed by: plan-review on 2026-07-09T03:11:36-03:00
