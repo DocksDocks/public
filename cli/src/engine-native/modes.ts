@@ -10,7 +10,6 @@ import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { setVerbose } from "./logger"
 import { rtkInstall } from "./claudeSync"
 import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
@@ -23,7 +22,6 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
     if (arg === "--dry-run") ctx.dryRun = true
     else if (arg === "--verbose") {
       ctx.verbose = true
-      setVerbose(true)
     } else if (arg === "claude" || arg === "codex") tool = arg
     else if (arg.startsWith("-")) {
       err(`Unknown flag for model: ${arg}`)
@@ -110,7 +108,6 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
     if (arg === "--yes") ctx.assumeYes = true
     else if (arg === "--verbose") {
       ctx.verbose = true
-      setVerbose(true)
     }
   }
 

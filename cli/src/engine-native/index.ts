@@ -110,7 +110,18 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
 
 export function runEngineNative(argv: ReadonlyArray<string>, services?: EngineServices): number {
   let ctx!: Ctx
-  const runServices = services ?? makeEngineServices({ isVerbose: () => ctx.verbose })
+  const runServices =
+    services === undefined
+      ? makeEngineServices({ isVerbose: () => ctx.verbose })
+      : {
+          ...services,
+          logger: {
+            ...services.logger,
+            verbose: (msg: string) => {
+              if (ctx.verbose) services.logger.verbose(msg)
+            }
+          }
+        }
   ctx = makeCtx(runServices)
   try {
     switch (argv[0]) {

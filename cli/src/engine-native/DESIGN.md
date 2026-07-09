@@ -101,7 +101,10 @@ tests.
 
 `--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands;
 `DOCKS_KIT_VERBOSE=1` selects it on the harness-private raw channel (same
-`${VAR:-default}` contract as the other `Ctx` env globals).
+`${VAR:-default}` contract as the other `Ctx` env globals). The default
+`runEngineNative` path builds a Logger per run with `isVerbose: () =>
+ctx.verbose`; explicitly injected services are wrapped with the same run gate.
+There is no module-global verbosity flag or active logger binding.
 
 ## Module Map
 
@@ -120,10 +123,10 @@ tests.
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
 | `exec.ts` | path helpers, command probes, capture/spawn wrappers, Windows command resolution, change-detecting write/copy helpers |
-| `logger.ts` | stable stdout/stderr emitters and the verbose gate (`change`/`verbose`/`warn`/`err`/`echo`) |
+| `logger.ts` | Logger shape + stable stdout/stderr sink factory; run-scoped verbosity is wired by `services.ts`/`index.ts` |
 | `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, dedup'd missing-tool warns |
 | `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isWindows`, `isLinux`, shell-rc applicability) |
-| `services.ts` | shared service factory (`makeEngineServices`: Logger + DependencyManager + Platform) — wrapped in Effect Layers at `cli/src/services.ts`, called directly by native-raw and `engineCapture` |
+| `services.ts` | shared service factory (`makeEngineServices`: per-run Logger + DependencyManager + Platform) — wrapped in Effect Layers at `cli/src/services.ts`; native-raw lets `runEngineNative` construct its own run graph |
 
 ## Windows Specifics
 

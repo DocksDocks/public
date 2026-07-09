@@ -46,9 +46,10 @@ describe("engine service layers", () => {
   })
 
   it("combined graph: an injected platform drives the manager's install hints", () => {
-    const win = makeDependencyManager(makePlatform("win32"))
+    const logger = makeEngineServices().logger
+    const win = makeDependencyManager(makePlatform("win32"), logger)
     expect(win.spec("git").installHint()).toBe("winget install Git.Git (then open a new terminal)")
-    const mac = makeDependencyManager(makePlatform("darwin"))
+    const mac = makeDependencyManager(makePlatform("darwin"), logger)
     expect(mac.spec("git").installHint()).toBe("brew install git")
   })
 

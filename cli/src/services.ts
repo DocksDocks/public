@@ -17,7 +17,9 @@ export class DependencyManagerService extends Context.Tag("docks-kit/DependencyM
 
 export class PlatformService extends Context.Tag("docks-kit/Platform")<PlatformService, Platform>() {}
 
-const live = makeEngineServices()
+// EngineNative applies its run-scoped ctx.verbose gate before calling this
+// live logger; keep the underlying sink unfiltered so --verbose can pass.
+const live = makeEngineServices({ isVerbose: () => true })
 
 export const LoggerLive = Layer.succeed(LoggerService, live.logger)
 export const DependencyManagerLive = Layer.succeed(DependencyManagerService, live.deps)

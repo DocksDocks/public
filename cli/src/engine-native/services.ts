@@ -6,8 +6,10 @@
  * path shares one implementation.
  */
 import { DEPENDENCIES, probe, warnMissing, type DependencySpec, type ProbeResult, type ToolId } from "./deps"
-import { change, echo, err, makeLogger, verbose, warn, type Logger, type LoggerSinks } from "./logger"
+import { makeLogger, type Logger, type LoggerSinks } from "./logger"
 import { platformName, rawPlatform, type PlatformName } from "./os"
+
+export type { Logger } from "./logger"
 
 export interface DependencyManager {
   readonly spec: (id: ToolId) => DependencySpec
@@ -44,24 +46,21 @@ export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => (
 })
 
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */
-export const makeDependencyManager = (platform: Platform): DependencyManager => ({
+export const makeDependencyManager = (platform: Platform, logger: Logger): DependencyManager => ({
   spec: (id) => {
     const s = DEPENDENCIES[id]
     return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) }
   },
   probe,
-  warnMissing: (id, context) => warnMissing(id, context, platform.raw())
+  warnMissing: (id, context) => warnMissing(id, context ?? "", platform.raw(), logger)
 })
 
 export const makeEngineServices = (opts?: EngineServiceOptions): EngineServices => {
   const platform = makePlatform()
-  const logger =
-    opts === undefined
-      ? { change, verbose, warn, err, echo }
-      : makeLogger({ ...opts.sinks, isVerbose: opts.isVerbose ?? opts.sinks?.isVerbose ?? (() => false) })
+  const logger = makeLogger({ ...opts?.sinks, isVerbose: opts?.isVerbose ?? opts?.sinks?.isVerbose ?? (() => false) })
   return {
     logger,
-    deps: makeDependencyManager(platform),
+    deps: makeDependencyManager(platform, logger),
     platform
   }
 }

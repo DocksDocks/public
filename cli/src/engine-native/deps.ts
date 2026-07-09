@@ -10,8 +10,8 @@
 import { spawnSync } from "node:child_process"
 
 import { commandExists } from "./exec"
-import { warn } from "./logger"
 import { rawPlatform } from "./os"
+import type { Logger } from "./services"
 
 export type ToolId =
   | "git"
@@ -106,9 +106,9 @@ export function probe(id: ToolId): ProbeResult {
 const warned = new Set<ToolId>()
 
 /** Uniform missing-tool warn: `<tool> not installed — <install command>`. */
-export function warnMissing(id: ToolId, context = "", pf?: NodeJS.Platform): void {
+export function warnMissing(id: ToolId, context: string, pf: NodeJS.Platform | undefined, logger: Logger): void {
   if (warned.has(id)) return
   warned.add(id)
   const suffix = context !== "" ? ` (${context})` : ""
-  warn(`${id} not installed — ${DEPENDENCIES[id].installHint(pf)}${suffix}`)
+  logger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(pf)}${suffix}`)
 }

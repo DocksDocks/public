@@ -7,7 +7,6 @@
 import { commandExists } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { setVerbose } from "./logger"
 
 export class ExitError extends Error {
   constructor(readonly code: number) {
@@ -109,7 +108,6 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         continue
       case "--verbose":
         ctx.verbose = true
-        setVerbose(true)
         continue
       case "--claude-model":
         printModels(ctx, "claude")
