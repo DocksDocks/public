@@ -26,6 +26,8 @@ import {
   parseArgs,
   readArgvLog,
   runEngine,
+  runEngineSplit,
+  runPublicCli,
   snapshotTree,
   stableStringify,
   type TreeSnapshot
@@ -90,6 +92,16 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_OFFLINE }, variant: "npm-offline" }
 ]
 
+/**
+ * Sequential same-HOME replay rows — run the command twice against ONE home
+ * and golden the SECOND run, so repeat-run output (the "already in sync"
+ * surface) is pinned explicitly.
+ */
+const REPLAYS: Array<{ fixture: string; cmd: Array<string> }> = [
+  { fixture: "home-fresh", cmd: ["sync"] },
+  { fixture: "home-drift", cmd: ["sync"] }
+]
+
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
 const TOML_SHAPES = [
   "01-top-level-comments.toml",
@@ -132,6 +144,65 @@ function runCase(
   }
   cleanup([run])
   return golden
+}
+
+function runReplayCase(fixture: string, cmd: ReadonlyArray<string>): MutationCaseGolden {
+  const first = runEngine("native", cmd, fixture, defaultStubs)
+  const second = runEngine("native", cmd, fixture, defaultStubs, { reuseHome: first.home })
+  const golden = {
+    command: [...cmd],
+    exitCode: second.exitCode,
+    tree: snapshotTree(second.home),
+    argvLog: readArgvLog(second),
+    output: second.output
+  }
+  cleanup([second]) // first.home === second.home
+  return golden
+}
+
+/**
+ * Channel-purity invariants (stdout = data, stderr = logs). The ordered
+ * goldens above merge channels via 2>&1 and cannot see a violation; these
+ * split runs can. Not golden-compared — asserted directly, like the TOML
+ * invariants.
+ */
+function channelInvariantProblems(): Array<string> {
+  const problems: Array<string> = []
+  const logPrefixes = ["[ok]", "[warn]", "[err]"]
+
+  const syncSplit = runEngineSplit("native", ["sync", "claude"], "home-fresh", defaultStubs)
+  for (const prefix of logPrefixes) {
+    if (syncSplit.stdout.includes(prefix)) {
+      problems.push(`  channel: '${prefix}' log prefix leaked to stdout (sync claude)`)
+    }
+  }
+  if (syncSplit.stderr.includes("--- Sync complete ---")) {
+    problems.push("  channel: summary block leaked to stderr (sync claude)")
+  }
+
+  const drySplit = runEngineSplit("native", ["sync", "--dry-run"], "home-drift", defaultStubs)
+  if (!drySplit.stdout.includes("[dry-run]")) {
+    problems.push("  channel: no [dry-run] lines on stdout (sync --dry-run)")
+  }
+  if (drySplit.stderr.includes("[dry-run]")) {
+    problems.push("  channel: [dry-run] lines leaked to stderr (sync --dry-run)")
+  }
+
+  const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs)
+  if (status.exitCode !== 0) {
+    problems.push(`  channel: status --json exited ${status.exitCode} (stderr: ${status.stderr.slice(0, 200)})`)
+  } else {
+    try {
+      JSON.parse(status.stdout)
+    } catch {
+      problems.push("  channel: status --json stdout is not valid JSON")
+    }
+  }
+
+  rmSync(syncSplit.home, { recursive: true, force: true })
+  rmSync(drySplit.home, { recursive: true, force: true })
+  rmSync(status.home, { recursive: true, force: true })
+  return problems
 }
 
 function readGoldens(): MutationGolden {
@@ -210,6 +281,22 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     const stubDir = stubs !== undefined ? makeStubDir(stubs) : defaultStubs
     const maskTools = stubs !== undefined ? Object.entries(stubs).filter(([, body]) => body === null).map(([name]) => name) : []
     cases[label] = runCase(cmd, fixture, stubDir, maskTools)
+  }
+
+  for (const { fixture, cmd } of REPLAYS) {
+    const label = `fixture=${fixture} cmd=${cmd.join(" ")} replay=2nd`
+    if (label in cases) throw new Error(`duplicate replay label ${label}`)
+    if (!labelSelected(label)) continue
+    cases[label] = runReplayCase(fixture, cmd)
+  }
+
+  if (labelSelected("channel-invariants")) {
+    const problems = channelInvariantProblems()
+    if (problems.length > 0) {
+      invariantFailures++
+      banner("CHANNEL INVARIANT FAILURE")
+      for (const p of problems) console.log(p)
+    }
   }
 
   for (const shape of TOML_SHAPES) {

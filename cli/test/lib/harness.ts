@@ -105,6 +105,14 @@ export interface EngineRun {
   readonly argvLog: string
 }
 
+/** Channel-aware run: stdout and stderr captured separately (no 2>&1 merge). */
+export interface SplitRun {
+  readonly exitCode: number
+  readonly stdout: string
+  readonly stderr: string
+  readonly home: string
+}
+
 export type EngineKind = "native"
 
 export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
@@ -153,36 +161,56 @@ function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArra
   return shadow
 }
 
+interface RunOpts {
+  readonly stdinTty?: boolean
+  readonly maskTools?: ReadonlyArray<string>
+  /** Run against an existing HOME (sequential replay) instead of materializing the fixture. */
+  readonly reuseHome?: string
+  /** Extra env for the child (e.g. DOCKS_KIT_VERBOSE). */
+  readonly env?: Record<string, string>
+}
+
+function materializeHome(kind: string, fixture: string, reuseHome?: string): string {
+  if (reuseHome !== undefined) return reuseHome
+  const home = mkdtempSync(join(tmpdir(), `golden-home-${kind}-`))
+  rmSync(home, { recursive: true })
+  const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
+  cpSync(src, home, { recursive: true })
+  return home
+}
+
+function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): Record<string, string> {
+  return {
+    HOME: home,
+    PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
+    GOLDEN_ARGV_LOG: argvLog,
+    GOLDEN_STUB_DIR: stubDir,
+    LC_ALL: "C",
+    TERM: "dumb",
+    // The native side runs under the bun runtime, which would otherwise
+    // drop its install cache inside the temp HOME and pollute the tree diff.
+    BUN_INSTALL_CACHE_DIR: join(tmpdir(), "golden-bun-cache"),
+    // env is constructed from scratch (no process.env spread), so engine
+    // globals like DRY_RUN can never leak in from the invoking shell.
+    AGENTS_DIR: join(home, ".agents"),
+    ...(opts.env ?? {})
+  }
+}
+
 export function runEngine(
   kind: EngineKind,
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
-  opts: { stdinTty?: boolean; maskTools?: ReadonlyArray<string> } = {}
+  opts: RunOpts = {}
 ): EngineRun {
-  const home = mkdtempSync(join(tmpdir(), `golden-home-${kind}-`))
-  rmSync(home, { recursive: true })
-  const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
-  cpSync(src, home, { recursive: true })
+  const home = materializeHome(kind, fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
   const res = spawnSync("bash", ["-c", `exec 2>&1; ${engineCommand(kind, args)}`], {
     cwd: REPO_DIR,
-    env: {
-      HOME: home,
-      PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
-      GOLDEN_ARGV_LOG: argvLog,
-      GOLDEN_STUB_DIR: stubDir,
-      LC_ALL: "C",
-      TERM: "dumb",
-      // The native side runs under the bun runtime, which would otherwise
-      // drop its install cache inside the temp HOME and pollute the tree diff.
-      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "golden-bun-cache"),
-      // env is constructed from scratch (no process.env spread), so engine
-      // globals like DRY_RUN can never leak in from the invoking shell.
-      AGENTS_DIR: join(home, ".agents")
-    },
+    env: runEnv(home, stubDir, argvLog, opts),
     stdio: [opts.stdinTty ? "inherit" : "ignore", "pipe", "pipe"],
     encoding: "utf8",
     timeout: 120_000
@@ -192,6 +220,65 @@ export function runEngine(
     output: normalizeOutput(res.stdout ?? "", home, stubDir),
     home,
     argvLog
+  }
+}
+
+/**
+ * Channel-aware variant of runEngine: no bash 2>&1 merge, so stdout and
+ * stderr assert independently. Cross-channel interleaving order is NOT
+ * guaranteed here — use for channel-purity invariants, not ordered goldens.
+ */
+export function runEngineSplit(
+  kind: EngineKind,
+  args: ReadonlyArray<string>,
+  fixture: string,
+  stubDir: string,
+  opts: RunOpts = {}
+): SplitRun {
+  const home = materializeHome(kind, fixture, opts.reuseHome)
+  const argvLog = join(home, ".golden-argv.log")
+  writeFileSync(argvLog, "")
+  const res = spawnSync("bash", ["-c", engineCommand(kind, args)], {
+    cwd: REPO_DIR,
+    env: runEnv(home, stubDir, argvLog, opts),
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf8",
+    timeout: 120_000
+  })
+  return {
+    exitCode: res.status ?? 1,
+    stdout: normalizeOutput(res.stdout ?? "", home, stubDir),
+    stderr: normalizeOutput(res.stderr ?? "", home, stubDir),
+    home
+  }
+}
+
+/**
+ * Run the PUBLIC CLI (@effect/cli path — no DOCKS_KIT_ENGINE bypass) with
+ * split channels. Exercises real flag parsing and command wiring.
+ */
+export function runPublicCli(
+  args: ReadonlyArray<string>,
+  fixture: string,
+  stubDir: string,
+  opts: RunOpts = {}
+): SplitRun {
+  const home = materializeHome("cli", fixture, opts.reuseHome)
+  const argvLog = join(home, ".golden-argv.log")
+  writeFileSync(argvLog, "")
+  const quoted = args.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(" ")
+  const res = spawnSync("bash", ["-c", `'${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`], {
+    cwd: REPO_DIR,
+    env: runEnv(home, stubDir, argvLog, opts),
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf8",
+    timeout: 120_000
+  })
+  return {
+    exitCode: res.status ?? 1,
+    stdout: normalizeOutput(res.stdout ?? "", home, stubDir),
+    stderr: normalizeOutput(res.stderr ?? "", home, stubDir),
+    home
   }
 }
 
