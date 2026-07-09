@@ -3,8 +3,8 @@ title: Full engine-internal DI — route all emissions and probes through ctx.se
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
 status: ongoing
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T19:35:00-03:00"
-started_at: "2026-07-09T19:35:00-03:00"
+updated: "2026-07-09T19:13:26-03:00"
+started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
 affected_paths:
@@ -87,6 +87,10 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 - Score: 88/100 · trajectory 62→88 · stopped: single revision pass over the cross-check (draft rewritten wholesale from the findings).
 - Cross-check (2026-07-09): [codex gpt-5.6-sol xhigh] 13 findings (9 high / 4 med) — 13 accepted, 0 rejected; [claude] independently verified 1, 2, 5, 9 against source before accepting (models.ts:52/toolchain.ts:110,141 direct writes confirmed by rg; verboseFlag/setVerbose module global confirmed in logger.ts:43-49; warned Set module-level in deps.ts:91; the brace-expansion command in the original checklist was indeed not a runnable single invocation). Finding 13 elevated to the open question above rather than silently resolved.
+
+## Notes
+
+- BLOCKED (2026-07-09): Step 1 requires the one permitted `--update-goldens` run to record the `models.ts` catalog-channel fix and requires the slice commit to enumerate the changed golden case labels. The live dry-run and mutation matrices contain no command that prints the model catalog, and both golden JSON files contain zero `Available <tool> models` lines. Adding a catalog-printing matrix row would produce the required label but conflicts with Out of scope (“changes to golden case sets”); keeping the case sets unchanged produces no changed label to enumerate. Which constraint wins: authorize one additive catalog case in Step 1, or waive the golden-update/changed-label requirement and cover the stdout channel with a unit/integration assertion instead? No engine code was changed while this behavioral-test boundary is unresolved.
 
 ## Review
 
