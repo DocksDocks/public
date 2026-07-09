@@ -21,7 +21,7 @@ affected_paths:
   - cli/docs/platforms.md
   - AGENTS.md
 related_plans: [docks-kit-cli]
-ship_commit: "e186ada1e5a2ab9ceff29645be890ea54b011a37"
+ship_commit: "e186ada85eef44730423b458a6469a5fcb5234ea"
 review_status: null
 ---
 
