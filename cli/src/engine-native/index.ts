@@ -10,6 +10,7 @@ import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 
 import { kitHome } from "../kitHome"
+import { makeEngineServices, type EngineServices } from "./services"
 import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
@@ -32,6 +33,8 @@ export interface Ctx {
   claudePlugins: Array<string>
   claudeModel: string
   codexModel: string
+  /** Injected capability seam (logger/deps/platform) — see services.ts. */
+  readonly services: EngineServices
   targetFilterSet: boolean
   syncClaude: boolean
   syncCodex: boolean
@@ -46,7 +49,7 @@ export interface Ctx {
 }
 
 /** Globals default from env using the historical ${VAR:-default} contract. */
-function makeCtx(): Ctx {
+function makeCtx(services: EngineServices): Ctx {
   const env = process.env
   const home = env["HOME"] !== undefined && env["HOME"] !== "" ? env["HOME"] : homedir()
   return {
@@ -64,6 +67,7 @@ function makeCtx(): Ctx {
     claudePlugins: (env["CLAUDE_PLUGINS"] ?? "").split(" ").filter((s) => s !== ""),
     claudeModel: env["CLAUDE_MODEL"] ?? "",
     codexModel: env["CODEX_MODEL"] ?? "",
+    services,
     targetFilterSet: false,
     syncClaude: false,
     syncCodex: false,
@@ -104,8 +108,8 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   return 0
 }
 
-export function runEngineNative(argv: ReadonlyArray<string>): number {
-  const ctx = makeCtx()
+export function runEngineNative(argv: ReadonlyArray<string>, services: EngineServices = makeEngineServices()): number {
+  const ctx = makeCtx(services)
   try {
     switch (argv[0]) {
       case "model":

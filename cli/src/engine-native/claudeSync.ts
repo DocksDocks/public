@@ -17,9 +17,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
-import { DEPENDENCIES, warnMissing } from "./deps"
 import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
-import { isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { change, echo, err, verbose, warn } from "./logger"
@@ -34,7 +32,7 @@ export function claudeSync(ctx: Ctx): void {
 
   if (!commandExists("claude")) {
     warn(
-      `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${DEPENDENCIES.claude.installHint()} | docs: https://code.claude.com/docs/en/setup`
+      `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${ctx.services.deps.spec("claude").installHint()} | docs: https://code.claude.com/docs/en/setup`
     )
   }
 
@@ -91,7 +89,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  if (isWindows()) {
+  if (ctx.services.platform.isWindows()) {
     if (!commandExists("rtk")) {
       warn("rtk not installed — the kit's auto-install is Unix-only. Install natively (winget, or the rtk-*-windows-msvc.zip release), then re-run sync")
       return
@@ -380,7 +378,7 @@ function syncConnectorEnv(ctx: Ctx): void {
   // win32: Claude Code launches from PowerShell/GUI, so the flag must be a
   // real user env var (setx), not a Git-Bash-only shell-rc export. Never
   // clobbers an existing value (set =true yourself to keep connectors).
-  if (isWindows()) {
+  if (ctx.services.platform.isWindows()) {
     const existing = spawnSync("reg", ["query", "HKCU\\Environment", "/v", "ENABLE_CLAUDEAI_MCP_SERVERS"], {
       stdio: "ignore"
     })
@@ -569,7 +567,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
   if (!commandExists("git")) {
-    warnMissing("git", "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing")
+    ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing")
     return
   }
 
@@ -672,12 +670,15 @@ function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: 
   if (!existsSync(userSettingsFile)) return false
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
 
+  let cliDisabled = false
   for (const [pluginId, value] of Object.entries(sotPlugins)) {
     if (value !== false) continue
     const user = readJsonFile(userSettingsFile)
     const enabled = user !== undefined && isObject(user) && isObject(user["enabledPlugins"]) ? (user["enabledPlugins"] as { [k: string]: Json })[pluginId] : undefined
     if (enabled !== true) continue
-    if (!cli(["plugin", "disable", pluginId]).ok) {
+    if (cli(["plugin", "disable", pluginId]).ok) {
+      cliDisabled = true
+    } else {
       warn(`Failed to disable SoT-false plugin: ${pluginId} (will retry next sync)`)
     }
   }
@@ -690,7 +691,7 @@ function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: 
   const beforeCanonical = jqStringify(user)
   user["enabledPlugins"] = deepMerge(isObject(user["enabledPlugins"]) ? user["enabledPlugins"] : {}, sotPlugins)
   const out = jqStringify(user)
-  if (out === beforeCanonical) return false
+  if (out === beforeCanonical) return cliDisabled
   writeFileSync(`${userSettingsFile}.tmp`, out)
   renameSync(`${userSettingsFile}.tmp`, userSettingsFile)
   return true
@@ -719,6 +720,7 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
   const wasInstalled = pluginUserScopeInstalled(installedPlugins, pluginId)
   if (!wasInstalled) {
     if (!cli(["plugin", "install", pluginId]).ok) {
+      if (marketplaceAdded) change(`Optional plugin ${pluginId}: marketplace added (install failed — will retry next sync)`)
       warn(`Failed to install optional plugin ${pluginId}`)
       return marketplaceAdded
     }
@@ -731,6 +733,7 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
       : false
 
   if (!cli(["plugin", "enable", pluginId]).ok) {
+    if (marketplaceAdded || !wasInstalled) change(`Optional plugin ${pluginId}: installed (enable failed — will retry next sync)`)
     warn(`Failed to enable optional plugin ${pluginId}`)
     return marketplaceAdded || !wasInstalled
   }
@@ -804,7 +807,7 @@ function syncLspServers(ctx: Ctx): void {
   }
 
   if (!commandExists("npm")) {
-    warnMissing("npm", `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`)
+    ctx.services.deps.warnMissing("npm", `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`)
     return
   }
 

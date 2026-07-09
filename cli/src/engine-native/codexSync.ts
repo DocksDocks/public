@@ -7,9 +7,8 @@ import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
-import { DEPENDENCIES, warnMissing } from "./deps"
+import { DEPENDENCIES } from "./deps"
 import { capture, commandExists, p } from "./exec"
-import { platformName } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { change, echo, err, verbose, warn } from "./logger"
@@ -33,7 +32,7 @@ export function codexSync(ctx: Ctx): void {
 // ---------------------------------------------------------- bubblewrap ----
 
 function ensureBubblewrap(ctx: Ctx): void {
-  if (!bwrapSupportedOs()) return
+  if (!bwrapSupportedOs(ctx)) return
 
   if (ctx.dryRun) {
     echo("[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)")
@@ -79,8 +78,8 @@ function ensureBubblewrap(ctx: Ctx): void {
   }
 }
 
-function bwrapSupportedOs(): boolean {
-  const pn = platformName()
+function bwrapSupportedOs(ctx: Ctx): boolean {
+  const pn = ctx.services.platform.name()
   if (pn === "linux") return true
   if (pn === "darwin" || pn === "windows") return false
   warn("Unknown OS — skipping bubblewrap check; Codex sandbox may not work")
@@ -432,7 +431,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     return
   }
   if (!commandExists("git")) {
-    warnMissing("git", "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing")
+    ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing")
     return
   }
 

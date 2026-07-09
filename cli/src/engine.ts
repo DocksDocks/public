@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process"
 import { runEngineNative } from "./engine-native"
 import { makeEngineServices } from "./engine-native/services"
 import { kitHome } from "./kitHome"
+import { DependencyManagerService, LoggerService, PlatformService } from "./services"
 
 // Same factory as the Effect rim's live layers — this path runs outside the
 // runtime (child-spawn capture), so it takes the services directly.
@@ -29,7 +30,10 @@ export const engine = (args: ReadonlyArray<string>) =>
     if (bashEngineRequested()) {
       yield* bail(bashRemovedMessage, 2)
     }
-    const code = yield* Effect.sync(() => runEngineNative(args))
+    const logger = yield* LoggerService
+    const deps = yield* DependencyManagerService
+    const platform = yield* PlatformService
+    const code = yield* Effect.sync(() => runEngineNative(args, { logger, deps, platform }))
     if (code !== 0) {
       yield* Effect.sync(() => process.exit(code))
     }

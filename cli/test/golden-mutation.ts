@@ -103,11 +103,14 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
  * and golden the SECOND run, so repeat-run output (the "already in sync"
  * surface) is pinned explicitly.
  */
-const REPLAYS: Array<{ fixture: string; cmd: Array<string> }> = [
+const REPLAYS: Array<{ fixture: string; cmd: Array<string>; cmd2?: Array<string> }> = [
   { fixture: "home-fresh", cmd: ["sync"] },
   { fixture: "home-drift", cmd: ["sync"] },
   // Verbose replay: the demoted no-op confirmations must come back.
-  { fixture: "home-fresh", cmd: ["sync", "--verbose"] }
+  { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
+  // Model modifier as the ONLY second-run mutation: the restart advice must
+  // print from the model trigger alone (everything else is already in sync).
+  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=fable"] }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
@@ -154,11 +157,12 @@ function runCase(
   return golden
 }
 
-function runReplayCase(fixture: string, cmd: ReadonlyArray<string>): MutationCaseGolden {
+function runReplayCase(fixture: string, cmd: ReadonlyArray<string>, cmd2?: ReadonlyArray<string>): MutationCaseGolden {
   const first = runEngine("native", cmd, fixture, defaultStubs)
-  const second = runEngine("native", cmd, fixture, defaultStubs, { reuseHome: first.home })
+  const secondCmd = cmd2 ?? cmd
+  const second = runEngine("native", secondCmd, fixture, defaultStubs, { reuseHome: first.home })
   const golden = {
-    command: [...cmd],
+    command: [...secondCmd],
     exitCode: second.exitCode,
     tree: snapshotTree(second.home),
     argvLog: readArgvLog(second),
@@ -364,11 +368,11 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     cases[label] = runCase(cmd, fixture, stubDir, maskTools)
   }
 
-  for (const { fixture, cmd } of REPLAYS) {
-    const label = `fixture=${fixture} cmd=${cmd.join(" ")} replay=2nd`
+  for (const { fixture, cmd, cmd2 } of REPLAYS) {
+    const label = `fixture=${fixture} cmd=${(cmd2 ?? cmd).join(" ")} replay=2nd`
     if (label in cases) throw new Error(`duplicate replay label ${label}`)
     if (!labelSelected(label)) continue
-    cases[label] = runReplayCase(fixture, cmd)
+    cases[label] = runReplayCase(fixture, cmd, cmd2)
   }
 
   if (labelSelected("channel-invariants")) {

@@ -50,4 +50,5 @@ export function syncClaudeModel(ctx: Ctx, model: string): void {
   writeFileSync(`${userSettings}.tmp`, out)
   renameSync(`${userSettings}.tmp`, userSettings)
   change(`Model: deployed settings model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  ctx.nextStepTriggers.claudeRestart = true
 }

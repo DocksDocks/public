@@ -272,6 +272,41 @@
         ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
       }
     },
+    "fixture=home-drift cmd=sync claude --claude-model=fable replay=2nd": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-model=fable"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:8793f4f2f6ca4123180e600aa895e53166ea78e52b8364369102613378e88640",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
     "fixture=home-drift cmd=sync claude --claude-plugin=supabase,n8n": {
       "argvLog": "",
       "command": [

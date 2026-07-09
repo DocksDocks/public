@@ -7,7 +7,6 @@
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { warnMissing } from "./deps"
 import { capture, commandExists, isExecutable, p, which, writeFileIfChanged } from "./exec"
 import { isLinux, isWindows } from "./os"
 import type { Ctx } from "./index"
@@ -61,7 +60,7 @@ function readSlugs(file: string): Array<string> {
 
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
   if (!commandExists("npx")) {
-    warnMissing("npx", "skipping universal skills bootstrap")
+    ctx.services.deps.warnMissing("npx", "skipping universal skills bootstrap")
     return
   }
 
@@ -142,7 +141,7 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
     if (current === relTarget) return false
     // win32: `npx skills add` creates absolute symlinks/junctions — any link
     // that RESOLVES to the canonical dir is healthy, not stale.
-    if (isWindows() && realpathEquals(claudeLink, canonical)) return false
+    if (ctx.services.platform.isWindows() && realpathEquals(claudeLink, canonical)) return false
     if (ctx.dryRun) {
       echo(`[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`)
       return true
@@ -260,7 +259,7 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
 
   if (!commandExists("npm")) {
-    if (!ctx.dryRun) warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
+    if (!ctx.dryRun) ctx.services.deps.warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
     return
   }
 
