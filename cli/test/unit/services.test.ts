@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
-import { makeDependencyManager, makePlatform, type DependencyManager } from "../../src/engine-native/services"
+import { makeDependencyManager, makeEngineServices, makePlatform, type DependencyManager } from "../../src/engine-native/services"
 import {
   DependencyManagerService,
   DependencyManagerTest,
@@ -11,6 +11,19 @@ import {
 } from "../../src/services"
 
 describe("engine service layers", () => {
+  it("makeEngineServices gates verbose output through the run callback", () => {
+    const lines: Array<string> = []
+    let verbose = false
+    const services = makeEngineServices({
+      isVerbose: () => verbose,
+      sinks: { stderr: (chunk) => void lines.push(chunk) }
+    })
+    services.logger.verbose("hidden")
+    verbose = true
+    services.logger.verbose("shown")
+    expect(lines).toEqual(["\x1b[1;32m[ok]\x1b[0m shown\n"])
+  })
+
   it("LoggerTest: verbose is gated by the injected sink, change is not", () => {
     const lines: Array<string> = []
     const layer = LoggerTest({ isVerbose: () => false, stderr: (chunk) => void lines.push(chunk) })

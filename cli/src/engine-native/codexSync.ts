@@ -11,7 +11,6 @@ import { DEPENDENCIES } from "./deps"
 import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { change, echo, err, verbose, warn } from "./logger"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -32,6 +31,7 @@ export function codexSync(ctx: Ctx): void {
 // ---------------------------------------------------------- bubblewrap ----
 
 function ensureBubblewrap(ctx: Ctx): void {
+  const { change, echo, warn } = ctx.services.logger
   if (!bwrapSupportedOs(ctx)) return
 
   if (ctx.dryRun) {
@@ -79,6 +79,7 @@ function ensureBubblewrap(ctx: Ctx): void {
 }
 
 function bwrapSupportedOs(ctx: Ctx): boolean {
+  const { warn } = ctx.services.logger
   const pn = ctx.services.platform.name()
   if (pn === "linux") return true
   if (pn === "darwin" || pn === "windows") return false
@@ -97,6 +98,7 @@ function bwrapDetectPmInstallCmd(): string {
 // --------------------------------------------------------------- config ----
 
 function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotConfig)) return
 
   if (ctx.dryRun) {
@@ -118,7 +120,7 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   const staging = `${userConfig}.merge.tmp`
   writeFileSync(staging, before)
 
-  scrubDeprecatedFeatures(staging)
+  scrubDeprecatedFeatures(ctx, staging)
   mergeTopLevelSettings(sotConfig, staging)
   mergeTableSettings(sotConfig, staging)
 
@@ -168,7 +170,8 @@ export function scrubDeprecatedFeaturesText(content: string): string {
   return out
 }
 
-function scrubDeprecatedFeatures(userConfig: string): void {
+function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
+  const { change } = ctx.services.logger
   if (!existsSync(userConfig)) return
   const content = readFileSync(userConfig, "utf8")
   if (!content.split("\n").some((l) => /^use_legacy_landlock[ \t]*=/.test(l))) return
@@ -225,6 +228,7 @@ function mergeTableSettings(sotConfig: string, userConfig: string): void {
 // ------------------------------------------------------- rules + agents ----
 
 function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotRulesDir)) return
 
   if (ctx.dryRun) {
@@ -255,6 +259,7 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotAgentsMd)) return
 
   if (ctx.dryRun) {
@@ -275,6 +280,7 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void
 // ---------------------------------------------------------- marketplace ----
 
 function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: string): void {
+  const { change, echo, err, verbose } = ctx.services.logger
   if (!existsSync(sotMarketplace)) return
 
   if (ctx.dryRun) {
@@ -361,6 +367,7 @@ export function marketplaceSource(marketplace: string, configFile: string): stri
 }
 
 function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
+  const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed")
     return
@@ -419,6 +426,7 @@ function manualPluginRefreshCommand(sotConfig: string): string {
 }
 
 function syncPlugins(ctx: Ctx, sotConfig: string): void {
+  const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] add enabled Codex plugins from SoT")
     return
@@ -466,6 +474,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 // -------------------------------------------------------------- summary ----
 
 export function codexSummary(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   const codexDir = p(ctx.home, ".codex")
   echo(`Codex:    ${codexDir}`)
   if (!ctx.dryRun) {

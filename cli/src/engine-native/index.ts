@@ -15,7 +15,6 @@ import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { echo } from "./logger"
 import { ExitError, parseArgs, preflight, validateModelFlags } from "./parseArgs"
 
 export interface Ctx {
@@ -77,6 +76,7 @@ function makeCtx(services: EngineServices): Ctx {
 }
 
 function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
+  const { echo } = ctx.services.logger
   parseArgs(ctx, args)
   preflight(ctx)
   validateModelFlags(ctx)
@@ -108,8 +108,10 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   return 0
 }
 
-export function runEngineNative(argv: ReadonlyArray<string>, services: EngineServices = makeEngineServices()): number {
-  const ctx = makeCtx(services)
+export function runEngineNative(argv: ReadonlyArray<string>, services?: EngineServices): number {
+  let ctx!: Ctx
+  const runServices = services ?? makeEngineServices({ isVerbose: () => ctx.verbose })
+  ctx = makeCtx(runServices)
   try {
     switch (argv[0]) {
       case "model":

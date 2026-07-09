@@ -7,7 +7,6 @@ import { readFileSync, readSync } from "node:fs"
 import { capture, commandExists, isExecutable, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
-import { echo, verbose, warn } from "./logger"
 
 type InstallFn = (mode: "install" | "upgrade", version: string) => number
 
@@ -131,6 +130,7 @@ export function promptLine(
 
 /** toolchain::_gate — { proceed, target } ("" target = latest). */
 function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: string): { proceed: boolean; target: string } {
+  const { warn } = ctx.services.logger
   const verified = field(ctx, tool, "verified")
   const pinnable = field(ctx, tool, "pinnable")
 
@@ -158,6 +158,7 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
 }
 
 export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
+  const { echo, verbose, warn } = ctx.services.logger
   const policy = field(ctx, tool, "policy")
 
   if (!present(ctx, tool)) {
@@ -229,6 +230,7 @@ function row(cells: [string, string, string, string, string, string]): string {
 }
 
 export function report(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
   const pn = ctx.services.platform.name()
   const platformOs = pn === "unknown" ? "" : pn

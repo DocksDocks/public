@@ -20,12 +20,13 @@ import { syncClaudeModel } from "./claudeModel"
 import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { change, echo, err, verbose, warn } from "./logger"
+import { change as leafChange, err as leafErr, verbose as leafVerbose, warn as leafWarn } from "./logger"
 import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 
 export function claudeSync(ctx: Ctx): void {
+  const { warn } = ctx.services.logger
   const claudeDir = p(ctx.home, ".claude")
 
   if (!ctx.dryRun) mkdirSync(claudeDir, { recursive: true })
@@ -59,8 +60,8 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
   return (mode, version) => {
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
 
-    if (mode === "upgrade") verbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
-    else warn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
+    if (mode === "upgrade") leafVerbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
+    else leafWarn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
     const installer = p(tmpdir(), `rtk-install-${process.pid}.sh`)
     const dl = spawnSync("curl", ["-fsSL", `https://raw.githubusercontent.com/rtk-ai/rtk/${installerRef}/install.sh`, "-o", installer], {
       stdio: "inherit"
@@ -75,15 +76,16 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
     process.env["PATH"] = `${ctx.home}/.local/bin:${ctx.home}/.cargo/bin:${process.env["PATH"] ?? ""}`
     if (commandExists("rtk")) {
       const v = capture("rtk", ["--version"])
-      change(`RTK ready (${v !== "" ? v : "version unknown"})`)
+      leafChange(`RTK ready (${v !== "" ? v : "version unknown"})`)
       return 0
     }
-    err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
+    leafErr("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
     return 1
   }
 }
 
 function syncRtk(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
   if (ctx.skipRtk) {
     warn("Skipping RTK (--skip-rtk)")
     return
@@ -117,6 +119,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
 // ------------------------------------------------------ scripts + hooks ----
 
 function syncScripts(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] cp statusline.sh, fetch-usage.sh, notification.mp3")
     return
@@ -147,6 +150,7 @@ function shellScriptCount(hooksDir: string): number {
 }
 
 function syncHooks(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   const sotHooks = p(ctx.repoDir, "SoT", ".claude", "hooks")
   if (!existsSync(sotHooks)) return
 
@@ -170,6 +174,7 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   // The @RTK.md import only resolves once `rtk init` has generated
   // ~/.claude/RTK.md (the rtk phase runs before this). Deploying the import
   // without the file leaves a dangling reference in every Claude session
@@ -209,6 +214,7 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
 // ------------------------------------------------------------- settings ----
 
 function syncSettings(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, err, verbose } = ctx.services.logger
   const repoSettings = p(ctx.repoDir, "SoT", ".claude", "settings.json")
   const userSettings = p(claudeDir, "settings.json")
 
@@ -256,7 +262,8 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
 }
 
 /** Shared shape of the three jq-edit modifiers (compact window, permissive). */
-function jqEditSettings(claudeDir: string, tag: string, edit: (doc: Json) => void): boolean {
+function jqEditSettings(ctx: Ctx, claudeDir: string, tag: string, edit: (doc: Json) => void): boolean {
+  const { err, warn } = ctx.services.logger
   const userSettings = p(claudeDir, "settings.json")
   if (!existsSync(userSettings)) {
     warn(`(${tag}) ${userSettings} missing — skipped`)
@@ -277,6 +284,7 @@ function jqEditSettings(claudeDir: string, tag: string, edit: (doc: Json) => voi
 }
 
 function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (ctx.claudeCompactWindow === "") return
 
   if (ctx.dryRun) {
@@ -284,7 +292,7 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const changed = jqEditSettings(claudeDir, "--claude-compact-window", (doc) => {
+  const changed = jqEditSettings(ctx, claudeDir, "--claude-compact-window", (doc) => {
     if (!isObject(doc)) return
     const env = isObject(doc["env"]) ? doc["env"] : {}
     env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = ctx.claudeCompactWindow
@@ -298,6 +306,7 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
 }
 
 function syncPermissive(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!ctx.claudePermissive) return
 
   if (ctx.dryRun) {
@@ -305,7 +314,7 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const changed = jqEditSettings(claudeDir, "--claude-permissive", (doc) => {
+  const changed = jqEditSettings(ctx, claudeDir, "--claude-permissive", (doc) => {
     if (!isObject(doc)) return
     const permissions = isObject(doc["permissions"]) ? doc["permissions"] : {}
     permissions["ask"] = []
@@ -322,6 +331,7 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
 // ---------------------------------------------------------- claude.json ----
 
 function syncClaudeJson(ctx: Ctx): void {
+  const { change, echo, err, verbose } = ctx.services.logger
   const claudeJson = p(ctx.home, ".claude.json")
   const mcpSot = p(ctx.repoDir, "SoT", ".claude", "mcp-servers.json")
 
@@ -375,6 +385,7 @@ function syncClaudeJson(ctx: Ctx): void {
 // -------------------------------------------------------- connector env ----
 
 function syncConnectorEnv(ctx: Ctx): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
   // win32: Claude Code launches from PowerShell/GUI, so the flag must be a
   // real user env var (setx), not a Git-Bash-only shell-rc export. Never
   // clobbers an existing value (set =true yourself to keep connectors).
@@ -484,6 +495,7 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
 }
 
 function syncRemovals(ctx: Ctx, claudeDir: string): void {
+  const { change, echo } = ctx.services.logger
   let hooksRemoved = 0
   let filesRemoved = 0
 
@@ -550,6 +562,7 @@ function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): b
 }
 
 function syncPlugins(ctx: Ctx, claudeDir: string): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
   const repoSettingsFile = p(ctx.repoDir, "SoT", ".claude", "settings.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
@@ -649,7 +662,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   // Pass 6 — re-assert SoT enabled-state in the user settings.
-  if (reassertEnabledState(repoObj, p(claudeDir, "settings.json"))) {
+  if (reassertEnabledState(ctx, repoObj, p(claudeDir, "settings.json"))) {
     change("Plugin enable-state re-asserted from SoT in settings.json")
     ctx.nextStepTriggers.claudePlugins = true
   }
@@ -666,7 +679,8 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 }
 
-function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: string): boolean {
+function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSettingsFile: string): boolean {
+  const { warn } = ctx.services.logger
   if (!existsSync(userSettingsFile)) return false
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
 
@@ -699,7 +713,8 @@ function reassertEnabledState(repoObj: { [k: string]: Json }, userSettingsFile: 
 
 // ------------------------------------------------------ optional plugins ----
 
-function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRepo: string): boolean {
+function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, marketplaceRepo: string): boolean {
+  const { change, verbose, warn } = ctx.services.logger
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const mpName = pluginId.slice(pluginId.lastIndexOf("@") + 1)
@@ -744,6 +759,7 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
 }
 
 function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
+  const { echo, warn } = ctx.services.logger
   if (ctx.claudePlugins.length === 0) return
 
   if (ctx.dryRun) {
@@ -762,10 +778,10 @@ function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   if (ctx.claudePlugins.includes("supabase")) {
-    if (enableOptionalPlugin(claudeDir, "supabase@claude-plugins-official", "")) ctx.nextStepTriggers.claudePlugins = true
+    if (enableOptionalPlugin(ctx, claudeDir, "supabase@claude-plugins-official", "")) ctx.nextStepTriggers.claudePlugins = true
   }
   if (ctx.claudePlugins.includes("n8n")) {
-    if (enableOptionalPlugin(claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")) ctx.nextStepTriggers.claudePlugins = true
+    if (enableOptionalPlugin(ctx, claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")) ctx.nextStepTriggers.claudePlugins = true
   }
 }
 
@@ -777,6 +793,7 @@ function lspPkg(ctx: Ctx, tool: string, pkg: string): string {
 }
 
 function syncLspServers(ctx: Ctx): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
   const sot = readJsonFile(p(ctx.repoDir, "SoT", ".claude", "settings.json"))
   const enabled = sot !== undefined && isObject(sot) && isObject(sot["enabledPlugins"]) ? sot["enabledPlugins"] : undefined
   if (enabled === undefined) return
@@ -823,6 +840,7 @@ function syncLspServers(ctx: Ctx): void {
 // -------------------------------------------------------------- summary ----
 
 export function claudeSummary(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   const claudeDir = p(ctx.home, ".claude")
   echo(`Claude:   ${claudeDir}`)
   if (!ctx.dryRun) {

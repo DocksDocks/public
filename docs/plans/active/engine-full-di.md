@@ -3,11 +3,14 @@ title: Full engine-internal DI — route all emissions and probes through ctx.se
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
 status: ongoing
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T19:27:12-03:00"
+updated: "2026-07-09T19:37:23-03:00"
 started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
 affected_paths:
+  - cli/src/engine.ts
+  - cli/src/main.ts
+  - cli/src/services.ts
   - cli/src/engine-native/logger.ts
   - cli/src/engine-native/deps.ts
   - cli/src/engine-native/services.ts
@@ -58,7 +61,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 | # | Task | Depends | Status |
 |---|---|---|---|
 | 1 | **Emission inventory + contract**: enumerate every emitter in `cli/src/engine-native/` — logger imports AND `process.stdout.write`/`process.stderr.write`/`console.*` (`rg` both patterns) — into a table (site, class, route-or-exempt). Route `models.ts:52` to the data channel (stdout via logger.echo — fixes the recorded pre-existing channel bug; this is the ONE permitted output change, named here) and `toolchain.ts:110,141` through the logger; document any TTY-prompt exemption with a test. Done-condition: the inventory table is in this plan's Notes and every row is routed or exempted. | — | done |
-| 2 | **Run-scoped Logger + services**: factory builds the Logger per run from `ctx.verbose`; migrate ctx-reachable emitter call sites to `ctx.services.logger`; `setVerbose` still exists for the leaves. Gate: typecheck + unit + BOTH golden suites byte-identical + both prove-red legs red before the next slice; any diff reverts the slice. | 1 | planned |
+| 2 | **Run-scoped Logger + services**: factory builds the Logger per run from `ctx.verbose`; migrate ctx-reachable emitter call sites to `ctx.services.logger`; `setVerbose` still exists for the leaves. Gate: typecheck + unit + BOTH golden suites byte-identical + both prove-red legs red before the next slice; any diff reverts the slice. | 1 | done |
 | 3 | **Leaf callbacks**: change `InstallFn` and `linkOrCopy` signatures per Interfaces; migrate `rtkInstall`/`agentBrowserInstall`/`effectSolutionsInstall`/`bunBootstrap` emitters + platform picks to the passed services; update every `ensure(...)` caller. Same gate as Step 2. | 2 | planned |
 | 4 | **Zero-import cleanup**: delete `setVerbose`, the module `verboseFlag`, and the module-level logger bindings once `rg 'from "./logger"' cli/src/engine-native --include='*.ts'` matches only `services.ts`. Same gate. | 3 | planned |
 | 5 | **DependencyManager consolidation**: per-spec resolvers + injectable probe executor; route `toolchain.ts` `present`/`installedVersion` and sync-module `commandExists`/`capture` presence decisions through `ctx.services.deps`; dedup set + logger become per-manager (per run). Registry membership DECIDED (user via picker, 2026-07-09): Chrome-for-Testing, the LSP binaries, and ffplay come INTO the registry via per-spec custom resolvers over the injectable probe executor — uniform hint-bearing dedup'd warns for every tool the engine touches; no PATH-tools-only exemption row. Same gate. | 2 | planned |
@@ -118,6 +121,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 | `logger.ts` default stdout sink | logger implementation | Exempt: terminal sink owned by `makeLogger`. |
 
 - **2026-07-09T19:27:12-03:00 — Step 1 done:** routed the model catalog to stdout, routed the interactive gate warning through the injected logger, pinned the raw prompt exemption, and added the split-channel model invariant. The one permitted `--update-goldens` run added only `fixture=home-drift cmd=model claude` (9 inserted JSON lines, no existing-case changes), so dry-run coverage intentionally moved from 21 to 22 cases. The three explicitly authorized golden paths were added to `affected_paths` because the resolved handoff required them but the frontmatter omitted them. Gates: typecheck exit 0; Vitest 20/20; dry-run 22/22; mutation 47/47; dry-run prove-red exit 1 with `prove-red OK` (22 mismatches); mutation prove-red exit 1 with `prove-red OK` (47 mismatches).
+- **2026-07-09T19:37:23-03:00 — Step 2 done:** `runEngineNative` now builds a fresh default Logger whose verbosity callback reads that run's `ctx.verbose`; explicitly injected services remain authoritative. All ctx-reachable emitters route through `ctx.services.logger`; the remaining logger imports are the Step-3 leaves, temporary `setVerbose` callers, `deps.ts` for Step 5, and the `services.ts` construction point. Added `cli/src/engine.ts`, `cli/src/main.ts`, and `cli/src/services.ts` to `affected_paths` because live run-scoped verbosity necessarily crosses that existing service rim; this slice only needed the native-raw `main.ts` call to stop prebuilding services. Gates: typecheck exit 0; Vitest 21/21; dry-run 22/22; mutation 47/47; dry-run prove-red exit 1 with `prove-red OK` (22 mismatches); mutation prove-red exit 1 with `prove-red OK` (47 mismatches). No golden diff.
 
 ## Review
 

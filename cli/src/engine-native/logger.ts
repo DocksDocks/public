@@ -17,7 +17,7 @@ export interface Logger {
 }
 
 export interface LoggerSinks {
-  readonly isVerbose: () => boolean
+  readonly isVerbose?: () => boolean
   readonly stderr?: (chunk: string) => void
   readonly stdout?: (chunk: string) => void
 }
@@ -29,7 +29,7 @@ export function makeLogger(sinks: LoggerSinks): Logger {
   return {
     change: ok,
     verbose: (msg) => {
-      if (sinks.isVerbose()) ok(msg)
+      if (sinks.isVerbose?.() === true) ok(msg)
     },
     warn: (msg) => errWrite(`\x1b[1;33m[warn]\x1b[0m ${msg}\n`),
     err: (msg) => errWrite(`\x1b[1;31m[err]\x1b[0m ${msg}\n`),
