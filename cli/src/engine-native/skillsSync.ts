@@ -1,8 +1,8 @@
 /**
- * Port of lib/skills.sh — the `sync agents` pipeline: universal-skill
- * bootstrap (`npx skills@<pin> add`), Claude symlink healing, --prune
- * reconcile against the kit-managed snapshot, the agent-browser and
- * effect-solutions toolchain callbacks, and the snapshot write.
+ * EngineNative `sync agents` pipeline: universal-skill bootstrap
+ * (`npx skills@<pin> add`), Claude symlink healing, --prune reconcile against
+ * the kit-managed snapshot, agent-browser/effect-solutions toolchain callbacks,
+ * and the snapshot write.
  */
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"

@@ -1,13 +1,9 @@
 /**
- * Shared parity-harness machinery (windows-support plan, step 4).
+ * Shared golden-regression harness machinery.
  *
- * Both harnesses run the engine(s) against disposable copies of fixture
- * HOMEs with a stub-bin directory FIRST on PATH, so every external tool the
- * engine drives (claude/codex/npx/npm/rtk/bun/curl/…) is deterministic and
- * records its argv. Until EngineNative exists, runs are bash-vs-bash
- * (self-parity: proves the machinery + hermeticity); `--native` switches
- * side B to `DOCKS_KIT_ENGINE=native bun cli/src/main.ts` once step 5(a)
- * lands.
+ * Harnesses run EngineNative against disposable copies of fixture HOMEs with
+ * a stub-bin directory FIRST on PATH, so every external tool the engine drives
+ * (claude/codex/npx/npm/rtk/bun/curl/...) is deterministic and records argv.
  */
 import { createHash } from "node:crypto"
 import {
@@ -35,12 +31,18 @@ export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 // ---------------------------------------------------------------- stubs ----
 
 /**
- * Canned stub behavior. Each stub appends "<name>\t<args>" to $PARITY_ARGV_LOG
+ * Canned stub behavior. Each stub appends "<name>\t<args>" to $GOLDEN_ARGV_LOG
  * and emits just enough output for the engine's probes to take a
  * deterministic branch (versions match the SoT/toolchain.json pins so every
  * `ensure` lands on "up to date").
  */
 const STUB_BODIES: Record<string, string> = {
+  // node and jq are version-probed by `toolchain check` (presence-checked in
+  // preflight/skills) but never do real work in the engine — pin them so the
+  // goldens don't embed the recording machine's host versions (bit CI: the
+  // runner's node differed from the machine that recorded the goldens).
+  node: `case "$1" in --version) echo "v22.23.1";; esac`,
+  jq: `case "$1" in --version) echo "jq-1.7.1";; esac`,
   claude: `case "$1" in --version) echo "2.1.204 (Claude Code)";; esac`,
   codex: `case "$1" in --version) echo "codex-cli 0.142.2";; esac`,
   rtk: `case "$1" in --version) echo "rtk 0.43.0";; esac`,
@@ -54,7 +56,7 @@ const STUB_BODIES: Record<string, string> = {
 esac`,
   bun: `case "$1" in
   --version) echo "1.3.14";;
-  pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${PARITY_STUB_DIR}"; };;
+  pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${GOLDEN_STUB_DIR}"; };;
 esac`,
   curl: `for a in "$@"; do
   case "$a" in
@@ -77,12 +79,12 @@ exit 0`,
  * gate/failure branches); `null` omits the stub entirely (tool missing).
  */
 export function makeStubDir(overrides: Record<string, string | null> = {}): string {
-  const dir = mkdtempSync(join(tmpdir(), "parity-stubs-"))
+  const dir = mkdtempSync(join(tmpdir(), "golden-stubs-"))
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody
     if (body === null || body === undefined) continue
     const script = `#!/bin/bash
-printf '%s\\t%s\\n' "${name}" "$*" >> "\${PARITY_ARGV_LOG:-/dev/null}"
+printf '%s\\t%s\\n' "${name}" "$*" >> "\${GOLDEN_ARGV_LOG:-/dev/null}"
 ${body}
 exit 0
 `
@@ -102,13 +104,14 @@ export interface EngineRun {
   readonly argvLog: string
 }
 
-export type EngineKind = "bash" | "native"
+export type EngineKind = "native"
 
 export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
   const quoted = args.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(" ")
-  if (kind === "bash") return `bash '${REPO_DIR}/lib/engine.sh' ${quoted}`
-  // Raw harness channel (bypasses @effect/cli so both engines see identical
-  // argv); absolute bun path so the PATH stub `bun` never shadows the runtime.
+  void kind
+  // Raw harness channel (bypasses @effect/cli so tests drive the engine's
+  // internal argv directly); absolute bun path so the PATH stub `bun` never
+  // shadows the runtime.
   return `DOCKS_KIT_ENGINE=native-raw '${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
 }
 
@@ -132,7 +135,7 @@ function maskedPath(names: ReadonlyArray<string>): string {
 }
 
 function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArray<string>): string {
-  const shadow = mkdtempSync(join(tmpdir(), "parity-mask-"))
+  const shadow = mkdtempSync(join(tmpdir(), "golden-mask-"))
   const blocked = new Set(names.flatMap((n) => exts.map((e) => (n + e).toLowerCase())))
   for (const entry of readdirSync(dir)) {
     if (blocked.has(entry.toLowerCase())) continue
@@ -156,11 +159,11 @@ export function runEngine(
   stubDir: string,
   opts: { stdinTty?: boolean; maskTools?: ReadonlyArray<string> } = {}
 ): EngineRun {
-  const home = mkdtempSync(join(tmpdir(), `parity-home-${kind}-`))
+  const home = mkdtempSync(join(tmpdir(), `golden-home-${kind}-`))
   rmSync(home, { recursive: true })
   const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(src, home, { recursive: true })
-  const argvLog = join(home, ".parity-argv.log")
+  const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
   const res = spawnSync("bash", ["-c", `exec 2>&1; ${engineCommand(kind, args)}`], {
@@ -168,13 +171,13 @@ export function runEngine(
     env: {
       HOME: home,
       PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
-      PARITY_ARGV_LOG: argvLog,
-      PARITY_STUB_DIR: stubDir,
+      GOLDEN_ARGV_LOG: argvLog,
+      GOLDEN_STUB_DIR: stubDir,
       LC_ALL: "C",
       TERM: "dumb",
       // The native side runs under the bun runtime, which would otherwise
       // drop its install cache inside the temp HOME and pollute the tree diff.
-      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "parity-bun-cache"),
+      BUN_INSTALL_CACHE_DIR: join(tmpdir(), "golden-bun-cache"),
       // env is constructed from scratch (no process.env spread), so engine
       // globals like DRY_RUN can never leak in from the invoking shell.
       AGENTS_DIR: join(home, ".agents")
@@ -230,7 +233,7 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
     const rel = p.slice(root.length + 1)
-    if (rel === ".parity-argv.log") continue
+    if (rel === ".golden-argv.log") continue
     // `.bun/install` is a runtime artifact of the native side's bun
     // interpreter (module cache keyed off $HOME) — the engine never writes
     // there. `.bun` itself is still recursed (engine bootstraps can create
@@ -244,9 +247,8 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
       if (rel !== ".bun") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
-      // Hash with CRLF canonicalized to LF: on Windows the bash engine's jq
-      // writes CRLF (text-mode CRT) where EngineNative writes LF — a
-      // transport artifact, not a logic divergence the parity gate is for.
+      // Hash with CRLF canonicalized to LF so platform text-mode transport
+      // artifacts do not count as engine regressions.
       const body = readFileSync(p).toString("binary").replaceAll("\r\n", "\n")
       acc[rel] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
     }
@@ -290,17 +292,28 @@ export function cleanup(runs: Array<EngineRun>): void {
   for (const r of runs) rmSync(r.home, { recursive: true, force: true })
 }
 
-export function parseArgs(argv: Array<string>): { native: boolean; proveRed: boolean } {
-  return { native: argv.includes("--native"), proveRed: argv.includes("--prove-red") }
+export function parseArgs(argv: Array<string>): { proveRed: boolean; updateGoldens: boolean } {
+  const allowed = new Set(["--prove-red", "--update-goldens"])
+  const unknown = argv.slice(2).filter((arg) => arg.startsWith("--") && !allowed.has(arg))
+  if (unknown.length > 0) {
+    console.error(`unknown option(s): ${unknown.join(", ")}`)
+    process.exit(2)
+  }
+  const proveRed = argv.includes("--prove-red")
+  const updateGoldens = argv.includes("--update-goldens")
+  if (proveRed && updateGoldens) {
+    console.error("--prove-red and --update-goldens are mutually exclusive")
+    process.exit(2)
+  }
+  return { proveRed, updateGoldens }
 }
 
 /**
- * PARITY_FILTER (regex on the pair label) scopes a run to the command
- * surface a partial EngineNative port claims — step 5 gates each commit on
- * exactly its rows. Unset = everything.
+ * GOLDEN_FILTER (regex on the case label) scopes a run to one command surface.
+ * Unset = everything.
  */
 export function labelSelected(label: string): boolean {
-  const f = process.env["PARITY_FILTER"]
+  const f = process.env["GOLDEN_FILTER"]
   if (f === undefined || f === "") return true
   return new RegExp(f).test(label)
 }
@@ -311,7 +324,7 @@ export function banner(msg: string): void {
 
 /** Write a fixture home variant on the fly (used by the TOML suite). */
 export function materializeVariant(base: string, files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "parity-fixture-"))
+  const dir = mkdtempSync(join(tmpdir(), "golden-fixture-"))
   rmSync(dir, { recursive: true })
   cpSync(join(FIXTURES_DIR, base), dir, { recursive: true })
   for (const [rel, content] of Object.entries(files)) {
@@ -319,4 +332,18 @@ export function materializeVariant(base: string, files: Record<string, string>):
     writeFileSync(join(dir, rel), content)
   }
   return dir
+}
+
+export function stableStringify(value: unknown): string {
+  return `${JSON.stringify(stableJson(value), null, 2)}\n`
+}
+
+function stableJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJson)
+  if (value === null || typeof value !== "object") return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => [k, stableJson(v)])
+  )
 }

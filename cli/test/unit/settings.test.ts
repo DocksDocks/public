@@ -4,10 +4,9 @@
  * Two oracles for the settings merge:
  *   1. Semantics cases pinned by hand (SoT-wins, permissions union
  *      sorted+deduped, user-only keys preserved, nested env merge).
- *   2. jq differential — the EXACT jq programs from lib/claude.sh run over
- *      the same inputs; the TS port must match byte-for-byte, since the
- *      mutation-parity gate compares the deployed file content. Skipped
- *      when jq is absent.
+ *   2. jq differential — the legacy jq programs are inlined below as the
+ *      test-only specification. jq remains a test-only dependency for this
+ *      oracle and the suite skips it when jq is absent.
  */
 import { describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
@@ -101,7 +100,7 @@ function jqSlurp(program: string, docs: Array<Json>): string {
 
 const hasJq = spawnSync("jq", ["--version"], { encoding: "utf8" }).status === 0
 
-describe.skipIf(!hasJq)("jq differential (byte-for-byte vs lib/claude.sh programs)", () => {
+describe.skipIf(!hasJq)("jq differential (byte-for-byte vs inlined legacy programs)", () => {
   it("merge matches jq on SoT x drift fixture", () => {
     expect(jqStringify(mergeSettings(SOT_SETTINGS, DRIFT_SETTINGS))).toBe(
       jqSlurp(JQ_MERGE, [SOT_SETTINGS, DRIFT_SETTINGS])

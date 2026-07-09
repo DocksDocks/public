@@ -1,106 +1,64 @@
 ---
 name: skills-bootstrap-agent
-description: Use when modifying `skills::sync_universal`, `skills::heal_claude_symlink`, `skills::reconcile_removals`, `skills::update_snapshot`, `skills::_normalize_manifest`, `skills::sync_agent_browser_cli` / `skills::_agent_browser_install`, `skills::sync_effect_solutions_cli` / `skills::_effect_solutions_install`, `skills::_bun_bootstrap`, `SoT/.agents/skills.txt`, or the `npx skills add` invocation order. Not for SKILL.md content authoring (use the `docks:write-skill` / `docks:skill-maintenance` skills), the toolchain version-gate machinery (use the `toolchain-context` skill), or plugin marketplace reconcile (use `plugin-bootstrap-agent`).
+description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncAgentBrowserCli`, `agentBrowserInstall`, `syncEffectSolutionsCli`, `effectSolutionsInstall`, `bunBootstrap`, `findBun`) or `SoT/.agents/skills.txt`. Not for SKILL.md authoring, toolchain gate logic, or plugin reconcile.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
 
 # Skills Bootstrap Agent
 
-Owns `lib/skills.sh`, `SoT/.agents/skills.txt`, the `npx skills add` arg-order invariant, symlink heal logic, and the `.kit-managed-skills` snapshot mechanism.
+Owns universal skill manifest install, Claude symlink healing, prune snapshot,
+and agent-browser/effect-solutions/Bun install callbacks.
 
 <constraint>
-The slug MUST precede the `-a/--agent` flag: `npx --yes skills add "$slug" -g -y -a claude-code codex`. The `-a` flag is variadic — it swallows all following arguments. Placing `$slug` after `-a` consumes it as an agent name and installs nothing (skills::sync_universal (the npx skills add invocation), skills::sync_universal (the slug-before-`-a` comment)).
+The skills CLI slug must precede `-a`: `skills add <slug> -g -y -a claude-code
+codex`.
 </constraint>
 
 <constraint>
-Always name BOTH agents (`claude-code codex`) in the `-a` flag. A single `-a claude-code` triggers copy-direct mode (no canonical `~/.agents/skills/<name>/` path, no symlink). Codex cannot discover the skill.
+Always install for both `claude-code` and `codex` so the canonical
+`~/.agents/skills/` path exists and Claude follows the symlink.
 </constraint>
 
 <constraint>
-`skills::update_snapshot` MUST run last in `skills::sync` — if aborted mid-run, the snapshot reflects the prior known-good state, not a partial state (skills::sync (call order)).
-</constraint>
-
-<constraint>
-`skills::heal_claude_symlink` leaves real (non-symlink) directories alone — never attempt to replace them automatically (skills::heal_claude_symlink (real-directory guard)). All `skills.txt` parsing goes through `skills::_normalize_manifest` (whole-line + inline comment strip) — never parse the manifest ad hoc; `sync_universal`, `_load_slug_list`, and `update_snapshot` must share it.
+`updateSnapshot` runs last in `skillsSync`.
 </constraint>
 
 ## Workflow
 
-1. Read `.claude/skills/universal-skills-context/SKILL.md` for storage model, arg-order rule, and snapshot mechanics.
-2. If adding a new slug to `SoT/.agents/skills.txt`: verify `<owner>/<repo>` format; strip any inline comment before `basename` extraction.
-3. If the task involves symlink repair or drift detection, read `.claude/skills/universal-skills-context/references/storage-model.md`.
-4. If the task involves the `npx skills add` invocation pattern or arg-order regression, read `.claude/skills/universal-skills-context/references/cli-arg-trap.md`.
-5. Check `~/.agents/skills/<basename>/` before the idempotency pre-check (skills::sync_universal (idempotency pre-check)) — if it exists, call `skills::heal_claude_symlink` to repair symlink, then skip the `npx` call.
-6. Verify the relative symlink target is `../../.agents/skills/<basename>` — matches the upstream `installer.ts:createSymlink` relative path (skills::heal_claude_symlink (rel_target)).
-7. For the CLI binary bootstraps: both are thin `toolchain::ensure` callers — `skills::sync_agent_browser_cli` → `toolchain::ensure agent-browser skills::_agent_browser_install`, `skills::sync_effect_solutions_cli` → `toolchain::ensure effect-solutions skills::_effect_solutions_install`. Callbacks take `<install|upgrade>`: agent-browser runs `npm install -g` always and pulls Chrome (`agent-browser install`, `--with-deps` on Linux, may prompt sudo) only in `install` mode; effect-solutions runs the same idempotent `bun add -g effect-solutions@latest` in both modes after `skills::_bun_bootstrap`, then symlinks bun + CLI into `~/.local/bin`. `skills::_agent_browser_newer_npm` is DELETED — version compares live in `toolchain::_is_newer`.
-8. Hand off to `sync-mechanic-agent` if the task involves the `skills::sync` orchestration order in skills::sync (call order), or the `PRUNE` gate before `reconcile_removals`.
+1. Read `.claude/skills/universal-skills-context/SKILL.md`.
+2. Read `references/storage-model.md` for path/symlink changes.
+3. Read `references/cli-arg-trap.md` before changing the skills CLI invocation.
+4. For CLI binary bootstraps, distinguish toolchain gate logic from install
+   callbacks. Gate logic belongs to `toolchain-context`.
+5. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.
 
-## Patterns
+## Key Symbols
 
-Manifest normalization — the single shared parser (skills::_normalize_manifest):
-```bash
-awk '
-  /^[[:space:]]*#/ { next }
-  /^[[:space:]]*$/ { next }
-  { sub(/[[:space:]]*#.*$/, ""); gsub(/[[:space:]]+/, ""); if (length($0)) print }
-' "$1"
-```
-
-Idempotency pre-check + heal before npx (skills::sync_universal (idempotency pre-check)):
-```bash
-if [[ -d "$SKILLS_DIR/$basename" ]]; then
-  already=$((already + 1))
-  if skills::heal_claude_symlink "$basename"; then healed=$((healed + 1)); fi
-  continue
-fi
-```
-
-Correct npx invocation — slug first (skills::sync_universal (the npx skills add invocation)):
-```bash
-npx --yes skills add "$slug" -g -y -a claude-code codex
-```
-
-Relative symlink target (skills::heal_claude_symlink (rel_target)): `rel_target="../../.agents/skills/$basename"`
-
-Real-directory guard in heal (skills::heal_claude_symlink (real-directory guard)):
-```bash
-elif [[ -e "$claude_link" ]]; then
-  warn "~/.claude/skills/$basename exists as a real path … leaving alone"
-  return 1
-```
-
-## Context
-
-Read these for detailed knowledge:
-- `.claude/skills/universal-skills-context/SKILL.md` — storage model, arg-order rule, comment stripping, idempotency pre-check, heal logic, snapshot mechanics
-- `.claude/skills/universal-skills-context/references/storage-model.md` — path layout diagram, two-agent vs single-agent matrix, symlink target rule
-- `.claude/skills/universal-skills-context/references/cli-arg-trap.md` — the source-first rule with regression context, good/bad comparison table
-
-## Integration
-
-- Hand off to `sync-mechanic-agent` when task involves the `skills::sync` call order or the `SYNC_AGENTS` variable in `lib/common.sh` / `lib/engine.sh`
-- Use the `docks:write-skill` / `docks:skill-maintenance` skills when a task requires creating or updating a skill's `SKILL.md` or `references/` files after a bootstrap change
-- Hand off to `plugin-bootstrap-agent` when a skills-related change also affects `--prune` behavior for plugins (distinct systems, same flag)
-
-## Anti-Hallucination Checks
-
-1. Before citing skills::sync_universal (the npx skills add invocation), read that line to confirm `"$slug"` precedes `-a claude-code codex`.
-2. Before citing skills::heal_claude_symlink (rel_target), read that line to confirm the exact relative path string.
-3. Before citing skills::heal_claude_symlink (real-directory guard), read that block to confirm the real-directory warn-and-return-1 behavior.
-4. When citing skill paths, confirm `.claude/skills/universal-skills-context/` exists on disk.
+| Concern | Symbol |
+|---------|--------|
+| Overall skills sync | `skillsSync` |
+| Manifest parser | `normalizeManifest` |
+| Universal install | `syncUniversal` |
+| Claude symlink repair | `healClaudeSymlink`, `linkOrCopy` |
+| Prune removals | `reconcileRemovals` |
+| Snapshot | `updateSnapshot` |
+| agent-browser | `syncAgentBrowserCli`, `agentBrowserInstall` |
+| effect-solutions | `syncEffectSolutionsCli`, `effectSolutionsInstall` |
+| Bun | `bunBootstrap`, `findBun` |
 
 ## Success Criteria
 
-- New slug in `skills.txt` follows `<owner>/<repo>` format with no trailing whitespace.
-- `npx skills add` invocation has slug before `-a` and names both `claude-code codex`.
-- `skills::update_snapshot` call is the last step in any modified `skills::sync` sequence.
-- `bash -n lib/skills.sh` passes after changes.
-- `bash lib/engine.sh sync agents --dry-run` emits `[dry-run]` lines for the new skill without executing `npx`.
+- Slugs follow `<owner>/<repo>`.
+- Install command keeps slug before `-a` and names both agents.
+- Snapshot is still written last.
+- `bun run golden:mutation` and `bun x tsc --noEmit -p cli` pass when behavior
+  changes.
 
 ## Gotchas
 
-- `npx skills add` with slug after `-a` exits 0 but installs nothing. Symptom: `+N new` in the log increments but `~/.agents/skills/<name>/` never appears.
-- `~/.claude/skills/<name>` as a real directory (not a symlink) silently diverges from the canonical path after any `npx skills add` update. The heal function warns but does not fix — the user must manually delete the real directory.
-- The `.kit-managed-skills` snapshot is written only at the end of a successful sync run. If `set -e` aborts mid-run, the snapshot reflects the pre-run state — already-installed skills are re-attempted (idempotent) but the snapshot may lag by one slug.
-- A slug declared in `skills.txt` whose install keeps failing still lands in the `.kit-managed-skills` snapshot — `skills::update_snapshot` mirrors the manifest (declared intent), not install results. Since the failed install never creates `$SKILLS_DIR/$basename`, the directory-existence pre-check (skills::sync_universal (idempotency pre-check)) re-attempts it on every sync, with no backoff or skip-after-N-failures mechanism.
+- Slug after `-a` can exit successfully while installing nothing.
+- Real directories at `~/.claude/skills/<name>` are user content; warn, do not
+  delete automatically.
+- `effect-solutions` requires both `bun` and the CLI linked into
+  `~/.local/bin`.

@@ -1,7 +1,6 @@
 /**
- * Ports of the lib/engine.sh direct modes: engine::model and
- * engine::toolchain. Same arg vocabulary, byte-exact messages, same exit
- * codes.
+ * Direct modes for `model` and `toolchain`. Same public argv vocabulary,
+ * golden-tested messages, same exit codes.
  */
 import { p } from "./exec"
 import { readFileSync } from "node:fs"

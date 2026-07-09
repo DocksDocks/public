@@ -1,0 +1,827 @@
+{
+  "cases": {
+    "fixture=home-drift cmd=model claude default": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "claude",
+        "default"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to default (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:8790b1fa7f06c521905fe423260b2c1aaa8944b357e1ad8767c9f24988c3ac8b",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=model claude opus": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "claude",
+        "opus"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to opus (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:929fe923c8a7cba2a044527c9f635e488dff8e22e9e0c9b7cfda74c556807b0c",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=model codex gpt-5.5": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:cef6f8d77ae68556916db02b31f1b40e55564d0730e2cea9973832bfbf07e7ca"
+      }
+    },
+    "fixture=home-drift cmd=sync --prune": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.15 remove --global -y -a * -s gone-skill\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "--prune"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK already initialized\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +7 ~0 -1)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (1 present)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/skills/": "dir",
+        ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:1bbe7940fdb1b46ed68586f999022d7644102bd23fc2a0f172a2bc283ec500f8",
+        ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-drift cmd=sync --reconcile": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "--reconcile"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK already initialized\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (1 present)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:374c1f0c20e89e4384bdd2a79d9239dbf957139000009c28f970b90f4e110c84",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/skills/": "dir",
+        ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:1bbe7940fdb1b46ed68586f999022d7644102bd23fc2a0f172a2bc283ec500f8",
+        ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-drift cmd=sync agents": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "command": [
+        "sync",
+        "agents"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (1 present)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/skills/": "dir",
+        ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=sync claude": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK already initialized\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=sync claude --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-model=fable",
+        "--claude-compact-window=680k",
+        "--claude-permissive"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK already initialized\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Compact window: set to 680000 tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)\n\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:6cfe2c264b9e49907f1c90cf53d29ae6c247123364519613e84091cb50c200d5",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=sync claude --claude-plugin=supabase,n8n": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-plugin=supabase,n8n"
+      ],
+      "exitCode": 2,
+      "output": "\u001b[1;31m[err]\u001b[0m Unknown opt-in plugin 'supabase,n8n'. Known: supabase, n8n\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
+      }
+    },
+    "fixture=home-drift cmd=sync codex": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".agents/skills/": "dir",
+        ".agents/skills/agent-browser/": "dir",
+        ".agents/skills/agent-browser/SKILL.md": "sha256:b99b7156dd7be0908b82fe5b5b7c99355c90a1a497ec0b2396e202ba3298d0f8",
+        ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
+        ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:a0a4ada54be39b10714b514d742b27cc7682ad1ac3bb5f22b3c6338945b26779",
+        ".claude/plugins/": "dir",
+        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
+        ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
+        ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
+        ".codex/config.toml": "sha256:1bbe7940fdb1b46ed68586f999022d7644102bd23fc2a0f172a2bc283ec500f8",
+        ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-fresh cmd=sync agents": {
+      "argvLog": "npx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "command": [
+        "sync",
+        "agents"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
+        ".agents/skills/": "dir",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
+        ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/settings.json": "sha256:9c0904acc14548f2a9595f6443bb3ecce7d456c4c09362e055bab95589d083c0",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude stubs=claude": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  skipped - claude CLI not installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
+        ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/settings.json": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude stubs=rtk": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 1,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".claude/": "dir"
+      }
+    },
+    "fixture=home-fresh cmd=sync codex": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-fresh cmd=sync codex stubs=codex": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m codex CLI not in PATH - deployed config/marketplace only; install Codex with: tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o \"$tmp\" && CODEX_NON_INTERACTIVE=1 sh \"$tmp\" | docs: https://developers.openai.com/codex/cli; then run: codex plugin add docks@docks\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain check": {
+      "argvLog": "agent-browser\t--version\nbun\t--version\nclaude\t--version\ncodex\t--version\ncurl\t--version\nbun\tpm -g ls\njq\t--version\nnode\t--version\nnpm\t--version\nrtk\t--version\ntsc\t--version\n",
+      "command": [
+        "toolchain",
+        "check"
+      ],
+      "exitCode": 0,
+      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nagent-browser                managed   0.31.1         -         0.31.1    ok\nbun                          managed   1.3.14         -         1.3.14    ok\nbwrap                        check     ?              -         -         ok\nclaude                       check     2.1.204        2.1.170   -         ok\ncodex                        check     0.142.2        -         -         ok\ncurl                         required  ?              -         -         ok\neffect-solutions             managed   0.5.3          -         0.5.3     ok\nffplay                       check     ?              -         -         ok\nintelephense                 check     ?              -         1.18.5    ok\njq                           required  1.7.1          -         -         ok\nnode                         check     22.23.1        -         -         ok\nnpm                          check     ?              -         -         ok\nrtk                          managed   0.43.0         0.43.0    0.43.0    ok\nskills-cli                   pin       (npx)          -         1.5.15    pinned\ntsc                          check     6.0.3          -         6.0.3     ok\ntypescript-language-server   check     ?              -         5.3.0     ok\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser --yes stubs=npm": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\nnpm\tinstall -g agent-browser@0.99.0\nagent-browser\t--version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser",
+        "--yes"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m agent-browser 0.99.0 is newer than kit-verified 0.31.1 — proceeding (--yes)\n\u001b[1;32m[ok]\u001b[0m Upgrading agent-browser CLI via npm (pinned 0.99.0)...\n\u001b[1;32m[ok]\u001b[0m agent-browser CLI ready (0.31.1)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=agent-browser": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\nnpm\tinstall -g agent-browser@0.31.1\nagent-browser\t--version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Upgrading agent-browser CLI via npm (pinned 0.31.1)...\n\u001b[1;32m[ok]\u001b[0m agent-browser CLI ready (0.30.0)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=agent-browser,npm": {
+      "argvLog": "npm\tview agent-browser version\nnpm\tinstall -g agent-browser@0.31.1\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 1,
+      "output": "\u001b[1;32m[ok]\u001b[0m Installing agent-browser CLI via npm (pinned 0.31.1)...\n\u001b[1;33m[warn]\u001b[0m npm install -g agent-browser@0.31.1 failed. Try manually: npm install -g agent-browser@0.31.1\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=npm variant=npm-latest-above-verified": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m skipping agent-browser upgrade (latest 0.99.0 is above kit-verified 0.31.1; pass --yes to accept, or update SoT/toolchain.json after testing)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=npm variant=npm-offline": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m agent-browser present (0.31.1; latest unknown — no action)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure effect-solutions --yes": {
+      "argvLog": "bun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "effect-solutions",
+        "--yes"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-invalid-json cmd=sync claude": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 1,
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;31m[err]\u001b[0m Skipping settings sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".claude/": "dir",
+        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+        ".claude/hooks/": "dir",
+        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/settings.json": "sha256:8e7d39b0534ad73130ea8a52903c20cf2851b5cbd76c49c124b81fc3d15027da",
+        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+      }
+    },
+    "toml=01-top-level-comments.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:3fd840ea230b51943c195ab94a298b2e00f0819f2e7ef1dff1ad6f2c3ac0a504",
+        ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=01-top-level-comments.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:834f1f0ffb4963a14d6230247f4c8ff8c7a933a964e5b016bca1bc30c548be5c"
+      }
+    },
+    "toml=02-first-table-insert.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:e50f053ca90174392447978544c127e84ea56ea3710837fbb5f2753809094d0d",
+        ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=02-first-table-insert.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:cbb1e13a2605c7b6e5edc7e3a223befc9d5b2b97031a21634f56a09ff5ad26dc"
+      }
+    },
+    "toml=03-features-only-landlock.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:bcb3954e463b828d12ecd05c3fa8caee1085e1715d095e03a37580cfce252ae3",
+        ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=03-features-only-landlock.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:83a4146d5d6d4e91685802b9e782cfb5a8032e059c699e4a8c5977411c358a1a"
+      }
+    },
+    "toml=04-features-extra-keys.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:c26366b96d6a5dab2e88f7afbe7c0f9d4988131c58b1dbaa358e9ea0bdb871bb",
+        ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=04-features-extra-keys.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:b36b849d1ff93e88536979a4ecfca35c3fcd43200342fdaee743bdf71b28cad3"
+      }
+    },
+    "toml=05-user-tables.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:0640c2e882235acca9267adfcfe588c9f35ddd159550cd2ae32b226719f1e02e",
+        ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=05-user-tables.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:236e50fddb18def6a71ddc40631b5cfef59933c25dbb2bae7bf8e3761953c8ee"
+      }
+    },
+    "toml=06-sot-table-replace.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:c26366b96d6a5dab2e88f7afbe7c0f9d4988131c58b1dbaa358e9ea0bdb871bb",
+        ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=06-sot-table-replace.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:bbac60b89ba8c63281e6a5d4b63f0982844884e201873575269a9b247cf4305c"
+      }
+    },
+    "toml=07-dotted-quoted-headers.toml": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 4 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:8bc3467671cae44f721ae9b6cf3482c0a9e0429e376d765fc4f78304546c5dd2",
+        ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "toml=07-dotted-quoted-headers.toml model codex": {
+      "argvLog": "",
+      "command": [
+        "model",
+        "codex",
+        "gpt-5.5"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/config.toml": "sha256:0c47663b6c29e6f9b2d6c379afd4735db78a622f987ce613a44505dc1bbfc1ac"
+      }
+    }
+  },
+  "version": 1
+}

@@ -1,6 +1,6 @@
 /**
- * Port of claude::sync_model (lib/claude.sh) — the --claude-model deploy-time
- * modifier, shared with the `model claude <value>` direct mode.
+ * --claude-model deploy-time modifier, shared with the `model claude <value>`
+ * direct mode.
  */
 import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"

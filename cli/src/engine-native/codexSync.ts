@@ -1,8 +1,7 @@
 /**
- * Port of lib/codex.sh — the `sync codex` pipeline. Line-based TOML passes
- * are replicated record-for-record from the awk programs (no TOML library:
- * it would reformat user configs and break parity). Guard order, message
- * strings, and backup behavior are byte-exact.
+ * EngineNative `sync codex` pipeline. Line-based TOML passes intentionally
+ * avoid a TOML library because reformatting user configs would be a behavior
+ * change. Guard order, message strings, and backup behavior are golden-tested.
  */
 import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"

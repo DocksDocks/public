@@ -3,12 +3,12 @@
 | Platform | CLI (docks-kit) | Sync engine | Notes |
 |----------|-----------------|-------------|-------|
 | Linux | native | EngineNative (TS) | Primary target |
-| macOS | native (x64 + arm64) | EngineNative (TS) | bash escape hatch is 3.2-compatible |
+| macOS | native (x64 + arm64) | EngineNative (TS) | Release binary or Bun source path |
 | Windows | native (`.exe` / `bun add -g`, CI-verified) | EngineNative (TS) — no Git Bash | Real-machine verify pending |
 
-EngineNative is the default engine on all platforms; `DOCKS_KIT_ENGINE=bash`
-opts a machine back onto the feature-frozen bash engine (`lib/engine.sh`),
-which also remains the zero-dependency escape hatch.
+EngineNative is the only supported engine on all platforms. `DOCKS_KIT_ENGINE=bash`
+now exits with the removed-engine message and points at the `bash-engine-final`
+tag for historical recovery.
 
 ## Windows detail
 
@@ -34,10 +34,9 @@ Unix-only: install rtk natively, then sync).
 CI coverage (all on the pinned windows-2025 label): EngineNative PowerShell
 smoke with `HOME` unset — `%USERPROFILE%` path resolution, `.cmd` tool
 spawning (npm), toolchain gate branches (`.github/workflows/parity.yml`,
-`native-windows` job); the bash escape hatch under Git Bash
-(`windows-smoke.yml`); the two entrypoints above
-(`windows-entrypoints.yml`). Deployed hook/statusline assets stay bash by
-design — Claude Code on Windows executes them through its own Git Bash.
+`native-windows` job); the two entrypoints above (`windows-entrypoints.yml`).
+Deployed hook/statusline assets stay shell scripts by design — Claude Code on
+Windows executes them through its own Git Bash.
 
 **Status: supported, pending one manual gate** — a real-machine interactive
 verify (Claude Code loads the synced `%USERPROFILE%\.claude`, the rtk hook

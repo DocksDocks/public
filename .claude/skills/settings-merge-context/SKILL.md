@@ -1,166 +1,106 @@
 ---
 name: settings-merge-context
-description: Use when modifying claude::sync_settings, claude::sync_claude_json, claude::sync_connector_env, claude::sync_removals, the deploy-time modifiers claude::sync_compact_window / claude::sync_permissive / claude::sync_model (--claude-compact-window=<tokens|Nk> autocompact window, --claude-permissive empty ask/deny, --claude-model=<m> deployed model incl. the 'default' delete), or the JSON merge/prune behavior for ~/.claude/settings.json and ~/.claude.json; covers the dual jq paths (default merge with permissions.{allow,deny,ask} unioned via unique vs --reconcile with wholesale permissions replacement), the settings.json.bak backup contract, the jq empty validity guard in claude::_settings_validate, why showTurnDuration lives in ~/.claude.json not settings.json, the additive user-scoped mcpServers merge from SoT/.claude/mcp-servers.json into ~/.claude.json (settings.json rejects an mcpServers key), the ENABLE_CLAUDEAI_MCP_SERVERS shell-rc export that disables claude.ai cloud connectors, and the removed-artifact manifest pruned by claude::sync_removals / claude::_prune_json_keys.
+description: "Use when modifying cli/src/engine-native/claudeSync.ts settings paths, syncSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel, or cli/src/engine-native/settings.ts mergeSettings/reconcileSettings; covers ~/.claude/settings.json vs ~/.claude.json ownership, permissions union vs reconcile replacement, backups, atomic writes, and removed-artifact pruning."
 user-invocable: false
 metadata:
   source_files:
-    - path: lib/claude.sh
-      lines: "79-426"
+    - path: cli/src/engine-native/claudeSync.ts
+      lines: "190-460"
+    - path: cli/src/engine-native/settings.ts
+      lines: "1-80"
     - path: SoT/.claude/settings.json
-      lines: "1-13"
+      lines: "1-260"
     - path: SoT/.claude/mcp-servers.json
-      lines: "1-9"
-  updated: "2026-07-08"
+      lines: "1-40"
+  updated: "2026-07-09"
 ---
 
 # Settings Merge
 
-> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
-> § Engineering rules); new capabilities land in EngineNative
-> (`cli/src/engine-native/`), the default engine since the step-6 flip of
-> the `windows-support` plan — see the `engine-native-context` skill. A bug
-> fix that changes behavior here must be mirrored in the TS port and pass
-> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+EngineNative owns Claude settings deployment in `claudeSync.ts`, with pure merge
+helpers in `settings.ts`. The old jq programs remain useful as the behavioral
+spec and are inlined in tests; production logic is TypeScript.
 
 <constraint>
-Always write to `.tmp` then `mv .tmp target`. Never write directly to the target settings file — a failed `jq` transform would produce a truncated/empty settings.json. The `.tmp` + `mv` pattern is atomic from the filesystem's perspective. (`claude::_settings_reconcile (backup + atomic .tmp/mv)`, `claude::_settings_merge (backup + atomic .tmp/mv)`)
+Always write through a temporary file and replace the target only after the new
+JSON has been serialized successfully. Preserve the `.bak` contract before
+mutating an existing deployed settings file.
 </constraint>
 
 <constraint>
-Run `jq empty "$user_settings"` before any merge operation. An invalid JSON settings.json must abort with `err` and `return` — never attempt to merge corrupt input. (`claude::_settings_validate (jq empty guard)`)
+Validate existing JSON before merging. A corrupt deployed settings file must be
+left untouched and reported; never merge into a parse failure.
 </constraint>
 
 <constraint>
-`showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. Adding it to `settings.json` triggers a schema validation error. `claude::sync_claude_json` owns this key exclusively.
+`showTurnDuration` and user-scoped `mcpServers` belong in `~/.claude.json`, not
+`~/.claude/settings.json`. The settings schema rejects them in the settings file.
 </constraint>
 
-## When to Use
+## When To Use
 
-- Adding a new top-level key to `SoT/.claude/settings.json` that should survive additive merges
-- Changing how permissions arrays are unioned (additive) vs replaced (`--reconcile`)
-- Debugging why a user's custom permission survived or was wiped after sync
-- Modifying `claude::sync_claude_json` to write a new key to `~/.claude.json`
-- Adding or changing a user-scoped MCP server in `SoT/.claude/mcp-servers.json` (merged into `~/.claude.json` by `claude::sync_claude_json`)
-- Disabling claude.ai cloud connectors via the `ENABLE_CLAUDEAI_MCP_SERVERS` shell-rc export (`claude::sync_connector_env`)
-- Pruning a newly-deprecated kit artifact via the `removed` manifest (`claude::sync_removals`)
-- Adding or changing a deploy-time modifier that mutates deployed settings away from SoT (`claude::sync_compact_window`, `claude::sync_permissive`, `claude::sync_model`)
+- Changing `syncSettings` first-install, additive merge, or reconcile behavior.
+- Changing `mergeSettings` or `reconcileSettings`.
+- Adding a key to `~/.claude.json` through `syncClaudeJson`.
+- Adding user-scoped MCP servers in `SoT/.claude/mcp-servers.json`.
+- Changing `syncConnectorEnv`, `syncRemovals`, or deploy-time modifiers.
 
-## Core Patterns
+## Merge Modes
 
-### Code Paths — `claude::sync_settings` dispatches to `_settings_*` helpers
+| Mode | Function | Behavior |
+|------|----------|----------|
+| First install | `syncSettings` copy path | Copies SoT settings when no deployed file exists. |
+| Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
+| `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
-The orchestrator validates, then routes to one extracted helper per path:
+User-only top-level keys survive both merge modes. Only keys explicitly covered
+by the curated removed manifest are force-pruned.
 
-| Condition | Helper (action) | lib/claude.sh line |
-|-----------|--------|--------------------|
-| `~/.claude/settings.json` absent | `_settings_install` — `cp repo → user` | `claude::_settings_install` |
-| `user_settings` invalid JSON | `_settings_validate` — `err + return` (no write) | `claude::_settings_validate (jq empty guard)` |
-| `--reconcile` (`RECONCILE=1`) | `_settings_reconcile` — `jq -s '… $user * $repo'`; permissions arrays replaced | `claude::_settings_reconcile` |
-| Default (no `--reconcile`) | `_settings_merge` — `jq -s '… ($user * $repo) | .permissions.* unioned'` | `claude::_settings_merge` |
+## File Ownership
 
-### Default Merge jq (`claude::_settings_merge (the jq union)`)
+| Key | File | Owner |
+|-----|------|-------|
+| Standard env, hooks, permissions, plugins | `~/.claude/settings.json` | `syncSettings` |
+| `showTurnDuration` | `~/.claude.json` | `syncClaudeJson` |
+| User-scoped `mcpServers` | `~/.claude.json` | `syncClaudeJson` merging `SoT/.claude/mcp-servers.json` |
+| Claude.ai cloud connector disable | Shell rc export | `syncConnectorEnv` |
 
-```bash
-jq -s '
-  .[0] as $repo | .[1] as $user |
-  ($user * $repo) |
-  .permissions.allow = (($user.permissions.allow // []) + ($repo.permissions.allow // []) | unique) |
-  .permissions.deny  = (($user.permissions.deny  // []) + ($repo.permissions.deny  // []) | unique) |
-  .permissions.ask   = (($user.permissions.ask   // []) + ($repo.permissions.ask   // []) | unique)
-' "$repo_settings" "$user_settings" > "$user_settings.tmp"
-```
+`syncConnectorEnv` writes `ENABLE_CLAUDEAI_MCP_SERVERS=false` to a shell rc file
+when absent. No JSON setting disables those account-level cloud connectors.
 
-Key: `$user * $repo` — repo wins on scalar/object conflicts. Then permissions arrays are overwritten with the concat+unique union. User-added permissions survive.
+## Deploy-Time Modifiers
 
-### Reconcile jq (`claude::_settings_reconcile (the jq $user*$repo)`)
+`syncCompactWindow`, `syncPermissive`, and `syncClaudeModel` run after
+`syncSettings` and mutate only deployed settings. A later flag-less sync restores
+SoT values, except user-only keys that the SoT does not declare.
 
-```bash
-jq -s '.[0] as $repo | .[1] as $user | $user * $repo' \
-  "$repo_settings" "$user_settings" > "$user_settings.tmp"
-```
-
-Key: `$user * $repo` — same operator, but no permissions array special handling. Repo permissions arrays replace user's arrays wholesale. User-only top-level keys survive (because `$user * $repo` preserves user keys that repo doesn't declare).
-
-### Backup + Atomic Write Contract
-
-```bash
-cp "$user_settings" "$user_settings.bak"  # backup first
-if ! jq … > "$user_settings.tmp"; then    # write to .tmp
-  rm -f "$user_settings.tmp"              # cleanup on failure
-  err "…"
-  return
-fi
-mv "$user_settings.tmp" "$user_settings"  # atomic swap
-```
-
-Recovery: if merge fails, original is unchanged. `.bak` is the last-known-good copy.
-
-### `~/.claude.json` Key Ownership
-
-| Key | File | Owner | Why |
-|-----|------|-------|-----|
-| `showTurnDuration` | `~/.claude.json` | `claude::sync_claude_json` | Schema validation error if placed in settings.json |
-| `mcpServers` (user scope) | `~/.claude.json` | `claude::sync_claude_json` | settings.json schema rejects an `mcpServers` key; servers declared in `SoT/.claude/mcp-servers.json` |
-| Everything else | `~/.claude/settings.json` | `claude::sync_settings` | Standard Claude Code settings schema |
-
-`claude::sync_claude_json` merges `mcpServers` **additively** — `.mcpServers = ((.mcpServers // {}) * ($mcp[0].mcpServers // {}))` — so SoT-declared servers win per key while a user's own servers survive. The SoT file is read via `--slurpfile mcp`, guarded by `[[ -f ]] && jq empty` (absent/invalid → mcp merge skipped, `showTurnDuration` still written). Like every sync layer, dropping a server from the SoT file does NOT remove it from `~/.claude.json` (additive; prune via `claudeJsonKeys` in `claude::_removed_manifest`).
-
-claude.ai cloud connectors are **not** disabled via any file here — see the connector-env section below.
-
-### Disabling claude.ai cloud connectors (`claude::sync_connector_env`)
-
-Cloud connectors (Figma/Drive/Gmail) are fetched from the claude.ai account at startup; **no `~/.claude.json` / `settings.json` field disables them** — `disabledMcpServers` gates only `.mcp.json`/`claude mcp add` servers. The only working lever is `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a REAL shell var (inert in the settings.json `env` block, applied too late). `claude::sync_connector_env` appends it to the active shell rc, idempotently:
-
-```bash
-# claude::sync_connector_env — verify-if-present across rc files, then append
-for f in "${candidates[@]}"; do
-  [[ -f "$f" ]] && grep -q 'ENABLE_CLAUDEAI_MCP_SERVERS' "$f" && return  # never duplicate/clobber
-done
-case "$(basename "${SHELL:-bash}")" in zsh) target=~/.zshrc;; bash) target=~/.bashrc;; *) target=~/.profile;; esac
-printf '\n%s\n%s\n' "$marker" "export ENABLE_CLAUDEAI_MCP_SERVERS=false" >> "$target"
-```
-
-### Pruning stale artifacts (`claude::sync_removals`)
-
-Default sync is additive (merge keeps user keys; `cp -R` never deletes), so kit-dropped artifacts linger. `claude::sync_removals` reads the declarative `claude::_removed_manifest` and force-prunes them on every sync — a **narrow exception to additive-by-default**, so it lists only unambiguous kit-owned artifacts (hooks/files/settingsKeys/claudeJsonKeys). `claude::_prune_json_keys` deletes dotted key paths via `delpaths`:
-
-```bash
-# claude::_prune_json_keys — count present keys (BIND ROOT first!), then delpaths
-present=$(jq --argjson k "$keys" '. as $doc | [ $k[] | split(".") as $p | select($doc | getpath($p) != null) ] | length' "$file")
-[[ "$present" -gt 0 ]] && jq --argjson k "$keys" 'delpaths([ $k[] | split(".") ])' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-```
-
-### Deploy-time modifiers (`claude::sync_compact_window`, `claude::sync_permissive`, `claude::sync_model`)
-
-Gated on `CLAUDE_COMPACT_WINDOW` (non-empty) / `CLAUDE_PERMISSIVE=1` / `CLAUDE_MODEL` (non-empty) — set by `--claude-compact-window=<tokens|Nk>` / `--claude-permissive` / `--claude-model=<m>` in `common::parse_args` — these run in `claude::sync` immediately AFTER `claude::sync_settings` and mutate only the DEPLOYED `~/.claude/settings.json` — the opposite direction of every other pass (away from SoT, not toward it):
-
-| Function | jq mutation | Intent |
-|----------|------------|--------|
-| `claude::sync_compact_window` | `jq --arg w "$CLAUDE_COMPACT_WINDOW" '.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW = $w'` — any token value (e.g. 680k → 680000), normalized upstream by `common::parse_compact_window` | Wider/narrower autocompact window for disposable sessions; model selection untouched (`claude::sync_compact_window`, the jq --arg edit) |
-| `claude::sync_permissive` | `.permissions.ask = [] \| .permissions.deny = []` | Sandbox/container profile — no prompts; `Bash(git *)` allow already covers push once ask is emptied |
-| `claude::sync_model` | `.model = $m`, or `del(.model)` when the value is `default` so the account default applies (`claude::sync_model`, the default→del(.model) branch) | Per-machine model override; the value was already validated by `common::validate_model_flags` before any sync step ran |
-
-All three follow the full settings-write contract: flag-off `return 0` first, then dry-run guard, then existence + `jq empty` guards, then atomic `.tmp`/`mv`. Reverted by the next flag-less sync: the repo-wins merge restores the SoT window/model values; the permissions union re-adds SoT ask/deny entries. No `.bak` is written — `claude::sync_settings` created one moments earlier in the same run.
-
-`claude::sync_model` is also callable STANDALONE — `docks-kit model claude <m>` (engine::model) invokes it without a full sync — which is why it (and `claude::sync_compact_window`/`claude::sync_permissive`) reads `${CLAUDE_DIR:-$HOME/.claude}/settings.json`: `claude::sync` may never have run to set `CLAUDE_DIR` (`claude::sync_model`, the ${CLAUDE_DIR:-} fallback).
+| Flag | Function | Mutation |
+|------|----------|----------|
+| `--claude-compact-window=<n|Nk>` | `syncCompactWindow` | Sets `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW`. |
+| `--claude-permissive` | `syncPermissive` | Clears `permissions.ask` and `permissions.deny`. |
+| `--claude-model=<m>` | `syncClaudeModel` | Sets `.model`, or deletes it for `default`. |
 
 ## Key Decisions
 
-- Default merge uses `$user * $repo` (`claude::_settings_merge ($user*$repo)`) — repo wins on scalar/object conflicts. User-added env vars, custom permissions entries, and mcpServers survive because those keys don't exist in repo settings.
-- Permissions arrays use concat+unique (`claude::_settings_merge (permissions concat+unique)`) in default mode — a user-added `Bash(my-tool *)` survives sync. With `--reconcile`, the repo's permissions arrays replace the user's wholesale (no union step).
-- `claude::sync_claude_json` creates `~/.claude.json` from scratch if absent (`claude::sync_claude_json (the create-from-scratch branch)`) via `jq -n "{} | $filter"` — `showTurnDuration: true` plus any SoT-declared `mcpServers`. The empty-array `jq_args` is expanded with the `"${jq_args[@]+"${jq_args[@]}"}"` guard so it doesn't trip `set -u` on bash 3.2 (macOS).
-- The connector disable lives in the shell rc, not `settings.json`/`~/.claude.json` — `claude::sync_connector_env` is surgical (only claude.ai connectors, MCP source #5; plugin/project servers untouched) and non-clobbering (skips if `ENABLE_CLAUDEAI_MCP_SERVERS` is already set to any value).
-- `claude::sync_removals` runs on every sync but only touches the curated `claude::_removed_manifest`; `delpaths` makes key removal idempotent (absent paths are ignored).
+- `mergeSettings` preserves jq-compatible behavior: repo wins on scalar/object
+  conflicts, arrays replace except for the permissions union in default mode.
+- Permission union is sorted/deduped to match the legacy jq `unique` behavior.
+- `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
+  Claude Code's project state and user keys.
+- `syncRemovals` is the narrow exception to additive-by-default and must remain
+  backed by the curated removed manifest.
 
 ## Gotchas
 
-- **Missing `// []` in permissions concat**: jq's `+` handles a single-sided null fine (`null + [...]` is the array), so one absent key is harmless. The `// []` fallback matters only when BOTH sides lack the key — `null + null` yields `null`, and the following `| unique` then errors (`Cannot iterate over null`). (`claude::_settings_merge (permissions concat+unique)`)
-- **`$schema` key position after merge**: jq does not preserve key order. The `$schema` key at the top of settings.json may appear anywhere in the merged output. This is cosmetic only; Claude Code does not require it at position 0.
-- **`getpath` must bind the root in `claude::_prune_json_keys`**: after `$k[]` the jq `.` context is the key *string*, so `getpath($p)` must run against a captured `. as $doc` — otherwise the present-count is always 0 and the `present > 0` guard skips the prune (the `delpaths` itself is unaffected). (`claude::_prune_json_keys (the present-count jq)`)
-- **`jq empty` guard returns silently on corrupt JSON**: `claude::_settings_validate` returns 1 (caller returns early) on corrupt settings.json (`claude::_settings_validate (jq empty guard)`). The corrupt file is left in place — the user must fix it manually. Symptom: sync reports no settings changes but the file is unchanged.
-- **`claude::sync_removals` dry-run branch must `return 0` explicitly**: it ends with `[[ "$skeys" -gt 0 ]] && echo ...; [[ "$cjkeys" -gt 0 ]] && echo ...; return`. When both counts are 0 (the steady state) the trailing `[[ ]]` test leaves `$?=1`, and a bare `return` propagates it — so the whole sync exits 1 under `set -e`, aborting before `sync_plugins`/`sync_lsp_servers` (and aborting any `set -e` caller, e.g. a web-env setup script). The fix is an explicit `return 0`. (`claude::sync_removals (the dry-run return)`)
+- Reversing merge operand order silently makes user values win and prevents SoT
+  updates from landing.
+- If both permission arrays are absent, the union must still produce an array,
+  not `null`.
+- `showTurnDuration` in settings.json creates a schema warning; keep the carve-out.
+- The present-count logic for removed dotted paths must evaluate paths against
+  the root document, not the path string.
 
 ## References
 
-- `references/jq-pipelines.md` — annotated jq for both merge modes with inline commentary; read when debugging merge output
-- `references/claude-json-keys.md` — which keys live in settings.json vs ~/.claude.json and why; read when adding a new settings key
+- `references/jq-pipelines.md` - compatibility spec for merge modes.
+- `references/claude-json-keys.md` - file ownership table and key-placement rules.

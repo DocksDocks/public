@@ -1,12 +1,9 @@
 /**
- * EngineNative — TypeScript port of lib/engine.sh (windows-support plan,
- * step 5; module map in ./DESIGN.md).
+ * EngineNative — the supported sync/model/toolchain engine.
  *
- * The default engine since the step-6 flip (`DOCKS_KIT_ENGINE=bash` opts out
- * at the cli/src/engine.ts seam). The parity harnesses drive it through
- * main.ts's harness-private `native-raw` channel, which bypasses @effect/cli
- * so both engines see the identical raw argv vocabulary. Until a command
- * surface is fully ported, dispatch refuses loudly rather than half-running it.
+ * Golden suites drive it through main.ts's harness-private `native-raw`
+ * channel, which bypasses @effect/cli so tests see the internal argv
+ * vocabulary directly.
  */
 import { p } from "./exec"
 import { existsSync } from "node:fs"
@@ -40,7 +37,7 @@ export interface Ctx {
   syncAgents: boolean
 }
 
-/** Globals default from env exactly like the ${VAR:-default} lines in common.sh. */
+/** Globals default from env using the historical ${VAR:-default} contract. */
 function makeCtx(): Ctx {
   const env = process.env
   const home = env["HOME"] !== undefined && env["HOME"] !== "" ? env["HOME"] : homedir()

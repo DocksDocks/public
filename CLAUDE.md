@@ -272,14 +272,13 @@ cd ~/projects/public
 ./docks-kit model claude opus        # deploy-time: set the DEPLOYED model for one tool (standalone form of --claude-model=/--codex-model=)
 ./docks-kit status                   # show deployed vs SoT state
 ./docks-kit toolchain check          # verify installed tools against SoT/toolchain.json floors
-bash lib/engine.sh sync              # zero-dependency escape hatch — same args, no Bun needed
 ```
 
 In an active Claude Code session, run `/reload-plugins` after `./docks-kit sync` to activate any newly installed plugins without restarting.
 
-The sync auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, and installs/upgrades RTK via `lib/toolchain.sh` against the `SoT/toolchain.json` verified-version gate (`claude::sync_rtk` runs first in `claude::sync`, so the settings merge normalizes `rtk init`'s settings rewrite — deploy-time modifiers can no longer be clobbered).
+The sync auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, and installs/upgrades RTK via EngineNative's verified-version gate over `SoT/toolchain.json`. RTK runs first in the Claude sync pipeline, so the settings merge normalizes `rtk init`'s settings rewrite — deploy-time modifiers can no longer be clobbered.
 
-For plugins the sync — driven via `./docks-kit sync`, executed by `lib/engine.sh` — runs seven idempotent passes via the `claude plugin` CLI:
+For plugins, `./docks-kit sync` runs seven idempotent passes via the `claude plugin` CLI:
 
 | Pass | Mode | What it does |
 |------|------|--------------|
@@ -324,7 +323,7 @@ User-added permissions arrays are discarded by `--reconcile` (kit owns the permi
 
 #### Deploy-time modifiers: `--claude-compact-window` and `--claude-permissive`
 
-Unlike `--reconcile`/`--prune` (which reconcile toward SoT), these two flags push the **deployed** `~/.claude/settings.json` *away* from SoT for a specific machine profile. The SoT is never touched, and a later flag-less sync reverts both (the repo-wins merge restores the SoT compact window; the array union re-adds the SoT ask/deny entries) — re-pass the flag on machines that should keep the override. Both run after the settings merge (`claude::sync_compact_window` / `claude::sync_permissive` in `lib/claude.sh`), are idempotent, and honor `--dry-run`. `--claude-model=<m>` / `--codex-model=<m>` follow the same contract — they set the **deployed** model only, with the same flag-less-sync revert — and `docks-kit model <tool> <value>` is the standalone form.
+Unlike `--reconcile`/`--prune` (which reconcile toward SoT), these two flags push the **deployed** `~/.claude/settings.json` *away* from SoT for a specific machine profile. The SoT is never touched, and a later flag-less sync reverts both (the repo-wins merge restores the SoT compact window; the array union re-adds the SoT ask/deny entries) — re-pass the flag on machines that should keep the override. Both run after the settings merge, are idempotent, and honor `--dry-run`. `--claude-model=<m>` / `--codex-model=<m>` follow the same contract — they set the **deployed** model only, with the same flag-less-sync revert — and `docks-kit model <tool> <value>` is the standalone form.
 
 | Flag | Changes (deployed only) | Use when |
 |------|-------------------------|----------|
@@ -344,7 +343,7 @@ Without the flag neither plugin is installed, loaded, or downloaded; only `--pru
 
 #### Pruning stale artifacts (the `removed` manifest)
 
-Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the jq merge keeps user-only keys and `cp -R` never deletes. To clean those up, `lib/claude.sh` carries a declarative **`removed` manifest** (`claude::_removed_manifest`) that `claude::sync_removals` prunes on **every** sync:
+Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the settings merge keeps user-only keys and asset copies never delete. To clean those up, EngineNative carries a declarative **`removed` manifest** that `syncRemovals` prunes on **every** sync:
 
 | Category | Removes |
 |----------|---------|
@@ -353,7 +352,7 @@ Default sync is additive, so anything the kit *stops* shipping (a deprecated hoo
 | `settingsKeys` | dotted key paths `del()`-ed from `~/.claude/settings.json` |
 | `claudeJsonKeys` | dotted key paths `del()`-ed from `~/.claude.json` |
 
-This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent (`rm -f`; `delpaths` ignores absent paths) and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; the superseded `alert_bubble.mp3` sound (replaced by `notification.mp3`); `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled), `CLAUDE_CODE_FORK_SUBAGENT` (`/fork` enabled by default since 2.1.161), and `CLAUDE_CODE_EFFORT_LEVEL` (moved to the `effortLevel` settings key so skill/subagent `effort:` frontmatter isn't overridden). Add a newly-deprecated artifact by editing `claude::_removed_manifest`.
+This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; the superseded `alert_bubble.mp3` sound (replaced by `notification.mp3`); `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled), `CLAUDE_CODE_FORK_SUBAGENT` (`/fork` enabled by default since 2.1.161), and `CLAUDE_CODE_EFFORT_LEVEL` (moved to the `effortLevel` settings key so skill/subagent `effort:` frontmatter isn't overridden). Add a newly-deprecated artifact by editing the removed manifest in `claudeSync.ts`.
 
 ### Troubleshooting
 

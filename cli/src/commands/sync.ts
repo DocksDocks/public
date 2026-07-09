@@ -30,9 +30,9 @@ const updateNudge = (): void => {
 
 const VALID_TARGETS = ["claude", "codex", "agents"]
 
-// Renamed sync.sh-era flags: @effect/cli routes unknown flags into the excess
-// positional args, so the rename hints (lib/common.sh's exit-2 arms) are
-// mirrored here to keep the parser contract identical across both front-ends.
+// Renamed pre-CLI flags: @effect/cli routes unknown flags into the excess
+// positional args, so the rename hints are mirrored here before EngineNative
+// sees the normalized argv.
 const LEGACY_HINTS: Record<string, string> = {
   "--force": "--force was renamed to --reconcile",
   "--remove-plugins":
@@ -157,6 +157,6 @@ export const syncCommand = Command.make(
     })
 ).pipe(
   Command.withDescription(
-    "Deploy the SoT to this machine (engine: lib/engine.sh — same flags, zero-dependency escape hatch). Deploy-time modifiers touch deployed config only; a later flag-less sync reverts them to SoT."
+    "Deploy the SoT to this machine with EngineNative. Deploy-time modifiers touch deployed config only; a later flag-less sync reverts them to SoT."
   )
 )

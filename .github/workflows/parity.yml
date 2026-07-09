@@ -1,20 +1,16 @@
-name: parity
+name: golden-regression
 
-# The EngineBash/EngineNative parity gates (windows-support plan, steps 4+5)
-# plus the Windows-native PowerShell smoke (step 7).
-# Self-parity (bash vs bash) guards engine hermeticity/determinism; --native
-# runs EngineNative as side B — the step-6 flip precondition. The stub-based
-# parity legs are POSIX-only by design: the stubs are shebang scripts a
-# native win32 CreateProcess can't exec, and porting them to .exe would test
-# the stubs, not the engine. EngineNative's Windows behavior is covered by
-# the native-windows job below (real PowerShell, HOME unset, %USERPROFILE%
-# resolution, .cmd tool spawning) and by the real-machine verify (step 9).
+# EngineNative golden-regression gates plus the Windows-native PowerShell
+# smoke. The stub-based golden suites are POSIX-only by design: the stubs are
+# shebang scripts a native win32 CreateProcess cannot exec. EngineNative's
+# Windows behavior is covered by the native-windows job below (real PowerShell,
+# HOME unset, %USERPROFILE% resolution, .cmd tool spawning) and by
+# windows-entrypoints.yml.
 
 on:
   push:
     branches: [main]
     paths:
-      - "lib/**"
       - "cli/**"
       - "SoT/**"
       - "package.json"
@@ -22,7 +18,6 @@ on:
       - ".github/workflows/parity.yml"
   pull_request:
     paths:
-      - "lib/**"
       - "cli/**"
       - "SoT/**"
       - "package.json"
@@ -34,12 +29,8 @@ permissions:
   contents: read
 
 jobs:
-  parity:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, windows-2025] # pinned labels, never *-latest
-    runs-on: ${{ matrix.os }}
+  golden:
+    runs-on: ubuntu-24.04 # pinned label, never *-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -53,27 +44,43 @@ jobs:
       - name: Unit tests (vitest + @effect/vitest)
         run: bun run test:unit
 
-      - name: Dry-run parity (self)
-        run: bun cli/test/parity-dryrun.ts
+      - name: Dry-run golden regression
+        run: bun run golden:dryrun
 
-      - name: Dry-run parity can fail (prove-red)
-        run: bun cli/test/parity-dryrun.ts --prove-red
+      - name: Dry-run golden can fail (prove-red)
+        run: |
+          set +e
+          out="$(bun run golden:dryrun --prove-red 2>&1)"
+          code=$?
+          printf '%s\n' "$out"
+          if [[ "$code" -eq 0 ]]; then
+            echo "::error::prove-red unexpectedly exited 0"
+            exit 1
+          fi
+          if ! grep -q "prove-red OK: golden-dryrun" <<<"$out"; then
+            echo "::error::prove-red failed without proving the planted mismatch"
+            exit 1
+          fi
 
-      - name: Mutation parity (self)
-        run: bun cli/test/parity-mutation.ts
+      - name: Mutation golden regression
+        run: bun run golden:mutation
 
-      - name: Mutation parity can fail (prove-red)
-        run: bun cli/test/parity-mutation.ts --prove-red
+      - name: Mutation golden can fail (prove-red)
+        run: |
+          set +e
+          out="$(bun run golden:mutation --prove-red 2>&1)"
+          code=$?
+          printf '%s\n' "$out"
+          if [[ "$code" -eq 0 ]]; then
+            echo "::error::prove-red unexpectedly exited 0"
+            exit 1
+          fi
+          if ! grep -q "prove-red OK: golden-mutation" <<<"$out"; then
+            echo "::error::prove-red failed without proving the planted mismatch"
+            exit 1
+          fi
 
-      - name: Dry-run parity (native)
-        if: runner.os == 'Linux'
-        run: bun cli/test/parity-dryrun.ts --native
-
-      - name: Mutation parity (native)
-        if: runner.os == 'Linux'
-        run: bun cli/test/parity-mutation.ts --native
-
-  # Step 7: EngineNative under native PowerShell — no Git Bash in the loop.
+  # EngineNative under native PowerShell — no Git Bash in the loop.
   # HOME is deliberately unset so every path resolves via %USERPROFILE%
   # (pointed at a hermetic temp dir). The npm-stub steps exercise the
   # toolchain gate branches (--yes vs non-TTY pinned fallback) AND double as
