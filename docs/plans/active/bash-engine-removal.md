@@ -1,16 +1,17 @@
 ---
 title: Remove the bash engine — EngineNative becomes the only engine
 goal: Delete lib/*.sh and the bash legs of CI, converting the parity suites into golden-regression tests recorded from the parity-proven native engine, with the bash engine preserved at a git tag
-status: planned
+status: ongoing
 created: "2026-07-08T22:05:00-03:00"
-updated: "2026-07-08T22:05:00-03:00"
-started_at: null
+updated: "2026-07-08T21:41:51-03:00"
+started_at: "2026-07-08T21:41:51-03:00"
 assignee: codex (gpt-5.5 relay worker, isolated worktree branch; Claude session reviews)
 tags: [engine, cleanup, typescript, ci]
 affected_paths:
   - lib/
   - cli/src/engine.ts
   - cli/src/kitHome.ts
+  - cli/src/engine-native/DESIGN.md
   - cli/test/
   - .github/workflows/parity.yml
   - .github/workflows/windows-smoke.yml
@@ -96,24 +97,30 @@ and re-homes the documentation that cites `lib/*.sh`.
 
 | # | Task | Depends | Status |
 |---|------|---------|--------|
-| 1 | Tag the cut: `git tag bash-engine-final <pre-removal commit>` + push the tag. Record in this plan the tag SHA and the last full bash-vs-native parity evidence (local suite output + green parity.yml run id at that SHA) | — | planned |
-| 2 | Golden conversion, landed BEFORE any deletion and proven able to fail: record goldens from the NATIVE engine into `cli/test/goldens/` (dry-run: normalized output per fixture×command; mutation: tree snapshots + argv logs + normalized output per matrix row and TOML shape). Rewrite `parity-dryrun.ts`/`parity-mutation.ts` (rename to `golden-dryrun.ts`/`golden-mutation.ts`) to compare native vs goldens; add `--update-goldens`; keep `--prove-red` (planted divergence = compare against a mismatched golden — must stay RED); TOML result invariants (scrub survival, .bak, single model line, user tables) stay as live assertions. Inline the jq program texts into `cli/test/unit/settings.test.ts` (jq = test-only dep; note it in the test header). Gate: golden suites green against live native, prove-reds red, and one deliberate native edit (scratch) makes them fail | 1 | planned |
+| 1 | **Parent/orchestrator step, done BEFORE the worker spawns** (the worker must not push — see Context): the Claude session tags the cut (`git tag bash-engine-final <pre-removal commit> && git push origin bash-engine-final`) and records in this plan the tag SHA plus the last full bash-vs-native parity evidence (local suite output + green parity.yml run id at that SHA). The worker VERIFIES the remote tag exists (`git ls-remote --tags origin bash-engine-final`) as its first action and stops if absent | — | planned |
+| 2 | Golden conversion, landed BEFORE any deletion and proven able to fail: record goldens from the NATIVE engine into `cli/test/goldens/` (dry-run: normalized output per fixture×command; mutation: tree snapshots + argv logs + normalized output per matrix row and TOML shape). Rewrite `parity-dryrun.ts`/`parity-mutation.ts` (rename to `golden-dryrun.ts`/`golden-mutation.ts`) to compare native vs goldens; add `--update-goldens`; keep `--prove-red` (planted divergence = compare against a mismatched golden — must stay RED); TOML result invariants (scrub survival, .bak, single model line, user tables) stay as live assertions. Inline the jq program texts into `cli/test/unit/settings.test.ts` (jq = test-only dep; note it in the test header). Update `package.json` scripts: `parity:dryrun`/`parity:mutation` → `golden:dryrun`/`golden:mutation` (no compatibility aliases — CI and docs are updated in the same change). Gate: golden suites green against live native (via `bun run golden:dryrun` / `golden:mutation`, proving the scripts too), prove-reds red, and one deliberate native edit (scratch) makes them fail | 1 | planned |
 | 3 | Delete the engine: `lib/engine.sh`, `lib/common.sh`, `lib/claude.sh`, `lib/codex.sh`, `lib/skills.sh`, `lib/toolchain.sh`. `cli/src/engine.ts`: drop the bash branches — `engine()` always runs `runEngineNative` in-process, `engineCapture()` keeps only the native child re-spawn; `DOCKS_KIT_ENGINE=bash` prints a clear error ("bash engine removed — recover at tag bash-engine-final") instead of silently running native. `cli/src/kitHome.ts`: marker becomes `SoT/` + `package.json`; update the error text. `main.ts` native-raw channel stays (harness) | 2 | planned |
 | 4 | CI: delete `windows-smoke.yml` (guarded the frozen bash engine). `parity.yml` → golden regression: drop bash self-parity legs; run unit + golden-dryrun + golden-mutation + prove-reds on ubuntu-24.04 (goldens use the bash-script stubs, POSIX-only — unchanged constraint); keep the `native-windows` PowerShell job and `windows-entrypoints.yml` as the Windows coverage. Update the workflow header comments | 3 | planned |
 | 5 | Package/launcher/toolchain: `package.json` `files` drops `lib`; `docks-kit` launcher fallback messages point at release binaries instead of `bash lib/engine.sh` (lines 5, 39, 52); `SoT/toolchain.json` `jq` note updated (needed by deployed hooks/statusline, no longer by the engine); grep for `engine.sh` in `install.sh`/workflows and fix stragglers | 3 | planned |
-| 6 | Docs sweep: AGENTS.md (feature-freeze rule → removed-engine note; repo-layout table; escape-hatch row → release binaries; `bash lib/engine.sh` mentions), CLAUDE.md (setup block, session/permissions references to the escape hatch), README (quick start, command table, escape-hatch line, releases section), `cli/docs/` (install.md zero-dependency section → binaries; overview, sync-layers, flags, platforms mentions). Grep gate: zero `lib/engine.sh` / `lib/claude.sh` / `sync.sh` references outside `docs/plans/finished/`, CHANGELOG, and this plan | 3 | planned |
+| 6 | Docs sweep: AGENTS.md (feature-freeze rule → removed-engine note; repo-layout table; escape-hatch row → release binaries; `bash lib/engine.sh` mentions), CLAUDE.md (setup block, session/permissions references to the escape hatch), README (quick start, command table, escape-hatch line, releases section), `cli/docs/` (install.md zero-dependency section → binaries; overview, sync-layers, flags, platforms mentions), **`cli/src/engine-native/DESIGN.md`** (still documents the bash opt-out, the bash escape hatch, and "deleting the bash engine" as a non-goal — rewrite to the post-removal contract). Grep gates: (a) zero `lib/engine.sh` / `lib/claude.sh` / `lib/codex.sh` / `lib/skills.sh` / `lib/common.sh` / `lib/toolchain.sh` references outside `docs/plans/`, CHANGELOG, and git history; (b) conceptual sweep — every remaining hit for `DOCKS_KIT_ENGINE=bash`, `bash engine`, `escape hatch`, `byte-parity` is either the removed-engine error/tag documentation or a plans/CHANGELOG file (enumerate the survivors in the PR description) | 3 | planned |
 | 7 | Skills + agents re-home: the six kit-mechanic skills (`sync-orchestration-context`, `settings-merge-context`, `plugin-bootstrap-context`, `codex-config-merge-context`, `universal-skills-context`, `toolchain-context`) keep their semantic content (merge behavior, tri-state, seven passes, RTK ordering, gate policy — all still true of the TS port) but every `lib/*.sh` function citation and `metadata.source_files` entry is rewritten to the matching `cli/src/engine-native/*.ts` module/function; freeze banners removed; descriptions' trigger conditions updated to the TS paths. Same for the five wrapper agents in `.claude/agents/` and their `.codex/agents/*.toml` twins. `engine-native-context` updated: byte-parity contract → golden-regression contract, "bash engine frozen" → "bash engine removed at tag bash-engine-final" | 3 | planned |
-| 8 | Verification + review: full local suite (unit, golden-dryrun, golden-mutation, both prove-reds, `bunx tsc --noEmit -p cli`); `docks-kit sync --dry-run` output byte-identical to the recorded golden (removal must not change behavior); real `sync claude` round-trip on this machine against a settings backup; compiled linux binary smoke (`status` with toolchain rows); CI green on the branch. Then the Claude session reviews the full diff before merge to main | 2–7 | planned |
+| 8 | Verification + review: full local suite (unit, golden-dryrun, golden-mutation, both prove-reds, `bunx tsc --noEmit -p cli`); **public-CLI smoke matrix** (front-door surfaces the raw golden channel bypasses): `./docks-kit sync --dry-run` byte-identical to the recorded golden; `./docks-kit sync claude --dry-run --skip-rtk --claude-plugin=supabase,n8n` exit 0 (space AND `=` forms); `./docks-kit sync --force` exits 2 with the rename hint; `DOCKS_KIT_ENGINE=bash ./docks-kit sync --dry-run` exits 2 with the removed-engine message; `./docks-kit status --json` parses with a non-empty toolchainTable; compiled linux binary `status` (toolchain rows present) + `sync --dry-run`; real `sync claude` round-trip on this machine against a settings backup; CI green on the branch. Then the Claude session reviews the full diff before merge to main | 2–7 | planned |
 
 ## Acceptance criteria
 
-- `git tag bash-engine-final` exists and is pushed; checking it out yields
-  a working `bash lib/engine.sh sync --dry-run`.
+- `git ls-remote --tags origin bash-engine-final` returns the tag (pushed
+  by the parent session in step 1; the worker verifies this, the parent
+  owns it); checking the tag out yields a working
+  `bash lib/engine.sh sync --dry-run`.
 - `ls lib/` after merge: only files that are NOT the engine remain (or the
   directory is gone if nothing remains).
-- `bun cli/test/golden-dryrun.ts` and `bun cli/test/golden-mutation.ts`
-  green; both `--prove-red` modes exit non-zero; `--update-goldens`
-  regenerates byte-identical goldens on an unchanged engine.
+- `bun run golden:dryrun` and `bun run golden:mutation` green (package
+  scripts renamed from `parity:*`; no stale aliases); both `--prove-red`
+  modes exit non-zero; `--update-goldens` regenerates byte-identical
+  goldens on an unchanged engine.
+- Public-CLI smoke matrix from step 8 passes verbatim (space and `=`
+  flag forms, legacy-flag exit-2 hint, removed-engine error, status
+  --json with non-empty toolchainTable, compiled-binary status + dry-run).
 - `DOCKS_KIT_ENGINE=bash docks-kit sync --dry-run` fails with the
   removed-engine message (exit 2), NOT a silent native run.
 - `docks-kit sync --dry-run` output at the merge commit is byte-identical
