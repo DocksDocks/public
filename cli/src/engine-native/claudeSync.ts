@@ -17,7 +17,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
-import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
+import { copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
@@ -31,7 +31,7 @@ export function claudeSync(ctx: Ctx): void {
 
   if (!ctx.dryRun) mkdirSync(claudeDir, { recursive: true })
 
-  if (!commandExists("claude")) {
+  if (ctx.services.deps.probe("claude").state === "missing") {
     warn(
       `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${ctx.services.deps.spec("claude").installHint()} | docs: https://code.claude.com/docs/en/setup`
     )
@@ -75,9 +75,9 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
     }
     rmSync(installer, { force: true })
     process.env["PATH"] = `${ctx.home}/.local/bin:${ctx.home}/.cargo/bin:${process.env["PATH"] ?? ""}`
-    if (commandExists("rtk")) {
-      const v = capture("rtk", ["--version"])
-      change(`RTK ready (${v !== "" ? v : "version unknown"})`)
+    const installed = services.deps.version("rtk")
+    if (services.deps.probe("rtk").state === "present") {
+      change(`RTK ready (${installed !== "" ? installed : "version unknown"})`)
       return 0
     }
     err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
@@ -93,7 +93,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
   }
 
   if (ctx.services.platform.isWindows()) {
-    if (!commandExists("rtk")) {
+    if (ctx.services.deps.probe("rtk").state === "missing") {
       warn("rtk not installed — the kit's auto-install is Unix-only. Install natively (winget, or the rtk-*-windows-msvc.zip release), then re-run sync")
       return
     }
@@ -101,7 +101,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
     warn("RTK bootstrap failed — continuing sync without it")
   }
 
-  if (!commandExists("rtk")) return
+  if (ctx.services.deps.probe("rtk").state === "missing") return
   if (!existsSync(p(claudeDir, "RTK.md"))) {
     if (ctx.dryRun) {
       echo("[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)")
@@ -576,11 +576,11 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  if (!commandExists("claude")) {
+  if (ctx.services.deps.probe("claude").state === "missing") {
     warn("claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)")
     return
   }
-  if (!commandExists("git")) {
+  if (ctx.services.deps.probe("git").state === "missing") {
     ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing")
     return
   }
@@ -773,7 +773,7 @@ function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  if (!commandExists("claude")) {
+  if (ctx.services.deps.probe("claude").state === "missing") {
     warn("claude CLI not in PATH — cannot opt in optional plugins (--claude-plugin)")
     return
   }
@@ -803,10 +803,10 @@ function syncLspServers(ctx: Ctx): void {
   if (!hasPhp && !hasTs) return
 
   const missing: Array<string> = []
-  if (hasPhp && !commandExists("intelephense")) missing.push(lspPkg(ctx, "intelephense", "intelephense"))
+  if (hasPhp && ctx.services.deps.probe("intelephense").state === "missing") missing.push(lspPkg(ctx, "intelephense", "intelephense"))
   if (hasTs) {
-    if (!commandExists("typescript-language-server")) missing.push(lspPkg(ctx, "typescript-language-server", "typescript-language-server"))
-    if (!commandExists("tsc")) missing.push(lspPkg(ctx, "tsc", "typescript"))
+    if (ctx.services.deps.probe("typescript-language-server").state === "missing") missing.push(lspPkg(ctx, "typescript-language-server", "typescript-language-server"))
+    if (ctx.services.deps.probe("tsc").state === "missing") missing.push(lspPkg(ctx, "tsc", "typescript"))
   }
 
   if (missing.length === 0) {
@@ -824,7 +824,7 @@ function syncLspServers(ctx: Ctx): void {
     return
   }
 
-  if (!commandExists("npm")) {
+  if (ctx.services.deps.probe("npm").state === "missing") {
     ctx.services.deps.warnMissing("npm", `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`)
     return
   }
@@ -846,13 +846,13 @@ export function claudeSummary(ctx: Ctx): void {
   echo(`Claude:   ${claudeDir}`)
   if (!ctx.dryRun) {
     echo(`Hooks:    ${shellScriptCount(p(claudeDir, "hooks"))} scripts`)
-    if (commandExists("rtk")) {
-      const v = capture("rtk", ["--version"])
-      echo(`RTK:      ${v !== "" ? v : "installed"}`)
+    if (ctx.services.deps.probe("rtk").state === "present") {
+      const version = ctx.services.deps.version("rtk")
+      echo(`RTK:      ${version !== "" ? version : "installed"}`)
     } else {
       echo("RTK:      not installed")
     }
-    if (commandExists("claude")) {
+    if (ctx.services.deps.probe("claude").state === "present") {
       const installed = readJsonFile(p(claudeDir, "plugins", "installed_plugins.json"))
       const count = installed !== undefined && isObject(installed) && isObject(installed["plugins"]) ? Object.keys(installed["plugins"]).length : 0
       echo(`Plugins:  ${count} installed (from SoT enabledPlugins + Anthropic auto-installs)`)

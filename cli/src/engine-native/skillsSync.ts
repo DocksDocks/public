@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { capture, commandExists, isExecutable, p, which, writeFileIfChanged } from "./exec"
+import { p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import type { EngineServices, Platform } from "./services"
@@ -59,7 +59,7 @@ function readSlugs(file: string): Array<string> {
 
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
   const { change, echo, verbose, warn } = ctx.services.logger
-  if (!commandExists("npx")) {
+  if (ctx.services.deps.probe("npx").state === "missing") {
     ctx.services.deps.warnMissing("npx", "skipping universal skills bootstrap")
     return
   }
@@ -255,7 +255,7 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
       return 1
     }
   }
-  const out = capture("agent-browser", ["--version"])
+  const out = services.deps.version("agent-browser")
   const fields = (out.split("\n")[0] ?? "").trim().split(/[ \t]+/)
   const version2 = out !== "" ? fields[fields.length - 1] ?? "version unknown" : "version unknown"
   change(`agent-browser CLI ready (${version2})`)
@@ -266,7 +266,7 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   const { warn } = ctx.services.logger
   if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
 
-  if (!commandExists("npm")) {
+  if (ctx.services.deps.probe("npm").state === "missing") {
     if (!ctx.dryRun) ctx.services.deps.warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
     return
   }
@@ -278,13 +278,7 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
 
 /** skills::_find_bun — resolved bun path or "". */
 function findBun(ctx: Ctx): string {
-  const onPath = which("bun")
-  if (onPath !== "") return onPath
-  const bunInstall = process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== "" ? process.env["BUN_INSTALL"] : p(ctx.home, ".bun")
-  for (const cand of [p(bunInstall, "bin", "bun"), p(ctx.home, ".bun", "bin", "bun")]) {
-    if (isExecutable(cand)) return cand
-  }
-  return ""
+  return ctx.services.deps.path("bun")
 }
 
 /** skills::_bun_bootstrap — bun path or "" after a failed bootstrap. */
@@ -293,7 +287,7 @@ export function bunBootstrap(ctx: Ctx, services: EngineServices): string {
   let bun = findBun(ctx)
   if (bun !== "") return bun
 
-  if (!commandExists("curl")) {
+  if (services.deps.probe("curl").state === "missing") {
     warn("Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync.")
     return ""
   }
@@ -310,8 +304,8 @@ export function bunBootstrap(ctx: Ctx, services: EngineServices): string {
     warn("Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh")
     return ""
   }
-  const v = capture(bun, ["--version"])
-  change(`Bun installed (${v !== "" ? v : "version unknown"})`)
+  const version = services.deps.version("bun")
+  change(`Bun installed (${version !== "" ? version : "version unknown"})`)
   return bun
 }
 
@@ -333,7 +327,7 @@ export function effectSolutionsInstall(
       return 1
     }
 
-    const gbin = capture(bun, ["pm", "-g", "bin"])
+    const gbin = services.deps.path("effect-solutions")
     // win32: bun writes an .exe shim (not the bare Unix name), and the
     // ~/.local/bin link step below is Unix-only plumbing (non-interactive
     // agent PATH) — bun's global bin is already the Windows PATH entry.
@@ -343,7 +337,7 @@ export function effectSolutionsInstall(
       else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
       return 0
     }
-    if (gbin !== "" && isExecutable(p(gbin, "effect-solutions"))) {
+    if (gbin !== "") {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
       linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)
       linkOrCopyWithWarnings(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"), services)

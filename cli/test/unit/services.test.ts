@@ -53,11 +53,36 @@ describe("engine service layers", () => {
     expect(mac.spec("git").installHint()).toBe("brew install git")
   })
 
+  it("DependencyManager trusts the injected probe executor over the host PATH", () => {
+    const logger = makeEngineServices().logger
+    const manager = makeDependencyManager(makePlatform("linux"), logger, {
+      commandExists: () => false,
+      capture: () => "host output must be ignored",
+      which: () => "/host/tool"
+    })
+    expect(manager.probe("git")).toEqual({ state: "missing" })
+  })
+
+  it("DependencyManager deduplicates missing warnings per manager graph", () => {
+    const lines: Array<string> = []
+    const logger = makeEngineServices({ sinks: { stderr: (chunk) => void lines.push(chunk) } }).logger
+    const missing = { commandExists: () => false, capture: () => "", which: () => "" }
+    const first = makeDependencyManager(makePlatform("linux"), logger, missing)
+    const second = makeDependencyManager(makePlatform("linux"), logger, missing)
+    first.warnMissing("git")
+    first.warnMissing("git")
+    second.warnMissing("git")
+    expect(lines.filter((line) => line.includes("git not installed —"))).toHaveLength(2)
+  })
+
   it("DependencyManagerTest: a stub manager drives missing-tool branching", () => {
     const warned: Array<string> = []
     const stub: DependencyManager = {
       spec: (id) => ({ id, requirement: "optional", versionArgs: ["--version"], installHint: () => `install ${id}` }),
       probe: () => ({ state: "missing" }),
+      version: () => "",
+      path: () => "",
+      latest: () => "",
       warnMissing: (id) => void warned.push(id)
     }
     const program = Effect.gen(function* () {

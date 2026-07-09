@@ -4,7 +4,6 @@
  * early parser exit and is caught once in runEngineNative.
  */
 
-import { commandExists } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 
@@ -188,13 +187,13 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
 export function preflight(ctx: Ctx): void {
   const { err } = ctx.services.logger
   if (ctx.syncClaude || ctx.syncCodex) {
-    if (!commandExists("jq")) {
+    if (ctx.services.deps.probe("jq").state === "missing") {
       err(`jq is required (deployed statusline/hooks call it). Install: ${ctx.services.deps.spec("jq").installHint()}`)
       throw new ExitError(1)
     }
   }
   if (ctx.syncClaude) {
-    if (!commandExists("curl")) {
+    if (ctx.services.deps.probe("curl").state === "missing") {
       err(`curl is required. Install: ${ctx.services.deps.spec("curl").installHint()}`)
       throw new ExitError(1)
     }

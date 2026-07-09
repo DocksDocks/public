@@ -17,6 +17,12 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.npm.requirement).toBe("optional")
   })
 
+  it("registers Chrome-for-Testing, LSP binaries, and ffplay", () => {
+    expect(Object.keys(DEPENDENCIES)).toEqual(
+      expect.arrayContaining(["chrome-for-testing", "intelephense", "typescript-language-server", "tsc", "ffplay"])
+    )
+  })
+
   it("gives platform-correct jq hints", () => {
     expect(DEPENDENCIES.jq.installHint("win32")).toContain("winget install jqlang.jq")
     expect(DEPENDENCIES.jq.installHint("darwin")).toBe("brew install jq")
