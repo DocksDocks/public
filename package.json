@@ -1,6 +1,6 @@
 {
   "name": "docks-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Portable AI coding agent config kit — SoT sync engine + typed CLI for Claude Code, Codex, and universal agent skills",
   "type": "module",
   "license": "MIT",
