@@ -98,13 +98,14 @@ export interface EngineRun {
   readonly argvLog: string
 }
 
-export type EngineKind = "bash" | "native"
+export type EngineKind = "native"
 
 export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
   const quoted = args.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(" ")
-  if (kind === "bash") return `bash '${REPO_DIR}/lib/engine.sh' ${quoted}`
-  // Raw harness channel (bypasses @effect/cli so both engines see identical
-  // argv); absolute bun path so the PATH stub `bun` never shadows the runtime.
+  void kind
+  // Raw harness channel (bypasses @effect/cli so tests drive the engine's
+  // internal argv directly); absolute bun path so the PATH stub `bun` never
+  // shadows the runtime.
   return `DOCKS_KIT_ENGINE=native-raw '${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
 }
 
