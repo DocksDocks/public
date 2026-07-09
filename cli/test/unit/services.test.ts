@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 import { describe, expect, it } from "vitest"
-import type { DependencyManager } from "../../src/engine-native/services"
+import { makeDependencyManager, makePlatform, type DependencyManager } from "../../src/engine-native/services"
 import {
   DependencyManagerService,
   DependencyManagerTest,
@@ -30,6 +30,13 @@ describe("engine service layers", () => {
     })
     expect(Effect.runSync(Effect.provide(program, PlatformTest("win32")))).toEqual(["windows", true, false, false])
     expect(Effect.runSync(Effect.provide(program, PlatformTest("linux")))).toEqual(["linux", false, true, true])
+  })
+
+  it("combined graph: an injected platform drives the manager's install hints", () => {
+    const win = makeDependencyManager(makePlatform("win32"))
+    expect(win.spec("git").installHint()).toBe("winget install Git.Git (then open a new terminal)")
+    const mac = makeDependencyManager(makePlatform("darwin"))
+    expect(mac.spec("git").installHint()).toBe("brew install git")
   })
 
   it("DependencyManagerTest: a stub manager drives missing-tool branching", () => {

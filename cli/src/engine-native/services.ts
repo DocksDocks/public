@@ -38,8 +38,21 @@ export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => (
   shellRcApplicable: () => pf !== "win32"
 })
 
-export const makeEngineServices = (): EngineServices => ({
-  logger: { change, verbose, warn, err, echo },
-  deps: { spec: (id) => DEPENDENCIES[id], probe, warnMissing },
-  platform: makePlatform()
+/** DependencyManager whose hints default to the INJECTED platform, not the host. */
+export const makeDependencyManager = (platform: Platform): DependencyManager => ({
+  spec: (id) => {
+    const s = DEPENDENCIES[id]
+    return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) }
+  },
+  probe,
+  warnMissing: (id, context) => warnMissing(id, context, platform.raw())
 })
+
+export const makeEngineServices = (): EngineServices => {
+  const platform = makePlatform()
+  return {
+    logger: { change, verbose, warn, err, echo },
+    deps: makeDependencyManager(platform),
+    platform
+  }
+}

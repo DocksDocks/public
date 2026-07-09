@@ -8,7 +8,7 @@ Sync output now follows an explicit Output Policy (`cli/src/engine-native/DESIGN
 - **`.bak` files are written only when a file is actually replaced**, not on every run.
 - **Missing tools warn once, with the fix**: tools routed through the dependency registry (`cli/src/engine-native/deps.ts` — git, jq, curl, npm, npx, …) warn exactly once per run in the uniform `[warn] <tool> not installed — <platform-correct install command>` shape. The claude/codex CLI checks keep their richer contextual warnings.
 - **Service seams (SOLID)**: a Logger with injectable sinks (`logger.ts`), a DependencyManager registry (`deps.ts`), and a Platform capability seam (`os.ts` — the single `process.platform` reader) are exposed through Effect `Context.Tag`s + live/test Layers (`cli/src/services.ts`), composed once at `main.ts`.
-- Test harness now captures stdout/stderr separately and enforces the channel contract; goldens gained same-HOME replay, verbose-leg, and missing-git cases (21 dry-run + 46 mutation cases).
+- Test harness now captures stdout/stderr separately and enforces the channel contract; goldens gained same-HOME replay, verbose-leg, and missing-git cases (21 dry-run + 47 mutation cases).
 
 ## 2026-07-08 — docks-kit CLI: typed front-end, tool-scoped flags, toolchain floors (sync.sh removed)
 

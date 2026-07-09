@@ -106,9 +106,9 @@ export function probe(id: ToolId): ProbeResult {
 const warned = new Set<ToolId>()
 
 /** Uniform missing-tool warn: `<tool> not installed — <install command>`. */
-export function warnMissing(id: ToolId, context = ""): void {
+export function warnMissing(id: ToolId, context = "", pf?: NodeJS.Platform): void {
   if (warned.has(id)) return
   warned.add(id)
   const suffix = context !== "" ? ` (${context})` : ""
-  warn(`${id} not installed — ${DEPENDENCIES[id].installHint()}${suffix}`)
+  warn(`${id} not installed — ${DEPENDENCIES[id].installHint(pf)}${suffix}`)
 }

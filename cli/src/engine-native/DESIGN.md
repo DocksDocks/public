@@ -76,6 +76,11 @@ exit behavior — the error carries the same install hint.
 
 ### Summary and next steps
 
+`model` and `toolchain` modes have no separate summary block by design —
+their stdout IS the deliverable (`deployed:`/`SoT:` + catalog lines for
+`model`; the report table for `toolchain check`), so nothing prints after
+it. The schema below applies to `sync` only.
+
 The `--- Sync complete ---` block (stdout, `data`) prints on every run,
 including dry-run, with the per-target inventory lines (`Claude:`/`Hooks:`/
 `RTK:`/`Plugins:`/`Codex:`/`Skills:`). Next-step advice lines print only when
