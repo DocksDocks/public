@@ -1,9 +1,9 @@
 ---
 title: CLI log UX overhaul — verbosity discipline + Effect services (SOLID)
 goal: Default runs print only actual changes, actionable warnings with install hints, and the summary; operations report changed/unchanged and no-op confirmations move behind --verbose via Logger/DependencyManager/Platform services injected at the engine rim (seams-only; full engine-internal DI is the follow-up plan engine-full-di).
-status: in_review
+status: finished
 created: "2026-07-09T16:04:45-03:00"
-updated: "2026-07-09T18:37:21-03:00"
+updated: "2026-07-09T18:58:38-03:00"
 in_review_since: "2026-07-09T18:37:21-03:00"
 started_at: "2026-07-09T16:29:36-03:00"
 assignee: null
@@ -29,8 +29,6 @@ affected_paths:
   - cli/src/engine-native/claudeModel.ts
   - cli/src/engine-native/codexToml.ts
   - cli/src/engine-native/DESIGN.md
-  - cli/src/engine.ts
-  - cli/src/main.ts
   - cli/src/commands/sync.ts
   - cli/src/commands/model.ts
   - cli/src/commands/toolchain.ts
@@ -45,7 +43,8 @@ affected_paths:
   - cli/docs/overview.md
   - CHANGELOG.md
 related_plans: []
-review_status: null
+review_status: passed
+ship_commit: "3839313"
 ---
 
 ## Goal
@@ -114,7 +113,12 @@ A default `docks-kit sync` (and `toolchain`/`model`) run reads like a change rep
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes (against the narrowed seams-only Goal) — default `sync`/`model`/`toolchain` runs emit only change/warn/summary lines; no-op confirmations move behind `--verbose`/`-v`/`DOCKS_KIT_VERBOSE=1`; Logger/DependencyManager/Platform are injected at the engine rim via `Context.Tag` + `Layer.succeed` from one shared factory. All 9 acceptance criteria verified against source + a live suite run this session.
+- **Regressions:** none — diff confined to `cli/` + `CHANGELOG.md`; goldens change only alongside the engine-output changes named per tier in Notes; both prove-red legs stay red; `process.platform` grep clean (os.ts + the two exec.ts exemptions only); `winget install Git.Git` is a single definition site (deps.ts:57).
+- **CI:** pass — `bun x tsc --noEmit -p cli/tsconfig.json` clean; `bun x vitest run` 19/19; `bun cli/test/golden-dryrun.ts` 21 cases OK; `bun cli/test/golden-mutation.ts` 47 cases OK; both `--prove-red` legs printed `prove-red OK` and exited 1.
+- **Follow-ups:** `engine-full-di` (already scaffolded under active/, status: planned) — routes every EngineNative emission/probe through `ctx.services`, eliminating the module-global logger bindings + direct probes deferred here by the C1/C2 scope decision. Not auto-created by review; already exists.
+- **Cross-check (2026-07-09):** [codex gpt-5.6-sol xhigh] 7 findings (2 high / 2 med / 3 low) — 7 accepted (C1/C2 as scope decision, C3–C7 as fixes), 0 rejected; [claude] independently verified C3–C7 against source before accepting (C3 combined-graph test at services.test.ts:35-40 + `makeDependencyManager(platform)` hint derivation; C4 DESIGN.md model/toolchain no-summary contract at DESIGN.md:77-79; C5 acceptance greps reproduced clean; C7 CHANGELOG 47-case count). DISAGREEMENT (injected-services depth): [codex] Goal requires full engine DI, plan not shippable / [claude] the Out-of-scope clause ("services at the seams only") explicitly deferred the deep port — the rim + `ctx.services` handoff IS the contracted deliverable; kept seams-only, decided by user via picker, because all 9 functional criteria pass and the deep port is a plan-sized change tracked as `engine-full-di`.
+- **Filed by:** plan-review 2026-07-09T18:56:53-03:00
 
 ## Sources
 
