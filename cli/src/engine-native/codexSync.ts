@@ -397,6 +397,11 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     )
     return
   }
+  if (!commandExists("git")) {
+    const hint = process.platform === "win32" ? "winget install Git.Git (then open a new terminal)" : "install git via your package manager"
+    warn(`git not found — Codex plugin marketplaces are git repos, so plugin refresh would fail. Skipping. Install: ${hint}, then re-run sync`)
+    return
+  }
 
   let refreshed = 0
   let failed = 0

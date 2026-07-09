@@ -520,6 +520,11 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     warn("claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)")
     return
   }
+  if (!commandExists("git")) {
+    const hint = process.platform === "win32" ? "winget install Git.Git (then open a new terminal)" : "install git via your package manager"
+    warn(`git not found — plugin marketplaces are git repos, so every plugin operation would fail. Skipping plugin passes. Install: ${hint}, then re-run sync`)
+    return
+  }
 
   const repoSettings = readJsonFile(repoSettingsFile)
   const repoObj = repoSettings !== undefined && isObject(repoSettings) ? repoSettings : {}

@@ -72,6 +72,8 @@ export function installedVersion(ctx: Ctx, tool: string): string {
       const m = /effect-solutions@([0-9][0-9.]*)/.exec(capture(bunbin, ["pm", "-g", "ls"]))
       return m?.[1] ?? ""
     }
+    case "git":
+      return firstLineField(capture("git", ["--version"]), 2)
     case "node":
       return capture("node", ["--version"]).replace(/^v/, "")
     case "npm":

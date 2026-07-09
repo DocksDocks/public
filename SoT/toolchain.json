@@ -3,6 +3,7 @@
   "tools": {
     "jq":     { "kind": "required", "note": "deployed Claude hooks/statusline assets" },
     "curl":   { "kind": "required", "note": "installers + usage fetch" },
+    "git":    { "kind": "check", "note": "plugin marketplaces (claude/codex clone them) + kit checkout updates" },
     "node":   { "kind": "check", "note": "hosts npm globals (agent-browser, LSP servers)" },
     "npm":    { "kind": "check", "note": "npm-global installer" },
     "claude": { "kind": "check", "floor": "2.1.170", "note": "kit floor — `best` alias + Fable 5 need >=2.1.170 (mirrors settings minimumVersion)" },

@@ -42,6 +42,7 @@ const STUB_BODIES: Record<string, string> = {
   // goldens don't embed the recording machine's host versions (bit CI: the
   // runner's node differed from the machine that recorded the goldens).
   node: `case "$1" in --version) echo "v22.23.1";; esac`,
+  git: `case "$1" in --version) echo "git version 2.43.0";; esac`,
   jq: `case "$1" in --version) echo "jq-1.7.1";; esac`,
   claude: `case "$1" in --version) echo "2.1.204 (Claude Code)";; esac`,
   codex: `case "$1" in --version) echo "codex-cli 0.142.2";; esac`,
