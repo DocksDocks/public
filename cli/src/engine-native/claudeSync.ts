@@ -170,9 +170,17 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
+  // The @RTK.md import only resolves once `rtk init` has generated
+  // ~/.claude/RTK.md (the rtk phase runs before this). Deploying the import
+  // without the file leaves a dangling reference in every Claude session
+  // (seen on Windows, where rtk never auto-installs) — strip it while the
+  // file is absent; a later sync after rtk init restores it.
+  const rtkMdAbsent = !existsSync(p(claudeDir, "RTK.md"))
   if (ctx.dryRun) {
     if (ctx.skipRtk) {
       echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (stripping @RTK.md import: --skip-rtk)")
+    } else if (rtkMdAbsent) {
+      echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)")
     } else {
       echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md")
     }
@@ -180,13 +188,14 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
   }
 
   const src = p(ctx.repoDir, "SoT", ".claude", "CLAUDE.md")
-  if (ctx.skipRtk) {
+  const stripReason = ctx.skipRtk ? "--skip-rtk" : rtkMdAbsent ? "~/.claude/RTK.md absent (rtk not initialized)" : ""
+  if (stripReason !== "") {
     const stripped = readFileSync(src, "utf8")
       .split("\n")
       .filter((l) => l !== "@RTK.md")
       .join("\n")
     writeFileSync(p(claudeDir, "CLAUDE.md"), stripped)
-    log("CLAUDE.md synced (@RTK.md import stripped: --skip-rtk)")
+    log(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
   } else {
     copyFileSync(src, p(claudeDir, "CLAUDE.md"))
     log("CLAUDE.md synced")

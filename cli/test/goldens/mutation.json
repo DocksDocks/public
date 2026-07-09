@@ -357,12 +357,12 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
-        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
         ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
         ".claude/hooks/": "dir",
         ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
@@ -378,12 +378,12 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  skipped - claude CLI not installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  skipped - claude CLI not installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
-        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
         ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
         ".claude/hooks/": "dir",
         ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
@@ -557,11 +557,11 @@
         "claude"
       ],
       "exitCode": 1,
-      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;31m[err]\u001b[0m Skipping settings sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;31m[err]\u001b[0m Skipping settings sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".claude/": "dir",
-        ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
+        ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
         ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
         ".claude/hooks/": "dir",
         ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
