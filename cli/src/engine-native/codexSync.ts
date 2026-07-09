@@ -10,7 +10,7 @@ import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { echo, err, change, warn } from "./logger"
+import { change, echo, err, verbose, warn } from "./logger"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -108,13 +108,18 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
     return
   }
 
+  const before = readFileSync(userConfig, "utf8")
   copyFileSync(userConfig, `${userConfig}.bak`)
 
   scrubDeprecatedFeatures(userConfig)
   mergeTopLevelSettings(sotConfig, userConfig)
   mergeTableSettings(sotConfig, userConfig)
 
-  change("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)")
+  if (readFileSync(userConfig, "utf8") === before) {
+    verbose("Codex config already in sync")
+  } else {
+    change("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)")
+  }
 }
 
 /** codex::scrub_deprecated_features — the [features].use_legacy_landlock awk pass. */
@@ -217,18 +222,23 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
   }
 
   mkdirSync(userRulesDir, { recursive: true })
-  let rulesSynced = false
+  let sawRules = false
+  let rulesChanged = false
   const ruleFiles = readdirSync(sotRulesDir, { withFileTypes: true })
     .filter((e) => e.isFile() && e.name.endsWith(".rules"))
     .map((e) => p(sotRulesDir, e.name))
     .sort(compareCodepoints)
   for (const ruleFile of ruleFiles) {
+    sawRules = true
     const userRuleFile = p(userRulesDir, ruleFile.slice(ruleFile.lastIndexOf("/") + 1))
+    const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(readFileSync(ruleFile))
+    if (identical) continue
     if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`)
     copyFileSync(ruleFile, userRuleFile)
-    rulesSynced = true
+    rulesChanged = true
   }
-  if (rulesSynced) change("Codex rules synced")
+  if (rulesChanged) change("Codex rules synced")
+  else if (sawRules) verbose("Codex rules already in sync")
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
@@ -239,6 +249,10 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void
     return
   }
 
+  if (existsSync(userAgentsMd) && readFileSync(userAgentsMd).equals(readFileSync(sotAgentsMd))) {
+    verbose("Codex AGENTS.md already in sync")
+    return
+  }
   if (existsSync(userAgentsMd)) copyFileSync(userAgentsMd, `${userAgentsMd}.bak`)
   copyFileSync(sotAgentsMd, userAgentsMd)
   change("Codex AGENTS.md synced")
@@ -264,8 +278,13 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
       err(`Skipping marketplace sync: ${userMarketplace} is not valid JSON. Fix or delete it.`)
       return
     }
+    const out = jqStringify(mergeMarketplace(repo, user))
+    if (out === readFileSync(userMarketplace, "utf8")) {
+      verbose("Codex marketplace already in sync")
+      return
+    }
     copyFileSync(userMarketplace, `${userMarketplace}.bak`)
-    writeFileSync(`${userMarketplace}.tmp`, jqStringify(mergeMarketplace(repo, user)))
+    writeFileSync(`${userMarketplace}.tmp`, out)
     renameSync(`${userMarketplace}.tmp`, userMarketplace)
     change("Codex marketplace merged (backup at marketplace.json.bak)")
   } else {

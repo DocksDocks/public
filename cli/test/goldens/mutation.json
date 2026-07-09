@@ -341,7 +341,7 @@
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -364,18 +364,17 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
-        ".claude/settings.json.bak": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/AGENTS.md.bak": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:1bbe7940fdb1b46ed68586f999022d7644102bd23fc2a0f172a2bc283ec500f8",
         ".codex/config.toml.bak": "sha256:1bbe7940fdb1b46ed68586f999022d7644102bd23fc2a0f172a2bc283ec500f8",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
-        ".codex/rules/docks.rules.bak": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync --verbose replay=2nd": {
@@ -385,7 +384,7 @@
         "--verbose"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts already in sync (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks already in sync (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -406,12 +405,10 @@
         ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/AGENTS.md.bak": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/config.toml": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
         ".codex/config.toml.bak": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
-        ".codex/rules/docks.rules.bak": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync agents": {
@@ -530,7 +527,7 @@
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -551,12 +548,10 @@
         ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/AGENTS.md.bak": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/config.toml": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
         ".codex/config.toml.bak": "sha256:e3f421b3dc7d93e4df98c978873537192785c387bbf3896c6409f07ab4fab166",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
-        ".codex/rules/docks.rules.bak": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=toolchain check": {

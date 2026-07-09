@@ -8,7 +8,6 @@ import {
   appendFileSync,
   chmodSync,
   copyFileSync,
-  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -20,7 +19,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
-import { capture, commandExists, p } from "./exec"
+import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { change, echo, err, verbose, warn } from "./logger"
@@ -129,16 +128,18 @@ function syncScripts(ctx: Ctx, claudeDir: string): void {
     return
   }
 
+  let changed = false
   for (const script of ["statusline.sh", "fetch-usage.sh"]) {
     const src = p(ctx.repoDir, "SoT", ".claude", script)
     if (existsSync(src)) {
-      copyFileSync(src, p(claudeDir, script))
+      if (copyFileIfChanged(src, p(claudeDir, script))) changed = true
       chmodSync(p(claudeDir, script), statSync(p(claudeDir, script)).mode | 0o111)
     }
   }
   const mp3 = p(ctx.repoDir, "notification.mp3")
-  if (existsSync(mp3)) copyFileSync(mp3, p(claudeDir, "notification.mp3"))
-  change("Scripts synced (statusline, fetch-usage, notification)")
+  if (existsSync(mp3) && copyFileIfChanged(mp3, p(claudeDir, "notification.mp3"))) changed = true
+  if (changed) change("Scripts synced (statusline, fetch-usage, notification)")
+  else verbose("Scripts already in sync (statusline, fetch-usage, notification)")
 }
 
 function shellScriptCount(hooksDir: string): number {
@@ -160,13 +161,14 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
 
   const hooksDir = p(claudeDir, "hooks")
   mkdirSync(hooksDir, { recursive: true })
-  cpSync(sotHooks, hooksDir, { recursive: true })
+  const changed = copyTreeIfChanged(sotHooks, hooksDir)
   for (const e of readdirSync(hooksDir, { withFileTypes: true })) {
     if (e.isFile() && e.name.endsWith(".sh")) {
       chmodSync(p(hooksDir, e.name), statSync(p(hooksDir, e.name)).mode | 0o111)
     }
   }
-  change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
+  if (changed) change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
+  else verbose(`Hooks already in sync (${shellScriptCount(hooksDir)} scripts)`)
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
@@ -194,11 +196,15 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
       .split("\n")
       .filter((l) => l !== "@RTK.md")
       .join("\n")
-    writeFileSync(p(claudeDir, "CLAUDE.md"), stripped)
-    change(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
-  } else {
-    copyFileSync(src, p(claudeDir, "CLAUDE.md"))
+    if (writeFileIfChanged(p(claudeDir, "CLAUDE.md"), stripped)) {
+      change(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
+    } else {
+      verbose("CLAUDE.md already in sync")
+    }
+  } else if (copyFileIfChanged(src, p(claudeDir, "CLAUDE.md"))) {
     change("CLAUDE.md synced")
+  } else {
+    verbose("CLAUDE.md already in sync")
   }
 }
 
@@ -233,9 +239,14 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
   }
   const repo = parseJson(readFileSync(repoSettings, "utf8"))!
 
-  copyFileSync(userSettings, `${userSettings}.bak`)
   const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user)
-  writeFileSync(`${userSettings}.tmp`, jqStringify(merged))
+  const out = jqStringify(merged)
+  if (out === readFileSync(userSettings, "utf8")) {
+    verbose("Settings already in sync")
+    return
+  }
+  copyFileSync(userSettings, `${userSettings}.bak`)
+  writeFileSync(`${userSettings}.tmp`, out)
   renameSync(`${userSettings}.tmp`, userSettings)
   if (ctx.reconcile) {
     change("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
@@ -245,20 +256,24 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
 }
 
 /** Shared shape of the three jq-edit modifiers (compact window, permissive). */
-function jqEditSettings(claudeDir: string, tag: string, edit: (doc: Json) => void): void {
+function jqEditSettings(claudeDir: string, tag: string, edit: (doc: Json) => void): boolean {
   const userSettings = p(claudeDir, "settings.json")
   if (!existsSync(userSettings)) {
     warn(`(${tag}) ${userSettings} missing — skipped`)
-    return
+    return false
   }
-  const doc = parseJson(readFileSync(userSettings, "utf8"))
+  const before = readFileSync(userSettings, "utf8")
+  const doc = parseJson(before)
   if (doc === undefined) {
     err(`(${tag}) ${userSettings} is not valid JSON — skipped`)
-    return
+    return false
   }
   edit(doc)
-  writeFileSync(`${userSettings}.tmp`, jqStringify(doc))
+  const out = jqStringify(doc)
+  if (out === before) return false
+  writeFileSync(`${userSettings}.tmp`, out)
   renameSync(`${userSettings}.tmp`, userSettings)
+  return true
 }
 
 function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
@@ -269,13 +284,14 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  jqEditSettings(claudeDir, "--claude-compact-window", (doc) => {
+  const changed = jqEditSettings(claudeDir, "--claude-compact-window", (doc) => {
     if (!isObject(doc)) return
     const env = isObject(doc["env"]) ? doc["env"] : {}
     env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = ctx.claudeCompactWindow
     doc["env"] = env
   })
-  change(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
+  if (changed) change(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
+  else verbose(`Compact window: already set to ${ctx.claudeCompactWindow} tokens in deployed settings`)
 }
 
 function syncPermissive(ctx: Ctx, claudeDir: string): void {
@@ -286,14 +302,15 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  jqEditSettings(claudeDir, "--claude-permissive", (doc) => {
+  const changed = jqEditSettings(claudeDir, "--claude-permissive", (doc) => {
     if (!isObject(doc)) return
     const permissions = isObject(doc["permissions"]) ? doc["permissions"] : {}
     permissions["ask"] = []
     permissions["deny"] = []
     doc["permissions"] = permissions
   })
-  change("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
+  if (changed) change("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
+  else verbose("Permissive mode: permissions.ask/deny already empty in deployed settings")
 }
 
 // ---------------------------------------------------------- claude.json ----
@@ -320,22 +337,30 @@ function syncClaudeJson(ctx: Ctx): void {
     }
   }
 
+  let changed = true
   if (existsSync(claudeJson)) {
-    const doc = parseJson(readFileSync(claudeJson, "utf8"))
+    const before = readFileSync(claudeJson, "utf8")
+    const doc = parseJson(before)
     if (doc === undefined) {
       err("Skipping ~/.claude.json edit: not valid JSON. Fix or delete it.")
       return
     }
     const obj = isObject(doc) ? doc : {}
     applyFilter(obj)
-    writeFileSync(`${claudeJson}.tmp`, jqStringify(obj))
-    renameSync(`${claudeJson}.tmp`, claudeJson)
+    const out = jqStringify(obj)
+    if (out === before) {
+      changed = false
+    } else {
+      writeFileSync(`${claudeJson}.tmp`, out)
+      renameSync(`${claudeJson}.tmp`, claudeJson)
+    }
   } else {
     const obj: { [k: string]: Json } = {}
     applyFilter(obj)
     writeFileSync(claudeJson, jqStringify(obj))
   }
-  change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
+  if (changed) change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
+  else verbose(`~/.claude.json already in sync (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
 }
 
 // -------------------------------------------------------- connector env ----
@@ -666,17 +691,20 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
     }
   }
 
-  if (!pluginUserScopeInstalled(installedPlugins, pluginId)) {
+  const wasInstalled = pluginUserScopeInstalled(installedPlugins, pluginId)
+  if (!wasInstalled) {
     if (!cli(["plugin", "install", pluginId]).ok) {
       warn(`Failed to install optional plugin ${pluginId}`)
       return
     }
   }
 
-  if (cli(["plugin", "enable", pluginId]).ok) {
-    change(`Optional plugin opted in: ${pluginId}`)
-  } else {
+  if (!cli(["plugin", "enable", pluginId]).ok) {
     warn(`Failed to enable optional plugin ${pluginId}`)
+  } else if (wasInstalled) {
+    verbose(`Optional plugin already opted in: ${pluginId} (enable re-asserted)`)
+  } else {
+    change(`Optional plugin opted in: ${pluginId}`)
   }
 }
 

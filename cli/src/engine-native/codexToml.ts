@@ -8,7 +8,7 @@ import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import type { Ctx } from "./index"
-import { echo, change, warn } from "./logger"
+import { change, echo, verbose, warn } from "./logger"
 
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
   const lines = content.split("\n")
@@ -40,10 +40,13 @@ export function replaceTopLevelSetting(content: string, key: string, replacement
   return `${out.join("\n")}\n`
 }
 
-export function replaceTopLevelSettingInFile(file: string, key: string, replacement: string): void {
-  const next = replaceTopLevelSetting(readFileSync(file, "utf8"), key, replacement)
+export function replaceTopLevelSettingInFile(file: string, key: string, replacement: string): boolean {
+  const before = readFileSync(file, "utf8")
+  const next = replaceTopLevelSetting(before, key, replacement)
+  if (next === before) return false
   writeFileSync(`${file}.tmp`, next)
   renameSync(`${file}.tmp`, file)
+  return true
 }
 
 export function syncCodexModel(ctx: Ctx, model: string): void {
@@ -62,6 +65,9 @@ export function syncCodexModel(ctx: Ctx, model: string): void {
     warn(`(--codex-model) ${userCodexSettings} missing — skipped`)
     return
   }
-  replaceTopLevelSettingInFile(userCodexSettings, "model", `model = "${model}"`)
-  change(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  if (replaceTopLevelSettingInFile(userCodexSettings, "model", `model = "${model}"`)) {
+    change(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  } else {
+    verbose(`Model: deployed Codex model already ${model}`)
+  }
 }
