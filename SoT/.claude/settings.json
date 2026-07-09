@@ -89,7 +89,8 @@
       "Bash(python3 *)",
       "Bash(python *)",
       "Bash(pip *)",
-      "Bash(pip3 *)"
+      "Bash(pip3 *)",
+      "Bash(xargs *)"
     ],
     "deny": [
       "Read(**/.env)",
@@ -124,32 +125,9 @@
       "Bash(git push -f origin master *)"
     ],
     "ask": [
-      "Bash(git push *)",
-      "Bash(git reset *)",
       "Bash(git clean *)",
-      "Bash(git merge *)",
-      "Bash(git rebase *)",
-      "Bash(git checkout -- *)",
-      "Bash(git checkout . *)",
-      "Bash(rm *)",
-      "Bash(mv *)",
-      "Bash(chmod *)",
-      "Bash(chown *)",
-      "Bash(kill *)",
-      "Bash(pkill *)",
-      "Bash(docker run *)",
-      "Bash(docker rm *)",
-      "Bash(docker stop *)",
       "Bash(docker volume rm *)",
-      "Bash(docker system prune *)",
-      "Bash(docker-compose down *)",
-      "Bash(docker-compose up *)",
-      "Bash(sed -i *)",
-      "Bash(xargs *)",
-      "Bash(pip install *)",
-      "Bash(pip uninstall *)",
-      "Bash(pip3 install *)",
-      "Bash(pip3 uninstall *)"
+      "Bash(docker system prune *)"
     ]
   },
   "hooks": {
@@ -198,7 +176,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUseFailure\",\"additionalContext\":\"Last bash command failed. Repository / file state may have shifted — re-read affected files before retrying. If the failure is a missing dependency or env mismatch, surface it to the user rather than retrying blindly.\"}}'",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUseFailure\",\"additionalContext\":\"Last bash command failed. Repository / file state may have shifted \u2014 re-read affected files before retrying. If the failure is a missing dependency or env mismatch, surface it to the user rather than retrying blindly.\"}}'",
             "timeout": 5
           }
         ]
@@ -221,7 +199,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "You are a quality gate for subagent outputs in a multi-agent code-analysis pipeline.\n\nEvaluate the subagent's `last_assistant_message` field (in the JSON below) against these requirements:\n\n1. ALLOW (return `{}`): Mode-selection or no-issues responses. Examples: \"Which mode do you prefer\", \"select an option\", \"no issues / problems / violations / blockers found\".\n\n2. ALLOW (return `{}`): Output contains at least one concrete file:line citation — e.g. `src/auth.ts:42`, `lib/db.ts:100-115`, or path references that include line numbers.\n\n3. BLOCK (return `{\"decision\":\"block\",\"reason\":\"<one-line explanation>\"}`): Output claims about code or findings WITHOUT concrete file:line citations. Vague references like \"the auth handler\" or \"near the database code\" are not acceptable as the only evidence.\n\nSubagent invocation JSON:\n$ARGUMENTS\n\nReturn ONLY the JSON decision (no commentary, no markdown fences).",
+            "prompt": "You are a quality gate for subagent outputs in a multi-agent code-analysis pipeline.\n\nEvaluate the subagent's `last_assistant_message` field (in the JSON below) against these requirements:\n\n1. ALLOW (return `{}`): Mode-selection or no-issues responses. Examples: \"Which mode do you prefer\", \"select an option\", \"no issues / problems / violations / blockers found\".\n\n2. ALLOW (return `{}`): Output contains at least one concrete file:line citation \u2014 e.g. `src/auth.ts:42`, `lib/db.ts:100-115`, or path references that include line numbers.\n\n3. BLOCK (return `{\"decision\":\"block\",\"reason\":\"<one-line explanation>\"}`): Output claims about code or findings WITHOUT concrete file:line citations. Vague references like \"the auth handler\" or \"near the database code\" are not acceptable as the only evidence.\n\nSubagent invocation JSON:\n$ARGUMENTS\n\nReturn ONLY the JSON decision (no commentary, no markdown fences).",
             "timeout": 30
           }
         ]
