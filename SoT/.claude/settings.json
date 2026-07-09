@@ -89,8 +89,7 @@
       "Bash(python3 *)",
       "Bash(python *)",
       "Bash(pip *)",
-      "Bash(pip3 *)",
-      "Bash(xargs *)"
+      "Bash(pip3 *)"
     ],
     "deny": [
       "Read(**/.env)",
