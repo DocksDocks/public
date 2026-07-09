@@ -581,7 +581,11 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
   if (ctx.services.deps.probe("git").state === "missing") {
-    ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing")
+    ctx.services.deps.warnMissing(
+      "git",
+      ctx.services.logger,
+      "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing"
+    )
     return
   }
 
@@ -825,7 +829,11 @@ function syncLspServers(ctx: Ctx): void {
   }
 
   if (ctx.services.deps.probe("npm").state === "missing") {
-    ctx.services.deps.warnMissing("npm", `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`)
+    ctx.services.deps.warnMissing(
+      "npm",
+      ctx.services.logger,
+      `cannot install LSP servers (${specs}); the php-lsp/typescript-lsp plugins stay no-ops`
+    )
     return
   }
 

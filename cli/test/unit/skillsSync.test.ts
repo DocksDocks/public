@@ -18,7 +18,6 @@ import { makeEngineServices, makePlatform } from "../../src/engine-native/servic
 function servicesFor(platform: NodeJS.Platform) {
   return {
     ...makeEngineServices({
-      isVerbose: () => false,
       sinks: { stderr: () => {}, stdout: () => {} }
     }),
     platform: makePlatform(platform)

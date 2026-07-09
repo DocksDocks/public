@@ -5,7 +5,13 @@ import { join } from "node:path"
 
 import { runEngineNative } from "../../src/engine-native"
 import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
-import { makePlatform, type DependencyManager, type EngineServices, type Logger } from "../../src/engine-native/services"
+import {
+  makeEngineServices,
+  makePlatform,
+  type DependencyManager,
+  type EngineServices,
+  type Logger
+} from "../../src/engine-native/services"
 import { kitHome } from "../../src/kitHome"
 
 type LogLevel = "change" | "verbose" | "warn" | "err" | "echo"
@@ -55,17 +61,105 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
     version: (id) => versions[id] ?? "",
     path: (id) => (missing.has(id) ? "" : `/stub-bin/${id}`),
     latest: (id) => latest[id] ?? "",
-    warnMissing: (id, context) => {
+    warnMissing: (id, currentLogger, context) => {
       if (warned.has(id)) return
       warned.add(id)
       const suffix = context !== undefined && context !== "" ? ` (${context})` : ""
-      logger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(platform.raw())}${suffix}`)
+      currentLogger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(platform.raw())}${suffix}`)
     }
   }
   return { logger, deps, platform }
 }
 
-describe("EngineNative full service injection", () => {
+class RecordingLogger implements Logger {
+  constructor(private readonly records: Array<LogRecord>) {}
+
+  change(message: string): void {
+    this.records.push({ level: "change", message })
+  }
+
+  verbose(message: string): void {
+    this.records.push({ level: "verbose", message })
+  }
+
+  warn(message: string): void {
+    this.records.push({ level: "warn", message })
+  }
+
+  err(message: string): void {
+    this.records.push({ level: "err", message })
+  }
+
+  echo(message: string): void {
+    this.records.push({ level: "echo", message })
+  }
+}
+
+describe.sequential("EngineNative full service injection", () => {
+  it("routes manager warnings through the current run logger", () => {
+    const root = mkdtempSync(join(tmpdir(), "engine-di-mixed-"))
+    const previous = new Map(
+      ["HOME", "AGENTS_DIR", "PATH", "DRY_RUN", "DOCKS_KIT_VERBOSE"].map((key) => [key, process.env[key]])
+    )
+    const constructionWrites: Array<string> = []
+    const runRecords: Array<LogRecord> = []
+
+    try {
+      process.env["HOME"] = root
+      process.env["AGENTS_DIR"] = join(root, ".agents")
+      process.env["PATH"] = root
+      delete process.env["DRY_RUN"]
+      delete process.env["DOCKS_KIT_VERBOSE"]
+      const constructed = makeEngineServices({
+        sinks: {
+          stderr: (chunk) => void constructionWrites.push(chunk),
+          stdout: (chunk) => void constructionWrites.push(chunk)
+        }
+      })
+      const services = { ...constructed, logger: new RecordingLogger(runRecords) }
+
+      expect(runEngineNative(["sync", "agents", "--dry-run"], services)).toBe(0)
+      expect(constructionWrites).toEqual([])
+      expect(runRecords).toContainEqual({
+        level: "warn",
+        message:
+          "npx not installed — ships with Node.js — install via https://nodejs.org (or your package manager) (skipping universal skills bootstrap)"
+      })
+    } finally {
+      for (const [key, value] of previous) {
+        if (value === undefined) delete process.env[key]
+        else process.env[key] = value
+      }
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("uses the run wrapper as the sole verbosity gate for factory loggers", () => {
+    const stderr: Array<string> = []
+    const stdout: Array<string> = []
+    const factory = makeEngineServices({
+      sinks: {
+        stderr: (chunk) => void stderr.push(chunk),
+        stdout: (chunk) => void stdout.push(chunk)
+      }
+    })
+    const services = { ...factory, deps: stubServices([]).deps }
+
+    expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
+    expect(runEngineNative(["toolchain", "ensure", "agent-browser", "--verbose"], services)).toBe(0)
+    expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
+    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m agent-browser up to date (0.31.1)\n"])
+    expect(stdout).toEqual([])
+  })
+
+  it("preserves class-based logger methods and receivers", () => {
+    const records: Array<LogRecord> = []
+    const services = { ...stubServices([]), logger: new RecordingLogger(records) }
+
+    expect(runEngineNative(["sync", "--unknown"], services)).toBe(2)
+    expect(records).toEqual([{ level: "err", message: "Unknown arg: --unknown" }])
+  })
+
   it("captures every in-process branch without real stream writes", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-"))
     const stubPath = join(root, "stub-bin")

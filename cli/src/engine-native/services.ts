@@ -27,7 +27,7 @@ export interface DependencyManager {
   readonly version: (id: ToolId) => string
   readonly path: (id: ToolId) => string
   readonly latest: (id: ToolId) => string
-  readonly warnMissing: (id: ToolId, context?: string) => void
+  readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void
 }
 
 export interface Platform {
@@ -45,7 +45,6 @@ export interface EngineServices {
 }
 
 export interface EngineServiceOptions {
-  readonly isVerbose?: () => boolean
   readonly sinks?: LoggerSinks
 }
 
@@ -61,7 +60,6 @@ export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => (
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */
 export const makeDependencyManager = (
   platform: Platform,
-  logger: Logger,
   exec: ProbeExecutor = defaultProbeExecutor
 ): DependencyManager => {
   const warned = new Set<ToolId>()
@@ -74,7 +72,7 @@ export const makeDependencyManager = (
     version: (id) => resolveVersion(DEPENDENCIES[id], exec),
     path: (id) => resolvePath(DEPENDENCIES[id], exec),
     latest: (id) => DEPENDENCIES[id].latest?.(exec) ?? "",
-    warnMissing: (id, context) => {
+    warnMissing: (id, logger, context) => {
       if (warned.has(id)) return
       warned.add(id)
       const suffix = context !== undefined && context !== "" ? ` (${context})` : ""
@@ -85,10 +83,10 @@ export const makeDependencyManager = (
 
 export const makeEngineServices = (opts?: EngineServiceOptions): EngineServices => {
   const platform = makePlatform()
-  const logger = makeLogger({ ...opts?.sinks, isVerbose: opts?.isVerbose ?? opts?.sinks?.isVerbose ?? (() => false) })
+  const logger = makeLogger(opts?.sinks ?? {})
   return {
     logger,
-    deps: makeDependencyManager(platform, logger),
+    deps: makeDependencyManager(platform),
     platform
   }
 }

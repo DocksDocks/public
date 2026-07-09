@@ -437,7 +437,11 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     return
   }
   if (ctx.services.deps.probe("git").state === "missing") {
-    ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing")
+    ctx.services.deps.warnMissing(
+      "git",
+      ctx.services.logger,
+      "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing"
+    )
     return
   }
 

@@ -60,7 +60,7 @@ function readSlugs(file: string): Array<string> {
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
   const { change, echo, verbose, warn } = ctx.services.logger
   if (ctx.services.deps.probe("npx").state === "missing") {
-    ctx.services.deps.warnMissing("npx", "skipping universal skills bootstrap")
+    ctx.services.deps.warnMissing("npx", ctx.services.logger, "skipping universal skills bootstrap")
     return
   }
 
@@ -267,7 +267,9 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
 
   if (ctx.services.deps.probe("npm").state === "missing") {
-    if (!ctx.dryRun) ctx.services.deps.warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
+    if (!ctx.dryRun) {
+      ctx.services.deps.warnMissing("npm", ctx.services.logger, "cannot auto-install agent-browser CLI; re-run sync after installing")
+    }
     return
   }
 
