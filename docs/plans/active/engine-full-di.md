@@ -67,12 +67,12 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 - [ ] `rg 'commandExists|capture\(|which\(' cli/src/engine-native --include='*.ts'` outside `exec.ts`/`deps.ts`/`services.ts` → empty or covered by the Step-1/Step-5 allowlist table; a test injects probe results that contradict the host PATH and the engine believes the injection.
 - [ ] The Step-6 integration suite passes: canonical capture case, branch matrix, two-run dedup, three-run verbosity — with real-stream zero-bypass assertions.
 - [ ] Injected win32 platform: `linkOrCopy` records the "dir" symlink type; injected linux: `agentBrowserInstall` argv contains `--with-deps`; injected non-linux: it doesn't. (Extends the parent plan's hint-only test to behavior.)
-- [ ] Each verification command, run separately, with expected results: `bun x tsc --noEmit -p cli/tsconfig.json` (exit 0) · `bun x vitest run` (all pass) · `bun cli/test/golden-dryrun.ts` (exit 0, `OK (21 case(s))` — count as of planning) · `bun cli/test/golden-mutation.ts` (exit 0, `OK (47 case(s))`) · `bun cli/test/golden-dryrun.ts --prove-red` and `bun cli/test/golden-mutation.ts --prove-red` (each prints `prove-red OK`, exits 1). Goldens byte-identical EXCEPT the single named models.ts channel fix, recorded via the one permitted `--update-goldens` run in the Step-1 slice (changed case labels enumerated in that commit) — no other golden diff, no other `--update-goldens` run.
+- [ ] Each verification command, run separately, with expected results: `bun x tsc --noEmit -p cli/tsconfig.json` (exit 0) · `bun x vitest run` (all pass) · `bun cli/test/golden-dryrun.ts` (exit 0, `OK (21 case(s))` — count as of planning) · `bun cli/test/golden-mutation.ts` (exit 0, `OK (47 case(s))`) · `bun cli/test/golden-dryrun.ts --prove-red` and `bun cli/test/golden-mutation.ts --prove-red` (each prints `prove-red OK`, exits 1). Goldens byte-identical EXCEPT the Step-1 slice, whose one permitted `--update-goldens` run records exactly one ADDITIVE case (`fixture=home-drift cmd=model claude` — the catalog get, exercising the models.ts channel fix) and touches no existing case — the new label enumerated in that commit; no other golden diff, no other `--update-goldens` run. The channel itself is pinned by the new split-channel invariant leg (catalog on stdout, zero on stderr).
 
 ## Out of scope / do-NOT-touch
 
 - Any message byte change beyond the single named `models.ts` channel fix.
-- New log levels; Effect generators inside engine internals; changes to golden case sets.
+- New log levels; Effect generators inside engine internals; changes to golden case sets — except the single authorized additive `model claude` catalog case (see the RESOLVED note in Notes).
 - `exec.ts` PATH/X_OK primitives stay the platform-seam exemption (DESIGN.md).
 
 ## Cold-handoff checklist
@@ -90,7 +90,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 ## Notes
 
-- BLOCKED (2026-07-09): Step 1 requires the one permitted `--update-goldens` run to record the `models.ts` catalog-channel fix and requires the slice commit to enumerate the changed golden case labels. The live dry-run and mutation matrices contain no command that prints the model catalog, and both golden JSON files contain zero `Available <tool> models` lines. Adding a catalog-printing matrix row would produce the required label but conflicts with Out of scope (“changes to golden case sets”); keeping the case sets unchanged produces no changed label to enumerate. Which constraint wins: authorize one additive catalog case in Step 1, or waive the golden-update/changed-label requirement and cover the stdout channel with a unit/integration assertion instead? No engine code was changed while this behavioral-test boundary is unresolved.
+- RESOLVED (2026-07-09, orchestrator decision — implementation detail within the user-approved models.ts channel-fix scope): both halves. Step 1 is AUTHORIZED to add exactly one catalog-printing golden case — MATRIX row `{ fixture: "home-drift", cmd: ["model", "claude"] }` (valueless get prints deployed/SoT + catalog) — recorded in the same slice as the channel fix via the one permitted `--update-goldens` run; enumerate it in the commit as the additive label. AND add a split-channel invariant leg (`runEngineSplit(["model", "claude"], ...)`) asserting `Available claude models` lines land on stdout and none on stderr — that assertion, not the merged golden, is what pins the channel fix. The Out-of-scope golden-case-set freeze gets this single named carve-out; blocker raised by the implementer (gpt-5.6-sol) in commit 6d38fb3.
 
 ## Review
 
