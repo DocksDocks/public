@@ -23,7 +23,7 @@ import { syncClaudeModel } from "./claudeModel"
 import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { echo, err, log, warn } from "./output"
+import { change, echo, err, verbose, warn } from "./logger"
 import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
@@ -66,7 +66,7 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
   return (mode, version) => {
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
 
-    if (mode === "upgrade") log(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
+    if (mode === "upgrade") change(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
     else warn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
     const installer = p(tmpdir(), `rtk-install-${process.pid}.sh`)
     const dl = spawnSync("curl", ["-fsSL", `https://raw.githubusercontent.com/rtk-ai/rtk/${installerRef}/install.sh`, "-o", installer], {
@@ -82,7 +82,7 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
     process.env["PATH"] = `${ctx.home}/.local/bin:${ctx.home}/.cargo/bin:${process.env["PATH"] ?? ""}`
     if (commandExists("rtk")) {
       const v = capture("rtk", ["--version"])
-      log(`RTK ready (${v !== "" ? v : "version unknown"})`)
+      change(`RTK ready (${v !== "" ? v : "version unknown"})`)
       return 0
     }
     err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
@@ -115,9 +115,9 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
     // sync before the success log and before any settings/plugin mutation.
     const res = spawnSync("rtk", ["init", "--global"], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) throw new ExitError(res.status ?? 1)
-    log("RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)")
+    change("RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)")
   } else if (!ctx.dryRun) {
-    log("RTK already initialized")
+    verbose("RTK already initialized")
   }
 }
 
@@ -138,7 +138,7 @@ function syncScripts(ctx: Ctx, claudeDir: string): void {
   }
   const mp3 = p(ctx.repoDir, "notification.mp3")
   if (existsSync(mp3)) copyFileSync(mp3, p(claudeDir, "notification.mp3"))
-  log("Scripts synced (statusline, fetch-usage, notification)")
+  change("Scripts synced (statusline, fetch-usage, notification)")
 }
 
 function shellScriptCount(hooksDir: string): number {
@@ -166,7 +166,7 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
       chmodSync(p(hooksDir, e.name), statSync(p(hooksDir, e.name)).mode | 0o111)
     }
   }
-  log(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
+  change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
@@ -195,10 +195,10 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
       .filter((l) => l !== "@RTK.md")
       .join("\n")
     writeFileSync(p(claudeDir, "CLAUDE.md"), stripped)
-    log(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
+    change(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
   } else {
     copyFileSync(src, p(claudeDir, "CLAUDE.md"))
-    log("CLAUDE.md synced")
+    change("CLAUDE.md synced")
   }
 }
 
@@ -221,7 +221,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
 
   if (!existsSync(userSettings)) {
     copyFileSync(repoSettings, userSettings)
-    log("Settings installed")
+    change("Settings installed")
     return
   }
 
@@ -238,9 +238,9 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
   writeFileSync(`${userSettings}.tmp`, jqStringify(merged))
   renameSync(`${userSettings}.tmp`, userSettings)
   if (ctx.reconcile) {
-    log("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
+    change("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
   } else {
-    log("Settings merged (backup at settings.json.bak)")
+    change("Settings merged (backup at settings.json.bak)")
   }
 }
 
@@ -275,7 +275,7 @@ function syncCompactWindow(ctx: Ctx, claudeDir: string): void {
     env["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = ctx.claudeCompactWindow
     doc["env"] = env
   })
-  log(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
+  change(`Compact window: set to ${ctx.claudeCompactWindow} tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)`)
 }
 
 function syncPermissive(ctx: Ctx, claudeDir: string): void {
@@ -293,7 +293,7 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
     permissions["deny"] = []
     doc["permissions"] = permissions
   })
-  log("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
+  change("Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)")
 }
 
 // ---------------------------------------------------------- claude.json ----
@@ -335,7 +335,7 @@ function syncClaudeJson(ctx: Ctx): void {
     applyFilter(obj)
     writeFileSync(claudeJson, jqStringify(obj))
   }
-  log(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
+  change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`)
 }
 
 // -------------------------------------------------------- connector env ----
@@ -350,7 +350,7 @@ function syncConnectorEnv(ctx: Ctx): void {
     })
     if (existing.error === undefined && existing.status === 0) {
       if (ctx.dryRun) echo("[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in user environment — would skip")
-      else log("claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in user environment (left as-is)")
+      else verbose("claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in user environment (left as-is)")
       return
     }
     if (ctx.dryRun) {
@@ -359,7 +359,7 @@ function syncConnectorEnv(ctx: Ctx): void {
     }
     const res = spawnSync("setx", ["ENABLE_CLAUDEAI_MCP_SERVERS", "false"], { stdio: "ignore" })
     if (res.error === undefined && res.status === 0) {
-      log("claude.ai connectors disabled via setx (open a new terminal to apply)")
+      change("claude.ai connectors disabled via setx (open a new terminal to apply)")
     } else {
       warn("setx ENABLE_CLAUDEAI_MCP_SERVERS false failed — set it manually in System Properties > Environment Variables")
     }
@@ -375,7 +375,7 @@ function syncConnectorEnv(ctx: Ctx): void {
       if (ctx.dryRun) {
         echo(`[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in ${f} — would skip`)
       } else {
-        log(`claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in ${f} (left as-is)`)
+        verbose(`claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in ${f} (left as-is)`)
       }
       return
     }
@@ -391,7 +391,7 @@ function syncConnectorEnv(ctx: Ctx): void {
   }
 
   appendFileSync(target, `\n${marker}\n${line}\n`)
-  log(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
+  change(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
 }
 
 // ------------------------------------------------------------- removals ----
@@ -483,7 +483,7 @@ function syncRemovals(ctx: Ctx, claudeDir: string): void {
   }
 
   if (hooksRemoved + filesRemoved + skeys + cjkeys > 0) {
-    log(`Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys})`)
+    change(`Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys})`)
   }
 }
 
@@ -617,9 +617,9 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
 
   const failed = f1 + f2 + f4 + f5
   if (addedMp > 0 || addedPl > 0 || updatedPl > 0 || removedPl > 0 || removedMp > 0) {
-    log(`Plugins synced (marketplaces: +${addedMp} -${removedMp}, plugins: +${addedPl} ~${updatedPl} -${removedPl})`)
+    change(`Plugins synced (marketplaces: +${addedMp} -${removedMp}, plugins: +${addedPl} ~${updatedPl} -${removedPl})`)
   } else {
-    log("Plugins already in sync")
+    verbose("Plugins already in sync")
   }
   if (failed > 0) {
     warn(`${failed} plugin operation(s) failed — re-run sync or install manually`)
@@ -674,7 +674,7 @@ function enableOptionalPlugin(claudeDir: string, pluginId: string, marketplaceRe
   }
 
   if (cli(["plugin", "enable", pluginId]).ok) {
-    log(`Optional plugin opted in: ${pluginId}`)
+    change(`Optional plugin opted in: ${pluginId}`)
   } else {
     warn(`Failed to enable optional plugin ${pluginId}`)
   }
@@ -732,7 +732,7 @@ function syncLspServers(ctx: Ctx): void {
     if (ctx.dryRun) {
       echo("[dry-run] LSP server binaries present")
     } else {
-      log("LSP server binaries present")
+      verbose("LSP server binaries present")
     }
     return
   }
@@ -748,9 +748,9 @@ function syncLspServers(ctx: Ctx): void {
     return
   }
 
-  log(`Installing LSP servers via npm: ${specs}...`)
+  change(`Installing LSP servers via npm: ${specs}...`)
   if (spawnSync("npm", ["install", "-g", ...missing], { stdio: "ignore" }).status === 0) {
-    log(`LSP servers installed (${specs})`)
+    change(`LSP servers installed (${specs})`)
   } else {
     warn(`npm install -g ${specs} failed. Try manually: npm install -g ${specs}`)
   }

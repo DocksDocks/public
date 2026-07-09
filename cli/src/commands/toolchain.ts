@@ -15,15 +15,19 @@ const tool = Args.text({ name: "tool" }).pipe(
 const yes = Options.boolean("yes").pipe(
   Options.withDescription("Auto-accept above-verified installs")
 )
+const verbose = Options.boolean("verbose").pipe(
+  Options.withAlias("v"),
+  Options.withDescription("Also print no-op confirmations (present, up to date)")
+)
 
-export const toolchainCommand = Command.make("toolchain", { op, tool, yes }, (config) =>
+export const toolchainCommand = Command.make("toolchain", { op, tool, yes, verbose }, (config) =>
   Effect.gen(function* () {
     const operation = Option.getOrElse(config.op, () => "check")
-    const flags = config.yes ? ["--yes"] : []
+    const flags = [...(config.yes ? ["--yes"] : []), ...(config.verbose ? ["--verbose"] : [])]
 
     switch (operation) {
       case "check":
-        return yield* engine(["toolchain", "check"])
+        return yield* engine(["toolchain", "check", ...(config.verbose ? ["--verbose"] : [])])
       case "ensure": {
         const t = Option.getOrUndefined(config.tool)
         if (t === undefined || !MANAGED.includes(t)) {

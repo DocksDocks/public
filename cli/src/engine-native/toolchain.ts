@@ -7,7 +7,7 @@ import { readFileSync, readSync } from "node:fs"
 import { capture, commandExists, isExecutable, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
-import { echo, log, warn } from "./output"
+import { echo, verbose, warn } from "./logger"
 
 type InstallFn = (mode: "install" | "upgrade", version: string) => number
 
@@ -187,7 +187,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
       echo(`[dry-run] ${tool} present (${installedLabel})`)
       return 0
     }
-    log(`${tool} present (${installedLabel})`)
+    verbose(`${tool} present (${installedLabel})`)
     return 0
   }
 
@@ -197,7 +197,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
       echo(`[dry-run] ${tool} present (${installedLabel}); latest unknown (offline?) — no action`)
       return 0
     }
-    log(`${tool} present (${installedLabel}; latest unknown — no action)`)
+    verbose(`${tool} present (${installedLabel}; latest unknown — no action)`)
     return 0
   }
 
@@ -215,7 +215,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
     echo(`[dry-run] ${tool} up to date (${installed})`)
     return 0
   }
-  log(`${tool} up to date (${installed})`)
+  verbose(`${tool} up to date (${installed})`)
   return 0
 }
 

@@ -14,7 +14,7 @@ import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { echo } from "./output"
+import { echo } from "./logger"
 import { ExitError, parseArgs, preflight, validateModelFlags } from "./parseArgs"
 
 export interface Ctx {
@@ -22,6 +22,7 @@ export interface Ctx {
   readonly home: string
   readonly agentsDir: string
   dryRun: boolean
+  verbose: boolean
   skipRtk: boolean
   reconcile: boolean
   prune: boolean
@@ -46,6 +47,7 @@ function makeCtx(): Ctx {
     home,
     agentsDir: env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== "" ? env["AGENTS_DIR"] : p(home, ".agents"),
     dryRun: env["DRY_RUN"] === "1",
+    verbose: env["DOCKS_KIT_VERBOSE"] === "1",
     skipRtk: env["SKIP_RTK"] === "1",
     reconcile: env["RECONCILE"] === "1",
     prune: env["PRUNE"] === "1",

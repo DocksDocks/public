@@ -13,26 +13,30 @@ const value = Args.text({ name: "value" }).pipe(
 const dryRun = Options.boolean("dry-run").pipe(
   Options.withDescription("Preview without applying")
 )
+const verbose = Options.boolean("verbose").pipe(
+  Options.withAlias("v"),
+  Options.withDescription("Also print no-op confirmations (already in sync, up to date)")
+)
 
 const KEEP = "__keep__"
 
 export const modelCommand = Command.make(
   "model",
-  { tool, value, dryRun },
+  { tool, value, dryRun, verbose },
   (config) =>
     Effect.gen(function* () {
       if (config.tool !== "claude" && config.tool !== "codex") {
         return yield* bail(`Unknown tool '${config.tool}' (valid: claude, codex)`)
       }
       const t = config.tool as Tool
-      const dry = config.dryRun ? ["--dry-run"] : []
+      const dry = [...(config.dryRun ? ["--dry-run"] : []), ...(config.verbose ? ["--verbose"] : [])]
 
       if (Option.isSome(config.value)) {
         return yield* engine(["model", t, config.value.value, ...dry])
       }
 
       // No value: show current (engine prints deployed + SoT + catalog) …
-      yield* engine(["model", t])
+      yield* engine(["model", t, ...(config.verbose ? ["--verbose"] : [])])
 
       // … and offer an interactive picker when attached to a terminal.
       if (!process.stdin.isTTY || !process.stdout.isTTY) return

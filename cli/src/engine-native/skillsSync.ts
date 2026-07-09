@@ -10,7 +10,7 @@ import { tmpdir } from "node:os"
 import { capture, commandExists, isExecutable, p, which } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
-import { echo, log, warn } from "./output"
+import { change, echo, verbose, warn } from "./logger"
 import { ensure, field } from "./toolchain"
 
 export interface SkillsState {
@@ -103,12 +103,12 @@ function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest
   state.present = added + already
 
   if (added > 0) {
-    log(`Universal skills synced (+${added} new, ${already} already present)`)
+    change(`Universal skills synced (+${added} new, ${already} already present)`)
   } else {
-    log(`Universal skills already in sync (${already} present)`)
+    verbose(`Universal skills already in sync (${already} present)`)
   }
   if (healed > 0) {
-    log(`Claude per-tool symlinks healed (+${healed}) — canonical present, ~/.claude/skills/<name> was missing or broken`)
+    change(`Claude per-tool symlinks healed (+${healed}) — canonical present, ~/.claude/skills/<name> was missing or broken`)
   }
   if (failed > 0) {
     warn(`${failed} skill install(s) failed — re-run sync or install manually with: npx skills add <slug> -g -y -a claude-code codex`)
@@ -232,14 +232,14 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
   const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
   const installFlags = process.platform === "linux" ? ["--with-deps"] : []
 
-  log(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
+  change(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
   if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
     warn(`npm install -g ${pkg} failed. Try manually: npm install -g ${pkg}`)
     return 1
   }
 
   if (mode === "install") {
-    log("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
+    change("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
     if (spawnSync("agent-browser", ["install", ...installFlags], { stdio: "inherit" }).status !== 0) {
       warn(`agent-browser install failed. Re-run manually: agent-browser install ${installFlags.join(" ")}`)
       return 1
@@ -248,7 +248,7 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
   const out = capture("agent-browser", ["--version"])
   const fields = (out.split("\n")[0] ?? "").trim().split(/[ \t]+/)
   const version2 = out !== "" ? fields[fields.length - 1] ?? "version unknown" : "version unknown"
-  log(`agent-browser CLI ready (${version2})`)
+  change(`agent-browser CLI ready (${version2})`)
   return 0
 }
 
@@ -299,7 +299,7 @@ export function bunBootstrap(ctx: Ctx): string {
     return ""
   }
   const v = capture(bun, ["--version"])
-  log(`Bun installed (${v !== "" ? v : "version unknown"})`)
+  change(`Bun installed (${v !== "" ? v : "version unknown"})`)
   return bun
 }
 
@@ -312,7 +312,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     const bun = bunBootstrap(ctx)
     if (bun === "") return 1
 
-    log(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
+    change(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
     if (spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" }).status !== 0) {
       warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
       return 1
@@ -324,7 +324,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     // agent PATH) — bun's global bin is already the Windows PATH entry.
     if (process.platform === "win32") {
       const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
-      if (found) log(`effect-solutions CLI ready (${gbin})`)
+      if (found) change(`effect-solutions CLI ready (${gbin})`)
       else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
       return 0
     }
@@ -332,7 +332,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
       linkOrCopy(bun, p(ctx.home, ".local", "bin", "bun"))
       linkOrCopy(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"))
-      log("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
+      change("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
     } else {
       warn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)
     }
@@ -383,7 +383,7 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
     }
   }
 
-  if (removed > 0) log(`Kit-managed skills removed (-${removed})`)
+  if (removed > 0) change(`Kit-managed skills removed (-${removed})`)
   if (failed > 0) warn(`${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove -g -y -a '*' -s <name>`)
 }
 

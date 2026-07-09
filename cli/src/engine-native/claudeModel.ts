@@ -7,7 +7,7 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import type { Ctx } from "./index"
 import { isObject, jqStringify, parseJson } from "./jq"
-import { echo, err, log, warn } from "./output"
+import { echo, err, change, warn } from "./logger"
 
 export function syncClaudeModel(ctx: Ctx, model: string): void {
   const userSettings = p(ctx.home, ".claude", "settings.json")
@@ -44,5 +44,5 @@ export function syncClaudeModel(ctx: Ctx, model: string): void {
   }
   writeFileSync(`${userSettings}.tmp`, jqStringify(doc))
   renameSync(`${userSettings}.tmp`, userSettings)
-  log(`Model: deployed settings model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  change(`Model: deployed settings model set to ${model} (SoT unchanged; flag-less sync reverts)`)
 }

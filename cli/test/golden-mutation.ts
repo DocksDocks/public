@@ -80,6 +80,7 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["model", "codex", "gpt-5.5"] },
   { fixture: "home-invalid-json", cmd: ["sync", "claude"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--verbose"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
@@ -99,7 +100,9 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
  */
 const REPLAYS: Array<{ fixture: string; cmd: Array<string> }> = [
   { fixture: "home-fresh", cmd: ["sync"] },
-  { fixture: "home-drift", cmd: ["sync"] }
+  { fixture: "home-drift", cmd: ["sync"] },
+  // Verbose replay: the demoted no-op confirmations must come back.
+  { fixture: "home-fresh", cmd: ["sync", "--verbose"] }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
@@ -199,9 +202,43 @@ function channelInvariantProblems(): Array<string> {
     }
   }
 
+  // Verbosity contract: default second run is quiet about the status quo;
+  // --verbose (public flag, short alias, and raw-channel env) brings it back.
+  // Exact demoted no-op shapes — NOT a loose /already/ match: change lines
+  // may legitimately embed count phrasing like "(+1 new, 0 already present)".
+  const NOOP_RE = /already in sync|already initialized|already set|up to date|\bpresent \(|left as-is/
+  const first = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs)
+  const second = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs, { reuseHome: first.home })
+  if (NOOP_RE.test(second.stderr)) {
+    problems.push("  verbosity: no-op confirmation leaked into default second-run stderr")
+  }
+  const secondVerbose = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs, {
+    reuseHome: first.home,
+    env: { DOCKS_KIT_VERBOSE: "1" }
+  })
+  if (!NOOP_RE.test(secondVerbose.stderr)) {
+    problems.push("  verbosity: DOCKS_KIT_VERBOSE=1 second run shows no no-op confirmations")
+  }
+  const pubVerbose = runPublicCli(["sync", "claude", "--verbose", "--dry-run"], "home-drift", defaultStubs)
+  if (pubVerbose.exitCode !== 0) {
+    problems.push(`  verbosity: public 'sync claude --verbose --dry-run' exited ${pubVerbose.exitCode}`)
+  }
+  const pubShort = runPublicCli(["toolchain", "check", "-v"], "home-drift", defaultStubs)
+  if (pubShort.exitCode !== 0) {
+    problems.push(`  verbosity: public 'toolchain check -v' exited ${pubShort.exitCode}`)
+  }
+  const pubModel = runPublicCli(["model", "claude", "-v"], "home-drift", defaultStubs)
+  if (pubModel.exitCode !== 0) {
+    problems.push(`  verbosity: public 'model claude -v' exited ${pubModel.exitCode}`)
+  }
+
   rmSync(syncSplit.home, { recursive: true, force: true })
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
+  rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home
+  rmSync(pubVerbose.home, { recursive: true, force: true })
+  rmSync(pubShort.home, { recursive: true, force: true })
+  rmSync(pubModel.home, { recursive: true, force: true })
   return problems
 }
 

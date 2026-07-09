@@ -6,7 +6,7 @@ import { p } from "./exec"
 import { readFileSync } from "node:fs"
 
 import { isObject, parseJson, type Json } from "./jq"
-import { warn } from "./output"
+import { warn } from "./logger"
 
 function catalog(repoDir: string): Json | undefined {
   try {

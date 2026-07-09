@@ -7,7 +7,7 @@
 import { commandExists } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { echo, err, warn } from "./output"
+import { echo, err, setVerbose, warn } from "./logger"
 
 export class ExitError extends Error {
   constructor(readonly code: number) {
@@ -36,6 +36,7 @@ function usage(ctx: Ctx): void {
   )
   echo("  --skip-rtk        skip optional tool bootstrap (RTK, bubblewrap)")
   echo("  --yes             auto-accept toolchain prompts (containers/CI)")
+  echo("  --verbose         also print no-op confirmations (already in sync, up to date, left as-is)")
   echo("")
   echo("Deploy-time modifiers (deployed config only; SoT untouched; a later flag-less sync reverts)")
   echo(
@@ -102,6 +103,10 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         continue
       case "--yes":
         ctx.assumeYes = true
+        continue
+      case "--verbose":
+        ctx.verbose = true
+        setVerbose(true)
         continue
       case "--claude-model":
         printModels(ctx.repoDir, "claude")

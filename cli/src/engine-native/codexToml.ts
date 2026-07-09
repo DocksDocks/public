@@ -8,7 +8,7 @@ import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import type { Ctx } from "./index"
-import { echo, log, warn } from "./output"
+import { echo, change, warn } from "./logger"
 
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
   const lines = content.split("\n")
@@ -63,5 +63,5 @@ export function syncCodexModel(ctx: Ctx, model: string): void {
     return
   }
   replaceTopLevelSettingInFile(userCodexSettings, "model", `model = "${model}"`)
-  log(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  change(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
 }

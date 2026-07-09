@@ -75,6 +75,10 @@ const skipRtk = Options.boolean("skip-rtk").pipe(
 const yes = Options.boolean("yes").pipe(
   Options.withDescription("Auto-accept toolchain prompts (containers/CI)")
 )
+const verbose = Options.boolean("verbose").pipe(
+  Options.withAlias("v"),
+  Options.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)")
+)
 const claudeModel = Options.text("claude-model").pipe(
   Options.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
   Options.optional
@@ -106,6 +110,7 @@ export const syncCommand = Command.make(
     prune,
     skipRtk,
     yes,
+    verbose,
     claudeModel,
     claudeCompactWindow,
     claudePermissive,
@@ -138,6 +143,7 @@ export const syncCommand = Command.make(
       if (config.prune) args.push("--prune")
       if (config.skipRtk) args.push("--skip-rtk")
       if (config.yes) args.push("--yes")
+      if (config.verbose) args.push("--verbose")
       if (config.claudePermissive) args.push("--claude-permissive")
       Option.map(config.claudeModel, (m) => args.push(`--claude-model=${m}`))
       Option.map(config.claudeCompactWindow, (w) => args.push(`--claude-compact-window=${w}`))

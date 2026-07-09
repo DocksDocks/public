@@ -10,7 +10,7 @@ import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { echo, err, warn } from "./output"
+import { echo, err, setVerbose, warn } from "./logger"
 import { rtkInstall } from "./claudeSync"
 import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
@@ -20,7 +20,10 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
   let value = ""
   for (const arg of args) {
     if (arg === "--dry-run") ctx.dryRun = true
-    else if (arg === "claude" || arg === "codex") tool = arg
+    else if (arg === "--verbose") {
+      ctx.verbose = true
+      setVerbose(true)
+    } else if (arg === "claude" || arg === "codex") tool = arg
     else if (arg.startsWith("-")) {
       err(`Unknown flag for model: ${arg}`)
       return 2
@@ -98,10 +101,15 @@ function tomlModelField(file: string): string {
 }
 
 export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
-  const op = args[0] ?? "check"
-  const tool = args[1] ?? ""
+  const words = args.filter((a) => !a.startsWith("--"))
+  const op = words[0] ?? args[0] ?? "check"
+  const tool = words[1] ?? args[1] ?? ""
   for (const arg of args) {
     if (arg === "--yes") ctx.assumeYes = true
+    else if (arg === "--verbose") {
+      ctx.verbose = true
+      setVerbose(true)
+    }
   }
 
   if (op === "check") {

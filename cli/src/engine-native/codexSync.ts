@@ -10,7 +10,7 @@ import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { echo, err, log, warn } from "./output"
+import { echo, err, change, warn } from "./logger"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -69,7 +69,7 @@ function ensureBubblewrap(ctx: Ctx): void {
 
   if (spawnSync("unshare", ["-Ur", "true"], { stdio: "ignore" }).status === 0) {
     const version = capture("bwrap", ["--version"]).split("\n")[0] ?? ""
-    log(`bubblewrap installed and functional (${version})`)
+    change(`bubblewrap installed and functional (${version})`)
   } else {
     warn(
       "bubblewrap installed but unprivileged user namespaces appear blocked. On Ubuntu 24.04+, prefer loading the AppArmor bwrap-userns-restrict profile; fallback: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
@@ -104,7 +104,7 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
 
   if (!existsSync(userConfig)) {
     copyFileSync(sotConfig, userConfig)
-    log("Codex config installed")
+    change("Codex config installed")
     return
   }
 
@@ -114,7 +114,7 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   mergeTopLevelSettings(sotConfig, userConfig)
   mergeTableSettings(sotConfig, userConfig)
 
-  log("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)")
+  change("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)")
 }
 
 /** codex::scrub_deprecated_features — the [features].use_legacy_landlock awk pass. */
@@ -159,7 +159,7 @@ function scrubDeprecatedFeatures(userConfig: string): void {
 
   writeFileSync(`${userConfig}.tmp`, scrubDeprecatedFeaturesText(content))
   renameSync(`${userConfig}.tmp`, userConfig)
-  log("Codex: scrubbed deprecated [features].use_legacy_landlock")
+  change("Codex: scrubbed deprecated [features].use_legacy_landlock")
 }
 
 function mergeTopLevelSettings(sotConfig: string, userConfig: string): void {
@@ -228,7 +228,7 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
     copyFileSync(ruleFile, userRuleFile)
     rulesSynced = true
   }
-  if (rulesSynced) log("Codex rules synced")
+  if (rulesSynced) change("Codex rules synced")
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
@@ -241,7 +241,7 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void
 
   if (existsSync(userAgentsMd)) copyFileSync(userAgentsMd, `${userAgentsMd}.bak`)
   copyFileSync(sotAgentsMd, userAgentsMd)
-  log("Codex AGENTS.md synced")
+  change("Codex AGENTS.md synced")
 }
 
 // ---------------------------------------------------------- marketplace ----
@@ -267,10 +267,10 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
     copyFileSync(userMarketplace, `${userMarketplace}.bak`)
     writeFileSync(`${userMarketplace}.tmp`, jqStringify(mergeMarketplace(repo, user)))
     renameSync(`${userMarketplace}.tmp`, userMarketplace)
-    log("Codex marketplace merged (backup at marketplace.json.bak)")
+    change("Codex marketplace merged (backup at marketplace.json.bak)")
   } else {
     copyFileSync(sotMarketplace, userMarketplace)
-    log("Codex marketplace installed")
+    change("Codex marketplace installed")
   }
 }
 
@@ -337,7 +337,7 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
   if (source !== "https://github.com/DocksDocks/docks.git" && source !== "DocksDocks/docks") return
   const res = spawnSync("codex", ["plugin", "marketplace", "remove", "docks"], { stdio: "ignore" })
   if (res.error === undefined && res.status === 0) {
-    log("Removed legacy configured Codex Docks marketplace; using personal marketplace file")
+    change("Removed legacy configured Codex Docks marketplace; using personal marketplace file")
   } else {
     warn("Failed to remove legacy configured Codex Docks marketplace")
   }
@@ -424,7 +424,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     }
   }
 
-  if (refreshed > 0) log(`Codex plugins synced (plugins: ~${refreshed})`)
+  if (refreshed > 0) change(`Codex plugins synced (plugins: ~${refreshed})`)
   if (failed > 0) warn(`${failed} Codex plugin operation(s) failed — re-run sync or install manually`)
 }
 
