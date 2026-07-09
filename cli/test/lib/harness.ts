@@ -37,6 +37,12 @@ export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
  * `ensure` lands on "up to date").
  */
 const STUB_BODIES: Record<string, string> = {
+  // node and jq are version-probed by `toolchain check` (presence-checked in
+  // preflight/skills) but never do real work in the engine — pin them so the
+  // goldens don't embed the recording machine's host versions (bit CI: the
+  // runner's node differed from the machine that recorded the goldens).
+  node: `case "$1" in --version) echo "v22.23.1";; esac`,
+  jq: `case "$1" in --version) echo "jq-1.7.1";; esac`,
   claude: `case "$1" in --version) echo "2.1.204 (Claude Code)";; esac`,
   codex: `case "$1" in --version) echo "codex-cli 0.142.2";; esac`,
   rtk: `case "$1" in --version) echo "rtk 0.43.0";; esac`,
