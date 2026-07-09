@@ -10,12 +10,14 @@ import { skillsCommand } from "./commands/skills"
 import { statusCommand } from "./commands/status"
 import { syncCommand } from "./commands/sync"
 import { toolchainCommand } from "./commands/toolchain"
+import { updateCommand } from "./commands/update"
 
 const root = Command.make("docks-kit", {}, () =>
   Effect.gen(function* () {
     yield* Console.log("docks-kit — portable AI coding agent config kit")
     yield* Console.log("")
     yield* Console.log("  docks-kit sync [claude] [codex] [agents]   deploy the SoT to this machine")
+    yield* Console.log("  docks-kit update [--no-sync]              self-update the kit, then sync")
     yield* Console.log("  docks-kit model <claude|codex> [value]     get/set the deployed model")
     yield* Console.log("  docks-kit models [tool]                    kit-verified model catalog")
     yield* Console.log("  docks-kit toolchain [check|ensure <tool>]  verified-version floors")
@@ -33,6 +35,7 @@ const root = Command.make("docks-kit", {}, () =>
   ),
   Command.withSubcommands([
     syncCommand,
+    updateCommand,
     modelCommand,
     modelsCommand,
     toolchainCommand,

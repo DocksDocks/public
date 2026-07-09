@@ -53,6 +53,22 @@ Two supported paths (CI-verified on windows-2025, native PowerShell):
 
 `install.sh` is not a Windows path.
 
+## Keeping the kit up to date
+
+```
+docks-kit update            # autodetect + update + chained flag-less sync
+docks-kit update --no-sync  # update only
+```
+
+Autodetection: a kit home with `.git` is a checkout (requires a clean
+worktree and an upstream; `git pull --ff-only`, re-runs
+`bun install --frozen-lockfile` when the lockfile changed); a kit home
+under `node_modules` is a global package (`bun add -g` /
+`npm install -g docks-kit@latest`). A compiled binary inside a checkout
+updates the checkout and tells you to rebuild/download the binary.
+Every `docks-kit sync` also does a best-effort behind-upstream check and
+nudges when the checkout is stale (silent offline / detached / no git).
+
 ## Zero-dependency escape hatch
 
 No Bun, no binary, constrained sandbox:

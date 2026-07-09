@@ -35,6 +35,7 @@ Prerequisites: `bash`, `jq`, `curl` (Node/npm for npm-global tools).
 
 ```text
 docks-kit sync [claude] [codex] [agents]   deploy the SoT (default: all three)
+docks-kit update [--no-sync]               self-update the kit (autodetects checkout vs global install), then sync
 docks-kit model <claude|codex> [value]     get/set the DEPLOYED model (TTY picker)
 docks-kit models [tool] [--json]           kit-verified model catalog
 docks-kit toolchain [check|ensure <tool>]  verified-version floors for external tools

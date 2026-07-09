@@ -18,7 +18,7 @@ const nativeSelected = (): boolean => process.env["DOCKS_KIT_ENGINE"] !== "bash"
 // process.execPath IS the CLI, so a re-spawn must not pass main.ts.
 // The Windows check is anchored to the drive-rooted "~BUN" segment so a
 // real checkout under a ~BUN-named directory can't false-positive.
-const compiled =
+export const compiled =
   process.argv[1] !== undefined &&
   (process.argv[1].startsWith("/$bunfs/") || /^[A-Za-z]:[\\/]~BUN[\\/]/i.test(process.argv[1]))
 

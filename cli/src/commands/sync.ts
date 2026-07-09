@@ -1,7 +1,32 @@
 import { Args, Command, Options } from "@effect/cli"
 import { Effect, Option } from "effect"
+import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
+import { join } from "node:path"
 import { bail, engine } from "../engine"
+import { kitHome } from "../kitHome"
 import { modelCatalog, type Tool } from "../manifests"
+
+/** Best-effort update autodetection: nudge (never block, never fail) when
+ * the kit checkout is behind its upstream. Silent on detached HEADs, no
+ * upstream, no network, no git. */
+const updateNudge = (): void => {
+  try {
+    const home = kitHome()
+    if (!existsSync(join(home, ".git"))) return
+    if (spawnSync("git", ["-C", home, "fetch", "--quiet"], { stdio: "ignore", timeout: 4000 }).status !== 0) return
+    const res = spawnSync("git", ["-C", home, "rev-list", "--count", "HEAD..@{u}"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    })
+    const behind = (res.stdout ?? "").trim()
+    if (res.status === 0 && behind !== "" && behind !== "0") {
+      process.stderr.write(`\x1b[1;33m[warn]\x1b[0m kit checkout is ${behind} commit(s) behind its upstream — run: docks-kit update\n`)
+    }
+  } catch {
+    // nudge only — a sync must never fail because the update check did
+  }
+}
 
 const VALID_TARGETS = ["claude", "codex", "agents"]
 
@@ -125,6 +150,7 @@ export const syncCommand = Command.make(
           .forEach((p) => args.push(`--claude-plugin=${p}`))
       }
 
+      yield* Effect.sync(updateNudge)
       yield* engine(args)
     })
 ).pipe(
