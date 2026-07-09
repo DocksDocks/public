@@ -3,7 +3,7 @@ title: CLI log UX overhaul — verbosity discipline + Effect services (SOLID)
 goal: Default runs print only actual changes, actionable warnings with install hints, and the summary; operations report changed/unchanged and no-op confirmations move behind --verbose via injected Logger/DependencyManager/Platform services.
 status: planned
 created: "2026-07-09T16:04:45-03:00"
-updated: "2026-07-09T16:16:22-03:00"
+updated: "2026-07-09T16:20:00-03:00"
 started_at: null
 assignee: null
 tags: [cli, ux, logging, effect, solid]
@@ -73,7 +73,7 @@ A default `docks-kit sync` (and `toolchain`/`model`) run reads like a change rep
 | 4 | **Harness upgrade (test-first)**: extend `cli/test/lib/harness.ts` to capture stdout and stderr separately (keeping a merged view for existing goldens during migration); add channel assertions (`status --json` stdout must `JSON.parse`; dry-run stdout with verbose stderr noise present); add a sequential same-HOME replay case (run sync twice, second run's default stderr contains only warns + summary trigger lines); add public-CLI integration cases for `--verbose` and `-v` on all three command surfaces and `DOCKS_KIT_VERBOSE=1` on the raw channel. Prove-red discipline: `bun cli/test/golden-dryrun.ts --prove-red` and `bun cli/test/golden-mutation.ts --prove-red` must each print `prove-red OK` and exit non-zero, before and after. | 2 | planned |
 | 5 | **Tier 1 — Logger + change detection + reclassification**: add `cli/src/engine-native/logger.ts` (`Logger` interface: `change/warn/error/verbose` → stderr, level-filtered; `data` writer → stdout); `output.ts` becomes a thin shim then is deleted once call sites migrate. Give mutating operations changed/unchanged results per the Step-1 audit column; reclassify every call site (no-op → `verbose`, real change → `change`, missing-dep warns gain hints); thread verbosity `parseArgs.ts → Ctx`. Update BOTH goldens in the same commit; golden matrix rows for default + verbose. | 3, 4 | planned |
 | 6 | **Tier 2 — DependencyManager** (`cli/src/engine-native/deps.ts`): typed contract — `ToolId` union (git, claude, codex, rtk, bun, npx, agent-browser, chrome-for-testing, LSP binaries); `DependencySpec { id, requirement: "required" \| "optional", probe, versionCmd, installHint(platform) }`; `ProbeResult = present(version?) \| missing \| broken(reason)`. Required-missing stays a hint-bearing error preserving today's exit codes; optional-missing = exactly one deduplicated `[warn] <tool> not installed — <install command>` per run. `SoT/toolchain.json` remains the single source of version/pin policy — `toolchain.ts` keeps gate/ensure orchestration and consumes the manager for probe/hint; the duplicated git hint collapses to one definition. | 5 | planned |
-| 7 | **Tier 3 — Platform service** (`cli/src/engine-native/os.ts`, gated on the `osmanager-scope` open question): narrow capability seam — `platform()` (`linux/darwin/windows`), package-manager style for hints (winget/brew/apt-style wording only; per-tool package identifiers stay in `DependencySpec`), shell-rc applicability; symlink stays try-then-fallback (capability/error-driven, not platform-predicted). Scattered `process.platform` branches in sync modules route through it; pure path/exec helpers in `exec.ts` are exempt and listed in the policy spec. | 6 | planned |
+| 7 | **Tier 3 — Platform service** (`cli/src/engine-native/os.ts`): narrow capability seam — `platform()` (`linux/darwin/windows`), package-manager style for hints (winget/brew/apt-style wording only; per-tool package identifiers stay in `DependencySpec`), shell-rc applicability; symlink stays try-then-fallback (capability/error-driven, not platform-predicted). Scattered `process.platform` branches in sync modules route through it; pure path/exec helpers in `exec.ts` are exempt and listed in the policy spec. | 6 | planned |
 | 8 | **Effect integration at the rim**: define `Context.Tag`s + live `Layer.succeed` layers for Logger/DependencyManager/Platform built from one shared factory; compose once at `cli/src/main.ts` and hand sync interfaces through the `engine.ts` seam; `native-raw` and `engineCapture` call the same factory directly. Test layers demonstrated in one unit test per service. | 5, 6, 7 | planned |
 | 9 | **Verify + docs**: full suite green (`bun run test:unit`, `bun run golden:dryrun`, `bun run golden:mutation`, both prove-red legs `prove-red OK` + non-zero exit, `bun run typecheck`); manual smoke: first sync on a fresh fixture HOME shows changes + warns with hints, immediate re-run's default stderr shows warns/summary only; update `cli/docs/flags.md` + `cli/docs/overview.md`; CHANGELOG entry. | 5–8 | planned |
 
@@ -97,10 +97,6 @@ A default `docks-kit sync` (and `toolchain`/`model`) run reads like a change rep
 - A `debug`/argv-trace level (no trigger/producer/test yet).
 - Windows CI matrix changes beyond keeping existing workflows green.
 
-## Open questions
-
-- `osmanager-scope` (choice): dedicated narrow Platform service now (recommended — hint quality and the `process.platform` consolidation depend on it; package IDs stay in DependencyManager), or fold platform hints into DependencyManager and defer the service until a second consumer appears. custom allowed.
-
 ## Self-review
 
 - Actionability: every step has a named artifact and an executable done-condition (grep counts, golden cases, prove-red exit codes). ✓
@@ -108,7 +104,7 @@ A default `docks-kit sync` (and `toolchain`/`model`) run reads like a change rep
 - Evidence: all cited sites opened this session (Sources); reviewer findings 1, 3, 4, 9, 10, 12 independently re-verified against source before acceptance. ✓
 - Goal coverage: over-logging = Steps 2/5 (change detection + demotion); under-warning = Steps 2/6/7 (uniform hints); Effect+SOLID = Steps 3/8 (Tags, Layers, DIP seams; SRP: policy vs pipeline; OCP: levels/sinks; ISP: probe vs policy vs hint). ✓
 - Failure mode: golden suite + prove-red are the revert trigger per tier; each tier is one reviewable commit. ✓
-- Guess → question: only OSManager scope was hedged by the user ("maybe") → open question. ✓
+- Guess → question: OSManager scope was hedged by the user ("maybe") → surfaced as an open question, answered 2026-07-09 (see Notes). ✓
 
 ## Review
 
@@ -133,3 +129,4 @@ A default `docks-kit sync` (and `toolchain`/`model`) run reads like a change rep
 
 - 2026-07-09: plan drafted from a live audit of the engine; user decisions recorded in `## Context`. Log-call counts are point-in-time — Step 1 re-derives them.
 - Cross-check (2026-07-09): [codex gpt-5.6-sol xhigh] 15 findings (8 high / 6 med / 1 low) — 15 accepted, 0 rejected; [claude] independently verified findings 1, 3, 4, 9, 10, 12 against source before accepting. Key ingested changes: change-detection contract added to Goal/Steps (f1); affected_paths manifest expanded to every command surface, harness, test, doc, changelog (f2); sync-logger-with-own-filtering decision recorded — `Logger.minimumLogLevel` explicitly ruled out for direct writes (f3); one composed Layer at main.ts + shared factory for native-raw/engineCapture instead of ManagedRuntime-at-seam (f4); `Context.Tag` + `Layer.succeed` over experimental `Effect.Service` (f5); DependencyManager got ToolId/DependencySpec/ProbeResult + required-vs-optional + dedup + toolchain.json ownership (f6); OSManager narrowed to a capability seam, package IDs stay in deps, symlinks stay try-then-fallback (f7); dry-run-stays-complete channel decision (f8); harness upgraded first — split channels, same-HOME replay, public-flag integration legs (f9, f10); per-tier golden matrix + exact prove-red conditions (f11); maskTools-based git criterion with dedup semantics (f12); summary schema + conditional next-steps (f13); single audit artifact with zero-omission grep check (f14); `debug` level dropped (f15).
+- Open question `osmanager-scope` answered by user via picker (2026-07-09): dedicated narrow Platform service now (Step 7 unconditional); package IDs stay in DependencyManager.
