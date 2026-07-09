@@ -19,6 +19,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
+import { DEPENDENCIES, warnMissing } from "./deps"
 import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -33,12 +34,8 @@ export function claudeSync(ctx: Ctx): void {
   if (!ctx.dryRun) mkdirSync(claudeDir, { recursive: true })
 
   if (!commandExists("claude")) {
-    const hint =
-      process.platform === "win32"
-        ? "winget install Anthropic.ClaudeCode"
-        : "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
     warn(
-      `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${hint} | docs: https://code.claude.com/docs/en/setup`
+      `claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: ${DEPENDENCIES.claude.installHint()} | docs: https://code.claude.com/docs/en/setup`
     )
   }
 
@@ -555,8 +552,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
   if (!commandExists("git")) {
-    const hint = process.platform === "win32" ? "winget install Git.Git (then open a new terminal)" : "install git via your package manager"
-    warn(`git not found — plugin marketplaces are git repos, so every plugin operation would fail. Skipping plugin passes. Install: ${hint}, then re-run sync`)
+    warnMissing("git", "plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing")
     return
   }
 

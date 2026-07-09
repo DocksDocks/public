@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
+import { DEPENDENCIES, warnMissing } from "./deps"
 import { capture, commandExists, p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -363,10 +364,7 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
 }
 
 /** codex::_standalone_install_command — per-OS official standalone installer. */
-const standaloneInstallCommand = (): string =>
-  process.platform === "win32"
-    ? `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`
-    : 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+const standaloneInstallCommand = (): string => DEPENDENCIES.codex.installHint()
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
 export function enabledPluginIds(configFile: string): Array<string> {
@@ -417,8 +415,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
     return
   }
   if (!commandExists("git")) {
-    const hint = process.platform === "win32" ? "winget install Git.Git (then open a new terminal)" : "install git via your package manager"
-    warn(`git not found — Codex plugin marketplaces are git repos, so plugin refresh would fail. Skipping. Install: ${hint}, then re-run sync`)
+    warnMissing("git", "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing")
     return
   }
 

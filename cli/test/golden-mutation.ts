@@ -86,6 +86,11 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
+  // Missing-git trio: uniform hint-bearing warn from the dependency registry;
+  // the combined run must emit exactly ONE deduplicated git warn.
+  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
+  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { git: null } },
+  { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": AGENT_BROWSER_STALE } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED }, variant: "npm-latest-above-verified" },
