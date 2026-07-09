@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { Command } from "@effect/cli"
 import { BunContext, BunRuntime } from "@effect/platform-bun"
-import { Console, Effect } from "effect"
+import { Console, Effect, Layer } from "effect"
+import { EngineServicesLive } from "./services"
 import { docsCommand } from "./commands/docs"
 import { modelCommand } from "./commands/model"
 import { modelsCommand } from "./commands/models"
@@ -70,4 +71,4 @@ const argv = process.argv.flatMap((a) =>
     : [a]
 )
 
-cli(argv).pipe(Effect.provide(BunContext.layer), BunRuntime.runMain)
+cli(argv).pipe(Effect.provide(Layer.mergeAll(BunContext.layer, EngineServicesLive)), BunRuntime.runMain)

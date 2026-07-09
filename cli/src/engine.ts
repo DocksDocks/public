@@ -1,7 +1,12 @@
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { runEngineNative } from "./engine-native"
+import { makeEngineServices } from "./engine-native/services"
 import { kitHome } from "./kitHome"
+
+// Same factory as the Effect rim's live layers — this path runs outside the
+// runtime (child-spawn capture), so it takes the services directly.
+const services = makeEngineServices()
 
 /**
  * The single seam between the typed CLI and EngineNative. Engine execution
@@ -43,7 +48,7 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
         stdio: ["ignore", "pipe", "inherit"]
       })
       if (res.error !== undefined || res.status !== 0) {
-        process.stderr.write(`\x1b[1;33m[warn]\x1b[0m engine capture failed (${args.join(" ")} exited ${res.status ?? "spawn-error"})\n`)
+        services.logger.warn(`engine capture failed (${args.join(" ")} exited ${res.status ?? "spawn-error"})`)
       }
       return res.stdout ?? ""
     })

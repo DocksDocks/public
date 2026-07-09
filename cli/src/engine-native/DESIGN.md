@@ -118,6 +118,7 @@ tests.
 | `logger.ts` | stable stdout/stderr emitters and the verbose gate (`change`/`verbose`/`warn`/`err`/`echo`) |
 | `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, dedup'd missing-tool warns |
 | `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isWindows`, `isLinux`, shell-rc applicability) |
+| `services.ts` | shared service factory (`makeEngineServices`: Logger + DependencyManager + Platform) — wrapped in Effect Layers at `cli/src/services.ts`, called directly by native-raw and `engineCapture` |
 
 ## Windows Specifics
 

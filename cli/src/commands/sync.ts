@@ -4,13 +4,15 @@ import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { bail, engine } from "../engine"
+import type { Logger } from "../engine-native/logger"
 import { kitHome } from "../kitHome"
 import { modelCatalog, type Tool } from "../manifests"
+import { LoggerService } from "../services"
 
 /** Best-effort update autodetection: nudge (never block, never fail) when
  * the kit checkout is behind its upstream. Silent on detached HEADs, no
  * upstream, no network, no git. */
-const updateNudge = (): void => {
+const updateNudge = (logger: Logger): void => {
   try {
     const home = kitHome()
     if (!existsSync(join(home, ".git"))) return
@@ -21,7 +23,7 @@ const updateNudge = (): void => {
     })
     const behind = (res.stdout ?? "").trim()
     if (res.status === 0 && behind !== "" && behind !== "0") {
-      process.stderr.write(`\x1b[1;33m[warn]\x1b[0m kit checkout is ${behind} commit(s) behind its upstream — run: docks-kit update\n`)
+      logger.warn(`kit checkout is ${behind} commit(s) behind its upstream — run: docks-kit update`)
     }
   } catch {
     // nudge only — a sync must never fail because the update check did
@@ -158,7 +160,10 @@ export const syncCommand = Command.make(
 
       // Not on --dry-run: the nudge's git fetch writes FETCH_HEAD/remote
       // refs, and a preview command must not mutate the checkout.
-      if (!config.dryRun) yield* Effect.sync(updateNudge)
+      if (!config.dryRun) {
+        const logger = yield* LoggerService
+        yield* Effect.sync(() => updateNudge(logger))
+      }
       yield* engine(args)
     })
 ).pipe(
