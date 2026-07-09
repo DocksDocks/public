@@ -1,13 +1,13 @@
 # Universal AI-agent skills (agentskills.io standard).
-# Bootstrapped to ~/.agents/skills/ by lib/skills.sh during ./sync.sh.
+# Bootstrapped to ~/.agents/skills/ by cli/src/engine-native/skillsSync.ts during ./docks-kit sync.
 # One slug per line: <owner>/<repo>. Lines starting with # are comments.
 # Each skill's canonical SKILL.md lands in ~/.agents/skills/<name>/ — Codex
 # reads that path natively; Claude Code gets a ~/.claude/skills/<name>
-# symlink to it. lib/skills.sh names both agents the kit supports
+# symlink to it. The skills sync names both agents the kit supports
 # (-a claude-code codex) so the CLI keeps the shared canonical copy.
 
 # Browser automation CLI — reaches JS-rendered, auth-walled, login-gated pages
-# (x.com, LinkedIn, Confluence) that built-in WebFetch can't. `lib/skills.sh`
+# (x.com, LinkedIn, Confluence) that built-in WebFetch can't. The skills sync
 # auto-installs the `agent-browser` npm package + downloads Chrome for Testing
 # (~175 MB) on first sync; Linux runs `agent-browser install --with-deps` which
 # may prompt for sudo to install system libs (libnss3, libatk, ...).
