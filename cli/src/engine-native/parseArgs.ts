@@ -182,7 +182,12 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
 export function preflight(ctx: Ctx): void {
   if (ctx.syncClaude || ctx.syncCodex) {
     if (!commandExists("jq")) {
-      err("jq is required. Install: sudo apt install -y jq (or brew install jq)")
+      const hint = process.platform === "win32"
+        ? "winget install jqlang.jq (then open a new terminal)"
+        : process.platform === "darwin"
+          ? "brew install jq"
+          : "sudo apt install -y jq"
+      err(`jq is required (deployed statusline/hooks call it). Install: ${hint}`)
       throw new ExitError(1)
     }
   }
