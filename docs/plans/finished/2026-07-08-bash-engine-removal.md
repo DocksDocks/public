@@ -163,7 +163,7 @@ and re-homes the documentation that cites `lib/*.sh`.
 - **Goal met:** partial — bash engine deleted (`lib/` gone), parity suites converted to golden-regression tests, docs/skills/agents re-homed, and the engine preserved at tag `bash-engine-final` (404f221). All functional acceptance passes; the sole gap is the step-6 grep gate: `SoT/.agents/skills.txt:2,6,10` still cite `lib/skills.sh` (line 2 also names a defunct `./sync.sh`) — a tracked file outside `docs/plans/`/CHANGELOG, so gate (a) is not fully clean.
 - **Regressions:** none — `lib/` fully removed; `DOCKS_KIT_ENGINE=bash ./docks-kit sync --dry-run` exits 2 with `bash engine removed — recover at tag bash-engine-final`; `package.json` `files` drops `lib` and renames `parity:*`→`golden:*`; conceptual survivors (`AGENTS.md:45`, `cli/src/engine-native/DESIGN.md:6`, `cli/src/engine.ts:10`, `cli/docs/platforms.md:9`) are all removed-engine/tag documentation, not stragglers.
 - **CI:** pass — local suite green: golden:dryrun OK (21 cases, exit 0), golden:mutation OK (39 cases, exit 0), both `--prove-red` modes red (exit 1, 21/39 planted mismatches detected), `--update-goldens` regenerates byte-identical goldens, unit 9/9, `bunx tsc --noEmit -p cli` clean. PR #8 checks (parity/golden + native-windows + windows-entrypoints) were all green per the ship handoff. Review round fixed a golden label collision and a node/jq host-version leak (commits cd8a581, 38fd48f — both in the merge).
-- **Follow-ups:** skills-txt-lib-citation-refresh
+- **Follow-ups:** skills-txt-lib-citation-refresh — closed inline by `408dc0b` (one-file comment refresh, below plan threshold); goldens re-verified green
 - Filed by: plan-review on 2026-07-08T23:20:29-03:00
 
 ## Sources
