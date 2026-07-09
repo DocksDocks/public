@@ -1,11 +1,11 @@
 ---
 title: Full engine-internal DI — route all emissions and probes through ctx.services
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
-status: planned
+status: ongoing
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T19:26:00-03:00"
-started_at: null
-assignee: null
+updated: "2026-07-09T19:35:00-03:00"
+started_at: "2026-07-09T19:35:00-03:00"
+assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
 affected_paths:
   - cli/src/engine-native/logger.ts
@@ -37,7 +37,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 ## Context & rationale
 
-- The golden suites pin every message byte — this migration must be a **pure refactor** (zero golden diffs). `--update-goldens` is FORBIDDEN in this plan; any golden diff is a revert trigger, not a recording opportunity.
+- The golden suites pin every message byte — this migration must be a **pure refactor** (zero golden diffs), with ONE exception: the Step-1 models.ts channel fix. `--update-goldens` is permitted exactly once, in the Step-1 slice, and its recorded diff must touch only the model-catalog cases (enumerate the changed case labels in the commit message). Everywhere else `--update-goldens` is FORBIDDEN and any golden diff is a revert trigger, not a recording opportunity.
 - **Verbosity becomes run-scoped.** Today `logger.ts` gates `verbose()` through the mutable module global `verboseFlag` set by `setVerbose` (parseArgs runs after module init). Replacement: the run's `Logger` is built per `runEngineNative` invocation with `isVerbose: () => ctx.verbose`; `setVerbose` and the module flag are deleted only after no importer remains. Sequential in-process runs must not leak verbosity (see acceptance).
 - **Dedup state becomes per-run.** `deps.ts`'s module-level `warned` Set suppresses warnings across in-process runs and its `warnMissing` writes through the module logger, bypassing an injected one. `DependencyManager` is constructed WITH the run's logger and owns its own dedup set per service graph.
 - `InstallFn` leaves (`rtkInstall`, `agentBrowserInstall`, `effectSolutionsInstall`) and `linkOrCopy` are emitter leaves without `Ctx` — their signature change is a prerequisite for the zero-import cleanup, hence the step order below.
@@ -67,7 +67,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 - [ ] `rg 'commandExists|capture\(|which\(' cli/src/engine-native --include='*.ts'` outside `exec.ts`/`deps.ts`/`services.ts` → empty or covered by the Step-1/Step-5 allowlist table; a test injects probe results that contradict the host PATH and the engine believes the injection.
 - [ ] The Step-6 integration suite passes: canonical capture case, branch matrix, two-run dedup, three-run verbosity — with real-stream zero-bypass assertions.
 - [ ] Injected win32 platform: `linkOrCopy` records the "dir" symlink type; injected linux: `agentBrowserInstall` argv contains `--with-deps`; injected non-linux: it doesn't. (Extends the parent plan's hint-only test to behavior.)
-- [ ] Each verification command, run separately, with expected results: `bun x tsc --noEmit -p cli/tsconfig.json` (exit 0) · `bun x vitest run` (all pass) · `bun cli/test/golden-dryrun.ts` (exit 0, `OK (21 case(s))` — count as of planning) · `bun cli/test/golden-mutation.ts` (exit 0, `OK (47 case(s))`) · `bun cli/test/golden-dryrun.ts --prove-red` and `bun cli/test/golden-mutation.ts --prove-red` (each prints `prove-red OK`, exits 1). Goldens byte-identical EXCEPT the single named models.ts channel fix (its diff is enumerated in the Step-1 slice) — no other golden diff, no `--update-goldens`.
+- [ ] Each verification command, run separately, with expected results: `bun x tsc --noEmit -p cli/tsconfig.json` (exit 0) · `bun x vitest run` (all pass) · `bun cli/test/golden-dryrun.ts` (exit 0, `OK (21 case(s))` — count as of planning) · `bun cli/test/golden-mutation.ts` (exit 0, `OK (47 case(s))`) · `bun cli/test/golden-dryrun.ts --prove-red` and `bun cli/test/golden-mutation.ts --prove-red` (each prints `prove-red OK`, exits 1). Goldens byte-identical EXCEPT the single named models.ts channel fix, recorded via the one permitted `--update-goldens` run in the Step-1 slice (changed case labels enumerated in that commit) — no other golden diff, no other `--update-goldens` run.
 
 ## Out of scope / do-NOT-touch
 
