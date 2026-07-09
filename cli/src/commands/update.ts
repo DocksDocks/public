@@ -72,7 +72,17 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
 const updatePackage = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    const viaBun = home.includes("/.bun/") || home.includes("\\.bun\\")
+    // Bun's global dir is configurable (BUN_INSTALL_GLOBAL_DIR / BUN_INSTALL),
+    // so the ~/.bun path shape alone under-detects Bun installs.
+    const underEnvDir = (v: string): boolean => {
+      const dir = process.env[v]
+      return dir !== undefined && dir !== "" && home.startsWith(dir)
+    }
+    const viaBun =
+      home.includes("/.bun/") ||
+      home.includes("\\.bun\\") ||
+      underEnvDir("BUN_INSTALL_GLOBAL_DIR") ||
+      underEnvDir("BUN_INSTALL")
     const res = viaBun
       ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
       : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
@@ -81,7 +91,9 @@ const updatePackage = (home: string, skipSync: boolean) =>
     }
     if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
     yield* Console.log("Kit updated - running sync with the new version...")
-    return yield* chainSync("docks-kit", ["sync"])
+    // Chain through the package dir just updated (global installs update in
+    // place) — a bare `docks-kit` PATH lookup could hit a different shim.
+    return yield* chainSync(process.execPath, [join(home, "cli/src/main.ts"), "sync"])
   })
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>

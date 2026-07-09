@@ -150,7 +150,9 @@ export const syncCommand = Command.make(
           .forEach((p) => args.push(`--claude-plugin=${p}`))
       }
 
-      yield* Effect.sync(updateNudge)
+      // Not on --dry-run: the nudge's git fetch writes FETCH_HEAD/remote
+      // refs, and a preview command must not mutate the checkout.
+      if (!config.dryRun) yield* Effect.sync(updateNudge)
       yield* engine(args)
     })
 ).pipe(
