@@ -2,58 +2,55 @@
 
 ## Critical Constraint
 
-Two-agent form (`-a claude-code codex`) is REQUIRED to produce the canonical `~/.agents/skills/` path + symlink. Single-agent form copy-directs into the tool's own directory and skips the canonical path. (skills::sync (two-agent comment))
+Use two-agent install mode, `-a claude-code codex`, so the skills CLI creates the
+canonical universal path and the Claude Code symlink.
 
 ## Path Layout
 
-```
+```text
 ~/.agents/
-├── skills/
-│   └── agent-browser/       ← canonical (universal path; Codex reads natively)
-│       ├── SKILL.md
-│       └── references/
-└── .kit-managed-skills      ← snapshot file (one slug per line, sorted)
+|-- skills/
+|   `-- agent-browser/
+|       |-- SKILL.md
+|       `-- references/
+`-- .kit-managed-skills
 
 ~/.claude/
-└── skills/
-    └── agent-browser        ← SYMLINK → ../../.agents/skills/agent-browser
+`-- skills/
+    `-- agent-browser -> ../../.agents/skills/agent-browser
 ```
+
+Codex reads `~/.agents/skills/` natively. Claude Code discovers the symlinked
+entry under `~/.claude/skills/`.
 
 ## Two-Agent vs Single-Agent Install
 
-| Invocation | Canonical `~/.agents/skills/<n>/` | `~/.claude/skills/<n>` | Codex coverage |
-|-----------|----------------------------------|----------------------|----------------|
-| `-a claude-code codex` | Created | Symlink to canonical | Yes (reads `~/.agents/skills/`) |
-| `-a claude-code` only | NOT created (copy-direct) | Real copy in `~/.claude/skills/` | No |
-| `-a codex` only | NOT created (copy-direct) | Not created | Yes, but Claude Code uncovered |
+| Invocation | Canonical path | Claude path | Codex coverage |
+|------------|----------------|-------------|----------------|
+| `-a claude-code codex` | Created | Symlink | Yes |
+| `-a claude-code` | May copy direct | Real copy | No |
+| `-a codex` | May copy direct | Missing | Yes |
 
 ## Symlink Target
 
-```
-~/.claude/skills/agent-browser → ../../.agents/skills/agent-browser
-```
-
-Relative path: two levels up from `~/.claude/skills/` reaches `~`, then `.agents/skills/<basename>`. This matches the upstream `installer.ts:createSymlink` in vercel-labs/skills (skills::heal_claude_symlink (installer.ts comment)).
-
-## What `skills::heal_claude_symlink` Checks
-
-```bash
-# skills::heal_claude_symlink (rel_target)
-local rel_target="../../.agents/skills/$basename"
+```text
+~/.claude/skills/<name> -> ../../.agents/skills/<name>
 ```
 
-Exact string match on `readlink` output (skills::heal_claude_symlink (readlink compare)). Any deviation (absolute path, different relative path) triggers a replace.
+`healClaudeSymlink` compares the exact relative target. Correct symlinks are
+left alone, stale symlinks are replaced, and real directories are preserved with
+a warning.
 
-## Snapshot File Format (`~/.agents/.kit-managed-skills`)
+## Snapshot Format
 
-```
-vercel-labs/agent-browser
-```
-
-One full slug per line, sorted. Written after every real (non-dry-run) sync by `skills::update_snapshot`. Used by `skills::reconcile_removals` to detect removed slugs.
+`~/.agents/.kit-managed-skills` contains one full slug per line, sorted. It is
+written after successful real syncs and used by `--prune` to identify removed
+kit-managed skills.
 
 ## Gotchas
 
-- `~/.agents/skills/` must exist before the pre-check `[[ -d "$SKILLS_DIR/$basename" ]]` (skills::sync_universal (idempotency pre-check)). `mkdir -p "$SKILLS_DIR"` at skills::sync (mkdir SKILLS_DIR) creates it in non-dry-run mode.
-- A skill installed by the user manually into `~/.agents/skills/` WITHOUT a corresponding snapshot entry is not tracked by the kit. `--prune` will not remove it even if it's not in `skills.txt`.
-- Claude Code discovers skills at `~/.claude/skills/*/SKILL.md`. If the symlink is missing, the skill is invisible to Claude Code even though the canonical copy exists at `~/.agents/skills/`.
+- User-installed skills without snapshot entries are not pruned by the kit.
+- A missing Claude symlink makes a skill invisible to Claude Code even though
+  Codex can see the canonical copy.
+- Real directories in `~/.claude/skills/` can diverge from canonical content;
+  sync warns but does not delete them.

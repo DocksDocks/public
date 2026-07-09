@@ -1,199 +1,128 @@
 ---
 name: plugin-bootstrap-context
-description: Use when modifying claude::sync_plugins (seven-pass reconciler) or its claude::_plugins_* helpers, claude::sync_optional_plugins / claude::_enable_optional_plugin (the --claude-plugin=<name> flag-gated opt-ins driven by CLAUDE_PLUGINS / common::claude_plugin_wanted), claude::sync_lsp_servers (LSP-binary bootstrap for php-lsp/typescript-lsp), codex::sync_marketplace, codex::remove_legacy_docks_marketplace, codex::sync_plugins, or extraKnownMarketplaces / enabledPlugins entries in SoT/.claude/settings.json; covers the true/false/absent tri-state semantics, why false-keyed plugins are kept on --prune (via jq -e ... | has($n) not truthiness), the claude-plugins-official removal protection, the pass-7 enabled-state re-assert that undoes claude plugin install's user-scope enable side effect, the optional-plugin opt-in (both supabase and n8n absent from the SoT — sticky --claude-plugin=supabase / --claude-plugin=n8n install-once opt-ins that survive flag-less syncs because the reassert never touches an absent key; n8n's marketplace added on demand), the Codex unique_by(.name) dedup with SoT/repo-entry-wins ordering, the personal-marketplace-first Codex flow, legacy configured Docks marketplace cleanup, and the plugin-add refresh pass.
+description: "Use when modifying cli/src/engine-native/claudeSync.ts plugin functions syncPlugins, pluginUserScopeInstalled, syncOptionalPlugins, enableOptionalPlugin, syncLspServers, or cli/src/engine-native/codexSync.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
 user-invocable: false
 metadata:
   source_files:
-    - path: lib/claude.sh
-      lines: "428-748"
-    - path: lib/codex.sh
-      lines: "323-500"
+    - path: cli/src/engine-native/claudeSync.ts
+      lines: "458-720"
+    - path: cli/src/engine-native/codexSync.ts
+      lines: "249-430"
     - path: SoT/.claude/settings.json
-      lines: "235-251"
+      lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
-      lines: "1-50"
-  updated: "2026-07-08"
+      lines: "1-80"
+  updated: "2026-07-09"
 ---
 
 # Plugin Bootstrap
 
-> **Feature-frozen surface.** `lib/*.sh` accepts bug fixes only (AGENTS.md
-> § Engineering rules); new capabilities land in EngineNative
-> (`cli/src/engine-native/`), the default engine since the step-6 flip of
-> the `windows-support` plan — see the `engine-native-context` skill. A bug
-> fix that changes behavior here must be mirrored in the TS port and pass
-> the parity suites (`cli/test/parity-dryrun.ts` / `parity-mutation.ts`).
+Plugin bootstrap is implemented in EngineNative but keeps the same behavioral
+contracts: Claude plugin reconcile is seven logical passes, `enabledPlugins`
+has true/false/absent semantics, and Codex marketplace merging is additive with
+SoT entries winning on name collisions.
 
 <constraint>
-The `--prune` guard for `enabledPlugins` uses `has($n)` — not truthiness. A `false`-keyed plugin passes `has()` and is KEPT. Only plugins whose key is ABSENT from `enabledPlugins` are uninstalled. Changing this to a truthiness test would uninstall all globally-disabled plugins. (`claude::_plugins_uninstall` — the `has($n)` guard)
+The `--prune` keep test for Claude plugins is key presence, not truthiness.
+A plugin declared as `"id@marketplace": false` is installed and kept; only an
+absent key is removed by prune.
 </constraint>
 
 <constraint>
-`claude-plugins-official` is NEVER removed, even on `--prune` runs. The guard at `claude::_plugins_remove_marketplaces` (`[[ "$mp_name" == "claude-plugins-official" ]] && continue`) is mandatory and must not be removed.
+Never remove the `claude-plugins-official` marketplace. It is a protected
+built-in marketplace even when pruning extras.
 </constraint>
 
 <constraint>
-Pass 7 (`claude::_plugins_reassert_enabled_state`) runs UNCONDITIONALLY on every sync, after the install/uninstall passes — `claude plugin install` enables plugins at user scope as a side effect, so this enforce step is the only thing keeping `false`-keyed plugins globally disabled. Removing it, or gating it behind `--prune`/`--reconcile`, silently re-enables every globally-disabled plugin. It MUST disable SoT-`false` plugins via the CLI's own `claude plugin disable` verb (authoritative — sticks in one pass) BEFORE the jq-normalize: a bare jq rewrite of the value back to `false` loses a race against the CLI and only takes effect on the *next* sync (the historical two-sync bug). The disable is guarded on the plugin being currently `true` — re-disabling an already-disabled plugin is a CLI error (exit 1).
+The enabled-state reassert pass runs every sync after install/uninstall work.
+Fresh `claude plugin install` enables plugins as a side effect, so SoT `false`
+entries must be disabled through the Claude CLI before the JSON normalization.
 </constraint>
 
-<constraint>
-Plugin IDs follow the `<name>@<marketplace>` format (e.g. `docks@docks`, `n8n-mcp-skills@n8n-mcp-skills`). The `enabledPlugins` key must use this exact format. The install loop reads keys via `jq -r '.enabledPlugins // {} | keys[]'` (`claude::_plugins_install` — keys read).
-</constraint>
+## When To Use
 
-## When to Use
+- Adding, removing, or changing `enabledPlugins` entries.
+- Changing `extraKnownMarketplaces` or marketplace removal protection.
+- Debugging why a plugin survived `--prune`.
+- Changing optional `--claude-plugin=supabase` / `--claude-plugin=n8n` behavior.
+- Changing Codex personal marketplace merge or `codex plugin add` refresh.
+- Changing LSP binary bootstrap for official Claude LSP plugins.
 
-- Adding a new plugin to `SoT/.claude/settings.json` `enabledPlugins`
-- Understanding why a plugin survives `--prune`
-- Changing a plugin from globally-enabled (`true`) to globally-disabled (`false`)
-- Debugging a marketplace add failure
-- Modifying any `claude::_plugins_*` helper or the `claude::sync_plugins` orchestrator
-- Adding/removing an LSP plugin or changing which language-server binaries `claude::sync_lsp_servers` auto-installs
-- Modifying `codex::sync_marketplace`, `codex::remove_legacy_docks_marketplace`, or `codex::sync_plugins`
-- Opting an optional plugin in via `--claude-plugin=supabase` / `--claude-plugin=n8n`, or changing `claude::sync_optional_plugins` / `claude::_enable_optional_plugin` / the `KNOWN_CLAUDE_OPTIN_PLUGINS` allow-list in common.sh
+## Claude Tri-State
 
-## Core Patterns
+| Value | Installed by kit | Global state | Survives `--prune` |
+|-------|------------------|--------------|--------------------|
+| `true` | Yes | Enabled | Yes |
+| `false` | Yes | Disabled, project can enable | Yes |
+| absent | No | Not available | No |
 
-### `enabledPlugins` Tri-State Semantics
+Plugin IDs must use `<name>@<marketplace>`. Setting a plugin to `false` does not
+remove it; deleting the key and running `--prune` removes the user-scope install.
 
-| Value | Installed by kit? | Globally enabled? | Per-project can enable? | Survives `--prune`? |
-|-------|------------------|------------------|------------------------|------------------------------|
-| `true` | Yes | Yes | N/A | Yes (`has()` passes) |
-| `false` | Yes | No | Yes (project settings.json) | Yes (`has()` passes) |
-| absent | No | — | No (nothing to flip) | No (uninstalled by `--prune`) |
+## Seven Logical Passes
 
-Source: `claude::_plugins_uninstall` (the `has($n)` test), SoT/.claude/settings.json (every shipped plugin is `true`, e.g. `docks@docks: true`, `context7@claude-plugins-official: true`). The SoT ships no `false`-keyed plugin today, but `false` stays a supported value for the installed-but-globally-disabled case. The tri-state governs only what the SoT ships by default — `--claude-plugin=<name>` opt-ins (see § Optional (flag-gated) plugins) sit on top of it, writing enabled-state into deployed settings only.
+All live in `syncPlugins(ctx, claudeDir)`:
 
-### Seven-Pass Reconcile (`claude::sync_plugins` orchestrator)
+1. Add missing marketplaces from `extraKnownMarketplaces`.
+2. Install SoT-declared plugins missing a user-scope install record; refresh
+   marketplace manifests once before the first install attempt.
+3. Refresh marketplace manifests.
+4. Update installed plugins best-effort.
+5. On `ctx.prune`, uninstall user-scope plugins absent from SoT `enabledPlugins`.
+6. On `ctx.prune`, remove extra marketplaces except `claude-plugins-official`.
+7. Reassert SoT enabled state: disable SoT-`false` plugins through the CLI, then
+   normalize deployed `enabledPlugins` so SoT-declared values win and user-only
+   keys survive.
 
-The orchestrator dispatches six `claude::_plugins_*` helpers (passes 3+4 share one helper — note the code comments number the HELPERS "Pass 1"–"Pass 6", so in-code "Pass 3" covers this table's passes 3+4 and in-code "Pass 6" is this table's pass 7). Each helper echoes `"<count> <failed>"` on stdout — a bash 3.2-portable counter return (namerefs need bash 4.3+ and would break macOS `/bin/bash`); the orchestrator reads them via `read -r added_mp f1 < <(...)` at `claude::sync_plugins` (dispatch block). Pass 7 is the exception — it mutates `~/.claude/settings.json` in place and returns no count.
+Failures in marketplace/plugin update remain non-fatal; install/removal counters
+surface warnings but do not stop the rest of sync.
 
-| Pass | Condition | Action | Helper (def) | Operation |
-|------|-----------|--------|--------------|-----------|
-| 1 | Always | `claude plugin marketplace add` for missing `extraKnownMarketplaces` | `_plugins_add_marketplaces` | marketplace add |
-| 2 | Always | `claude plugin install` for `enabledPlugins` keys lacking a **user-scope** install record (`claude::_plugin_user_scope_installed`); refreshes marketplace manifests once before the first install (`claude::_plugins_install` — stale-manifest guard) | `_plugins_install` | marketplace update + plugin install |
-| 3 | Always | `claude plugin marketplace update` (refresh manifests) | `_plugins_update` | marketplace update |
-| 4 | Always | `claude plugin update <id>` for each installed plugin | `_plugins_update` | plugin update |
-| 5 | `PRUNE=1` | `claude plugin uninstall -y --scope user` for installed plugins not in `enabledPlugins` via `has()` — user-scope records only | `_plugins_uninstall` | plugin uninstall |
-| 6 | `PRUNE=1` | `claude plugin marketplace remove` for extra marketplaces not in `extraKnownMarketplaces` | `_plugins_remove_marketplaces` | marketplace remove |
-| 7 | Always | Enforce SoT enabled-state: `claude plugin disable` each SoT-`false` plugin currently enabled (authoritative, single-pass), then jq-normalize `(.enabledPlugins // {}) * $sot` | `_plugins_reassert_enabled_state` | CLI disable + settings rewrite |
+## Optional Plugins
 
-Passes 5+6 are gated on `PRUNE` at `claude::sync_plugins` (the PRUNE gate); pass 7 runs unconditionally after them. Pass 3 uses `|| true` (`claude::_plugins_update` — marketplace-update `|| true`) — marketplace update failures are non-fatal. Pass 4 uses `|| true` (`claude::_plugins_update` — plugin-update `|| true`) — individual plugin update failures are non-fatal and only `"Successfully updated"` output bumps the counter.
+`syncOptionalPlugins` consumes `ctx.claudePlugins`, populated by the repeatable
+`--claude-plugin=<name>` flag. The allow-list lives in `parseArgs.ts` and is
+currently `supabase` and `n8n`.
 
-### Pass 1 — Marketplace Pre-Check
+| Opt-in | Behavior |
+|--------|----------|
+| `supabase` | Installs/enables `supabase@claude-plugins-official`. |
+| `n8n` | Adds the `czlonkowski/n8n-skills` marketplace if needed, then installs/enables `n8n-mcp-skills@n8n-mcp-skills`. |
 
-```bash
-# claude::_plugins_add_marketplaces (key-presence pre-check)
-if [[ -f "$known_marketplaces" ]] && jq -e --arg n "$mp_name" '.[$n]' "$known_marketplaces" >/dev/null 2>&1; then
-  continue
-fi
-```
+These keys are absent from the SoT, so the opt-in is sticky. Only `--prune`
+removes an installed optional plugin.
 
-Checks key presence in `known_marketplaces.json`, not URL validity. A broken marketplace URL already in the file is NOT re-added. The repo/source pair is read via `jq -r '.extraKnownMarketplaces // {} | to_entries[] | "\(.key)\t\(.value.source.repo)"'` (`claude::_plugins_add_marketplaces` — extraKnownMarketplaces read).
+## Codex Marketplace And Plugins
 
-### Pass 5 — `has($n)` Removal Guard
+`syncMarketplace` merges `SoT/.codex/plugins/marketplace.json` into the personal
+marketplace file. User entries survive, but on `.name` collision the SoT entry
+wins by concatenating user entries first, repo entries last, then applying
+reverse/unique/reverse semantics.
 
-```bash
-# claude::_plugins_uninstall (the has($n) guard)
-if ! jq -e --arg n "$plugin_id" '.enabledPlugins | has($n)' "$repo_settings" >/dev/null 2>&1; then
-  claude::_plugin_user_scope_installed "$installed_plugins" "$plugin_id" || continue
-  claude::_cli plugin uninstall -y --scope user "$plugin_id" …
-fi
-```
-
-`has($n)` returns true for both `"key": true` AND `"key": false`. Only uninstalls when the key is completely absent — and only the **user-scope** record: project/local-scope installs are project-owned and never touched.
-
-### Pass 6 — `claude-plugins-official` Protection
-
-```bash
-# claude::_plugins_remove_marketplaces (claude-plugins-official guard)
-[[ -z "$mp_name" ]] && continue
-[[ "$mp_name" == "claude-plugins-official" ]] && continue
-```
-
-### Pass 7 — Enforce Enabled-State
-
-```bash
-# claude::_plugins_reassert_enabled_state
-# 1. authoritative: disable each SoT-false plugin that is currently enabled
-jq -r '.enabledPlugins // {} | to_entries[] | select(.value == false) | .key' "$repo_settings" |
-while read -r plugin_id; do
-  jq -e --arg n "$plugin_id" '.enabledPlugins[$n] == true' "$user_settings" >/dev/null 2>&1 || continue
-  claude::_cli plugin disable "$plugin_id"   # sticks in ONE pass; CLI owns the file
-done
-# 2. normalize: SoT-declared values win, user-only keys preserved
-jq -s '.[0].enabledPlugins as $sot | .[1]
-       | .enabledPlugins = ((.enabledPlugins // {}) * $sot)' \
-   "$repo_settings" "$user_settings" > "$user_settings.tmp" && mv ...
-```
-
-`claude plugin install` (pass 2) installs at `--scope user` (its default) and **enables the plugin as a side effect** — writing `"<id>": true` into `~/.claude/settings.json`, clobbering the `false` `claude::sync_settings` wrote moments earlier (in `claude::sync`, `claude::sync_settings` runs before `claude::sync_plugins`). A bare jq rewrite of that back to `false` **loses a race**: the CLI owns `settings.json` and reverts the external edit, so the `false` only took effect on the *next* sync (once pass 2 skipped the already-installed plugin) — the historical two-sync bug. The fix disables SoT-`false` plugins through the CLI's own `claude plugin disable` verb first (authoritative — sticks in a single pass), THEN jq-normalizes (`(.enabledPlugins // {}) * $sot` = SoT-declared keys win, user-only keys preserved). The disable is guarded on the plugin being currently `true` because re-disabling an already-disabled plugin is a CLI error (exit 1); that keeps steady-state syncs silent. If `claude plugin disable` is unavailable the jq-normalize still runs, degrading to the old two-sync behavior rather than breaking. This affects **every** plugin installed via `claude plugin install`, built-in `claude-plugins-official` ones included — so any `false`-keyed official plugin would be re-enabled on fresh install and re-disabled by this pass (the kit ships none as `false` today, but this enforcement is what makes `false` safe to declare).
-
-### LSP Server Binary Bootstrap (`claude::sync_lsp_servers`)
-
-Runs after `claude::sync_plugins` in `claude::sync`. The official LSP plugins (`php-lsp`, `typescript-lsp`) only carry `lspServers` config (shipped in the marketplace manifest, not the plugin files) — the language-server binaries are separate npm globals, without which the plugins are silent no-ops. The helper maps SoT `enabledPlugins` keys to binaries (`php-lsp` → `intelephense`; `typescript-lsp` → `typescript-language-server` + `tsc` from the `typescript` package), collects the missing ones, and runs a single `npm install -g`. Gated on key *presence* (`has()`, not truthiness) for the same reason as pass 5: a `false`-keyed LSP plugin can be enabled per-project, so its binary must still exist. When npm is absent it warns and skips (`claude::sync_lsp_servers` — the npm presence guard); when no LSP plugin key is declared it returns silently.
-
-### Optional (flag-gated) plugins (`claude::sync_optional_plugins`)
-
-Runs right after `claude::sync_plugins` in `claude::sync`. Two situational plugins are kept out of the lean default and opted in per machine via the repeatable `--claude-plugin=<name>` flag: `common::add_claude_plugin` appends each validated name (allow-list `KNOWN_CLAUDE_OPTIN_PLUGINS="supabase n8n"` in common.sh; unknown names exit 2) to the space-separated `CLAUDE_PLUGINS` list, and `claude::sync_optional_plugins` gates on `[[ -n "$CLAUDE_PLUGINS" ]]` then tests each plugin with `common::claude_plugin_wanted <name>`. Both keys are **absent** from the SoT `enabledPlugins`, so a flag-less sync installs, loads, and enables neither. Unlike `--claude-compact-window`/`--claude-permissive` (which a flag-less sync reverts), this opt-in is **sticky**: because the SoT has no key for either plugin, pass 7's reassert never touches them, so once a flag installs and enables one it survives every later flag-less sync — only `--prune` uninstalls (its key is absent from SoT, so `has()` fails in pass 5). Each is handled by `claude::_enable_optional_plugin plugin_id marketplace_repo`.
-
-| Plugin | SoT state | Flag action |
-|--------|-----------|-------------|
-| `supabase@claude-plugins-official` | absent | Official/built-in → empty `marketplace_repo`, no marketplace add. `plugin install` when no user-scope record exists, then `claude plugin enable` |
-| `n8n-mcp-skills@n8n-mcp-skills` | absent (plugin + marketplace) | `claude plugin marketplace add czlonkowski/n8n-skills` (only if the marketplace name `${plugin_id##*@}` = `n8n-mcp-skills` isn't already known), then `plugin install`, then `plugin enable` |
-
-An absent key means **not installed** (verified: `claude plugin list` shows no absent official plugin — e.g. the unused LSP plugins in `claude-plugins-official`), so dropping supabase/n8n from the SoT is enough to keep them off; neither loads until its flag runs. The ordering (after `claude::sync_plugins`) is not a correctness requirement now that neither is `false`-in-SoT — the reassert leaves an absent key alone regardless. The explicit `claude plugin enable` still earns its place: it flips on a plugin left installed-but-disabled by an earlier kit version that shipped it as `false`, and since the CLI owns `settings.json` the enable persists where a plain jq edit would lose the race.
-
-### Codex Marketplace Merge (`codex::sync_marketplace`)
-
-```bash
-jq -s '
-  .[0] as $repo | .[1] as $user |
-  ($user * {name: ($user.name // $repo.name), interface: ($user.interface // $repo.interface)}) |
-  .plugins = (
-    (($user.plugins // []) + ($repo.plugins // []))
-    | reverse
-    | unique_by(.name)
-    | reverse
-  )
-' "$codex_marketplace" "$user_codex_marketplace" > "$user_codex_marketplace.tmp"
-```
-
-`reverse + unique_by(.name) + reverse` (`codex::sync_marketplace` — unique_by dedup) — `unique_by` keeps the FIRST occurrence of each `.name`. The concat is `$user + $repo` (user first, repo last), so `reverse` puts repo entries first and `unique_by` keeps the SoT/repo entry on a name collision; the second `reverse` restores original order. Net: the SoT/repo entry wins on collision, and user-only plugins survive additively. Write-to-`.tmp`-then-`mv` (`codex::sync_marketplace` — tmp-then-mv). Runs the additive merge branch whenever the user file exists — `--reconcile` does NOT wholesale-replace the marketplace, so user-added plugin entries survive a reconcile sync (`codex::sync_marketplace` — user-file guard); the plain `cp` install runs only on first sync, when no user file exists yet.
-
-### Codex Legacy Marketplace Cleanup (`codex::remove_legacy_docks_marketplace`)
-
-Older sync versions ran `codex plugin marketplace add DocksDocks/docks`, creating a configured Git marketplace named `docks` alongside the implicit personal marketplace file at `~/.agents/plugins/marketplace.json`. The kit now uses the personal marketplace as the single source. `codex::_marketplace_source` awk-parses the `source =` line from the `[marketplaces.docks]` table; if it points at `https://github.com/DocksDocks/docks.git` or `DocksDocks/docks`, sync removes the configured source with `codex plugin marketplace remove docks` (`codex::remove_legacy_docks_marketplace` — marketplace remove).
-
-### Codex Plugin Refresh (`codex::sync_plugins`)
-
-`codex::_enabled_plugin_ids` awk-parses enabled `[plugins."name@marketplace"]` tables from `SoT/.codex/config.toml` (only tables whose body has `enabled = true`). `codex::sync_plugins` then:
-
-| Step | Action | Failure mode |
-|------|--------|--------------|
-| 1 | `codex plugin add <plugin@marketplace>` for every enabled plugin (`codex::sync_plugins` — plugin add loop) | Warn with the first CLI error line and count failure (`codex::sync_plugins` — failure counter) |
-
-This pass is intentionally run on every sync. `codex plugin add` is the Codex CLI's install/reinstall command, and re-running it refreshes a stale installed cache from the personal marketplace's current Git source.
+`removeLegacyDocksMarketplace` cleans up the old configured Docks marketplace
+when it points at the same Git source. `enabledPluginIds` parses enabled plugin
+tables from `SoT/.codex/config.toml`; `syncPlugins` runs `codex plugin add` for
+each enabled id so installed plugin caches refresh.
 
 ## Key Decisions
 
-- Helpers echo `"<count> <failed>"` (bash 3.2-portable; comment at `claude::_plugins_add_marketplaces` — echo-return portability note) — namerefs would break macOS `/bin/bash`. The orchestrator sums failures into `failed` at `claude::sync_plugins` (failure sum).
-- `|| true` on passes 3 and 4 (`claude::_plugins_update` — marketplace-update `|| true`, plugin-update `|| true`) — marketplace update and plugin updates are best-effort; failures must not abort the sync run.
-- `claude` CLI is checked with `command -v claude` (`claude::sync_plugins` — CLI presence check) before the dispatch block. If absent, the whole reconcile is skipped with a warning.
-- `codex::sync_plugins` checks `command -v codex` before running plugin CLI commands. If only the config and marketplace files can be deployed, it prints the official standalone installer fallback from `codex::_standalone_install_command` plus the manual `codex plugin add` fallback built by `codex::_manual_plugin_refresh_command`.
-- Codex sync does NOT call `codex plugin marketplace add DocksDocks/docks`; `SoT/.codex/plugins/marketplace.json` already provides the implicit personal marketplace.
-- Per-project plugin enable lives in the project's `.claude/settings.json` `enabledPlugins` block. The user-scope key must remain present (as `false`) — Claude Code ignores project-level entries whose key is absent from user settings.
+- User-scope install records matter. Project/local records do not satisfy the
+  kit's global install contract.
+- `false` entries are still installed because they support project-level enable.
+- LSP binaries are installed when LSP plugin keys are present, regardless of
+  truthiness, for the same project-enable reason.
+- Codex config and marketplace deployment can proceed even when the Codex CLI is
+  absent; plugin refresh degrades to a warning and manual command.
 
 ## Gotchas
 
-- **Install records are per-scope arrays** (Claude Code ≥2.1.198): `installed_plugins.json` maps each plugin id to an array of records carrying `scope: user|project|local`. Passes 2 and 5 test for a **user-scope** record via `claude::_plugin_user_scope_installed` — a project-scope-only record (from `claude plugin install --scope project` in some repo) does NOT count as installed. Before this predicate, such a record silently suppressed the user-scope install and every other project carried an orphaned `enabledPlugins` reference (`/doctor`: "enabled in project settings but isn't installed").
-- **Pass 2 must refresh manifests before installing** (`claude::_plugins_install` — stale-manifest guard): an already-cloned marketplace may predate a plugin later added to it, and pass 3's `marketplace update` runs after pass 2 — too late. Without the guard, the first sync after a marketplace gains a new plugin fails with "not found in marketplace" and only the *next* sync succeeds. The refresh is lazy (`refreshed` flag) — it runs at most once and only when at least one install is actually needed, so steady-state syncs pay nothing.
-- **Marketplace pre-check checks presence, not validity** (`claude::_plugins_add_marketplaces` — key-presence pre-check): a bad GitHub URL already in `known_marketplaces.json` will not be corrected by re-running sync. Recovery: `claude plugin marketplace remove <name>` then re-run sync.
-- **`false`-keyed plugins ARE installed** (pass 2, `claude::_plugins_install` — keys read): the install loop reads all keys from `enabledPlugins` regardless of value. This is intentional — `false` means "installed, globally disabled." But `claude plugin install` *enables* what it installs (user scope), so pass 7 (`claude::_plugins_reassert_enabled_state`) must run afterward to restore the `false`; dropping pass 7 silently re-enables every globally-disabled plugin.
-- **Codex CLI missing or stale wrapper on PATH**: if `command -v codex` is absent, sync deploys config/marketplace files and prints the official standalone installer plus manual `codex plugin add` fallback. If a stale wrapper is found and emits "could not find a Codex CLI binary", the refresh pass warns with the same standalone installer fallback (`codex::sync_plugins` — missing-binary warning).
-- **Per-project `enabledPlugins: true` is silently ignored** if the user-scope key is absent — Claude Code requires the key to exist in user settings (even as `false`) before a project-level override can activate it.
-- **LSP binaries installed via nvm-backed npm are only on interactive-shell PATHs** — normally-launched Claude Code sessions see them; headless/cron agents may not. `claude::sync_lsp_servers` checks `command -v`, so a binary visible to sync but not to a headless session won't be re-installed by re-running sync there.
+- A marketplace pre-check detects name presence, not URL correctness; a bad URL
+  under the same name must be removed manually before sync can re-add it.
+- Re-disabling an already-disabled plugin can be a CLI error; guard before
+  calling the disable verb.
+- Per-project `enabledPlugins: true` is ignored by Claude Code when the user
+  scope key is absent.
 
 ## References
 
-- `references/seven-pass-flow.md` — annotated pass-by-pass walkthrough with jq and CLI invocations; read when debugging a specific pass
-- `references/tri-state-semantics.md` — table of value × scenario × outcome; read when deciding what value to assign a new plugin entry
+- `references/seven-pass-flow.md` - pass-by-pass reconcile details.
+- `references/tri-state-semantics.md` - value and prune behavior matrix.
