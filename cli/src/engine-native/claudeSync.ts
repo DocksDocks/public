@@ -21,6 +21,7 @@ import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
 import { DEPENDENCIES, warnMissing } from "./deps"
 import { capture, commandExists, copyFileIfChanged, copyTreeIfChanged, p, writeFileIfChanged } from "./exec"
+import { isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { change, echo, err, verbose, warn } from "./logger"
@@ -92,7 +93,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  if (process.platform === "win32") {
+  if (isWindows()) {
     if (!commandExists("rtk")) {
       warn("rtk not installed — the kit's auto-install is Unix-only. Install natively (winget, or the rtk-*-windows-msvc.zip release), then re-run sync")
       return
@@ -366,7 +367,7 @@ function syncConnectorEnv(ctx: Ctx): void {
   // win32: Claude Code launches from PowerShell/GUI, so the flag must be a
   // real user env var (setx), not a Git-Bash-only shell-rc export. Never
   // clobbers an existing value (set =true yourself to keep connectors).
-  if (process.platform === "win32") {
+  if (isWindows()) {
     const existing = spawnSync("reg", ["query", "HKCU\\Environment", "/v", "ENABLE_CLAUDEAI_MCP_SERVERS"], {
       stdio: "ignore"
     })

@@ -5,6 +5,7 @@
 import { readFileSync, readSync } from "node:fs"
 
 import { capture, commandExists, isExecutable, p } from "./exec"
+import { platformName } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
 import { echo, verbose, warn } from "./logger"
@@ -226,8 +227,8 @@ function row(cells: [string, string, string, string, string, string]): string {
 
 export function report(ctx: Ctx): void {
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
-  const platformOs =
-    process.platform === "linux" ? "linux" : process.platform === "darwin" ? "darwin" : process.platform === "win32" ? "windows" : ""
+  const pn = platformName()
+  const platformOs = pn === "unknown" ? "" : pn
   for (const tool of Object.keys(manifest(ctx)).sort(compareCodepoints)) {
     const os = field(ctx, tool, "os")
     if (os !== "" && platformOs !== "" && os !== platformOs) continue

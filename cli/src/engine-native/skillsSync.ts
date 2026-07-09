@@ -8,6 +8,7 @@ import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { capture, commandExists, isExecutable, p, which } from "./exec"
+import { isLinux, isWindows } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import { change, echo, verbose, warn } from "./logger"
@@ -138,7 +139,7 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
     if (current === relTarget) return false
     // win32: `npx skills add` creates absolute symlinks/junctions — any link
     // that RESOLVES to the canonical dir is healthy, not stale.
-    if (process.platform === "win32" && realpathEquals(claudeLink, canonical)) return false
+    if (isWindows() && realpathEquals(claudeLink, canonical)) return false
     if (ctx.dryRun) {
       echo(`[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`)
       return true
@@ -204,7 +205,7 @@ function removeLink(path: string): boolean {
 export function linkOrCopy(target: string, link: string): boolean {
   removeLink(link)
   try {
-    symlinkSync(target, link, process.platform === "win32" ? "dir" : undefined)
+    symlinkSync(target, link, isWindows() ? "dir" : undefined)
   } catch {
     // fall through to the copy fallback below
   }
@@ -230,7 +231,7 @@ export function linkOrCopy(target: string, link: string): boolean {
 export function agentBrowserInstall(mode: "install" | "upgrade", version: string): number {
   const verb = mode === "upgrade" ? "Upgrading" : "Installing"
   const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
-  const installFlags = process.platform === "linux" ? ["--with-deps"] : []
+  const installFlags = isLinux() ? ["--with-deps"] : []
 
   change(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
   if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
@@ -322,7 +323,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
     // win32: bun writes an .exe shim (not the bare Unix name), and the
     // ~/.local/bin link step below is Unix-only plumbing (non-interactive
     // agent PATH) — bun's global bin is already the Windows PATH entry.
-    if (process.platform === "win32") {
+    if (isWindows()) {
       const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
       if (found) change(`effect-solutions CLI ready (${gbin})`)
       else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)

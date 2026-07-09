@@ -83,6 +83,15 @@ their trigger changed this run (plugins changed → `/reload-plugins` line;
 hooks/env changed → restart line; skills changed → discovery line) or under
 `--verbose`.
 
+### Platform seam
+
+All platform branching routes through `os.ts` — the only engine module that
+reads `process.platform`, with one named exemption: `exec.ts`'s path/exec
+primitives (`commandExists` PATHEXT resolution and `X_OK` probing) stay
+self-contained because they sit below the seam. `deps.ts` install hints
+default their platform from `os.ts` and keep the parameter injectable for
+tests.
+
 ### Verbosity plumbing
 
 `--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands;
@@ -105,8 +114,10 @@ hooks/env changed → restart line; skills changed → discovery line) or under
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
-| `exec.ts` | path helpers, command probes, capture/spawn wrappers, Windows command resolution |
-| `output.ts` | stable stdout/stderr emitters |
+| `exec.ts` | path helpers, command probes, capture/spawn wrappers, Windows command resolution, change-detecting write/copy helpers |
+| `logger.ts` | stable stdout/stderr emitters and the verbose gate (`change`/`verbose`/`warn`/`err`/`echo`) |
+| `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, dedup'd missing-tool warns |
+| `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isWindows`, `isLinux`, shell-rc applicability) |
 
 ## Windows Specifics
 

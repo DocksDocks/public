@@ -9,6 +9,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameS
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { DEPENDENCIES, warnMissing } from "./deps"
 import { capture, commandExists, p } from "./exec"
+import { platformName } from "./os"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { change, echo, err, verbose, warn } from "./logger"
@@ -79,8 +80,9 @@ function ensureBubblewrap(ctx: Ctx): void {
 }
 
 function bwrapSupportedOs(): boolean {
-  if (process.platform === "linux") return true
-  if (process.platform === "darwin" || process.platform === "win32") return false
+  const pn = platformName()
+  if (pn === "linux") return true
+  if (pn === "darwin" || pn === "windows") return false
   warn("Unknown OS — skipping bubblewrap check; Codex sandbox may not work")
   return false
 }
