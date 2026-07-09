@@ -56,7 +56,10 @@ const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
 esac`
 const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
 
-const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string, string | null> }> = [
+// `variant` disambiguates rows whose fixture+cmd+stub-keys are identical but
+// whose stub BODIES differ — without it their labels collide and the later
+// row silently overwrites the earlier one's golden.
+const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string, string | null>; variant?: string }> = [
   { fixture: "home-fresh", cmd: ["sync", "claude"] },
   { fixture: "home-fresh", cmd: ["sync", "codex"] },
   { fixture: "home-fresh", cmd: ["sync", "agents"] },
@@ -82,9 +85,9 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": AGENT_BROWSER_STALE } },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED }, variant: "npm-latest-above-verified" },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--yes"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_OFFLINE } }
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_OFFLINE }, variant: "npm-offline" }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
@@ -102,8 +105,15 @@ const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "mutation.json")
 const { proveRed, updateGoldens } = parseArgs(process.argv)
 const defaultStubs = makeStubDir()
 
-function matrixLabel(fixture: string, cmd: ReadonlyArray<string>, stubs?: Record<string, string | null>): string {
-  return `fixture=${fixture} cmd=${cmd.join(" ")}${stubs !== undefined ? ` stubs=${Object.keys(stubs).join(",")}` : ""}`
+function matrixLabel(
+  fixture: string,
+  cmd: ReadonlyArray<string>,
+  stubs?: Record<string, string | null>,
+  variant?: string
+): string {
+  const stubPart = stubs !== undefined ? ` stubs=${Object.keys(stubs).join(",")}` : ""
+  const variantPart = variant !== undefined ? ` variant=${variant}` : ""
+  return `fixture=${fixture} cmd=${cmd.join(" ")}${stubPart}${variantPart}`
 }
 
 function runCase(
@@ -138,7 +148,7 @@ function mismatchedGolden(label: string, goldens: MutationGolden): MutationCaseG
   return goldens.cases[other]!
 }
 
-function compareCase(label: string, actual: MutationCaseGolden, expected: MutationCaseGolden): Array<string> {
+function compareCase(actual: MutationCaseGolden, expected: MutationCaseGolden): Array<string> {
   return [
     ...(actual.exitCode === expected.exitCode
       ? []
@@ -193,8 +203,9 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
   const cases: Record<string, MutationCaseGolden> = {}
   let invariantFailures = 0
 
-  for (const { fixture, cmd, stubs } of MATRIX) {
-    const label = matrixLabel(fixture, cmd, stubs)
+  for (const { fixture, cmd, stubs, variant } of MATRIX) {
+    const label = matrixLabel(fixture, cmd, stubs, variant)
+    if (label in cases) throw new Error(`duplicate matrix label ${label} — add a variant to disambiguate`)
     if (!labelSelected(label)) continue
     const stubDir = stubs !== undefined ? makeStubDir(stubs) : defaultStubs
     const maskTools = stubs !== undefined ? Object.entries(stubs).filter(([, body]) => body === null).map(([name]) => name) : []
@@ -249,7 +260,7 @@ for (const [label, actual] of Object.entries(actualCases)) {
     continue
   }
   checked++
-  const problems = compareCase(label, actual, expected)
+  const problems = compareCase(actual, expected)
   if (problems.length > 0) {
     failures++
     banner(`GOLDEN MISMATCH ${label}`)

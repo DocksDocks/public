@@ -510,7 +510,20 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
-    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=npm": {
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=npm variant=npm-latest-above-verified": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\n",
+      "command": [
+        "toolchain",
+        "ensure",
+        "agent-browser"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m skipping agent-browser upgrade (latest 0.99.0 is above kit-verified 0.31.1; pass --yes to accept, or update SoT/toolchain.json after testing)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=toolchain ensure agent-browser stubs=npm variant=npm-offline": {
       "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\n",
       "command": [
         "toolchain",
