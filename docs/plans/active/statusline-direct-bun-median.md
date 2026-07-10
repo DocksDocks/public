@@ -3,7 +3,7 @@ title: Gate the direct-Bun statusline benchmark on median, not p95
 goal: Stop the load-induced flake in the direct-Bun statusline latency test by gating the median (same 100ms ceiling), mirroring the outer-shell median switch from 671831c.
 status: ongoing
 created: "2026-07-10T17:57:10-03:00"
-updated: "2026-07-10T17:58:30-03:00"
+updated: "2026-07-10T18:10:57-03:00"
 started_at: "2026-07-10T17:58:30-03:00"
 assignee: dockskit-defaults-worker (codex gpt-5.6-sol relay session)
 tags: [test, statusline, flake]
@@ -37,7 +37,7 @@ planned_at_commit: 40b3ae26ce96e25099db556f6a34951188958c48
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | In `cli/test/unit/statusline.test.mjs` (lines 208–222): rename the test to "keeps direct-Bun median below 100ms after warmup"; replace the p95 computation `measured[Math.ceil(measured.length * 0.95) - 1]` with the median `measured[Math.floor(measured.length / 2)]` (keep the existing `timings.slice(5).sort((a, b) => a - b)` warmup trim); assert `expect(median).toBeLessThanOrEqual(100)`; add the same one-line rationale comment style used in `671831c` (spawn time is load-dominated; median only moves on systematic slowdown). No other test, threshold, sample count, or file changes. | pending |
+| 1 | In `cli/test/unit/statusline.test.mjs` (lines 208–222): rename the test to "keeps direct-Bun median below 100ms after warmup"; replace the p95 computation `measured[Math.ceil(measured.length * 0.95) - 1]` with the median `measured[Math.floor(measured.length / 2)]` (keep the existing `timings.slice(5).sort((a, b) => a - b)` warmup trim); assert `expect(median).toBeLessThanOrEqual(100)`; add the same one-line rationale comment style used in `671831c` (spawn time is load-dominated; median only moves on systematic slowdown). No other test, threshold, sample count, or file changes. | done |
 
 ## Acceptance criteria
 
