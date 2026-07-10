@@ -85,6 +85,8 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "agents"] },
   { fixture: "home-drift", cmd: ["sync", "--reconcile"] },
   { fixture: "home-drift", cmd: ["sync", "--prune"] },
+  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-effort=default"] },
+  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-advisor=on"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
   { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },
@@ -98,7 +100,15 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-plugin=supabase,n8n"] },
   {
     fixture: "home-drift",
-    cmd: ["sync", "claude", "--claude-model=fable", "--claude-compact-window=680k", "--claude-permissive"]
+    cmd: [
+      "sync",
+      "claude",
+      "--claude-model=fable",
+      "--claude-effort=low",
+      "--claude-advisor=on",
+      "--claude-compact-window=680k",
+      "--claude-permissive"
+    ]
   },
   { fixture: "home-drift", cmd: ["model", "claude", "opus"] },
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
@@ -243,6 +253,61 @@ function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Arr
     problems
   }
   cleanup([run])
+  rmSync(fixture, { recursive: true, force: true })
+  return golden
+}
+
+type AdvisorMigrationState = "flagless" | "on" | "off" | "default"
+
+function runAdvisorMigrationCase(state: AdvisorMigrationState): MutationCaseGolden & { readonly problems: Array<string> } {
+  const sourceSettings = JSON.parse(
+    readFileSync(join(FIXTURES_DIR, "home-drift", ".claude", "settings.json"), "utf8")
+  ) as Record<string, unknown>
+  sourceSettings["advisorModel"] = "fable"
+  const fixture = materializeVariant("home-drift", {
+    ".claude/settings.json": stableStringify(sourceSettings)
+  })
+  const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]
+  const first = runEngine("native", command, fixture, defaultStubs)
+  const second = runEngine("native", command, fixture, defaultStubs, { reuseHome: first.home })
+  const problems: Array<string> = []
+  const firstChangedByRemoval = first.output.includes("Pruned stale artifacts")
+  const firstChangedByModifier = first.output.includes("Advisor: deployed settings advisorModel")
+  if (state === "flagless" && !firstChangedByRemoval) {
+    problems.push("  advisor migration: flag-less run did not delete advisorModel through removals")
+  }
+  if (state !== "flagless" && firstChangedByRemoval) {
+    problems.push(`  advisor migration: explicit ${state} run let removals own advisorModel`)
+  }
+  if ((state === "off" || state === "default") && !firstChangedByModifier) {
+    problems.push(`  advisor migration: explicit ${state} run did not delete advisorModel through the modifier`)
+  }
+
+  const settings = JSON.parse(
+    readFileSync(join(second.home, ".claude", "settings.json"), "utf8")
+  ) as Record<string, unknown>
+  if (state === "on" && settings["advisorModel"] !== "fable") {
+    problems.push("  advisor migration: explicit on did not preserve advisorModel=fable")
+  }
+  if (state !== "on" && Object.prototype.hasOwnProperty.call(settings, "advisorModel")) {
+    problems.push(`  advisor migration: ${state} left advisorModel deployed`)
+  }
+  if (second.output.includes("Pruned stale artifacts") || second.output.includes("Advisor: deployed settings advisorModel")) {
+    problems.push(`  advisor migration: repeated ${state} state was not a true no-op`)
+  }
+  if (second.output.includes("Restart Claude Code for hook/env-var changes to take effect.")) {
+    problems.push(`  advisor migration: repeated ${state} state retriggered Claude restart advice`)
+  }
+
+  const golden = {
+    command,
+    exitCode: second.exitCode,
+    tree: snapshotTree(second.home),
+    argvLog: readArgvLog(second),
+    output: second.output,
+    problems
+  }
+  cleanup([second]) // first.home === second.home
   rmSync(fixture, { recursive: true, force: true })
   return golden
 }
@@ -496,6 +561,18 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     if (problems.length > 0) {
       invariantFailures++
       banner("CLAUDE MIGRATION INVARIANT FAILURE")
+      for (const problem of problems) console.log(problem)
+    }
+  }
+
+  for (const state of ["flagless", "on", "off", "default"] as const) {
+    const advisorLabel = `advisor-migration=prior-kit-settings state=${state}`
+    if (!labelSelected(advisorLabel)) continue
+    const { problems, ...golden } = runAdvisorMigrationCase(state)
+    cases[advisorLabel] = golden
+    if (problems.length > 0) {
+      invariantFailures++
+      banner(`ADVISOR MIGRATION INVARIANT FAILURE state=${state}`)
       for (const problem of problems) console.log(problem)
     }
   }

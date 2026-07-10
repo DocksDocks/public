@@ -6,7 +6,7 @@ import { p } from "./exec"
 import { readFileSync } from "node:fs"
 import { payloadText } from "../payload"
 
-import { syncClaudeModel } from "./claudeModel"
+import { syncClaudeModel } from "./claudeSettingsModifiers"
 import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"

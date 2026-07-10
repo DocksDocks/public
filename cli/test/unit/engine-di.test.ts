@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { runEngineNative } from "../../src/engine-native"
+import {
+  syncClaudeAdvisor,
+  syncClaudeEffort
+} from "../../src/engine-native/claudeSettingsModifiers"
 import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
+import type { Ctx } from "../../src/engine-native"
 import {
   makeEngineServices,
   makePlatform,
@@ -12,6 +17,7 @@ import {
   type EngineServices,
   type Logger
 } from "../../src/engine-native/services"
+import { sotEffort } from "../../src/efforts"
 import { kitHome } from "../../src/kitHome"
 
 type LogLevel = "change" | "verbose" | "warn" | "err" | "echo"
@@ -95,6 +101,184 @@ class RecordingLogger implements Logger {
     this.records.push({ level: "echo", message })
   }
 }
+
+function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): Ctx {
+  return {
+    repoDir: kitHome(),
+    home,
+    agentsDir: join(home, ".agents"),
+    dryRun,
+    verbose: true,
+    skipRtk: false,
+    reconcile: false,
+    prune: false,
+    assumeYes: false,
+    claudeCompactWindow: "",
+    claudePermissive: false,
+    claudePlugins: [],
+    claudeModel: "",
+    claudeEffort: "",
+    claudeAdvisor: "",
+    codexModel: "",
+    codexEffort: "",
+    services: stubServices(records),
+    targetFilterSet: true,
+    syncClaude: true,
+    syncCodex: false,
+    syncAgents: false,
+    nextStepTriggers: {
+      claudePlugins: false,
+      claudeRestart: false,
+      codexRestart: false,
+      skillsRestart: false
+    }
+  }
+}
+
+describe("Claude settings modifiers", () => {
+  it("sets effort, resolves default from the embedded SoT, and is idempotent", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-effort-modifier-"))
+    const settings = join(home, ".claude", "settings.json")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    writeFileSync(settings, '{"model":"sonnet","userOnly":true}\n')
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      syncClaudeEffort(ctx, "low")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({
+        model: "sonnet",
+        userOnly: true,
+        effortLevel: "low"
+      })
+      expect(records).toContainEqual({
+        level: "change",
+        message: "Effort: deployed settings effortLevel set to low (SoT unchanged; flag-less sync reverts)"
+      })
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeEffort(ctx, "low")
+      expect(records).toEqual([
+        { level: "verbose", message: "Effort: deployed settings effortLevel already low" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+
+      records.length = 0
+      syncClaudeEffort(ctx, "default")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toMatchObject({
+        model: "sonnet",
+        userOnly: true,
+        effortLevel: sotEffort("claude")
+      })
+      expect(records).toContainEqual({
+        level: "change",
+        message: `Effort: deployed settings effortLevel set to ${sotEffort("claude")} (SoT default)`
+      })
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("owns advisor on/off/default edits without duplicate same-state changes", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-advisor-modifier-"))
+    const settings = join(home, ".claude", "settings.json")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    writeFileSync(settings, '{"advisorModel":"fable","userOnly":true}\n')
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      for (const state of ["off", "default"] as const) {
+        records.length = 0
+        ctx.nextStepTriggers.claudeRestart = false
+        syncClaudeAdvisor(ctx, state)
+        expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true })
+        expect(records.some(({ level }) => level === "change")).toBe(state === "off")
+        expect(ctx.nextStepTriggers.claudeRestart).toBe(state === "off")
+      }
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "on")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true, advisorModel: "fable" })
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: "Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)"
+        }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "on")
+      expect(records).toEqual([
+        { level: "verbose", message: "Advisor: deployed settings advisorModel already fable" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+
+      records.length = 0
+      syncClaudeAdvisor(ctx, "default")
+      expect(records.filter(({ level }) => level === "change")).toHaveLength(1)
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true })
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "default")
+      expect(records).toEqual([
+        { level: "verbose", message: "Advisor: deployed settings advisorModel already unset (SoT default: off)" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("leaves invalid JSON untouched and keeps dry-run edits descriptive only", () => {
+    const invalidHome = mkdtempSync(join(tmpdir(), "claude-modifier-invalid-"))
+    const invalidSettings = join(invalidHome, ".claude", "settings.json")
+    mkdirSync(join(invalidHome, ".claude"), { recursive: true })
+    writeFileSync(invalidSettings, "{broken\n")
+    const invalidRecords: Array<LogRecord> = []
+    const invalidCtx = modifierCtx(invalidHome, invalidRecords)
+
+    const dryHome = mkdtempSync(join(tmpdir(), "claude-modifier-dry-"))
+    const drySettings = join(dryHome, ".claude", "settings.json")
+    mkdirSync(join(dryHome, ".claude"), { recursive: true })
+    writeFileSync(drySettings, '{"userOnly":true}\n')
+    const dryRecords: Array<LogRecord> = []
+    const dryCtx = modifierCtx(dryHome, dryRecords, true)
+
+    try {
+      syncClaudeEffort(invalidCtx, "high")
+      syncClaudeAdvisor(invalidCtx, "on")
+      expect(readFileSync(invalidSettings, "utf8")).toBe("{broken\n")
+      expect(existsSync(`${invalidSettings}.tmp`)).toBe(false)
+      expect(invalidRecords.filter(({ level }) => level === "err")).toHaveLength(2)
+      expect(invalidCtx.nextStepTriggers.claudeRestart).toBe(false)
+
+      syncClaudeEffort(dryCtx, "low")
+      syncClaudeAdvisor(dryCtx, "on")
+      expect(readFileSync(drySettings, "utf8")).toBe('{"userOnly":true}\n')
+      expect(dryRecords).toEqual([
+        {
+          level: "echo",
+          message: `[dry-run] (--claude-effort) set .effortLevel=low in ${drySettings}`
+        },
+        {
+          level: "echo",
+          message: `[dry-run] (--claude-advisor) set .advisorModel=fable in ${drySettings}`
+        }
+      ])
+    } finally {
+      rmSync(invalidHome, { recursive: true, force: true })
+      rmSync(dryHome, { recursive: true, force: true })
+    }
+  })
+})
 
 describe.sequential("EngineNative full service injection", () => {
   it("validates raw effort and advisor modifiers before any sync mutation", () => {

@@ -49,18 +49,20 @@
       "fixture": "home-drift",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-drift cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-drift cmd=sync claude --dry-run --claude-model=fable --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
         "--claude-model=fable",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-drift",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-drift cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [
@@ -123,18 +125,20 @@
       "fixture": "home-fresh",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-fresh cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-fresh cmd=sync claude --dry-run --claude-model=fable --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
         "--claude-model=fable",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-fresh cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [
@@ -197,18 +201,20 @@
       "fixture": "home-invalid-json",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-invalid-json cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-invalid-json cmd=sync claude --dry-run --claude-model=fable --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
         "--claude-model=fable",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-invalid-json",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-invalid-json cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [

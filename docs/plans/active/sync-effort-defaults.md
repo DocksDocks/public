@@ -3,7 +3,7 @@ title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: ongoing
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T13:53:31-03:00"
+updated: "2026-07-10T14:21:58-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -219,7 +219,7 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 | `cli/src/engine-native/codexToml.ts` | Add top-level effort modifier using the existing line-stable TOML helper |
 | `cli/src/engine-native/codexSync.ts` | Apply Codex effort after the base merge/model override |
 | `cli/src/engine-native/modes.ts` | Import `syncClaudeModel` from its renamed module only; no new standalone effort/advisor mode |
-| `SoT/.claude/settings.json` | Change `model` from `opus` to `fable`; remove `advisorModel`; change `effortLevel` from `xhigh` to `high` |
+| `SoT/.claude/settings.json` | Remove `advisorModel` in Step 2 so migration replays are idempotent; in Step 4 change `model` from `opus` to `fable` and `effortLevel` from `xhigh` to `high` |
 | `SoT/models.json` | Keep every alias/ID and order; set the Opus note to `latest Opus (currently Opus 4.8)` and the Fable note to `Fable 5 — the kit SoT default; needs org access + Claude Code >=2.1.170` |
 | `cli/scripts/generate-sot-payload.ts` | Read/validate root package version and emit it into the generated module alongside the payload/Bun-pin generation contract |
 | `cli/src/generated/sotPayload.ts` | Regenerated payload plus `GENERATED_PACKAGE_VERSION`; never hand-edit |
@@ -238,17 +238,21 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 | # | Task | Depends | Status |
 |---|---|---|---|
 | 1 | Add `cli/src/efforts.ts`; wire exact valued/bare options through `cli/src/commands/sync.ts`, `cli/src/engine-native/index.ts`, and `cli/src/engine-native/parseArgs.ts`, with focused tests and regenerated affected goldens in the same slice. Done when the exact Claude/Codex lists, `default` resolution, exit `2` diagnostics, target-ignore warnings, and public/raw channel contracts pass the mandatory per-slice gate. Revert trigger: any new string list is duplicated across public and native layers. | — | done |
-| 2 | Rename/generalize the Claude modifier module, update `modes.ts`, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default → high`, restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | in-flight |
-| 3 | Extend `codexToml.ts` and `codexSync.ts` for effort, with focused fixture coverage and regenerated affected goldens in the same slice. Done when every existing TOML fixture remains structurally stable, `ultra`, `none`, and `default → xhigh` replacements occur only before the first table, and the mandatory per-slice gate passes. Revert trigger: comments/tables reformat or a Claude target touches Codex config. | 1 | planned |
-| 4 | Edit `SoT/.claude/settings.json` and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor unset; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | planned |
+| 2 | Rename/generalize the Claude modifier module, update `modes.ts`, remove `advisorModel` from `SoT/.claude/settings.json` and regenerate the payload, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default →` the current embedded SoT (`xhigh` in this slice; `high` after Step 4), restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | done |
+| 3 | Extend `codexToml.ts` and `codexSync.ts` for effort, with focused fixture coverage and regenerated affected goldens in the same slice. Done when every existing TOML fixture remains structurally stable, `ultra`, `none`, and `default → xhigh` replacements occur only before the first table, and the mandatory per-slice gate passes. Revert trigger: comments/tables reformat or a Claude target touches Codex config. | 1 | in-flight |
+| 4 | Change the remaining Claude defaults in `SoT/.claude/settings.json` (`model: opus → fable`, `effortLevel: xhigh → high`) and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor remains unset from Step 2; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | planned |
 | 5 | Extend `cli/scripts/generate-sot-payload.ts` to emit the validated root package version, import it from `main.ts`, and add the package-drift/public-version tests to `payload.test.ts`; regenerate the module in the same slice. Done when changing only a disposable fixture's package version makes generator `--check` exit `1` naming the generated module, source CLI `--version` equals root `package.json`, a current-target compiled binary reports the same value, and the mandatory per-slice gate passes. Revert trigger: any runtime `package.json` read, second version literal, or generated edit outside the generator. | — | planned |
 | 6 | Document the exact Bun `1.3.14` warning in `cli/docs/install.md` and harden `.github/workflows/windows-entrypoints.yml`'s `bun-shim` install step: capture `bun add -g`, assert `Blocked 1 postinstall`, run `bun pm -g untrusted`, and assert only `@parcel/watcher @2.5.6`/`node scripts/build-from-source.js` before the existing catalog/toolchain/sync smokes. Done when a fresh isolated production-tarball install has no `esbuild`, reproduces that identity/count, and all three functional smokes succeed without trusting scripts. Revert trigger: the pinned install reports another blocked package, a smoke fails, or the workflow would run `bun pm trust`. | 5 | planned |
 | 7 | Audit and harden the assembled unit/golden coverage against the ledger below; regenerate snapshots only if a missing planned case is added. Done when expected labels alone change, new flag cases exist, the two named canaries are byte-identical, version changes do not alter sync goldens, no snapshot is manually edited, and the mandatory per-slice gate passes. Revert trigger: either canary changes or unrelated argv/plugin/toolchain output moves. | 2, 3, 4, 5, 6 | planned |
 | 8 | Run every acceptance command and inspect `git diff --check`, payload/version parity, tests, goldens, prove-red markers, consumer-install evidence, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 7 | planned |
 
+## Notes
+
+- 2026-07-10 orchestrator approval: move only the SoT `advisorModel` removal and payload regeneration from Step 4 to Step 2 so the flag-less migration replay is a true no-op; keep the model/effort defaults, model notes, and docs in Step 4.
+
 ## Golden ledger
 
-Golden updates are expected because deployed Claude settings bytes change in three ways (`model: opus → fable`, `effortLevel: xhigh → high`, and `advisorModel` removal/migration) and the modifier command rows expand. The generated package-version constant and Bun install documentation/workflow must not affect sync golden output. Regenerate, then review by label.
+Golden updates are expected because deployed Claude settings bytes change in three ways and the modifier command rows expand. Step 2 owns the `advisorModel` removal/migration bytes and advisor/Claude-effort command rows; Step 4 owns the later `model: opus → fable` and `effortLevel: xhigh → high` bytes. The generated package-version constant and Bun install documentation/workflow must not affect sync golden output. Regenerate, then review by label.
 
 ### Existing labels expected to change
 
@@ -265,9 +269,10 @@ Golden updates are expected because deployed Claude settings bytes change in thr
 - `fixture=home-fresh cmd=sync replay=2nd`
 - `fixture=home-drift cmd=sync replay=2nd`
 - `fixture=home-fresh cmd=sync --verbose replay=2nd`
+- `fixture=home-drift cmd=sync claude --claude-model=fable replay=2nd` (Step 2 settings-byte change; renamed to the Opus replay in Step 4)
 - `migration=legacy-claude-hook-scripts`
 
-These change only in the deployed settings tree hash/content (including the revised `effortLevel: high`) and directly consequent settings/restart lines. Plugin argv, toolchain argv, rules, skills, runtime assets, CLI-version metadata, and unrelated output remain stable.
+These change in Step 2 only for the removed `advisorModel` bytes and directly consequent settings/removal/restart lines, then in Step 4 for the revised model/effort bytes (including `effortLevel: high`). Plugin argv, toolchain argv, rules, skills, runtime assets, CLI-version metadata, and unrelated output remain stable.
 
 ### Renamed/replaced modifier labels
 
