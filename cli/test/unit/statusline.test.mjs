@@ -85,7 +85,7 @@ describe("statusline native formatter", () => {
       workspace: { current_dir: "/tmp/tokens" },
       context_window: { used_percentage: 100, context_window_size: 1_250_000 }
     }, { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS })
-    expect(fractional).toContain("(1.3M/1.3M)")
+    expect(fractional).toContain("(1.2M/1.2M)")
   })
 
   it("degrades each nullable rate-limit and context field independently", () => {

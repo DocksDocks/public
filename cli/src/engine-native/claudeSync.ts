@@ -510,18 +510,15 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
   const doc = parseJson(readFileSync(file, "utf8"))
   if (doc === undefined) return 0
 
-  const getPath = (root: Json, path: Array<string>): Json | undefined => {
-    let cur: Json | undefined = root
-    for (const seg of path) {
-      if (cur === undefined || !isObject(cur)) return undefined
-      cur = cur[seg]
+  const hasPath = (root: Json, path: Array<string>): boolean => {
+    let cur: Json = root
+    for (const seg of path.slice(0, -1)) {
+      if (!isObject(cur) || cur[seg] === undefined) return false
+      cur = cur[seg]!
     }
-    return cur
+    return isObject(cur) && Object.prototype.hasOwnProperty.call(cur, path[path.length - 1]!)
   }
-  const presentKeys = keys.filter((k) => {
-    const v = getPath(doc, k.split("."))
-    return v !== undefined && v !== null
-  })
+  const presentKeys = keys.filter((k) => hasPath(doc, k.split(".")))
   if (presentKeys.length === 0) return 0
 
   if (!ctx.dryRun) {

@@ -107,6 +107,34 @@ describe("DependencyManager registry", () => {
     }
   })
 
+  it("rejects relative POSIX bun paths from PATH and BUN_INSTALL fallbacks", () => {
+    const previousHome = process.env["HOME"]
+    const previousBunInstall = process.env["BUN_INSTALL"]
+    try {
+      process.env["HOME"] = "/fixture-home"
+      process.env["BUN_INSTALL"] = "relative-bun"
+      const fallback = "/fixture-home/.bun/bin/bun"
+      const withFallback = makeDependencyManager(makePlatform("linux"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => (name === "bun" ? "relative/bin/bun" : name === "relative-bun/bin/bun" || name === fallback ? name : "")
+      })
+      expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
+
+      const onlyRelative = makeDependencyManager(makePlatform("linux"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => (name === "bun" ? "relative/bin/bun" : "")
+      })
+      expect(onlyRelative.probe("bun")).toEqual({ state: "missing" })
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
+      else process.env["BUN_INSTALL"] = previousBunInstall
+    }
+  })
+
   it("requires an absolute bun.exe on Windows and ignores a shadowing bun.cmd", () => {
     const previousHome = process.env["HOME"]
     const previousBunInstall = process.env["BUN_INSTALL"]

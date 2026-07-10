@@ -147,6 +147,20 @@ describe.sequential("Claude runtime migration transaction", () => {
       rmSync(variant, { recursive: true, force: true })
     }
   })
+
+  it("prunes a null-valued hooks.Stop key on a ready migration", () => {
+    const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } })
+    const variant = legacyVariant(nullStop)
+    const run = runEngine("native", ["sync", "claude"], variant, makeStubDir())
+    try {
+      expect(run.exitCode).toBe(0)
+      const hooks = hooksObject(settingsObject(run.home))
+      expect(Object.prototype.hasOwnProperty.call(hooks, "Stop")).toBe(false)
+    } finally {
+      cleanup([run])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
 })
 
 describe.sequential("contextual dependency degradation", () => {

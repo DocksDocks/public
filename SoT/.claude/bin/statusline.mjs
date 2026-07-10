@@ -51,7 +51,8 @@ function compactWindow(env, total) {
 
 function formatTokensK(value) {
   if (value < 1000) return `${value}k`
-  return value % 1000 === 0 ? `${value / 1000}M` : `${(value / 1000).toFixed(1)}M`
+  if (value % 1000 === 0) return `${value / 1000}M`
+  return `${(roundHalfEven(value / 100) / 10).toFixed(1)}M`
 }
 
 function contextSegment(input, env) {

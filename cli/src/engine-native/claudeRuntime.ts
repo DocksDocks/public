@@ -97,7 +97,7 @@ export function statusLineCommand(runtime: ClaudeRuntimePaths, platform: Platfor
   }
   const bun = powerShellLiteral(runtime.bun.replaceAll("\\", "/"))
   const script = powerShellLiteral(runtime.statusline.replaceAll("\\", "/"))
-  const guard = `if ((Test-Path -LiteralPath ${bun} -PathType Leaf) -and (Test-Path -LiteralPath ${script} -PathType Leaf)) { & ${bun} ${script} }`
+  const guard = `$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath ${bun} -PathType Leaf) -and (Test-Path -LiteralPath ${script} -PathType Leaf)) { & ${bun} ${script} }`
   return `powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encodePowerShellCommand(guard)}`
 }
 

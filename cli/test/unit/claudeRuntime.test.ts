@@ -81,6 +81,7 @@ describe("statusline shell guards", () => {
     expect(command).toMatch(/^powershell\.exe -NoProfile -NonInteractive -EncodedCommand [A-Za-z0-9+/=]+$/)
     const encoded = command.slice(command.lastIndexOf(" ") + 1)
     expect(decodePowerShellCommand(encoded)).toBe(
+      "$ProgressPreference = 'SilentlyContinue'; " +
       "if ((Test-Path -LiteralPath 'C:/Users/O''Brien/.bun/bin/bun.exe' -PathType Leaf) -and " +
       "(Test-Path -LiteralPath 'C:/Users/O''Brien/.claude/bin/statusline.mjs' -PathType Leaf)) { " +
       "& 'C:/Users/O''Brien/.bun/bin/bun.exe' 'C:/Users/O''Brien/.claude/bin/statusline.mjs' }"

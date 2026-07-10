@@ -132,10 +132,6 @@ try {
     }
     console.log(`runtime-smoke: direct Bun exact bytes OK; p95=${directP95.toFixed(2)}ms ceiling=${directCeiling}ms`)
   }
-  // Windows PowerShell emits a one-time CLIXML "Preparing modules for first
-  // use" progress record on a fresh profile; absorb it before asserting
-  // byte-clean stderr on every run.
-  if (mode === "powershell") record(outerCommand(settings.statusLine.command), stdin, baseEnv)
   const timings = []
   for (let index = 0; index < 30; index += 1) {
     const run = record(outerCommand(settings.statusLine.command), stdin, baseEnv)

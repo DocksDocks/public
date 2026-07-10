@@ -8,6 +8,7 @@
  * command that installs a missing one.
  */
 import { homedir } from "node:os"
+import { isAbsolute } from "node:path"
 import { existsSync, readdirSync } from "node:fs"
 
 import { capture, commandExists, p, which } from "./exec"
@@ -113,9 +114,15 @@ const home = (): string => {
 const absoluteWindowsExe = (path: string): boolean =>
   /\.exe$/i.test(path) && (/^[A-Za-z]:[\\/]/.test(path) || /^\\\\/.test(path))
 
+// The resolved path gets persisted into global direct-exec hooks, so a
+// relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
+// break outside the sync working directory.
+const absoluteExecutable = (path: string, platform: NodeJS.Platform): boolean =>
+  platform === "win32" ? absoluteWindowsExe(path) : isAbsolute(path)
+
 const findBun = (exec: ProbeExecutor, platform: NodeJS.Platform = rawPlatform()): { command: string; path: string } | undefined => {
   const onPath = exec.which("bun")
-  if (onPath !== "" && (platform !== "win32" || absoluteWindowsExe(onPath))) {
+  if (onPath !== "" && absoluteExecutable(onPath, platform)) {
     return { command: platform === "win32" ? onPath : "bun", path: onPath }
   }
   const root =
@@ -125,7 +132,7 @@ const findBun = (exec: ProbeExecutor, platform: NodeJS.Platform = rawPlatform())
   const name = platform === "win32" ? "bun.exe" : "bun"
   for (const candidate of [p(root, "bin", name), p(home(), ".bun", "bin", name)]) {
     const found = exec.which(candidate)
-    if (found !== "" && (platform !== "win32" || absoluteWindowsExe(found))) return { command: found, path: found }
+    if (found !== "" && absoluteExecutable(found, platform)) return { command: found, path: found }
   }
   return undefined
 }
