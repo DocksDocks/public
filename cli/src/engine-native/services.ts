@@ -5,14 +5,32 @@
  * and engineCapture's parent-side warn call it directly, so every execution
  * path shares one implementation.
  */
-import { DEPENDENCIES, probe, warnMissing, type DependencySpec, type ProbeResult, type ToolId } from "./deps"
-import { change, echo, err, verbose, warn, type Logger } from "./logger"
+import {
+  DEPENDENCIES,
+  defaultProbeExecutor,
+  resolveDependency,
+  resolveLocation,
+  resolvePath,
+  resolveVersion,
+  type DependencySpec,
+  type DependencyLocation,
+  type ProbeExecutor,
+  type ProbeResult,
+  type ToolId
+} from "./deps"
+import { makeLogger, type Logger, type LoggerSinks } from "./logger"
 import { platformName, rawPlatform, type PlatformName } from "./os"
+
+export type { Logger } from "./logger"
 
 export interface DependencyManager {
   readonly spec: (id: ToolId) => DependencySpec
   readonly probe: (id: ToolId) => ProbeResult
-  readonly warnMissing: (id: ToolId, context?: string) => void
+  readonly version: (id: ToolId) => string
+  readonly path: (id: ToolId) => string
+  readonly location: (id: ToolId) => DependencyLocation
+  readonly latest: (id: ToolId) => string
+  readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void
 }
 
 export interface Platform {
@@ -29,6 +47,10 @@ export interface EngineServices {
   readonly platform: Platform
 }
 
+export interface EngineServiceOptions {
+  readonly sinks?: LoggerSinks
+}
+
 /** Platform view over an injectable platform id (tests pass e.g. "win32"). */
 export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => ({
   raw: () => pf,
@@ -39,19 +61,35 @@ export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => (
 })
 
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */
-export const makeDependencyManager = (platform: Platform): DependencyManager => ({
-  spec: (id) => {
-    const s = DEPENDENCIES[id]
-    return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) }
-  },
-  probe,
-  warnMissing: (id, context) => warnMissing(id, context, platform.raw())
-})
-
-export const makeEngineServices = (): EngineServices => {
-  const platform = makePlatform()
+export const makeDependencyManager = (
+  platform: Platform,
+  exec: ProbeExecutor = defaultProbeExecutor
+): DependencyManager => {
+  const warned = new Set<ToolId>()
   return {
-    logger: { change, verbose, warn, err, echo },
+    spec: (id) => {
+      const s = DEPENDENCIES[id]
+      return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) }
+    },
+    probe: (id) => resolveDependency(DEPENDENCIES[id], exec, platform.raw()),
+    version: (id) => resolveVersion(DEPENDENCIES[id], exec),
+    path: (id) => resolvePath(DEPENDENCIES[id], exec, platform.raw()),
+    location: (id) => resolveLocation(DEPENDENCIES[id], exec, platform.raw()),
+    latest: (id) => DEPENDENCIES[id].latest?.(exec) ?? "",
+    warnMissing: (id, logger, context) => {
+      if (warned.has(id)) return
+      warned.add(id)
+      const suffix = context !== undefined && context !== "" ? ` (${context})` : ""
+      logger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(platform.raw())}${suffix}`)
+    }
+  }
+}
+
+export const makeEngineServices = (opts?: EngineServiceOptions): EngineServices => {
+  const platform = makePlatform()
+  const logger = makeLogger(opts?.sinks ?? {})
+  return {
+    logger,
     deps: makeDependencyManager(platform),
     platform
   }

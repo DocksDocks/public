@@ -1,5 +1,14 @@
 {
   "cases": {
+    "fixture=home-drift cmd=model claude": {
+      "command": [
+        "model",
+        "claude"
+      ],
+      "exitCode": 0,
+      "fixture": "home-drift",
+      "output": "deployed: sonnet\nSoT:      opus\nAvailable claude models (kit-verified 2026-07-08 — SoT/models.json):\n  best  — Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus  — latest Opus (currently Opus 4.8) — the kit SoT default, paired with the fable advisor\n  fable  — Fable 5 — needs org access + Claude Code >=2.1.170\n  sonnet  — latest Sonnet (currently Sonnet 5)\n  haiku  — latest Haiku (currently Haiku 4.5)\n  default  — engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5  — Fable 5\n  claude-opus-4-8  — Opus 4.8\n  claude-sonnet-5  — Sonnet 5\n  claude-haiku-4-5-20251001  — Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n"
+    },
     "fixture=home-drift cmd=sync --dry-run": {
       "command": [
         "sync",

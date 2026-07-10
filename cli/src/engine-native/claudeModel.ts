@@ -7,9 +7,9 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import type { Ctx } from "./index"
 import { isObject, jqStringify, parseJson } from "./jq"
-import { change, echo, err, verbose, warn } from "./logger"
 
 export function syncClaudeModel(ctx: Ctx, model: string): void {
+  const { change, echo, err, verbose, warn } = ctx.services.logger
   const userSettings = p(ctx.home, ".claude", "settings.json")
 
   if (model === "") return

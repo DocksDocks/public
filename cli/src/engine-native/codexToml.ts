@@ -8,7 +8,6 @@ import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import type { Ctx } from "./index"
-import { change, echo, verbose, warn } from "./logger"
 
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
   const lines = content.split("\n")
@@ -50,6 +49,7 @@ export function replaceTopLevelSettingInFile(file: string, key: string, replacem
 }
 
 export function syncCodexModel(ctx: Ctx, model: string): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
   const userCodexSettings = p(ctx.home, ".codex", "config.toml")
 
   if (model === "") return

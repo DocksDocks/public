@@ -5,7 +5,7 @@
  */
 import { spawnSync } from "node:child_process"
 import { accessSync, chmodSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
-import { delimiter, join } from "node:path"
+import { delimiter, isAbsolute, join } from "node:path"
 
 /**
  * Engine paths are built with "/" because they appear verbatim in output
@@ -24,6 +24,9 @@ export function capture(cmd: string, args: ReadonlyArray<string>): string {
 
 /** `command -v` — resolve a name on PATH (PATHEXT-aware on Windows). */
 export function which(name: string): string {
+  if (isAbsolute(name) || name.includes("/") || name.includes("\\")) {
+    return isExecutable(name) ? name : ""
+  }
   const exts = process.platform === "win32" ? (process.env["PATHEXT"] ?? ".EXE;.CMD;.BAT;.COM").split(";").concat("") : [""]
   for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
     if (dir === "") continue

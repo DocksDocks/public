@@ -10,19 +10,18 @@ import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { echo, err, setVerbose, warn } from "./logger"
 import { rtkInstall } from "./claudeSync"
 import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
 
 export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
+  const { echo, err, warn } = ctx.services.logger
   let tool = ""
   let value = ""
   for (const arg of args) {
     if (arg === "--dry-run") ctx.dryRun = true
     else if (arg === "--verbose") {
       ctx.verbose = true
-      setVerbose(true)
     } else if (arg === "claude" || arg === "codex") tool = arg
     else if (arg.startsWith("-")) {
       err(`Unknown flag for model: ${arg}`)
@@ -52,20 +51,20 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
       echo(`deployed: ${tomlModelField(deployed)}`)
       echo(`SoT:      ${tomlModelField(p(ctx.repoDir, "SoT", ".codex", "config.toml"))}`)
     }
-    printModels(ctx.repoDir, tool)
+    printModels(ctx, tool)
     return 0
   }
 
   if (tool === "claude") {
-    if (!validateClaudeModel(ctx.repoDir, value)) {
-      printModels(ctx.repoDir, "claude")
+    if (!validateClaudeModel(ctx, value)) {
+      printModels(ctx, "claude")
       err(`Invalid Claude model '${value}'`)
       return 2
     }
     syncClaudeModel(ctx, value)
   } else {
-    if (!validateCodexModel(ctx.repoDir, value)) {
-      printModels(ctx.repoDir, "codex")
+    if (!validateCodexModel(ctx, value)) {
+      printModels(ctx, "codex")
       err(`Invalid Codex model '${value}'`)
       return 2
     }
@@ -101,6 +100,7 @@ function tomlModelField(file: string): string {
 }
 
 export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
+  const { err } = ctx.services.logger
   const words = args.filter((a) => !a.startsWith("--"))
   const op = words[0] ?? args[0] ?? "check"
   const tool = words[1] ?? args[1] ?? ""
@@ -108,7 +108,6 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
     if (arg === "--yes") ctx.assumeYes = true
     else if (arg === "--verbose") {
       ctx.verbose = true
-      setVerbose(true)
     }
   }
 
@@ -129,7 +128,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
       return ensure(ctx, "rtk", rtkInstall(ctx))
     case "bun":
       // skills::_bun_bootstrap >/dev/null — the found-bun stdout is discarded.
-      return bunBootstrap(ctx) !== "" ? 0 : 1
+      return bunBootstrap(ctx, ctx.services) !== "" ? 0 : 1
     case "effect-solutions":
       return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
     case "agent-browser":

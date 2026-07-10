@@ -4,10 +4,8 @@
  * early parser exit and is caught once in runEngineNative.
  */
 
-import { commandExists } from "./exec"
 import type { Ctx } from "./index"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { echo, err, setVerbose, warn } from "./logger"
 
 export class ExitError extends Error {
   constructor(readonly code: number) {
@@ -18,6 +16,7 @@ export class ExitError extends Error {
 const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
 
 function usage(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   const argv0 = "docks-kit sync"
   echo(`Usage: ${argv0} [claude] [codex] [agents] [flags]`)
   echo("")
@@ -67,6 +66,7 @@ export function parseCompactWindow(v: string): string | undefined {
 }
 
 function addClaudePlugin(ctx: Ctx, name: string): void {
+  const { err } = ctx.services.logger
   if (!KNOWN_CLAUDE_OPTIN_PLUGINS.includes(name)) {
     err(`Unknown opt-in plugin '${name}'. Known: ${KNOWN_CLAUDE_OPTIN_PLUGINS.join(", ")}`)
     throw new ExitError(2)
@@ -82,6 +82,7 @@ function selectTarget(ctx: Ctx, target: string): void {
 }
 
 export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
+  const { err } = ctx.services.logger
   for (const arg of args) {
     switch (arg) {
       case "claude":
@@ -106,14 +107,13 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         continue
       case "--verbose":
         ctx.verbose = true
-        setVerbose(true)
         continue
       case "--claude-model":
-        printModels(ctx.repoDir, "claude")
+        printModels(ctx, "claude")
         err("--claude-model requires a value: --claude-model=<model>")
         throw new ExitError(2)
       case "--codex-model":
-        printModels(ctx.repoDir, "codex")
+        printModels(ctx, "codex")
         err("--codex-model requires a value: --codex-model=<model>")
         throw new ExitError(2)
       case "--claude-compact-window":
@@ -185,14 +185,15 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
 }
 
 export function preflight(ctx: Ctx): void {
+  const { err } = ctx.services.logger
   if (ctx.syncClaude || ctx.syncCodex) {
-    if (!commandExists("jq")) {
+    if (ctx.services.deps.probe("jq").state === "missing") {
       err(`jq is required (deployed statusline/hooks call it). Install: ${ctx.services.deps.spec("jq").installHint()}`)
       throw new ExitError(1)
     }
   }
   if (ctx.syncClaude) {
-    if (!commandExists("curl")) {
+    if (ctx.services.deps.probe("curl").state === "missing") {
       err(`curl is required. Install: ${ctx.services.deps.spec("curl").installHint()}`)
       throw new ExitError(1)
     }
@@ -200,12 +201,13 @@ export function preflight(ctx: Ctx): void {
 }
 
 export function validateModelFlags(ctx: Ctx): void {
+  const { err, warn } = ctx.services.logger
   if (ctx.claudeModel !== "") {
     if (!ctx.syncClaude) {
       warn("--claude-model ignored: claude target not selected")
       ctx.claudeModel = ""
-    } else if (!validateClaudeModel(ctx.repoDir, ctx.claudeModel)) {
-      printModels(ctx.repoDir, "claude")
+    } else if (!validateClaudeModel(ctx, ctx.claudeModel)) {
+      printModels(ctx, "claude")
       err(`Invalid Claude model '${ctx.claudeModel}' — use an alias above or a full claude-* ID`)
       throw new ExitError(2)
     }
@@ -214,8 +216,8 @@ export function validateModelFlags(ctx: Ctx): void {
     if (!ctx.syncCodex) {
       warn("--codex-model ignored: codex target not selected")
       ctx.codexModel = ""
-    } else if (!validateCodexModel(ctx.repoDir, ctx.codexModel)) {
-      printModels(ctx.repoDir, "codex")
+    } else if (!validateCodexModel(ctx, ctx.codexModel)) {
+      printModels(ctx, "codex")
       err(`Invalid Codex model '${ctx.codexModel}' — must match ^[A-Za-z0-9._-]+$`)
       throw new ExitError(2)
     }

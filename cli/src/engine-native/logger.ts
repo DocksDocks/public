@@ -17,7 +17,6 @@ export interface Logger {
 }
 
 export interface LoggerSinks {
-  readonly isVerbose: () => boolean
   readonly stderr?: (chunk: string) => void
   readonly stdout?: (chunk: string) => void
 }
@@ -28,28 +27,9 @@ export function makeLogger(sinks: LoggerSinks): Logger {
   const ok = (msg: string): void => errWrite(`\x1b[1;32m[ok]\x1b[0m ${msg}\n`)
   return {
     change: ok,
-    verbose: (msg) => {
-      if (sinks.isVerbose()) ok(msg)
-    },
+    verbose: ok,
     warn: (msg) => errWrite(`\x1b[1;33m[warn]\x1b[0m ${msg}\n`),
     err: (msg) => errWrite(`\x1b[1;31m[err]\x1b[0m ${msg}\n`),
     echo: (line) => outWrite(`${line}\n`)
   }
 }
-
-// Engine-wide default instance. Verbosity comes from DOCKS_KIT_VERBOSE=1
-// (raw channel) or --verbose via the flag layer → setVerbose. The Effect rim
-// wraps makeLogger in a Layer; engine internals consume these bindings.
-let verboseFlag = process.env["DOCKS_KIT_VERBOSE"] === "1"
-
-export function setVerbose(v: boolean): void {
-  verboseFlag = v
-}
-
-const active = makeLogger({ isVerbose: () => verboseFlag })
-
-export const change = active.change
-export const verbose = active.verbose
-export const warn = active.warn
-export const err = active.err
-export const echo = active.echo

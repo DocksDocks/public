@@ -4,12 +4,13 @@
  */
 import { readFileSync, readSync } from "node:fs"
 
-import { capture, commandExists, isExecutable, p } from "./exec"
+import type { ToolId } from "./deps"
+import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
-import { echo, verbose, warn } from "./logger"
+import type { EngineServices } from "./services"
 
-type InstallFn = (mode: "install" | "upgrade", version: string) => number
+type InstallFn = (mode: "install" | "upgrade", version: string, services: EngineServices) => number
 
 function manifest(ctx: Ctx): { [k: string]: Json } {
   const doc = parseJson(readFileSync(p(ctx.repoDir, "SoT", "toolchain.json"), "utf8"))
@@ -37,15 +38,8 @@ export function isNewer(a: string, b: string): boolean {
   return compareCodepoints(a, b) > 0
 }
 
-export function present(ctx: Ctx, tool: string): boolean {
-  if (tool === "bun") {
-    return (
-      commandExists("bun") ||
-      isExecutable(p(process.env["BUN_INSTALL"] ?? p(ctx.home, ".bun"), "bin", "bun")) ||
-      isExecutable(p(ctx.home, ".bun", "bin", "bun"))
-    )
-  }
-  return commandExists(tool)
+export function present(ctx: Ctx, tool: ToolId): boolean {
+  return ctx.services.deps.probe(tool).state === "present"
 }
 
 function firstLineField(out: string, index: number): string {
@@ -53,67 +47,51 @@ function firstLineField(out: string, index: number): string {
   return fields[index === -1 ? fields.length - 1 : index] ?? ""
 }
 
-export function installedVersion(ctx: Ctx, tool: string): string {
-  if (!present(ctx, tool)) return ""
+export function installedVersion(ctx: Ctx, tool: ToolId): string {
+  const version = (): string => ctx.services.deps.version(tool)
   switch (tool) {
     case "rtk":
-      return firstLineField(capture("rtk", ["--version"]), 1)
+      return firstLineField(version(), 1)
     case "claude":
-      return firstLineField(capture("claude", ["--version"]), 0)
+      return firstLineField(version(), 0)
     case "codex":
-      return firstLineField(capture("codex", ["--version"]), -1)
-    case "bun":
-      return commandExists("bun") ? capture("bun", ["--version"]) : capture(p(ctx.home, ".bun", "bin", "bun"), ["--version"])
     case "agent-browser":
-      return firstLineField(capture("agent-browser", ["--version"]), -1)
-    case "effect-solutions": {
-      const bunbin = commandExists("bun") ? "bun" : p(ctx.home, ".bun", "bin", "bun")
-      if (bunbin !== "bun" && !isExecutable(bunbin)) return ""
-      const m = /effect-solutions@([0-9][0-9.]*)/.exec(capture(bunbin, ["pm", "-g", "ls"]))
-      return m?.[1] ?? ""
-    }
+      return firstLineField(version(), -1)
     case "git":
-      return firstLineField(capture("git", ["--version"]), 2)
+      return firstLineField(version(), 2)
     case "node":
-      return capture("node", ["--version"]).replace(/^v/, "")
-    case "npm":
-      return capture("npm", ["--version"])
+      return version().replace(/^v/, "")
     case "jq":
-      return capture("jq", ["--version"]).replace(/^jq-/, "")
+      return version().replace(/^jq-/, "")
     case "curl":
-      return firstLineField(capture("curl", ["--version"]), 1)
     case "tsc":
-      return firstLineField(capture("tsc", ["--version"]), 1)
+      return firstLineField(version(), 1)
+    case "bun":
+    case "effect-solutions":
+    case "npm":
+      return version()
     default:
       return ""
   }
 }
 
-export function latestVersion(tool: string): string {
-  switch (tool) {
-    case "rtk": {
-      const body = capture("curl", ["-fsSL", "--max-time", "5", "https://api.github.com/repos/rtk-ai/rtk/releases/latest"])
-      const doc = parseJson(body)
-      const tag = doc !== undefined && isObject(doc) && typeof doc["tag_name"] === "string" ? doc["tag_name"] : ""
-      return tag.replace(/^v/, "")
-    }
-    case "agent-browser":
-    case "effect-solutions":
-      return commandExists("npm") ? capture("npm", ["view", tool, "version"]) : ""
-    default:
-      return ""
-  }
+export function latestVersion(ctx: Ctx, tool: ToolId): string {
+  return ctx.services.deps.latest(tool)
 }
 
 /** Blocking TTY prompt matching bash `read -r -p` (prompt on stderr). */
-function promptLine(prompt: string): string {
-  process.stderr.write(prompt)
+export function promptLine(
+  prompt: string,
+  write: (chunk: string) => void = (chunk) => void process.stderr.write(chunk),
+  readByte: (buffer: Buffer) => number = (buffer) => readSync(0, buffer, 0, 1, null)
+): string {
+  write(prompt)
   const buf = Buffer.alloc(1)
   let line = ""
   for (;;) {
     let n: number
     try {
-      n = readSync(0, buf, 0, 1, null)
+      n = readByte(buf)
     } catch {
       break
     }
@@ -127,6 +105,7 @@ function promptLine(prompt: string): string {
 
 /** toolchain::_gate — { proceed, target } ("" target = latest). */
 function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: string): { proceed: boolean; target: string } {
+  const { warn } = ctx.services.logger
   const verified = field(ctx, tool, "verified")
   const pinnable = field(ctx, tool, "pinnable")
 
@@ -138,7 +117,7 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
   }
 
   if (process.stdin.isTTY === true) {
-    process.stderr.write(`\x1b[1;33m[warn]\x1b[0m ${tool} ${latest} is not kit-verified (verified: ${verified}).\n`)
+    ctx.services.logger.warn(`${tool} ${latest} is not kit-verified (verified: ${verified}).`)
     const answer = promptLine(`Install ${tool} ${latest} anyway? [y/N] `)
     if (/^[yY]/.test(answer)) return { proceed: true, target: "" }
   }
@@ -153,11 +132,12 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
   return { proceed: false, target: "" }
 }
 
-export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
+export function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): number {
+  const { echo, verbose, warn } = ctx.services.logger
   const policy = field(ctx, tool, "policy")
 
   if (!present(ctx, tool)) {
-    const latest = latestVersion(tool)
+    const latest = latestVersion(ctx, tool)
     if (ctx.dryRun) {
       echo(`[dry-run] would install ${tool} (${latest !== "" ? latest : "latest"}, gated by toolchain.json verified pin)`)
       return 0
@@ -176,7 +156,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
       if (!g.proceed) return 0
       target = g.target
     }
-    return installFn("install", target !== "" ? target : latest)
+    return installFn("install", target !== "" ? target : latest, ctx.services)
   }
 
   const installed = installedVersion(ctx, tool)
@@ -191,7 +171,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
     return 0
   }
 
-  const latest = latestVersion(tool)
+  const latest = latestVersion(ctx, tool)
   if (latest === "") {
     if (ctx.dryRun) {
       echo(`[dry-run] ${tool} present (${installedLabel}); latest unknown (offline?) — no action`)
@@ -208,7 +188,7 @@ export function ensure(ctx: Ctx, tool: string, installFn: InstallFn): number {
     }
     const g = gate(ctx, tool, "upgrade", latest)
     if (!g.proceed) return 0
-    return installFn("upgrade", g.target !== "" ? g.target : latest)
+    return installFn("upgrade", g.target !== "" ? g.target : latest, ctx.services)
   }
 
   if (ctx.dryRun) {
@@ -225,6 +205,7 @@ function row(cells: [string, string, string, string, string, string]): string {
 }
 
 export function report(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
   const pn = ctx.services.platform.name()
   const platformOs = pn === "unknown" ? "" : pn
@@ -241,8 +222,9 @@ export function report(ctx: Ctx): void {
     }
     let installed: string
     let status: string
-    if (present(ctx, tool)) {
-      installed = installedVersion(ctx, tool)
+    const toolId = tool as ToolId
+    if (present(ctx, toolId)) {
+      installed = installedVersion(ctx, toolId)
       status = "ok"
       if (floor !== "" && installed !== "" && isNewer(floor, installed)) {
         status = "below-floor"

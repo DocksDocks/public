@@ -45,6 +45,10 @@ const COMMANDS: Array<Array<string>> = [
   ["sync", "claude", "--dry-run", "--claude-model=fable", "--claude-compact-window=680k", "--claude-permissive"],
   ["sync", "claude", "--dry-run", "--claude-plugin=supabase"]
 ]
+const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [
+  ...FIXTURES.flatMap((fixture) => COMMANDS.map((cmd) => ({ fixture, cmd }))),
+  { fixture: "home-drift", cmd: ["model", "claude"] }
+]
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
 const { proveRed, updateGoldens } = parseArgs(process.argv)
@@ -77,12 +81,10 @@ function mismatchedGolden(label: string, goldens: DryRunGolden): DryRunCaseGolde
 
 if (updateGoldens) {
   const cases: Record<string, DryRunCaseGolden> = {}
-  for (const fixture of FIXTURES) {
-    for (const cmd of COMMANDS) {
-      const label = labelFor(fixture, cmd)
-      if (!labelSelected(label)) continue
-      cases[label] = runCase(fixture, cmd)
-    }
+  for (const { fixture, cmd } of MATRIX) {
+    const label = labelFor(fixture, cmd)
+    if (!labelSelected(label)) continue
+    cases[label] = runCase(fixture, cmd)
   }
   mkdirSync(dirname(GOLDEN_PATH), { recursive: true })
   writeFileSync(GOLDEN_PATH, stableStringify({ version: 1, cases } satisfies DryRunGolden))
@@ -94,30 +96,28 @@ const goldens = readGoldens()
 let failures = 0
 let checked = 0
 
-for (const fixture of FIXTURES) {
-  for (const cmd of COMMANDS) {
-    const label = labelFor(fixture, cmd)
-    if (!labelSelected(label)) continue
-    const expected = proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
-    if (expected === undefined) {
-      failures++
-      banner(`MISSING GOLDEN ${label}`)
-      console.log("  run with --update-goldens to record this case")
-      continue
-    }
-    const actual = runCase(fixture, cmd)
-    checked++
-    const problems = [
-      ...(actual.exitCode === expected.exitCode
-        ? []
-        : [`  exit codes differ: actual=${actual.exitCode} expected=${expected.exitCode}`]),
-      ...diffText("dry-run output", actual.output, expected.output)
-    ]
-    if (problems.length > 0) {
-      failures++
-      banner(`GOLDEN MISMATCH ${label}`)
-      for (const p of problems) console.log(p)
-    }
+for (const { fixture, cmd } of MATRIX) {
+  const label = labelFor(fixture, cmd)
+  if (!labelSelected(label)) continue
+  const expected = proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
+  if (expected === undefined) {
+    failures++
+    banner(`MISSING GOLDEN ${label}`)
+    console.log("  run with --update-goldens to record this case")
+    continue
+  }
+  const actual = runCase(fixture, cmd)
+  checked++
+  const problems = [
+    ...(actual.exitCode === expected.exitCode
+      ? []
+      : [`  exit codes differ: actual=${actual.exitCode} expected=${expected.exitCode}`]),
+    ...diffText("dry-run output", actual.output, expected.output)
+  ]
+  if (problems.length > 0) {
+    failures++
+    banner(`GOLDEN MISMATCH ${label}`)
+    for (const p of problems) console.log(p)
   }
 }
 

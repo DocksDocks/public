@@ -1,5 +1,9 @@
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { DEPENDENCIES } from "../../src/engine-native/deps"
+import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
+import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
 
 describe("DependencyManager registry", () => {
   it("gives the win32 git hint (winget)", () => {
@@ -15,6 +19,12 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.npm.installHint()).toContain("Node.js")
     expect(DEPENDENCIES.npx.installHint()).toContain("Node.js")
     expect(DEPENDENCIES.npm.requirement).toBe("optional")
+  })
+
+  it("registers Chrome-for-Testing, LSP binaries, and ffplay", () => {
+    expect(Object.keys(DEPENDENCIES)).toEqual(
+      expect.arrayContaining(["chrome-for-testing", "intelephense", "typescript-language-server", "tsc", "ffplay"])
+    )
   })
 
   it("gives platform-correct jq hints", () => {
@@ -36,5 +46,87 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.curl.requirement).toBe("required")
     expect(DEPENDENCIES.git.requirement).toBe("optional")
     expect(DEPENDENCIES.claude.requirement).toBe("optional")
+  })
+
+  it("locates only the platform-correct effect-solutions executable", () => {
+    const globalBin = "/bun/global/bin"
+    const executor = (files: ReadonlyArray<string>): ProbeExecutor => ({
+      commandExists: (name) => name === "effect-solutions",
+      capture: (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
+      which: (name) => (name === "bun" || files.includes(name) ? name : "")
+    })
+
+    const unixBare = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions`]))
+    expect(unixBare.path("effect-solutions")).toBe(`${globalBin}/effect-solutions`)
+
+    const unixStaleShim = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions.cmd`]))
+    expect(unixStaleShim.path("effect-solutions")).toBe("")
+
+    const windowsShim = makeDependencyManager(makePlatform("win32"), executor([`${globalBin}/effect-solutions.cmd`]))
+    expect(windowsShim.path("effect-solutions")).toBe(`${globalBin}/effect-solutions.cmd`)
+  })
+
+  it("preserves the original fixed-home Bun version fallbacks", () => {
+    const previousHome = process.env["HOME"]
+    const previousBunInstall = process.env["BUN_INSTALL"]
+    const calls: Array<[string, ReadonlyArray<string>]> = []
+    try {
+      process.env["HOME"] = "/fixture-home"
+      process.env["BUN_INSTALL"] = "/custom-bun"
+      const manager = makeDependencyManager(makePlatform("linux"), {
+        commandExists: (name) => name === "effect-solutions",
+        capture: (cmd, args) => {
+          calls.push([cmd, args])
+          return cmd === "/custom-bun/bin/bun" ? "effect-solutions@0.5.3" : ""
+        },
+        which: (name) => (name === "/custom-bun/bin/bun" ? name : "")
+      })
+
+      expect(manager.version("bun")).toBe("")
+      expect(manager.version("effect-solutions")).toBe("")
+      expect(calls).toEqual([["/fixture-home/.bun/bin/bun", ["--version"]]])
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
+      else process.env["BUN_INSTALL"] = previousBunInstall
+    }
+  })
+
+  it("finds agent-browser managed Chrome without invoking a command", () => {
+    const root = mkdtempSync(join(tmpdir(), "deps-chrome-"))
+    const previousHome = process.env["HOME"]
+    const executable = join(root, ".agent-browser", "browsers", "chrome-148.0.0.0", "chrome")
+    const captures: Array<[string, ReadonlyArray<string>]> = []
+    try {
+      mkdirSync(join(executable, ".."), { recursive: true })
+      writeFileSync(executable, "#!/bin/sh\n")
+      chmodSync(executable, 0o755)
+      process.env["HOME"] = root
+      const manager = makeDependencyManager(makePlatform("linux"), {
+        commandExists: () => false,
+        capture: (cmd, args) => {
+          captures.push([cmd, args])
+          return ""
+        },
+        which: (name) => (name === executable ? name : "")
+      })
+
+      expect(manager.probe("chrome-for-testing")).toEqual({ state: "present", path: executable })
+      expect(captures).toEqual([])
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("keeps presence results focused on presence and path", () => {
+    const manager = makeDependencyManager(makePlatform("linux"), {
+      commandExists: () => true,
+      capture: () => "9.9.9",
+      which: (name) => `/stub/${name}`
+    })
+    expect(manager.probe("git")).toEqual({ state: "present", path: "/stub/git" })
   })
 })

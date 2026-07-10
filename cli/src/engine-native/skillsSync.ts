@@ -7,11 +7,10 @@
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { capture, commandExists, isExecutable, p, which, writeFileIfChanged } from "./exec"
-import { isLinux, isWindows } from "./os"
+import { p, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
-import { change, echo, verbose, warn } from "./logger"
+import type { EngineServices, Platform } from "./services"
 import { ensure, field } from "./toolchain"
 
 export interface SkillsState {
@@ -59,8 +58,9 @@ function readSlugs(file: string): Array<string> {
 }
 
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
-  if (!commandExists("npx")) {
-    ctx.services.deps.warnMissing("npx", "skipping universal skills bootstrap")
+  const { change, echo, verbose, warn } = ctx.services.logger
+  if (ctx.services.deps.probe("npx").state === "missing") {
+    ctx.services.deps.warnMissing("npx", ctx.services.logger, "skipping universal skills bootstrap")
     return
   }
 
@@ -128,6 +128,7 @@ function isDir(path: string): boolean {
 
 /** skills::heal_claude_symlink — true when a heal occurred. */
 function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
+  const { echo, warn } = ctx.services.logger
   const canonical = p(skillsDir, base)
   const claudeSkillsDir = p(ctx.home, ".claude", "skills")
   const claudeLink = p(claudeSkillsDir, base)
@@ -159,7 +160,7 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
   }
 
   mkdirSync(claudeSkillsDir, { recursive: true })
-  return linkOrCopy(relTarget, claudeLink)
+  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services)
 }
 
 function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
@@ -204,10 +205,10 @@ function removeLink(path: string): boolean {
 }
 
 /** skills::_link_or_copy — real symlink preferred, copy fallback (Windows). */
-export function linkOrCopy(target: string, link: string): boolean {
+export function linkOrCopy(target: string, link: string, platform: Platform): boolean {
   removeLink(link)
   try {
-    symlinkSync(target, link, isWindows() ? "dir" : undefined)
+    symlinkSync(target, link, platform.isWindows() ? "dir" : undefined)
   } catch {
     // fall through to the copy fallback below
   }
@@ -219,21 +220,27 @@ export function linkOrCopy(target: string, link: string): boolean {
   } catch {
     // fall through to the existence check below
   }
-  if (existsSync(link)) {
-    warn(`symlinks unsupported here — ${link} is a copy (refreshed on sync; enable Windows Developer Mode for real links)`)
-    return true
+  return existsSync(link)
+}
+
+function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): boolean {
+  const linked = linkOrCopy(target, link, services.platform)
+  if (!linked) {
+    services.logger.warn(`could not create ${link} (symlink and copy both failed)`)
+  } else if (lstat(link)?.isSymbolicLink() !== true) {
+    services.logger.warn(`symlinks unsupported here — ${link} is a copy (refreshed on sync; enable Windows Developer Mode for real links)`)
   }
-  warn(`could not create ${link} (symlink and copy both failed)`)
-  return false
+  return linked
 }
 
 // ------------------------------------------------- toolchain callbacks ----
 
 /** skills::_agent_browser_install. */
-export function agentBrowserInstall(mode: "install" | "upgrade", version: string): number {
+export function agentBrowserInstall(mode: "install" | "upgrade", version: string, services: EngineServices): number {
+  const { change, verbose, warn } = services.logger
   const verb = mode === "upgrade" ? "Upgrading" : "Installing"
   const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
-  const installFlags = isLinux() ? ["--with-deps"] : []
+  const installFlags = services.platform.isLinux() ? ["--with-deps"] : []
 
   verbose(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
   if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
@@ -248,7 +255,7 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
       return 1
     }
   }
-  const out = capture("agent-browser", ["--version"])
+  const out = services.deps.version("agent-browser")
   const fields = (out.split("\n")[0] ?? "").trim().split(/[ \t]+/)
   const version2 = out !== "" ? fields[fields.length - 1] ?? "version unknown" : "version unknown"
   change(`agent-browser CLI ready (${version2})`)
@@ -256,10 +263,13 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
 }
 
 function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
+  const { warn } = ctx.services.logger
   if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
 
-  if (!commandExists("npm")) {
-    if (!ctx.dryRun) ctx.services.deps.warnMissing("npm", "cannot auto-install agent-browser CLI; re-run sync after installing")
+  if (ctx.services.deps.probe("npm").state === "missing") {
+    if (!ctx.dryRun) {
+      ctx.services.deps.warnMissing("npm", ctx.services.logger, "cannot auto-install agent-browser CLI; re-run sync after installing")
+    }
     return
   }
 
@@ -270,21 +280,16 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
 
 /** skills::_find_bun — resolved bun path or "". */
 function findBun(ctx: Ctx): string {
-  const onPath = which("bun")
-  if (onPath !== "") return onPath
-  const bunInstall = process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== "" ? process.env["BUN_INSTALL"] : p(ctx.home, ".bun")
-  for (const cand of [p(bunInstall, "bin", "bun"), p(ctx.home, ".bun", "bin", "bun")]) {
-    if (isExecutable(cand)) return cand
-  }
-  return ""
+  return ctx.services.deps.path("bun")
 }
 
 /** skills::_bun_bootstrap — bun path or "" after a failed bootstrap. */
-export function bunBootstrap(ctx: Ctx): string {
+export function bunBootstrap(ctx: Ctx, services: EngineServices): string {
+  const { change, warn } = services.logger
   let bun = findBun(ctx)
   if (bun !== "") return bun
 
-  if (!commandExists("curl")) {
+  if (services.deps.probe("curl").state === "missing") {
     warn("Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync.")
     return ""
   }
@@ -301,18 +306,21 @@ export function bunBootstrap(ctx: Ctx): string {
     warn("Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh")
     return ""
   }
-  const v = capture(bun, ["--version"])
-  change(`Bun installed (${v !== "" ? v : "version unknown"})`)
+  const version = services.deps.version("bun")
+  change(`Bun installed (${version !== "" ? version : "version unknown"})`)
   return bun
 }
 
 /** skills::_effect_solutions_install. */
-export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string) => number {
-  return (mode, version) => {
+export function effectSolutionsInstall(
+  ctx: Ctx
+): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
+  return (mode, version, services) => {
+    const { change, verbose, warn } = services.logger
     const verb = mode === "upgrade" ? "Upgrading" : "Installing"
     const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
 
-    const bun = bunBootstrap(ctx)
+    const bun = bunBootstrap(ctx, services)
     if (bun === "") return 1
 
     verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
@@ -321,20 +329,20 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
       return 1
     }
 
-    const gbin = capture(bun, ["pm", "-g", "bin"])
+    const location = services.deps.location("effect-solutions")
+    const gbin = location.binDir
     // win32: bun writes an .exe shim (not the bare Unix name), and the
     // ~/.local/bin link step below is Unix-only plumbing (non-interactive
     // agent PATH) — bun's global bin is already the Windows PATH entry.
-    if (isWindows()) {
-      const found = gbin !== "" && ["exe", "cmd", "bunx"].some((ext) => existsSync(p(gbin, `effect-solutions.${ext}`)))
-      if (found) change(`effect-solutions CLI ready (${gbin})`)
+    if (services.platform.isWindows()) {
+      if (location.path !== "") change(`effect-solutions CLI ready (${gbin})`)
       else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
       return 0
     }
-    if (gbin !== "" && isExecutable(p(gbin, "effect-solutions"))) {
+    if (location.path !== "") {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
-      linkOrCopy(bun, p(ctx.home, ".local", "bin", "bun"))
-      linkOrCopy(p(gbin, "effect-solutions"), p(ctx.home, ".local", "bin", "effect-solutions"))
+      linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)
+      linkOrCopyWithWarnings(location.path, p(ctx.home, ".local", "bin", "effect-solutions"), services)
       change("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
     } else {
       warn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)
@@ -344,6 +352,7 @@ export function effectSolutionsInstall(ctx: Ctx): (mode: "install" | "upgrade", 
 }
 
 function syncEffectSolutionsCli(ctx: Ctx): void {
+  const { warn } = ctx.services.logger
   const settings = p(ctx.repoDir, "SoT", ".claude", "settings.json")
   if (!existsSync(settings)) return
   if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(readFileSync(settings, "utf8"))) return
@@ -356,6 +365,7 @@ function syncEffectSolutionsCli(ctx: Ctx): void {
 // ----------------------------------------------------- prune + snapshot ----
 
 function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
+  const { change, echo, warn } = ctx.services.logger
   if (!existsSync(snapshot)) {
     if (ctx.dryRun) {
       echo(
@@ -404,6 +414,7 @@ function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string): void {
 // -------------------------------------------------------------- summary ----
 
 export function skillsSummary(ctx: Ctx, state: SkillsState): void {
+  const { echo } = ctx.services.logger
   echo(`Skills:   ${p(ctx.agentsDir, "skills")}`)
   if (!ctx.dryRun) {
     echo(`          ${state.present} universal skill(s) installed`)

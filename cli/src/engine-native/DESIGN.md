@@ -101,7 +101,11 @@ tests.
 
 `--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands;
 `DOCKS_KIT_VERBOSE=1` selects it on the harness-private raw channel (same
-`${VAR:-default}` contract as the other `Ctx` env globals).
+`${VAR:-default}` contract as the other `Ctx` env globals). The default
+service factory returns a raw Logger. `runEngineNative` wraps the default or
+injected Logger with explicit delegates and owns the sole `ctx.verbose` gate.
+There is no factory-level verbosity callback, module-global verbosity flag, or
+active logger binding.
 
 ## Module Map
 
@@ -120,10 +124,10 @@ tests.
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
 | `exec.ts` | path helpers, command probes, capture/spawn wrappers, Windows command resolution, change-detecting write/copy helpers |
-| `logger.ts` | stable stdout/stderr emitters and the verbose gate (`change`/`verbose`/`warn`/`err`/`echo`) |
-| `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, dedup'd missing-tool warns |
+| `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
+| `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
 | `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isWindows`, `isLinux`, shell-rc applicability) |
-| `services.ts` | shared service factory (`makeEngineServices`: Logger + DependencyManager + Platform) — wrapped in Effect Layers at `cli/src/services.ts`, called directly by native-raw and `engineCapture` |
+| `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
 
 ## Windows Specifics
 

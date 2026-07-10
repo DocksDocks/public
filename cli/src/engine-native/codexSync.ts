@@ -7,11 +7,9 @@ import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
-import { DEPENDENCIES } from "./deps"
-import { capture, commandExists, p } from "./exec"
+import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { change, echo, err, verbose, warn } from "./logger"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -32,6 +30,7 @@ export function codexSync(ctx: Ctx): void {
 // ---------------------------------------------------------- bubblewrap ----
 
 function ensureBubblewrap(ctx: Ctx): void {
+  const { change, echo, warn } = ctx.services.logger
   if (!bwrapSupportedOs(ctx)) return
 
   if (ctx.dryRun) {
@@ -39,7 +38,7 @@ function ensureBubblewrap(ctx: Ctx): void {
     return
   }
 
-  if (commandExists("bwrap")) return
+  if (ctx.services.deps.probe("bwrap").state === "present") return
 
   if (ctx.skipRtk) {
     warn(
@@ -48,7 +47,7 @@ function ensureBubblewrap(ctx: Ctx): void {
     return
   }
 
-  const pmInstall = bwrapDetectPmInstallCmd()
+  const pmInstall = bwrapDetectPmInstallCmd(ctx)
   if (pmInstall === "") {
     warn(
       "bubblewrap not installed and no supported package manager found (apt-get/dnf/pacman/zypper). Codex may use its bundled helper if user namespaces work; install system bubblewrap manually when possible."
@@ -63,14 +62,13 @@ function ensureBubblewrap(ctx: Ctx): void {
     return
   }
 
-  if (!commandExists("bwrap")) {
+  if (ctx.services.deps.probe("bwrap").state === "missing") {
     warn("Package install reported success but bwrap not on PATH — check installation manually")
     return
   }
 
   if (spawnSync("unshare", ["-Ur", "true"], { stdio: "ignore" }).status === 0) {
-    const version = capture("bwrap", ["--version"]).split("\n")[0] ?? ""
-    change(`bubblewrap installed and functional (${version})`)
+    change(`bubblewrap installed and functional (${ctx.services.deps.version("bwrap")})`)
   } else {
     warn(
       "bubblewrap installed but unprivileged user namespaces appear blocked. On Ubuntu 24.04+, prefer loading the AppArmor bwrap-userns-restrict profile; fallback: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
@@ -79,6 +77,7 @@ function ensureBubblewrap(ctx: Ctx): void {
 }
 
 function bwrapSupportedOs(ctx: Ctx): boolean {
+  const { warn } = ctx.services.logger
   const pn = ctx.services.platform.name()
   if (pn === "linux") return true
   if (pn === "darwin" || pn === "windows") return false
@@ -86,17 +85,18 @@ function bwrapSupportedOs(ctx: Ctx): boolean {
   return false
 }
 
-function bwrapDetectPmInstallCmd(): string {
-  if (commandExists("apt-get")) return "sudo apt-get install -y bubblewrap"
-  if (commandExists("dnf")) return "sudo dnf install -y bubblewrap"
-  if (commandExists("pacman")) return "sudo pacman -S --noconfirm bubblewrap"
-  if (commandExists("zypper")) return "sudo zypper install -y bubblewrap"
+function bwrapDetectPmInstallCmd(ctx: Ctx): string {
+  if (ctx.services.deps.probe("apt-get").state === "present") return "sudo apt-get install -y bubblewrap"
+  if (ctx.services.deps.probe("dnf").state === "present") return "sudo dnf install -y bubblewrap"
+  if (ctx.services.deps.probe("pacman").state === "present") return "sudo pacman -S --noconfirm bubblewrap"
+  if (ctx.services.deps.probe("zypper").state === "present") return "sudo zypper install -y bubblewrap"
   return ""
 }
 
 // --------------------------------------------------------------- config ----
 
 function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotConfig)) return
 
   if (ctx.dryRun) {
@@ -118,7 +118,7 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   const staging = `${userConfig}.merge.tmp`
   writeFileSync(staging, before)
 
-  scrubDeprecatedFeatures(staging)
+  scrubDeprecatedFeatures(ctx, staging)
   mergeTopLevelSettings(sotConfig, staging)
   mergeTableSettings(sotConfig, staging)
 
@@ -168,7 +168,8 @@ export function scrubDeprecatedFeaturesText(content: string): string {
   return out
 }
 
-function scrubDeprecatedFeatures(userConfig: string): void {
+function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
+  const { change } = ctx.services.logger
   if (!existsSync(userConfig)) return
   const content = readFileSync(userConfig, "utf8")
   if (!content.split("\n").some((l) => /^use_legacy_landlock[ \t]*=/.test(l))) return
@@ -225,6 +226,7 @@ function mergeTableSettings(sotConfig: string, userConfig: string): void {
 // ------------------------------------------------------- rules + agents ----
 
 function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotRulesDir)) return
 
   if (ctx.dryRun) {
@@ -255,6 +257,7 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
+  const { change, echo, verbose } = ctx.services.logger
   if (!existsSync(sotAgentsMd)) return
 
   if (ctx.dryRun) {
@@ -275,6 +278,7 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void
 // ---------------------------------------------------------- marketplace ----
 
 function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: string): void {
+  const { change, echo, err, verbose } = ctx.services.logger
   if (!existsSync(sotMarketplace)) return
 
   if (ctx.dryRun) {
@@ -361,12 +365,13 @@ export function marketplaceSource(marketplace: string, configFile: string): stri
 }
 
 function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
+  const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed")
     return
   }
 
-  if (!commandExists("codex")) return
+  if (ctx.services.deps.probe("codex").state === "missing") return
 
   const source = marketplaceSource("docks", userConfig)
   if (source !== "https://github.com/DocksDocks/docks.git" && source !== "DocksDocks/docks") return
@@ -380,7 +385,7 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
 }
 
 /** codex::_standalone_install_command — per-OS official standalone installer. */
-const standaloneInstallCommand = (): string => DEPENDENCIES.codex.installHint()
+const standaloneInstallCommand = (ctx: Ctx): string => ctx.services.deps.spec("codex").installHint()
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
 export function enabledPluginIds(configFile: string): Array<string> {
@@ -419,19 +424,24 @@ function manualPluginRefreshCommand(sotConfig: string): string {
 }
 
 function syncPlugins(ctx: Ctx, sotConfig: string): void {
+  const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] add enabled Codex plugins from SoT")
     return
   }
 
-  if (!commandExists("codex")) {
+  if (ctx.services.deps.probe("codex").state === "missing") {
     warn(
-      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand()} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfig)}`
+      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfig)}`
     )
     return
   }
-  if (!commandExists("git")) {
-    ctx.services.deps.warnMissing("git", "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing")
+  if (ctx.services.deps.probe("git").state === "missing") {
+    ctx.services.deps.warnMissing(
+      "git",
+      ctx.services.logger,
+      "plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing"
+    )
     return
   }
 
@@ -444,7 +454,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
       refreshed++
     } else if (addOut.includes("could not find a Codex CLI binary")) {
       warn(
-        `Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: ${standaloneInstallCommand()}`
+        `Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: ${standaloneInstallCommand(ctx)}`
       )
       failed++
     } else {
@@ -466,6 +476,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 // -------------------------------------------------------------- summary ----
 
 export function codexSummary(ctx: Ctx): void {
+  const { echo } = ctx.services.logger
   const codexDir = p(ctx.home, ".codex")
   echo(`Codex:    ${codexDir}`)
   if (!ctx.dryRun) {
