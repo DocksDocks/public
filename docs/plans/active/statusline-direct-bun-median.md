@@ -1,9 +1,10 @@
 ---
 title: Gate the direct-Bun statusline benchmark on median, not p95
 goal: Stop the load-induced flake in the direct-Bun statusline latency test by gating the median (same 100ms ceiling), mirroring the outer-shell median switch from 671831c.
-status: ongoing
+status: in_review
 created: "2026-07-10T17:57:10-03:00"
-updated: "2026-07-10T18:10:57-03:00"
+updated: "2026-07-10T18:14:34-03:00"
+in_review_since: "2026-07-10T18:14:34-03:00"
 started_at: "2026-07-10T17:58:30-03:00"
 assignee: dockskit-defaults-worker (codex gpt-5.6-sol relay session)
 tags: [test, statusline, flake]
