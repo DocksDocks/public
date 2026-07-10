@@ -1,9 +1,10 @@
 ---
 title: Full engine-internal DI — route all emissions and probes through ctx.services
 goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr writes) goes through ctx.services.logger, and every external-tool presence/version decision through ctx.services.deps, so test layers can capture/stub a complete runEngineNative invocation; module-global logger bindings, setVerbose, and direct commandExists/capture/which probes in engine modules are eliminated or named in an exemption table.
-status: ongoing
+status: in_review
+in_review_since: "2026-07-09T22:00:02-03:00"
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T21:54:47-03:00"
+updated: "2026-07-09T22:00:02-03:00"
 started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
