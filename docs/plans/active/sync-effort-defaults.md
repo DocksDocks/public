@@ -3,7 +3,7 @@ title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: in_review
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T16:16:25-03:00"
+updated: "2026-07-10T16:47:10-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -41,7 +41,7 @@ affected_paths:
   - .github/workflows/windows-entrypoints.yml
   - docs/plans/active/sync-effort-defaults.md
 related_plans: []
-review_status: null
+review_status: passed
 planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
 ---
 
@@ -434,7 +434,12 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — every `[x]` acceptance criterion verified (first-hand this turn or via reproduced cross-check); scope audit PASS (all 32 changed files in `671831c..06fc1eb` equal `affected_paths`, no drift); `SoT/.claude/settings.json` is `model: fable` / `effortLevel: high` / no `advisorModel`, `SoT/.codex/config.toml` keeps both effort keys at `xhigh`; the two cross-check findings on `5931e2c` are both resolved at HEAD `06fc1eb`.
+- **Regressions:** none — `git diff --check 671831c..HEAD` exit 0; the rtk-init-failure and comma-plugin parse-abort canaries stay byte-identical (golden:mutation OK 70); `SoT/models.json` alias IDs byte-identical, only the two planned Opus/Fable note edits.
+- **CI:** pass — `bunx tsc --noEmit -p cli` 0; `generate-sot-payload --check` 0; `golden:dryrun` OK 25; `golden:mutation` OK 70; both `--prove-red` legs exit 1 with `prove-red OK:` markers. `bun run test:unit` 113/114 — the sole non-pass is the load-flaky direct-Bun statusline p95 wall-clock benchmark (170/135ms under parallel load; passes 18/18 in isolation), not counted per plan. Compiled-binary and consumer-install legs verified at source (`--version` → 0.4.0) plus statically by the cross-check; the Windows bun-shim blocked-`@parcel/watcher` assertion (workflow text present and matching the contract) is deferred-to-CI (GitHub Windows runner only).
+- **Cross-check:** Cross-check (2026-07-10): [codex gpt-5.6-sol xhigh] 2 findings on 5931e2c (1 med empty-value rejection, 1 low grammar duplication) — 2 accepted, 0 rejected; both fixed in 06fc1eb, same reviewer re-verified READY (0 findings); [claude] independently verified findings 1–2 resolved at HEAD (empty-effort probe exits 2 catalog-first `Invalid Claude effort ''`; bare/error grammar derives from `cli/src/efforts.ts`).
+- **Follow-ups:** none
+- Filed by: plan-review on 2026-07-10T16:47:10-03:00
 
 ## Sources
 
