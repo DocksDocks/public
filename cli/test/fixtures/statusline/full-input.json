@@ -1,0 +1,23 @@
+{
+  "model": {
+    "display_name": "Opus 4.7 (1M context)"
+  },
+  "workspace": {
+    "current_dir": "/work/repo"
+  },
+  "cwd": "/fallback/ignored",
+  "context_window": {
+    "used_percentage": 22.5,
+    "context_window_size": 200000
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 22.5,
+      "resets_at": 1700003600
+    },
+    "seven_day": {
+      "used_percentage": 23.5,
+      "resets_at": 1700180000
+    }
+  }
+}
