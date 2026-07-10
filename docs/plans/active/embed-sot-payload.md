@@ -3,7 +3,7 @@ title: Embed the SoT payload and replace Claude shell hooks
 goal: Make every sync/config read independent of a runtime SoT/ directory by generating an embedded payload for compiled and Bun/npm execution, and replace Claude's shell hooks with native CLI subcommands.
 status: planned
 created: "2026-07-10T00:32:24-03:00"
-updated: "2026-07-10T01:10:39-03:00"
+updated: "2026-07-10T01:26:44-03:00"
 started_at: null
 assignee: null
 tags: [cli, engine-native, payload, hooks, windows]
@@ -82,6 +82,8 @@ User decisions (verbatim):
 2. **jq necessity removed**
 3. **both Claude and Codex sync paths covered**
 4. **SoT/ remains in the repo as build-time authoring source only — it stops being a runtime read dependency**
+5. **Hook-runner distribution: per-user full-CLI runner** (OQ-1 option 1, user via picker 2026-07-10; ~57–90 MB per-user disk cost accepted)
+6. **"check if the current statusline could be better written as well, keeping the behavior/ui"** (OQ-2 answer, verbatim) — the native statusline port should improve internal implementation quality (structure, naming, clarity) over the bash original wherever it is convoluted, while UI/behavior stay byte-identical per decision 1. The latency budget itself takes the recommended default, recorded in Interfaces.
 
 Additional audited consequences:
 
@@ -231,7 +233,7 @@ export interface HookRuntime {
 - `fetch-usage`: preserves the non-secret usage and throttle files (`/tmp/.claude_usage_cache` and `/tmp/.claude_usage_fetching` on POSIX; `tmpDir` equivalents on Windows), but deliberately moves the bearer-token cache out of shared temp storage. POSIX uses `${XDG_RUNTIME_DIR}/docks-kit/claude-token` only when that directory is owned by the current user and mode `0700`, otherwise `~/.cache/docks-kit/claude-token`; Windows uses `%LOCALAPPDATA%\\docks-kit\\claude-token`. `readSecureText` rejects symlinks, non-regular files, wrong owners, and group/other permission bits; `writeSecureTextAtomic` creates parent directories as `0700`, opens with no-follow semantics, writes a same-directory temp file as `0600`, fsyncs, and atomically replaces the cache. The legacy `/tmp/.claude_token_cache` is never read and is removed only when `lstat` proves it is a current-user-owned regular file. This is the one authorized token-cache behavior improvement. Credential order, 15-minute freshness/credential-newer invalidation, three-second timeout, nearest-integer utilization, 0–100 guard, and exact four-line usage-cache bytes remain unchanged. The command emits nothing and exits 0 on missing credentials, cache rejection, network failure, or schema mismatch.
 - `notify`: if `~/.claude/notification.mp3` is absent, exit 0. Player priority remains macOS `afplay`, then `ffplay`, `paplay`, `aplay`; Windows may use `ffplay` when present and otherwise exits 0. Spawned player argv is unchanged (`ffplay -nodisp -autoexit -loglevel quiet`, `aplay -q`). No output.
 
-The exact compiled hook-runner distribution and latency threshold are the two open decisions below. Every distribution materializes a version/hash-keyed executable at `~/.claude/bin/docks-kit-hook` (`.exe` on Windows). `SoT/.claude/settings.json` becomes an authoring template with these exact replacements; all other hook objects remain byte-for-byte unchanged:
+Both former open decisions are RESOLVED (user via picker, 2026-07-10). **Hook-runner distribution = per-user full-CLI runner** (OQ-1 option 1): sync keeps a version/payload-hash-keyed executable at `~/.claude/bin/docks-kit-hook` (`.exe` on Windows); a release binary copies itself atomically; Bun/npm/dev compile `cli/src/main.ts` once with verified Bun and reuse it. **Statusline latency budget = p95 ≤100 ms Linux / ≤200 ms Windows** (OQ-2 option 1): the exact 30/5/index-23 Environment algorithm, fixed no-network fixture, and ≤25% regression guard against the preserved shell oracle on the same job — the recommended default, accepted by the orchestrator because the user's OQ-2 answer instead contributed decision 6 above. Direct-exec command hooks are written only after a compatible runner exists; the runtime missing-file no-op guard belongs only to the shell-dispatched statusline command. `SoT/.claude/settings.json` becomes an authoring template with these exact replacements; all other hook objects remain byte-for-byte unchanged:
 
 ```json
 {
@@ -437,31 +439,8 @@ No model-only, agents-only, Codex-only (except the additive missing-jq proof), t
 - Cross-check (2026-07-10): [codex gpt-5.6-sol xhigh] 10 findings (5 high / 5 med) — 10 accepted, 0 rejected; [claude] independently verified F1, F2, F9 against source before accepting.
 - Claude review (2026-07-10): no blocking defects; 2 notes accepted — OQ-1 now states per-option disk/package costs, and Environment/Acceptance use one identical artifact smoke matrix.
 - Adversarial cold-read with only this file found no remaining implementation guess beyond OQ-1 (runner distribution) and OQ-2 (latency thresholds). The ABI/failure/guard mechanics and measurement method are fixed regardless of those choices; execution remains blocked until both choices are encoded.
+- Open-question ingest (2026-07-10): OQ-1 → option 1 per-user full-CLI runner (user via picker); OQ-2 → the user's answer became decision 6 (improve statusline internals, bytes unchanged) and the latency budget took recommended option 1 as an orchestrator-accepted default. Both encoded in Context (decisions 5–6) and Interfaces; the Open questions section is removed and execution is unblocked.
 - Weighted result: standalone executability 21/22; actionability 16/16; dependency order 12/12; evidence re-verify 10/10; goal coverage 14/14; executable acceptance 12/12; failure modes 8/8; assumption-to-question 4/6. The retained three points are the two explicitly surfaced product choices, not silent defaults.
-
-## Open questions
-
-### OQ-1 — hook-runner distribution
-
-- id: `hook-runner-install`
-- type: `choice` (custom allowed)
-- question: Which compiled runner distribution must deployed Claude commands use on every install surface?
-- options:
-  1. **Per-user full-CLI runner (recommended):** sync keeps `~/.claude/bin/docks-kit-hook` (`.exe` on Windows) keyed by CLI/payload hash. A release binary copies itself atomically; Bun/npm/dev compile `cli/src/main.ts` once with verified Bun and reuse it. This is the least release plumbing, but every user pays one local build and roughly 57–90 MB of per-user disk because the Bun runtime is embedded.
-  2. **Prebuilt per-platform companion:** release and npm artifacts carry/select a platform-specific hook runner, then sync copies it transactionally. First sync avoids compilation, but release plumbing expands to every platform and the npm publication pays the corresponding per-platform binary cost in its tarball/package graph.
-  3. **Minimal locally compiled hook entrypoint:** Bun/npm/dev compile only the hook dispatcher and release builds ship that companion beside the full CLI. It isolates startup from the Effect CLI, but still costs roughly 57–90 MB per user because the Bun runtime dominates, and it adds a second compiled entrypoint whose ABI/version/payload parity must be gated against the public CLI.
-
-All three choices use the fixed probe/failure transaction above. Direct-exec command hooks are written only after a compatible runner exists; the runtime missing-file no-op guard belongs only to the shell-dispatched statusline command.
-
-### OQ-2 — statusline latency budget
-
-- id: `statusline-latency-budget`
-- type: `choice` (custom allowed)
-- question: What measured warm-start budget gates the compiled statusline runner?
-- options:
-  1. **p95 ≤100 ms Linux, ≤200 ms Windows (recommended):** use the exact 30/5/index-23 Environment algorithm and fixed no-network fixture; also require no more than 25% regression against the preserved shell oracle on the same job.
-  2. **p95 ≤50 ms on both:** stricter redraw budget; may require a minimal dedicated entrypoint rather than the full Effect CLI binary.
-  3. **Relative only:** native p95 must not exceed the preserved shell-oracle p95 on each platform under the same algorithm; portable, but allows a slow absolute result on a slow runner.
 
 ## Sources
 
