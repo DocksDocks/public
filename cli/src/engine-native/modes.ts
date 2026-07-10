@@ -11,7 +11,7 @@ import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { rtkInstall } from "./claudeSync"
+import { ensureRtk } from "./claudeSync"
 import { bunBootstrap } from "./bun"
 import { agentBrowserInstall, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
@@ -135,7 +135,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
   }
   switch (tool) {
     case "rtk":
-      return ensure(ctx, "rtk", rtkInstall(ctx))
+      return ensureRtk(ctx, "cannot download RTK installer; toolchain ensure rtk aborted", 1)
     case "bun":
       return bunBootstrap(ctx, ctx.services).kind === "ready" ? 0 : 1
     case "effect-solutions":

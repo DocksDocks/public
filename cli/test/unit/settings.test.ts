@@ -13,7 +13,9 @@ import { Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
-import { deepMerge, jqStringify, parseJson, uniqueStrings, type Json } from "../../src/engine-native/jq"
+import { materializeClaudeSettings } from "../../src/engine-native/claudeRuntime"
+import { deepMerge, isObject, jqStringify, parseJson, uniqueStrings, type Json } from "../../src/engine-native/jq"
+import { makePlatform } from "../../src/engine-native/services"
 import { mergeSettings, reconcileSettings } from "../../src/engine-native/settings"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
@@ -58,6 +60,26 @@ describe("jq primitives", () => {
 })
 
 describe("settings merge semantics", () => {
+  it.effect("keeps the authoring template sentinel-only and removes Stop", () =>
+    Effect.sync(() => {
+      if (!isObject(SOT_SETTINGS) || !isObject(SOT_SETTINGS["hooks"])) throw new Error("invalid SoT settings fixture")
+      expect(SOT_SETTINGS["hooks"]["Stop"]).toBeUndefined()
+      const text = JSON.stringify(SOT_SETTINGS)
+      expect(text.match(/__DOCKS_KIT_BUN__/g)).toHaveLength(2)
+      expect(text.match(/__DOCKS_KIT_SESSION_START__/g)).toHaveLength(1)
+      expect(text.match(/__DOCKS_KIT_NOTIFY__/g)).toHaveLength(1)
+      expect(text.match(/__DOCKS_KIT_STATUSLINE__/g)).toHaveLength(1)
+
+      const deployed = materializeClaudeSettings(SOT_SETTINGS, {
+        bun: "/home/test/.bun/bin/bun",
+        statusline: "/home/test/.claude/bin/statusline.mjs",
+        sessionStart: "/home/test/.claude/bin/session-start.mjs",
+        notify: "/home/test/.claude/bin/notify.mjs"
+      }, makePlatform("linux"))
+      expect(JSON.stringify(deployed)).not.toContain("__DOCKS_KIT_")
+    })
+  )
+
   it.effect("merge: SoT keys win, user-only keys survive, permissions unioned", () =>
     Effect.sync(() => {
       const merged = mergeSettings(SOT_SETTINGS, DRIFT_SETTINGS) as Record<string, Json>

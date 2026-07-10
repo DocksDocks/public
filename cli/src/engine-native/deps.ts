@@ -189,6 +189,7 @@ const resolveChrome = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeRes
 }
 
 const latestRtk = (exec: ProbeExecutor): string => {
+  if (!exec.commandExists("curl")) return ""
   const doc = parseJson(
     exec.capture("curl", ["-fsSL", "--max-time", "5", "https://api.github.com/repos/rtk-ai/rtk/releases/latest"])
   )
@@ -213,7 +214,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
           : "sudo apt install -y git (or your distro's package manager)",
     { version: versionProbe("git") }
   ),
-  jq: spec("jq", "required", (pf = rawPlatform()) =>
+  jq: spec("jq", "optional", (pf = rawPlatform()) =>
     pf === "win32"
       ? "winget install jqlang.jq (then open a new terminal)"
       : pf === "darwin"
@@ -221,7 +222,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
         : "sudo apt install -y jq",
     { version: versionProbe("jq") }
   ),
-  curl: spec("curl", "required", (pf = rawPlatform()) =>
+  curl: spec("curl", "optional", (pf = rawPlatform()) =>
     pf === "win32" ? "winget install cURL.cURL" : pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
     { version: versionProbe("curl") }
   ),

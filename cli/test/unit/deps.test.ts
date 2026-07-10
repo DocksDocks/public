@@ -41,11 +41,25 @@ describe("DependencyManager registry", () => {
     }
   })
 
-  it("marks preflight tools required and degradable tools optional", () => {
-    expect(DEPENDENCIES.jq.requirement).toBe("required")
-    expect(DEPENDENCIES.curl.requirement).toBe("required")
+  it("marks jq and curl as contextual optional tools", () => {
+    expect(DEPENDENCIES.jq.requirement).toBe("optional")
+    expect(DEPENDENCIES.curl.requirement).toBe("optional")
     expect(DEPENDENCIES.git.requirement).toBe("optional")
     expect(DEPENDENCIES.claude.requirement).toBe("optional")
+  })
+
+  it("does not invoke the RTK curl latest probe when curl is absent", () => {
+    const captures: Array<[string, ReadonlyArray<string>]> = []
+    const manager = makeDependencyManager(makePlatform("linux"), {
+      commandExists: (name) => name !== "curl",
+      capture: (cmd, args) => {
+        captures.push([cmd, args])
+        return ""
+      },
+      which: (name) => name !== "curl" ? `/stub/${name}` : ""
+    })
+    expect(manager.latest("rtk")).toBe("")
+    expect(captures).toEqual([])
   })
 
   it("locates only the platform-correct effect-solutions executable", () => {
