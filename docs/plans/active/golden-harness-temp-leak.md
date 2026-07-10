@@ -26,6 +26,7 @@ On 2026-07-10 a day of repeated golden/unit runs leaked **1,212** `golden-{home,
 ## Context & rationale
 
 - User approval (2026-07-10, via picker): "approve cleanup and fix the leaks as well". The one-time cleanup was executed separately by the worker; this plan is the durable fix.
+- **This is a recurring leak, not a one-off** — user (2026-07-10): "this aint the first time a leak happens with this golden". Prior occurrences predate today's known causes, so the fix must not merely patch the paths Step 1 attributes: the age-guarded self-heal sweep (Step 2c) is the load-bearing property because it heals *unknown and future* exit paths too. Do not deliver eager-cleanup-only.
 - Creator sites, all in `cli/test/lib/harness.ts`: `makeStubDir` → `golden-stubs-` (line 110), PATH mask → `golden-mask-` (line 174), fixture homes → `golden-home-<kind>-` (line 202). All funnel through `temporaryDir()` (line 48).
 - Harness consumers: `cli/test/golden-dryrun.ts`, `cli/test/golden-mutation.ts` (plain `bun` scripts — exit handler SHOULD fire), and `cli/test/unit/claudeMigration.test.ts` (runs inside **vitest worker threads**).
 - Leak hypotheses, in suspected order of volume — Step 1 must confirm/refute each with a counted experiment, not assumption:
