@@ -3,7 +3,7 @@ title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: in_review
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T15:06:54-03:00"
+updated: "2026-07-10T15:08:45-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -41,7 +41,7 @@ affected_paths:
   - .github/workflows/windows-entrypoints.yml
   - docs/plans/active/sync-effort-defaults.md
 related_plans: []
-review_status: null
+review_status: passed
 planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
 ---
 
@@ -425,7 +425,12 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — all three scoped modifiers, Fable/high/advisor-off defaults, generated CLI version, and the pinned Bun blocked-script contract are implemented and verified against the planned baseline.
+- **Regressions:** none
+- **CI:** pass — TypeScript, 112 unit tests, payload check, 25 dry-run goldens, 67 mutation goldens, and both prove-red legs passed; compiled/version and isolated consumer probes also passed.
+- **Cross-check:** none
+- **Follow-ups:** none
+- Filed by: plan-review on 2026-07-10T15:08:45-03:00
 
 ## Sources
 
