@@ -183,8 +183,9 @@ jobs:
           $untrustedCode = $LASTEXITCODE
           Write-Host $untrusted
           if ($untrustedCode -ne 0) { throw "bun pm -g untrusted exited $untrustedCode" }
-          $packageLines = @($untrusted -split "\r?\n" | Where-Object { $_ -match '^\./node_modules/' })
-          if ($packageLines.Count -ne 1 -or $packageLines[0] -ne "./node_modules/@parcel/watcher @2.5.6") {
+          # bun prints the blocked path with the platform separator (".\node_modules\..." on Windows)
+          $packageLines = @($untrusted -split "\r?\n" | Where-Object { $_ -match '^\.[\\/]node_modules[\\/]' })
+          if ($packageLines.Count -ne 1 -or ($packageLines[0] -replace '\\', '/') -ne "./node_modules/@parcel/watcher @2.5.6") {
             throw "blocked package set changed: $($packageLines -join ', ')"
           }
           $scriptLines = @($untrusted -split "\r?\n" | Where-Object { $_ -match '^ » \[[^]]+\]:' })
