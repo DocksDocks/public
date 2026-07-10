@@ -1,4 +1,10 @@
-# Shell entrypoints must stay LF — a CRLF checkout (core.autocrlf=true on
-# Windows) breaks Git Bash with `/bin/bash^M` before any logic runs.
+# All text stays LF everywhere. The embedded payload (cli/src/generated/
+# sotPayload.ts) stores LF bytes and `generate-sot-payload.ts --check`
+# compares the SoT/ checkout against it byte-for-byte — a CRLF checkout
+# (core.autocrlf=true on Windows runners) makes every text file "stale".
+* text=auto eol=lf
+
+# Shell entrypoints must stay LF — a CRLF checkout breaks Git Bash with
+# `/bin/bash^M` before any logic runs.
 docks-kit text eol=lf
 *.sh text eol=lf

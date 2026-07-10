@@ -162,7 +162,9 @@ jobs:
       - name: Pack and install globally from the tarball
         run: |
           bun pm pack --destination $env:RUNNER_TEMP
+          if ($LASTEXITCODE -ne 0) { throw "bun pm pack exited $LASTEXITCODE (prepack --check failed?)" }
           $tgz = Get-ChildItem (Join-Path $env:RUNNER_TEMP "*.tgz") | Select-Object -First 1
+          if (-not $tgz) { throw "bun pm pack produced no tarball" }
           $listing = tar -tf $tgz.FullName | Out-String
           if ($listing -match "package/SoT/|package/notification\.mp3") { throw "tarball still publishes authoring payload files" }
           bun add -g $tgz.FullName
