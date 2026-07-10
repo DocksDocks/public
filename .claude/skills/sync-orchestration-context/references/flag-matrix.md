@@ -75,7 +75,8 @@ only by `--prune`.
 
 ## Model Flags
 
-- `validateModelFlags(ctx)` runs after parsing/preflight and before mutation.
+- `validateModelFlags(ctx)` runs after parsing and before mutation. Dependencies
+  are checked by their consumers rather than a global preflight.
 - Claude catalog misses are accepted only for `claude-*` IDs, with a warning.
 - Codex values must match the safe quoted-TOML charset.
 - A model flag for a deselected target warns and clears that field.

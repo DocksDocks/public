@@ -51,6 +51,9 @@ jobs:
       - name: Unit tests (vitest + @effect/vitest)
         run: bun run test:unit
 
+      - name: Materialized Claude runtime commands (POSIX shell + p95)
+        run: bun cli/test/statusline-runtime-smoke.mjs posix
+
       - name: Dry-run golden regression
         run: bun run golden:dryrun
 
@@ -108,14 +111,19 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
+      - name: Materialized Claude runtime commands (native PowerShell + p95)
+        run: bun cli/test/statusline-runtime-smoke.mjs powershell
+
+      - name: Materialized Claude runtime commands (Git Bash + p95)
+        run: bun cli/test/statusline-runtime-smoke.mjs git-bash
+
+      - name: Prepare hermetic home (%USERPROFILE% -> temp)
         # The dir name carries a space on purpose — C:\Users\First Last is
         # the common real-world shape, so every path the engine builds from
         # the home gets quoting coverage for free.
         run: |
           $kitHome = Join-Path $env:RUNNER_TEMP "kit home"
           New-Item -ItemType Directory -Force -Path (Join-Path $kitHome ".claude") | Out-Null
-          Copy-Item "SoT/.claude/settings.json" (Join-Path $kitHome ".claude/settings.json")
           "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: sync --dry-run resolves %USERPROFILE% paths

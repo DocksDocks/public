@@ -73,24 +73,59 @@ jobs:
           name: docks-kit-windows-x64
           path: ${{ runner.temp }}/docks-kit-exe
 
-      - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
+      - name: Prepare hermetic legacy home and block Bun installation
         run: |
-          $kitHome = Join-Path $env:RUNNER_TEMP "exe-home"
-          New-Item -ItemType Directory -Force -Path (Join-Path $kitHome ".claude") | Out-Null
-          Copy-Item "SoT/.claude/settings.json" (Join-Path $kitHome ".claude/settings.json")
+          $kitHome = Join-Path $env:RUNNER_TEMP "exe home O'Brien"
+          $claude = Join-Path $kitHome ".claude"
+          New-Item -ItemType Directory -Force -Path (Join-Path $claude "hooks") | Out-Null
+          @'
+          {
+            "hooks": {
+              "SessionStart": [{ "hooks": [{ "type": "command", "command": "legacy-session" }] }],
+              "Notification": [{ "hooks": [{ "type": "command", "command": "legacy-notify" }] }],
+              "Stop": [{ "hooks": [{ "type": "command", "command": "legacy-fetch" }] }]
+            },
+            "statusLine": { "type": "command", "command": "legacy-statusline", "refreshInterval": 5 },
+            "userOnly": "preserved"
+          }
+          '@ | Set-Content -Path (Join-Path $claude "settings.json") -Encoding utf8
+          [IO.File]::WriteAllText((Join-Path $claude "statusline.sh"), "legacy-statusline-marker`n")
+          [IO.File]::WriteAllText((Join-Path $claude "fetch-usage.sh"), "legacy-fetch-marker`n")
+          [IO.File]::WriteAllText((Join-Path $claude "hooks/notify.sh"), "legacy-notify-marker`n")
+          $blocked = Join-Path $env:RUNNER_TEMP "blocked-bun-root"
+          [IO.File]::WriteAllText($blocked, "regular file blocks BUN_INSTALL/bin")
           "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUN_INSTALL=$blocked" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: exe sync --dry-run (no Bun installed)
+      - name: exe real sync defers migration and preserves legacy fallbacks
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
           if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
           Set-Location $env:RUNNER_TEMP
           $exe = Join-Path $env:RUNNER_TEMP "docks-kit-exe/docks-kit-windows-x64.exe"
-          $out = & $exe sync --dry-run 2>&1 | Out-String
+          $settingsPath = Join-Path $env:USERPROFILE ".claude/settings.json"
+          $before = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot"
+          $out = & $exe sync claude --skip-rtk 2>&1 | Out-String
           Write-Host $out
-          if ($LASTEXITCODE -ne 0) { throw "exe sync --dry-run exited $LASTEXITCODE" }
-          if ($out -notmatch "exe-home") { throw "output never references the USERPROFILE-derived home" }
-          if ($out -match "Unknown OS") { throw "unknown-OS warning leaked" }
+          if ($LASTEXITCODE -ne 0) { throw "exe sync claude exited $LASTEXITCODE" }
+          if ($out -notmatch "Bun unavailable — Claude statusline/hooks migration deferred") { throw "migration did not report deferred Bun" }
+          if ($out -notmatch "Hooks:\s+migration deferred") { throw "deferred summary missing" }
+          $after = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          foreach ($name in @("SessionStart", "Notification", "Stop")) {
+            $a = $before.hooks.$name | ConvertTo-Json -Compress -Depth 20
+            $b = $after.hooks.$name | ConvertTo-Json -Compress -Depth 20
+            if ($a -ne $b) { throw "legacy hooks.$name subtree changed" }
+          }
+          if (($before.statusLine | ConvertTo-Json -Compress -Depth 20) -ne ($after.statusLine | ConvertTo-Json -Compress -Depth 20)) {
+            throw "legacy statusLine subtree changed"
+          }
+          $claude = Join-Path $env:USERPROFILE ".claude"
+          if ((Get-Content (Join-Path $claude "statusline.sh") -Raw) -ne "legacy-statusline-marker`n") { throw "statusline.sh marker changed" }
+          if ((Get-Content (Join-Path $claude "fetch-usage.sh") -Raw) -ne "legacy-fetch-marker`n") { throw "fetch-usage.sh marker changed" }
+          if ((Get-Content (Join-Path $claude "hooks/notify.sh") -Raw) -ne "legacy-notify-marker`n") { throw "notify.sh marker changed" }
+          if (Test-Path (Join-Path $claude "bin")) { throw "runtime assets were written during deferred migration" }
+          if (Test-Path (Join-Path $claude "notification.mp3")) { throw "notification audio was written during deferred migration" }
 
       - name: exe status (compiled re-spawn seam)
         # engineCapture in a compiled binary re-spawns process.execPath
@@ -133,6 +168,12 @@ jobs:
           bun add -g $tgz.FullName
           if ($LASTEXITCODE -ne 0) { throw "bun add -g failed" }
 
+      - name: Prepare hermetic shim home
+        run: |
+          $kitHome = Join-Path $env:RUNNER_TEMP "shim home O'Brien"
+          New-Item -ItemType Directory -Force -Path $kitHome | Out-Null
+          "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Shim works from a foreign cwd (embedded payload)
         run: |
           if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
@@ -149,3 +190,46 @@ jobs:
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "docks-kit toolchain check exited $LASTEXITCODE" }
           if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "npm row has no version" }
+
+      - name: Sync and execute commands read from materialized settings
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
+          Set-Location $env:RUNNER_TEMP
+          $sync = docks-kit sync claude --skip-rtk 2>&1 | Out-String
+          Write-Host $sync
+          if ($LASTEXITCODE -ne 0) { throw "docks-kit sync claude exited $LASTEXITCODE" }
+          $settings = Get-Content (Join-Path $env:USERPROFILE ".claude/settings.json") -Raw | ConvertFrom-Json
+          if ($settings.hooks.PSObject.Properties.Name -contains "Stop") { throw "materialized settings retained hooks.Stop" }
+
+          $session = $settings.hooks.SessionStart[0].hooks[0]
+          $sessionArgs = @($session.args)
+          $sessionOut = & $session.command @sessionArgs 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "SessionStart direct hook exited $LASTEXITCODE" }
+          if ($sessionOut -notmatch "(?m)^\[CONTEXT\]" -or $sessionOut -notmatch "(?m)^\[CONFIG\]") {
+            throw "SessionStart output missing its two labels"
+          }
+
+          $notification = $settings.hooks.Notification[0].hooks[0]
+          $notificationArgs = @($notification.args)
+          $savedPath = $env:Path
+          $env:Path = ""
+          $notificationOut = & $notification.command @notificationArgs 2>&1 | Out-String
+          $notificationCode = $LASTEXITCODE
+          $env:Path = $savedPath
+          if ($notificationCode -ne 0) { throw "Notification direct hook exited ${notificationCode}: $notificationOut" }
+
+          $inputJson = @{
+            model = @{ display_name = "Opus 4.8 (1M context)" }
+            workspace = @{ current_dir = $env:RUNNER_TEMP }
+            context_window = @{ used_percentage = 25; context_window_size = 200000 }
+            rate_limits = @{
+              five_hour = @{ used_percentage = 44; resets_at = $null }
+              seven_day = @{ used_percentage = 55; resets_at = $null }
+            }
+          } | ConvertTo-Json -Compress -Depth 10
+          $statusOut = $inputJson | & powershell.exe -NoProfile -NonInteractive -Command $settings.statusLine.command 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "statusLine stored command exited $LASTEXITCODE" }
+          if ($statusOut -notmatch "Opus 4\.8" -or $statusOut -notmatch "5h 44%" -or $statusOut -notmatch "7d 55%") {
+            throw "statusLine native fields missing from output: $statusOut"
+          }

@@ -1,6 +1,6 @@
 ---
 name: skills-bootstrap-agent
-description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncAgentBrowserCli`, `agentBrowserInstall`, `syncEffectSolutionsCli`, `effectSolutionsInstall`, `bunBootstrap`, `findBun`) or `SoT/.agents/skills.txt`. Not for SKILL.md authoring, toolchain gate logic, or plugin reconcile.
+description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncAgentBrowserCli`, `agentBrowserInstall`, `syncEffectSolutionsCli`, `effectSolutionsInstall`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain gate logic, or plugin reconcile.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -8,7 +8,7 @@ model: sonnet
 # Skills Bootstrap Agent
 
 Owns universal skill manifest install, Claude symlink healing, prune snapshot,
-and agent-browser/effect-solutions/Bun install callbacks.
+and agent-browser/effect-solutions install callbacks.
 
 <constraint>
 The skills CLI slug must precede `-a`: `skills add <slug> -g -y -a claude-code
@@ -30,7 +30,8 @@ Always install for both `claude-code` and `codex` so the canonical
 2. Read `references/storage-model.md` for path/symlink changes.
 3. Read `references/cli-arg-trap.md` before changing the skills CLI invocation.
 4. For CLI binary bootstraps, distinguish toolchain gate logic from install
-   callbacks. Gate logic belongs to `toolchain-context`.
+   callbacks. Gate logic and shared `bun.ts bunBootstrap` belong to
+   `toolchain-context`.
 5. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.
 
 ## Key Symbols
@@ -45,7 +46,7 @@ Always install for both `claude-code` and `codex` so the canonical
 | Snapshot | `updateSnapshot` |
 | agent-browser | `syncAgentBrowserCli`, `agentBrowserInstall` |
 | effect-solutions | `syncEffectSolutionsCli`, `effectSolutionsInstall` |
-| Bun | `bunBootstrap`, `findBun` |
+| Bun dependency | `bun.ts bunBootstrap` (toolchain owner; call, do not duplicate) |
 
 ## Success Criteria
 

@@ -9,7 +9,7 @@ AI-assisted dev environment on every machine.
 
 | Piece | Role |
 |-------|------|
-| `SoT/.claude/` | Claude Code config (settings, hooks, status line, CLAUDE.md) |
+| `SoT/.claude/` | Claude Code config (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex config (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.agents/` | Universal agent skills manifest (agentskills.io standard) |
 | `SoT/models.json` | Kit-verified model catalog (see `docks-kit docs models`) |
@@ -34,6 +34,9 @@ AI-assisted dev environment on every machine.
   EngineNative owns mutation. No-Bun recovery is a platform release binary.
 - **Authoring/runtime split**: changes begin in `SoT/`; build/prepack freshness
   checks keep the generated in-memory payload byte-identical for every runtime.
+- **Native Claude runtime**: three dependency-free Bun `.mjs` programs own the
+  statusline, SessionStart, and Notification. Quotas come only from native
+  `rate_limits`; missing Bun defers cutover without deleting legacy fallbacks.
 
 ## Where to go next
 

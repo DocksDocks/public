@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-10 — Claude statusline and hooks move to native Bun runtime
+
+- Replaced the deployed `statusline.sh`, `fetch-usage.sh`, and `hooks/notify.sh`
+  with dependency-free `statusline.mjs`, `session-start.mjs`, and `notify.mjs`
+  materialized under `~/.claude/bin/` from the embedded payload. SessionStart
+  and Notification direct-exec absolute Bun; the shell-evaluated statusline uses
+  a guarded POSIX or encoded-PowerShell command.
+- Preserved the existing single-line layout and palette while moving 5h/7d
+  quotas to Claude's native `rate_limits`. The Stop fetch hook, OAuth credential
+  reads, quota request, and shared usage/token caches are gone; unsupported or
+  pre-first-response sessions omit only the quota segment.
+- Made Bun bootstrap a shared, per-run memo used by Claude runtime and
+  effect-solutions. If Bun cannot be installed, sync keeps legacy hook/statusline
+  settings and files intact and reports a deferred migration; successful
+  cutover prunes those kit-owned legacy artifacts only after settings commit.
+- jq and curl are now optional toolchain check rows instead of preflight hard
+  dependencies. curl is consulted only at requested POSIX RTK/Bun download
+  boundaries. Old `/tmp/.claude_usage_cache`, `/tmp/.claude_token_cache`, and
+  `/tmp/.claude_usage_fetching` files are deliberately not unlinked: nothing
+  reads them now, and OS temp cleanup can age them out without touching global,
+  potentially shared or symlinked paths.
+
 ## 2026-07-09 — log UX overhaul: quiet no-ops, `--verbose`, install hints, service seams
 
 Sync output now follows an explicit Output Policy (`cli/src/engine-native/DESIGN.md`):

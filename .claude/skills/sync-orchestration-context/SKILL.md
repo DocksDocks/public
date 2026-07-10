@@ -14,7 +14,7 @@ metadata:
       lines: "1-130"
     - path: cli/src/engine-native/models.ts
       lines: "1-90"
-  updated: "2026-07-09"
+  updated: "2026-07-10"
 ---
 
 # Sync Engine Orchestration
@@ -80,8 +80,8 @@ Do not add a new fallback behind that variable.
 ### Flag Parsing
 
 `parseArgs(ctx, args)` owns the sync flag vocabulary. Target words call the
-target selector and set `ctx.targetFilterSet`; when it remains false, `preflight`
-and `engineSync` treat all three targets as selected.
+target selector and set `ctx.targetFilterSet`; when it remains false,
+`engineSync` treats all three targets as selected.
 
 | Flag | Context field | Notes |
 |------|---------------|-------|
@@ -103,7 +103,8 @@ documentation only; do not reintroduce compatibility behavior.
 
 `runEngineNative` builds `ctx` with repo/home/tool paths, then:
 
-1. `engineSync`: `parseArgs` -> `preflight` -> `validateModelFlags`.
+1. `engineSync`: `parseArgs` -> `validateModelFlags`. Dependency checks occur
+   only at the operation that consumes the tool; there is no global preflight.
 2. `claudeSync(ctx)` when the target is selected and `SoT/.claude` exists.
 3. `codexSync(ctx)` when the target is selected and `SoT/.codex` exists.
 4. `skillsSync(ctx)` when the target is selected and `SoT/.agents` exists.
@@ -122,7 +123,7 @@ Partial checkouts still skip absent SoT directories; absence is not an error.
 
 ### Model Validation
 
-`validateModelFlags(ctx)` runs after parse/preflight and before sync work. A
+`validateModelFlags(ctx)` runs after parsing and before sync work. A
 model flag for a deselected target warns and clears the field. Claude values
 must be in the catalog or match the accepted `claude-*` family with a warning.
 Codex values must match the safe quoted-TOML charset; catalog misses warn only.

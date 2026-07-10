@@ -36,14 +36,15 @@ runEngineNative(argv)
 |-- command dispatch
     |-- sync/default -> engineSync(ctx, args)
     |   |-- parseArgs(ctx, args)
-    |   |-- preflight(ctx)
     |   |-- validateModelFlags(ctx)
     |   |-- claudeSync(ctx) when target selected and SoT/.claude exists
     |   |   |-- syncRtk(ctx) first
-    |   |   |-- syncScripts(ctx)
-    |   |   |-- syncHooks(ctx)
+    |   |   |-- bunBootstrap(ctx), memoized for this engine run
+    |   |   |-- materialize + prepareClaudeSettings(ctx), no mutation
+    |   |   |-- syncClaudeRuntime(ctx) when Bun is ready
     |   |   |-- syncClaudeMd(ctx)
-    |   |   |-- syncSettings(ctx)
+    |   |   |-- commitClaudeSettings(ctx)
+    |   |   |-- syncRemovals(ctx), legacy subset readiness-gated
     |   |   |-- syncCompactWindow(ctx)
     |   |   |-- syncPermissive(ctx)
     |   |   |-- syncClaudeModel(ctx)
@@ -100,7 +101,7 @@ runEngineNative(argv)
 
 1. Add the SoT directory and target selection state to `Ctx`.
 2. Add positional target parsing in `parseArgs`.
-3. Add preflight requirements.
+3. Add dependency checks at each concrete consuming operation.
 4. Add the SoT-presence dispatch in `engineSync`.
 5. Add summary and next-step hooks if the target has user-facing output.
 6. Mirror the target in `cli/src/commands/sync.ts`.

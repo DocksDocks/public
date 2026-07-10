@@ -27,9 +27,10 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
 - **Prove-red stays red.** The golden suites compare live native output to a
   mismatched golden under `--prove-red` and must exit non-zero after printing
   `prove-red OK`.
-- **Step ordering is load-bearing.** The Claude pipeline runs RTK before the
-  settings merge, modifiers after it, removals before plugins, and LSP checks
-  after plugin state.
+- **Step ordering is load-bearing.** The Claude pipeline runs RTK, resolves Bun,
+  prepares materialized settings, writes runtime assets, commits settings, then
+  performs readiness-gated legacy cleanup. Modifiers run after the base commit,
+  removals before plugins, and LSP checks after plugin state.
 - **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `rtk`,
   `bun`, `curl`, and platform package managers are spawned with argv arrays,
   not shell command strings except where the external installer contract is a
@@ -72,10 +73,12 @@ each such skip is an intentional behavior change named in its golden diff.
 
 ### Missing dependencies
 
-Exactly one deduplicated warn per missing tool per run, uniform shape:
+Exactly one deduplicated warn per requested missing tool per run, uniform shape:
 `[warn] <tool> not installed — <platform-correct install command>`, sourced
-from the dependency registry (`deps.ts`). Required tools keep their current
-exit behavior — the error carries the same install hint.
+from the dependency registry (`deps.ts`). jq and curl are optional report rows:
+jq has no runtime consumer, while curl warns only at a requested POSIX RTK/Bun
+download boundary. A missing Bun defers Claude runtime migration without
+deleting working legacy hooks or statusline files.
 
 ### Summary and next steps
 
@@ -114,15 +117,17 @@ active logger binding.
 
 | Module | Owns |
 |---|---|
-| `parseArgs.ts` | engine usage, target selection, flag parsing, legacy rename hints, preflight, model flag validation |
+| `parseArgs.ts` | engine usage, target selection, flag parsing, legacy rename hints, model flag validation |
 | `index.ts` | sync orchestration, target dispatch, run summary and next-step blocks |
 | `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
-| `claudeSync.ts` | Claude pipeline: RTK, assets, settings merge, deploy-time modifiers, `~/.claude.json`, connector env, removed artifacts, plugins, optional plugins, LSP binaries |
+| `claudeSync.ts` | Claude pipeline: RTK, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
+| `bun.ts` | per-run memoized Bun resolution/bootstrap shared by Claude runtime, effect-solutions, and direct toolchain ensure |
+| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX/encoded-PowerShell statusline commands |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
 | `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, agent-browser/effect-solutions/Bun helpers, managed-skill snapshot |
+| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, agent-browser/effect-solutions callbacks, managed-skill snapshot |
 | `toolchain.ts` | tool presence/version probes, verified-version gate, managed install/upgrade orchestration, report table |
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
@@ -142,8 +147,9 @@ active logger binding.
 - Symlink creation falls back to copy where the platform or permissions require
   it.
 - Bubblewrap and shell-rc work are Linux/macOS only.
-- Claude hook/statusline assets remain shell scripts because Claude Code owns
-  that runtime.
+- Claude command hooks directly exec the resolved absolute `bun.exe`; the
+  statusline stores an encoded PowerShell missing-file guard because Claude
+  shell-evaluates `statusLine.command` through PowerShell or Git Bash.
 
 ## Tests
 
@@ -153,8 +159,9 @@ active logger binding.
 - `bun run golden:mutation` compares live native mutation snapshots, argv logs,
   output, and TOML invariants to `cli/test/goldens/mutation.json`.
 - `.github/workflows/parity.yml` is now the golden-regression workflow: Linux
-  runs unit + golden + prove-red; the `native-windows` job runs PowerShell
-  smoke checks for native Windows behavior.
+  runs unit + golden + prove-red plus the exact materialized POSIX runtime
+  commands; the `native-windows` job executes the same stored statusline command
+  through PowerShell and Git Bash plus direct Bun hooks.
 - `.github/workflows/windows-entrypoints.yml` verifies the release binary and
   `bun add -g` entrypoints on Windows.
 
@@ -162,5 +169,5 @@ active logger binding.
 
 - Reintroducing the removed shell engine as a supported fallback. Fix forward in
   EngineNative; recover historical source only from `bash-engine-final`.
-- Porting Claude Code's hook/statusline shell assets.
+- Adding a compiled runner or CLI hook subcommand for Claude's Bun runtime.
 - Adding new sync features while changing the engine contract.

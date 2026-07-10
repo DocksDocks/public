@@ -33,8 +33,11 @@ CI coverage (all on the pinned windows-2025 label): EngineNative PowerShell
 smoke with `HOME` unset — `%USERPROFILE%` path resolution, `.cmd` tool
 spawning (npm), toolchain gate branches (`.github/workflows/parity.yml`,
 `native-windows` job); the two entrypoints above (`windows-entrypoints.yml`).
-Deployed hook/statusline assets stay shell scripts by design — Claude Code on
-Windows executes them through its own Git Bash.
+Deployed SessionStart/Notification hooks directly exec an absolute real
+`bun.exe`. Claude still shell-evaluates the statusline, so its stored command is
+an encoded PowerShell missing-file guard that behaves identically when the outer
+shell is native PowerShell or Git Bash. CI executes both outer-shell paths and
+pins output bytes/channels plus latency ceilings.
 
 **Status: supported** — real-machine verified 2026-07-09 (Claude Code loads
 the synced `%USERPROFILE%\.claude`; full sync, self-update, plugin passes,

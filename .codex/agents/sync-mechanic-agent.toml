@@ -43,7 +43,7 @@ behavior for removed flag names.
 |---------|--------|
 | Public engine seam | `engine`, `engineCapture` in `cli/src/engine.ts` |
 | Engine dispatch | `runEngineNative`, `engineSync` in `index.ts` |
-| Flags and targets | `parseArgs`, `preflight`, `validateModelFlags` |
+| Flags and targets | `parseArgs`, `validateModelFlags` |
 | Direct modes | `modeModel`, `modeToolchain`, `printModels` |
 | Removed engine guard | `DOCKS_KIT_ENGINE` handling in `cli/src/engine.ts` |
 
@@ -52,7 +52,8 @@ behavior for removed flag names.
 - `bun run golden:dryrun` and, when sync behavior changes, `bun run golden:mutation`.
 - `bun run test:unit`.
 - `bun x tsc --noEmit -p cli`.
-- Focused public smoke for changed flags or targets.
+- Focused public smoke for changed flags or targets, for example
+  `./docks-kit sync --dry-run` or `./docks-kit sync claude --dry-run --skip-rtk`.
 
 ## Gotchas
 
@@ -60,4 +61,6 @@ behavior for removed flag names.
   abort unless the selected target has an invalid value.
 - `DOCKS_KIT_ENGINE=native-raw` is harness-private.
 - `DOCKS_KIT_ENGINE` set to `bash` must fail with the removed-engine message.
+- Dependency checks belong at concrete consumers; do not restore a global
+  preflight in `parseArgs.ts` or `index.ts`.
 '''

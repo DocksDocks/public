@@ -1,6 +1,6 @@
 ---
 name: settings-json-agent
-description: Use when editing `cli/src/engine-native/claudeSync.ts` settings functions (`syncSettings`, `syncClaudeJson`, `syncConnectorEnv`, `syncRemovals`, `syncCompactWindow`, `syncPermissive`, `syncClaudeModel`) or `cli/src/engine-native/settings.ts` (`mergeSettings`, `reconcileSettings`). Not for plugin install/uninstall or Codex TOML merge.
+description: Use when editing `cli/src/engine-native/claudeSync.ts` settings functions (`prepareClaudeSettings`, `commitClaudeSettings`, `syncClaudeJson`, `syncConnectorEnv`, `syncRemovals`, `syncCompactWindow`, `syncPermissive`, `syncClaudeModel`), `claudeRuntime.ts` materialization, or `settings.ts` merge functions. Not for plugin install/uninstall or Codex TOML merge.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -33,14 +33,18 @@ left untouched.
 2. Read `references/jq-pipelines.md` when changing merge semantics.
 3. Read `references/claude-json-keys.md` when changing key ownership.
 4. Trace the relevant TypeScript function before editing.
-5. Hand off to `plugin-bootstrap-agent` for `enabledPlugins`,
+5. For Bun/runtime settings, trace `claudeRuntime.ts materializeClaudeSettings,
+   exact sentinel locations` and the prepare → assets → commit → gated-removal
+   order in `claudeSync.ts`.
+6. Hand off to `plugin-bootstrap-agent` for `enabledPlugins`,
    `extraKnownMarketplaces`, or plugin CLI behavior.
 
 ## Key Symbols
 
 | Concern | Symbol |
 |---------|--------|
-| Settings install/merge | `syncSettings` |
+| Settings prepare/commit | `prepareClaudeSettings`, `commitClaudeSettings` |
+| Runtime materialization | `claudeRuntimePaths`, `materializeClaudeSettings`, `statusLineCommand` |
 | Default merge | `mergeSettings` |
 | Reconcile merge | `reconcileSettings` |
 | Root Claude JSON | `syncClaudeJson` |
@@ -60,3 +64,5 @@ left untouched.
 - Repo-wins merge direction is intentional; reversing it blocks SoT updates.
 - Default mode unions permission arrays; reconcile replaces them.
 - `syncClaudeJson` patches, never replaces, user/project state.
+- Runtime preparation is mutation-free; no sentinel reaches disk, and the
+  legacy Stop/scripts removal is gated on successful ready settings commit.

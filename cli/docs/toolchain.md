@@ -4,7 +4,7 @@
 
 | Field | Meaning |
 |-------|---------|
-| `kind` | `required` (preflight hard dep) / `check` (doctor visibility) / `managed` (kit installs + upgrades) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
+| `kind` | `check` (doctor visibility) / `managed` (kit installs + upgrades) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
 | `policy` | `track` (upgrade toward latest, gated by `verified`) / `present` (install when missing, never upgrade) |
 | `floor` | Minimum acceptable version (below → upgrade automatically) |
 | `verified` | Last kit-tested version — the gate line |
@@ -31,9 +31,15 @@ now kit-approved" act.
   settings rewrite is normalized by the merge that follows. Pinned installs
   fetch the installer script from the version tag, not mutable master.
 - **bun** — policy `present`: bootstrap only (pinned to `verified` via the
-  installer's `bun-vX.Y.Z` release-tag argument), never auto-upgraded.
+  installer's version argument), never auto-upgraded. `bun.ts` owns one
+  per-engine-run memo shared by Claude runtime, effect-solutions, and direct
+  toolchain ensure. Windows resolves only a real absolute `bun.exe` for hooks.
 - **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
   toward npm latest, gated by their `verified` pins.
+
+jq and curl are `check` rows, not global prerequisites. jq is not consumed by
+normal sync. curl is checked only at a requested POSIX RTK/Bun installer
+download boundary; Windows Bun bootstrap uses PowerShell's native download.
 
 ## Supply-chain stance
 

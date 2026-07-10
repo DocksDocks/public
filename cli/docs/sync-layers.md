@@ -5,23 +5,31 @@ no target means all three.
 
 ## claude (→ ~/.claude, ~/.claude.json, shell rc)
 
-Order matters — toolchain first, config after:
+Order matters — runtime readiness and settings form one transaction:
 
 1. **RTK** (toolchain-gated): install/upgrade, then `rtk init --global` on
    first install. Runs FIRST because rtk init rewrites settings.json — the
    later settings merge normalizes whatever it wrote.
-2. Scripts (statusline, fetch-usage, notification.mp3), hooks, CLAUDE.md.
-3. **settings.json merge** — additive: SoT keys win, permissions arrays are
+2. Resolve/bootstrap pinned Bun, materialize the sentinel settings template,
+   and prepare the merged settings bytes without mutation. If Bun remains
+   unavailable, omit only the new runtime pointers and preserve legacy ones.
+3. When ready, write `bin/statusline.mjs`, `bin/session-start.mjs`,
+   `bin/notify.mjs`, and `notification.mp3`; deploy CLAUDE.md; atomically commit
+   settings; then prune the old shell assets and Stop hook.
+4. **settings.json merge semantics** — additive: SoT keys win, permissions arrays are
    unioned, user-only keys survive. `--reconcile` replaces permissions arrays
    wholesale instead.
-4. **Deploy-time modifiers** (`--claude-compact-window`, `--claude-permissive`,
+5. **Deploy-time modifiers** (`--claude-compact-window`, `--claude-permissive`,
    `--claude-model`) — deployed file only.
-5. ~/.claude.json (showTurnDuration, user-scoped MCP servers), connector env
+6. ~/.claude.json (showTurnDuration, user-scoped MCP servers), connector env
    export, removed-artifact pruning.
-6. **Plugins** — seven idempotent passes via the `claude plugin` CLI
+7. **Plugins** — seven idempotent passes via the `claude plugin` CLI
    (marketplaces → install → update → [--prune: uninstall/remove] → re-assert
    SoT enabled-state). Optional opt-ins via `--claude-plugin=<name>`.
-7. LSP server binaries (npm globals).
+8. LSP server binaries (npm globals).
+
+The statusline reads Claude's native `rate_limits`. There is no OAuth request,
+usage cache, jq/curl runtime dependency, or Stop fetch hook.
 
 ## codex (→ ~/.codex, ~/.agents/plugins)
 
