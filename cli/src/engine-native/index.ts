@@ -15,7 +15,7 @@ import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { ExitError, parseArgs, validateModelFlags } from "./parseArgs"
+import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs"
 
 export interface Ctx {
   readonly repoDir: string
@@ -31,7 +31,10 @@ export interface Ctx {
   claudePermissive: boolean
   claudePlugins: Array<string>
   claudeModel: string
+  claudeEffort: string
+  claudeAdvisor: string
   codexModel: string
+  codexEffort: string
   /** Injected capability seam (logger/deps/platform) — see services.ts. */
   readonly services: EngineServices
   bunRuntime?: BunRuntimeState
@@ -66,7 +69,10 @@ function makeCtx(services: EngineServices): Ctx {
     claudePermissive: env["CLAUDE_PERMISSIVE"] === "1",
     claudePlugins: (env["CLAUDE_PLUGINS"] ?? "").split(" ").filter((s) => s !== ""),
     claudeModel: env["CLAUDE_MODEL"] ?? "",
+    claudeEffort: "",
+    claudeAdvisor: "",
     codexModel: env["CODEX_MODEL"] ?? "",
+    codexEffort: "",
     services,
     targetFilterSet: false,
     syncClaude: false,
@@ -79,7 +85,7 @@ function makeCtx(services: EngineServices): Ctx {
 function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   const { echo } = ctx.services.logger
   parseArgs(ctx, args)
-  validateModelFlags(ctx)
+  validateModifierFlags(ctx)
 
   const claudeRan = ctx.syncClaude
   const claudeRuntime = claudeRan ? claudeSync(ctx) : undefined

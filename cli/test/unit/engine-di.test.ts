@@ -97,6 +97,69 @@ class RecordingLogger implements Logger {
 }
 
 describe.sequential("EngineNative full service injection", () => {
+  it("validates raw effort and advisor modifiers before any sync mutation", () => {
+    const bareCases = [
+      ["claude", "--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
+      ["codex", "--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
+      ["claude", "--claude-advisor", "Available claude advisor states", "--claude-advisor requires a value"]
+    ] as const
+    for (const [target, flag, catalog, error] of bareCases) {
+      const records: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+      expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+      expect(records.every(({ level }) => level === "echo" || level === "err")).toBe(true)
+    }
+
+    const invalidCases = [
+      ["claude", "--claude-effort=max", "Available claude effort levels", "Invalid Claude effort 'max'"],
+      ["codex", "--codex-effort=future", "Available codex effort levels", "Invalid Codex effort 'future'"],
+      ["claude", "--claude-advisor=maybe", "Available claude advisor states", "Invalid Claude advisor state 'maybe'"]
+    ] as const
+    for (const [target, flag, catalog, error] of invalidCases) {
+      const records: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+      expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+    }
+  })
+
+  it("warns and clears effort and advisor modifiers for unselected targets", () => {
+    const root = mkdtempSync(join(tmpdir(), "engine-di-modifier-ignore-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    try {
+      process.env["HOME"] = root
+      process.env["AGENTS_DIR"] = join(root, ".agents")
+      const records: Array<LogRecord> = []
+      expect(
+        runEngineNative(
+          [
+            "sync",
+            "agents",
+            "--dry-run",
+            "--claude-effort=low",
+            "--claude-advisor=on",
+            "--codex-effort=max"
+          ],
+          stubServices(records)
+        )
+      ).toBe(0)
+      expect(records.filter(({ level }) => level === "warn")).toEqual([
+        { level: "warn", message: "--claude-effort ignored: claude target not selected" },
+        { level: "warn", message: "--claude-advisor ignored: claude target not selected" },
+        { level: "warn", message: "--codex-effort ignored: codex target not selected" }
+      ])
+      expect(records.some(({ level }) => level === "err")).toBe(false)
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it("routes manager warnings through the current run logger", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-mixed-"))
     const previous = new Map(

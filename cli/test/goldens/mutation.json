@@ -460,6 +460,22 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
+    "fixture=home-fresh cmd=sync agents --dry-run --claude-effort=low --claude-advisor=on --codex-effort=max": {
+      "argvLog": "agent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "command": [
+        "sync",
+        "agents",
+        "--dry-run",
+        "--claude-effort=low",
+        "--claude-advisor=on",
+        "--codex-effort=max"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m --claude-effort ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --claude-advisor ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --codex-effort ignored: codex target not selected\n[dry-run] npx skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\n[dry-run] agent-browser up to date (0.31.1)\n[dry-run] effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
     "fixture=home-fresh cmd=sync claude": {
       "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nrtk\t--version\n",
       "command": [
@@ -479,6 +495,58 @@
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude --claude-advisor": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-advisor"
+      ],
+      "exitCode": 2,
+      "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m --claude-advisor requires a value: --claude-advisor=<on|off|default>\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude --claude-advisor=maybe": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-advisor=maybe"
+      ],
+      "exitCode": 2,
+      "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m Invalid Claude advisor state 'maybe' — valid: on|off|default\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude --claude-effort": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-effort"
+      ],
+      "exitCode": 2,
+      "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: xhigh\n\u001b[1;31m[err]\u001b[0m --claude-effort requires a value: --claude-effort=<level>\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude --claude-effort=max": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-effort=max"
+      ],
+      "exitCode": 2,
+      "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: xhigh\n\u001b[1;31m[err]\u001b[0m Invalid Claude effort 'max' — valid: low|medium|high|xhigh|default\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=claude": {
@@ -596,6 +664,32 @@
         ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
+    "fixture=home-fresh cmd=sync codex --codex-effort": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "codex",
+        "--codex-effort"
+      ],
+      "exitCode": 2,
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<level>\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync codex --codex-effort=future": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "codex",
+        "--codex-effort=future"
+      ],
+      "exitCode": 2,
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort 'future' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
     "fixture=home-fresh cmd=sync codex stubs=codex": {

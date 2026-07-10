@@ -5,6 +5,13 @@
  */
 
 import type { Ctx } from "./index"
+import {
+  CLAUDE_ADVISOR_STATES,
+  advisorCatalog,
+  effortCatalog,
+  effortModifierValues,
+  isEffortModifierValue
+} from "../efforts"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 
 export class ExitError extends Error {
@@ -41,6 +48,8 @@ function usage(ctx: Ctx): void {
   echo(
     "  --claude-model=<m>            set deployed ~/.claude/settings.json model (aliases: best|opus|fable|sonnet|haiku, full claude-* IDs, or 'default' to unset)"
   )
+  echo("  --claude-effort=<level>        set deployed effortLevel (low|medium|high|xhigh|default)")
+  echo("  --claude-advisor=<state>       set deployed advisor state (on|off|default)")
   echo(
     "  --claude-compact-window=<n>   set deployed autocompact window in tokens (e.g. 680000 or 680k) for disposable sessions"
   )
@@ -48,6 +57,7 @@ function usage(ctx: Ctx): void {
     "  --claude-permissive           empty permissions.ask/deny in deployed settings (sandboxes/containers; unattended commits + pushes)"
   )
   echo("  --codex-model=<m>             set deployed ~/.codex/config.toml model (e.g. gpt-5.5)")
+  echo("  --codex-effort=<level>        set deployed model_reasoning_effort (see bare flag for catalog)")
   echo("")
   echo("Sticky opt-ins (installed + enabled until --prune)")
   echo(
@@ -116,6 +126,18 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         printModels(ctx, "codex")
         err("--codex-model requires a value: --codex-model=<model>")
         throw new ExitError(2)
+      case "--claude-effort":
+        printCatalog(ctx, effortCatalog("claude"))
+        err("--claude-effort requires a value: --claude-effort=<level>")
+        throw new ExitError(2)
+      case "--codex-effort":
+        printCatalog(ctx, effortCatalog("codex"))
+        err("--codex-effort requires a value: --codex-effort=<level>")
+        throw new ExitError(2)
+      case "--claude-advisor":
+        printCatalog(ctx, advisorCatalog())
+        err("--claude-advisor requires a value: --claude-advisor=<on|off|default>")
+        throw new ExitError(2)
       case "--claude-compact-window":
         err("--claude-compact-window requires a value: --claude-compact-window=<tokens> (e.g. 680k)")
         throw new ExitError(2)
@@ -162,6 +184,12 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
       ctx.claudeModel = arg.slice("--claude-model=".length)
     } else if (arg.startsWith("--codex-model=")) {
       ctx.codexModel = arg.slice("--codex-model=".length)
+    } else if (arg.startsWith("--claude-effort=")) {
+      ctx.claudeEffort = arg.slice("--claude-effort=".length)
+    } else if (arg.startsWith("--codex-effort=")) {
+      ctx.codexEffort = arg.slice("--codex-effort=".length)
+    } else if (arg.startsWith("--claude-advisor=")) {
+      ctx.claudeAdvisor = arg.slice("--claude-advisor=".length)
     } else if (arg.startsWith("--claude-compact-window=")) {
       const parsed = parseCompactWindow(arg.slice("--claude-compact-window=".length))
       if (parsed === undefined) {
@@ -184,7 +212,11 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
   }
 }
 
-export function validateModelFlags(ctx: Ctx): void {
+function printCatalog(ctx: Ctx, catalog: string): void {
+  for (const line of catalog.split("\n")) ctx.services.logger.echo(line)
+}
+
+export function validateModifierFlags(ctx: Ctx): void {
   const { err, warn } = ctx.services.logger
   if (ctx.claudeModel !== "") {
     if (!ctx.syncClaude) {
@@ -196,6 +228,28 @@ export function validateModelFlags(ctx: Ctx): void {
       throw new ExitError(2)
     }
   }
+  if (ctx.claudeEffort !== "") {
+    if (!ctx.syncClaude) {
+      warn("--claude-effort ignored: claude target not selected")
+      ctx.claudeEffort = ""
+    } else if (!isEffortModifierValue("claude", ctx.claudeEffort)) {
+      printCatalog(ctx, effortCatalog("claude"))
+      err(
+        `Invalid Claude effort '${ctx.claudeEffort}' — valid: ${effortModifierValues("claude").join("|")}`
+      )
+      throw new ExitError(2)
+    }
+  }
+  if (ctx.claudeAdvisor !== "") {
+    if (!ctx.syncClaude) {
+      warn("--claude-advisor ignored: claude target not selected")
+      ctx.claudeAdvisor = ""
+    } else if (!CLAUDE_ADVISOR_STATES.some((state) => state === ctx.claudeAdvisor)) {
+      printCatalog(ctx, advisorCatalog())
+      err(`Invalid Claude advisor state '${ctx.claudeAdvisor}' — valid: ${CLAUDE_ADVISOR_STATES.join("|")}`)
+      throw new ExitError(2)
+    }
+  }
   if (ctx.codexModel !== "") {
     if (!ctx.syncCodex) {
       warn("--codex-model ignored: codex target not selected")
@@ -203,6 +257,16 @@ export function validateModelFlags(ctx: Ctx): void {
     } else if (!validateCodexModel(ctx, ctx.codexModel)) {
       printModels(ctx, "codex")
       err(`Invalid Codex model '${ctx.codexModel}' — must match ^[A-Za-z0-9._-]+$`)
+      throw new ExitError(2)
+    }
+  }
+  if (ctx.codexEffort !== "") {
+    if (!ctx.syncCodex) {
+      warn("--codex-effort ignored: codex target not selected")
+      ctx.codexEffort = ""
+    } else if (!isEffortModifierValue("codex", ctx.codexEffort)) {
+      printCatalog(ctx, effortCatalog("codex"))
+      err(`Invalid Codex effort '${ctx.codexEffort}' — valid: ${effortModifierValues("codex").join("|")}`)
       throw new ExitError(2)
     }
   }

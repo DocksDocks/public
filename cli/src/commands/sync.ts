@@ -5,6 +5,7 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { bail, engine } from "../engine"
 import type { Logger } from "../engine-native/logger"
+import { advisorCatalog, effortCatalog } from "../efforts"
 import { kitHome } from "../kitHome"
 import { modelCatalog, type Tool } from "../manifests"
 import { LoggerService } from "../services"
@@ -49,7 +50,7 @@ const LEGACY_HINTS: Record<string, string> = {
   "--agents": "--agents was renamed: pass the target as a word, e.g. 'sync agents'"
 }
 
-const catalogHint = (t: Tool): string => {
+const modelCatalogHint = (t: Tool): string => {
   const c = modelCatalog(t)
   const list = c.models
     .map((m) => `  ${m.id}${m.note !== undefined ? `  — ${m.note}` : ""}`)
@@ -85,6 +86,14 @@ const claudeModel = Options.text("claude-model").pipe(
   Options.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
   Options.optional
 )
+const claudeEffort = Options.text("claude-effort").pipe(
+  Options.withDescription("Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)"),
+  Options.optional
+)
+const claudeAdvisor = Options.text("claude-advisor").pipe(
+  Options.withDescription("Deploy-time modifier: set Claude advisor on/off/default"),
+  Options.optional
+)
 const claudeCompactWindow = Options.text("claude-compact-window").pipe(
   Options.withDescription("Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)"),
   Options.optional
@@ -102,6 +111,10 @@ const codexModel = Options.text("codex-model").pipe(
   Options.withDescription("Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)"),
   Options.optional
 )
+const codexEffort = Options.text("codex-effort").pipe(
+  Options.withDescription("Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)"),
+  Options.optional
+)
 
 export const syncCommand = Command.make(
   "sync",
@@ -114,10 +127,13 @@ export const syncCommand = Command.make(
     yes,
     verbose,
     claudeModel,
+    claudeEffort,
+    claudeAdvisor,
     claudeCompactWindow,
     claudePermissive,
     claudePlugin,
-    codexModel
+    codexModel,
+    codexEffort
   },
   (config) =>
     Effect.gen(function* () {
@@ -125,7 +141,14 @@ export const syncCommand = Command.make(
         if (VALID_TARGETS.includes(t)) continue
         if (t === "--claude-model" || t === "--codex-model") {
           const tool: Tool = t === "--claude-model" ? "claude" : "codex"
-          return yield* bail(`${catalogHint(tool)}\n${t} requires a value: ${t}=<model>`)
+          return yield* bail(`${modelCatalogHint(tool)}\n${t} requires a value: ${t}=<model>`)
+        }
+        if (t === "--claude-effort" || t === "--codex-effort") {
+          const tool: Tool = t === "--claude-effort" ? "claude" : "codex"
+          return yield* bail(`${effortCatalog(tool)}\n${t} requires a value: ${t}=<level>`)
+        }
+        if (t === "--claude-advisor") {
+          return yield* bail(`${advisorCatalog()}\n${t} requires a value: ${t}=<on|off|default>`)
         }
         const hint = LEGACY_HINTS[t]
         if (hint !== undefined) {
@@ -148,8 +171,11 @@ export const syncCommand = Command.make(
       if (config.verbose) args.push("--verbose")
       if (config.claudePermissive) args.push("--claude-permissive")
       Option.map(config.claudeModel, (m) => args.push(`--claude-model=${m}`))
+      Option.map(config.claudeEffort, (level) => args.push(`--claude-effort=${level}`))
+      Option.map(config.claudeAdvisor, (state) => args.push(`--claude-advisor=${state}`))
       Option.map(config.claudeCompactWindow, (w) => args.push(`--claude-compact-window=${w}`))
       Option.map(config.codexModel, (m) => args.push(`--codex-model=${m}`))
+      Option.map(config.codexEffort, (level) => args.push(`--codex-effort=${level}`))
       for (const occurrence of config.claudePlugin) {
         occurrence
           .split(",")

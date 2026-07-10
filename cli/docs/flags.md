@@ -27,12 +27,17 @@ docks-kit sync claude agents        # two
 | Flag | Effect |
 |------|--------|
 | `--claude-model=<m>` | Deploy-time modifier: deployed model (aliases or full claude-* IDs; `default` unsets) |
+| `--claude-effort=<level>` | Deploy-time modifier: `effortLevel`; valid `low`, `medium`, `high`, `xhigh`, or `default` (embedded SoT value) |
+| `--claude-advisor=<state>` | Deploy-time modifier: advisor `on`, `off`, or `default` (SoT off/unset) |
 | `--claude-compact-window=<n>` | Deploy-time modifier: autocompact window in tokens (`680000` or `680k`) |
 | `--claude-permissive` | Deploy-time modifier: empty permissions.ask/deny (sandboxes) |
 | `--claude-plugin=<name>` | Sticky opt-in plugin (known: supabase, n8n); comma-separate for several |
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
+| `--codex-effort=<level>` | Deploy-time modifier: `model_reasoning_effort`; valid `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`, or `default` (embedded SoT value; model-dependent) |
 
-Bare `--claude-model` / `--codex-model` (no value) prints the model catalog.
+Bare model, effort, or advisor modifiers print the relevant valid-value catalog
+and exit 2. A modifier for a target not selected by the positional arguments is
+ignored with a warning; Claude modifiers never touch Codex config and vice versa.
 
 ## Renamed legacy flags (pre-CLI sync.sh)
 

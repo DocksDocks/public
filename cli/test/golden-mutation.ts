@@ -85,6 +85,16 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "agents"] },
   { fixture: "home-drift", cmd: ["sync", "--reconcile"] },
   { fixture: "home-drift", cmd: ["sync", "--prune"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort=future"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor=maybe"] },
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"]
+  },
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-plugin=supabase,n8n"] },
   {
     fixture: "home-drift",
@@ -297,6 +307,33 @@ function channelInvariantProblems(): Array<string> {
     problems.push("  channel: model catalog leaked to stderr (model claude)")
   }
 
+  for (const [flag, catalog, error] of [
+    ["--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
+    ["--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
+    ["--claude-advisor", "Available claude advisor states", "--claude-advisor requires a value"]
+  ] as const) {
+    const bare = runPublicCli(["sync", flag], "home-fresh", defaultStubs)
+    if (bare.exitCode !== 2 || !bare.stderr.includes(catalog) || !bare.stderr.includes(error)) {
+      problems.push(`  modifiers: public bare ${flag} lost catalog/error/exit-2 behavior`)
+    }
+    if (bare.stdout !== "") problems.push(`  modifiers: public bare ${flag} wrote catalog data to stdout`)
+    rmSync(bare.home, { recursive: true, force: true })
+  }
+
+  const modifierForwarding = runPublicCli(
+    ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"],
+    "home-fresh",
+    defaultStubs
+  )
+  if (
+    modifierForwarding.exitCode !== 0 ||
+    !modifierForwarding.stderr.includes("--claude-effort ignored: claude target not selected") ||
+    !modifierForwarding.stderr.includes("--claude-advisor ignored: claude target not selected") ||
+    !modifierForwarding.stderr.includes("--codex-effort ignored: codex target not selected")
+  ) {
+    problems.push("  modifiers: public valued options did not reach EngineNative target-ignore validation")
+  }
+
   const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs, { env: { DOCKS_KIT_VERBOSE: "1" } })
   if (status.exitCode !== 0) {
     problems.push(`  channel: status --json exited ${status.exitCode} (stderr: ${status.stderr.slice(0, 200)})`)
@@ -359,6 +396,7 @@ function channelInvariantProblems(): Array<string> {
   rmSync(syncSplit.home, { recursive: true, force: true })
   rmSync(warnSplit.home, { recursive: true, force: true })
   rmSync(modelSplit.home, { recursive: true, force: true })
+  rmSync(modifierForwarding.home, { recursive: true, force: true })
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
   rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home
