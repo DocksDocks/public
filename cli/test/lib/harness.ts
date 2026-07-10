@@ -43,7 +43,29 @@ function bunRuntime(): string {
 
 const BUN_RUNTIME = bunRuntime()
 
+const HARNESS_TEMP_PREFIXES = ["golden-home-", "golden-stubs-", "golden-mask-"] as const
+const STALE_TEMP_DIR_AGE_MS = 60 * 60 * 1000
 const TEMP_DIRS = new Set<string>()
+
+function isMissingPath(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT"
+}
+
+/** Heal externally-killed runs without touching young/concurrent or unrelated temp dirs. */
+export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
+  const root = tmpdir()
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    if (!HARNESS_TEMP_PREFIXES.some((prefix) => entry.name.startsWith(prefix))) continue
+    const path = join(root, entry.name)
+    try {
+      if (nowMs - lstatSync(path).mtimeMs < STALE_TEMP_DIR_AGE_MS) continue
+      rmSync(path, { recursive: true, force: true })
+    } catch (error) {
+      if (!isMissingPath(error)) throw error
+    }
+  }
+}
 
 function temporaryDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix))
@@ -51,9 +73,13 @@ function temporaryDir(prefix: string): string {
   return dir
 }
 
-process.on("exit", () => {
+/** Keep TEMP_DIRS path strings after deletion: snapshot normalization still needs them. */
+export function cleanupTemporaryDirs(): void {
   for (const dir of TEMP_DIRS) rmSync(dir, { recursive: true, force: true })
-})
+}
+
+sweepStaleTemporaryDirs()
+process.on("exit", cleanupTemporaryDirs)
 
 // ---------------------------------------------------------------- stubs ----
 

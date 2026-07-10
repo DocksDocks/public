@@ -1,16 +1,19 @@
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
 import {
   cleanup,
+  cleanupTemporaryDirs,
   makeStubDir,
   materializeVariant,
   readArgvLog,
   runEngine,
   stableStringify
 } from "../lib/harness"
+
+afterAll(cleanupTemporaryDirs)
 
 const LEGACY_SETTINGS: { [key: string]: Json } = {
   hooks: {
