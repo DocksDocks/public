@@ -6,8 +6,8 @@
  */
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { p, writeFileIfChanged } from "./exec"
+import { bunBootstrap } from "./bun"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import type { EngineServices, Platform } from "./services"
@@ -277,39 +277,6 @@ function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   }
 }
 
-/** skills::_find_bun — resolved bun path or "". */
-function findBun(ctx: Ctx): string {
-  return ctx.services.deps.path("bun")
-}
-
-/** skills::_bun_bootstrap — bun path or "" after a failed bootstrap. */
-export function bunBootstrap(ctx: Ctx, services: EngineServices): string {
-  const { change, warn } = services.logger
-  let bun = findBun(ctx)
-  if (bun !== "") return bun
-
-  if (services.deps.probe("curl").state === "missing") {
-    warn("Bun and curl both missing — cannot bootstrap Bun. Install Bun manually, then re-run sync.")
-    return ""
-  }
-  const pin = field(ctx, "bun", "verified")
-  warn(`Bun not found — installing Bun${pin !== "" ? ` ${pin} (kit-verified)` : ""}...`)
-  const installer = p(tmpdir(), `bun-install-${process.pid}.sh`)
-  const dl = spawnSync("curl", ["-fsSL", "https://bun.sh/install", "-o", installer], { stdio: "ignore" })
-  if (dl.error === undefined && dl.status === 0) {
-    spawnSync("bash", [installer, ...(pin !== "" ? [`bun-v${pin}`] : [])], { stdio: "ignore" })
-  }
-  rmSync(installer, { force: true })
-  bun = findBun(ctx)
-  if (bun === "") {
-    warn("Bun install failed. Install manually: curl -fsSL https://bun.sh/install -o /tmp/bun.sh && bash /tmp/bun.sh")
-    return ""
-  }
-  const version = services.deps.version("bun")
-  change(`Bun installed (${version !== "" ? version : "version unknown"})`)
-  return bun
-}
-
 /** skills::_effect_solutions_install. */
 export function effectSolutionsInstall(
   ctx: Ctx
@@ -319,8 +286,9 @@ export function effectSolutionsInstall(
     const verb = mode === "upgrade" ? "Upgrading" : "Installing"
     const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
 
-    const bun = bunBootstrap(ctx, services)
-    if (bun === "") return 1
+    const bunState = bunBootstrap(ctx, services)
+    if (bunState.kind === "deferred") return 1
+    const bun = bunState.executable
 
     verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
     if (spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" }).status !== 0) {

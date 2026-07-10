@@ -10,6 +10,7 @@ import { homedir } from "node:os"
 
 import { kitHome } from "../kitHome"
 import { makeEngineServices, type EngineServices, type Logger } from "./services"
+import type { BunRuntimeState } from "./bun"
 import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
@@ -33,6 +34,7 @@ export interface Ctx {
   codexModel: string
   /** Injected capability seam (logger/deps/platform) — see services.ts. */
   readonly services: EngineServices
+  bunRuntime?: BunRuntimeState
   targetFilterSet: boolean
   syncClaude: boolean
   syncCodex: boolean

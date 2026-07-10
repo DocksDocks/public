@@ -214,6 +214,52 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
 
 // ------------------------------------------------------------- settings ----
 
+export interface PreparedClaudeSettings {
+  readonly path: string
+  readonly bytes: string
+  readonly previousBytes: string | undefined
+  readonly changed: boolean
+}
+
+/** Build the candidate settings bytes before the readiness-gated runtime cutover mutates disk. */
+export function prepareClaudeSettings(ctx: Ctx, claudeDir: string, repo: Json): PreparedClaudeSettings {
+  const path = p(claudeDir, "settings.json")
+  if (!existsSync(path)) {
+    return { path, bytes: jqStringify(repo), previousBytes: undefined, changed: true }
+  }
+
+  const previousBytes = readFileSync(path, "utf8")
+  const user = parseJson(previousBytes)
+  if (user === undefined) {
+    ctx.services.logger.err(`Skipping settings sync: ${path} is not valid JSON. Fix it manually or delete it to reinstall.`)
+    throw new ExitError(1)
+  }
+  const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user)
+  const bytes = jqStringify(merged)
+  return { path, bytes, previousBytes, changed: bytes !== previousBytes }
+}
+
+/** Commit a fully prepared document; callers must finish runtime preparation first. */
+export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings): void {
+  const { change, verbose } = ctx.services.logger
+  if (!prepared.changed) {
+    verbose("Settings already in sync")
+    return
+  }
+
+  if (prepared.previousBytes !== undefined) copyFileSync(prepared.path, `${prepared.path}.bak`)
+  writeFileSync(`${prepared.path}.tmp`, prepared.bytes)
+  renameSync(`${prepared.path}.tmp`, prepared.path)
+  ctx.nextStepTriggers.claudeRestart = true
+  if (prepared.previousBytes === undefined) {
+    change("Settings installed")
+  } else if (ctx.reconcile) {
+    change("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
+  } else {
+    change("Settings merged (backup at settings.json.bak)")
+  }
+}
+
 function syncSettings(ctx: Ctx, claudeDir: string): void {
   const { change, echo, err, verbose } = ctx.services.logger
   const repoSettings = payloadDisplayPath("SoT/.claude/settings.json", ctx.repoDir)

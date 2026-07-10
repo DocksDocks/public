@@ -93,6 +93,41 @@ describe("DependencyManager registry", () => {
     }
   })
 
+  it("requires an absolute bun.exe on Windows and ignores a shadowing bun.cmd", () => {
+    const previousHome = process.env["HOME"]
+    const previousBunInstall = process.env["BUN_INSTALL"]
+    try {
+      process.env["HOME"] = "C:/Users/Test"
+      process.env["BUN_INSTALL"] = "C:/Custom Bun"
+      const fallback = "C:/Custom Bun/bin/bun.exe"
+      const withFallback = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : name === fallback ? fallback : ""
+      })
+      expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
+
+      const onlyCmd = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : ""
+      })
+      expect(onlyCmd.probe("bun")).toEqual({ state: "missing" })
+
+      const pathExe = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/Tools/BUN.EXE" : ""
+      })
+      expect(pathExe.path("bun")).toBe("C:/Tools/BUN.EXE")
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
+      else process.env["BUN_INSTALL"] = previousBunInstall
+    }
+  })
+
   it("finds agent-browser managed Chrome without invoking a command", () => {
     const root = mkdtempSync(join(tmpdir(), "deps-chrome-"))
     const previousHome = process.env["HOME"]

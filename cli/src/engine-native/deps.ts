@@ -110,21 +110,28 @@ const home = (): string => {
   return envHome !== undefined && envHome !== "" ? envHome : homedir()
 }
 
-const findBun = (exec: ProbeExecutor): { command: string; path: string } | undefined => {
+const absoluteWindowsExe = (path: string): boolean =>
+  /\.exe$/i.test(path) && (/^[A-Za-z]:[\\/]/.test(path) || /^\\\\/.test(path))
+
+const findBun = (exec: ProbeExecutor, platform: NodeJS.Platform = rawPlatform()): { command: string; path: string } | undefined => {
   const onPath = exec.which("bun")
-  if (onPath !== "") return { command: "bun", path: onPath }
+  if (onPath !== "" && (platform !== "win32" || absoluteWindowsExe(onPath))) {
+    return { command: platform === "win32" ? onPath : "bun", path: onPath }
+  }
   const root =
     process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
       ? process.env["BUN_INSTALL"]!
       : p(home(), ".bun")
-  for (const candidate of [p(root, "bin", "bun"), p(home(), ".bun", "bin", "bun")]) {
-    if (exec.which(candidate) !== "") return { command: candidate, path: candidate }
+  const name = platform === "win32" ? "bun.exe" : "bun"
+  for (const candidate of [p(root, "bin", name), p(home(), ".bun", "bin", name)]) {
+    const found = exec.which(candidate)
+    if (found !== "" && (platform !== "win32" || absoluteWindowsExe(found))) return { command: found, path: found }
   }
   return undefined
 }
 
-const resolveBun = (exec: ProbeExecutor): ProbeResult => {
-  const bun = findBun(exec)
+const resolveBun = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
+  const bun = findBun(exec, platform)
   return bun === undefined
     ? { state: "missing" }
     : { state: "present", path: bun.path }
@@ -147,7 +154,9 @@ const versionEffectSolutions = (exec: ProbeExecutor): string => {
 }
 
 const locateEffectSolutions = (exec: ProbeExecutor, platform: NodeJS.Platform): DependencyLocation => {
-  const bun = findBun(exec)
+  const strictBun = findBun(exec, platform)
+  const pathBun = exec.which("bun")
+  const bun = strictBun ?? (pathBun !== "" ? { command: "bun", path: pathBun } : undefined)
   if (bun === undefined) return { path: "", binDir: "" }
   const globalBin = exec.capture(bun.command, ["pm", "-g", "bin"])
   const names =
@@ -251,7 +260,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     {
       resolve: resolveBun,
       version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
-      locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
+      locate: (exec, platform) => ({ path: findBun(exec, platform)?.path ?? "", binDir: "" })
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),

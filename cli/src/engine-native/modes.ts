@@ -12,7 +12,8 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { rtkInstall } from "./claudeSync"
-import { agentBrowserInstall, bunBootstrap, effectSolutionsInstall } from "./skillsSync"
+import { bunBootstrap } from "./bun"
+import { agentBrowserInstall, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
 
 export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
@@ -136,8 +137,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
     case "rtk":
       return ensure(ctx, "rtk", rtkInstall(ctx))
     case "bun":
-      // skills::_bun_bootstrap >/dev/null — the found-bun stdout is discarded.
-      return bunBootstrap(ctx, ctx.services) !== "" ? 0 : 1
+      return bunBootstrap(ctx, ctx.services).kind === "ready" ? 0 : 1
     case "effect-solutions":
       return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
     case "agent-browser":
