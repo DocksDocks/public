@@ -3,7 +3,7 @@ title: Embed the SoT payload
 goal: Make every sync/config read independent of a runtime SoT/ directory by generating one deterministic embedded payload for compiled and Bun/npm execution.
 status: in_review
 created: "2026-07-10T00:32:24-03:00"
-updated: "2026-07-10T02:16:37-03:00"
+updated: "2026-07-10T02:43:30-03:00"
 started_at: "2026-07-10T01:40:37-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, engine-native, payload, windows]
@@ -46,6 +46,7 @@ affected_paths:
   - cli/docs/overview.md
   - cli/docs/install.md
   - cli/docs/platforms.md
+  - cli/test/unit/kitHome.test.ts
   - cli/test/unit/payload.test.ts
 related_plans: [windows-support, engine-full-di]
 review_status: null
@@ -208,6 +209,7 @@ None. `--update-goldens` is not permitted in this plan. Dry-run remains 22 cases
 - **2026-07-10T01:59:15-03:00 — Step 2 done.** Replaced every non-hook runtime SoT/sound read in Claude, Codex, agents, model, toolchain, status/manifests, and orchestration with the generated payload; made `kitHome` package/executable-location-only; added text/byte write primitives; preserved all display labels, merge order, backups, and initial bytes. The required grep found only the three deferred legacy hook/script reads plus the deferred launcher jq lookup. Gates: `tsc` exit 0; Vitest 7 files/40 tests passed; dry-run golden `OK (22 case(s))`; mutation golden `OK (47 case(s))`; both prove-red legs printed `prove-red OK` and exited 1; payload `--check` exit 0; rebuilt Linux x64 binary performed a real temp-home Claude sync from the checkout; a freshly packed/global-installed tarball retained `SoT/` + sound and performed the same real sync from a foreign cwd. No goldens changed.
 - **2026-07-10T02:10:00-03:00 — Scope split (user decision, orchestrator-relayed).** The native hooks/statusline half was cancelled and moves to a forthcoming research-first statusline-redesign plan. Decisions 1/2/6 from the prior hook draft transfer there; the per-user full-CLI runner and later Claude-presence gate are withdrawn. This plan now ends at a payload-only final slice: the three scripts remain embedded and deployed unchanged, package authoring files are removed, the launcher uses its generated pin, and payload CI/docs close the delivery contract.
 - **2026-07-10T02:16:37-03:00 — Step 3 done.** Embedded the three retained Claude shell scripts and changed only their existing source reads to payload strings; removed `SoT/` and `notification.mp3` from npm membership; made the generated Bun pin the launcher's sole version source; added payload freshness/path-filter coverage and foreign-cwd Windows entrypoint assertions; and updated runtime-delivery documentation without changing hook/settings/jq/curl behavior. Runtime-read audit found no product filesystem read/gate; remaining matches are payload calls, generated data, or descriptions. Gates: `tsc` exit 0; Vitest 7 files/40 tests passed; dry-run golden `OK (22 case(s))`; mutation golden `OK (47 case(s))`; both prove-red legs printed `prove-red OK` and exited 1; payload `--check` exit 0; no golden files changed. Linux x64 standalone build exit 0. `bun pm pack` ran prepack and listed 50 files with neither `package/SoT/` nor `package/notification.mp3`; both the copied standalone and temp-global installed shim passed `sync --dry-run`, `models claude`, `status --json`, `toolchain check`, and real `sync claude --skip-rtk` from a foreign cwd with no `DOCKS_KIT_HOME`, then byte-verified statusline, fetch-usage, notify, settings, sound, and MCP deployment. Plan moved to `in_review` for the separate review pass.
+- **2026-07-10T02:43:30-03:00 — Review fix round 1.** F1 corrected the stale invalid-`DOCKS_KIT_HOME` diagnostic to describe the actual docks-kit package-root contract and added a focused regression test; the test first failed with the old `SoT/ + package.json` message, then passed with the new package-name requirement. F2 removed the zero-caller `copyFileIfChanged`/`copyTreeIfChanged` helpers and their now-unused filesystem imports; a repository search finds no remaining symbol reference. Gates: `tsc` exit 0; Vitest 8 files/41 tests passed; dry-run golden `OK (22 case(s))`; mutation golden `OK (47 case(s))`; both prove-red legs printed `prove-red OK` and exited 1; payload `--check` exit 0; no golden update or diff.
 
 ## Sources
 

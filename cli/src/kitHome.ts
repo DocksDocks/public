@@ -20,7 +20,7 @@ export const kitHome = (): string => {
   const env = process.env["DOCKS_KIT_HOME"]
   if (env !== undefined && env !== "") {
     if (isKitHome(env)) return resolve(env)
-    throw new Error(`DOCKS_KIT_HOME=${env} does not contain SoT/ + package.json`)
+    throw new Error(`DOCKS_KIT_HOME=${env} is not a docks-kit package root (package.json name must be "docks-kit")`)
   }
   let dir = process.cwd()
   for (;;) {
