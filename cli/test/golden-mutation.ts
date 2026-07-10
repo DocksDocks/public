@@ -87,6 +87,8 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "--prune"] },
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-effort=default"] },
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-advisor=on"] },
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=ultra"] },
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=default"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
   { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },

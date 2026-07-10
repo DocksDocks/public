@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -8,6 +8,7 @@ import {
   syncClaudeAdvisor,
   syncClaudeEffort
 } from "../../src/engine-native/claudeSettingsModifiers"
+import { replaceTopLevelSetting, syncCodexEffort } from "../../src/engine-native/codexToml"
 import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
 import type { Ctx } from "../../src/engine-native"
 import {
@@ -276,6 +277,116 @@ describe("Claude settings modifiers", () => {
     } finally {
       rmSync(invalidHome, { recursive: true, force: true })
       rmSync(dryHome, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("Codex effort modifier", () => {
+  it("keeps every TOML fixture table-stable for none, ultra, and the SoT default", () => {
+    const fixtureDir = join(kitHome(), "cli", "test", "fixtures", "codex-toml")
+    const fixtures = readdirSync(fixtureDir).filter((name) => name.endsWith(".toml")).sort()
+    expect(fixtures).toHaveLength(7)
+
+    for (const fixture of fixtures) {
+      const before = readFileSync(join(fixtureDir, fixture), "utf8")
+      const firstTable = before.search(/^\[/m)
+      const tableBytes = firstTable === -1 ? "" : before.slice(firstTable)
+      for (const effort of ["none", "ultra", sotEffort("codex")]) {
+        const next = replaceTopLevelSetting(
+          before,
+          "model_reasoning_effort",
+          `model_reasoning_effort = "${effort}"`
+        )
+        const lines = next.split("\n")
+        const effortLines = lines.filter((line) => line.startsWith("model_reasoning_effort ="))
+        const firstTableLine = lines.findIndex((line) => line.startsWith("["))
+        const effortLine = lines.findIndex((line) => line.startsWith("model_reasoning_effort ="))
+        expect(effortLines).toEqual([`model_reasoning_effort = "${effort}"`])
+        expect(firstTableLine === -1 || effortLine < firstTableLine).toBe(true)
+        if (firstTable !== -1) expect(next.slice(next.search(/^\[/m))).toBe(tableBytes)
+      }
+    }
+  })
+
+  it("sets and resolves deployed effort atomically without repeat-run churn", () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-effort-modifier-"))
+    const config = join(home, ".codex", "config.toml")
+    mkdirSync(join(home, ".codex"), { recursive: true })
+    writeFileSync(
+      config,
+      '# keep\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "low" # stale\nmodel_reasoning_effort = "medium"\n\n[features]\nmemories = true\n'
+    )
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      syncCodexEffort(ctx, "ultra")
+      expect(readFileSync(config, "utf8")).toBe(
+        '# keep\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "ultra"\n\n[features]\nmemories = true\n'
+      )
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: "Effort: deployed Codex model_reasoning_effort set to ultra (SoT unchanged; flag-less sync reverts)"
+        }
+      ])
+      expect(ctx.nextStepTriggers.codexRestart).toBe(true)
+      expect(existsSync(`${config}.tmp`)).toBe(false)
+
+      records.length = 0
+      ctx.nextStepTriggers.codexRestart = false
+      syncCodexEffort(ctx, "ultra")
+      expect(records).toEqual([
+        { level: "verbose", message: "Effort: deployed Codex model_reasoning_effort already ultra" }
+      ])
+      expect(ctx.nextStepTriggers.codexRestart).toBe(false)
+
+      records.length = 0
+      syncCodexEffort(ctx, "default")
+      expect(readFileSync(config, "utf8")).toContain(
+        `model_reasoning_effort = "${sotEffort("codex")}"`
+      )
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: `Effort: deployed Codex model_reasoning_effort set to ${sotEffort("codex")} (SoT default)`
+        }
+      ])
+
+      records.length = 0
+      syncCodexEffort(ctx, "none")
+      expect(readFileSync(config, "utf8")).toContain('model_reasoning_effort = "none"')
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("keeps missing-file and dry-run behavior non-mutating", () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-effort-dry-"))
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+    const config = join(home, ".codex", "config.toml")
+
+    try {
+      syncCodexEffort(ctx, "ultra")
+      expect(records).toEqual([
+        { level: "warn", message: `(--codex-effort) ${config} missing — skipped` }
+      ])
+
+      mkdirSync(join(home, ".codex"), { recursive: true })
+      writeFileSync(config, 'model_reasoning_effort = "low"\n')
+      records.length = 0
+      ctx.dryRun = true
+      syncCodexEffort(ctx, "ultra")
+      expect(readFileSync(config, "utf8")).toBe('model_reasoning_effort = "low"\n')
+      expect(records).toEqual([
+        {
+          level: "echo",
+          message: `[dry-run] (--codex-effort) set model_reasoning_effort = "ultra" in ${config}`
+        }
+      ])
+    } finally {
+      rmSync(home, { recursive: true, force: true })
     }
   })
 })

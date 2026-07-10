@@ -40,6 +40,7 @@ const COMMANDS: Array<Array<string>> = [
   ["sync", "--dry-run"],
   ["sync", "claude", "--dry-run"],
   ["sync", "codex", "--dry-run"],
+  ["sync", "codex", "--dry-run", "--codex-effort=ultra"],
   ["sync", "agents", "--dry-run"],
   ["sync", "--dry-run", "--reconcile", "--prune"],
   [

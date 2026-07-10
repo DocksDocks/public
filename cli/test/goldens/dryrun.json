@@ -85,6 +85,17 @@
       "fixture": "home-drift",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
+    "fixture=home-drift cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-drift",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
     "fixture=home-fresh cmd=sync --dry-run": {
       "command": [
         "sync",
@@ -161,6 +172,17 @@
       "fixture": "home-fresh",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
+    "fixture=home-fresh cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
     "fixture=home-invalid-json cmd=sync --dry-run": {
       "command": [
         "sync",
@@ -236,6 +258,17 @@
       "exitCode": 0,
       "fixture": "home-invalid-json",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "fixture=home-invalid-json cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-invalid-json",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     }
   },
   "version": 1
