@@ -1,10 +1,10 @@
 ---
 title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
-status: planned
+status: ongoing
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T13:39:28-03:00"
-started_at: null
+updated: "2026-07-10T13:53:31-03:00"
+started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
 affected_paths:
@@ -237,7 +237,7 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 
 | # | Task | Depends | Status |
 |---|---|---|---|
-| 1 | Add `cli/src/efforts.ts`; wire exact valued/bare options through `cli/src/commands/sync.ts`, `cli/src/engine-native/index.ts`, and `cli/src/engine-native/parseArgs.ts`, with focused tests and regenerated affected goldens in the same slice. Done when the exact Claude/Codex lists, `default` resolution, exit `2` diagnostics, target-ignore warnings, and public/raw channel contracts pass the mandatory per-slice gate. Revert trigger: any new string list is duplicated across public and native layers. | — | planned |
+| 1 | Add `cli/src/efforts.ts`; wire exact valued/bare options through `cli/src/commands/sync.ts`, `cli/src/engine-native/index.ts`, and `cli/src/engine-native/parseArgs.ts`, with focused tests and regenerated affected goldens in the same slice. Done when the exact Claude/Codex lists, `default` resolution, exit `2` diagnostics, target-ignore warnings, and public/raw channel contracts pass the mandatory per-slice gate. Revert trigger: any new string list is duplicated across public and native layers. | — | in-flight |
 | 2 | Rename/generalize the Claude modifier module, update `modes.ts`, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default → high`, restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | planned |
 | 3 | Extend `codexToml.ts` and `codexSync.ts` for effort, with focused fixture coverage and regenerated affected goldens in the same slice. Done when every existing TOML fixture remains structurally stable, `ultra`, `none`, and `default → xhigh` replacements occur only before the first table, and the mandatory per-slice gate passes. Revert trigger: comments/tables reformat or a Claude target touches Codex config. | 1 | planned |
 | 4 | Edit `SoT/.claude/settings.json` and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor unset; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | planned |
