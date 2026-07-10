@@ -1,9 +1,9 @@
 ---
-title: Add sync effort modifiers and revise Claude defaults
-goal: Add validated per-tool effort overrides, make Fable the Claude default, and keep Claude advisor off unless explicitly enabled per machine.
+title: Add sync modifiers and harden packaged CLI metadata
+goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: planned
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T13:15:37-03:00"
+updated: "2026-07-10T13:39:28-03:00"
 started_at: null
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -13,6 +13,7 @@ affected_paths:
   - SoT/.claude/settings.json
   - SoT/models.json
   - cli/docs/flags.md
+  - cli/docs/install.md
   - cli/docs/models.md
   - cli/docs/modifiers.md
   - cli/docs/sync-layers.md
@@ -27,12 +28,16 @@ affected_paths:
   - cli/src/engine-native/modes.ts
   - cli/src/engine-native/parseArgs.ts
   - cli/src/generated/sotPayload.ts
+  - cli/src/main.ts
+  - cli/scripts/generate-sot-payload.ts
   - cli/test/golden-dryrun.ts
   - cli/test/golden-mutation.ts
   - cli/test/goldens/dryrun.json
   - cli/test/goldens/mutation.json
   - cli/test/unit/efforts.test.ts
   - cli/test/unit/engine-di.test.ts
+  - cli/test/unit/payload.test.ts
+  - .github/workflows/windows-entrypoints.yml
 related_plans: []
 review_status: null
 planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
@@ -40,7 +45,7 @@ planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
 
 ## Goal
 
-Ship three deploy-time modifier surfaces through the typed public CLI and EngineNative: Claude and Codex effort overrides with tool-specific validation, plus a Claude advisor toggle. A flag-less sync must restore both effort keys to their SoT value (`xhigh`) and disable the Claude advisor, while the Claude SoT model becomes `fable` without changing the alias inventory. The work is complete only when public-parser behavior, raw-engine behavior, deployed JSON/TOML mutations, generated payload parity, docs, golden snapshots, and prove-red legs all pass.
+Ship three deploy-time modifier surfaces through the typed public CLI and EngineNative: Claude and Codex effort overrides with tool-specific validation, plus a Claude advisor toggle. A flag-less sync must restore Claude effort to its revised SoT value (`high`), Codex effort to `xhigh`, and disable the Claude advisor, while the Claude SoT model becomes `fable` without changing the alias inventory. Also replace the hard-coded CLI version with a generated `package.json` version that survives compilation, and prove/document that Bun's expected blocked `@parcel/watcher` install script does not impair the global CLI. The work is complete only when public-parser behavior, raw-engine behavior, deployed JSON/TOML mutations, generated metadata/payload parity, consumer-install behavior, docs, golden snapshots, and prove-red legs all pass.
 
 ## Context & rationale
 
@@ -49,6 +54,10 @@ The existing model modifier is a two-layer contract: `cli/src/commands/sync.ts` 
 The Claude settings merge is additive for keys absent from the SoT. Therefore, removing `advisorModel` from `SoT/.claude/settings.json` alone would leave the previously kit-owned key on existing machines. Add `advisorModel` to `claudeSync.ts`'s baseline removed manifest, which is the repository's deliberate migration path for retired kit-owned settings keys. When any explicit `--claude-advisor=on|off|default` value is present, exclude only `advisorModel` from that run's removal-key list and let the later modifier own the set/delete action; when the flag is absent, the removal pass enforces the advisor-off SoT. This avoids duplicate dry-run actions and delete/re-add/restart churn.
 
 The official Codex docs currently disagree: the configuration reference still lists `minimal|low|medium|high|xhigh`, while the current subagent guide lists `none|minimal|low|medium|high|xhigh|max|ultra`. Current `openai/codex` main resolves the conflict: its parser names all eight levels and permits future non-empty custom strings. This feature deliberately validates the eight currently named values because the user requested an exact, discoverable enum; actual support remains model-dependent. The live GPT-5.6 catalog on the implementation host advertises `low` through `ultra` for Sol, `low` through `ultra` for Terra, and `low` through `max` for Luna as of 2026-07-10.
+
+The shipped CLI version has a separate generation defect: `cli/src/main.ts` hard-codes `0.1.0` while `package.json` is `0.4.0`. Runtime lookup is not acceptable because standalone binaries do not ship `package.json`. Extend the existing payload generator to read and validate the package version at generation time, emit it beside the payload constants, and let the existing byte-comparison `--check` path catch package/generated drift. This follows the same authoring-input-to-generated-output contract as the launcher's Bun pin.
+
+A disposable consumer install of the local `0.4.0` tarball with pinned Bun `1.3.14` installed 37 packages and printed exactly `Blocked 1 postinstall. Run \`bun pm -g untrusted\` for details.` The untrusted report named only `@parcel/watcher @2.5.6`; `esbuild` was absent because it is dev-only through Vitest/Vite, and `msgpackr-extract` was present but is on Bun's built-in default-trusted list. `@parcel/watcher` is a production transitive of `@effect/platform-bun`, but its install script only invokes `node-gyp` when `npm_config_build_from_source=true`, and supported-platform prebuilt optional packages are already installed. The isolated global CLI successfully ran `--version`, `models claude`, and `toolchain check` with the script blocked. Dropping/replacing the Bun Effect runtime layer would be a high-risk dependency redesign for a benign warning, so this round documents the exact warning and turns the existing Windows bun-shim smoke into an explicit blocked-script regression assertion.
 
 ### Verbatim requirements
 
@@ -59,6 +68,14 @@ The official Codex docs currently disagree: the configuration reference still li
 > 3. Advisor OFF by default in the deployed Claude settings, with a sync flag to enable it per machine (shape it consistently with the other modifier flags, e.g. --claude-advisor=on|off with `default` semantics). RESEARCH the actual Claude Code settings key that controls the advisor feature in current official docs — do NOT invent a key. If no documented settings key exists, record that with evidence as an ## Open question (options: env var? not-possible?) instead of guessing. Codex side: only if a real equivalent exists; otherwise explicitly N/A with one-line evidence.
 >
 > 4. Everything stays per-tool-appropriate (claude flags affect only the claude target, codex flags only codex — same warn discipline the model flags use).
+
+### Verbatim relay refinements (supersede conflicts above)
+
+> Important refinement for the plan: now that the Claude default model becomes fable, the Claude SoT effort default should change from xhigh to HIGH (SoT/.claude/settings.json effortLevel: "high"). Codex SoT default stays xhigh. Flags/validation unchanged; `default` reverts to each tool's SoT (Claude high, Codex xhigh). Revise Context verbatim, Interfaces, relevant Step, and golden ledger (settings bytes shift). Still no implementation until explicit go-ahead.
+
+> Add the `--version` bug to required plan scope: `cli/src/main.ts:62` hardcodes version `"0.1.0"` while package.json is `0.4.0`. Bake the version from package.json at GENERATION time because compiled binaries cannot read package.json at runtime; follow the BUN_PIN precedent in `cli/scripts/generate-sot-payload.ts`; `main.ts` imports the generated constant; generator `--check` fails on package.json/generated drift; add a unit test that the CLI-reported version equals package.json. Add its own step and executable acceptance `docks-kit --version == package.json version`.
+
+> Investigate precisely which script-bearing packages land in a CONSUMER production install and whether runtime works when Bun blocks them. Choose dependency-graph slimming if cheap/safe; otherwise document the benign warning in `cli/docs/install.md` with exact Bun output and only verified trust guidance. If feasible, add a CI assertion in the bun-shim job that the CLI survives blocked postinstalls. Do not invent trust instructions.
 
 Research result for requirement 3: Claude officially documents `advisorModel`; any configured model enables advisor and unsetting the key disables it. Fable-main + Fable-advisor is an accepted pairing. Codex advisor is **N/A**: the current official `config.toml` key table has no `advisor*` setting; `review_model` only overrides `/review`, and Codex's separate secondary-agent mechanism is subagents/multi-agent rather than an advisor toggle.
 
@@ -82,6 +99,37 @@ Research result for requirement 3: Claude officially documents `advisorModel`; a
   bun cli/scripts/generate-sot-payload.ts
   bun cli/scripts/generate-sot-payload.ts --check
   ```
+
+- Prove the generated version on source and the current-target compiled path (the build stays under ignored `cli/dist/`):
+
+  ```bash
+  expected="$(jq -r .version package.json)"
+  test "$(bun cli/src/main.ts --version)" = "$expected"
+  bash cli/build-binaries.sh linux-x64
+  test "$(cli/dist/docks-kit-linux-x64 --version)" = "$expected"
+  test "$(./docks-kit --version)" = "$expected"
+  ```
+
+- Reproduce the consumer production install without touching the real Bun-global prefix. Do not clean the probe with a destructive command; `/tmp` lifecycle owns it:
+
+  ```bash
+  probe="$(mktemp -d /tmp/docks-kit-consumer.XXXXXX)"
+  version="$(jq -r .version package.json)"
+  bun pm pack --destination "$probe"
+  install_out="$(env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 bun add -g "$probe/docks-kit-$version.tgz" 2>&1)"
+  printf '%s\n' "$install_out"
+  grep -Fx 'Blocked 1 postinstall. Run `bun pm -g untrusted` for details.' <<<"$install_out"
+  untrusted="$(env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 bun pm -g untrusted)"
+  printf '%s\n' "$untrusted"
+  grep -F './node_modules/@parcel/watcher @2.5.6' <<<"$untrusted"
+  grep -F '» [install]: node scripts/build-from-source.js' <<<"$untrusted"
+  ! env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 bun pm -g ls --all | grep -F esbuild
+  env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 "$probe/bun/bin/docks-kit" --version
+  env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 "$probe/bun/bin/docks-kit" models claude
+  env HOME="$probe/home" BUN_INSTALL="$probe/bun" NO_COLOR=1 "$probe/bun/bin/docks-kit" toolchain check
+  ```
+
+  All assertions/commands must exit `0`; `--version` must equal `$version`. The probe intentionally does not run `bun pm trust`.
 
 - Update golden files only through their generators, inspect the diff, then run the normal and prove-red legs:
 
@@ -115,7 +163,7 @@ Research result for requirement 3: Claude officially documents `advisorModel`; a
 
 | Flag | Accepted values | Deployed mutation | `default` meaning |
 |---|---|---|---|
-| `--claude-effort=<level>` | `low`, `medium`, `high`, `xhigh`, `default` | Top-level `effortLevel` string in `~/.claude/settings.json` | Write the embedded SoT value, currently `xhigh` |
+| `--claude-effort=<level>` | `low`, `medium`, `high`, `xhigh`, `default` | Top-level `effortLevel` string in `~/.claude/settings.json` | Write the embedded SoT value, revised to `high` |
 | `--codex-effort=<level>` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`, `default` | Top-level `model_reasoning_effort = "<level>"` in `~/.codex/config.toml` | Write the embedded SoT value, currently `xhigh` |
 | `--claude-advisor=<state>` | `on`, `off`, `default` | `on` writes top-level `advisorModel: "fable"`; `off` deletes `advisorModel` | Delete `advisorModel`, matching the advisor-off SoT |
 
@@ -134,7 +182,7 @@ The upstream effort values above exclude the kit's `default` pseudo-value. Claud
 
 Create `cli/src/efforts.ts` as the single typed source for the two valid-value lists, their 2026-07-10 verification metadata/notes, catalog rendering, validation, and embedded-SoT default resolution. It must distinguish upstream values from the `default` pseudo-value and fail deterministically if an embedded SoT effort is missing or falls outside that tool's known upstream list. `cli/src/commands/sync.ts` and EngineNative consume this module rather than duplicating enum strings.
 
-Catalog order is part of the UX contract: Claude renders `low, medium, high, xhigh, default`; Codex renders `none, minimal, low, medium, high, xhigh, max, ultra, default`; advisor renders `on, off, default`. Each header names the tool, setting (`effortLevel`, `model_reasoning_effort`, or `advisorModel`), and verification date. The `default` row says `SoT: xhigh` for efforts and `SoT: off (unset)` for advisor; the Codex header/footnote says support is model-dependent.
+Catalog order is part of the UX contract: Claude renders `low, medium, high, xhigh, default`; Codex renders `none, minimal, low, medium, high, xhigh, max, ultra, default`; advisor renders `on, off, default`. Each header names the tool, setting (`effortLevel`, `model_reasoning_effort`, or `advisorModel`), and verification date. Claude's `default` row says `SoT: high`, Codex's says `SoT: xhigh`, and advisor's says `SoT: off (unset)`; the Codex header/footnote says support is model-dependent.
 
 ### Claude JSON mutation seam
 
@@ -143,6 +191,20 @@ Rename `cli/src/engine-native/claudeModel.ts` to `claudeSettingsModifiers.ts`. P
 ### Codex TOML mutation seam
 
 Extend `codexToml.ts` with `syncCodexEffort`, reusing `replaceTopLevelSettingInFile` so comments, user tables, first-table insertion, and newline behavior remain byte-stable. Do not hand-roll a second TOML rewrite path.
+
+### Generated package version
+
+Extend `cli/scripts/generate-sot-payload.ts` with a `packageVersion(root)` reader that parses root `package.json`, requires a non-empty string `version`, and emits `GENERATED_PACKAGE_VERSION` from the existing generated-module template. `cli/src/main.ts` imports that constant and passes it to `Command.run`; it must not read `package.json` at runtime. Because `staleGeneratedPaths` already compares the complete generated module, changing `package.json` without regeneration makes `--check` exit `1` and name `cli/src/generated/sotPayload.ts`.
+
+`cli/test/unit/payload.test.ts` must copy `package.json` into its disposable generator root, prove a package-version edit makes `--check` fail, and spawn the public source CLI to assert stdout equals the parsed package version. The final gate builds the current Linux binary into ignored `cli/dist/` and asserts both that binary and the checkout launcher report the same version, proving the compiled path embeds rather than discovers the value.
+
+### Bun blocked-script consumer contract
+
+Keep the current production dependency graph. `@effect/platform-bun` is the only imported platform implementation and supplies `BunContext.layer`/`BunRuntime.runMain`; it unconditionally depends on `@effect/platform-node-shared`, which declares `@parcel/watcher`. Removing that transitive would require replacing the runtime layer and is not a cheap/safe warning cleanup. The consumer contract is instead:
+
+- Pinned Bun `1.3.14` may print exactly `Blocked 1 postinstall. Run \`bun pm -g untrusted\` for details.` during global installation.
+- `bun pm -g untrusted` must name `@parcel/watcher @2.5.6` and its `node scripts/build-from-source.js` install command; no project documentation instructs users to trust it because supported default installs use optional prebuilt packages and the script is a no-op unless source builds were explicitly requested.
+- The existing Windows `bun-shim` job captures and asserts that blocked-script identity/count, then its existing foreign-cwd catalog, toolchain, and real-sync steps prove the installed CLI still functions. If Bun's pinned version or dependency pin changes, update this assertion only after re-running the isolated consumer probe and reviewing the new script-bearing set.
 
 ## File manifest
 
@@ -157,29 +219,36 @@ Extend `codexToml.ts` with `syncCodexEffort`, reusing `replaceTopLevelSettingInF
 | `cli/src/engine-native/codexToml.ts` | Add top-level effort modifier using the existing line-stable TOML helper |
 | `cli/src/engine-native/codexSync.ts` | Apply Codex effort after the base merge/model override |
 | `cli/src/engine-native/modes.ts` | Import `syncClaudeModel` from its renamed module only; no new standalone effort/advisor mode |
-| `SoT/.claude/settings.json` | Change `model` from `opus` to `fable`; remove `advisorModel`; keep `effortLevel: xhigh` |
+| `SoT/.claude/settings.json` | Change `model` from `opus` to `fable`; remove `advisorModel`; change `effortLevel` from `xhigh` to `high` |
 | `SoT/models.json` | Keep every alias/ID and order; set the Opus note to `latest Opus (currently Opus 4.8)` and the Fable note to `Fable 5 — the kit SoT default; needs org access + Claude Code >=2.1.170` |
-| `cli/src/generated/sotPayload.ts` | Regenerated output; never hand-edit |
+| `cli/scripts/generate-sot-payload.ts` | Read/validate root package version and emit it into the generated module alongside the payload/Bun-pin generation contract |
+| `cli/src/generated/sotPayload.ts` | Regenerated payload plus `GENERATED_PACKAGE_VERSION`; never hand-edit |
+| `cli/src/main.ts` | Import the generated package version and remove the hard-coded `0.1.0` |
 | `cli/test/unit/efforts.test.ts` | Exact per-tool enums, catalog text, pseudo-value handling, and SoT-default parity |
 | `cli/test/unit/engine-di.test.ts` | Raw-engine bare/invalid/ignored paths and update `model claude` SoT expectation to `fable` |
+| `cli/test/unit/payload.test.ts` | Copy `package.json` into generator fixtures; prove version drift fails `--check`; assert public CLI version equals package metadata |
 | `cli/test/golden-dryrun.ts` / `cli/test/golden-mutation.ts` | Add modifier cases, public-parser invariants, and preserve a real model-override replay by switching it from `fable` to `opus` |
 | `cli/test/goldens/dryrun.json` / `cli/test/goldens/mutation.json` | Generator-produced reviewed deltas only |
-| `AGENTS.md`, `CLAUDE.md`, `cli/docs/flags.md`, `cli/docs/models.md`, `cli/docs/modifiers.md`, `cli/docs/sync-layers.md` | Document grammar, defaults, advisor-off migration, target scope, official enum nuance, and verification |
+| `cli/docs/install.md` | Document the exact pinned-Bun blocked-postinstall output, why it is benign for supported defaults, and the no-trust-required boundary |
+| `.github/workflows/windows-entrypoints.yml` | In `bun-shim`, assert the pinned install blocks only the known watcher script before the existing functional smokes |
+| `AGENTS.md`, `CLAUDE.md`, `cli/docs/flags.md`, `cli/docs/models.md`, `cli/docs/modifiers.md`, `cli/docs/sync-layers.md` | Document grammar, per-tool defaults, advisor-off migration, target scope, official enum nuance, and verification |
 
 ## Steps
 
 | # | Task | Depends | Status |
 |---|---|---|---|
 | 1 | Add `cli/src/efforts.ts`; wire exact valued/bare options through `cli/src/commands/sync.ts`, `cli/src/engine-native/index.ts`, and `cli/src/engine-native/parseArgs.ts`, with focused tests and regenerated affected goldens in the same slice. Done when the exact Claude/Codex lists, `default` resolution, exit `2` diagnostics, target-ignore warnings, and public/raw channel contracts pass the mandatory per-slice gate. Revert trigger: any new string list is duplicated across public and native layers. | — | planned |
-| 2 | Rename/generalize the Claude modifier module, update `modes.ts`, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default → xhigh`, restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | planned |
+| 2 | Rename/generalize the Claude modifier module, update `modes.ts`, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default → high`, restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | planned |
 | 3 | Extend `codexToml.ts` and `codexSync.ts` for effort, with focused fixture coverage and regenerated affected goldens in the same slice. Done when every existing TOML fixture remains structurally stable, `ultra`, `none`, and `default → xhigh` replacements occur only before the first table, and the mandatory per-slice gate passes. Revert trigger: comments/tables reformat or a Claude target touches Codex config. | 1 | planned |
-| 4 | Edit `SoT/.claude/settings.json` and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six human/user docs and affected goldens in the same slice. Done when the alias/ID sequence is byte-for-byte identical, embedded payload check passes, `docks-kit model claude` reports `SoT: fable`, no current doc claims advisor-on/Opus default, and the mandatory per-slice gate passes. | 1, 2 | planned |
-| 5 | Audit and harden the assembled unit/golden coverage against the ledger below; regenerate snapshots only if a missing planned case is added. Done when expected labels alone change, new flag cases exist, the two named canaries are byte-identical, no snapshot is manually edited, and the mandatory per-slice gate passes. Revert trigger: either canary changes or unrelated argv/plugin/toolchain output moves. | 2, 3, 4 | planned |
-| 6 | Run every acceptance command and inspect `git diff --check`, payload parity, tests, goldens, prove-red markers, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 5 | planned |
+| 4 | Edit `SoT/.claude/settings.json` and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor unset; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | planned |
+| 5 | Extend `cli/scripts/generate-sot-payload.ts` to emit the validated root package version, import it from `main.ts`, and add the package-drift/public-version tests to `payload.test.ts`; regenerate the module in the same slice. Done when changing only a disposable fixture's package version makes generator `--check` exit `1` naming the generated module, source CLI `--version` equals root `package.json`, a current-target compiled binary reports the same value, and the mandatory per-slice gate passes. Revert trigger: any runtime `package.json` read, second version literal, or generated edit outside the generator. | — | planned |
+| 6 | Document the exact Bun `1.3.14` warning in `cli/docs/install.md` and harden `.github/workflows/windows-entrypoints.yml`'s `bun-shim` install step: capture `bun add -g`, assert `Blocked 1 postinstall`, run `bun pm -g untrusted`, and assert only `@parcel/watcher @2.5.6`/`node scripts/build-from-source.js` before the existing catalog/toolchain/sync smokes. Done when a fresh isolated production-tarball install has no `esbuild`, reproduces that identity/count, and all three functional smokes succeed without trusting scripts. Revert trigger: the pinned install reports another blocked package, a smoke fails, or the workflow would run `bun pm trust`. | 5 | planned |
+| 7 | Audit and harden the assembled unit/golden coverage against the ledger below; regenerate snapshots only if a missing planned case is added. Done when expected labels alone change, new flag cases exist, the two named canaries are byte-identical, version changes do not alter sync goldens, no snapshot is manually edited, and the mandatory per-slice gate passes. Revert trigger: either canary changes or unrelated argv/plugin/toolchain output moves. | 2, 3, 4, 5, 6 | planned |
+| 8 | Run every acceptance command and inspect `git diff --check`, payload/version parity, tests, goldens, prove-red markers, consumer-install evidence, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 7 | planned |
 
 ## Golden ledger
 
-Golden updates are expected because deployed Claude settings hashes/content change and the modifier command rows expand. Regenerate, then review by label.
+Golden updates are expected because deployed Claude settings bytes change in three ways (`model: opus → fable`, `effortLevel: xhigh → high`, and `advisorModel` removal/migration) and the modifier command rows expand. The generated package-version constant and Bun install documentation/workflow must not affect sync golden output. Regenerate, then review by label.
 
 ### Existing labels expected to change
 
@@ -198,7 +267,7 @@ Golden updates are expected because deployed Claude settings hashes/content chan
 - `fixture=home-fresh cmd=sync --verbose replay=2nd`
 - `migration=legacy-claude-hook-scripts`
 
-These change only in the deployed settings tree hash/content and directly consequent settings/restart lines. Plugin argv, toolchain argv, rules, skills, runtime assets, and unrelated output remain stable.
+These change only in the deployed settings tree hash/content (including the revised `effortLevel: high`) and directly consequent settings/restart lines. Plugin argv, toolchain argv, rules, skills, runtime assets, CLI-version metadata, and unrelated output remain stable.
 
 ### Renamed/replaced modifier labels
 
@@ -212,7 +281,7 @@ These change only in the deployed settings tree hash/content and directly conseq
 - One target-ignore dry-run case covering all mismatches: `sync agents --dry-run --claude-effort=low --claude-advisor=on --codex-effort=max`.
 - Bare and invalid cases for both effort flags, plus bare/invalid advisor cases; assert exit `2`, exact catalog/error channel placement, empty mutation tree, and no child argv.
 - Add a targeted `advisor-migration=prior-kit-settings` case in `golden-mutation.ts` by materializing a disposable `home-drift` variant whose `.claude/settings.json` includes the prior kit-owned `"advisorModel": "fable"`. A flag-less Claude sync must remove it; explicit `off` and `default` runs must each delete it through the modifier (not the removal pass); an `on` run must preserve/normalize it through the modifier; every second replay must be a true no-op. Do not alter the shared `home-drift` fixture and broaden unrelated hashes.
-- Mutation rows for Claude `--claude-effort=default`, Claude `--claude-advisor=on`, and Codex `--codex-effort=ultra`/`default` pin set/default semantics and idempotent replay behavior. Advisor delete semantics are pinned by the prior-kit-settings cases above.
+- Mutation rows for Claude `--claude-effort=default` (`→ high`), Claude `--claude-advisor=on`, and Codex `--codex-effort=ultra`/`default` (`default → xhigh`) pin per-tool set/default semantics and idempotent replay behavior. Advisor delete semantics are pinned by the prior-kit-settings cases above.
 
 ### Byte-identical canaries
 
@@ -223,18 +292,22 @@ These change only in the deployed settings tree hash/content and directly conseq
 
 - [ ] `bunx tsc --noEmit -p cli` exits `0`.
 - [ ] `bun run test:unit` exits `0` and includes exact catalog/default/parser/mutation assertions for the three new flags.
-- [ ] `bun cli/scripts/generate-sot-payload.ts --check` exits `0` after generation; `git diff -- cli/src/generated/sotPayload.ts` contains only authoring changes from `SoT/.claude/settings.json` and `SoT/models.json` plus the payload hash.
+- [ ] `bun cli/scripts/generate-sot-payload.ts --check` exits `0` after generation; `git diff -- cli/src/generated/sotPayload.ts` contains only authoring changes from `SoT/.claude/settings.json`/`SoT/models.json`, their payload hash, and the new generated package-version export.
 - [ ] `bun run golden:dryrun` exits `0`.
 - [ ] `bun run golden:mutation` exits `0`.
 - [ ] The `for suite in dryrun mutation; ...` assertion in Environment passes: each prove-red leg exits exactly `1` and prints its matching `prove-red OK:` marker.
 - [ ] `git diff --check` exits `0`.
-- [ ] `SoT/.claude/settings.json` has `model: fable`, has no `advisorModel`, and still has `effortLevel: xhigh`; `SoT/.codex/config.toml` still has both reasoning effort keys at `xhigh`.
+- [ ] `SoT/.claude/settings.json` has `model: fable`, has no `advisorModel`, and has `effortLevel: high`; `SoT/.codex/config.toml` still has both reasoning effort keys at `xhigh`.
 - [ ] `diff <(git show 671831c1a8cd74b0980b4487bce5d6e5f3961edb:SoT/models.json | jq -r '.claude.models[].id') <(jq -r '.claude.models[].id' SoT/models.json)` exits `0`; `git diff -- SoT/models.json` shows only the two planned note edits.
 - [ ] Bare raw-engine flags print catalogs on stdout, errors on stderr, and exit `2`; typed public bare flags print equivalent catalog+error content on stderr and exit `2`; invalid values name the bad value and exit `2`; no case mutates fixture HOME or spawns children.
 - [ ] `--claude-effort` and `--claude-advisor` warn and do nothing when Claude is not selected; `--codex-effort` mirrors this for Codex. Correctly targeted flags never touch the other tool's file.
-- [ ] Claude effort writes only `effortLevel`; Codex effort writes only top-level `model_reasoning_effort`; each `default` writes the embedded SoT `xhigh` value.
+- [ ] Claude effort writes only `effortLevel` and `default` writes embedded SoT `high`; Codex effort writes only top-level `model_reasoning_effort` and `default` writes embedded SoT `xhigh`.
 - [ ] A flag-less Claude sync deletes the formerly kit-owned `advisorModel` through the removal pass. Any explicit advisor state excludes only that key from removals: `on` preserves/writes `advisorModel: fable`, while `off` and `default` delete it through the modifier. Repeating any same state produces no removal/modifier change lines and no advisor-caused restart trigger.
 - [ ] Existing model direct mode still works after the module rename, and `docks-kit model claude` reports `SoT: fable`.
+- [ ] `cli/test/unit/payload.test.ts` proves a disposable `package.json` version edit makes generator `--check` exit `1` with `generated payload is stale: cli/src/generated/sotPayload.ts`, and proves `bun cli/src/main.ts --version` equals `jq -r .version package.json`.
+- [ ] After `bash cli/build-binaries.sh linux-x64`, both `cli/dist/docks-kit-linux-x64 --version` and `./docks-kit --version` print exactly `jq -r .version package.json` and exit `0`; no runtime source references `package.json`.
+- [ ] A fresh disposable global install from `bun pm pack` under pinned Bun `1.3.14` prints exactly `Blocked 1 postinstall. Run \`bun pm -g untrusted\` for details.`; the untrusted listing names only `@parcel/watcher @2.5.6` with `node scripts/build-from-source.js`; `bun pm -g ls --all` contains no `esbuild`; and installed `docks-kit --version`, `models claude`, and `toolchain check` all exit `0` without any trust command.
+- [ ] `.github/workflows/windows-entrypoints.yml`'s `bun-shim` job asserts the same blocked package/command before its existing foreign-cwd catalog, toolchain, and materialized-settings smokes; `cli/docs/install.md` reproduces the exact warning and gives no blanket or invented trust instruction.
 - [ ] Golden diff matches the ledger; the RTK-init-failure and comma-plugin parse-abort objects are byte-identical before/after. Prove with the following command for each `label` value (exit `0`, no diff):
 
   ```bash
@@ -246,7 +319,7 @@ These change only in the deployed settings tree hash/content and directly conseq
       <(jq -S --arg label "$label" '.cases[$label]' cli/test/goldens/mutation.json)
   done
   ```
-- [ ] `AGENTS.md`, `CLAUDE.md`, and all four `cli/docs/` pages in `affected_paths` describe the new grammar/defaults and contain no live claim that Opus/advisor-on is the SoT default.
+- [ ] `AGENTS.md`, `CLAUDE.md`, and the five affected `cli/docs/` pages describe the new grammar/defaults/install behavior and contain no live claim that Opus, Claude xhigh, or advisor-on is the SoT default.
 
 ## Out of scope / do-NOT-touch
 
@@ -256,8 +329,10 @@ These change only in the deployed settings tree hash/content and directly conseq
 - No Codex advisor flag or invented equivalent. `review_model`, `/review`, auto-review, and multi-agent orchestration are separate features.
 - No alias/ID addition, removal, reordering, or model-resolution behavior change in `SoT/models.json`.
 - No change to the existing `model ...` standalone command or its Claude `default` account-default semantics.
+- No dependency upgrade, `trustedDependencies` entry, `bun pm trust` instruction/execution, or Effect runtime-layer replacement. The consumer probe shows the current pinned production graph works with the known script blocked.
+- No runtime lookup of package metadata and no committed `cli/dist/` artifact; compiled binaries consume the generation-time constant and the build output remains ignored verification material.
 - No deployed `~/.claude`/`~/.codex` edits outside disposable test homes and read-only/dry-run probes.
-- No push, release, live-system mutation, dependency upgrade, or unrelated docs cleanup.
+- No push, release, live-system mutation, or unrelated docs cleanup.
 
 ## Known gotchas
 
@@ -271,6 +346,10 @@ These change only in the deployed settings tree hash/content and directly conseq
 - `codexToml.ts` is line-based to preserve comments and tables. Reuse `replaceTopLevelSettingInFile`; do not introduce a TOML formatter.
 - Golden files store normalized outputs and HOME-tree hashes, so a broad generated diff is not self-justifying. Inspect labels and both canaries explicitly.
 - Any SoT authoring change without payload regeneration makes packaged CLI behavior differ from the checkout.
+- `package.json` is an authoring input to generation, not a runtime file. The payload test's disposable root must copy it before the generator can validate/emit the version.
+- The current tarball probe shows `esbuild` does not enter a production install; it comes from dev-only Vitest/Vite. `msgpackr-extract` is production but is on Bun `1.3.14`'s default-trusted list. Only `@parcel/watcher` is reported blocked, and its install script builds only under an explicit source-build environment variable.
+- Do not “fix” the warning by trusting all scripts. Bun documents lifecycle scripts as arbitrary code, and the supported default install does not require this one to run.
+- The bun-shim assertion is intentionally coupled to pinned Bun `1.3.14` and dependency `@parcel/watcher@2.5.6`; re-probe before updating either literal.
 
 ## Global constraints
 
@@ -284,7 +363,7 @@ These change only in the deployed settings tree hash/content and directly conseq
 - Research current official documentation before changing an unverified API/config key; official docs and current upstream primary source outrank local skill notes.
 - Read every file before editing it, preserve unrelated user changes, trace definitions/usages, and keep the implementation surgical.
 - Do not hand-edit generated payload or golden JSON. Generate each from its source and inspect the result.
-- After each implementation slice (Steps 1-5), regenerate any affected payload/goldens and run the mandatory gate: `bunx tsc --noEmit -p cli`, `bun run test:unit`, `bun cli/scripts/generate-sot-payload.ts --check`, both normal goldens, and both prove-red legs with exit `1` plus their `prove-red OK:` marker. Keep docs current in the slice that changes a user-visible contract. Step 6 repeats the same full gate as the final handoff proof.
+- After each implementation slice (Steps 1-6), regenerate any affected payload/goldens and run the mandatory gate: `bunx tsc --noEmit -p cli`, `bun run test:unit`, `bun cli/scripts/generate-sot-payload.ts --check`, both normal goldens, and both prove-red legs with exit `1` plus their `prove-red OK:` marker. Keep docs current in the slice that changes a user-visible contract. Step 8 repeats the same full gate plus compiled-version and isolated-consumer-install proofs as the final handoff.
 
 ## STOP conditions
 
@@ -292,6 +371,8 @@ These change only in the deployed settings tree hash/content and directly conseq
 - Branch is not `codex/sync-effort-defaults`, the worktree contains overlapping unexpected edits, or the drift check shows an in-scope change after `planned_at_commit` that this plan does not cover.
 - Current official Claude docs no longer document `effortLevel` or `advisorModel`, or current upstream Codex source no longer recognizes the planned named levels. Re-research and amend the plan instead of guessing.
 - Enabling advisor cannot be implemented by `advisorModel: fable` after removal without touching `settings.local.json` or weakening the additive-merge contract.
+- The generated version would require a runtime `package.json` read, generator `--check` cannot detect a package-only drift, or a compiled current-target binary reports a value different from root package metadata.
+- A clean pinned-Bun consumer install blocks anything other than the single expected `@parcel/watcher@2.5.6` source-build script, or any installed-CLI smoke fails while it remains blocked. Re-audit the graph; do not add trust automatically.
 - Any modification reaches the real deployed config, a production system, or an unapproved destructive operation.
 - The payload generator or typecheck fails three times on the same diagnosis; reassess rather than loop.
 - Either byte-identical canary changes. Stop golden regeneration and identify the unintended pre-settings/parser behavior change.
@@ -300,28 +381,29 @@ These change only in the deployed settings tree hash/content and directly conseq
 
 ## Cold-handoff checklist
 
-- [x] Goal and four user requirements are present verbatim.
+- [x] Goal, the four founding requirements, and both relay refinements are present verbatim, with the later Claude-high decision explicitly superseding the original both-xhigh sentence.
 - [x] Branch, baseline commit, runtime, drift command, generators, and test commands are explicit.
 - [x] Exact flag grammar, upstream enums, pseudo-values, keys, target warnings, exit codes, application order, and default mappings are defined.
-- [x] Exact file manifest includes source, SoT, generated payload, tests/goldens, and docs.
+- [x] Exact file manifest includes source, SoT, generated payload/version, tests/goldens, consumer-install CI, and docs.
 - [x] Every step has dependencies, a verifiable done-condition, and a revert/stop trigger.
-- [x] Acceptance criteria are executable and include both normal and prove-red gates.
+- [x] Acceptance criteria are executable and include both normal/prove-red gates, generated-version drift, current-target compiled version, and isolated blocked-script consumer smokes.
 - [x] Golden ledger names expected changes, new cases, replay rename, and byte-identical canaries.
 - [x] Out-of-scope boundaries prevent standalone modes, Codex advisor invention, plan-effort changes, live config mutation, push, and alias churn.
-- [x] Known gotchas explain documentation drift, model-dependent support, public/native parser layering, additive removal, TOML stability, and payload/golden generation.
+- [x] Known gotchas explain documentation drift, model-dependent support, public/native parser layering, additive removal, TOML stability, generated version/payload coupling, and pinned-Bun lifecycle-script behavior.
 - [x] Advisor and Codex effort research produced decisions; no user choice remains unresolved.
 - [x] A cold executor can implement from this file without needing the founding conversation.
 
 ## Self-review
 
-Score: 98/100 · trajectory 88→93→96→98 · stopped: plateau (K=3).
+Score: 98/100 · trajectory 83→91→96→98 · stopped: plateau (K=3).
 
-Weighted breakdown: standalone executability 21/22; actionability 13/13; dependency order 10/10; evidence re-verify 12/12; goal coverage 14/14; executable acceptance 13/14; failure mode 9/9; assumption→question 6/6.
+Weighted breakdown: standalone executability 21/22; actionability 13/13; dependency order 10/10; evidence re-verify 11/12; goal coverage 14/14; executable acceptance 14/14; failure mode 9/9; assumption→question 6/6.
 
-- Pass 1 corrected the public-vs-raw bare-flag channel contract, strengthened the founding assignment's per-slice gate, fixed the Fable replay override, and made alias/prove-red checks runnable.
-- Pass 2 added a seeded prior-kit advisor case after discovering that no existing HOME fixture contains `advisorModel`; without it, flag-less removal was unproven.
-- Pass 3 removed advisor delete/re-add churn by assigning `advisorModel` to exactly one owner per run: flag-less removal manifest or explicit-state modifier.
-- Final cold-handoff checks found no unresolved decision and no justified `## Open questions`. The two deducted points reflect semantic documentation/golden-diff inspection criteria that still require reviewer judgment after their executable guards pass.
+- Pass 1 incorporated the superseding Claude-high default and isolated version/install work into separate steps; the first rescore exposed missing compiled-version and consumer-prefix proofs.
+- Pass 2 traced version generation through the full-module `--check` seam, added disposable package-drift/public/compiled acceptance, and ensured `package.json` remains authoring-only at runtime.
+- Pass 3 reproduced a real tarball production install: eliminated `esbuild` as dev-only, distinguished default-trusted `msgpackr-extract`, identified only blocked `@parcel/watcher`, and rejected dependency/runtime-layer churn in favor of exact docs plus a pinned bun-shim assertion.
+- Pass 4 updated every Claude default mapping, golden-settings consequence, per-slice gate, STOP condition, and file/source manifest; the adversarial cold-read found no unresolved decision and no justified `## Open questions`.
+- The two deducted points are bounded: one standalone point for semantic generated/golden-diff inspection after executable guards pass, and one evidence point because the exact Windows blocked-script assertion can only be executed by the specified Windows CI job rather than this Linux planning host.
 
 ## Review
 
@@ -357,6 +439,18 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 - `.github/workflows/parity.yml:51-89` — CI requires unit, both goldens, and both prove-red markers.
 - `cli/scripts/generate-sot-payload.ts:5-19` and `cli/scripts/generate-sot-payload.ts:114-163` — SoT paths are embedded and `--check` detects stale generated payload.
 - `CLAUDE.md:334-345` — removed manifest is the documented exception for deprecated kit-owned settings keys.
+- `cli/src/main.ts:1-4` and `cli/src/main.ts:60-74` — the public CLI needs the Bun platform layer and currently passes the incorrect hard-coded `0.1.0` to `Command.run`.
+- `package.json:1-4` and `package.json:30-40` — package metadata is `0.4.0`; the production Effect dependencies are distinct from the Vitest/Vite dev graph.
+- `cli/scripts/generate-sot-payload.ts:24-65` — the generated module is one deterministic template, so package version can be emitted in the same byte-compared output.
+- `cli/scripts/generate-sot-payload.ts:67-89` — the launcher Bun pin is read from an authoring manifest and inserted at generation time, the required precedent for package version.
+- `cli/build-binaries.sh:1-20` — the build accepts a single `linux-x64` target and compiles `main.ts`, so the ignored current-target artifact is the direct embedded-version smoke.
+- `cli/test/unit/payload.test.ts:16-27` and `cli/test/unit/payload.test.ts:55-79` — disposable generator roots currently omit `package.json`; existing stale-output tests establish the version-drift test pattern.
+- `.github/workflows/windows-entrypoints.yml:147-202` — bun-shim already packs/installs the consumer tarball and functionally exercises the global CLI, but does not assert which lifecycle script was blocked.
+- `bun.lock:5-16` and `bun.lock:28-33` — the locked production chain is `@effect/platform-bun → @effect/platform-node-shared → @parcel/watcher`; `@effect/platform` also pulls production `msgpackr`.
+- `bun.lock:278` and `bun.lock:364` — `esbuild` belongs to the Vite/Vitest development chain and did not appear in the isolated production install.
+- `node_modules/@effect/platform-bun/package.json:13-22` and `node_modules/@effect/platform-node-shared/package.json:13-23` — resolved package manifests confirm the unconditional watcher transitive behind the imported Bun layer.
+- `node_modules/@parcel/watcher/package.json:31-35` and `node_modules/@parcel/watcher/scripts/build-from-source.js:3-11` — the reported install command only builds when `npm_config_build_from_source=true`.
+- Isolated read-only consumer probe, pinned Bun `1.3.14`: local tarball install printed `Blocked 1 postinstall`; `bun pm -g untrusted` named only `@parcel/watcher @2.5.6`; `bun pm -g ls --all` had no `esbuild`; installed `--version`, `models claude`, and `toolchain check` all exited `0`.
 
 ### Current official/primary sources checked 2026-07-10
 
@@ -368,3 +462,7 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 - https://learn.chatgpt.com/docs/agent-configuration/subagents#reasoning-effort-model_reasoning_effort — current official Codex guide names `none|minimal|low|medium|high|xhigh|max|ultra`, model-dependent.
 - https://github.com/openai/codex/blob/2b9c05046038c038ec6bddb9db7d11394995372d/codex-rs/protocol/src/openai_models.rs#L29-L82 — current upstream parser names all eight values and accepts future non-empty custom strings.
 - Local read-only runtime corroboration: Codex `0.144.1` loaded `ultra`, `max`, and `none` under `--strict-config doctor --summary`; `~/.codex/models_cache.json` advertised current GPT-5.6 model-specific subsets. This corroborates but does not replace the official sources above.
+- https://bun.sh/docs/pm/lifecycle — Bun blocks arbitrary lifecycle scripts by default because they can execute arbitrary shell commands; trust is an explicit allowlist decision.
+- https://bun.sh/docs/pm/cli/pm#untrusted — `bun pm untrusted` is the official inspection surface for dependencies whose scripts were blocked; `bun pm default-trusted` exposes Bun's built-in list.
+- https://bun.sh/docs/pm/cli/install#omitting-dependencies — transitive installs omit dependencies' devDependencies, matching the consumer probe's absence of Vitest/Vite/esbuild.
+- https://github.com/parcel-bundler/watcher — upstream source/repository for the resolved `@parcel/watcher` package; the pinned installed source above is the exact version-level evidence for its guarded build fallback.
