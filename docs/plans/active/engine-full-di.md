@@ -4,7 +4,7 @@ goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr
 status: in_review
 in_review_since: "2026-07-09T22:00:02-03:00"
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T22:00:02-03:00"
+updated: "2026-07-09T22:12:46-03:00"
 started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
@@ -83,7 +83,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 - Any message byte change beyond the single named `models.ts` channel fix.
 - New log levels; Effect generators inside engine internals; changes to golden case sets — except the single authorized additive `model claude` catalog case (see the RESOLVED note in Notes).
-- `exec.ts` PATH/X_OK primitives stay the platform-seam exemption (DESIGN.md).
+- `exec.ts` PATH/X_OK primitives stay the platform-seam exemption (DESIGN.md). One authorized amendment (recorded retroactively, see the 22:11 Notes entry): `which()` gained the standard POSIX path-bypass branch (path-like input → direct X_OK check, no PATH search; commit a32c457) as the enabling primitive for the Step-5 per-spec resolvers — no other exec.ts change.
 
 ## Cold-handoff checklist
 
@@ -135,6 +135,7 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 - **2026-07-09T21:39:41-03:00 — Round-1 fix-verification ingested:** [codex gpt-5.6-sol xhigh, fresh-context read-only over 6d1cc20..HEAD] all seven self-review findings verdict **CLOSED** with per-finding file:line evidence and would-fail-pre-fix test reasoning; all six gates re-run green (tsc 0; vitest 35/35; dry-run 22; mutation 47; both prove-red legs red); golden scope PASS (dryrun.json +9 only, mutation.json untouched). One NEW finding, MEDIUM (doc/spec drift): this plan's `## Interfaces & data shapes` and `DESIGN.md:105` still describe the pre-fix signatures (`makeEngineServices({ isVerbose })` verbosity callback, `makeDependencyManager` taking a construction-time logger), contradicting the fixed `services.ts:64` contracts — could steer a future handoff into reintroducing S1/S2. Overall verdict NOT READY solely on that finding → dispatched as fix round 2 (doc-only) to the worker, bundled with Step 7.
 - **2026-07-09T21:41:37-03:00 — Fix round 2:** aligned the plan's interface contracts and `DESIGN.md` with the closed S1/S2 implementation: service factories return raw loggers, `runEngineNative` owns the sole run-scoped verbosity gate, dependency managers are constructed without a logger, and `warnMissing` receives the current run logger per call while retaining per-manager dedup. Gates: typecheck exit 0; Vitest 35/35; dry-run 22/22; mutation 47/47; both prove-red legs exit 1 with `prove-red OK`; no golden diff.
 - **2026-07-09T21:54:47-03:00 — Step 7 done:** all four harness `mkdtempSync` sites now register through one module-level Set, and one synchronous `process.on("exit")` hook removes every registered path recursively with force; the existing per-case `cleanup()` remains unchanged. Pre-fix reproduction after the documentation gates found 272 leaked `golden-stubs-*`/`golden-mask-*` directories; one post-fix 22-case dry-run held that baseline exactly at 272, proving the modified process added zero leaks. After the orchestrator approved deleting exactly those pre-existing disposable fixture prefixes, the full gate ran from a zero baseline and the final `ls /tmp | grep -c '^golden-'` printed `0`. Gates: typecheck exit 0; Vitest 35/35; dry-run 22/22; mutation 47/47; dry-run prove-red exit 1 with `prove-red OK` (22 mismatches); mutation prove-red exit 1 with `prove-red OK` (47 mismatches). No golden diff; Step-7 diff is only `cli/test/lib/harness.ts` plus this plan file; engine sources untouched.
+- **2026-07-09T22:12:46-03:00 — Codex completion-review leg ingested + exec.ts authorization:** [codex gpt-5.6-sol xhigh, fresh-context read-only over 8b80824..HEAD] AC1–AC6 all PASS (each independently re-verified by the reviewer, including the Step-7 leak criterion at 0 after prove-red legs and the golden scope at exactly dryrun.json +9); verdict `partial` on one MEDIUM finding: `exec.ts which()` gained an absolute/path-like input branch in step 5 (a32c457) while Out-of-scope froze exec.ts, and the step-5 Notes entry did not disclose it. [claude] independently verified the finding (diff is +4/−1: `isAbsolute`/separator inputs → direct `isExecutable` check; bare-name PATH search byte-identical). DISPOSITION: accepted with retroactive authorization — [codex] restore exec.ts and move path handling into the deps.ts default adapter / [claude] keep it: the branch implements standard POSIX which semantics (path-like input bypasses PATH search), pre-change path-like inputs mis-resolved to `""`, no legacy caller passes path-like names (goldens byte-identical, vitest 35/35), and splitting which() semantics across two files is worse. Kept: claude's position — decided by the orchestrating agent; the true defect was non-disclosure, cured by the Out-of-scope amendment above and this entry.
 
 ## Review
 
