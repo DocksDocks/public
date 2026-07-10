@@ -1,9 +1,10 @@
 ---
 title: Redesign the Claude statusline around native rate-limit data
 goal: Preserve Claude's current statusline layout while replacing jq/curl shell hooks and OAuth usage caches with three embedded Bun-run .mjs programs driven by native data.
-status: in_review
+status: finished
 created: "2026-07-10T03:14:32-03:00"
-updated: "2026-07-10T07:28:13-03:00"
+updated: "2026-07-10T07:29:26-03:00"
+ship_commit: bbdf2fe5652b22bffd85355d1c1abc4724db493e
 started_at: "2026-07-10T04:59:37-03:00"
 in_review_since: "2026-07-10T06:22:15-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
