@@ -1,11 +1,11 @@
 ---
 title: Redesign the Claude statusline around native rate-limit data
 goal: Preserve Claude's current statusline layout while replacing jq/curl shell hooks and OAuth usage caches with three embedded Bun-run .mjs programs driven by native data.
-status: planned
+status: ongoing
 created: "2026-07-10T03:14:32-03:00"
-updated: "2026-07-10T04:47:22-03:00"
-started_at: null
-assignee: null
+updated: "2026-07-10T04:59:37-03:00"
+started_at: "2026-07-10T04:59:37-03:00"
+assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [claude, statusline, hooks, bun, windows, migration]
 affected_paths:
   - SoT/.claude/bin/statusline.mjs
