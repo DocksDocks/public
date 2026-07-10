@@ -1,9 +1,9 @@
 ---
 title: Stop the golden harness /tmp temp-dir leak
 goal: Make golden/unit harness temp dirs (golden-home-*, golden-stubs-*, golden-mask-*) clean up on every exit path and self-heal stale leftovers, so /tmp never accumulates them again.
-status: in_review
+status: finished
 created: "2026-07-10T18:09:47-03:00"
-updated: "2026-07-10T18:49:58-03:00"
+updated: "2026-07-10T18:54:18-03:00"
 started_at: "2026-07-10T18:22:39-03:00"
 in_review_since: "2026-07-10T18:49:58-03:00"
 assignee: dockskit-defaults-worker (codex gpt-5.6-sol relay session)
@@ -17,6 +17,7 @@ affected_paths:
 related_plans:
   - statusline-direct-bun-median.md
 review_status: passed
+ship_commit: 6d4f3595a56b18860bf7a1e958c6b7ef44e1aeba
 planned_at_commit: 1cf3a404fcc6d3e358b3a6cef15fcbf613706ada
 ---
 
