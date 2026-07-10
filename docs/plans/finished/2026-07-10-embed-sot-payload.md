@@ -1,9 +1,10 @@
 ---
 title: Embed the SoT payload
 goal: Make every sync/config read independent of a runtime SoT/ directory by generating one deterministic embedded payload for compiled and Bun/npm execution.
-status: in_review
+status: finished
 created: "2026-07-10T00:32:24-03:00"
-updated: "2026-07-10T02:46:14-03:00"
+updated: "2026-07-10T02:52:22-03:00"
+ship_commit: 751a8992aceec45aaa40ed2bc1e6433852eb0362
 started_at: "2026-07-10T01:40:37-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, engine-native, payload, windows]
