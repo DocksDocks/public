@@ -4,7 +4,7 @@ goal: Every EngineNative emission (logger calls AND direct process.stdout/stderr
 status: in_review
 in_review_since: "2026-07-09T22:00:02-03:00"
 created: "2026-07-09T18:37:21-03:00"
-updated: "2026-07-09T22:12:46-03:00"
+updated: "2026-07-09T22:18:28-03:00"
 started_at: "2026-07-09T19:09:48-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, effect, solid, di, follow-up]
@@ -33,7 +33,7 @@ affected_paths:
   - cli/test/golden-mutation.ts
   - cli/test/goldens/dryrun.json
 related_plans: [cli-log-ux-overhaul]
-review_status: null
+review_status: passed
 planned_at_commit: 8b80824a04a62d24de7b3b8ce37c285ee5ae1260
 ---
 
@@ -139,4 +139,9 @@ Successor to `cli-log-ux-overhaul` (shipped seams-only by explicit scope decisio
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — complete-run capture via injected services is proven: `engine-di.test.ts:164` ("captures every in-process branch without real stream writes") spies `process.stdout/stderr.write` and asserts `not.toHaveBeenCalled()` across the whole branch matrix, inverting the original `seen: []`-vs-real-stderr reproduction. Emissions are routed or exemption-tabled (`rg 'from "./logger"'` → only `services.ts`; direct writes → only `logger.ts` sinks + the tabled toolchain TTY-prompt at `toolchain.ts:85`). Probes flow through `ctx.services.deps`/allowlist (`commandExists|capture(|which(` grep confined to `exec.ts`/`deps.ts`; a host-PATH-contradiction test proves the injected executor wins).
+- **Regressions:** none. `exec.ts:27` `which()` path-bypass branch (a32c457, +4/−1) is a disclosed, retroactively-authorized scope amendment — Out-of-scope now names it and Notes 22:12:46 records the DISAGREEMENT; it is standard POSIX which() semantics (path-like input → direct X_OK, bare-name PATH search byte-identical), goldens byte-identical, vitest 35/35, so no behavioral drift — resolved, not outstanding. The `mutation.json` golden churn inside `8b80824..HEAD` (17/17 `.codex/config.toml` sha swaps) is pre-plan noise from unrelated commit 26d66b4 (SoT Codex model pin), untouched by every plan commit — `d209b23..HEAD` leaves `mutation.json` byte-identical and adds only `dryrun.json +9` (the authorized additive `model claude` catalog case).
+- **CI:** pass — `bun x tsc --noEmit -p cli/tsconfig.json` exit 0; `bun x vitest run` 35/35; `bun cli/test/golden-dryrun.ts` OK (22 case(s)); `bun cli/test/golden-mutation.ts` OK (47 case(s)); both `--prove-red` legs exit 1 with `prove-red OK`; `ls /tmp | grep -c '^golden-'` → 0.
+- **Follow-ups:** none.
+- **Cross-check:** [codex gpt-5.6-sol xhigh] 1 finding (1 med) — 1 accepted with retroactive authorization (DISAGREEMENT recorded in Notes 22:12:46, kept: orchestrator's keep-position).
+- **Filed by:** plan-review (opus) 2026-07-09T22:18:28-03:00
