@@ -161,14 +161,40 @@ jobs:
 
       - name: Pack and install globally from the tarball
         run: |
+          $env:NO_COLOR = "1"
           bun pm pack --destination $env:RUNNER_TEMP
           if ($LASTEXITCODE -ne 0) { throw "bun pm pack exited $LASTEXITCODE (prepack --check failed?)" }
           $tgz = Get-ChildItem (Join-Path $env:RUNNER_TEMP "*.tgz") | Select-Object -First 1
           if (-not $tgz) { throw "bun pm pack produced no tarball" }
           $listing = tar -tf $tgz.FullName | Out-String
           if ($listing -match "package/SoT/|package/notification\.mp3") { throw "tarball still publishes authoring payload files" }
-          bun add -g $tgz.FullName
-          if ($LASTEXITCODE -ne 0) { throw "bun add -g failed" }
+          $installOut = bun add -g $tgz.FullName 2>&1 | Out-String
+          $installCode = $LASTEXITCODE
+          Write-Host $installOut
+          if ($installCode -ne 0) { throw "bun add -g failed with exit $installCode" }
+
+          $blockedLine = 'Blocked 1 postinstall. Run `bun pm -g untrusted` for details.'
+          $blockedLines = @($installOut -split "\r?\n" | Where-Object { $_ -eq $blockedLine })
+          if ($blockedLines.Count -ne 1) {
+            throw "expected exactly one known blocked-postinstall line; got $($blockedLines.Count)"
+          }
+
+          $untrusted = bun pm -g untrusted 2>&1 | Out-String
+          $untrustedCode = $LASTEXITCODE
+          Write-Host $untrusted
+          if ($untrustedCode -ne 0) { throw "bun pm -g untrusted exited $untrustedCode" }
+          $packageLines = @($untrusted -split "\r?\n" | Where-Object { $_ -match '^\./node_modules/' })
+          if ($packageLines.Count -ne 1 -or $packageLines[0] -ne "./node_modules/@parcel/watcher @2.5.6") {
+            throw "blocked package set changed: $($packageLines -join ', ')"
+          }
+          $scriptLines = @($untrusted -split "\r?\n" | Where-Object { $_ -match '^ » \[[^]]+\]:' })
+          if ($scriptLines.Count -ne 1 -or $scriptLines[0] -ne " » [install]: node scripts/build-from-source.js") {
+            throw "blocked install command changed: $($scriptLines -join ', ')"
+          }
+
+          $globalListing = bun pm -g ls --all 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "bun pm -g ls --all failed" }
+          if ($globalListing -match '(?i)\besbuild(?:@|\s)') { throw "consumer install unexpectedly contains esbuild" }
 
       - name: Prepare hermetic shim home
         # bun's global bin lives under the pre-flip profile; pin its absolute
