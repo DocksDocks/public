@@ -24,9 +24,24 @@ import {
 import { tmpdir } from "node:os"
 import { basename, delimiter, dirname, isAbsolute, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 
-export const REPO_DIR = resolve(import.meta.dir, "..", "..", "..")
+export const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
 export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
+
+function bunRuntime(): string {
+  if (process.versions["bun"] !== undefined) return process.execPath
+  const names = process.platform === "win32" ? ["bun.exe", "bun"] : ["bun"]
+  for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
+    for (const name of names) {
+      const candidate = join(directory, name)
+      if (existsSync(candidate)) return candidate
+    }
+  }
+  return "bun"
+}
+
+const BUN_RUNTIME = bunRuntime()
 
 const TEMP_DIRS = new Set<string>()
 
@@ -133,7 +148,7 @@ export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): st
   // Raw harness channel (bypasses @effect/cli so tests drive the engine's
   // internal argv directly); absolute bun path so the PATH stub `bun` never
   // shadows the runtime.
-  return `DOCKS_KIT_ENGINE=native-raw '${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
+  return `DOCKS_KIT_ENGINE=native-raw '${BUN_RUNTIME}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`
 }
 
 /**
@@ -279,7 +294,7 @@ export function runPublicCli(
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
   const quoted = args.map((a) => `'${a.replace(/'/g, `'\\''`)}'`).join(" ")
-  const res = spawnSync("bash", ["-c", `'${process.execPath}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`], {
+  const res = spawnSync("bash", ["-c", `'${BUN_RUNTIME}' '${REPO_DIR}/cli/src/main.ts' ${quoted}`], {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
     stdio: ["ignore", "pipe", "pipe"],
@@ -329,6 +344,16 @@ function escapeRegExp(s: string): string {
 
 export type TreeSnapshot = Record<string, string> // relpath -> "sha256:<hex>" | "link:<target>"
 
+function normalizeTreeBody(body: string, root: string): string {
+  let normalized = body.replaceAll("\r\n", "\n")
+  for (const form of pathForms(root)) normalized = normalized.replaceAll(form, "<HOME>")
+  for (const temporary of TEMP_DIRS) {
+    if (!basename(temporary).startsWith("golden-stubs-")) continue
+    for (const form of pathForms(temporary)) normalized = normalized.replaceAll(form, "<STUBS>")
+  }
+  return normalized
+}
+
 export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): TreeSnapshot {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
@@ -347,9 +372,9 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
       if (rel !== ".bun") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
-      // Hash with CRLF canonicalized to LF so platform text-mode transport
-      // artifacts do not count as engine regressions.
-      const body = readFileSync(p).toString("binary").replaceAll("\r\n", "\n")
+      // Hash with CRLF and materialized runtime paths canonicalized so
+      // platform transport and per-run HOME/stub roots are not regressions.
+      const body = normalizeTreeBody(readFileSync(p).toString("binary"), root)
       acc[rel] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
     }
   }

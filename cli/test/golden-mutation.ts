@@ -57,6 +57,21 @@ const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
   view) case "$2" in agent-browser) echo "0.99.0";; esac;;
 esac`
 const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
+const LEGACY_CLAUDE_SETTINGS = stableStringify({
+  hooks: {
+    SessionStart: [{ hooks: [{ type: "command", command: "legacy-session", timeout: 5 }] }],
+    Notification: [{ hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] }],
+    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }]
+  },
+  statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
+  userOnly: "preserved"
+})
+const LEGACY_CLAUDE_FILES = {
+  ".claude/settings.json": LEGACY_CLAUDE_SETTINGS,
+  ".claude/statusline.sh": "legacy-statusline-marker\n",
+  ".claude/fetch-usage.sh": "legacy-fetch-marker\n",
+  ".claude/hooks/notify.sh": "legacy-notify-marker\n"
+}
 
 // `variant` disambiguates rows whose fixture+cmd+stub-keys are identical but
 // whose stub BODIES differ — without it their labels collide and the later
@@ -86,6 +101,20 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
+  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { jq: null }, variant: "jq-absent-bun-hooks" },
+  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { jq: null }, variant: "jq-absent-native-sync" },
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "claude"],
+    stubs: { curl: null, rtk: null },
+    variant: "curl-absent-rtk-bootstrap"
+  },
+  {
+    fixture: "home-fresh",
+    cmd: ["toolchain", "ensure", "rtk"],
+    stubs: { curl: null, rtk: null },
+    variant: "curl-absent-direct-rtk"
+  },
   // Missing-git trio: uniform hint-bearing warn from the dependency registry;
   // the combined run must emit exactly ONE deduplicated git warn.
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
@@ -169,6 +198,42 @@ function runReplayCase(fixture: string, cmd: ReadonlyArray<string>, cmd2?: Reado
     output: second.output
   }
   cleanup([second]) // first.home === second.home
+  return golden
+}
+
+function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Array<string> } {
+  const fixture = materializeVariant("home-fresh", LEGACY_CLAUDE_FILES)
+  const run = runEngine("native", ["sync", "claude"], fixture, defaultStubs)
+  const problems: Array<string> = []
+  for (const relative of [".claude/statusline.sh", ".claude/fetch-usage.sh", ".claude/hooks/notify.sh"]) {
+    if (existsSync(join(run.home, relative))) problems.push(`  migration: legacy file survived: ${relative}`)
+  }
+  for (const relative of [
+    ".claude/bin/statusline.mjs",
+    ".claude/bin/session-start.mjs",
+    ".claude/bin/notify.mjs",
+    ".claude/notification.mp3"
+  ]) {
+    if (!existsSync(join(run.home, relative))) problems.push(`  migration: runtime file missing: ${relative}`)
+  }
+  const settingsText = readFileSync(join(run.home, ".claude", "settings.json"), "utf8")
+  const settings = JSON.parse(settingsText) as Record<string, unknown>
+  const hooks = settings["hooks"] as Record<string, unknown> | undefined
+  if (hooks?.["Stop"] !== undefined) problems.push("  migration: hooks.Stop survived ready cutover")
+  if (settingsText.includes("__DOCKS_KIT_")) problems.push("  migration: deployed settings contain a sentinel")
+  if (!run.output.includes("Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)")) {
+    problems.push("  migration: aggregate readiness-gated prune line missing")
+  }
+  const golden = {
+    command: ["sync", "claude"],
+    exitCode: run.exitCode,
+    tree: snapshotTree(run.home),
+    argvLog: readArgvLog(run),
+    output: run.output,
+    problems
+  }
+  cleanup([run])
+  rmSync(fixture, { recursive: true, force: true })
   return golden
 }
 
@@ -384,6 +449,17 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     if (label in cases) throw new Error(`duplicate replay label ${label}`)
     if (!labelSelected(label)) continue
     cases[label] = runReplayCase(fixture, cmd, cmd2)
+  }
+
+  const migrationLabel = "migration=legacy-claude-hook-scripts"
+  if (labelSelected(migrationLabel)) {
+    const { problems, ...golden } = runLegacyMigrationCase()
+    cases[migrationLabel] = golden
+    if (problems.length > 0) {
+      invariantFailures++
+      banner("CLAUDE MIGRATION INVARIANT FAILURE")
+      for (const problem of problems) console.log(problem)
+    }
   }
 
   if (labelSelected("channel-invariants")) {

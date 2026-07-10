@@ -75,7 +75,9 @@ sync/config reads.
 
 ## Prerequisites
 
-- jq and curl (sync preflight checks them for the deployed assets and installers)
 - Bun for source/global installs; release binaries embed the runtime
 - Node/npm for npm-global tools (agent-browser, LSP servers)
+- jq is optional doctor/test tooling; sync has no jq runtime dependency
+- curl is required only when a requested POSIX RTK/Bun bootstrap must download
+  an installer; an already-present Bun does not require it
 - See `docks-kit toolchain check` for the full picture on this machine

@@ -9,11 +9,11 @@
 
 | Key | File | Sync owner | Reason |
 |-----|------|------------|--------|
-| Standard env, permissions, hooks, plugins | `~/.claude/settings.json` | `syncSettings` | Standard Claude Code settings schema. |
+| Standard env, permissions, hooks, plugins | `~/.claude/settings.json` | `prepareClaudeSettings` + `commitClaudeSettings` | Standard Claude Code settings schema after runtime materialization. |
 | `showTurnDuration` | `~/.claude.json` | `syncClaudeJson` | Rejected by settings schema. |
 | User-scoped `mcpServers` | `~/.claude.json` | `syncClaudeJson` | Rejected by settings schema; declared in `SoT/.claude/mcp-servers.json`. |
-| `skipAutoPermissionPrompt` | `~/.claude/settings.json` | `syncSettings` | Standard schema. |
-| `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | `syncSettings` | User-scope setting. |
+| `skipAutoPermissionPrompt` | `~/.claude/settings.json` | prepared settings transaction | Standard schema. |
+| `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | prepared settings transaction | User-scope setting. |
 
 ## Creation And Patch Behavior
 
@@ -34,7 +34,7 @@ Cloud connectors are account-synced. No field in `settings.json` or
 
 | Target | Approach |
 |--------|----------|
-| `~/.claude/settings.json` | Add to `SoT/.claude/settings.json`; `syncSettings` propagates it. |
+| `~/.claude/settings.json` | Add to `SoT/.claude/settings.json`; the materializer and prepared settings transaction propagate it. |
 | `~/.claude.json` scalar/object | Add a focused patch in `syncClaudeJson`. |
 | `~/.claude.json` MCP server | Add to `SoT/.claude/mcp-servers.json`. |
 

@@ -10,11 +10,12 @@ import { homedir } from "node:os"
 
 import { kitHome } from "../kitHome"
 import { makeEngineServices, type EngineServices, type Logger } from "./services"
+import type { BunRuntimeState } from "./bun"
 import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { ExitError, parseArgs, preflight, validateModelFlags } from "./parseArgs"
+import { ExitError, parseArgs, validateModelFlags } from "./parseArgs"
 
 export interface Ctx {
   readonly repoDir: string
@@ -33,6 +34,7 @@ export interface Ctx {
   codexModel: string
   /** Injected capability seam (logger/deps/platform) — see services.ts. */
   readonly services: EngineServices
+  bunRuntime?: BunRuntimeState
   targetFilterSet: boolean
   syncClaude: boolean
   syncCodex: boolean
@@ -77,11 +79,10 @@ function makeCtx(services: EngineServices): Ctx {
 function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   const { echo } = ctx.services.logger
   parseArgs(ctx, args)
-  preflight(ctx)
   validateModelFlags(ctx)
 
   const claudeRan = ctx.syncClaude
-  if (claudeRan) claudeSync(ctx)
+  const claudeRuntime = claudeRan ? claudeSync(ctx) : undefined
 
   const codexRan = ctx.syncCodex
   if (codexRan) codexSync(ctx)
@@ -91,7 +92,7 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   echo("")
   echo("--- Sync complete ---")
   echo(`Repo:     ${ctx.repoDir}`)
-  if (claudeRan) claudeSummary(ctx)
+  if (claudeRuntime !== undefined) claudeSummary(ctx, claudeRuntime)
   if (codexRan) codexSummary(ctx)
   if (skillsState !== undefined) skillsSummary(ctx, skillsState)
 

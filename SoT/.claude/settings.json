@@ -135,12 +135,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"[CONTEXT] Current date: $(date '+%A, %Y-%m-%d %H:%M:%S %Z')\"",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "echo \"[CONFIG] Context: $([ \\\"${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\\" = \\\"1\\\" ] && echo '200K' || echo '1M') | Compact-window: ${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-full} | Effort: ${CLAUDE_CODE_EFFORT_LEVEL:-$(jq -r .effortLevel $HOME/.claude/settings.json 2>/dev/null || echo default)} | Thinking: adaptive | Subagent: ${CLAUDE_CODE_SUBAGENT_MODEL:-default}\"",
+            "command": "__DOCKS_KIT_BUN__",
+            "args": ["__DOCKS_KIT_SESSION_START__"],
             "timeout": 5
           }
         ]
@@ -151,7 +147,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ -x \"$HOME/.claude/hooks/notify.sh\" ] && \"$HOME/.claude/hooks/notify.sh\" || true",
+            "command": "__DOCKS_KIT_BUN__",
+            "args": ["__DOCKS_KIT_NOTIFY__"],
             "timeout": 10,
             "async": true
           }
@@ -181,18 +178,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/fetch-usage.sh",
-            "timeout": 5,
-            "async": true
-          }
-        ]
-      }
-    ],
     "SubagentStop": [
       {
         "hooks": [
@@ -207,7 +192,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh",
+    "command": "__DOCKS_KIT_STATUSLINE__",
     "refreshInterval": 5
   },
   "enabledPlugins": {

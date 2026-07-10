@@ -29,8 +29,9 @@ Download the platform release binary from GitHub Releases and run it directly.
 The executable carries the generated sync payload; no checkout or adjacent
 `SoT/` directory is required.
 
-Prerequisites for source/global installs: Bun plus `jq` and `curl` for sync
-preflight; Node/npm for npm-global tools.
+Prerequisites for source/global installs: Bun; Node/npm for npm-global tools.
+`jq` is optional doctor/test tooling. `curl` is used only at requested POSIX
+RTK/Bun download boundaries, not as a global sync prerequisite.
 
 ## CLI
 
@@ -83,12 +84,17 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   when possible). `docks-kit toolchain check` shows the full table.
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
+- **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
+  programs for statusline, SessionStart, and Notification. Quota display uses
+  Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
+  or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
+  working legacy hook/statusline setup and reports that migration is deferred.
 
 ## Repository map
 
 | Path | Purpose |
 |------|---------|
-| `SoT/.claude/` | Claude Code SoT (settings, hooks, status line, CLAUDE.md) |
+| `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Kit-verified model catalog |

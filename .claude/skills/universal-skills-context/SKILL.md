@@ -1,6 +1,6 @@
 ---
 name: universal-skills-context
-description: "Use when modifying cli/src/engine-native/skillsSync.ts skillsSync, syncUniversal, healClaudeSymlink, reconcileRemovals, updateSnapshot, normalizeManifest, syncAgentBrowserCli, agentBrowserInstall, syncEffectSolutionsCli, effectSolutionsInstall, bunBootstrap, findBun, or SoT/.agents/skills.txt; covers source-first skills CLI args, universal storage, symlink healing, prune snapshot, and CLI bootstrap callbacks."
+description: "Use when modifying cli/src/engine-native/skillsSync.ts skillsSync, syncUniversal, healClaudeSymlink, reconcileRemovals, updateSnapshot, normalizeManifest, syncAgentBrowserCli, agentBrowserInstall, syncEffectSolutionsCli, effectSolutionsInstall, or SoT/.agents/skills.txt; covers source-first skills CLI args, universal storage, symlink healing, prune snapshot, and CLI callbacks. Bun bootstrap ownership lives in bun.ts/toolchain-context."
 user-invocable: false
 metadata:
   source_files:
@@ -8,7 +8,7 @@ metadata:
       lines: "1-380"
     - path: SoT/.agents/skills.txt
       lines: "1-40"
-  updated: "2026-07-09"
+  updated: "2026-07-10"
 ---
 
 # Universal Skills Bootstrap
@@ -39,7 +39,8 @@ snapshot should still represent the prior known-good manifest.
 - Adding or removing a slug in `SoT/.agents/skills.txt`.
 - Changing `syncUniversal`, manifest parsing, or symlink healing.
 - Changing `--prune` removal of kit-managed skills.
-- Changing agent-browser, Bun, or effect-solutions CLI bootstrap callbacks.
+- Changing agent-browser or effect-solutions CLI bootstrap callbacks. For Bun
+  resolution/install behavior, use `toolchain-context` and `bun.ts`.
 
 ## Storage Model
 
@@ -81,11 +82,11 @@ snapshot are preserved.
 | Tool | Gate | Install behavior |
 |------|------|------------------|
 | `agent-browser` | Declared skill slug and npm available | `agentBrowserInstall` installs/upgrades the npm package; first install also runs `agent-browser install`, with `--with-deps` on Linux. |
-| `effect-solutions` | `effect-kit@docks` enabled in SoT | `effectSolutionsInstall` ensures Bun, installs/upgrades the CLI with Bun, and symlinks both `bun` and the CLI into `~/.local/bin`. |
-| `bun` | Direct toolchain ensure or effect-solutions dependency | `bunBootstrap` uses download-then-run install, never streamed execution. |
+| `effect-solutions` | `effect-kit@docks` enabled in SoT | `effectSolutionsInstall` calls shared `bun.ts bunBootstrap`, installs/upgrades the CLI with Bun, and symlinks both `bun` and the CLI into `~/.local/bin`. |
 
 Version comparison and verified-pin gating live in `toolchain.ts`; these
 callbacks perform the actual install once `ensure` has approved it.
+Shared Bun resolution/bootstrap lives in `bun.ts`, not `skillsSync.ts`.
 
 ## Gotchas
 

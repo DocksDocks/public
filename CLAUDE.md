@@ -9,10 +9,8 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 | Path | Purpose |
 |------|---------|
 | `SoT/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
-| `SoT/.claude/settings.json` | Permissions, hooks, plugins, env vars, token limits |
-| `SoT/.claude/hooks/` | Hook scripts (e.g. `notify.sh` — the Notification completion sound) |
-| `SoT/.claude/statusline.sh` | Two-line status bar (model, git, usage, context) |
-| `SoT/.claude/fetch-usage.sh` | API usage fetcher for status line (async, cached) |
+| `SoT/.claude/settings.json` | Permissions, plugins, env vars, token limits, and sentinel-bearing runtime settings template |
+| `SoT/.claude/bin/` | Dependency-free Bun programs materialized into `~/.claude/bin/` for statusline, SessionStart, and Notification |
 | `SoT/.claude/mcp-servers.json` | User-scoped MCP server definitions merged into `~/.claude.json` by `claude::sync_claude_json` (settings.json can't hold `mcpServers`) |
 
 ### Plugins
@@ -108,31 +106,24 @@ bash /tmp/rtk-install.sh
 rm /tmp/rtk-install.sh
 # NB: avoid `curl … | bash` — the pipe can truncate mid-stream (observed on the 0.38 → 0.39 upgrade, 2026-05-06; "unexpected EOF while looking for matching `}'" with no other diagnostics). The upstream installer also has bashisms, so `curl … | sh` would fail on Debian/Ubuntu where /bin/sh is dash.
 
-# 2. Ensure jq is installed (required by the hook)
-sudo apt install -y jq   # Debian/Ubuntu
-# or: sudo pacman -S jq  # Arch
-
-# 3. Initialize RTK globally (generates hook + configures Claude Code)
+# 2. Initialize RTK globally (generates hook + configures Claude Code)
 rtk init --global
 
-# 4. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
+# 3. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
 
-# 5. Verify
+# 4. Verify
 rtk --version        # Should print version
 rtk ls .             # Should show compressed output
 rtk gain             # Should show tracking is active
 
-# 6. Restart Claude Code for the hook to take effect
+# 5. Restart Claude Code for the hook to take effect
 ```
 
 ### Status Line
 
-Two-line display inspired by [claude-watch](https://github.com/xleddyl/claude-watch). Cross-platform (macOS + Linux).
+Single-line display: `model | folder • branch | ctx X% (Xk/Xk) | 5h X% (reset) • 7d X% (reset)`. The branch, context, and each quota window degrade independently when their source field is unavailable. Claude's native `rate_limits` input is the only quota source, so API-key/unsupported-plan/pre-first-response sessions simply omit the 5h/7d segment.
 
-- **Line 1**: Model name | folder | git branch
-- **Line 2**: 5h/7d API usage with reset countdowns | context window usage with token counts
-
-Requires `jq` and `curl`. Usage data is fetched via the `Stop` hook and cached to `/tmp/.claude_usage_cache`.
+`./docks-kit sync claude` deploys `~/.claude/bin/statusline.mjs` and materializes an absolute Bun command with a missing-file guard. It has no jq/curl/OAuth credential/cache dependency and no Stop hook. If Bun cannot be resolved or bootstrapped during sync, the runtime cutover is deferred and existing legacy hook/statusline pointers and files are preserved. If Bun is later deleted after a successful cutover, the guarded statusline is a silent no-op and direct hooks recover on the next sync.
 
 ### Session Management
 
@@ -182,11 +173,10 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Hooks
 
-- **SessionStart**: Injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
+- **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
 - **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
-- **Notification**: Plays `notification.mp3` via `ffplay` when a task completes
+- **Notification**: Direct Bun exec of `~/.claude/bin/notify.mjs`; plays `notification.mp3` via the first available native player when a task completes
 - **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
-- **Stop**: Fetches API usage stats (async) to keep status line data fresh
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
 
 ### Environment Variables
@@ -292,7 +282,7 @@ For plugins, `./docks-kit sync` runs seven idempotent passes via the `claude plu
 
 For Codex plugins, after deploying `SoT/.codex/config.toml` and the personal marketplace file, sync runs `codex plugin add <plugin@marketplace>` for each enabled SoT plugin. Re-running sync therefore refreshes stale Codex plugin caches instead of only updating marketplace metadata. Sync also removes the older kit-created configured Docks marketplace source so Codex uses the personal marketplace file as the single source.
 
-`--reconcile` and `--prune` are orthogonal: `--reconcile` reconciles `settings.json` via jq merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--prune` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall kit-managed skills tracked in `~/.agents/.kit-managed-skills` that are no longer in `SoT/.agents/skills.txt`). Default sync is additive on all three layers — drift survives.
+`--reconcile` and `--prune` are orthogonal: `--reconcile` reconciles `settings.json` through the native TypeScript merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--prune` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall kit-managed skills tracked in `~/.agents/.kit-managed-skills` that are no longer in `SoT/.agents/skills.txt`). Default sync is additive on all three layers — drift survives.
 
 #### When to use `--reconcile` and `--prune`
 
@@ -352,12 +342,12 @@ Default sync is additive, so anything the kit *stops* shipping (a deprecated hoo
 | `settingsKeys` | dotted key paths `del()`-ed from `~/.claude/settings.json` |
 | `claudeJsonKeys` | dotted key paths `del()`-ed from `~/.claude.json` |
 
-This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent and honor `--dry-run`. Current manifest: the dead `disable-claudeai-connectors.sh` hook; the superseded `alert_bubble.mp3` sound (replaced by `notification.mp3`); `showTurnDuration` (schema-invalid in `settings.json`; sync writes it to `~/.claude.json`); and stale env vars from older kit versions — `CLAUDE_CODE_SUBAGENT_MODEL` (the kit now relies on per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled), `CLAUDE_CODE_FORK_SUBAGENT` (`/fork` enabled by default since 2.1.161), and `CLAUDE_CODE_EFFORT_LEVEL` (moved to the `effortLevel` settings key so skill/subagent `effort:` frontmatter isn't overridden). Add a newly-deprecated artifact by editing the removed manifest in `claudeSync.ts`.
+This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-machine override of any of these belongs in **`settings.local.json`**, which sync never touches; never list a key the kit never owned (a user's custom env vars, `mcpServers`, theme), which the additive merge already preserves. All removals are idempotent and honor `--dry-run`. Current baseline manifest entries include the dead `disable-claudeai-connectors.sh` hook, superseded `alert_bubble.mp3`, `showTurnDuration` in settings, and stale kit env vars. A second, readiness-gated subset removes `statusline.sh`, `fetch-usage.sh`, `hooks/notify.sh`, and `hooks.Stop` only after Bun runtime assets and new settings commit successfully; deferred/failed migration preserves them. Add a newly-deprecated artifact by editing the removed manifest in `claudeSync.ts`.
 
 ### Troubleshooting
 
 - **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
-- **Status line showing stale usage data** — the Stop hook fetches usage asynchronously and caches to `/tmp/.claude_usage_cache`. Account switches self-heal: `statusline.sh` treats a cache older than `~/.claude/.credentials.json` as missing and kicks a background refresh (throttled to one spawn per 5s via `/tmp/.claude_usage_fetching`), so the usage segment blanks for a few seconds instead of showing the previous account. If it goes stale for any other reason: `rm /tmp/.claude_usage_cache`.
+- **Status line missing 5h/7d usage** — Claude omits native `rate_limits` for API-key/unsupported-plan sessions and before the first API response; the statusline intentionally omits only that segment. There is no OAuth fallback or cache to clear. If the whole statusline is absent, re-run `./docks-kit sync claude` to restore Bun/runtime assets and inspect the migration warning.
 - **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=468000` (compaction at ~95% → ~445K). To delay (containers only), pass `./docks-kit sync claude --claude-compact-window=680k` or raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `./docks-kit sync` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
@@ -432,7 +422,7 @@ alias claude='claude --thinking-display summarized'
 
 **Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `./docks-kit sync` does this via `claude::sync_connector_env`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
 
-The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. (the sync engine copies hooks without deleting, so a previously-synced copy at `~/.claude/hooks/disable-claudeai-connectors.sh` lingers harmlessly until manually deleted.)
+The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. The sync engine's baseline removed manifest force-prunes any previously synced copy.
 
 **Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./docks-kit sync`, confirm `/mcp` is clean, then drop the `claude::sync_connector_env` shell-rc edit and this entry.
 

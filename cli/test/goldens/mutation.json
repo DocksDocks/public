@@ -94,7 +94,7 @@
         "--prune"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +7 ~0 -1)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +7 ~0 -1)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -106,20 +106,20 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json": "sha256:4d0cb41741f76bed0b8f4c4fbc7a383fc1063fdf49885849dcf2a317dd526b8f",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -136,7 +136,7 @@
         "--reconcile"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Claude per-tool symlinks healed (+1) — canonical present, ~/.claude/skills/<name> was missing or broken\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -148,20 +148,20 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:374c1f0c20e89e4384bdd2a79d9239dbf957139000009c28f970b90f4e110c84",
+        ".claude/settings.json": "sha256:784c887428c14b0ca3a2e4f8187aed0c2817b8a519857e2d6c990314dbb835bb",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -208,7 +208,7 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
@@ -218,18 +218,18 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json": "sha256:4d0cb41741f76bed0b8f4c4fbc7a383fc1063fdf49885849dcf2a317dd526b8f",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
@@ -245,7 +245,7 @@
         "--claude-permissive"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Compact window: set to 680000 tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)\n\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Compact window: set to 680000 tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)\n\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
@@ -255,18 +255,18 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:6cfe2c264b9e49907f1c90cf53d29ae6c247123364519613e84091cb50c200d5",
+        ".claude/settings.json": "sha256:e5d108c25f578742f3e0cb6e106bc5d48bd748b0fda05c15249ee285482b5fa0",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
@@ -280,7 +280,7 @@
         "--claude-model=fable"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
@@ -290,18 +290,18 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:8793f4f2f6ca4123180e600aa895e53166ea78e52b8364369102613378e88640",
+        ".claude/settings.json": "sha256:cc0eaaa1b57154ca4def1ac84a59d824d333901627f90f25f516dbffc8c1a233",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56"
@@ -376,7 +376,7 @@
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -389,20 +389,20 @@
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:826b9b25a20602934162efe14ef002509dbd5871e7bb6cf9237c970b8801195a",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:4108363e55c97cf3df101abc94c7589add31387c36b19bb68b5c59dc8c2fdfd4",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
-        ".claude/settings.json": "sha256:7a39c0f7a2120fe3f9c3226877415d7e5e9a2de3f14623aa7d75237929a2b886",
+        ".claude/settings.json": "sha256:4d0cb41741f76bed0b8f4c4fbc7a383fc1063fdf49885849dcf2a317dd526b8f",
         ".claude/settings.json.bak": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -419,7 +419,7 @@
         "--verbose"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts already in sync (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks already in sync (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m rtk up to date (0.43.0)\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime already in sync (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\u001b[1;32m[ok]\u001b[0m agent-browser up to date (0.31.1)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -430,14 +430,14 @@
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:cf5425e46897325fc6ef297344b7fe43c734b1ab71c202edc3fca60f044fe23b",
-        ".claude/settings.json.bak": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".claude/settings.json": "sha256:862e09b4b1c0c203b50cc5d0d5501814cdfe4c68bba0756a6bcaa0a6dd2da39d",
+        ".claude/settings.json.bak": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
@@ -467,18 +467,18 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=claude": {
@@ -488,18 +488,39 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  skipped - claude CLI not installed\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  skipped - claude CLI not installed\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude stubs=curl,rtk variant=curl-absent-rtk-bootstrap": {
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;33m[warn]\u001b[0m curl not installed — sudo apt install -y curl (cannot download RTK installer; continuing sync without RTK)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      not installed\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
+        ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
+        ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
+        ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=git": {
@@ -509,18 +530,39 @@
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude stubs=jq variant=jq-absent-bun-hooks": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
+        ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
+        ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
+        ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
+        ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=rtk": {
@@ -596,13 +638,33 @@
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
+    "fixture=home-fresh cmd=sync codex stubs=jq variant=jq-absent-native-sync": {
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "command": [
+        "sync",
+        "codex"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "tree": {
+        ".agents/": "dir",
+        ".agents/plugins/": "dir",
+        ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
+        ".codex/": "dir",
+        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/rules/": "dir",
+        ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
+      }
+    },
     "fixture=home-fresh cmd=sync replay=2nd": {
       "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -613,14 +675,14 @@
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:cf5425e46897325fc6ef297344b7fe43c734b1ab71c202edc3fca60f044fe23b",
-        ".claude/settings.json.bak": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".claude/settings.json": "sha256:862e09b4b1c0c203b50cc5d0d5501814cdfe4c68bba0756a6bcaa0a6dd2da39d",
+        ".claude/settings.json.bak": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
@@ -634,7 +696,7 @@
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    1 scripts\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Universal skills synced (+1 new, 0 already present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          1 universal skill(s) installed\n\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:47bd9888a1cb30d527b249db9fc0471272d1abb858b4b47a80469850dfed4924",
@@ -644,13 +706,13 @@
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
         ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:b869285dc359e586f49b6d4ae88cb73d877bdb37ccd0305f4c725ecabc4e0bea",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+        ".claude/settings.json": "sha256:58a0987a27d81a3910d6fe26ae7564b2bbc477dd4e03a86fda389e37f1971981",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
         ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
@@ -665,7 +727,7 @@
         "check"
       ],
       "exitCode": 0,
-      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nagent-browser                managed   0.31.1         -         0.31.1    ok\nbun                          managed   1.3.14         -         1.3.14    ok\nbwrap                        check     ?              -         -         ok\nclaude                       check     2.1.204        2.1.170   -         ok\ncodex                        check     0.142.2        -         -         ok\ncurl                         required  ?              -         -         ok\neffect-solutions             managed   0.5.3          -         0.5.3     ok\nffplay                       check     ?              -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     ?              -         1.18.5    ok\njq                           required  1.7.1          -         -         ok\nnode                         check     22.23.1        -         -         ok\nnpm                          check     ?              -         -         ok\nrtk                          managed   0.43.0         0.43.0    0.43.0    ok\nskills-cli                   pin       (npx)          -         1.5.15    pinned\ntsc                          check     6.0.3          -         6.0.3     ok\ntypescript-language-server   check     ?              -         5.3.0     ok\n",
+      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nagent-browser                managed   0.31.1         -         0.31.1    ok\nbun                          managed   1.3.14         -         1.3.14    ok\nbwrap                        check     ?              -         -         ok\nclaude                       check     2.1.204        2.1.170   -         ok\ncodex                        check     0.142.2        -         -         ok\ncurl                         check     ?              -         -         ok\neffect-solutions             managed   0.5.3          -         0.5.3     ok\nffplay                       check     ?              -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     ?              -         1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        -         -         ok\nnpm                          check     ?              -         -         ok\nrtk                          managed   0.43.0         0.43.0    0.43.0    ok\nskills-cli                   pin       (npx)          -         1.5.15    pinned\ntsc                          check     6.0.3          -         6.0.3     ok\ntypescript-language-server   check     ?              -         5.3.0     ok\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -777,6 +839,19 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
+    "fixture=home-fresh cmd=toolchain ensure rtk stubs=curl,rtk variant=curl-absent-direct-rtk": {
+      "argvLog": "",
+      "command": [
+        "toolchain",
+        "ensure",
+        "rtk"
+      ],
+      "exitCode": 1,
+      "output": "\u001b[1;33m[warn]\u001b[0m curl not installed — sudo apt install -y curl (cannot download RTK installer; toolchain ensure rtk aborted)\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
     "fixture=home-invalid-json cmd=sync claude": {
       "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\n",
       "command": [
@@ -784,17 +859,33 @@
         "claude"
       ],
       "exitCode": 1,
-      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Scripts synced (statusline, fetch-usage, notification)\n\u001b[1;32m[ok]\u001b[0m Hooks synced (1 scripts)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;31m[err]\u001b[0m Skipping settings sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;31m[err]\u001b[0m Skipping settings sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".claude/": "dir",
+        ".claude/settings.json": "sha256:8e7d39b0534ad73130ea8a52903c20cf2851b5cbd76c49c124b81fc3d15027da"
+      }
+    },
+    "migration=legacy-claude-hook-scripts": {
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nrtk\t--version\n",
+      "command": [
+        "sync",
+        "claude"
+      ],
+      "exitCode": 0,
+      "output": "\u001b[1;32m[ok]\u001b[0m RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced (@RTK.md import stripped: ~/.claude/RTK.md absent (rtk not initialized))\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +7 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nRTK:      rtk 0.43.0\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "tree": {
+        ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
+        ".claude.json": "sha256:597ab8c1bcbbd5eb6e0207e3c9dcb8ec5c504e1314118618cfa5cb4819e7aad4",
+        ".claude/": "dir",
+        ".claude/bin/": "dir",
+        ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
+        ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
+        ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:e47a58babbb3920119eb40c6bef25ea685f3f68193c0586e3a240f046766fdba",
-        ".claude/fetch-usage.sh": "sha256:ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
-        ".claude/hooks/": "dir",
-        ".claude/hooks/notify.sh": "sha256:2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:8e7d39b0534ad73130ea8a52903c20cf2851b5cbd76c49c124b81fc3d15027da",
-        ".claude/statusline.sh": "sha256:3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe"
+        ".claude/settings.json": "sha256:f19aec188f683a0a772c6c0dd877e13c609b5c0b831e3b356a4652c1b24657c0",
+        ".claude/settings.json.bak": "sha256:fb9f3cab20327b58f92d501faeddcf50c6529d164e98beecaffea4359cc80ae9"
       }
     },
     "toml=01-top-level-comments.toml": {

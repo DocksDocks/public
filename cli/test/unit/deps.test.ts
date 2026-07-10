@@ -41,11 +41,25 @@ describe("DependencyManager registry", () => {
     }
   })
 
-  it("marks preflight tools required and degradable tools optional", () => {
-    expect(DEPENDENCIES.jq.requirement).toBe("required")
-    expect(DEPENDENCIES.curl.requirement).toBe("required")
+  it("marks jq and curl as contextual optional tools", () => {
+    expect(DEPENDENCIES.jq.requirement).toBe("optional")
+    expect(DEPENDENCIES.curl.requirement).toBe("optional")
     expect(DEPENDENCIES.git.requirement).toBe("optional")
     expect(DEPENDENCIES.claude.requirement).toBe("optional")
+  })
+
+  it("does not invoke the RTK curl latest probe when curl is absent", () => {
+    const captures: Array<[string, ReadonlyArray<string>]> = []
+    const manager = makeDependencyManager(makePlatform("linux"), {
+      commandExists: (name) => name !== "curl",
+      capture: (cmd, args) => {
+        captures.push([cmd, args])
+        return ""
+      },
+      which: (name) => name !== "curl" ? `/stub/${name}` : ""
+    })
+    expect(manager.latest("rtk")).toBe("")
+    expect(captures).toEqual([])
   })
 
   it("locates only the platform-correct effect-solutions executable", () => {
@@ -85,6 +99,69 @@ describe("DependencyManager registry", () => {
       expect(manager.version("bun")).toBe("")
       expect(manager.version("effect-solutions")).toBe("")
       expect(calls).toEqual([["/fixture-home/.bun/bin/bun", ["--version"]]])
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
+      else process.env["BUN_INSTALL"] = previousBunInstall
+    }
+  })
+
+  it("rejects relative POSIX bun paths from PATH and BUN_INSTALL fallbacks", () => {
+    const previousHome = process.env["HOME"]
+    const previousBunInstall = process.env["BUN_INSTALL"]
+    try {
+      process.env["HOME"] = "/fixture-home"
+      process.env["BUN_INSTALL"] = "relative-bun"
+      const fallback = "/fixture-home/.bun/bin/bun"
+      const withFallback = makeDependencyManager(makePlatform("linux"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => (name === "bun" ? "relative/bin/bun" : name === "relative-bun/bin/bun" || name === fallback ? name : "")
+      })
+      expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
+
+      const onlyRelative = makeDependencyManager(makePlatform("linux"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => (name === "bun" ? "relative/bin/bun" : "")
+      })
+      expect(onlyRelative.probe("bun")).toEqual({ state: "missing" })
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
+      else process.env["BUN_INSTALL"] = previousBunInstall
+    }
+  })
+
+  it("requires an absolute bun.exe on Windows and ignores a shadowing bun.cmd", () => {
+    const previousHome = process.env["HOME"]
+    const previousBunInstall = process.env["BUN_INSTALL"]
+    try {
+      process.env["HOME"] = "C:/Users/Test"
+      process.env["BUN_INSTALL"] = "C:/Custom Bun"
+      const fallback = "C:/Custom Bun/bin/bun.exe"
+      const withFallback = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : name === fallback ? fallback : ""
+      })
+      expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
+
+      const onlyCmd = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : ""
+      })
+      expect(onlyCmd.probe("bun")).toEqual({ state: "missing" })
+
+      const pathExe = makeDependencyManager(makePlatform("win32"), {
+        commandExists: () => true,
+        capture: () => "",
+        which: (name) => name === "bun" ? "C:/Tools/BUN.EXE" : ""
+      })
+      expect(pathExe.path("bun")).toBe("C:/Tools/BUN.EXE")
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]
       else process.env["HOME"] = previousHome

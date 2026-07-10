@@ -9,15 +9,17 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   renameSync,
+  rmdirSync,
   rmSync,
   writeFileSync
 } from "node:fs"
 import { tmpdir } from "node:os"
+import { bunBootstrap } from "./bun"
 import { syncClaudeModel } from "./claudeModel"
-import { ensureExecutable, p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
+import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths } from "./claudeRuntime"
+import { p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
@@ -26,8 +28,12 @@ import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
 
-export function claudeSync(ctx: Ctx): void {
-  const { warn } = ctx.services.logger
+export type ClaudeRuntimeState =
+  | { readonly kind: "ready"; readonly paths: ClaudeRuntimePaths }
+  | { readonly kind: "deferred"; readonly reason: "bun-unavailable" }
+
+export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
+  const { err, warn } = ctx.services.logger
   const claudeDir = p(ctx.home, ".claude")
 
   if (!ctx.dryRun) mkdirSync(claudeDir, { recursive: true })
@@ -39,26 +45,58 @@ export function claudeSync(ctx: Ctx): void {
   }
 
   syncRtk(ctx, claudeDir)
-  syncScripts(ctx, claudeDir)
-  syncHooks(ctx, claudeDir)
+  const bun = bunBootstrap(ctx, ctx.services)
+  const runtime: ClaudeRuntimeState = bun.kind === "ready"
+    ? { kind: "ready", paths: claudeRuntimePaths(claudeDir, bun.executable) }
+    : { kind: "deferred", reason: "bun-unavailable" }
+  const template = parseJson(payloadText("SoT/.claude/settings.json"))
+  if (template === undefined) {
+    err("Embedded SoT/.claude/settings.json is not valid JSON")
+    throw new ExitError(1)
+  }
+  const materialized = materializeClaudeSettings(
+    template,
+    runtime.kind === "ready" ? runtime.paths : undefined,
+    ctx.services.platform
+  )
+  const prepared = ctx.dryRun ? undefined : prepareClaudeSettings(ctx, claudeDir, materialized)
+
+  syncClaudeRuntime(ctx, runtime)
   syncClaudeMd(ctx, claudeDir)
-  syncSettings(ctx, claudeDir)
+  if (ctx.dryRun) {
+    describeSettingsSync(ctx, claudeDir)
+  } else {
+    if (prepared === undefined) throw new Error("Claude settings were not prepared")
+    commitClaudeSettings(ctx, prepared)
+  }
+  syncRemovals(ctx, claudeDir, runtime)
   syncCompactWindow(ctx, claudeDir)
   syncPermissive(ctx, claudeDir)
   syncClaudeModel(ctx, ctx.claudeModel)
   syncClaudeJson(ctx)
   syncConnectorEnv(ctx)
-  syncRemovals(ctx, claudeDir)
   syncPlugins(ctx, claudeDir)
   syncOptionalPlugins(ctx, claudeDir)
   syncLspServers(ctx)
+  return runtime
 }
 
 // ------------------------------------------------------------------ rtk ----
 
-/** RTK toolchain install callback. */
-export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
-  return (mode, version, services) => {
+type RtkInstaller = ((mode: "install" | "upgrade", version: string, services: EngineServices) => number) & {
+  readonly prerequisite: (services: EngineServices) => number | undefined
+}
+
+/** RTK toolchain install callback with the shared contextual curl boundary. */
+export function rtkInstall(ctx: Ctx, missingCurlContext: string, missingCurlExit: number): RtkInstaller {
+  const prerequisite = (services: EngineServices): number | undefined => {
+    if (services.deps.probe("curl").state === "present") return undefined
+    services.deps.warnMissing("curl", services.logger, missingCurlContext)
+    return missingCurlExit
+  }
+  const install = (mode: "install" | "upgrade", version: string, services: EngineServices): number => {
+    const blocked = prerequisite(services)
+    if (blocked !== undefined) return blocked
     const { change, err, verbose, warn } = services.logger
     const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
 
@@ -84,6 +122,16 @@ export function rtkInstall(ctx: Ctx): (mode: "install" | "upgrade", version: str
     err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
     return 1
   }
+  return Object.assign(install, { prerequisite })
+}
+
+export function ensureRtk(ctx: Ctx, missingCurlContext: string, missingCurlExit: number): number {
+  const installer = rtkInstall(ctx, missingCurlContext, missingCurlExit)
+  if (ctx.services.deps.probe("rtk").state === "missing") {
+    const blocked = installer.prerequisite(ctx.services)
+    if (blocked !== undefined) return blocked
+  }
+  return ensure(ctx, "rtk", installer)
 }
 
 function syncRtk(ctx: Ctx, claudeDir: string): void {
@@ -98,7 +146,7 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
       warn("rtk not installed — the kit's auto-install is Unix-only. Install natively (winget, or the rtk-*-windows-msvc.zip release), then re-run sync")
       return
     }
-  } else if (ensure(ctx, "rtk", rtkInstall(ctx)) !== 0) {
+  } else if (ensureRtk(ctx, "cannot download RTK installer; continuing sync without RTK", 0) !== 0) {
     warn("RTK bootstrap failed — continuing sync without it")
   }
 
@@ -118,60 +166,35 @@ function syncRtk(ctx: Ctx, claudeDir: string): void {
   }
 }
 
-// ------------------------------------------------------ scripts + hooks ----
+// ----------------------------------------------------------- runtime ----
 
-function syncScripts(ctx: Ctx, claudeDir: string): void {
-  const { change, echo, verbose } = ctx.services.logger
+function syncClaudeRuntime(ctx: Ctx, runtime: ClaudeRuntimeState): void {
+  const { change, echo, verbose, warn } = ctx.services.logger
+  if (runtime.kind === "deferred") {
+    warn("Bun unavailable — Claude statusline/hooks migration deferred; install Bun, then re-run sync claude")
+    return
+  }
   if (ctx.dryRun) {
-    echo("[dry-run] cp statusline.sh, fetch-usage.sh, notification.mp3")
+    echo("[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3")
     return
   }
 
+  mkdirSync(p(ctx.home, ".claude", "bin"), { recursive: true })
   let changed = false
-  for (const [script, source] of [
-    ["statusline.sh", "SoT/.claude/statusline.sh"],
-    ["fetch-usage.sh", "SoT/.claude/fetch-usage.sh"]
+  for (const [path, source] of [
+    [runtime.paths.statusline, "SoT/.claude/bin/statusline.mjs"],
+    [runtime.paths.sessionStart, "SoT/.claude/bin/session-start.mjs"],
+    [runtime.paths.notify, "SoT/.claude/bin/notify.mjs"]
   ] as const) {
-    const path = p(claudeDir, script)
     if (writeTextIfChanged(path, payloadText(source))) changed = true
-    if (ensureExecutable(path)) changed = true
   }
-  if (writeBytesIfChanged(p(claudeDir, "notification.mp3"), payloadBytes("notification.mp3"))) changed = true
+  if (writeBytesIfChanged(p(ctx.home, ".claude", "notification.mp3"), payloadBytes("notification.mp3"))) changed = true
   if (changed) {
-    change("Scripts synced (statusline, fetch-usage, notification)")
+    change("Claude runtime synced (statusline, session-start, notify, notification)")
     ctx.nextStepTriggers.claudeRestart = true
-  } else verbose("Scripts already in sync (statusline, fetch-usage, notification)")
-}
-
-function shellScriptCount(hooksDir: string): number {
-  try {
-    return readdirSync(hooksDir, { withFileTypes: true }).filter((e) => e.isFile() && e.name.endsWith(".sh")).length
-  } catch {
-    return 0
+  } else {
+    verbose("Claude runtime already in sync (statusline, session-start, notify, notification)")
   }
-}
-
-function syncHooks(ctx: Ctx, claudeDir: string): void {
-  const { change, echo, verbose } = ctx.services.logger
-  const sotHooks = payloadDisplayPath("SoT/.claude/hooks/notify.sh", ctx.repoDir).replace(/\/notify\.sh$/, "")
-
-  if (ctx.dryRun) {
-    echo(`[dry-run] cp -R ${sotHooks}/. ${claudeDir}/hooks/`)
-    return
-  }
-
-  const hooksDir = p(claudeDir, "hooks")
-  mkdirSync(hooksDir, { recursive: true })
-  let changed = writeTextIfChanged(p(hooksDir, "notify.sh"), payloadText("SoT/.claude/hooks/notify.sh"))
-  for (const e of readdirSync(hooksDir, { withFileTypes: true })) {
-    if (e.isFile() && e.name.endsWith(".sh")) {
-      if (ensureExecutable(p(hooksDir, e.name))) changed = true
-    }
-  }
-  if (changed) {
-    change(`Hooks synced (${shellScriptCount(hooksDir)} scripts)`)
-    ctx.nextStepTriggers.claudeRestart = true
-  } else verbose(`Hooks already in sync (${shellScriptCount(hooksDir)} scripts)`)
 }
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
@@ -214,52 +237,70 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
 
 // ------------------------------------------------------------- settings ----
 
-function syncSettings(ctx: Ctx, claudeDir: string): void {
-  const { change, echo, err, verbose } = ctx.services.logger
-  const repoSettings = payloadDisplayPath("SoT/.claude/settings.json", ctx.repoDir)
-  const repoSettingsText = payloadText("SoT/.claude/settings.json")
-  const userSettings = p(claudeDir, "settings.json")
+export interface PreparedClaudeSettings {
+  readonly path: string
+  readonly bytes: string
+  readonly previousBytes: string | undefined
+  readonly changed: boolean
+}
 
-  if (ctx.dryRun) {
-    if (!existsSync(userSettings)) {
-      echo(`[dry-run] install ${repoSettings} -> ${userSettings}`)
-    } else if (ctx.reconcile) {
-      echo(`[dry-run] reconcile ${repoSettings} -> ${userSettings} (SoT keys win; permissions arrays replaced; user-only keys preserved)`)
-    } else {
-      echo(`[dry-run] merge ${repoSettings} -> ${userSettings} (SoT keys win; permissions arrays unioned; user-only keys preserved)`)
-    }
-    return
+function assertMaterializedSettings(bytes: string): void {
+  if (bytes.includes("__DOCKS_KIT_")) throw new Error("Claude settings contain unresolved runtime sentinels")
+}
+
+/** Build the candidate settings bytes before the readiness-gated runtime cutover mutates disk. */
+export function prepareClaudeSettings(ctx: Ctx, claudeDir: string, repo: Json): PreparedClaudeSettings {
+  const path = p(claudeDir, "settings.json")
+  if (!existsSync(path)) {
+    const bytes = jqStringify(repo)
+    assertMaterializedSettings(bytes)
+    return { path, bytes, previousBytes: undefined, changed: true }
   }
 
-  if (!existsSync(userSettings)) {
-    writeFileSync(userSettings, repoSettingsText)
-    change("Settings installed")
-    ctx.nextStepTriggers.claudeRestart = true
-    return
-  }
-
-  const user = parseJson(readFileSync(userSettings, "utf8"))
+  const previousBytes = readFileSync(path, "utf8")
+  const user = parseJson(previousBytes)
   if (user === undefined) {
-    // claude::_settings_validate returns 1 → claude::sync aborts under set -e.
-    err(`Skipping settings sync: ${userSettings} is not valid JSON. Fix it manually or delete it to reinstall.`)
+    ctx.services.logger.err(`Skipping settings sync: ${path} is not valid JSON. Fix it manually or delete it to reinstall.`)
     throw new ExitError(1)
   }
-  const repo = parseJson(repoSettingsText)!
-
   const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user)
-  const out = jqStringify(merged)
-  if (out === readFileSync(userSettings, "utf8")) {
+  const bytes = jqStringify(merged)
+  assertMaterializedSettings(bytes)
+  return { path, bytes, previousBytes, changed: bytes !== previousBytes }
+}
+
+/** Commit a fully prepared document; callers must finish runtime preparation first. */
+export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings): void {
+  const { change, verbose } = ctx.services.logger
+  if (!prepared.changed) {
     verbose("Settings already in sync")
     return
   }
-  copyFileSync(userSettings, `${userSettings}.bak`)
-  writeFileSync(`${userSettings}.tmp`, out)
-  renameSync(`${userSettings}.tmp`, userSettings)
+
+  if (prepared.previousBytes !== undefined) copyFileSync(prepared.path, `${prepared.path}.bak`)
+  writeFileSync(`${prepared.path}.tmp`, prepared.bytes)
+  renameSync(`${prepared.path}.tmp`, prepared.path)
   ctx.nextStepTriggers.claudeRestart = true
-  if (ctx.reconcile) {
+  if (prepared.previousBytes === undefined) {
+    change("Settings installed")
+  } else if (ctx.reconcile) {
     change("Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)")
   } else {
     change("Settings merged (backup at settings.json.bak)")
+  }
+}
+
+function describeSettingsSync(ctx: Ctx, claudeDir: string): void {
+  const { echo } = ctx.services.logger
+  const repoSettings = payloadDisplayPath("SoT/.claude/settings.json", ctx.repoDir)
+  const userSettings = p(claudeDir, "settings.json")
+
+  if (!existsSync(userSettings)) {
+    echo(`[dry-run] install ${repoSettings} -> ${userSettings}`)
+  } else if (ctx.reconcile) {
+    echo(`[dry-run] reconcile ${repoSettings} -> ${userSettings} (SoT keys win; permissions arrays replaced; user-only keys preserved)`)
+  } else {
+    echo(`[dry-run] merge ${repoSettings} -> ${userSettings} (SoT keys win; permissions arrays unioned; user-only keys preserved)`)
   }
 }
 
@@ -455,7 +496,12 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_CODE_FORK_SUBAGENT",
     "env.CLAUDE_CODE_EFFORT_LEVEL"
   ],
-  claudeJsonKeys: [] as Array<string>
+  claudeJsonKeys: [] as Array<string>,
+  runtimeReady: {
+    hooks: ["notify.sh"],
+    files: ["statusline.sh", "fetch-usage.sh"],
+    settingsKeys: ["hooks.Stop"]
+  }
 }
 
 /** claude::_prune_json_keys — present-count; deletes when !dryRun. */
@@ -464,18 +510,15 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
   const doc = parseJson(readFileSync(file, "utf8"))
   if (doc === undefined) return 0
 
-  const getPath = (root: Json, path: Array<string>): Json | undefined => {
-    let cur: Json | undefined = root
-    for (const seg of path) {
-      if (cur === undefined || !isObject(cur)) return undefined
-      cur = cur[seg]
+  const hasPath = (root: Json, path: Array<string>): boolean => {
+    let cur: Json = root
+    for (const seg of path.slice(0, -1)) {
+      if (!isObject(cur) || cur[seg] === undefined) return false
+      cur = cur[seg]!
     }
-    return cur
+    return isObject(cur) && Object.prototype.hasOwnProperty.call(cur, path[path.length - 1]!)
   }
-  const presentKeys = keys.filter((k) => {
-    const v = getPath(doc, k.split("."))
-    return v !== undefined && v !== null
-  })
+  const presentKeys = keys.filter((k) => hasPath(doc, k.split(".")))
   if (presentKeys.length === 0) return 0
 
   if (!ctx.dryRun) {
@@ -494,12 +537,24 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
   return presentKeys.length
 }
 
-function syncRemovals(ctx: Ctx, claudeDir: string): void {
+function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState): void {
   const { change, echo } = ctx.services.logger
   let hooksRemoved = 0
   let filesRemoved = 0
+  const hooks = [
+    ...REMOVED_MANIFEST.hooks,
+    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.hooks : [])
+  ]
+  const files = [
+    ...REMOVED_MANIFEST.files,
+    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.files : [])
+  ]
+  const settingsKeys = [
+    ...REMOVED_MANIFEST.settingsKeys,
+    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.settingsKeys : [])
+  ]
 
-  for (const name of REMOVED_MANIFEST.hooks) {
+  for (const name of hooks) {
     const path = p(claudeDir, "hooks", name)
     if (!existsSync(path)) continue
     if (ctx.dryRun) {
@@ -509,8 +564,15 @@ function syncRemovals(ctx: Ctx, claudeDir: string): void {
       hooksRemoved++
     }
   }
+  if (!ctx.dryRun && hooksRemoved > 0) {
+    try {
+      rmdirSync(p(claudeDir, "hooks"))
+    } catch {
+      // Preserve a non-empty user hooks directory.
+    }
+  }
 
-  for (const rel of REMOVED_MANIFEST.files) {
+  for (const rel of files) {
     const path = p(claudeDir, rel)
     if (!existsSync(path)) continue
     if (ctx.dryRun) {
@@ -521,7 +583,7 @@ function syncRemovals(ctx: Ctx, claudeDir: string): void {
     }
   }
 
-  const skeys = pruneJsonKeys(ctx, p(claudeDir, "settings.json"), REMOVED_MANIFEST.settingsKeys)
+  const skeys = pruneJsonKeys(ctx, p(claudeDir, "settings.json"), settingsKeys)
   const cjkeys = pruneJsonKeys(ctx, p(ctx.home, ".claude.json"), REMOVED_MANIFEST.claudeJsonKeys)
 
   if (ctx.dryRun) {
@@ -846,12 +908,16 @@ function syncLspServers(ctx: Ctx): void {
 
 // -------------------------------------------------------------- summary ----
 
-export function claudeSummary(ctx: Ctx): void {
+export function claudeSummary(ctx: Ctx, runtime: ClaudeRuntimeState): void {
   const { echo } = ctx.services.logger
   const claudeDir = p(ctx.home, ".claude")
   echo(`Claude:   ${claudeDir}`)
   if (!ctx.dryRun) {
-    echo(`Hooks:    ${shellScriptCount(p(claudeDir, "hooks"))} scripts`)
+    if (runtime.kind === "ready") {
+      echo("Hooks:    Bun (statusline, session-start, notify)")
+    } else {
+      echo("Hooks:    migration deferred (Bun unavailable; existing hook/statusline settings preserved)")
+    }
     if (ctx.services.deps.probe("rtk").state === "present") {
       const version = ctx.services.deps.version("rtk")
       echo(`RTK:      ${version !== "" ? version : "installed"}`)

@@ -8,6 +8,7 @@
  * command that installs a missing one.
  */
 import { homedir } from "node:os"
+import { isAbsolute } from "node:path"
 import { existsSync, readdirSync } from "node:fs"
 
 import { capture, commandExists, p, which } from "./exec"
@@ -110,21 +111,34 @@ const home = (): string => {
   return envHome !== undefined && envHome !== "" ? envHome : homedir()
 }
 
-const findBun = (exec: ProbeExecutor): { command: string; path: string } | undefined => {
+const absoluteWindowsExe = (path: string): boolean =>
+  /\.exe$/i.test(path) && (/^[A-Za-z]:[\\/]/.test(path) || /^\\\\/.test(path))
+
+// The resolved path gets persisted into global direct-exec hooks, so a
+// relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
+// break outside the sync working directory.
+const absoluteExecutable = (path: string, platform: NodeJS.Platform): boolean =>
+  platform === "win32" ? absoluteWindowsExe(path) : isAbsolute(path)
+
+const findBun = (exec: ProbeExecutor, platform: NodeJS.Platform = rawPlatform()): { command: string; path: string } | undefined => {
   const onPath = exec.which("bun")
-  if (onPath !== "") return { command: "bun", path: onPath }
+  if (onPath !== "" && absoluteExecutable(onPath, platform)) {
+    return { command: platform === "win32" ? onPath : "bun", path: onPath }
+  }
   const root =
     process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
       ? process.env["BUN_INSTALL"]!
       : p(home(), ".bun")
-  for (const candidate of [p(root, "bin", "bun"), p(home(), ".bun", "bin", "bun")]) {
-    if (exec.which(candidate) !== "") return { command: candidate, path: candidate }
+  const name = platform === "win32" ? "bun.exe" : "bun"
+  for (const candidate of [p(root, "bin", name), p(home(), ".bun", "bin", name)]) {
+    const found = exec.which(candidate)
+    if (found !== "" && absoluteExecutable(found, platform)) return { command: found, path: found }
   }
   return undefined
 }
 
-const resolveBun = (exec: ProbeExecutor): ProbeResult => {
-  const bun = findBun(exec)
+const resolveBun = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
+  const bun = findBun(exec, platform)
   return bun === undefined
     ? { state: "missing" }
     : { state: "present", path: bun.path }
@@ -147,7 +161,9 @@ const versionEffectSolutions = (exec: ProbeExecutor): string => {
 }
 
 const locateEffectSolutions = (exec: ProbeExecutor, platform: NodeJS.Platform): DependencyLocation => {
-  const bun = findBun(exec)
+  const strictBun = findBun(exec, platform)
+  const pathBun = exec.which("bun")
+  const bun = strictBun ?? (pathBun !== "" ? { command: "bun", path: pathBun } : undefined)
   if (bun === undefined) return { path: "", binDir: "" }
   const globalBin = exec.capture(bun.command, ["pm", "-g", "bin"])
   const names =
@@ -180,6 +196,7 @@ const resolveChrome = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeRes
 }
 
 const latestRtk = (exec: ProbeExecutor): string => {
+  if (!exec.commandExists("curl")) return ""
   const doc = parseJson(
     exec.capture("curl", ["-fsSL", "--max-time", "5", "https://api.github.com/repos/rtk-ai/rtk/releases/latest"])
   )
@@ -204,7 +221,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
           : "sudo apt install -y git (or your distro's package manager)",
     { version: versionProbe("git") }
   ),
-  jq: spec("jq", "required", (pf = rawPlatform()) =>
+  jq: spec("jq", "optional", (pf = rawPlatform()) =>
     pf === "win32"
       ? "winget install jqlang.jq (then open a new terminal)"
       : pf === "darwin"
@@ -212,7 +229,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
         : "sudo apt install -y jq",
     { version: versionProbe("jq") }
   ),
-  curl: spec("curl", "required", (pf = rawPlatform()) =>
+  curl: spec("curl", "optional", (pf = rawPlatform()) =>
     pf === "win32" ? "winget install cURL.cURL" : pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
     { version: versionProbe("curl") }
   ),
@@ -251,7 +268,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     {
       resolve: resolveBun,
       version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
-      locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
+      locate: (exec, platform) => ({ path: findBun(exec, platform)?.path ?? "", binDir: "" })
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),

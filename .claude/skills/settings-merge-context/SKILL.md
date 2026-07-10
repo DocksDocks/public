@@ -1,6 +1,6 @@
 ---
 name: settings-merge-context
-description: "Use when modifying cli/src/engine-native/claudeSync.ts settings paths, syncSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel, or cli/src/engine-native/settings.ts mergeSettings/reconcileSettings; covers ~/.claude/settings.json vs ~/.claude.json ownership, permissions union vs reconcile replacement, backups, atomic writes, and removed-artifact pruning."
+description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; or settings.ts mergeSettings/reconcileSettings. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, and readiness-gated pruning."
 user-invocable: false
 metadata:
   source_files:
@@ -12,7 +12,7 @@ metadata:
       lines: "1-260"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-07-09"
+  updated: "2026-07-10"
 ---
 
 # Settings Merge
@@ -39,7 +39,10 @@ left untouched and reported; never merge into a parse failure.
 
 ## When To Use
 
-- Changing `syncSettings` first-install, additive merge, or reconcile behavior.
+- Changing `prepareClaudeSettings` / `commitClaudeSettings` first-install,
+  additive merge, reconcile, or atomic replacement behavior.
+- Changing `claudeRuntime.ts materializeClaudeSettings`, sentinel validation,
+  no-cutover projection, or absolute hook/statusline commands.
 - Changing `mergeSettings` or `reconcileSettings`.
 - Adding a key to `~/.claude.json` through `syncClaudeJson`.
 - Adding user-scoped MCP servers in `SoT/.claude/mcp-servers.json`.
@@ -49,7 +52,7 @@ left untouched and reported; never merge into a parse failure.
 
 | Mode | Function | Behavior |
 |------|----------|----------|
-| First install | `syncSettings` copy path | Copies SoT settings when no deployed file exists. |
+| First install | `prepareClaudeSettings` absent-target path | Serializes the materialized SoT settings; `commitClaudeSettings` atomically creates the deployed file. |
 | Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
 | `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
@@ -60,7 +63,7 @@ by the curated removed manifest are force-pruned.
 
 | Key | File | Owner |
 |-----|------|-------|
-| Standard env, hooks, permissions, plugins | `~/.claude/settings.json` | `syncSettings` |
+| Standard env, hooks, permissions, plugins | `~/.claude/settings.json` | `prepareClaudeSettings` then `commitClaudeSettings` |
 | `showTurnDuration` | `~/.claude.json` | `syncClaudeJson` |
 | User-scoped `mcpServers` | `~/.claude.json` | `syncClaudeJson` merging `SoT/.claude/mcp-servers.json` |
 | Claude.ai cloud connector disable | Shell rc export | `syncConnectorEnv` |
@@ -70,8 +73,8 @@ when absent. No JSON setting disables those account-level cloud connectors.
 
 ## Deploy-Time Modifiers
 
-`syncCompactWindow`, `syncPermissive`, and `syncClaudeModel` run after
-`syncSettings` and mutate only deployed settings. A later flag-less sync restores
+`syncCompactWindow`, `syncPermissive`, and `syncClaudeModel` run after the
+prepared settings commit and mutate only deployed settings. A later flag-less sync restores
 SoT values, except user-only keys that the SoT does not declare.
 
 | Flag | Function | Mutation |
@@ -88,7 +91,12 @@ SoT values, except user-only keys that the SoT does not declare.
 - `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
   Claude Code's project state and user keys.
 - `syncRemovals` is the narrow exception to additive-by-default and must remain
-  backed by the curated removed manifest.
+  backed by the curated removed manifest. Its legacy statusline/Notification/
+  Stop subset is gated on the same ready-and-committed runtime state; baseline
+  stale entries remain unconditional.
+- The authoring `SoT/.claude/settings.json` contains named sentinels. Only
+  `claudeRuntime.ts materializeClaudeSettings, exact sentinel locations` may
+  replace or omit them, and no sentinel-bearing document may reach disk.
 
 ## Gotchas
 
@@ -99,6 +107,8 @@ SoT values, except user-only keys that the SoT does not declare.
 - `showTurnDuration` in settings.json creates a schema warning; keep the carve-out.
 - The present-count logic for removed dotted paths must evaluate paths against
   the root document, not the path string.
+- Preparing settings is intentionally mutation-free. Runtime assets are written
+  before `commitClaudeSettings`; legacy cleanup runs only after that commit.
 
 ## References
 

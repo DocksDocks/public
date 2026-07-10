@@ -45,7 +45,7 @@ behavior for removed flag names.
 |---------|--------|
 | Public engine seam | `engine`, `engineCapture` in `cli/src/engine.ts` |
 | Engine dispatch | `runEngineNative`, `engineSync` in `index.ts` |
-| Flags and targets | `parseArgs`, `preflight`, `validateModelFlags` |
+| Flags and targets | `parseArgs`, `validateModelFlags` |
 | Direct modes | `modeModel`, `modeToolchain`, `printModels` |
 | Removed engine guard | `DOCKS_KIT_ENGINE` handling in `cli/src/engine.ts` |
 
@@ -63,3 +63,5 @@ behavior for removed flag names.
   abort unless the selected target has an invalid value.
 - `DOCKS_KIT_ENGINE=native-raw` is harness-private.
 - `DOCKS_KIT_ENGINE` set to `bash` must fail with the removed-engine message.
+- Dependency checks belong at concrete consumers; do not restore a global
+  preflight in `parseArgs.ts` or `index.ts`.
