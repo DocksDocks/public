@@ -1,9 +1,10 @@
 ---
 title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
-status: in_review
+status: finished
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T16:47:10-03:00"
+updated: "2026-07-10T16:50:23-03:00"
+ship_commit: e22cd6e41ff9e42bb2c3e8986d5937c9a8b35086
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
