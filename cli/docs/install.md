@@ -21,10 +21,10 @@ docks-kit sync
 bunx docks-kit status
 ```
 
-The npm package bundles the CLI and the SoT — releases are versioned config
-snapshots. Kit-home resolution: `DOCKS_KIT_HOME` env → nearest ancestor
-directory containing `SoT/` + `package.json` (a checkout wins over the bundled
-copy) → the package's own bundled SoT.
+The npm package bundles the CLI and its generated in-memory payload — releases
+are versioned config snapshots without publishing the authoring `SoT/` tree.
+Kit-home resolution remains available for checkout/package update behavior and
+display paths, but sync reads do not depend on it.
 
 ## 3. curl installer (Unix-only)
 
@@ -44,12 +44,10 @@ kit before. The installer bootstraps Bun when absent, runs
 Two supported paths (CI-verified on windows-2025, native PowerShell):
 
 - **Compiled binary** — `docks-kit-windows-x64.exe` release asset. No Bun,
-  no Git Bash: the exe embeds the runtime and EngineNative runs in-process.
-  It still needs the SoT it deploys — run it from inside a kit checkout, or
-  point `DOCKS_KIT_HOME` at one.
+  no Git Bash: the exe embeds the runtime and generated payload, and
+  EngineNative runs in-process from any working directory.
 - **`bun add -g docks-kit`** — bun creates a working shim for the
-  `#!/usr/bin/env bun` bin; outside a checkout the package's own bundled
-  SoT is used.
+  `#!/usr/bin/env bun` bin; the package carries the same generated payload.
 
 `install.sh` is not a Windows path.
 
@@ -72,8 +70,8 @@ nudges when the checkout is stale (silent offline / detached / no git).
 ## No-Bun recovery
 
 No Bun or constrained sandbox: download the platform release binary from GitHub
-Releases and run it from inside a kit checkout, or set `DOCKS_KIT_HOME` to the
-checkout containing `SoT/`.
+Releases and run it directly. No checkout or `DOCKS_KIT_HOME` is required for
+sync/config reads.
 
 ## Prerequisites
 

@@ -22,7 +22,7 @@ Tool-specific instructions live alongside this file:
 | `install.sh` | Global installer |
 | `.github/workflows/release-cli.yml` | `cli-v*` release binaries + npm publish |
 | `README.md` | Front door |
-| `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` + `SoT/` |
+| `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
 | `SoT/.agents/skills.txt` | Universal-skill manifest. One [agentskills.io](https://agentskills.io) slug per line; EngineNative runs `npx skills add` for each missing entry into `~/.agents/skills/`, where Codex et al. discover it natively and Claude Code follows a symlink at `~/.claude/skills/` |
 | `notification.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
 | `docs/plans/` | Multi-commit work-item plans (`active/` with status in frontmatter, plus `finished/` archive). Convention: `docs/plans/AGENTS.md` |

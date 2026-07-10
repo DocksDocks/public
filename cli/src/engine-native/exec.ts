@@ -4,7 +4,7 @@
  * substitution: stdout with trailing newlines stripped, empty on failure.
  */
 import { spawnSync } from "node:child_process"
-import { accessSync, chmodSync, constants, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { accessSync, chmodSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, isAbsolute, join } from "node:path"
 
 /**
@@ -69,34 +69,19 @@ export function ensureExecutable(path: string): boolean {
   return true
 }
 
-export function writeFileIfChanged(path: string, content: string): boolean {
+export function writeTextIfChanged(path: string, content: string): boolean {
   if (existsSync(path) && readFileSync(path, "utf8") === content) return false
   writeFileSync(path, content)
   return true
 }
 
-/** Copy only when dest differs from src; returns whether a copy happened. */
-export function copyFileIfChanged(src: string, dest: string): boolean {
-  if (existsSync(dest) && readFileSync(dest).equals(readFileSync(src))) return false
-  copyFileSync(src, dest)
+export function writeBytesIfChanged(path: string, content: Uint8Array): boolean {
+  const bytes = Buffer.from(content)
+  if (existsSync(path) && readFileSync(path).equals(bytes)) return false
+  writeFileSync(path, bytes)
   return true
 }
 
-/** Recursive copy via copyFileIfChanged; returns whether anything changed. */
-export function copyTreeIfChanged(srcDir: string, destDir: string): boolean {
-  let changed = false
-  for (const e of readdirSync(srcDir, { withFileTypes: true })) {
-    const src = p(srcDir, e.name)
-    const dest = p(destDir, e.name)
-    if (e.isDirectory()) {
-      if (!existsSync(dest)) {
-        mkdirSync(dest, { recursive: true })
-        changed = true
-      }
-      if (copyTreeIfChanged(src, dest)) changed = true
-    } else if (copyFileIfChanged(src, dest)) {
-      changed = true
-    }
-  }
-  return changed
+export function writeFileIfChanged(path: string, content: string): boolean {
+  return writeTextIfChanged(path, content)
 }

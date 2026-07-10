@@ -6,7 +6,6 @@
  * vocabulary directly.
  */
 import { p } from "./exec"
-import { existsSync } from "node:fs"
 import { homedir } from "node:os"
 
 import { kitHome } from "../kitHome"
@@ -81,13 +80,13 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   preflight(ctx)
   validateModelFlags(ctx)
 
-  const claudeRan = ctx.syncClaude && existsSync(p(ctx.repoDir, "SoT", ".claude"))
+  const claudeRan = ctx.syncClaude
   if (claudeRan) claudeSync(ctx)
 
-  const codexRan = ctx.syncCodex && existsSync(p(ctx.repoDir, "SoT", ".codex"))
+  const codexRan = ctx.syncCodex
   if (codexRan) codexSync(ctx)
 
-  const skillsState = ctx.syncAgents && existsSync(p(ctx.repoDir, "SoT", ".agents")) ? skillsSync(ctx) : undefined
+  const skillsState = ctx.syncAgents ? skillsSync(ctx) : undefined
 
   echo("")
   echo("--- Sync complete ---")

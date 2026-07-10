@@ -2,10 +2,10 @@ name: windows-entrypoints
 
 # Step 8 (windows-support plan): verify the supported Windows command
 # surfaces. The compiled docks-kit-windows-x64.exe is THE no-toolchain path
-# (no Bun, no Git Bash — the exe embeds the runtime; it still needs a kit
-# checkout or DOCKS_KIT_HOME for the SoT it deploys). The bun add -g shim
-# covers the "#!/usr/bin/env bun" bin on Windows. install.sh remains
-# documented Unix-only — it is deliberately not exercised here.
+# (no Bun, no Git Bash — the exe embeds the runtime and generated payload).
+# The bun add -g shim covers the "#!/usr/bin/env bun" bin on Windows.
+# install.sh remains documented Unix-only — it is deliberately not exercised
+# here.
 #
 # Runner is the pinned label windows-2025, never the floating *-latest.
 
@@ -17,6 +17,8 @@ on:
       - "package.json"
       - "bun.lock"
       - "SoT/**"
+      - "notification.mp3"
+      - "docks-kit"
       - ".github/workflows/windows-entrypoints.yml"
   pull_request:
     paths:
@@ -24,6 +26,8 @@ on:
       - "package.json"
       - "bun.lock"
       - "SoT/**"
+      - "notification.mp3"
+      - "docks-kit"
       - ".github/workflows/windows-entrypoints.yml"
   workflow_dispatch:
 
@@ -67,6 +71,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: docks-kit-windows-x64
+          path: ${{ runner.temp }}/docks-kit-exe
 
       - name: Prepare hermetic home (%USERPROFILE% -> temp, seeded from SoT)
         run: |
@@ -78,7 +83,10 @@ jobs:
       - name: exe sync --dry-run (no Bun installed)
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
-          $out = .\docks-kit-windows-x64.exe sync --dry-run 2>&1 | Out-String
+          if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
+          Set-Location $env:RUNNER_TEMP
+          $exe = Join-Path $env:RUNNER_TEMP "docks-kit-exe/docks-kit-windows-x64.exe"
+          $out = & $exe sync --dry-run 2>&1 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "exe sync --dry-run exited $LASTEXITCODE" }
           if ($out -notmatch "exe-home") { throw "output never references the USERPROFILE-derived home" }
@@ -91,7 +99,10 @@ jobs:
         # on a failed child, so "Kit home:" alone would pass vacuously.
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
-          $out = .\docks-kit-windows-x64.exe status 2>&1 | Out-String
+          if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
+          Set-Location $env:RUNNER_TEMP
+          $exe = Join-Path $env:RUNNER_TEMP "docks-kit-exe/docks-kit-windows-x64.exe"
+          $out = & $exe status 2>&1 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "exe status exited $LASTEXITCODE" }
           if ($out -notmatch "Kit home:") { throw "status output missing the kit-home line" }
@@ -99,8 +110,8 @@ jobs:
           if ($out -notmatch "(?m)^npm\s+check\s+\d") { throw "toolchain table lost - compiled engineCapture child failed" }
 
   # The "#!/usr/bin/env bun" bin installed globally: bun must create a
-  # working Windows shim, and kit-home must resolve from the package's own
-  # bundled SoT when run outside any checkout.
+  # working Windows shim, and the generated payload must remain available
+  # when the package runs outside any checkout.
   bun-shim:
     runs-on: windows-2025
     defaults:
@@ -117,16 +128,19 @@ jobs:
         run: |
           bun pm pack --destination $env:RUNNER_TEMP
           $tgz = Get-ChildItem (Join-Path $env:RUNNER_TEMP "*.tgz") | Select-Object -First 1
+          $listing = tar -tf $tgz.FullName | Out-String
+          if ($listing -match "package/SoT/|package/notification\.mp3") { throw "tarball still publishes authoring payload files" }
           bun add -g $tgz.FullName
           if ($LASTEXITCODE -ne 0) { throw "bun add -g failed" }
 
-      - name: Shim works from a foreign cwd (bundled-SoT kit-home)
+      - name: Shim works from a foreign cwd (embedded payload)
         run: |
+          if (Test-Path Env:DOCKS_KIT_HOME) { Remove-Item Env:DOCKS_KIT_HOME }
           Set-Location $env:RUNNER_TEMP
           $out = docks-kit models claude 2>&1 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { throw "docks-kit models claude exited $LASTEXITCODE" }
-          if ($out -notmatch "claude-opus-4-8") { throw "models catalog missing - bundled SoT not resolved" }
+          if ($out -notmatch "claude-opus-4-8") { throw "models catalog missing - embedded payload not resolved" }
 
       - name: Shim drives the engine (toolchain check)
         run: |

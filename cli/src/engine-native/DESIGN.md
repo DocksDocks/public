@@ -36,6 +36,9 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
   shell script.
 - **Backups precede mutation.** Deployed settings/config files write `.bak`
   backups before replacement.
+- **Runtime payload is in memory.** `SoT/` remains the reviewed authoring tree;
+  generated payload freshness gates build/package production, and EngineNative
+  never needs an adjacent runtime `SoT/` directory.
 
 ## Output Policy (log UX contract)
 
@@ -113,6 +116,7 @@ active logger binding.
 |---|---|
 | `parseArgs.ts` | engine usage, target selection, flag parsing, legacy rename hints, preflight, model flag validation |
 | `index.ts` | sync orchestration, target dispatch, run summary and next-step blocks |
+| `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
 | `claudeSync.ts` | Claude pipeline: RTK, assets, settings merge, deploy-time modifiers, `~/.claude.json`, connector env, removed artifacts, plugins, optional plugins, LSP binaries |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |

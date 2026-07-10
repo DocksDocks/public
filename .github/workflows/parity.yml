@@ -13,6 +13,8 @@ on:
     paths:
       - "cli/**"
       - "SoT/**"
+      - "notification.mp3"
+      - "docks-kit"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/parity.yml"
@@ -20,6 +22,8 @@ on:
     paths:
       - "cli/**"
       - "SoT/**"
+      - "notification.mp3"
+      - "docks-kit"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/parity.yml"
@@ -40,6 +44,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      - name: Generated payload is fresh
+        run: bun cli/scripts/generate-sot-payload.ts --check
 
       - name: Unit tests (vitest + @effect/vitest)
         run: bun run test:unit

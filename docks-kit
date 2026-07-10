@@ -7,6 +7,10 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# BEGIN GENERATED BUN PIN
+BUN_PIN="1.3.14"
+# END GENERATED BUN PIN
+
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)   KIT_BIN="docks-kit-linux-x64" ;;
   Linux-aarch64)  KIT_BIN="docks-kit-linux-arm64" ;;
@@ -39,12 +43,8 @@ if ! BUN="$(find_bun)"; then
     echo "[docks-kit] curl missing too. Install Bun manually (https://bun.sh) or download a docks-kit release binary." >&2
     exit 1
   fi
-  # Pin the Bun release to the kit-verified version when jq can read it
-  # (the installer takes a bun-vX.Y.Z release tag as $1); latest otherwise.
-  BUN_PIN=""
-  if command -v jq >/dev/null 2>&1; then
-    BUN_PIN="$(jq -r '.tools.bun.verified // empty' "$REPO_DIR/SoT/toolchain.json" 2>/dev/null || true)"
-  fi
+  # The installer takes a bun-vX.Y.Z release tag as $1. BUN_PIN is generated
+  # from the authoring toolchain manifest alongside the embedded payload.
   tmp_installer=$(mktemp 2>/dev/null || echo "/tmp/bun-install-$$.sh")
   curl -fsSL https://bun.sh/install -o "$tmp_installer" && bash "$tmp_installer" ${BUN_PIN:+"bun-v$BUN_PIN"} >/dev/null 2>&1 || true
   rm -f "$tmp_installer"
