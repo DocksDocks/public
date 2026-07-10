@@ -1,11 +1,11 @@
 ---
 title: Embed the SoT payload and replace Claude shell hooks
 goal: Make every sync/config read independent of a runtime SoT/ directory by generating an embedded payload for compiled and Bun/npm execution, and replace Claude's shell hooks with native CLI subcommands.
-status: planned
+status: ongoing
 created: "2026-07-10T00:32:24-03:00"
-updated: "2026-07-10T01:26:44-03:00"
-started_at: null
-assignee: null
+updated: "2026-07-10T01:40:37-03:00"
+started_at: "2026-07-10T01:40:37-03:00"
+assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, engine-native, payload, hooks, windows]
 affected_paths:
   - SoT/.claude/settings.json
