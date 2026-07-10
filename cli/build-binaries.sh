@@ -6,6 +6,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$REPO_DIR/cli/dist"
+bun "$REPO_DIR/cli/scripts/generate-sot-payload.ts" --check
 mkdir -p "$DIST"
 
 TARGETS=("$@")

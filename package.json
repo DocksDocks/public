@@ -24,6 +24,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
+    "prepack": "bun cli/scripts/generate-sot-payload.ts --check",
     "golden:dryrun": "bun cli/test/golden-dryrun.ts",
     "golden:mutation": "bun cli/test/golden-mutation.ts",
     "test:unit": "vitest run"

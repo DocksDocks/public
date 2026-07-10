@@ -7,6 +7,10 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# BEGIN GENERATED BUN PIN
+BUN_PIN="1.3.14"
+# END GENERATED BUN PIN
+
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)   KIT_BIN="docks-kit-linux-x64" ;;
   Linux-aarch64)  KIT_BIN="docks-kit-linux-arm64" ;;
@@ -41,6 +45,7 @@ if ! BUN="$(find_bun)"; then
   fi
   # Pin the Bun release to the kit-verified version when jq can read it
   # (the installer takes a bun-vX.Y.Z release tag as $1); latest otherwise.
+  # Preserve the pre-payload lookup until the atomic cutover.
   BUN_PIN=""
   if command -v jq >/dev/null 2>&1; then
     BUN_PIN="$(jq -r '.tools.bun.verified // empty' "$REPO_DIR/SoT/toolchain.json" 2>/dev/null || true)"
