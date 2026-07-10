@@ -18,8 +18,8 @@ the entry and date when a model ships or retires.
 ## The `best` alias and `default` pseudo-value
 
 - `best` resolves to Fable 5 where the org has access, latest Opus otherwise.
-  Needs Claude Code >= 2.1.170. (The kit SoT default is `opus`, paired with
-  the `fable` advisor — see the advisor note below.)
+  Needs Claude Code >= 2.1.170. The kit SoT pins `fable` directly, so lack of
+  Fable access is surfaced instead of silently changing the configured model.
 - `default` is an engine pseudo-value: it DELETES the deployed `model` key so
   the account default applies. It never reaches the settings file as a value.
 
@@ -29,14 +29,14 @@ the entry and date when a model ships or retires.
 docks-kit models                  # both catalogs
 docks-kit models claude --json    # machine-readable
 docks-kit model claude            # current deployed + SoT + picker (TTY)
-docks-kit model claude fable      # set deployed model
+docks-kit model claude opus       # per-machine override from the Fable SoT
 docks-kit sync claude --claude-model=opus   # same, as part of a sync
 ```
 
 ## Advisor pairing note (Claude)
 
-The advisor model must be at least as capable as the main model; Fable
-outranks Opus, so an Opus main + Fable advisor works while Fable main +
-Opus advisor is rejected. The SoT ships `model: opus` + `advisorModel:
-fable` as the deployed-everywhere default; use settings.local.json only
-for a deliberate per-machine deviation.
+The SoT ships `model: fable` with advisor off (`advisorModel` unset).
+Advisor is a per-machine opt-in: `docks-kit sync claude --claude-advisor=on`
+writes `advisorModel: fable`; `off` and `default` delete the key. Fable-main +
+Fable-advisor is an accepted pairing. The advisor needs Fable org access and
+Claude Code >= 2.1.170.

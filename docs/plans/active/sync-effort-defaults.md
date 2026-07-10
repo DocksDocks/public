@@ -3,7 +3,7 @@ title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: ongoing
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T14:29:05-03:00"
+updated: "2026-07-10T14:40:35-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -240,8 +240,8 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 | 1 | Add `cli/src/efforts.ts`; wire exact valued/bare options through `cli/src/commands/sync.ts`, `cli/src/engine-native/index.ts`, and `cli/src/engine-native/parseArgs.ts`, with focused tests and regenerated affected goldens in the same slice. Done when the exact Claude/Codex lists, `default` resolution, exit `2` diagnostics, target-ignore warnings, and public/raw channel contracts pass the mandatory per-slice gate. Revert trigger: any new string list is duplicated across public and native layers. | — | done |
 | 2 | Rename/generalize the Claude modifier module, update `modes.ts`, remove `advisorModel` from `SoT/.claude/settings.json` and regenerate the payload, add `advisorModel` to the baseline removed manifest with the explicit-state exclusion, apply Claude effort/advisor after removals in `claudeSync.ts`, and add/regenerate focused tests/goldens in the same slice. Done when disposable-home tests show atomic JSON edits, flag-less advisor deletion, `on → fable`, both advisor delete forms, effort `default →` the current embedded SoT (`xhigh` in this slice; `high` after Step 4), restart/no-op behavior, every repeated advisor state is a true no-op, and the mandatory per-slice gate passes. Revert trigger: any invalid JSON is rewritten, `settings.local.json` is touched, or a repeated state logs duplicate removal/modifier changes. | 1 | done |
 | 3 | Extend `codexToml.ts` and `codexSync.ts` for effort, with focused fixture coverage and regenerated affected goldens in the same slice. Done when every existing TOML fixture remains structurally stable, `ultra`, `none`, and `default → xhigh` replacements occur only before the first table, and the mandatory per-slice gate passes. Revert trigger: comments/tables reformat or a Claude target touches Codex config. | 1 | done |
-| 4 | Change the remaining Claude defaults in `SoT/.claude/settings.json` (`model: opus → fable`, `effortLevel: xhigh → high`) and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor remains unset from Step 2; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | in-flight |
-| 5 | Extend `cli/scripts/generate-sot-payload.ts` to emit the validated root package version, import it from `main.ts`, and add the package-drift/public-version tests to `payload.test.ts`; regenerate the module in the same slice. Done when changing only a disposable fixture's package version makes generator `--check` exit `1` naming the generated module, source CLI `--version` equals root `package.json`, a current-target compiled binary reports the same value, and the mandatory per-slice gate passes. Revert trigger: any runtime `package.json` read, second version literal, or generated edit outside the generator. | — | planned |
+| 4 | Change the remaining Claude defaults in `SoT/.claude/settings.json` (`model: opus → fable`, `effortLevel: xhigh → high`) and only the two stale notes in `SoT/models.json`; regenerate `cli/src/generated/sotPayload.ts`; update the six model/modifier human/user docs and affected goldens in the same slice. Done when Claude's embedded defaults are `model: fable`, `effortLevel: high`, and advisor remains unset from Step 2; the alias/ID sequence is byte-for-byte identical; `docks-kit model claude` reports `SoT: fable`; no current doc claims advisor-on/Opus/xhigh as Claude's SoT default; and the mandatory per-slice gate passes. | 1, 2 | done |
+| 5 | Extend `cli/scripts/generate-sot-payload.ts` to emit the validated root package version, import it from `main.ts`, and add the package-drift/public-version tests to `payload.test.ts`; regenerate the module in the same slice. Done when changing only a disposable fixture's package version makes generator `--check` exit `1` naming the generated module, source CLI `--version` equals root `package.json`, a current-target compiled binary reports the same value, and the mandatory per-slice gate passes. Revert trigger: any runtime `package.json` read, second version literal, or generated edit outside the generator. | — | in-flight |
 | 6 | Document the exact Bun `1.3.14` warning in `cli/docs/install.md` and harden `.github/workflows/windows-entrypoints.yml`'s `bun-shim` install step: capture `bun add -g`, assert `Blocked 1 postinstall`, run `bun pm -g untrusted`, and assert only `@parcel/watcher @2.5.6`/`node scripts/build-from-source.js` before the existing catalog/toolchain/sync smokes. Done when a fresh isolated production-tarball install has no `esbuild`, reproduces that identity/count, and all three functional smokes succeed without trusting scripts. Revert trigger: the pinned install reports another blocked package, a smoke fails, or the workflow would run `bun pm trust`. | 5 | planned |
 | 7 | Audit and harden the assembled unit/golden coverage against the ledger below; regenerate snapshots only if a missing planned case is added. Done when expected labels alone change, new flag cases exist, the two named canaries are byte-identical, version changes do not alter sync goldens, no snapshot is manually edited, and the mandatory per-slice gate passes. Revert trigger: either canary changes or unrelated argv/plugin/toolchain output moves. | 2, 3, 4, 5, 6 | planned |
 | 8 | Run every acceptance command and inspect `git diff --check`, payload/version parity, tests, goldens, prove-red markers, consumer-install evidence, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 7 | planned |
@@ -279,6 +279,16 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
 - Replace all three dry-run fixture rows ending in `sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive` with rows ending in `sync claude --dry-run --claude-model=opus --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive`.
 - Replace mutation label `fixture=home-drift cmd=sync claude --claude-model=fable --claude-compact-window=680k --claude-permissive` with the corresponding `--claude-model=opus --claude-effort=low --claude-advisor=on ...` row.
 - Replace replay label `fixture=home-drift cmd=sync claude --claude-model=fable replay=2nd` with `fixture=home-drift cmd=sync claude --claude-model=opus replay=2nd`, because Fable is no longer an override against the SoT.
+
+### Step 4 follow-on changes to earlier modifier labels
+
+- The four `advisor-migration=prior-kit-settings state=*` labels and the
+  `fixture=home-drift` Claude advisor/effort modifier labels change only in
+  their deployed settings bytes when the remaining model/effort defaults move
+  to Fable/high.
+- `fixture=home-fresh cmd=sync claude --claude-effort` and the corresponding
+  invalid `--claude-effort=max` label change only in catalog text from
+  `default — SoT: xhigh` to `default — SoT: high`.
 
 ### New labels/cases
 
@@ -433,9 +443,9 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 - `cli/src/engine-native/codexSync.ts:15-29` — Codex applies the model modifier immediately after its base config merge.
 - `cli/src/engine-native/codexToml.ts:12-48` — the generic top-level setting replacement preserves line-oriented TOML behavior.
 - `cli/src/engine-native/codexToml.ts:51-74` — Codex model modifier supplies the pattern for effort dry-run/no-op/restart output.
-- `SoT/.claude/settings.json:1-7` — current authoring defaults are `model: opus`, `advisorModel: fable`, and `effortLevel: xhigh`.
+- `SoT/.claude/settings.json:1-7` — baseline before implementation had `model: opus`, `advisorModel: fable`, and `effortLevel: xhigh`; Steps 2/4 deliberately replace that state.
 - `SoT/.codex/config.toml:1-4` — Codex's SoT model and both effort defaults are top-level; both effort defaults are `xhigh`.
-- `SoT/models.json:3-16` — Claude alias/ID catalog is independent from the settings default; only notes currently call Opus the default/advisor pair.
+- `SoT/models.json:3-16` — Claude alias/ID catalog is independent from the settings default; the baseline notes alone called Opus the default/advisor pair.
 - `cli/src/manifests.ts:8-25` and `cli/src/engine-native/models.ts:17-52` — current model catalogs have shared typed/public and native render paths, motivating one shared effort catalog.
 - `cli/test/golden-dryrun.ts:38-50` — dry-run matrix and the existing combined Claude modifier row.
 - `cli/test/golden-mutation.ts:79-142` — mutation rows, abort canaries, and model-only replay that must switch from Fable to Opus.

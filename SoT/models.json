@@ -4,8 +4,8 @@
     "verified": "2026-07-08",
     "models": [
       { "id": "best", "kind": "alias", "note": "Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)" },
-      { "id": "opus", "kind": "alias", "note": "latest Opus (currently Opus 4.8) — the kit SoT default, paired with the fable advisor" },
-      { "id": "fable", "kind": "alias", "note": "Fable 5 — needs org access + Claude Code >=2.1.170" },
+      { "id": "opus", "kind": "alias", "note": "latest Opus (currently Opus 4.8)" },
+      { "id": "fable", "kind": "alias", "note": "Fable 5 — the kit SoT default; needs org access + Claude Code >=2.1.170" },
       { "id": "sonnet", "kind": "alias", "note": "latest Sonnet (currently Sonnet 5)" },
       { "id": "haiku", "kind": "alias", "note": "latest Haiku (currently Haiku 4.5)" },
       { "id": "default", "kind": "alias", "note": "engine pseudo-value: deletes the deployed model key so the account default applies" },

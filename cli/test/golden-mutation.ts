@@ -105,7 +105,7 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
     cmd: [
       "sync",
       "claude",
-      "--claude-model=fable",
+      "--claude-model=opus",
       "--claude-effort=low",
       "--claude-advisor=on",
       "--claude-compact-window=680k",
@@ -161,7 +161,7 @@ const REPLAYS: Array<{ fixture: string; cmd: Array<string>; cmd2?: Array<string>
   { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
   // Model modifier as the ONLY second-run mutation: the restart advice must
   // print from the model trigger alone (everything else is already in sync).
-  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=fable"] }
+  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")

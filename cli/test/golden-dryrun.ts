@@ -47,7 +47,7 @@ const COMMANDS: Array<Array<string>> = [
     "sync",
     "claude",
     "--dry-run",
-    "--claude-model=fable",
+    "--claude-model=opus",
     "--claude-effort=low",
     "--claude-advisor=on",
     "--claude-compact-window=680k",

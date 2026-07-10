@@ -50,6 +50,8 @@ describe("deploy-time effort catalogs", () => {
   })
 
   it("resolves default from each embedded SoT and rejects invalid embedded values", () => {
+    expect(sotEffort("claude")).toBe("high")
+    expect(sotEffort("codex")).toBe("xhigh")
     expect(resolveEffort("claude", "default")).toBe(sotEffort("claude"))
     expect(resolveEffort("codex", "default")).toBe(sotEffort("codex"))
     expect(resolveEffort("claude", "low")).toBe("low")

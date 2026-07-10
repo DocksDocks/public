@@ -646,7 +646,7 @@ describe.sequential("EngineNative full service injection", () => {
       expect(runEngineNative(["model", "claude"], stubServices(modelRecords))).toBe(0)
       expect(modelRecords.slice(0, 3)).toEqual([
         { level: "echo", message: "deployed: sonnet" },
-        { level: "echo", message: "SoT:      opus" },
+        { level: "echo", message: "SoT:      fable" },
         {
           level: "echo",
           message: expect.stringContaining("Available claude models (kit-verified")
