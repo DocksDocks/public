@@ -169,7 +169,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "bun add -g failed" }
 
       - name: Prepare hermetic shim home
+        # bun's global bin lives under the pre-flip profile; pin its absolute
+        # dir onto PATH so the docks-kit shim stays reachable after USERPROFILE
+        # moves to the hermetic home.
         run: |
+          $globalBin = (& bun pm bin -g | Out-String).Trim()
+          $preFlip = Get-Command docks-kit -ErrorAction SilentlyContinue
+          Write-Host "bun global bin: $globalBin; shim pre-flip: $(if ($preFlip) { $preFlip.Source } else { 'NOT RESOLVED' })"
+          $globalBin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           $kitHome = Join-Path $env:RUNNER_TEMP "shim home O'Brien"
           New-Item -ItemType Directory -Force -Path $kitHome | Out-Null
           "USERPROFILE=$kitHome" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
