@@ -156,6 +156,17 @@ jobs:
           bun cli/src/main.ts plugins list
           if ($LASTEXITCODE -ne 0) { throw "plugins list exited $LASTEXITCODE" }
 
+      - name: sync claude materializes settings in the hermetic home
+        # model get reads the deployed settings; the raw sentinel-bearing
+        # template must never be copied in, so materialize via a real sync
+        # (also the native-Windows ready-cutover leg: Bun is present here).
+        run: |
+          if (Test-Path Env:HOME) { Remove-Item Env:HOME }
+          $out = bun cli/src/main.ts sync claude --skip-rtk 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { throw "sync claude exited $LASTEXITCODE" }
+          if (-not (Test-Path (Join-Path $env:USERPROFILE ".claude/settings.json"))) { throw "sync claude did not materialize settings.json" }
+
       - name: model claude (get)
         run: |
           if (Test-Path Env:HOME) { Remove-Item Env:HOME }
