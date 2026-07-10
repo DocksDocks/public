@@ -1,10 +1,11 @@
 ---
 title: Stop the golden harness /tmp temp-dir leak
 goal: Make golden/unit harness temp dirs (golden-home-*, golden-stubs-*, golden-mask-*) clean up on every exit path and self-heal stale leftovers, so /tmp never accumulates them again.
-status: ongoing
+status: in_review
 created: "2026-07-10T18:09:47-03:00"
-updated: "2026-07-10T18:39:57-03:00"
+updated: "2026-07-10T18:49:58-03:00"
 started_at: "2026-07-10T18:22:39-03:00"
+in_review_since: "2026-07-10T18:49:58-03:00"
 assignee: dockskit-defaults-worker (codex gpt-5.6-sol relay session)
 tags: [test, harness, tmp-leak]
 affected_paths:
@@ -15,7 +16,7 @@ affected_paths:
   - docs/plans/active/golden-harness-temp-leak.md
 related_plans:
   - statusline-direct-bun-median.md
-review_status: null
+review_status: passed
 planned_at_commit: 1cf3a404fcc6d3e358b3a6cef15fcbf613706ada
 ---
 
@@ -120,4 +121,9 @@ Gate evidence:
 
 ## Review
 
-(placeholder — completion review writes this)
+- **Goal met:** yes — all three Step 2 properties land in `de27d62`: eager `cleanupTemporaryDirs()` rmSyncs `TEMP_DIRS` without clearing it (path strings stay available to `normalizeTreeBody`); `afterAll(cleanupTemporaryDirs)` in the vitest worker module seals the confirmed worker-thread leak; and a module-load `sweepStaleTemporaryDirs()` heals externally-killed leftovers. Every acceptance criterion is evidence-backed, including the counted attribution table in `## Notes`.
+- **Regressions:** none — goldens byte-identical (`git diff -- cli/test/goldens/` empty across tree and range); `de27d62` touches only the three plan-owned files. No scope drift: `affected_paths` also lists `golden-dryrun.ts`/`golden-mutation.ts`, left unchanged because Step 2 scoped consumer edits to "only if required" and the attribution proved plain-bun consumers already clean up on process exit.
+- **CI:** pass — `bunx tsc --noEmit -p cli` exit 0; `golden:dryrun` 25 OK with `/tmp` golden-* 0→0; `claudeMigration.test.ts` 8/8 with `/tmp` golden-* 0→0 (reproduced this turn); full suite (mutation 70, `test:unit` 114 ×3 consecutive, both prove-red exit 1) green per orchestrator record.
+- **Cross-check:** Cross-check (2026-07-10): [codex gpt-5.6-sol high] 0 findings — READY; [claude] independently reproduced its key evidence against `de27d62` (sweep anchored to `golden-{home,stubs,mask}-` prefixes, direct-children + `isDirectory` guard, `lstat` 60-min-inclusive age guard, ENOENT-only tolerance else throw; `afterAll` worker-module-local; symlink skipped via the `isDirectory` guard) and re-ran `claudeMigration` 8/8 + `golden:dryrun` 25/25 with `/tmp` golden-* 0→0.
+- **Follow-ups:** none
+- Filed by: plan-review on 2026-07-10T18:49:58-03:00
