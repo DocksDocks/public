@@ -1,9 +1,9 @@
 ---
 title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
-status: ongoing
+status: in_review
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T14:58:08-03:00"
+updated: "2026-07-10T15:06:54-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -35,9 +35,11 @@ affected_paths:
   - cli/test/goldens/dryrun.json
   - cli/test/goldens/mutation.json
   - cli/test/unit/efforts.test.ts
+  - cli/test/unit/bun.test.ts
   - cli/test/unit/engine-di.test.ts
   - cli/test/unit/payload.test.ts
   - .github/workflows/windows-entrypoints.yml
+  - docs/plans/active/sync-effort-defaults.md
 related_plans: []
 review_status: null
 planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
@@ -244,7 +246,7 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 | 5 | Extend `cli/scripts/generate-sot-payload.ts` to emit the validated root package version, import it from `main.ts`, and add the package-drift/public-version tests to `payload.test.ts`; regenerate the module in the same slice. Done when changing only a disposable fixture's package version makes generator `--check` exit `1` naming the generated module, source CLI `--version` equals root `package.json`, a current-target compiled binary reports the same value, and the mandatory per-slice gate passes. Revert trigger: any runtime `package.json` read to obtain the CLI version, second version literal, or generated edit outside the generator. | — | done |
 | 6 | Document the exact Bun `1.3.14` warning in `cli/docs/install.md` and harden `.github/workflows/windows-entrypoints.yml`'s `bun-shim` install step: capture `bun add -g`, assert `Blocked 1 postinstall`, run `bun pm -g untrusted`, and assert only `@parcel/watcher @2.5.6`/`node scripts/build-from-source.js` before the existing catalog/toolchain/sync smokes. Done when a fresh isolated production-tarball install has no `esbuild`, reproduces that identity/count, and all three functional smokes succeed without trusting scripts. Revert trigger: the pinned install reports another blocked package, a smoke fails, or the workflow would run `bun pm trust`. | 5 | done |
 | 7 | Audit and harden the assembled unit/golden coverage against the ledger below; regenerate snapshots only if a missing planned case is added. Done when expected labels alone change, new flag cases exist, the two named canaries are byte-identical, version changes do not alter sync goldens, no snapshot is manually edited, and the mandatory per-slice gate passes. Revert trigger: either canary changes or unrelated argv/plugin/toolchain output moves. | 2, 3, 4, 5, 6 | done |
-| 8 | Run every acceptance command and inspect `git diff --check`, payload/version parity, tests, goldens, prove-red markers, consumer-install evidence, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 7 | in-flight |
+| 8 | Run every acceptance command and inspect `git diff --check`, payload/version parity, tests, goldens, prove-red markers, consumer-install evidence, and docs/source diff. Done when all green criteria below are captured in the implementation handoff; do not commit or push automatically unless the orchestrator explicitly asks. | 7 | done |
 
 ## Notes
 
@@ -306,25 +308,25 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
 
 ## Acceptance criteria
 
-- [ ] `bunx tsc --noEmit -p cli` exits `0`.
-- [ ] `bun run test:unit` exits `0` and includes exact catalog/default/parser/mutation assertions for the three new flags.
-- [ ] `bun cli/scripts/generate-sot-payload.ts --check` exits `0` after generation; `git diff -- cli/src/generated/sotPayload.ts` contains only authoring changes from `SoT/.claude/settings.json`/`SoT/models.json`, their payload hash, and the new generated package-version export.
-- [ ] `bun run golden:dryrun` exits `0`.
-- [ ] `bun run golden:mutation` exits `0`.
-- [ ] The `for suite in dryrun mutation; ...` assertion in Environment passes: each prove-red leg exits exactly `1` and prints its matching `prove-red OK:` marker.
-- [ ] `git diff --check` exits `0`.
-- [ ] `SoT/.claude/settings.json` has `model: fable`, has no `advisorModel`, and has `effortLevel: high`; `SoT/.codex/config.toml` still has both reasoning effort keys at `xhigh`.
-- [ ] `diff <(git show 671831c1a8cd74b0980b4487bce5d6e5f3961edb:SoT/models.json | jq -r '.claude.models[].id') <(jq -r '.claude.models[].id' SoT/models.json)` exits `0`; `git diff -- SoT/models.json` shows only the two planned note edits.
-- [ ] Bare raw-engine flags print catalogs on stdout, errors on stderr, and exit `2`; typed public bare flags print equivalent catalog+error content on stderr and exit `2`; invalid values name the bad value and exit `2`; no case mutates fixture HOME or spawns children.
-- [ ] `--claude-effort` and `--claude-advisor` warn and do nothing when Claude is not selected; `--codex-effort` mirrors this for Codex. Correctly targeted flags never touch the other tool's file.
-- [ ] Claude effort writes only `effortLevel` and `default` writes embedded SoT `high`; Codex effort writes only top-level `model_reasoning_effort` and `default` writes embedded SoT `xhigh`.
-- [ ] A flag-less Claude sync deletes the formerly kit-owned `advisorModel` through the removal pass. Any explicit advisor state excludes only that key from removals: `on` preserves/writes `advisorModel: fable`, while `off` and `default` delete it through the modifier. Repeating any same state produces no removal/modifier change lines and no advisor-caused restart trigger.
-- [ ] Existing model direct mode still works after the module rename, and `docks-kit model claude` reports `SoT: fable`.
-- [ ] `cli/test/unit/payload.test.ts` proves a disposable `package.json` version edit makes generator `--check` exit `1` with `generated payload is stale: cli/src/generated/sotPayload.ts`, and proves `bun cli/src/main.ts --version` equals `jq -r .version package.json`.
-- [ ] After `bash cli/build-binaries.sh linux-x64`, both `cli/dist/docks-kit-linux-x64 --version` and `./docks-kit --version` print exactly `jq -r .version package.json` and exit `0`; no runtime source reads `package.json` to obtain the CLI version; existing kit-home/display/update probes remain out of scope.
-- [ ] A fresh disposable global install from `bun pm pack` under pinned Bun `1.3.14` prints exactly `Blocked 1 postinstall. Run \`bun pm -g untrusted\` for details.`; the untrusted listing names only `@parcel/watcher @2.5.6` with `node scripts/build-from-source.js`; `bun pm -g ls --all` contains no `esbuild`; and installed `docks-kit --version`, `models claude`, and `toolchain check` all exit `0` without any trust command.
-- [ ] `.github/workflows/windows-entrypoints.yml`'s `bun-shim` job asserts the same blocked package/command before its existing foreign-cwd catalog, toolchain, and materialized-settings smokes; `cli/docs/install.md` reproduces the exact warning and gives no blanket or invented trust instruction.
-- [ ] Golden diff matches the ledger; the RTK-init-failure and comma-plugin parse-abort objects are byte-identical before/after. Prove with the following command for each `label` value (exit `0`, no diff):
+- [x] `bunx tsc --noEmit -p cli` exits `0`.
+- [x] `bun run test:unit` exits `0` and includes exact catalog/default/parser/mutation assertions for the three new flags.
+- [x] `bun cli/scripts/generate-sot-payload.ts --check` exits `0` after generation; `git diff -- cli/src/generated/sotPayload.ts` contains only authoring changes from `SoT/.claude/settings.json`/`SoT/models.json`, their payload hash, and the new generated package-version export.
+- [x] `bun run golden:dryrun` exits `0`.
+- [x] `bun run golden:mutation` exits `0`.
+- [x] The `for suite in dryrun mutation; ...` assertion in Environment passes: each prove-red leg exits exactly `1` and prints its matching `prove-red OK:` marker.
+- [x] `git diff --check` exits `0`.
+- [x] `SoT/.claude/settings.json` has `model: fable`, has no `advisorModel`, and has `effortLevel: high`; `SoT/.codex/config.toml` still has both reasoning effort keys at `xhigh`.
+- [x] `diff <(git show 671831c1a8cd74b0980b4487bce5d6e5f3961edb:SoT/models.json | jq -r '.claude.models[].id') <(jq -r '.claude.models[].id' SoT/models.json)` exits `0`; `git diff -- SoT/models.json` shows only the two planned note edits.
+- [x] Bare raw-engine flags print catalogs on stdout, errors on stderr, and exit `2`; typed public bare flags print equivalent catalog+error content on stderr and exit `2`; invalid values name the bad value and exit `2`; no case mutates fixture HOME or spawns children.
+- [x] `--claude-effort` and `--claude-advisor` warn and do nothing when Claude is not selected; `--codex-effort` mirrors this for Codex. Correctly targeted flags never touch the other tool's file.
+- [x] Claude effort writes only `effortLevel` and `default` writes embedded SoT `high`; Codex effort writes only top-level `model_reasoning_effort` and `default` writes embedded SoT `xhigh`.
+- [x] A flag-less Claude sync deletes the formerly kit-owned `advisorModel` through the removal pass. Any explicit advisor state excludes only that key from removals: `on` preserves/writes `advisorModel: fable`, while `off` and `default` delete it through the modifier. Repeating any same state produces no removal/modifier change lines and no advisor-caused restart trigger.
+- [x] Existing model direct mode still works after the module rename, and `docks-kit model claude` reports `SoT: fable`.
+- [x] `cli/test/unit/payload.test.ts` proves a disposable `package.json` version edit makes generator `--check` exit `1` with `generated payload is stale: cli/src/generated/sotPayload.ts`, and proves `bun cli/src/main.ts --version` equals `jq -r .version package.json`.
+- [x] After `bash cli/build-binaries.sh linux-x64`, both `cli/dist/docks-kit-linux-x64 --version` and `./docks-kit --version` print exactly `jq -r .version package.json` and exit `0`; no runtime source reads `package.json` to obtain the CLI version; existing kit-home/display/update probes remain out of scope.
+- [x] A fresh disposable global install from `bun pm pack` under pinned Bun `1.3.14` prints exactly `Blocked 1 postinstall. Run \`bun pm -g untrusted\` for details.`; the untrusted listing names only `@parcel/watcher @2.5.6` with `node scripts/build-from-source.js`; `bun pm -g ls --all` contains no `esbuild`; and installed `docks-kit --version`, `models claude`, and `toolchain check` all exit `0` without any trust command.
+- [x] `.github/workflows/windows-entrypoints.yml`'s `bun-shim` job asserts the same blocked package/command before its existing foreign-cwd catalog, toolchain, and materialized-settings smokes; `cli/docs/install.md` reproduces the exact warning and gives no blanket or invented trust instruction.
+- [x] Golden diff matches the ledger; the RTK-init-failure and comma-plugin parse-abort objects are byte-identical before/after. Prove with the following command for each `label` value (exit `0`, no diff):
 
   ```bash
   for label in \
@@ -335,7 +337,7 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
       <(jq -S --arg label "$label" '.cases[$label]' cli/test/goldens/mutation.json)
   done
   ```
-- [ ] `AGENTS.md`, `CLAUDE.md`, and the five affected `cli/docs/` pages describe the new grammar/defaults/install behavior and contain no live claim that Opus, Claude xhigh, or advisor-on is the SoT default.
+- [x] `AGENTS.md`, `CLAUDE.md`, and the five affected `cli/docs/` pages describe the new grammar/defaults/install behavior and contain no live claim that Opus, Claude xhigh, or advisor-on is the SoT default.
 
 ## Out of scope / do-NOT-touch
 
