@@ -28,6 +28,18 @@ import { spawnSync } from "node:child_process"
 export const REPO_DIR = resolve(import.meta.dir, "..", "..", "..")
 export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 
+const TEMP_DIRS = new Set<string>()
+
+function temporaryDir(prefix: string): string {
+  const dir = mkdtempSync(join(tmpdir(), prefix))
+  TEMP_DIRS.add(dir)
+  return dir
+}
+
+process.on("exit", () => {
+  for (const dir of TEMP_DIRS) rmSync(dir, { recursive: true, force: true })
+})
+
 // ---------------------------------------------------------------- stubs ----
 
 /**
@@ -80,7 +92,7 @@ exit 0`,
  * gate/failure branches); `null` omits the stub entirely (tool missing).
  */
 export function makeStubDir(overrides: Record<string, string | null> = {}): string {
-  const dir = mkdtempSync(join(tmpdir(), "golden-stubs-"))
+  const dir = temporaryDir("golden-stubs-")
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody
     if (body === null || body === undefined) continue
@@ -144,7 +156,7 @@ function maskedPath(names: ReadonlyArray<string>): string {
 }
 
 function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArray<string>): string {
-  const shadow = mkdtempSync(join(tmpdir(), "golden-mask-"))
+  const shadow = temporaryDir("golden-mask-")
   const blocked = new Set(names.flatMap((n) => exts.map((e) => (n + e).toLowerCase())))
   for (const entry of readdirSync(dir)) {
     if (blocked.has(entry.toLowerCase())) continue
@@ -172,7 +184,7 @@ interface RunOpts {
 
 function materializeHome(kind: string, fixture: string, reuseHome?: string): string {
   if (reuseHome !== undefined) return reuseHome
-  const home = mkdtempSync(join(tmpdir(), `golden-home-${kind}-`))
+  const home = temporaryDir(`golden-home-${kind}-`)
   rmSync(home, { recursive: true })
   const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(src, home, { recursive: true })
@@ -412,7 +424,7 @@ export function banner(msg: string): void {
 
 /** Write a fixture home variant on the fly (used by the TOML suite). */
 export function materializeVariant(base: string, files: Record<string, string>): string {
-  const dir = mkdtempSync(join(tmpdir(), "golden-fixture-"))
+  const dir = temporaryDir("golden-fixture-")
   rmSync(dir, { recursive: true })
   cpSync(join(FIXTURES_DIR, base), dir, { recursive: true })
   for (const [rel, content] of Object.entries(files)) {
