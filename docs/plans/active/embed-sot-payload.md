@@ -3,7 +3,7 @@ title: Embed the SoT payload
 goal: Make every sync/config read independent of a runtime SoT/ directory by generating one deterministic embedded payload for compiled and Bun/npm execution.
 status: in_review
 created: "2026-07-10T00:32:24-03:00"
-updated: "2026-07-10T02:43:30-03:00"
+updated: "2026-07-10T02:46:14-03:00"
 started_at: "2026-07-10T01:40:37-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
 tags: [cli, engine-native, payload, windows]
@@ -49,7 +49,7 @@ affected_paths:
   - cli/test/unit/kitHome.test.ts
   - cli/test/unit/payload.test.ts
 related_plans: [windows-support, engine-full-di]
-review_status: null
+review_status: passed
 planned_at_commit: af68176d0ba9f0fed2b2b63bfebbfd20bfd04a23
 ---
 
@@ -226,4 +226,12 @@ None. `--update-goldens` is not permitted in this plan. Dry-run remains 22 cases
 
 ## Review
 
-(filled by plan-review on completion)
+**Verdict: PASSED** — the goal (every sync/config read independent of a runtime `SoT/` directory, via one deterministic embedded payload for compiled AND Bun/npm delivery) is delivered and independently re-verified from the plan's own commands (implementation range `9bb3b94..HEAD`: 4ed8b2e, 0e6f68b, 090969b, 907dcae).
+
+- **Goal met:** yes — a fresh `linux-x64` standalone copied alone into an empty foreign dir (no `SoT/`, no `DOCKS_KIT_HOME`) ran `sync --dry-run`, `models claude`, `status --json`, `toolchain check`, and real `sync claude --skip-rtk`; no command reported "kit home not found". The packed tarball ships the CLI without authoring files yet carries the generated payload module.
+- **Regressions:** none. Runtime-read grep (`readFileSync|p(…"SoT")|join(…"SoT")|existsSync(…SoT)|SoT/toolchain.json` over `cli/src docks-kit`) returns only `payloadText(...)` payload-key calls, generated data, comments, and display strings — zero product filesystem reads/gates. Deployed `statusline.sh`, `fetch-usage.sh`, `hooks/notify.sh`, and `notification.mp3` are byte-identical to authoring sources with exec bits repaired; `CLAUDE.md` differs by exactly the pre-existing `@RTK.md` import-strip (claudeSync.ts:201, triggered by `--skip-rtk`), not a payload defect. Scope-drift: every changed file is within `affected_paths`.
+- **Acceptance criteria:** all verified from source commands, not checkboxes — allowlist is 14 paths (13 text + `notification.mp3`), sole exclusion `SoT/.codex/agents/.gitkeep`; `generate-sot-payload.ts --check` exit 0; `tsc` exit 0; Vitest 8 files/41 tests; golden dry-run `OK (22 case(s))` and mutation `OK (47 case(s))`; both prove-red legs print `prove-red OK` and exit 1; `bun pm pack` → 50 files, neither `package/SoT/` nor `package/notification.mp3`, prepack freshness gate ran; `docks-kit` Bun pin sourced only from `BUN_PIN="1.3.14"` marker (no jq/SoT lookup); both `parity.yml` and `windows-entrypoints.yml` push/PR filters include `notification.mp3` + `docks-kit`, parity runs the freshness gate.
+- **Cross-check:** [codex gpt-5.6-sol xhigh] 2 findings (2 low) — 2 accepted, both fixed in 907dcae (red/green proven); [claude] independently verified closure.
+- **CI:** pass — tsc, Vitest (41), dry-run (22) + mutation (47) goldens, both prove-red legs (exit 1), payload `--check`, `linux-x64` build, tarball inspection, and both foreign-cwd artifact smokes all green this session.
+- **Follow-ups:** none blocking. Native hooks/statusline/runner scope was split by user decision to a forthcoming research-first statusline-redesign plan (retained shell hooks + jq/curl requirements are that plan's scope, not gaps here).
+- **Filed by:** 2026-07-10T02:46:14-03:00
