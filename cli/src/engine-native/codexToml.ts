@@ -7,6 +7,7 @@
 import { p } from "./exec"
 import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
+import { resolveEffort } from "../efforts"
 import type { Ctx } from "./index"
 
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
@@ -48,27 +49,59 @@ export function replaceTopLevelSettingInFile(file: string, key: string, replacem
   return true
 }
 
-export function syncCodexModel(ctx: Ctx, model: string): void {
+interface CodexSettingEdit {
+  readonly tag: string
+  readonly key: "model" | "model_reasoning_effort"
+  readonly value: string
+  readonly changed: string
+  readonly unchanged: string
+}
+
+function syncCodexSetting(ctx: Ctx, edit: CodexSettingEdit): void {
   const { change, echo, verbose, warn } = ctx.services.logger
   const userCodexSettings = p(ctx.home, ".codex", "config.toml")
 
-  if (model === "") return
-
   if (ctx.dryRun) {
-    echo(`[dry-run] (--codex-model) set model = "${model}" in ${userCodexSettings}`)
+    echo(`[dry-run] (${edit.tag}) set ${edit.key} = "${edit.value}" in ${userCodexSettings}`)
     return
   }
 
   try {
     readFileSync(userCodexSettings)
   } catch {
-    warn(`(--codex-model) ${userCodexSettings} missing — skipped`)
+    warn(`(${edit.tag}) ${userCodexSettings} missing — skipped`)
     return
   }
-  if (replaceTopLevelSettingInFile(userCodexSettings, "model", `model = "${model}"`)) {
-    change(`Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`)
+  if (replaceTopLevelSettingInFile(userCodexSettings, edit.key, `${edit.key} = "${edit.value}"`)) {
+    change(edit.changed)
     ctx.nextStepTriggers.codexRestart = true
   } else {
-    verbose(`Model: deployed Codex model already ${model}`)
+    verbose(edit.unchanged)
   }
+}
+
+export function syncCodexModel(ctx: Ctx, model: string): void {
+  if (model === "") return
+  syncCodexSetting(ctx, {
+    tag: "--codex-model",
+    key: "model",
+    value: model,
+    changed: `Model: deployed Codex model set to ${model} (SoT unchanged; flag-less sync reverts)`,
+    unchanged: `Model: deployed Codex model already ${model}`
+  })
+}
+
+export function syncCodexEffort(ctx: Ctx, effort: string): void {
+  if (effort === "") return
+  const resolved = resolveEffort("codex", effort)
+  const useDefault = effort === "default"
+  syncCodexSetting(ctx, {
+    tag: "--codex-effort",
+    key: "model_reasoning_effort",
+    value: resolved,
+    changed: useDefault
+      ? `Effort: deployed Codex model_reasoning_effort set to ${resolved} (SoT default)`
+      : `Effort: deployed Codex model_reasoning_effort set to ${resolved} (SoT unchanged; flag-less sync reverts)`,
+    unchanged: `Effort: deployed Codex model_reasoning_effort already ${resolved}`
+  })
 }

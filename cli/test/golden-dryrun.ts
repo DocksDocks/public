@@ -40,9 +40,19 @@ const COMMANDS: Array<Array<string>> = [
   ["sync", "--dry-run"],
   ["sync", "claude", "--dry-run"],
   ["sync", "codex", "--dry-run"],
+  ["sync", "codex", "--dry-run", "--codex-effort=ultra"],
   ["sync", "agents", "--dry-run"],
   ["sync", "--dry-run", "--reconcile", "--prune"],
-  ["sync", "claude", "--dry-run", "--claude-model=fable", "--claude-compact-window=680k", "--claude-permissive"],
+  [
+    "sync",
+    "claude",
+    "--dry-run",
+    "--claude-model=opus",
+    "--claude-effort=low",
+    "--claude-advisor=on",
+    "--claude-compact-window=680k",
+    "--claude-permissive"
+  ],
   ["sync", "claude", "--dry-run", "--claude-plugin=supabase"]
 ]
 const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [

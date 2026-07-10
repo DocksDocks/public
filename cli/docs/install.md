@@ -26,6 +26,30 @@ are versioned config snapshots without publishing the authoring `SoT/` tree.
 Kit-home resolution remains available for checkout/package update behavior and
 display paths, but sync reads do not depend on it.
 
+### Bun 1.3.14 blocked-postinstall notice
+
+A supported global install may finish successfully with this exact notice:
+
+```
+Blocked 1 postinstall. Run `bun pm -g untrusted` for details.
+```
+
+For the pinned production dependency graph, the diagnostic names only:
+
+```
+./node_modules/@parcel/watcher @2.5.6
+ » [install]: node scripts/build-from-source.js
+```
+
+`@parcel/watcher` is a transitive of the Effect Bun runtime. Supported default
+installs already carry its platform prebuilt package, and that install script
+only attempts a source build when `npm_config_build_from_source=true` was
+explicitly requested. `esbuild` is not in the consumer production graph. The
+blocked notice therefore needs no trust action for the supported default
+install; `docks-kit --version`, model catalogs, toolchain checks, and real sync
+remain functional with the script blocked. CI pins the one-package/one-command
+identity above and will fail if the script-bearing set changes.
+
 ## 3. curl installer (Unix-only)
 
 ```

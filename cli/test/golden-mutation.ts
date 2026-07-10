@@ -85,10 +85,35 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "agents"] },
   { fixture: "home-drift", cmd: ["sync", "--reconcile"] },
   { fixture: "home-drift", cmd: ["sync", "--prune"] },
+  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-effort=default"] },
+  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-advisor=on"] },
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=ultra"] },
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=default"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort="] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort="] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort=future"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor="] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor=maybe"] },
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"]
+  },
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-plugin=supabase,n8n"] },
   {
     fixture: "home-drift",
-    cmd: ["sync", "claude", "--claude-model=fable", "--claude-compact-window=680k", "--claude-permissive"]
+    cmd: [
+      "sync",
+      "claude",
+      "--claude-model=opus",
+      "--claude-effort=low",
+      "--claude-advisor=on",
+      "--claude-compact-window=680k",
+      "--claude-permissive"
+    ]
   },
   { fixture: "home-drift", cmd: ["model", "claude", "opus"] },
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
@@ -139,7 +164,7 @@ const REPLAYS: Array<{ fixture: string; cmd: Array<string>; cmd2?: Array<string>
   { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
   // Model modifier as the ONLY second-run mutation: the restart advice must
   // print from the model trigger alone (everything else is already in sync).
-  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=fable"] }
+  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
@@ -237,6 +262,61 @@ function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Arr
   return golden
 }
 
+type AdvisorMigrationState = "flagless" | "on" | "off" | "default"
+
+function runAdvisorMigrationCase(state: AdvisorMigrationState): MutationCaseGolden & { readonly problems: Array<string> } {
+  const sourceSettings = JSON.parse(
+    readFileSync(join(FIXTURES_DIR, "home-drift", ".claude", "settings.json"), "utf8")
+  ) as Record<string, unknown>
+  sourceSettings["advisorModel"] = "fable"
+  const fixture = materializeVariant("home-drift", {
+    ".claude/settings.json": stableStringify(sourceSettings)
+  })
+  const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]
+  const first = runEngine("native", command, fixture, defaultStubs)
+  const second = runEngine("native", command, fixture, defaultStubs, { reuseHome: first.home })
+  const problems: Array<string> = []
+  const firstChangedByRemoval = first.output.includes("Pruned stale artifacts")
+  const firstChangedByModifier = first.output.includes("Advisor: deployed settings advisorModel")
+  if (state === "flagless" && !firstChangedByRemoval) {
+    problems.push("  advisor migration: flag-less run did not delete advisorModel through removals")
+  }
+  if (state !== "flagless" && firstChangedByRemoval) {
+    problems.push(`  advisor migration: explicit ${state} run let removals own advisorModel`)
+  }
+  if ((state === "off" || state === "default") && !firstChangedByModifier) {
+    problems.push(`  advisor migration: explicit ${state} run did not delete advisorModel through the modifier`)
+  }
+
+  const settings = JSON.parse(
+    readFileSync(join(second.home, ".claude", "settings.json"), "utf8")
+  ) as Record<string, unknown>
+  if (state === "on" && settings["advisorModel"] !== "fable") {
+    problems.push("  advisor migration: explicit on did not preserve advisorModel=fable")
+  }
+  if (state !== "on" && Object.prototype.hasOwnProperty.call(settings, "advisorModel")) {
+    problems.push(`  advisor migration: ${state} left advisorModel deployed`)
+  }
+  if (second.output.includes("Pruned stale artifacts") || second.output.includes("Advisor: deployed settings advisorModel")) {
+    problems.push(`  advisor migration: repeated ${state} state was not a true no-op`)
+  }
+  if (second.output.includes("Restart Claude Code for hook/env-var changes to take effect.")) {
+    problems.push(`  advisor migration: repeated ${state} state retriggered Claude restart advice`)
+  }
+
+  const golden = {
+    command,
+    exitCode: second.exitCode,
+    tree: snapshotTree(second.home),
+    argvLog: readArgvLog(second),
+    output: second.output,
+    problems
+  }
+  cleanup([second]) // first.home === second.home
+  rmSync(fixture, { recursive: true, force: true })
+  return golden
+}
+
 /**
  * Channel-purity invariants (stdout = data, stderr = logs). The ordered
  * goldens above merge channels via 2>&1 and cannot see a violation; these
@@ -295,6 +375,66 @@ function channelInvariantProblems(): Array<string> {
   }
   if (modelSplit.stderr.includes("Available claude models")) {
     problems.push("  channel: model catalog leaked to stderr (model claude)")
+  }
+
+  for (const [flag, catalog, error] of [
+    [
+      "--claude-effort",
+      "Available claude effort levels",
+      "--claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>"
+    ],
+    [
+      "--codex-effort",
+      "Available codex effort levels",
+      "--codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>"
+    ],
+    [
+      "--claude-advisor",
+      "Available claude advisor states",
+      "--claude-advisor requires a value: --claude-advisor=<on|off|default>"
+    ]
+  ] as const) {
+    const bare = runPublicCli(["sync", flag], "home-fresh", defaultStubs)
+    if (bare.exitCode !== 2 || !bare.stderr.includes(catalog) || !bare.stderr.includes(error)) {
+      problems.push(`  modifiers: public bare ${flag} lost catalog/error/exit-2 behavior`)
+    }
+    if (bare.stdout !== "") problems.push(`  modifiers: public bare ${flag} wrote catalog data to stdout`)
+    rmSync(bare.home, { recursive: true, force: true })
+  }
+
+  for (const [target, flag, catalog, error] of [
+    ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
+    ["codex", "--codex-effort", "Available codex effort levels", "Invalid Codex effort ''"],
+    ["claude", "--claude-advisor", "Available claude advisor states", "Invalid Claude advisor state ''"],
+    ["claude", "--claude-model", "Available claude models", "Invalid Claude model ''"],
+    ["codex", "--codex-model", "Available codex models", "Invalid Codex model ''"]
+  ] as const) {
+    for (const args of [[`${flag}=`], [flag, ""]]) {
+      const empty = runPublicCli(["sync", target, ...args], "home-fresh", defaultStubs)
+      if (
+        empty.exitCode !== 2 ||
+        !empty.stdout.includes(catalog) ||
+        !empty.stderr.includes(error) ||
+        empty.stdout.includes("--- Sync complete ---")
+      ) {
+        problems.push(`  modifiers: public explicit-empty ${args.length === 1 ? `${flag}=` : `${flag} \"\"`} lost catalog-first invalid-value behavior`)
+      }
+      rmSync(empty.home, { recursive: true, force: true })
+    }
+  }
+
+  const modifierForwarding = runPublicCli(
+    ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"],
+    "home-fresh",
+    defaultStubs
+  )
+  if (
+    modifierForwarding.exitCode !== 0 ||
+    !modifierForwarding.stderr.includes("--claude-effort ignored: claude target not selected") ||
+    !modifierForwarding.stderr.includes("--claude-advisor ignored: claude target not selected") ||
+    !modifierForwarding.stderr.includes("--codex-effort ignored: codex target not selected")
+  ) {
+    problems.push("  modifiers: public valued options did not reach EngineNative target-ignore validation")
   }
 
   const status = runPublicCli(["status", "--json"], "home-drift", defaultStubs, { env: { DOCKS_KIT_VERBOSE: "1" } })
@@ -359,6 +499,7 @@ function channelInvariantProblems(): Array<string> {
   rmSync(syncSplit.home, { recursive: true, force: true })
   rmSync(warnSplit.home, { recursive: true, force: true })
   rmSync(modelSplit.home, { recursive: true, force: true })
+  rmSync(modifierForwarding.home, { recursive: true, force: true })
   rmSync(drySplit.home, { recursive: true, force: true })
   rmSync(status.home, { recursive: true, force: true })
   rmSync(second.home, { recursive: true, force: true }) // first/second/secondVerbose share one home
@@ -458,6 +599,18 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     if (problems.length > 0) {
       invariantFailures++
       banner("CLAUDE MIGRATION INVARIANT FAILURE")
+      for (const problem of problems) console.log(problem)
+    }
+  }
+
+  for (const state of ["flagless", "on", "off", "default"] as const) {
+    const advisorLabel = `advisor-migration=prior-kit-settings state=${state}`
+    if (!labelSelected(advisorLabel)) continue
+    const { problems, ...golden } = runAdvisorMigrationCase(state)
+    cases[advisorLabel] = golden
+    if (problems.length > 0) {
+      invariantFailures++
+      banner(`ADVISOR MIGRATION INVARIANT FAILURE state=${state}`)
       for (const problem of problems) console.log(problem)
     }
   }

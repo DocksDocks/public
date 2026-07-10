@@ -6,7 +6,7 @@
 import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
-import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
+import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -21,6 +21,7 @@ export function codexSync(ctx: Ctx): void {
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true })
   syncConfig(ctx, sotConfig, userConfig)
   syncCodexModel(ctx, ctx.codexModel)
+  syncCodexEffort(ctx, ctx.codexEffort)
   syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"))
   syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"))
   syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))

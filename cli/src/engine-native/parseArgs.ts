@@ -4,7 +4,17 @@
  * early parser exit and is caught once in runEngineNative.
  */
 
-import type { Ctx } from "./index"
+import type { Ctx, ModifierFlag } from "./index"
+import {
+  CLAUDE_ADVISOR_STATES,
+  advisorCatalog,
+  advisorFlagGrammar,
+  advisorValueGrammar,
+  effortCatalog,
+  effortFlagGrammar,
+  effortValueGrammar,
+  isEffortModifierValue
+} from "../efforts"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 
 export class ExitError extends Error {
@@ -14,6 +24,13 @@ export class ExitError extends Error {
 }
 
 const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
+const MODIFIER_FLAGS = new Set<ModifierFlag>([
+  "--claude-model",
+  "--claude-effort",
+  "--claude-advisor",
+  "--codex-model",
+  "--codex-effort"
+])
 
 function usage(ctx: Ctx): void {
   const { echo } = ctx.services.logger
@@ -41,6 +58,8 @@ function usage(ctx: Ctx): void {
   echo(
     "  --claude-model=<m>            set deployed ~/.claude/settings.json model (aliases: best|opus|fable|sonnet|haiku, full claude-* IDs, or 'default' to unset)"
   )
+  echo(`  ${effortFlagGrammar("claude").padEnd(39)} set deployed effortLevel`)
+  echo(`  ${advisorFlagGrammar().padEnd(39)} set deployed advisor state`)
   echo(
     "  --claude-compact-window=<n>   set deployed autocompact window in tokens (e.g. 680000 or 680k) for disposable sessions"
   )
@@ -48,6 +67,7 @@ function usage(ctx: Ctx): void {
     "  --claude-permissive           empty permissions.ask/deny in deployed settings (sandboxes/containers; unattended commits + pushes)"
   )
   echo("  --codex-model=<m>             set deployed ~/.codex/config.toml model (e.g. gpt-5.5)")
+  echo(`  ${effortFlagGrammar("codex").padEnd(39)} set deployed model_reasoning_effort`)
   echo("")
   echo("Sticky opt-ins (installed + enabled until --prune)")
   echo(
@@ -81,9 +101,42 @@ function selectTarget(ctx: Ctx, target: string): void {
   ctx.targetFilterSet = true
 }
 
+function setModifier(ctx: Ctx, flag: ModifierFlag, value: string): void {
+  switch (flag) {
+    case "--claude-model":
+      ctx.claudeModel = value
+      break
+    case "--claude-effort":
+      ctx.claudeEffort = value
+      break
+    case "--claude-advisor":
+      ctx.claudeAdvisor = value
+      break
+    case "--codex-model":
+      ctx.codexModel = value
+      break
+    case "--codex-effort":
+      ctx.codexEffort = value
+      break
+  }
+  const flags = ctx.modifierFlags ?? new Set<ModifierFlag>()
+  flags.add(flag)
+  ctx.modifierFlags = flags
+}
+
+function isModifierFlag(value: string): value is ModifierFlag {
+  return MODIFIER_FLAGS.has(value as ModifierFlag)
+}
+
 export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
   const { err } = ctx.services.logger
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? ""
+    if (isModifierFlag(arg) && args[index + 1] === "") {
+      setModifier(ctx, arg, "")
+      index += 1
+      continue
+    }
     switch (arg) {
       case "claude":
       case "codex":
@@ -115,6 +168,18 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
       case "--codex-model":
         printModels(ctx, "codex")
         err("--codex-model requires a value: --codex-model=<model>")
+        throw new ExitError(2)
+      case "--claude-effort":
+        printCatalog(ctx, effortCatalog("claude"))
+        err(`--claude-effort requires a value: ${effortFlagGrammar("claude")}`)
+        throw new ExitError(2)
+      case "--codex-effort":
+        printCatalog(ctx, effortCatalog("codex"))
+        err(`--codex-effort requires a value: ${effortFlagGrammar("codex")}`)
+        throw new ExitError(2)
+      case "--claude-advisor":
+        printCatalog(ctx, advisorCatalog())
+        err(`--claude-advisor requires a value: ${advisorFlagGrammar()}`)
         throw new ExitError(2)
       case "--claude-compact-window":
         err("--claude-compact-window requires a value: --claude-compact-window=<tokens> (e.g. 680k)")
@@ -159,9 +224,15 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         break
     }
     if (arg.startsWith("--claude-model=")) {
-      ctx.claudeModel = arg.slice("--claude-model=".length)
+      setModifier(ctx, "--claude-model", arg.slice("--claude-model=".length))
     } else if (arg.startsWith("--codex-model=")) {
-      ctx.codexModel = arg.slice("--codex-model=".length)
+      setModifier(ctx, "--codex-model", arg.slice("--codex-model=".length))
+    } else if (arg.startsWith("--claude-effort=")) {
+      setModifier(ctx, "--claude-effort", arg.slice("--claude-effort=".length))
+    } else if (arg.startsWith("--codex-effort=")) {
+      setModifier(ctx, "--codex-effort", arg.slice("--codex-effort=".length))
+    } else if (arg.startsWith("--claude-advisor=")) {
+      setModifier(ctx, "--claude-advisor", arg.slice("--claude-advisor=".length))
     } else if (arg.startsWith("--claude-compact-window=")) {
       const parsed = parseCompactWindow(arg.slice("--claude-compact-window=".length))
       if (parsed === undefined) {
@@ -184,9 +255,15 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
   }
 }
 
-export function validateModelFlags(ctx: Ctx): void {
+function printCatalog(ctx: Ctx, catalog: string): void {
+  for (const line of catalog.split("\n")) ctx.services.logger.echo(line)
+}
+
+export function validateModifierFlags(ctx: Ctx): void {
   const { err, warn } = ctx.services.logger
-  if (ctx.claudeModel !== "") {
+  const supplied = (flag: ModifierFlag, value: string): boolean =>
+    value !== "" || ctx.modifierFlags?.has(flag) === true
+  if (supplied("--claude-model", ctx.claudeModel)) {
     if (!ctx.syncClaude) {
       warn("--claude-model ignored: claude target not selected")
       ctx.claudeModel = ""
@@ -196,13 +273,43 @@ export function validateModelFlags(ctx: Ctx): void {
       throw new ExitError(2)
     }
   }
-  if (ctx.codexModel !== "") {
+  if (supplied("--claude-effort", ctx.claudeEffort)) {
+    if (!ctx.syncClaude) {
+      warn("--claude-effort ignored: claude target not selected")
+      ctx.claudeEffort = ""
+    } else if (!isEffortModifierValue("claude", ctx.claudeEffort)) {
+      printCatalog(ctx, effortCatalog("claude"))
+      err(`Invalid Claude effort '${ctx.claudeEffort}' — valid: ${effortValueGrammar("claude")}`)
+      throw new ExitError(2)
+    }
+  }
+  if (supplied("--claude-advisor", ctx.claudeAdvisor)) {
+    if (!ctx.syncClaude) {
+      warn("--claude-advisor ignored: claude target not selected")
+      ctx.claudeAdvisor = ""
+    } else if (!CLAUDE_ADVISOR_STATES.some((state) => state === ctx.claudeAdvisor)) {
+      printCatalog(ctx, advisorCatalog())
+      err(`Invalid Claude advisor state '${ctx.claudeAdvisor}' — valid: ${advisorValueGrammar()}`)
+      throw new ExitError(2)
+    }
+  }
+  if (supplied("--codex-model", ctx.codexModel)) {
     if (!ctx.syncCodex) {
       warn("--codex-model ignored: codex target not selected")
       ctx.codexModel = ""
     } else if (!validateCodexModel(ctx, ctx.codexModel)) {
       printModels(ctx, "codex")
       err(`Invalid Codex model '${ctx.codexModel}' — must match ^[A-Za-z0-9._-]+$`)
+      throw new ExitError(2)
+    }
+  }
+  if (supplied("--codex-effort", ctx.codexEffort)) {
+    if (!ctx.syncCodex) {
+      warn("--codex-effort ignored: codex target not selected")
+      ctx.codexEffort = ""
+    } else if (!isEffortModifierValue("codex", ctx.codexEffort)) {
+      printCatalog(ctx, effortCatalog("codex"))
+      err(`Invalid Codex effort '${ctx.codexEffort}' — valid: ${effortValueGrammar("codex")}`)
       throw new ExitError(2)
     }
   }

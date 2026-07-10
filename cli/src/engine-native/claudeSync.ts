@@ -17,7 +17,11 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { bunBootstrap } from "./bun"
-import { syncClaudeModel } from "./claudeModel"
+import {
+  syncClaudeAdvisor,
+  syncClaudeEffort,
+  syncClaudeModel
+} from "./claudeSettingsModifiers"
 import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths } from "./claudeRuntime"
 import { p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
@@ -73,6 +77,8 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
   syncCompactWindow(ctx, claudeDir)
   syncPermissive(ctx, claudeDir)
   syncClaudeModel(ctx, ctx.claudeModel)
+  syncClaudeEffort(ctx, ctx.claudeEffort)
+  syncClaudeAdvisor(ctx, ctx.claudeAdvisor)
   syncClaudeJson(ctx)
   syncConnectorEnv(ctx)
   syncPlugins(ctx, claudeDir)
@@ -489,6 +495,7 @@ const REMOVED_MANIFEST = {
   files: ["alert_bubble.mp3"],
   settingsKeys: [
     "showTurnDuration",
+    "advisorModel",
     "env.CLAUDE_CODE_SUBAGENT_MODEL",
     "env.ANTHROPIC_DEFAULT_OPUS_MODEL",
     "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
@@ -550,7 +557,7 @@ function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState):
     ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.files : [])
   ]
   const settingsKeys = [
-    ...REMOVED_MANIFEST.settingsKeys,
+    ...REMOVED_MANIFEST.settingsKeys.filter((key) => key !== "advisorModel" || ctx.claudeAdvisor === ""),
     ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.settingsKeys : [])
   ]
 

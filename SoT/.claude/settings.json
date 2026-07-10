@@ -1,9 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "minimumVersion": "2.1.170",
-  "model": "opus",
-  "advisorModel": "fable",
-  "effortLevel": "xhigh",
+  "model": "fable",
+  "effortLevel": "high",
   "autoMemoryEnabled": true,
   "skillListingMaxDescChars": 2048,
   "respectGitignore": true,

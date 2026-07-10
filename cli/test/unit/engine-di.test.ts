@@ -1,10 +1,16 @@
 import { describe, expect, it, vi } from "vitest"
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { runEngineNative } from "../../src/engine-native"
+import {
+  syncClaudeAdvisor,
+  syncClaudeEffort
+} from "../../src/engine-native/claudeSettingsModifiers"
+import { replaceTopLevelSetting, syncCodexEffort } from "../../src/engine-native/codexToml"
 import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
+import type { Ctx } from "../../src/engine-native"
 import {
   makeEngineServices,
   makePlatform,
@@ -12,6 +18,7 @@ import {
   type EngineServices,
   type Logger
 } from "../../src/engine-native/services"
+import { sotEffort } from "../../src/efforts"
 import { kitHome } from "../../src/kitHome"
 
 type LogLevel = "change" | "verbose" | "warn" | "err" | "echo"
@@ -96,7 +103,415 @@ class RecordingLogger implements Logger {
   }
 }
 
+function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): Ctx {
+  return {
+    repoDir: kitHome(),
+    home,
+    agentsDir: join(home, ".agents"),
+    dryRun,
+    verbose: true,
+    skipRtk: false,
+    reconcile: false,
+    prune: false,
+    assumeYes: false,
+    claudeCompactWindow: "",
+    claudePermissive: false,
+    claudePlugins: [],
+    claudeModel: "",
+    claudeEffort: "",
+    claudeAdvisor: "",
+    codexModel: "",
+    codexEffort: "",
+    services: stubServices(records),
+    targetFilterSet: true,
+    syncClaude: true,
+    syncCodex: false,
+    syncAgents: false,
+    nextStepTriggers: {
+      claudePlugins: false,
+      claudeRestart: false,
+      codexRestart: false,
+      skillsRestart: false
+    }
+  }
+}
+
+describe("Claude settings modifiers", () => {
+  it("sets effort, resolves default from the embedded SoT, and is idempotent", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-effort-modifier-"))
+    const settings = join(home, ".claude", "settings.json")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    writeFileSync(settings, '{"model":"sonnet","userOnly":true}\n')
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      syncClaudeEffort(ctx, "low")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({
+        model: "sonnet",
+        userOnly: true,
+        effortLevel: "low"
+      })
+      expect(records).toContainEqual({
+        level: "change",
+        message: "Effort: deployed settings effortLevel set to low (SoT unchanged; flag-less sync reverts)"
+      })
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeEffort(ctx, "low")
+      expect(records).toEqual([
+        { level: "verbose", message: "Effort: deployed settings effortLevel already low" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+
+      records.length = 0
+      syncClaudeEffort(ctx, "default")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toMatchObject({
+        model: "sonnet",
+        userOnly: true,
+        effortLevel: sotEffort("claude")
+      })
+      expect(records).toContainEqual({
+        level: "change",
+        message: `Effort: deployed settings effortLevel set to ${sotEffort("claude")} (SoT default)`
+      })
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("owns advisor on/off/default edits without duplicate same-state changes", () => {
+    const home = mkdtempSync(join(tmpdir(), "claude-advisor-modifier-"))
+    const settings = join(home, ".claude", "settings.json")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    writeFileSync(settings, '{"advisorModel":"fable","userOnly":true}\n')
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      for (const state of ["off", "default"] as const) {
+        records.length = 0
+        ctx.nextStepTriggers.claudeRestart = false
+        syncClaudeAdvisor(ctx, state)
+        expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true })
+        expect(records.some(({ level }) => level === "change")).toBe(state === "off")
+        expect(ctx.nextStepTriggers.claudeRestart).toBe(state === "off")
+      }
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "on")
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true, advisorModel: "fable" })
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: "Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)"
+        }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "on")
+      expect(records).toEqual([
+        { level: "verbose", message: "Advisor: deployed settings advisorModel already fable" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+
+      records.length = 0
+      syncClaudeAdvisor(ctx, "default")
+      expect(records.filter(({ level }) => level === "change")).toHaveLength(1)
+      expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({ userOnly: true })
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(true)
+
+      records.length = 0
+      ctx.nextStepTriggers.claudeRestart = false
+      syncClaudeAdvisor(ctx, "default")
+      expect(records).toEqual([
+        { level: "verbose", message: "Advisor: deployed settings advisorModel already unset (SoT default: off)" }
+      ])
+      expect(ctx.nextStepTriggers.claudeRestart).toBe(false)
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("leaves invalid JSON untouched and keeps dry-run edits descriptive only", () => {
+    const invalidHome = mkdtempSync(join(tmpdir(), "claude-modifier-invalid-"))
+    const invalidSettings = join(invalidHome, ".claude", "settings.json")
+    mkdirSync(join(invalidHome, ".claude"), { recursive: true })
+    writeFileSync(invalidSettings, "{broken\n")
+    const invalidRecords: Array<LogRecord> = []
+    const invalidCtx = modifierCtx(invalidHome, invalidRecords)
+
+    const dryHome = mkdtempSync(join(tmpdir(), "claude-modifier-dry-"))
+    const drySettings = join(dryHome, ".claude", "settings.json")
+    mkdirSync(join(dryHome, ".claude"), { recursive: true })
+    writeFileSync(drySettings, '{"userOnly":true}\n')
+    const dryRecords: Array<LogRecord> = []
+    const dryCtx = modifierCtx(dryHome, dryRecords, true)
+
+    try {
+      syncClaudeEffort(invalidCtx, "high")
+      syncClaudeAdvisor(invalidCtx, "on")
+      expect(readFileSync(invalidSettings, "utf8")).toBe("{broken\n")
+      expect(existsSync(`${invalidSettings}.tmp`)).toBe(false)
+      expect(invalidRecords.filter(({ level }) => level === "err")).toHaveLength(2)
+      expect(invalidCtx.nextStepTriggers.claudeRestart).toBe(false)
+
+      syncClaudeEffort(dryCtx, "low")
+      syncClaudeAdvisor(dryCtx, "on")
+      expect(readFileSync(drySettings, "utf8")).toBe('{"userOnly":true}\n')
+      expect(dryRecords).toEqual([
+        {
+          level: "echo",
+          message: `[dry-run] (--claude-effort) set .effortLevel=low in ${drySettings}`
+        },
+        {
+          level: "echo",
+          message: `[dry-run] (--claude-advisor) set .advisorModel=fable in ${drySettings}`
+        }
+      ])
+    } finally {
+      rmSync(invalidHome, { recursive: true, force: true })
+      rmSync(dryHome, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("Codex effort modifier", () => {
+  it("keeps every TOML fixture table-stable for none, ultra, and the SoT default", () => {
+    const fixtureDir = join(kitHome(), "cli", "test", "fixtures", "codex-toml")
+    const fixtures = readdirSync(fixtureDir).filter((name) => name.endsWith(".toml")).sort()
+    expect(fixtures).toHaveLength(7)
+
+    for (const fixture of fixtures) {
+      const before = readFileSync(join(fixtureDir, fixture), "utf8")
+      const firstTable = before.search(/^\[/m)
+      const tableBytes = firstTable === -1 ? "" : before.slice(firstTable)
+      for (const effort of ["none", "ultra", sotEffort("codex")]) {
+        const next = replaceTopLevelSetting(
+          before,
+          "model_reasoning_effort",
+          `model_reasoning_effort = "${effort}"`
+        )
+        const lines = next.split("\n")
+        const effortLines = lines.filter((line) => line.startsWith("model_reasoning_effort ="))
+        const firstTableLine = lines.findIndex((line) => line.startsWith("["))
+        const effortLine = lines.findIndex((line) => line.startsWith("model_reasoning_effort ="))
+        expect(effortLines).toEqual([`model_reasoning_effort = "${effort}"`])
+        expect(firstTableLine === -1 || effortLine < firstTableLine).toBe(true)
+        if (firstTable !== -1) expect(next.slice(next.search(/^\[/m))).toBe(tableBytes)
+      }
+    }
+  })
+
+  it("sets and resolves deployed effort atomically without repeat-run churn", () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-effort-modifier-"))
+    const config = join(home, ".codex", "config.toml")
+    mkdirSync(join(home, ".codex"), { recursive: true })
+    writeFileSync(
+      config,
+      '# keep\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "low" # stale\nmodel_reasoning_effort = "medium"\n\n[features]\nmemories = true\n'
+    )
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    try {
+      syncCodexEffort(ctx, "ultra")
+      expect(readFileSync(config, "utf8")).toBe(
+        '# keep\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "ultra"\n\n[features]\nmemories = true\n'
+      )
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: "Effort: deployed Codex model_reasoning_effort set to ultra (SoT unchanged; flag-less sync reverts)"
+        }
+      ])
+      expect(ctx.nextStepTriggers.codexRestart).toBe(true)
+      expect(existsSync(`${config}.tmp`)).toBe(false)
+
+      records.length = 0
+      ctx.nextStepTriggers.codexRestart = false
+      syncCodexEffort(ctx, "ultra")
+      expect(records).toEqual([
+        { level: "verbose", message: "Effort: deployed Codex model_reasoning_effort already ultra" }
+      ])
+      expect(ctx.nextStepTriggers.codexRestart).toBe(false)
+
+      records.length = 0
+      syncCodexEffort(ctx, "default")
+      expect(readFileSync(config, "utf8")).toContain(
+        `model_reasoning_effort = "${sotEffort("codex")}"`
+      )
+      expect(records).toEqual([
+        {
+          level: "change",
+          message: `Effort: deployed Codex model_reasoning_effort set to ${sotEffort("codex")} (SoT default)`
+        }
+      ])
+
+      records.length = 0
+      syncCodexEffort(ctx, "none")
+      expect(readFileSync(config, "utf8")).toContain('model_reasoning_effort = "none"')
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("keeps missing-file and dry-run behavior non-mutating", () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-effort-dry-"))
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+    const config = join(home, ".codex", "config.toml")
+
+    try {
+      syncCodexEffort(ctx, "ultra")
+      expect(records).toEqual([
+        { level: "warn", message: `(--codex-effort) ${config} missing — skipped` }
+      ])
+
+      mkdirSync(join(home, ".codex"), { recursive: true })
+      writeFileSync(config, 'model_reasoning_effort = "low"\n')
+      records.length = 0
+      ctx.dryRun = true
+      syncCodexEffort(ctx, "ultra")
+      expect(readFileSync(config, "utf8")).toBe('model_reasoning_effort = "low"\n')
+      expect(records).toEqual([
+        {
+          level: "echo",
+          message: `[dry-run] (--codex-effort) set model_reasoning_effort = "ultra" in ${config}`
+        }
+      ])
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+})
+
 describe.sequential("EngineNative full service injection", () => {
+  it("keeps raw help and bare errors in parity with the effort/advisor catalogs", () => {
+    const records: Array<LogRecord> = []
+    expect(runEngineNative(["sync", "--help"], stubServices(records))).toBe(0)
+    const help = records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")
+    expect(help).toContain("--claude-effort=<low|medium|high|xhigh|default>")
+    expect(help).toContain("--codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>")
+    expect(help).toContain("--claude-advisor=<on|off|default>")
+
+    for (const [target, flag, grammar] of [
+      ["claude", "--claude-effort", "--claude-effort=<low|medium|high|xhigh|default>"],
+      ["codex", "--codex-effort", "--codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>"],
+      ["claude", "--claude-advisor", "--claude-advisor=<on|off|default>"]
+    ] as const) {
+      const bareRecords: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(bareRecords))).toBe(2)
+      expect(bareRecords).toContainEqual({
+        level: "err",
+        message: `${flag} requires a value: ${grammar}`
+      })
+    }
+  })
+
+  it("validates raw effort and advisor modifiers before any sync mutation", () => {
+    const bareCases = [
+      ["claude", "--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
+      ["codex", "--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
+      ["claude", "--claude-advisor", "Available claude advisor states", "--claude-advisor requires a value"]
+    ] as const
+    for (const [target, flag, catalog, error] of bareCases) {
+      const records: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+      expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+      expect(records.every(({ level }) => level === "echo" || level === "err")).toBe(true)
+    }
+
+    const invalidCases = [
+      ["claude", "--claude-effort=max", "Available claude effort levels", "Invalid Claude effort 'max'"],
+      ["codex", "--codex-effort=future", "Available codex effort levels", "Invalid Codex effort 'future'"],
+      ["claude", "--claude-advisor=maybe", "Available claude advisor states", "Invalid Claude advisor state 'maybe'"]
+    ] as const
+    for (const [target, flag, catalog, error] of invalidCases) {
+      const records: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+      expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+    }
+  })
+
+  it("rejects both explicit-empty spellings through shared raw modifier validation", () => {
+    const root = mkdtempSync(join(tmpdir(), "engine-di-empty-modifier-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    const cases = [
+      ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
+      ["codex", "--codex-effort", "Available codex effort levels", "Invalid Codex effort ''"],
+      ["claude", "--claude-advisor", "Available claude advisor states", "Invalid Claude advisor state ''"],
+      ["claude", "--claude-model", "Available claude models", "Invalid Claude model ''"],
+      ["codex", "--codex-model", "Available codex models", "Invalid Codex model ''"]
+    ] as const
+
+    try {
+      process.env["HOME"] = root
+      process.env["AGENTS_DIR"] = join(root, ".agents")
+      for (const [target, flag, catalog, error] of cases) {
+        for (const args of [[`${flag}=`], [flag, ""]]) {
+          const records: Array<LogRecord> = []
+          expect(
+            runEngineNative(["sync", target, "--dry-run", "--skip-rtk", ...args], stubServices(records))
+          ).toBe(2)
+          expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+          expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+          expect(records.every(({ level }) => level === "echo" || level === "err")).toBe(true)
+        }
+      }
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("warns and clears effort and advisor modifiers for unselected targets", () => {
+    const root = mkdtempSync(join(tmpdir(), "engine-di-modifier-ignore-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    try {
+      process.env["HOME"] = root
+      process.env["AGENTS_DIR"] = join(root, ".agents")
+      const records: Array<LogRecord> = []
+      expect(
+        runEngineNative(
+          [
+            "sync",
+            "agents",
+            "--dry-run",
+            "--claude-effort=low",
+            "--claude-advisor=on",
+            "--codex-effort=max"
+          ],
+          stubServices(records)
+        )
+      ).toBe(0)
+      expect(records.filter(({ level }) => level === "warn")).toEqual([
+        { level: "warn", message: "--claude-effort ignored: claude target not selected" },
+        { level: "warn", message: "--claude-advisor ignored: claude target not selected" },
+        { level: "warn", message: "--codex-effort ignored: codex target not selected" }
+      ])
+      expect(records.some(({ level }) => level === "err")).toBe(false)
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it("routes manager warnings through the current run logger", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-mixed-"))
     const previous = new Map(
@@ -288,7 +703,7 @@ describe.sequential("EngineNative full service injection", () => {
       expect(runEngineNative(["model", "claude"], stubServices(modelRecords))).toBe(0)
       expect(modelRecords.slice(0, 3)).toEqual([
         { level: "echo", message: "deployed: sonnet" },
-        { level: "echo", message: "SoT:      opus" },
+        { level: "echo", message: "SoT:      fable" },
         {
           level: "echo",
           message: expect.stringContaining("Available claude models (kit-verified")

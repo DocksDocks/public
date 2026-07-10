@@ -18,6 +18,7 @@ function copyGeneratorRoot(): string {
   cpSync(join(REPO_DIR, "SoT"), join(root, "SoT"), { recursive: true })
   cpSync(join(REPO_DIR, "notification.mp3"), join(root, "notification.mp3"))
   cpSync(join(REPO_DIR, "docks-kit"), join(root, "docks-kit"))
+  cpSync(join(REPO_DIR, "package.json"), join(root, "package.json"))
   mkdirSync(join(root, "cli", "src"), { recursive: true })
   cpSync(join(REPO_DIR, "cli", "src", "generated"), join(root, "cli", "src", "generated"), { recursive: true })
   return root
@@ -77,5 +78,44 @@ describe("generated SoT payload", () => {
     } finally {
       rmSync(root, { recursive: true, force: true })
     }
+  })
+
+  it("fails --check when package.json version changes", () => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, "package.json")
+      const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>
+      manifest["version"] = "9.8.7"
+      writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("generated payload is stale: cli/src/generated/sotPayload.ts")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects an invalid package.json version", () => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, "package.json")
+      const manifest = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>
+      manifest["version"] = ""
+      writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("package.json has no valid version")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("reports the root package version from the public CLI", () => {
+    const manifest = JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }
+    const result = spawnSync("bun", [join(REPO_DIR, "cli", "src", "main.ts"), "--version"], {
+      encoding: "utf8"
+    })
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe(manifest.version)
   })
 })

@@ -7,7 +7,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-drift",
-      "output": "deployed: sonnet\nSoT:      opus\nAvailable claude models (kit-verified 2026-07-08 — SoT/models.json):\n  best  — Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus  — latest Opus (currently Opus 4.8) — the kit SoT default, paired with the fable advisor\n  fable  — Fable 5 — needs org access + Claude Code >=2.1.170\n  sonnet  — latest Sonnet (currently Sonnet 5)\n  haiku  — latest Haiku (currently Haiku 4.5)\n  default  — engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5  — Fable 5\n  claude-opus-4-8  — Opus 4.8\n  claude-sonnet-5  — Sonnet 5\n  claude-haiku-4-5-20251001  — Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n"
+      "output": "deployed: sonnet\nSoT:      fable\nAvailable claude models (kit-verified 2026-07-08 — SoT/models.json):\n  best  — Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus  — latest Opus (currently Opus 4.8)\n  fable  — Fable 5 — the kit SoT default; needs org access + Claude Code >=2.1.170\n  sonnet  — latest Sonnet (currently Sonnet 5)\n  haiku  — latest Haiku (currently Haiku 4.5)\n  default  — engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5  — Fable 5\n  claude-opus-4-8  — Opus 4.8\n  claude-sonnet-5  — Sonnet 5\n  claude-haiku-4-5-20251001  — Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n"
     },
     "fixture=home-drift cmd=sync --dry-run": {
       "command": [
@@ -49,18 +49,20 @@
       "fixture": "home-drift",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-drift cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-drift cmd=sync claude --dry-run --claude-model=opus --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
-        "--claude-model=fable",
+        "--claude-model=opus",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-drift",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=opus in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in <HOME>/.bashrc — would skip\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-drift cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [
@@ -82,6 +84,17 @@
       "exitCode": 0,
       "fixture": "home-drift",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "fixture=home-drift cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-drift",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
     "fixture=home-fresh cmd=sync --dry-run": {
       "command": [
@@ -123,18 +136,20 @@
       "fixture": "home-fresh",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-fresh cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-fresh cmd=sync claude --dry-run --claude-model=opus --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
-        "--claude-model=fable",
+        "--claude-model=opus",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] install <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=opus in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-fresh cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [
@@ -156,6 +171,17 @@
       "exitCode": 0,
       "fixture": "home-fresh",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "fixture=home-fresh cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
     "fixture=home-invalid-json cmd=sync --dry-run": {
       "command": [
@@ -197,18 +223,20 @@
       "fixture": "home-invalid-json",
       "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
-    "fixture=home-invalid-json cmd=sync claude --dry-run --claude-model=fable --claude-compact-window=680k --claude-permissive": {
+    "fixture=home-invalid-json cmd=sync claude --dry-run --claude-model=opus --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
       "command": [
         "sync",
         "claude",
         "--dry-run",
-        "--claude-model=fable",
+        "--claude-model=opus",
+        "--claude-effort=low",
+        "--claude-advisor=on",
         "--claude-compact-window=680k",
         "--claude-permissive"
       ],
       "exitCode": 0,
       "fixture": "home-invalid-json",
-      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
+      "output": "[dry-run] rtk up to date (0.43.0)\n[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)\n[dry-run] install statusline.mjs, session-start.mjs, notify.mjs, notification.mp3\n[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)\n[dry-run] merge <REPO>/SoT/.claude/settings.json -> <HOME>/.claude/settings.json (SoT keys win; permissions arrays unioned; user-only keys preserved)\n[dry-run] (--claude-compact-window) set env.CLAUDE_CODE_AUTO_COMPACT_WINDOW=680000 in <HOME>/.claude/settings.json\n[dry-run] (--claude-permissive) empty permissions.ask and permissions.deny in <HOME>/.claude/settings.json\n[dry-run] (--claude-model) set .model=opus in <HOME>/.claude/settings.json\n[dry-run] (--claude-effort) set .effortLevel=low in <HOME>/.claude/settings.json\n[dry-run] (--claude-advisor) set .advisorModel=fable in <HOME>/.claude/settings.json\n[dry-run] set showTurnDuration=true in ~/.claude.json\n[dry-run] merge mcpServers from SoT/.claude/mcp-servers.json into ~/.claude.json\n[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to <HOME>/.bashrc\n[dry-run] bootstrap + update plugin marketplaces + plugins from SoT\n[dry-run] LSP server binaries present\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\n"
     },
     "fixture=home-invalid-json cmd=sync claude --dry-run --claude-plugin=supabase": {
       "command": [
@@ -230,6 +258,17 @@
       "exitCode": 0,
       "fixture": "home-invalid-json",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "fixture=home-invalid-json cmd=sync codex --dry-run --codex-effort=ultra": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-effort=ultra"
+      ],
+      "exitCode": 0,
+      "fixture": "home-invalid-json",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     }
   },
   "version": 1

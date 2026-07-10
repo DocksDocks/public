@@ -12,6 +12,7 @@ import { statusCommand } from "./commands/status"
 import { syncCommand } from "./commands/sync"
 import { toolchainCommand } from "./commands/toolchain"
 import { updateCommand } from "./commands/update"
+import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload"
 
 const root = Command.make("docks-kit", {}, () =>
   Effect.gen(function* () {
@@ -59,16 +60,25 @@ if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
 
 const cli = Command.run(root, {
   name: "docks-kit",
-  version: "0.1.0"
+  version: GENERATED_PACKAGE_VERSION
 })
 
-// @effect/cli's Options.repeated does not accept `--flag=value` syntax (only
-// `--flag value`), but the documented form for the repeatable opt-in is
-// `--claude-plugin=<name>` — normalize it here so both spellings work.
-const argv = process.argv.flatMap((a) =>
-  a.startsWith("--claude-plugin=")
-    ? ["--claude-plugin", a.slice("--claude-plugin=".length)]
-    : [a]
-)
+// Normalize the repeatable plugin's documented equals form and exact empty
+// text-option assignments that @effect/cli otherwise routes into positional
+// targets. EngineNative owns the resulting shared empty-value validation.
+const emptyTextOptions = new Set([
+  "--claude-model=",
+  "--claude-effort=",
+  "--claude-advisor=",
+  "--codex-model=",
+  "--codex-effort="
+])
+const argv = process.argv.flatMap((a) => {
+  if (a.startsWith("--claude-plugin=")) {
+    return ["--claude-plugin", a.slice("--claude-plugin=".length)]
+  }
+  if (emptyTextOptions.has(a)) return [a.slice(0, -1), ""]
+  return [a]
+})
 
 cli(argv).pipe(Effect.provide(Layer.mergeAll(BunContext.layer, EngineServicesLive)), BunRuntime.runMain)
