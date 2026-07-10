@@ -1,6 +1,6 @@
 #!/bin/bash
 # build-binaries.sh — compile docks-kit into standalone executables
-# (bun build --compile embeds the runtime + the bundled docs topics).
+# (bun build --compile embeds the runtime + generated payload + docs topics).
 # Usage: bash cli/build-binaries.sh [target ...]   (default: all five)
 set -euo pipefail
 

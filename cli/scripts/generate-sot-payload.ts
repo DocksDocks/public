@@ -9,6 +9,9 @@ export const TEXT_PAYLOAD_PATHS = [
   "SoT/.claude/CLAUDE.md",
   "SoT/.claude/mcp-servers.json",
   "SoT/.claude/settings.json",
+  "SoT/.claude/statusline.sh",
+  "SoT/.claude/fetch-usage.sh",
+  "SoT/.claude/hooks/notify.sh",
   "SoT/.codex/AGENTS.md",
   "SoT/.codex/config.toml",
   "SoT/.codex/plugins/marketplace.json",
@@ -18,10 +21,7 @@ export const TEXT_PAYLOAD_PATHS = [
 export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const
 export const PAYLOAD_PATHS = [...TEXT_PAYLOAD_PATHS, ...BINARY_PAYLOAD_PATHS] as const
 
-export const LEGACY_AUTHORING_EXCLUSIONS = [
-  "SoT/.claude/statusline.sh",
-  "SoT/.claude/fetch-usage.sh",
-  "SoT/.claude/hooks/notify.sh",
+export const AUTHORING_EXCLUSIONS = [
   "SoT/.codex/agents/.gitkeep"
 ] as const
 

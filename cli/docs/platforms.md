@@ -16,12 +16,10 @@ Supported entrypoints (both verified in CI on windows-2025 under native
 PowerShell — see `.github/workflows/windows-entrypoints.yml`):
 
 - **`docks-kit-windows-x64.exe`** (release asset) — the no-toolchain path.
-  No Bun, no Git Bash; the exe embeds the runtime and EngineNative runs
-  in-process. It still needs the SoT it deploys: run from a kit checkout or
-  set `DOCKS_KIT_HOME`.
+  No Bun, no Git Bash; the exe embeds the runtime and generated payload, and
+  EngineNative runs in-process from any working directory.
 - **`bun add -g docks-kit`** — bun creates a working Windows shim for the
-  `#!/usr/bin/env bun` bin; outside a checkout kit-home resolves to the
-  package's own bundled SoT.
+  `#!/usr/bin/env bun` bin; the package carries the same generated payload.
 - `install.sh` is **Unix-only** and not a Windows path.
 
 The managed tools all run natively on Windows: Claude Code (requires Git

@@ -14,6 +14,7 @@ AI-assisted dev environment on every machine.
 | `SoT/.agents/` | Universal agent skills manifest (agentskills.io standard) |
 | `SoT/models.json` | Kit-verified model catalog (see `docks-kit docs models`) |
 | `SoT/toolchain.json` | Verified-version floors for external tools (see `docks-kit docs toolchain`) |
+| `cli/src/generated/sotPayload.ts` | Deterministic generated payload embedded in standalone/npm execution |
 | `cli/src/engine-native/` | EngineNative mutation logic for sync/model/toolchain |
 | `cli/` | This CLI (Effect-TS on Bun) plus bundled docs |
 | `docks-kit` | Launcher: compiled binary → bun-from-source, with Bun auto-install |
@@ -31,6 +32,8 @@ AI-assisted dev environment on every machine.
   changes, and a later flag-less sync reverts them (`docks-kit docs modifiers`).
 - **Engine/CLI split**: the CLI adds UX (typed flags, pickers, docs, JSON);
   EngineNative owns mutation. No-Bun recovery is a platform release binary.
+- **Authoring/runtime split**: changes begin in `SoT/`; build/prepack freshness
+  checks keep the generated in-memory payload byte-identical for every runtime.
 
 ## Where to go next
 

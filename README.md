@@ -25,8 +25,9 @@ see `./docks-kit docs install`.
 
 **No-Bun recovery path**:
 
-Download the platform release binary from GitHub Releases and run it from a
-kit checkout, or set `DOCKS_KIT_HOME` to the checkout containing `SoT/`.
+Download the platform release binary from GitHub Releases and run it directly.
+The executable carries the generated sync payload; no checkout or adjacent
+`SoT/` directory is required.
 
 Prerequisites for source/global installs: Bun plus `jq` and `curl` for sync
 preflight; Node/npm for npm-global tools.
@@ -93,6 +94,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/models.json` | Kit-verified model catalog |
 | `SoT/toolchain.json` | Verified-version floors |
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
+| `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |
 | `cli/` | docks-kit CLI (Effect-TS on Bun) + bundled docs topics |
 | `docks-kit` | Launcher (binary → bun-from-source) |
 | `install.sh` | Global installer (Bun bootstrap + `bun add -g`) |
@@ -113,8 +115,8 @@ Details: `docks-kit docs platforms`.
 
 Tagging `cli-v*` builds five standalone binaries (+ SHA256SUMS) and attaches
 them to the GitHub release; npm publish runs when the `NPM_TOKEN` secret is
-configured. Package bundles the CLI + SoT, so npm releases are versioned config
-snapshots.
+configured. Package bundles the CLI + generated payload, so npm releases are
+versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs
 

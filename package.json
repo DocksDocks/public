@@ -15,8 +15,6 @@
     "cli/src",
     "cli/docs",
     "cli/tsconfig.json",
-    "SoT",
-    "notification.mp3",
     "docks-kit",
     "AGENTS.md",
     "README.md"

@@ -17,7 +17,7 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
-import { copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
+import { ensureExecutable, p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
@@ -128,12 +128,13 @@ function syncScripts(ctx: Ctx, claudeDir: string): void {
   }
 
   let changed = false
-  for (const script of ["statusline.sh", "fetch-usage.sh"]) {
-    const src = p(ctx.repoDir, "SoT", ".claude", script)
-    if (existsSync(src)) {
-      if (copyFileIfChanged(src, p(claudeDir, script))) changed = true
-      if (ensureExecutable(p(claudeDir, script))) changed = true
-    }
+  for (const [script, source] of [
+    ["statusline.sh", "SoT/.claude/statusline.sh"],
+    ["fetch-usage.sh", "SoT/.claude/fetch-usage.sh"]
+  ] as const) {
+    const path = p(claudeDir, script)
+    if (writeTextIfChanged(path, payloadText(source))) changed = true
+    if (ensureExecutable(path)) changed = true
   }
   if (writeBytesIfChanged(p(claudeDir, "notification.mp3"), payloadBytes("notification.mp3"))) changed = true
   if (changed) {
@@ -152,8 +153,7 @@ function shellScriptCount(hooksDir: string): number {
 
 function syncHooks(ctx: Ctx, claudeDir: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  const sotHooks = p(ctx.repoDir, "SoT", ".claude", "hooks")
-  if (!existsSync(sotHooks)) return
+  const sotHooks = payloadDisplayPath("SoT/.claude/hooks/notify.sh", ctx.repoDir).replace(/\/notify\.sh$/, "")
 
   if (ctx.dryRun) {
     echo(`[dry-run] cp -R ${sotHooks}/. ${claudeDir}/hooks/`)
@@ -162,7 +162,7 @@ function syncHooks(ctx: Ctx, claudeDir: string): void {
 
   const hooksDir = p(claudeDir, "hooks")
   mkdirSync(hooksDir, { recursive: true })
-  let changed = copyTreeIfChanged(sotHooks, hooksDir)
+  let changed = writeTextIfChanged(p(hooksDir, "notify.sh"), payloadText("SoT/.claude/hooks/notify.sh"))
   for (const e of readdirSync(hooksDir, { withFileTypes: true })) {
     if (e.isFile() && e.name.endsWith(".sh")) {
       if (ensureExecutable(p(hooksDir, e.name))) changed = true

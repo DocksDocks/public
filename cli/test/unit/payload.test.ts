@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
-  LEGACY_AUTHORING_EXCLUSIONS,
+  AUTHORING_EXCLUSIONS,
   PAYLOAD_PATHS,
   inventoryAuthoringPaths
 } from "../../scripts/generate-sot-payload"
@@ -38,10 +38,10 @@ describe("generated SoT payload", () => {
     }
   })
 
-  it("makes every live SoT file an allowlist or explicit legacy decision", () => {
+  it("makes every live SoT file an allowlist or explicit exclusion", () => {
     const expected = [
       ...PAYLOAD_PATHS.filter((path) => path.startsWith("SoT/")),
-      ...LEGACY_AUTHORING_EXCLUSIONS
+      ...AUTHORING_EXCLUSIONS
     ].sort()
     expect(inventoryAuthoringPaths(REPO_DIR)).toEqual(expected)
   })
