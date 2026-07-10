@@ -69,10 +69,21 @@ export function ensureExecutable(path: string): boolean {
   return true
 }
 
-export function writeFileIfChanged(path: string, content: string): boolean {
+export function writeTextIfChanged(path: string, content: string): boolean {
   if (existsSync(path) && readFileSync(path, "utf8") === content) return false
   writeFileSync(path, content)
   return true
+}
+
+export function writeBytesIfChanged(path: string, content: Uint8Array): boolean {
+  const bytes = Buffer.from(content)
+  if (existsSync(path) && readFileSync(path).equals(bytes)) return false
+  writeFileSync(path, bytes)
+  return true
+}
+
+export function writeFileIfChanged(path: string, content: string): boolean {
+  return writeTextIfChanged(path, content)
 }
 
 /** Copy only when dest differs from src; returns whether a copy happened. */

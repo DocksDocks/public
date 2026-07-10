@@ -48,7 +48,8 @@ describe("generated SoT payload", () => {
 
   it("keeps display paths separate from embedded reads", () => {
     expect(payloadDisplayPath("SoT/models.json")).toBe("embedded:SoT/models.json")
-    expect(payloadDisplayPath("SoT/models.json", "/kit")).toBe(join("/kit", "SoT", "models.json"))
+    expect(payloadDisplayPath("SoT/models.json", REPO_DIR)).toBe(join(REPO_DIR, "SoT", "models.json"))
+    expect(payloadDisplayPath("SoT/models.json", "/kit")).toBe("embedded:SoT/models.json")
   })
 
   it("fails --check when notification.mp3 changes", () => {

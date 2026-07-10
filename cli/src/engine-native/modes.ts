@@ -4,6 +4,7 @@
  */
 import { p } from "./exec"
 import { readFileSync } from "node:fs"
+import { payloadText } from "../payload"
 
 import { syncClaudeModel } from "./claudeModel"
 import { syncCodexModel } from "./codexToml"
@@ -41,7 +42,7 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
         return 0
       }
       echo(`deployed: ${jsonModelField(deployed)}`)
-      echo(`SoT:      ${jsonModelField(p(ctx.repoDir, "SoT", ".claude", "settings.json"))}`)
+      echo(`SoT:      ${jsonModelText(payloadText("SoT/.claude/settings.json"))}`)
     } else {
       const deployed = p(ctx.home, ".codex", "config.toml")
       if (!fileReadable(deployed)) {
@@ -49,7 +50,7 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
         return 0
       }
       echo(`deployed: ${tomlModelField(deployed)}`)
-      echo(`SoT:      ${tomlModelField(p(ctx.repoDir, "SoT", ".codex", "config.toml"))}`)
+      echo(`SoT:      ${tomlModelText(payloadText("SoT/.codex/config.toml"))}`)
     }
     printModels(ctx, tool)
     return 0
@@ -84,7 +85,11 @@ function fileReadable(p: string): boolean {
 
 /** `jq -r '.model // "default (unset)"'` — empty on unparseable input. */
 function jsonModelField(file: string): string {
-  const doc = parseJson(readFileSync(file, "utf8"))
+  return jsonModelText(readFileSync(file, "utf8"))
+}
+
+function jsonModelText(text: string): string {
+  const doc = parseJson(text)
   if (doc === undefined) return ""
   const v: Json | undefined = isObject(doc) ? doc["model"] : undefined
   if (v === undefined || v === null || v === false) return "default (unset)"
@@ -93,7 +98,11 @@ function jsonModelField(file: string): string {
 
 /** `awk -F'"' '/^model[[:space:]]*=/{print $2; exit}'`. */
 function tomlModelField(file: string): string {
-  for (const line of readFileSync(file, "utf8").split("\n")) {
+  return tomlModelText(readFileSync(file, "utf8"))
+}
+
+function tomlModelText(text: string): string {
+  for (const line of text.split("\n")) {
     if (/^model[ \t]*=/.test(line)) return line.split('"')[1] ?? ""
   }
   return ""

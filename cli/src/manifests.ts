@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, readlinkSync, existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { kitHome } from "./kitHome"
+import { payloadText } from "./payload"
 
 export { homedir }
 
@@ -19,30 +19,35 @@ export interface ModelCatalog {
 export type Tool = "claude" | "codex"
 
 const readJson = (path: string): any => JSON.parse(readFileSync(path, "utf8"))
+const readJsonText = (text: string): any => JSON.parse(text)
 
 export const modelCatalog = (tool: Tool): ModelCatalog =>
-  readJson(join(kitHome(), "SoT", "models.json"))[tool]
+  readJsonText(payloadText("SoT/models.json"))[tool]
 
 export const toolchainManifest = (): Record<string, any> =>
-  readJson(join(kitHome(), "SoT", "toolchain.json")).tools
+  readJsonText(payloadText("SoT/toolchain.json")).tools
 
 /** SoT settings (claude) — model/effort/env for drift display. */
 export const sotClaudeSettings = (): any =>
-  readJson(join(kitHome(), "SoT", ".claude", "settings.json"))
+  readJsonText(payloadText("SoT/.claude/settings.json"))
 
 export const deployedClaudeSettings = (): any | undefined => {
   const p = join(homedir(), ".claude", "settings.json")
   return existsSync(p) ? readJson(p) : undefined
 }
 
-const tomlModel = (path: string): string | undefined => {
-  if (!existsSync(path)) return undefined
-  const m = readFileSync(path, "utf8").match(/^model\s*=\s*"([^"]+)"/m)
+const tomlModelText = (text: string): string | undefined => {
+  const m = text.match(/^model\s*=\s*"([^"]+)"/m)
   return m?.[1]
 }
 
+const tomlModel = (path: string): string | undefined => {
+  if (!existsSync(path)) return undefined
+  return tomlModelText(readFileSync(path, "utf8"))
+}
+
 export const sotCodexModel = (): string | undefined =>
-  tomlModel(join(kitHome(), "SoT", ".codex", "config.toml"))
+  tomlModelText(payloadText("SoT/.codex/config.toml"))
 
 export const deployedCodexModel = (): string | undefined =>
   tomlModel(join(homedir(), ".codex", "config.toml"))
@@ -73,14 +78,11 @@ export const skillsView = (): Array<{
   installed: boolean
   claudeSymlink: boolean
 }> => {
-  const manifestPath = join(kitHome(), "SoT", ".agents", "skills.txt")
-  const declared = existsSync(manifestPath)
-    ? readFileSync(manifestPath, "utf8")
-        .split("\n")
-        .map((l) => l.replace(/#.*$/, "").trim())
-        .filter((l) => l.length > 0)
-        .map((slug) => slug.split("/").pop() as string)
-    : []
+  const declared = payloadText("SoT/.agents/skills.txt")
+    .split("\n")
+    .map((l) => l.replace(/#.*$/, "").trim())
+    .filter((l) => l.length > 0)
+    .map((slug) => slug.split("/").pop() as string)
   const skillsDir = join(homedir(), ".agents", "skills")
   const installed = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })

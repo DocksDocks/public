@@ -2,24 +2,24 @@
  * Verified-version-floor layer over SoT/toolchain.json. Probe/install commands
  * spawn deterministic argv arrays and are covered by golden regression cases.
  */
-import { readFileSync, readSync } from "node:fs"
+import { readSync } from "node:fs"
 
 import type { ToolId } from "./deps"
-import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
+import { payloadText } from "../payload"
 
 type InstallFn = (mode: "install" | "upgrade", version: string, services: EngineServices) => number
 
-function manifest(ctx: Ctx): { [k: string]: Json } {
-  const doc = parseJson(readFileSync(p(ctx.repoDir, "SoT", "toolchain.json"), "utf8"))
+function manifest(): { [k: string]: Json } {
+  const doc = parseJson(payloadText("SoT/toolchain.json"))
   const tools = doc !== undefined && isObject(doc) ? doc["tools"] : undefined
   return tools !== undefined && isObject(tools) ? tools : {}
 }
 
 export function field(ctx: Ctx, tool: string, name: string): string {
-  const entry = manifest(ctx)[tool]
+  const entry = manifest()[tool]
   if (entry === undefined || !isObject(entry)) return ""
   const v = entry[name]
   return v === undefined || v === null ? "" : String(v)
@@ -209,7 +209,7 @@ export function report(ctx: Ctx): void {
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
   const pn = ctx.services.platform.name()
   const platformOs = pn === "unknown" ? "" : pn
-  for (const tool of Object.keys(manifest(ctx)).sort(compareCodepoints)) {
+  for (const tool of Object.keys(manifest()).sort(compareCodepoints)) {
     const os = field(ctx, tool, "os")
     if (os !== "" && platformOs !== "" && os !== platformOs) continue
     const kind = field(ctx, tool, "kind")

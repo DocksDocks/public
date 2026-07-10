@@ -12,6 +12,7 @@ import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import type { EngineServices, Platform } from "./services"
 import { ensure, field } from "./toolchain"
+import { payloadText } from "../payload"
 
 export interface SkillsState {
   present: number
@@ -20,10 +21,8 @@ export interface SkillsState {
 export function skillsSync(ctx: Ctx): SkillsState {
   const state: SkillsState = { present: 0 }
   const skillsDir = p(ctx.agentsDir, "skills")
-  const manifest = p(ctx.repoDir, "SoT", ".agents", "skills.txt")
+  const manifest = payloadText("SoT/.agents/skills.txt")
   const snapshot = p(ctx.agentsDir, ".kit-managed-skills")
-
-  if (!existsSync(manifest)) return state
 
   if (!ctx.dryRun) mkdirSync(skillsDir, { recursive: true })
 
@@ -69,7 +68,7 @@ function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest
   let failed = 0
   let healed = 0
 
-  for (const slug of readSlugs(manifest)) {
+  for (const slug of normalizeManifest(manifest)) {
     const base = slug.slice(slug.lastIndexOf("/") + 1)
 
     if (ctx.dryRun) {
@@ -264,7 +263,7 @@ export function agentBrowserInstall(mode: "install" | "upgrade", version: string
 
 function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
   const { warn } = ctx.services.logger
-  if (!existsSync(manifest) || !readFileSync(manifest, "utf8").split("\n").includes("vercel-labs/agent-browser")) return
+  if (!manifest.split("\n").includes("vercel-labs/agent-browser")) return
 
   if (ctx.services.deps.probe("npm").state === "missing") {
     if (!ctx.dryRun) {
@@ -353,9 +352,7 @@ export function effectSolutionsInstall(
 
 function syncEffectSolutionsCli(ctx: Ctx): void {
   const { warn } = ctx.services.logger
-  const settings = p(ctx.repoDir, "SoT", ".claude", "settings.json")
-  if (!existsSync(settings)) return
-  if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(readFileSync(settings, "utf8"))) return
+  if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(payloadText("SoT/.claude/settings.json"))) return
 
   if (ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx)) !== 0) {
     warn("effect-solutions bootstrap failed — continuing sync")
@@ -375,7 +372,7 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
     return
   }
 
-  const current = readSlugs(manifest)
+  const current = normalizeManifest(manifest)
   let removed = 0
   let failed = 0
   for (const slug of readSlugs(snapshot)) {
@@ -407,7 +404,7 @@ function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string): void {
   if (ctx.dryRun) return
 
   mkdirSync(ctx.agentsDir, { recursive: true })
-  const sorted = [...new Set(readSlugs(manifest))].sort(compareCodepoints)
+  const sorted = [...new Set(normalizeManifest(manifest))].sort(compareCodepoints)
   writeFileIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
 }
 

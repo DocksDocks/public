@@ -4,25 +4,26 @@
  * change. Guard order, message strings, and backup behavior are golden-tested.
  */
 import { spawnSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
 import { syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
 import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
+import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
-  const sotConfig = p(ctx.repoDir, "SoT", ".codex", "config.toml")
+  const sotConfig = payloadText("SoT/.codex/config.toml")
   const userConfig = p(codexDir, "config.toml")
 
   ensureBubblewrap(ctx)
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true })
   syncConfig(ctx, sotConfig, userConfig)
   syncCodexModel(ctx, ctx.codexModel)
-  syncRules(ctx, p(ctx.repoDir, "SoT", ".codex", "rules"), p(codexDir, "rules"))
-  syncAgentsMd(ctx, p(ctx.repoDir, "SoT", ".codex", "AGENTS.md"), p(codexDir, "AGENTS.md"))
-  syncMarketplace(ctx, p(ctx.repoDir, "SoT", ".codex", "plugins", "marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
+  syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"))
+  syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"))
+  syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
   removeLegacyDocksMarketplace(ctx, userConfig)
   syncPlugins(ctx, sotConfig)
 }
@@ -95,9 +96,9 @@ function bwrapDetectPmInstallCmd(ctx: Ctx): string {
 
 // --------------------------------------------------------------- config ----
 
-function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
+function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  if (!existsSync(sotConfig)) return
+  const sotConfig = payloadDisplayPath("SoT/.codex/config.toml", ctx.repoDir)
 
   if (ctx.dryRun) {
     echo(`[dry-run] merge ${sotConfig} -> ${userConfig}`)
@@ -105,7 +106,7 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   }
 
   if (!existsSync(userConfig)) {
-    copyFileSync(sotConfig, userConfig)
+    writeFileSync(userConfig, sotConfigText)
     change("Codex config installed")
     ctx.nextStepTriggers.codexRestart = true
     return
@@ -119,8 +120,8 @@ function syncConfig(ctx: Ctx, sotConfig: string, userConfig: string): void {
   writeFileSync(staging, before)
 
   scrubDeprecatedFeatures(ctx, staging)
-  mergeTopLevelSettings(sotConfig, staging)
-  mergeTableSettings(sotConfig, staging)
+  mergeTopLevelSettings(sotConfigText, staging)
+  mergeTableSettings(sotConfigText, staging)
 
   if (readFileSync(staging, "utf8") === before) {
     rmSync(staging, { force: true })
@@ -179,8 +180,8 @@ function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
   change("Codex: scrubbed deprecated [features].use_legacy_landlock")
 }
 
-function mergeTopLevelSettings(sotConfig: string, userConfig: string): void {
-  for (const line of readFileSync(sotConfig, "utf8").split("\n")) {
+function mergeTopLevelSettings(sotConfigText: string, userConfig: string): void {
+  for (const line of sotConfigText.split("\n")) {
     if (line.startsWith("[")) break
     if (/^[ \t]*($|#)/.test(line)) continue
     if (!/^[A-Za-z0-9_.-]+[ \t]*=/.test(line)) continue
@@ -189,8 +190,8 @@ function mergeTopLevelSettings(sotConfig: string, userConfig: string): void {
   }
 }
 
-function mergeTableSettings(sotConfig: string, userConfig: string): void {
-  const sotLines = readFileSync(sotConfig, "utf8").split("\n")
+function mergeTableSettings(sotConfigText: string, userConfig: string): void {
+  const sotLines = sotConfigText.split("\n")
   for (const tableHeader of sotLines.filter((l) => /^\[[^\]]+\]/.test(l))) {
     // Extract the SoT block: from the exact header line to (excluding) the
     // next table header; `$(...)` strips trailing newlines.
@@ -225,9 +226,12 @@ function mergeTableSettings(sotConfig: string, userConfig: string): void {
 
 // ------------------------------------------------------- rules + agents ----
 
-function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
+function syncRules(ctx: Ctx, sotRules: ReadonlyArray<PayloadPath>, userRulesDir: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  if (!existsSync(sotRulesDir)) return
+  const firstRule = sotRules[0]
+  if (firstRule === undefined) return
+  const firstDisplay = payloadDisplayPath(firstRule, ctx.repoDir)
+  const sotRulesDir = firstDisplay.slice(0, firstDisplay.lastIndexOf("/"))
 
   if (ctx.dryRun) {
     echo(`[dry-run] cp ${sotRulesDir}/*.rules -> ${userRulesDir}/`)
@@ -237,17 +241,15 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
   mkdirSync(userRulesDir, { recursive: true })
   let sawRules = false
   let rulesChanged = false
-  const ruleFiles = readdirSync(sotRulesDir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith(".rules"))
-    .map((e) => p(sotRulesDir, e.name))
-    .sort(compareCodepoints)
+  const ruleFiles = sotRules.filter((path) => path.endsWith(".rules")).sort(compareCodepoints)
   for (const ruleFile of ruleFiles) {
     sawRules = true
     const userRuleFile = p(userRulesDir, ruleFile.slice(ruleFile.lastIndexOf("/") + 1))
-    const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(readFileSync(ruleFile))
+    const content = payloadBytes(ruleFile)
+    const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(content)
     if (identical) continue
     if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`)
-    copyFileSync(ruleFile, userRuleFile)
+    writeFileSync(userRuleFile, content)
     rulesChanged = true
   }
   if (rulesChanged) {
@@ -256,30 +258,30 @@ function syncRules(ctx: Ctx, sotRulesDir: string, userRulesDir: string): void {
   } else if (sawRules) verbose("Codex rules already in sync")
 }
 
-function syncAgentsMd(ctx: Ctx, sotAgentsMd: string, userAgentsMd: string): void {
+function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  if (!existsSync(sotAgentsMd)) return
+  const sotAgentsMd = payloadDisplayPath("SoT/.codex/AGENTS.md", ctx.repoDir)
 
   if (ctx.dryRun) {
     echo(`[dry-run] cp ${sotAgentsMd} -> ${userAgentsMd}`)
     return
   }
 
-  if (existsSync(userAgentsMd) && readFileSync(userAgentsMd).equals(readFileSync(sotAgentsMd))) {
+  if (existsSync(userAgentsMd) && readFileSync(userAgentsMd, "utf8") === sotAgentsMdText) {
     verbose("Codex AGENTS.md already in sync")
     return
   }
   if (existsSync(userAgentsMd)) copyFileSync(userAgentsMd, `${userAgentsMd}.bak`)
-  copyFileSync(sotAgentsMd, userAgentsMd)
+  writeFileSync(userAgentsMd, sotAgentsMdText)
   change("Codex AGENTS.md synced")
   ctx.nextStepTriggers.codexRestart = true
 }
 
 // ---------------------------------------------------------- marketplace ----
 
-function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: string): void {
+function syncMarketplace(ctx: Ctx, sotMarketplaceText: string, userMarketplace: string): void {
   const { change, echo, err, verbose } = ctx.services.logger
-  if (!existsSync(sotMarketplace)) return
+  const sotMarketplace = payloadDisplayPath("SoT/.codex/plugins/marketplace.json", ctx.repoDir)
 
   if (ctx.dryRun) {
     echo(`[dry-run] cp ${sotMarketplace} -> ${userMarketplace}`)
@@ -287,7 +289,7 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
   }
 
   mkdirSync(p(ctx.agentsDir, "plugins"), { recursive: true })
-  const repo = parseJson(readFileSync(sotMarketplace, "utf8"))
+  const repo = parseJson(sotMarketplaceText)
   if (repo === undefined) throw new Error(`invalid SoT marketplace JSON: ${sotMarketplace}`)
 
   if (existsSync(userMarketplace)) {
@@ -307,7 +309,7 @@ function syncMarketplace(ctx: Ctx, sotMarketplace: string, userMarketplace: stri
     change("Codex marketplace merged (backup at marketplace.json.bak)")
     ctx.nextStepTriggers.codexRestart = true
   } else {
-    copyFileSync(sotMarketplace, userMarketplace)
+    writeFileSync(userMarketplace, sotMarketplaceText)
     change("Codex marketplace installed")
     ctx.nextStepTriggers.codexRestart = true
   }
@@ -390,13 +392,17 @@ const standaloneInstallCommand = (ctx: Ctx): string => ctx.services.deps.spec("c
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
 export function enabledPluginIds(configFile: string): Array<string> {
   if (!existsSync(configFile)) return []
+  return enabledPluginIdsFromText(readFileSync(configFile, "utf8"))
+}
+
+export function enabledPluginIdsFromText(configText: string): Array<string> {
   const ids: Array<string> = []
   let plugin = ""
   let enabled = false
   const flush = (): void => {
     if (plugin !== "" && enabled) ids.push(plugin)
   }
-  for (const line of readFileSync(configFile, "utf8").split("\n")) {
+  for (const line of configText.split("\n")) {
     const m = /^\[plugins\."([^"]+)"\][ \t]*$/.exec(line)
     if (m !== null) {
       flush()
@@ -418,12 +424,12 @@ export function enabledPluginIds(configFile: string): Array<string> {
   return ids
 }
 
-function manualPluginRefreshCommand(sotConfig: string): string {
-  const first = enabledPluginIds(sotConfig)[0]
+function manualPluginRefreshCommand(sotConfigText: string): string {
+  const first = enabledPluginIdsFromText(sotConfigText)[0]
   return first !== undefined ? `codex plugin add ${first}` : "codex plugin add <plugin@marketplace>"
 }
 
-function syncPlugins(ctx: Ctx, sotConfig: string): void {
+function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] add enabled Codex plugins from SoT")
@@ -432,7 +438,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 
   if (ctx.services.deps.probe("codex").state === "missing") {
     warn(
-      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfig)}`
+      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfigText)}`
     )
     return
   }
@@ -447,7 +453,7 @@ function syncPlugins(ctx: Ctx, sotConfig: string): void {
 
   let refreshed = 0
   let failed = 0
-  for (const pluginId of enabledPluginIds(sotConfig)) {
+  for (const pluginId of enabledPluginIdsFromText(sotConfigText)) {
     const res = spawnSync("codex", ["plugin", "add", pluginId], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
     const addOut = `${res.stdout ?? ""}${res.stderr ?? ""}`
     if (res.error === undefined && res.status === 0) {

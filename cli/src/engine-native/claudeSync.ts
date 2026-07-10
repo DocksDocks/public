@@ -17,13 +17,14 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { syncClaudeModel } from "./claudeModel"
-import { copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeFileIfChanged } from "./exec"
+import { copyFileIfChanged, copyTreeIfChanged, ensureExecutable, p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
 import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
+import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
 
 export function claudeSync(ctx: Ctx): void {
   const { warn } = ctx.services.logger
@@ -134,8 +135,7 @@ function syncScripts(ctx: Ctx, claudeDir: string): void {
       if (ensureExecutable(p(claudeDir, script))) changed = true
     }
   }
-  const mp3 = p(ctx.repoDir, "notification.mp3")
-  if (existsSync(mp3) && copyFileIfChanged(mp3, p(claudeDir, "notification.mp3"))) changed = true
+  if (writeBytesIfChanged(p(claudeDir, "notification.mp3"), payloadBytes("notification.mp3"))) changed = true
   if (changed) {
     change("Scripts synced (statusline, fetch-usage, notification)")
     ctx.nextStepTriggers.claudeRestart = true
@@ -193,10 +193,10 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const src = p(ctx.repoDir, "SoT", ".claude", "CLAUDE.md")
+  const source = payloadText("SoT/.claude/CLAUDE.md")
   const stripReason = ctx.skipRtk ? "--skip-rtk" : rtkMdAbsent ? "~/.claude/RTK.md absent (rtk not initialized)" : ""
   if (stripReason !== "") {
-    const stripped = readFileSync(src, "utf8")
+    const stripped = source
       .split("\n")
       .filter((l) => l !== "@RTK.md")
       .join("\n")
@@ -205,7 +205,7 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
     } else {
       verbose("CLAUDE.md already in sync")
     }
-  } else if (copyFileIfChanged(src, p(claudeDir, "CLAUDE.md"))) {
+  } else if (writeTextIfChanged(p(claudeDir, "CLAUDE.md"), source)) {
     change("CLAUDE.md synced")
   } else {
     verbose("CLAUDE.md already in sync")
@@ -216,7 +216,8 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
 
 function syncSettings(ctx: Ctx, claudeDir: string): void {
   const { change, echo, err, verbose } = ctx.services.logger
-  const repoSettings = p(ctx.repoDir, "SoT", ".claude", "settings.json")
+  const repoSettings = payloadDisplayPath("SoT/.claude/settings.json", ctx.repoDir)
+  const repoSettingsText = payloadText("SoT/.claude/settings.json")
   const userSettings = p(claudeDir, "settings.json")
 
   if (ctx.dryRun) {
@@ -231,7 +232,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
   }
 
   if (!existsSync(userSettings)) {
-    copyFileSync(repoSettings, userSettings)
+    writeFileSync(userSettings, repoSettingsText)
     change("Settings installed")
     ctx.nextStepTriggers.claudeRestart = true
     return
@@ -243,7 +244,7 @@ function syncSettings(ctx: Ctx, claudeDir: string): void {
     err(`Skipping settings sync: ${userSettings} is not valid JSON. Fix it manually or delete it to reinstall.`)
     throw new ExitError(1)
   }
-  const repo = parseJson(readFileSync(repoSettings, "utf8"))!
+  const repo = parseJson(repoSettingsText)!
 
   const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user)
   const out = jqStringify(merged)
@@ -334,10 +335,8 @@ function syncPermissive(ctx: Ctx, claudeDir: string): void {
 function syncClaudeJson(ctx: Ctx): void {
   const { change, echo, err, verbose } = ctx.services.logger
   const claudeJson = p(ctx.home, ".claude.json")
-  const mcpSot = p(ctx.repoDir, "SoT", ".claude", "mcp-servers.json")
 
-  let mcp: Json | undefined
-  if (existsSync(mcpSot)) mcp = parseJson(readFileSync(mcpSot, "utf8"))
+  const mcp: Json | undefined = parseJson(payloadText("SoT/.claude/mcp-servers.json"))
   const haveMcp = mcp !== undefined
 
   if (ctx.dryRun) {
@@ -564,7 +563,6 @@ function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): b
 
 function syncPlugins(ctx: Ctx, claudeDir: string): void {
   const { change, echo, verbose, warn } = ctx.services.logger
-  const repoSettingsFile = p(ctx.repoDir, "SoT", ".claude", "settings.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
 
@@ -589,7 +587,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const repoSettings = readJsonFile(repoSettingsFile)
+  const repoSettings = parseJson(payloadText("SoT/.claude/settings.json"))
   const repoObj = repoSettings !== undefined && isObject(repoSettings) ? repoSettings : {}
   const sotMarketplaces = isObject(repoObj["extraKnownMarketplaces"]) ? repoObj["extraKnownMarketplaces"] : {}
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
@@ -799,7 +797,7 @@ function lspPkg(ctx: Ctx, tool: string, pkg: string): string {
 
 function syncLspServers(ctx: Ctx): void {
   const { change, echo, verbose, warn } = ctx.services.logger
-  const sot = readJsonFile(p(ctx.repoDir, "SoT", ".claude", "settings.json"))
+  const sot = parseJson(payloadText("SoT/.claude/settings.json"))
   const enabled = sot !== undefined && isObject(sot) && isObject(sot["enabledPlugins"]) ? sot["enabledPlugins"] : undefined
   if (enabled === undefined) return
   const hasPhp = Object.prototype.hasOwnProperty.call(enabled, "php-lsp@claude-plugins-official")
