@@ -90,10 +90,13 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=ultra"] },
   { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=default"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort="] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
   { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },
+  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort="] },
   { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort=future"] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor"] },
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor="] },
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor=maybe"] },
   {
     fixture: "home-fresh",
@@ -375,9 +378,21 @@ function channelInvariantProblems(): Array<string> {
   }
 
   for (const [flag, catalog, error] of [
-    ["--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
-    ["--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
-    ["--claude-advisor", "Available claude advisor states", "--claude-advisor requires a value"]
+    [
+      "--claude-effort",
+      "Available claude effort levels",
+      "--claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>"
+    ],
+    [
+      "--codex-effort",
+      "Available codex effort levels",
+      "--codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>"
+    ],
+    [
+      "--claude-advisor",
+      "Available claude advisor states",
+      "--claude-advisor requires a value: --claude-advisor=<on|off|default>"
+    ]
   ] as const) {
     const bare = runPublicCli(["sync", flag], "home-fresh", defaultStubs)
     if (bare.exitCode !== 2 || !bare.stderr.includes(catalog) || !bare.stderr.includes(error)) {
@@ -385,6 +400,27 @@ function channelInvariantProblems(): Array<string> {
     }
     if (bare.stdout !== "") problems.push(`  modifiers: public bare ${flag} wrote catalog data to stdout`)
     rmSync(bare.home, { recursive: true, force: true })
+  }
+
+  for (const [target, flag, catalog, error] of [
+    ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
+    ["codex", "--codex-effort", "Available codex effort levels", "Invalid Codex effort ''"],
+    ["claude", "--claude-advisor", "Available claude advisor states", "Invalid Claude advisor state ''"],
+    ["claude", "--claude-model", "Available claude models", "Invalid Claude model ''"],
+    ["codex", "--codex-model", "Available codex models", "Invalid Codex model ''"]
+  ] as const) {
+    for (const args of [[`${flag}=`], [flag, ""]]) {
+      const empty = runPublicCli(["sync", target, ...args], "home-fresh", defaultStubs)
+      if (
+        empty.exitCode !== 2 ||
+        !empty.stdout.includes(catalog) ||
+        !empty.stderr.includes(error) ||
+        empty.stdout.includes("--- Sync complete ---")
+      ) {
+        problems.push(`  modifiers: public explicit-empty ${args.length === 1 ? `${flag}=` : `${flag} \"\"`} lost catalog-first invalid-value behavior`)
+      }
+      rmSync(empty.home, { recursive: true, force: true })
+    }
   }
 
   const modifierForwarding = runPublicCli(

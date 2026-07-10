@@ -3,7 +3,7 @@ title: Add sync modifiers and harden packaged CLI metadata
 goal: Add validated effort/advisor sync overrides, switch Claude to Fable/high defaults, generate the CLI version, and verify Bun's blocked-script warning.
 status: in_review
 created: "2026-07-10T13:15:37-03:00"
-updated: "2026-07-10T15:08:45-03:00"
+updated: "2026-07-10T16:16:25-03:00"
 started_at: "2026-07-10T13:53:31-03:00"
 assignee: null
 tags: [cli, sync, claude, codex]
@@ -41,7 +41,7 @@ affected_paths:
   - .github/workflows/windows-entrypoints.yml
   - docs/plans/active/sync-effort-defaults.md
 related_plans: []
-review_status: passed
+review_status: null
 planned_at_commit: 671831c1a8cd74b0980b4487bce5d6e5f3961edb
 ---
 
@@ -252,6 +252,8 @@ Keep the current production dependency graph. `@effect/platform-bun` is the only
 
 - 2026-07-10 orchestrator approval: move only the SoT `advisorModel` removal and payload regeneration from Step 4 to Step 2 so the flag-less migration replay is a true no-op; keep the model/effort defaults, model notes, and docs in Step 4.
 - 2026-07-10 orchestrator approval: clarify the version acceptance to generation-only version discovery; baseline `kitHome.ts`/`payload.ts`/`update.ts` package-root, display, and update probes are legitimate and remain out of scope.
+- 2026-07-10 Fix Round 1: distinguish an explicitly empty modifier from an option that was not supplied, normalize typed `--flag=` before Effect CLI target parsing, and reject both `--flag=` and `--flag ""` through the shared EngineNative catalog-first invalid-value path. The same latent defect was confirmed in both existing model modifiers, so the shared supplied-state path and raw/typed regression coverage include `--claude-model` and `--codex-model` as well as the three new modifiers. Effort/advisor help and bare/invalid errors now derive their exact grammar from `cli/src/efforts.ts` helpers.
+- 2026-07-10 Fix Round 1 gate note: the exact `bun run test:unit` gate ultimately passed 114/114. Three earlier full-suite attempts missed only the unrelated direct-Bun statusline p95 wall-clock cap (111.8 ms, 104.2 ms, and 105.2 ms versus 100 ms); the focused timing test and a serialized 114/114 diagnostic passed, no threshold/test was changed, and the final exact retry passed.
 
 ## Golden ledger
 
@@ -293,6 +295,12 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
   invalid `--claude-effort=max` label change only in catalog text from
   `default — SoT: xhigh` to `default — SoT: high`.
 
+### Fix Round 1 label changes
+
+- Existing `fixture=home-fresh cmd=sync claude --claude-effort` and `fixture=home-fresh cmd=sync codex --codex-effort` rows change only their bare-error grammar from generic `<level>` to the exact shared catalog order.
+- New `fixture=home-fresh cmd=sync claude --claude-effort=`, `fixture=home-fresh cmd=sync codex --codex-effort=`, and `fixture=home-fresh cmd=sync claude --claude-advisor=` rows pin exit `2`, empty argv, unchanged fixture trees, catalog-first output, and the explicit-empty invalid-value diagnostic.
+- Direct raw and public channel invariants cover both `--flag=` and `--flag ""` for those three new modifiers and both existing model modifiers. The model cases do not add golden rows; their no-sync/channel behavior is asserted directly alongside the new-modifier cases.
+
 ### New labels/cases
 
 - Dry-run Codex modifier rows for each fixture: `sync codex --dry-run --codex-effort=ultra`.
@@ -309,7 +317,7 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
 ## Acceptance criteria
 
 - [x] `bunx tsc --noEmit -p cli` exits `0`.
-- [x] `bun run test:unit` exits `0` and includes exact catalog/default/parser/mutation assertions for the three new flags.
+- [x] `bun run test:unit` exits `0` with 114/114 tests and includes exact catalog/default/parser/mutation assertions for the three new flags.
 - [x] `bun cli/scripts/generate-sot-payload.ts --check` exits `0` after generation; `git diff -- cli/src/generated/sotPayload.ts` contains only authoring changes from `SoT/.claude/settings.json`/`SoT/models.json`, their payload hash, and the new generated package-version export.
 - [x] `bun run golden:dryrun` exits `0`.
 - [x] `bun run golden:mutation` exits `0`.
@@ -317,7 +325,8 @@ These change in Step 2 only for the removed `advisorModel` bytes and directly co
 - [x] `git diff --check` exits `0`.
 - [x] `SoT/.claude/settings.json` has `model: fable`, has no `advisorModel`, and has `effortLevel: high`; `SoT/.codex/config.toml` still has both reasoning effort keys at `xhigh`.
 - [x] `diff <(git show 671831c1a8cd74b0980b4487bce5d6e5f3961edb:SoT/models.json | jq -r '.claude.models[].id') <(jq -r '.claude.models[].id' SoT/models.json)` exits `0`; `git diff -- SoT/models.json` shows only the two planned note edits.
-- [x] Bare raw-engine flags print catalogs on stdout, errors on stderr, and exit `2`; typed public bare flags print equivalent catalog+error content on stderr and exit `2`; invalid values name the bad value and exit `2`; no case mutates fixture HOME or spawns children.
+- [x] Bare raw-engine flags print catalogs on stdout, errors on stderr, and exit `2`; typed public bare flags print equivalent catalog+error content on stderr and exit `2`; invalid values name the bad value and exit `2`; no case mutates fixture HOME or spawns children. Raw help plus raw/typed bare errors render the exact effort/advisor grammar derived from the shared catalog order.
+- [x] Both `--flag=` and `--flag ""` reject explicit empty values through catalog-first shared validation with exit `2` for `--claude-effort`, `--codex-effort`, and `--claude-advisor`. The confirmed latent hole in `--claude-model` and `--codex-model` is fixed and covered through the same raw/typed path.
 - [x] `--claude-effort` and `--claude-advisor` warn and do nothing when Claude is not selected; `--codex-effort` mirrors this for Codex. Correctly targeted flags never touch the other tool's file.
 - [x] Claude effort writes only `effortLevel` and `default` writes embedded SoT `high`; Codex effort writes only top-level `model_reasoning_effort` and `default` writes embedded SoT `xhigh`.
 - [x] A flag-less Claude sync deletes the formerly kit-owned `advisorModel` through the removal pass. Any explicit advisor state excludes only that key from removals: `on` preserves/writes `advisorModel: fable`, while `off` and `default` delete it through the modifier. Repeating any same state produces no removal/modifier change lines and no advisor-caused restart trigger.
@@ -425,12 +434,7 @@ Weighted breakdown: standalone executability 21/22; actionability 13/13; depende
 
 ## Review
 
-- **Goal met:** yes — all three scoped modifiers, Fable/high/advisor-off defaults, generated CLI version, and the pinned Bun blocked-script contract are implemented and verified against the planned baseline.
-- **Regressions:** none
-- **CI:** pass — TypeScript, 112 unit tests, payload check, 25 dry-run goldens, 67 mutation goldens, and both prove-red legs passed; compiled/version and isolated consumer probes also passed.
-- **Cross-check:** none
-- **Follow-ups:** none
-- Filed by: plan-review on 2026-07-10T15:08:45-03:00
+(filled by plan-review on completion)
 
 ## Sources
 

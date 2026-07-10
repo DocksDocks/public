@@ -5,7 +5,12 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { bail, engine } from "../engine"
 import type { Logger } from "../engine-native/logger"
-import { advisorCatalog, effortCatalog } from "../efforts"
+import {
+  advisorCatalog,
+  advisorFlagGrammar,
+  effortCatalog,
+  effortFlagGrammar
+} from "../efforts"
 import { kitHome } from "../kitHome"
 import { modelCatalog, type Tool } from "../manifests"
 import { LoggerService } from "../services"
@@ -145,10 +150,10 @@ export const syncCommand = Command.make(
         }
         if (t === "--claude-effort" || t === "--codex-effort") {
           const tool: Tool = t === "--claude-effort" ? "claude" : "codex"
-          return yield* bail(`${effortCatalog(tool)}\n${t} requires a value: ${t}=<level>`)
+          return yield* bail(`${effortCatalog(tool)}\n${t} requires a value: ${effortFlagGrammar(tool)}`)
         }
         if (t === "--claude-advisor") {
-          return yield* bail(`${advisorCatalog()}\n${t} requires a value: ${t}=<on|off|default>`)
+          return yield* bail(`${advisorCatalog()}\n${t} requires a value: ${advisorFlagGrammar()}`)
         }
         const hint = LEGACY_HINTS[t]
         if (hint !== undefined) {

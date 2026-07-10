@@ -29,6 +29,15 @@ export const effortModifierValues = (tool: Tool): ReadonlyArray<string> => [
   DEFAULT
 ]
 
+export const effortValueGrammar = (tool: Tool): string => effortModifierValues(tool).join("|")
+
+export const effortFlagGrammar = (tool: Tool): string =>
+  `--${tool}-effort=<${effortValueGrammar(tool)}>`
+
+export const advisorValueGrammar = (): string => CLAUDE_ADVISOR_STATES.join("|")
+
+export const advisorFlagGrammar = (): string => `--claude-advisor=<${advisorValueGrammar()}>`
+
 export const isEffortModifierValue = (tool: Tool, value: string): boolean =>
   effortModifierValues(tool).includes(value)
 

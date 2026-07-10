@@ -392,6 +392,28 @@ describe("Codex effort modifier", () => {
 })
 
 describe.sequential("EngineNative full service injection", () => {
+  it("keeps raw help and bare errors in parity with the effort/advisor catalogs", () => {
+    const records: Array<LogRecord> = []
+    expect(runEngineNative(["sync", "--help"], stubServices(records))).toBe(0)
+    const help = records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")
+    expect(help).toContain("--claude-effort=<low|medium|high|xhigh|default>")
+    expect(help).toContain("--codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>")
+    expect(help).toContain("--claude-advisor=<on|off|default>")
+
+    for (const [target, flag, grammar] of [
+      ["claude", "--claude-effort", "--claude-effort=<low|medium|high|xhigh|default>"],
+      ["codex", "--codex-effort", "--codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>"],
+      ["claude", "--claude-advisor", "--claude-advisor=<on|off|default>"]
+    ] as const) {
+      const bareRecords: Array<LogRecord> = []
+      expect(runEngineNative(["sync", target, flag], stubServices(bareRecords))).toBe(2)
+      expect(bareRecords).toContainEqual({
+        level: "err",
+        message: `${flag} requires a value: ${grammar}`
+      })
+    }
+  })
+
   it("validates raw effort and advisor modifiers before any sync mutation", () => {
     const bareCases = [
       ["claude", "--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
@@ -416,6 +438,41 @@ describe.sequential("EngineNative full service injection", () => {
       expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
       expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
       expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+    }
+  })
+
+  it("rejects both explicit-empty spellings through shared raw modifier validation", () => {
+    const root = mkdtempSync(join(tmpdir(), "engine-di-empty-modifier-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    const cases = [
+      ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
+      ["codex", "--codex-effort", "Available codex effort levels", "Invalid Codex effort ''"],
+      ["claude", "--claude-advisor", "Available claude advisor states", "Invalid Claude advisor state ''"],
+      ["claude", "--claude-model", "Available claude models", "Invalid Claude model ''"],
+      ["codex", "--codex-model", "Available codex models", "Invalid Codex model ''"]
+    ] as const
+
+    try {
+      process.env["HOME"] = root
+      process.env["AGENTS_DIR"] = join(root, ".agents")
+      for (const [target, flag, catalog, error] of cases) {
+        for (const args of [[`${flag}=`], [flag, ""]]) {
+          const records: Array<LogRecord> = []
+          expect(
+            runEngineNative(["sync", target, "--dry-run", "--skip-rtk", ...args], stubServices(records))
+          ).toBe(2)
+          expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
+          expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
+          expect(records.every(({ level }) => level === "echo" || level === "err")).toBe(true)
+        }
+      }
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(root, { recursive: true, force: true })
     }
   })
 

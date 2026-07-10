@@ -17,6 +17,13 @@ import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs"
 
+export type ModifierFlag =
+  | "--claude-model"
+  | "--claude-effort"
+  | "--claude-advisor"
+  | "--codex-model"
+  | "--codex-effort"
+
 export interface Ctx {
   readonly repoDir: string
   readonly home: string
@@ -35,6 +42,8 @@ export interface Ctx {
   claudeAdvisor: string
   codexModel: string
   codexEffort: string
+  /** Distinguishes an explicitly empty modifier from an option that was not supplied. */
+  modifierFlags?: Set<ModifierFlag>
   /** Injected capability seam (logger/deps/platform) — see services.ts. */
   readonly services: EngineServices
   bunRuntime?: BunRuntimeState
@@ -73,6 +82,7 @@ function makeCtx(services: EngineServices): Ctx {
     claudeAdvisor: "",
     codexModel: env["CODEX_MODEL"] ?? "",
     codexEffort: "",
+    modifierFlags: new Set(),
     services,
     targetFilterSet: false,
     syncClaude: false,

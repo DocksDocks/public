@@ -791,6 +791,19 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
+    "fixture=home-fresh cmd=sync claude --claude-advisor=": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-advisor="
+      ],
+      "exitCode": 2,
+      "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m Invalid Claude advisor state '' — valid: on|off|default\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
     "fixture=home-fresh cmd=sync claude --claude-advisor=maybe": {
       "argvLog": "",
       "command": [
@@ -812,7 +825,20 @@
         "--claude-effort"
       ],
       "exitCode": 2,
-      "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m --claude-effort requires a value: --claude-effort=<level>\n",
+      "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m --claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync claude --claude-effort=": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "claude",
+        "--claude-effort="
+      ],
+      "exitCode": 2,
+      "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m Invalid Claude effort '' — valid: low|medium|high|xhigh|default\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -955,7 +981,20 @@
         "--codex-effort"
       ],
       "exitCode": 2,
-      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<level>\n",
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>\n",
+      "tree": {
+        ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
+      }
+    },
+    "fixture=home-fresh cmd=sync codex --codex-effort=": {
+      "argvLog": "",
+      "command": [
+        "sync",
+        "codex",
+        "--codex-effort="
+      ],
+      "exitCode": 2,
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort '' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
