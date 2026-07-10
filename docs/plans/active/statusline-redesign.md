@@ -3,7 +3,7 @@ title: Redesign the Claude statusline around native rate-limit data
 goal: Preserve Claude's current statusline layout while replacing jq/curl shell hooks and OAuth usage caches with three embedded Bun-run .mjs programs driven by native data.
 status: in_review
 created: "2026-07-10T03:14:32-03:00"
-updated: "2026-07-10T07:21:54-03:00"
+updated: "2026-07-10T07:28:13-03:00"
 started_at: "2026-07-10T04:59:37-03:00"
 in_review_since: "2026-07-10T06:22:15-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
@@ -71,7 +71,7 @@ affected_paths:
   - .codex/agents/sync-mechanic-agent.toml
   - CHANGELOG.md
 related_plans: [embed-sot-payload]
-review_status: null
+review_status: passed
 planned_at_commit: "c727ba5b609a5b972f95ed49eb84c052d0b45f62"
 ---
 
@@ -523,4 +523,9 @@ The migration case materializes marker bytes at the three legacy paths plus old 
 
 ## Review
 
-(filled by plan-review on completion)
+- **Goal met:** yes — native `rate_limits` is the sole quota source; the three `.mjs` programs (`SoT/.claude/bin/{statusline,session-start,notify}.mjs`) replace the jq/curl/OAuth shell hooks, which are deleted; the credential/token/cache scan prints nothing; `hooks.Stop` is absent from the template (only `SubagentStop` remains) and is readiness-gated for removal; cutover is Bun-gated with the exact deferred warning.
+- **Regressions:** none — the two parse-abort canaries (`stubs=rtk`, `--claude-plugin=supabase,n8n`) are byte-identical vs main; the four fix-round-1 defects landed (PS `$ProgressPreference='SilentlyContinue'` in the encoded guard `claudeRuntime.ts:100`; `pruneJsonKeys` own-property presence via `Object.prototype.hasOwnProperty.call` `claudeSync.ts:519` so `"Stop": null` prunes; POSIX/Windows absolute-executable requirement `deps.ts:114-135`; `formatTokensK` half-even so 1250k→1.2M `statusline.mjs:52-55`).
+- **CI:** pass — local gates all green at HEAD: `tsc` exit 0; vitest 97/97; golden-dryrun OK (22); golden-mutation OK (52); both prove-red legs exit 1 ("prove-red OK"); payload `--check` exit 0; `statusline-runtime-smoke.mjs posix` OK (direct-Bun p95 38.99 ms/100, stored-command 43.49 ms/250). Windows-only legs are CI-closed: PR #9 `gh pr checks 9` 5/5 passed 0 failed at commit 2ceca72, which is byte-identical to HEAD's code (3fcf266 changes only this plan file).
+- **Follow-ups:** none.
+- **Cross-check:** [codex gpt-5.6-sol xhigh] fresh-context review at 327e31f raised 5 findings (3 med, 2 low, NOT READY); all 5 fixed in c83fc58 + 2ceca72 and re-verified landed against source here. [claude plan-review, opus-4.8] re-ran every local gate, confirmed both parse-abort canaries byte-identical, scope audit 62 non-plan changed paths all within `affected_paths`, and validated PR #9 green at the code-equivalent commit.
+- **Filed by:** 2026-07-10T07:28:13-03:00
