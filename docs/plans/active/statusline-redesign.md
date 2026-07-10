@@ -1,13 +1,11 @@
 ---
 title: Redesign the Claude statusline around native rate-limit data
 goal: Preserve Claude's current statusline layout while replacing jq/curl shell hooks and OAuth usage caches with three embedded Bun-run .mjs programs driven by native data.
-status: blocked
+status: ongoing
 created: "2026-07-10T03:14:32-03:00"
-updated: "2026-07-10T05:07:33-03:00"
+updated: "2026-07-10T05:09:29-03:00"
 started_at: "2026-07-10T04:59:37-03:00"
 assignee: "codex gpt-5.6-sol xhigh (orchestrated by claude)"
-blocked_reason: "orchestrator decision on frozen Step-1 direct-Bun test executable"
-blocked_since: "2026-07-10T05:07:33-03:00"
 tags: [claude, statusline, hooks, bun, windows, migration]
 affected_paths:
   - SoT/.claude/bin/statusline.mjs
@@ -506,6 +504,7 @@ The migration case materializes marker bytes at the three legacy paths plus old 
 - 2026-07-10: The research handoff's unique evidence is durable in this plan: the three verbatim picker decisions are in Context, the embedded-payload release at `c727ba5` is the prerequisite, and all native-field/hook/installer claims were reverified against the linked primary docs and current source. The ephemeral `/tmp` digest is not a plan dependency.
 - 2026-07-10: Review round 1 accepted all 14 Codex findings and Claude's independent Stop-hook UX finding. Live shell characterization pinned half-even rounding (`22.5→22`, `23.5→24`, `24.5→24`, `25.5→26`); the plan chose existing output order over a golden-only reorder, and chose Linux+Windows executable CI with injected Darwin blocking tests plus optional recorded macOS manual smoke instead of adding a paid macOS runner.
 - 2026-07-10: Step 1 paused after the mandatory red/green cycle exposed a frozen-test executable mismatch: Vitest runs under Node, so `process.execPath` launches Node rather than the required Bun and cannot exercise `import.meta.main`. Direct `bun <script>` probes pass. Proposed correction awaiting orchestrator approval: replace `process.execPath` with the literal `bun` executable in the three direct-process test call sites; assertions and production code remain unchanged.
+- 2026-07-10: Orchestrator approved the frozen-test correction: three failing direct-process call sites now launch literal `bun`, with one guard comment documenting that Vitest workers themselves run under Node. Assertions and production code stayed frozen; the scoped suite passed 29/29 before unblocking.
 
 ## Review
 
