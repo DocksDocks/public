@@ -3,7 +3,7 @@ title: Gate the direct-Bun statusline benchmark on median, not p95
 goal: Stop the load-induced flake in the direct-Bun statusline latency test by gating the median (same 100ms ceiling), mirroring the outer-shell median switch from 671831c.
 status: in_review
 created: "2026-07-10T17:57:10-03:00"
-updated: "2026-07-10T18:14:34-03:00"
+updated: "2026-07-10T18:18:30-03:00"
 in_review_since: "2026-07-10T18:14:34-03:00"
 started_at: "2026-07-10T17:58:30-03:00"
 assignee: dockskit-defaults-worker (codex gpt-5.6-sol relay session)
@@ -13,7 +13,7 @@ affected_paths:
   - docs/plans/active/statusline-direct-bun-median.md
 related_plans:
   - 2026-07-10-sync-effort-defaults.md
-review_status: null
+review_status: passed
 planned_at_commit: 40b3ae26ce96e25099db556f6a34951188958c48
 ---
 
@@ -69,4 +69,9 @@ Score: 96/100 · trajectory 96 · stopped: single-pass (1-step plan, no hill-cli
 
 ## Review
 
-(placeholder — completion review writes this)
+- **Goal met:** yes — direct-Bun latency gate switched p95 → median at the unchanged 100ms ceiling (`measured[Math.floor(25/2)]` = 13th of 25 post-warmup samples), mirroring 671831c; sample count (30), warmup trim (`slice(5)`), the per-run status/stderr/stdout assertions, and the 100ms budget all unchanged.
+- **Regressions:** none
+- **CI:** pass — `bunx vitest run cli/test/unit/statusline.test.mjs` 18/18 exit 0 (renamed test "keeps direct-Bun median below 100ms after warmup" green); full `bun run test:unit` 114/114 exit 0.
+- **Cross-check:** Cross-check (2026-07-10): [codex gpt-5.6-sol high] 0 findings — verdict READY, focused test 18/18; [claude] independently verified the median-index switch (13th of 25 ordered vs p95's 24th), the unchanged 100ms ceiling, and the per-run status/stderr/stdout assertions against source before accepting.
+- **Follow-ups:** none
+- Filed by: plan-review on 2026-07-10T18:18:30-03:00
