@@ -12,6 +12,7 @@ import { statusCommand } from "./commands/status"
 import { syncCommand } from "./commands/sync"
 import { toolchainCommand } from "./commands/toolchain"
 import { updateCommand } from "./commands/update"
+import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload"
 
 const root = Command.make("docks-kit", {}, () =>
   Effect.gen(function* () {
@@ -59,7 +60,7 @@ if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
 
 const cli = Command.run(root, {
   name: "docks-kit",
-  version: "0.1.0"
+  version: GENERATED_PACKAGE_VERSION
 })
 
 // @effect/cli's Options.repeated does not accept `--flag=value` syntax (only
