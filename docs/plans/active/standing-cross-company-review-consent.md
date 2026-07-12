@@ -58,7 +58,7 @@ The rule is deliberately narrow. It authorizes only Docks plan-review's X leg; i
 | A3 | `bun run golden:dryrun && bun run golden:mutation` | Exit 0; isolated sync deploys both updated global prompt files and only expected content hashes/goldens change. |
 | A4 | `bun cli/test/standing-consent-integration.ts --case isolated-sync` | Exit 0; harness-owned HOME/CODEX_HOME deploy exact source=payload bytes for both runtimes, real home is untouched, cleanup occurs in `finally`. |
 | A5 | `DOCKS_REPO=/home/vagrant/projects/docks bun cli/test/standing-consent-integration.ts --case policy-resolution` | Exit 0 only when `DOCKS_REPO` is the pinned final policy commit; resolver records `runtime_global`, `cross_company_consent=always`, creates no consent decision evidence, and an injected host denial remains `platform_denied` with zero retry/alternate transport. |
-| A6 | `codex debug prompt-input` plus the current Claude global-instruction diagnostic in the isolated deployed homes | Each prompt view contains the exact rule once and no timestamp/history/install prose. Missing authenticated Claude diagnostic is failure, never skip/pass; no credential bytes are copied or logged. |
+| A6 | `bun cli/test/standing-consent-integration.ts --case prompt-visibility` | Exit 0. In harness-owned homes, run `codex debug prompt-input` and a real Claude TTY session whose PTY driver invokes `/memory` then `/context`. Codex model input contains the exact rule once; Claude's official diagnostics list the isolated deployed `CLAUDE.md` as loaded, whose already-hashed bytes contain the exact rule once. Timeout, missing auth, missing path, or unmatched bytes is failure, never skip/pass; transcript is redacted and no credential bytes are copied or logged. |
 | A7 | `bun run test:unit && bun run golden:dryrun && bun run golden:mutation && git diff --check` | Exit 0 twice; diff is limited to affected paths. No secret, version bump, tag, push, release, or deployed real-home mutation. |
 
 ## Out of scope
@@ -89,6 +89,7 @@ Cold-handoff result: a fresh worker can execute after the orchestrator inserts t
 - `AGENTS.md:34-41,47-56` — global SoT ownership, idempotency, and prompt-token discipline are repository contracts.
 - `cli/scripts/generate-sot-payload.ts` and `cli/src/generated/sotPayload.ts` — SoT edits require generator-driven embedded payload refresh.
 - `cli/test/unit/payload.test.ts:31-106` — payload bytes/freshness and planted stale mutations are already enforced.
+- [Claude Code configuration debugging](https://code.claude.com/docs/en/debug-your-config) — `/memory` lists loaded `CLAUDE.md` files and `/context` shows context categories; the CLI has no non-interactive prompt-input dump equivalent to Codex, so the harness drives these official diagnostics through an isolated PTY.
 - `/home/vagrant/projects/docks/docs/plans/active/cross-company-review-policy.md` — Docks owns runtime-global precedence, standing `always`, and non-bypassable `platform_denied`; replace this source with the final reviewed commit before Step 1.
 
 ## Review
