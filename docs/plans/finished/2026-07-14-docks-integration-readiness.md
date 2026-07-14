@@ -1,9 +1,9 @@
 ---
 title: Finish the docks-kit Docks integration release
 goal: Ship low Codex verbosity, standing review consent, and supported Session Relay readiness without claiming unshipped runtime guarantees.
-status: ongoing
+status: finished
 created: "2026-07-12T00:37:40-03:00"
-updated: "2026-07-14T18:17:33-03:00"
+updated: "2026-07-14T18:22:02-03:00"
 started_at: "2026-07-14T17:57:35-03:00"
 assignee: codex
 tags: [docks-kit, codex, session-relay, release]
@@ -22,11 +22,12 @@ affected_paths:
   - cli/test/unit/sessionRelayReadiness.test.ts
   - cli/test/unit/statusReadiness.test.ts
   - package.json
-  - docs/plans/active/docks-integration-readiness.md
+  - docs/plans/finished/2026-07-14-docks-integration-readiness.md
 related_plans:
   - standing-cross-company-review-consent
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-14-relay-worker-lifecycle-primitives-continuation.md
 review_status: passed
+ship_commit: ef2e12d2bf74929f622de8c5e6f03140f1a0ddab
 ---
 
 # Finish the docks-kit Docks integration release
@@ -71,7 +72,7 @@ pretend those surfaces exist.
 | 1 | Deploy low Codex verbosity, the exact two-sentence standing-consent rule to both global prompt SoTs, and the narrow-to-broad verification ladder; regenerate the embedded payload. | — | done | Source and generated payload agree; consent appears exactly once per runtime; low verbosity is documented and tested. Revert if authorization broadens beyond Docks plan review or bypasses host policy. |
 | 2 | Add a closed Session Relay readiness classifier over `codex plugin list --json`; verify it after refresh and expose it from human/JSON `status`. | 1 | done | Ready requires exactly one installed+enabled row with a non-empty version and says it applies to new sessions. Missing CLI, command failure, invalid JSON, duplicate, missing, disabled, or uninstalled rows are typed unavailable states. Revert if the CLI scans cache paths, invokes `relay doctor`, or claims lifecycle/old-session health. |
 | 3 | Run targeted generation/unit/type checks, the full unit and golden suites once, then one final clean release gate. | 1-2 | done | Every named acceptance command exits 0; later relevant edits invalidate only the affected rung and final gate. |
-| 4 | Release cli-v0.6.0, deploy `sync codex`, and verify the live config/plugin inventory. | 3 | in-flight | Remote main/tag/release are published, tag CI passes, live config says low, and live inventory reports Docks 0.12.5, Session Relay 0.11.0, Effect Kit 0.3.0 installed+enabled. |
+| 4 | Release cli-v0.6.0, deploy `sync codex`, and verify the live config/plugin inventory. | 3 | done | Remote main/tag/release are published, tag CI passes, live config says low, and live inventory reports Docks 0.12.5, Session Relay 0.11.0, Effect Kit 0.3.0 installed+enabled. |
 
 ## Acceptance criteria
 
@@ -105,11 +106,12 @@ remains.
 
 ## Review
 
-- Goal met: implementation complete; release/deployment pending.
+- Goal met: yes; implementation, release, and live deployment are complete.
 - Regressions: none found by the fresh bounded completion review.
 - CI: payload check, typecheck, 124 unit tests, 25 dry-run cases, and 70
   mutation cases passed. Live `codex plugin list --json` matched the classifier
-  schema and reported all three Docks plugins installed and enabled.
-- Follow-ups: publish `cli-v0.6.0`, sync the live Codex home, and archive this
-  plan with the release commit.
+  schema and reported all three Docks plugins installed and enabled. Release
+  workflow `29369169933` passed, published all five binaries plus checksums,
+  and published npm version 0.6.0.
+- Follow-ups: start a new Codex session to load the refreshed plugin/config.
 - Filed by: Codex fresh-context reviewer, 2026-07-14.

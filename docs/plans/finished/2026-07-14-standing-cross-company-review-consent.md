@@ -1,9 +1,9 @@
 ---
 title: Deploy standing cross-company review consent
 goal: Deploy one concise runtime-global rule that pre-authorizes Docks cross-company plan review without bypassing host security policy or authorizing unrelated exports.
-status: ongoing
+status: finished
 created: "2026-07-12T00:37:40-03:00"
-updated: "2026-07-14T18:17:33-03:00"
+updated: "2026-07-14T18:22:02-03:00"
 started_at: "2026-07-14T17:57:35-03:00"
 assignee: codex
 tags: [docks-kit, review-policy, codex, claude, consent]
@@ -22,6 +22,7 @@ related_plans:
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-12-cross-company-review-policy.md
   - docks-integration-readiness
 review_status: passed
+ship_commit: ef2e12d2bf74929f622de8c5e6f03140f1a0ddab
 ---
 
 # Deploy standing cross-company review consent
@@ -96,6 +97,6 @@ Cold-handoff result: a fresh worker can execute after the orchestrator inserts t
 - Regressions: none found by the fresh bounded completion review.
 - CI: payload check, typecheck, 124 unit tests, 25 dry-run cases, and 70
   mutation cases passed.
-- Follow-ups: deploy through the parent docks-integration release and archive
-  this plan after live verification.
+- Follow-ups: none; the parent docks-integration release deployed the prompt
+  to the live Codex home and published CLI 0.6.0.
 - Filed by: Codex fresh-context reviewer, 2026-07-14.
