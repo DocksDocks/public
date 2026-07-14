@@ -3,7 +3,7 @@ title: Deploy standing cross-company review consent
 goal: Deploy one concise runtime-global rule that pre-authorizes Docks cross-company plan review without bypassing host security policy or authorizing unrelated exports.
 status: ongoing
 created: "2026-07-12T00:37:40-03:00"
-updated: "2026-07-14T17:57:35-03:00"
+updated: "2026-07-14T18:17:33-03:00"
 started_at: "2026-07-14T17:57:35-03:00"
 assignee: codex
 tags: [docks-kit, review-policy, codex, claude, consent]
@@ -21,7 +21,7 @@ affected_paths:
 related_plans:
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-12-cross-company-review-policy.md
   - docks-integration-readiness
-review_status: null
+review_status: passed
 ---
 
 # Deploy standing cross-company review consent
@@ -46,8 +46,8 @@ The rule is deliberately narrow. It authorizes only Docks plan-review's X leg; i
 | # | Task | Depends | Status | Done condition / revert trigger |
 |---|---|---|---|---|
 | 1 | Confirm released Docks v0.12.5 resolves runtime-global `cross_company_consent=always` and preserves `platform_denied`. | — | done | Current shipped plan-manager/plan-review contracts contain both rules; no checkout-HEAD equality is required. |
-| 2 | Add the exact rule once to each global SoT and one human-facing note to root `AGENTS.md`; regenerate the payload. | 1 | in-flight | Source and generated payload contain exactly one prompt copy per runtime. **Revert:** authorization broadens beyond Docks plan review or overrides host policy. |
-| 3 | Verify payload bytes and isolated sync behavior through the release-stage focused/unit/golden gates. | 2 | planned | The bounded release-stage acceptance passes once; no authentication-sensitive runtime probe is required. |
+| 2 | Add the exact rule once to each global SoT and one human-facing note to root `AGENTS.md`; regenerate the payload. | 1 | done | Source and generated payload contain exactly one prompt copy per runtime. **Revert:** authorization broadens beyond Docks plan review or overrides host policy. |
+| 3 | Verify payload bytes and isolated sync behavior through the release-stage focused/unit/golden gates. | 2 | done | The bounded release-stage acceptance passes once; no authentication-sensitive runtime probe is required. |
 
 ## Acceptance criteria
 
@@ -91,4 +91,11 @@ Cold-handoff result: a fresh worker can execute after the orchestrator inserts t
 
 ## Review
 
-*(filled by plan-review on completion)*
+- Goal met: yes; the runtime-global rule is present exactly once in each SoT
+  and in the generated payload.
+- Regressions: none found by the fresh bounded completion review.
+- CI: payload check, typecheck, 124 unit tests, 25 dry-run cases, and 70
+  mutation cases passed.
+- Follow-ups: deploy through the parent docks-integration release and archive
+  this plan after live verification.
+- Filed by: Codex fresh-context reviewer, 2026-07-14.
