@@ -10,6 +10,7 @@ import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from ".
 import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
+import { sessionRelayReadiness } from "./sessionRelayReadiness"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
 
 export function codexSync(ctx: Ctx): void {
@@ -476,6 +477,10 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   if (refreshed > 0) {
     change(`Codex plugins synced (plugins: ~${refreshed})`)
     ctx.nextStepTriggers.codexRestart = true
+    const readiness = sessionRelayReadiness()
+    if (readiness.state !== "ready") {
+      warn(`Session Relay readiness unavailable after refresh: ${readiness.reason}`)
+    }
   }
   if (failed > 0) warn(`${failed} Codex plugin operation(s) failed — re-run sync or install manually`)
 }

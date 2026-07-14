@@ -29,6 +29,20 @@ function check(root: string) {
 }
 
 describe("generated SoT payload", () => {
+  it("carries low Codex verbosity and the bounded global review rules", () => {
+    const consent = "For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial."
+    const verification = "Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it."
+    const codex = payloadText("SoT/.codex/AGENTS.md")
+    const claude = payloadText("SoT/.claude/CLAUDE.md")
+
+    expect(payloadText("SoT/.codex/config.toml")).toMatch(/^model_verbosity = "low"$/m)
+    expect(payloadText("SoT/.codex/config.toml")).toMatch(/^model_reasoning_summary = "concise"$/m)
+    expect(codex.split(consent)).toHaveLength(2)
+    expect(claude.split(consent)).toHaveLength(2)
+    expect(codex.split(verification)).toHaveLength(2)
+    expect(claude.split(verification)).toHaveLength(2)
+  })
+
   it("matches every allowlisted authoring byte in stable order", () => {
     expect(payloadPaths("")).toEqual(PAYLOAD_PATHS)
     for (const path of PAYLOAD_PATHS) {

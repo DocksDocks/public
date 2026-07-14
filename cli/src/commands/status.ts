@@ -10,6 +10,7 @@ import {
   sotCodexModel
 } from "../manifests"
 import { kitHome } from "../kitHome"
+import { sessionRelayReadiness } from "../engine-native/sessionRelayReadiness"
 
 const json = Options.boolean("json").pipe(
   Options.withDescription("Machine-readable output")
@@ -47,11 +48,12 @@ export const statusCommand = Command.make("status", { json }, (config) =>
     const drift = gatherDrift()
     const plugins = pluginsView()
     const skills = skillsView()
+    const sessionRelay = sessionRelayReadiness()
     const toolchainTable = yield* engineCapture(["toolchain", "check"])
 
     if (config.json) {
       return yield* Console.log(
-        JSON.stringify({ kitHome: kitHome(), drift, plugins, skills, toolchainTable }, null, 2)
+        JSON.stringify({ kitHome: kitHome(), drift, plugins, skills, sessionRelayReadiness: sessionRelay, toolchainTable }, null, 2)
       )
     }
 
@@ -67,6 +69,11 @@ export const statusCommand = Command.make("status", { json }, (config) =>
     yield* Console.log(
       `\nPlugins: ${plugins.length} known (${enabled} SoT-enabled) — details: docks-kit plugins list`
     )
+    yield* Console.log(
+      sessionRelay.state === "ready"
+        ? `Session Relay: ready for new Codex sessions (v${sessionRelay.version})`
+        : `Session Relay: unavailable for new Codex sessions (${sessionRelay.reason})`
+    )
     const installed = skills.filter((s) => s.installed).length
     yield* Console.log(
       `Skills:  ${skills.length} known (${installed} installed) — details: docks-kit skills list`
@@ -74,6 +81,6 @@ export const statusCommand = Command.make("status", { json }, (config) =>
   })
 ).pipe(
   Command.withDescription(
-    "Doctor view: deployed-vs-SoT drift (model, effort, compact window), toolchain table, plugin/skill counts."
+    "Doctor view: deployed-vs-SoT drift, toolchain, plugin/skill counts, and Session Relay readiness for new Codex sessions."
   )
 )

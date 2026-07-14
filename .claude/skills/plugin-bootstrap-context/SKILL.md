@@ -7,12 +7,12 @@ metadata:
     - path: cli/src/engine-native/claudeSync.ts
       lines: "458-720"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "249-430"
+      lines: "249-500"
     - path: SoT/.claude/settings.json
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-07-09"
+  updated: "2026-07-14"
 ---
 
 # Plugin Bootstrap
@@ -101,7 +101,10 @@ reverse/unique/reverse semantics.
 `removeLegacyDocksMarketplace` cleans up the old configured Docks marketplace
 when it points at the same Git source. `enabledPluginIds` parses enabled plugin
 tables from `SoT/.codex/config.toml`; `syncPlugins` runs `codex plugin add` for
-each enabled id so installed plugin caches refresh.
+each enabled id so installed plugin caches refresh, then verifies the supported
+`codex plugin list --json` inventory. Session Relay is ready only when exactly
+one `session-relay@docks` row is installed and enabled with a version; this is
+new-session installation readiness, not lifecycle or receive-path health.
 
 ## Key Decisions
 

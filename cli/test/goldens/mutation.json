@@ -22,7 +22,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -56,7 +56,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -91,7 +91,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -126,7 +126,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -227,7 +227,7 @@
       }
     },
     "fixture=home-drift cmd=sync --prune": {
-      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.15 remove --global -y -a * -s gone-skill\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\nnpx\t--yes skills@1.5.15 remove --global -y -a * -s gone-skill\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync",
         "--prune"
@@ -249,7 +249,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -260,16 +260,16 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:d25e79ad6214c8961f5d4ee4ce22cee12dd13ecf10d58ca5f21133ae6ba7290f",
+        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync --reconcile": {
-      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync",
         "--reconcile"
@@ -291,7 +291,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -302,9 +302,9 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:d25e79ad6214c8961f5d4ee4ce22cee12dd13ecf10d58ca5f21133ae6ba7290f",
+        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -361,7 +361,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -396,7 +396,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -431,7 +431,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -470,7 +470,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -505,7 +505,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -548,7 +548,7 @@
       }
     },
     "fixture=home-drift cmd=sync codex": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -573,16 +573,16 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:d25e79ad6214c8961f5d4ee4ce22cee12dd13ecf10d58ca5f21133ae6ba7290f",
+        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync codex --codex-effort=default": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex",
@@ -608,16 +608,16 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:d25e79ad6214c8961f5d4ee4ce22cee12dd13ecf10d58ca5f21133ae6ba7290f",
+        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync codex --codex-effort=ultra": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex",
@@ -643,16 +643,16 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:dd4a8c7540e5e014ffc2bd481c28f077190f24a26b3fbc0f737ba2f09e91a6a4",
+        ".codex/config.toml": "sha256:1b83b013b209f011c57535f789cfb96c8d256e9aa4d3d01127cf97c7f0c77d7f",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync replay=2nd": {
-      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\nclaude\tplugin update user-plugin@userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync"
       ],
@@ -674,7 +674,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:e5bf79cc2c3fe9c9320c057423dbdd17a7b42c7c470d39e1d2fe1b4b059e50be",
+        ".claude/CLAUDE.md": "sha256:86cdf8f48ef50f3aa6c157b67b98b3598b756fa17c26f75b25e1d79dd57538de",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -685,16 +685,16 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:d25e79ad6214c8961f5d4ee4ce22cee12dd13ecf10d58ca5f21133ae6ba7290f",
+        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync --verbose replay=2nd": {
-      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\nnpx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync",
         "--verbose"
@@ -715,13 +715,13 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:4eab3455960a7d8ae6d68986f1ff4d5921376d76988ac57b041a83e6ef00052a",
         ".claude/settings.json.bak": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -773,7 +773,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57"
       }
@@ -872,7 +872,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57"
       }
@@ -893,7 +893,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57"
       }
@@ -914,7 +914,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57"
       }
@@ -935,7 +935,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57"
       }
@@ -954,7 +954,7 @@
       }
     },
     "fixture=home-fresh cmd=sync codex": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -967,8 +967,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1026,8 +1026,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1046,14 +1046,14 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync codex stubs=jq variant=jq-absent-native-sync": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1066,14 +1066,14 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync replay=2nd": {
-      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
+      "argvLog": "rtk\t--version\ncurl\t-fsSL --max-time 5 https://api.github.com/repos/rtk-ai/rtk/releases/latest\nrtk\tinit --global\nclaude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update\nclaude\tplugin install context7@claude-plugins-official\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin install frontend-design@claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install session-relay@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update\ncodex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\nnpx\t--yes skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex\nagent-browser\t--version\nnpm\tview agent-browser version\nbun\tpm -g ls\nnpm\tview effect-solutions version\nrtk\t--version\n",
       "command": [
         "sync"
       ],
@@ -1093,13 +1093,13 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:4eab3455960a7d8ae6d68986f1ff4d5921376d76988ac57b041a83e6ef00052a",
         ".claude/settings.json.bak": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1124,12 +1124,12 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:bac5fd32218e407ae8cad6e8c13129ff9a8d180f883bd2db6d5add70dbf65c57",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:92b889aefe47914beaacd069a709a9c33dc8057b9407f0706a11b46c818c6c42",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1141,7 +1141,7 @@
         "check"
       ],
       "exitCode": 0,
-      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nagent-browser                managed   0.31.1         -         0.31.1    ok\nbun                          managed   1.3.14         -         1.3.14    ok\nbwrap                        check     ?              -         -         ok\nclaude                       check     2.1.204        2.1.170   -         ok\ncodex                        check     0.142.2        -         -         ok\ncurl                         check     ?              -         -         ok\neffect-solutions             managed   0.5.3          -         0.5.3     ok\nffplay                       check     ?              -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     ?              -         1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        -         -         ok\nnpm                          check     ?              -         -         ok\nrtk                          managed   0.43.0         0.43.0    0.43.0    ok\nskills-cli                   pin       (npx)          -         1.5.15    pinned\ntsc                          check     6.0.3          -         6.0.3     ok\ntypescript-language-server   check     ?              -         5.3.0     ok\n",
+      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nagent-browser                managed   0.31.1         -         0.31.1    ok\nbun                          managed   1.3.14         -         1.3.14    ok\nbwrap                        check     ?              -         -         ok\nclaude                       check     2.1.204        2.1.170   -         ok\ncodex                        check     0.144.4        -         -         ok\ncurl                         check     ?              -         -         ok\neffect-solutions             managed   0.5.3          -         0.5.3     ok\nffplay                       check     ?              -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     ?              -         1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        -         -         ok\nnpm                          check     ?              -         -         ok\nrtk                          managed   0.43.0         0.43.0    0.43.0    ok\nskills-cli                   pin       (npx)          -         1.5.15    pinned\ntsc                          check     6.0.3          -         6.0.3     ok\ntypescript-language-server   check     ?              -         5.3.0     ok\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -1296,14 +1296,14 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:92e2f5d47a1f764fa30594d59abe4e1118e0bfbebc349e568e31f344183b97db",
+        ".claude/CLAUDE.md": "sha256:26b342ca525b5976636ef52b1901f005fd3248903a414f861688d74b5875af18",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:7359c99fc74f74a7ac36813f10ac86ae5ed8f88f702adb366dd241618b5b0100",
         ".claude/settings.json.bak": "sha256:fb9f3cab20327b58f92d501faeddcf50c6529d164e98beecaffea4359cc80ae9"
       }
     },
     "toml=01-top-level-comments.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1316,8 +1316,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:c3b91838449ec545d1ea19879479d21cbbea3ce43ae2325d8d8f111d70d306c7",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:436ac976da16c818781e7348f96ef7e81826faeb5073653849b5eb633f991bae",
         ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1339,7 +1339,7 @@
       }
     },
     "toml=02-first-table-insert.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1352,8 +1352,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:25f064b809429a66f4ff1fce2b26e831db6462d28830e94fb4b472be0ac51822",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:5df3b6de7d12d2dc0a425b556b65546030a4c589f8d334c7ef4a88802f85c54e",
         ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1375,7 +1375,7 @@
       }
     },
     "toml=03-features-only-landlock.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1388,8 +1388,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:47b9bf12828e85c481cb36ff7ffadb40e381f4bfe83e6d7efda8b996c5531bcc",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:f99d2d027a3d27301973807aacc6e7bb289b079b75dfe7be16a920e4a797228d",
         ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1411,7 +1411,7 @@
       }
     },
     "toml=04-features-extra-keys.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1424,8 +1424,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:3c319944e810b9641c6c51ad8c209065cf50545b7b2bc63d6db306e0600c118d",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:aaf5f0744761206cb0e1c0bd06c888fae9264125c56fd0c2ac46330e07d8f626",
         ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1447,7 +1447,7 @@
       }
     },
     "toml=05-user-tables.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1460,8 +1460,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:49df6e64f936de7ad85fb93ae131b2bb51957d2d2fb1e94cf10b8e1f65803286",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:7e0d6a0537f67a62bd640f53005e0425f2dadab3a3ccc6e33a6a23b57f67aab2",
         ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1483,7 +1483,7 @@
       }
     },
     "toml=06-sot-table-replace.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1496,8 +1496,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:3c319944e810b9641c6c51ad8c209065cf50545b7b2bc63d6db306e0600c118d",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:aaf5f0744761206cb0e1c0bd06c888fae9264125c56fd0c2ac46330e07d8f626",
         ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1519,7 +1519,7 @@
       }
     },
     "toml=07-dotted-quoted-headers.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add session-relay@docks\ncodex\tplugin add effect-kit@docks\ncodex\tplugin list --json\n",
       "command": [
         "sync",
         "codex"
@@ -1532,8 +1532,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:05273abff4d4e855347b4fc03e3bcd3c2717a64bb8ffe895d2d33f111be81c4b",
-        ".codex/config.toml": "sha256:741521f0efb3d4d60212118991b972f494ca93815dc5f7d26af1a04fba2d9ab0",
+        ".codex/AGENTS.md": "sha256:4469aa4792b1850f32c27ab7bde31771598da11cdb8a9a9b1eee9056d27d42d0",
+        ".codex/config.toml": "sha256:71d7d659bf000bc02576f3f0341ad4311f20beadecf45e5c13e40b57c5ec6c94",
         ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"

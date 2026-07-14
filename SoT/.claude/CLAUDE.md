@@ -54,6 +54,8 @@ Research the codebase before editing. Never change code you haven't read.
 Treat the 12 heuristics above as protocol, not preference. If a turn ends without honoring an applicable one (e.g., lint-loop guard not respected, edit without re-read), self-correct in the next turn before continuing.
 </constraint>
 
+For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial.
+
 ## Project Skills
 
 Projects may have a `.claude/skills/` directory with Tool Wrapper skills managed by `/docs`. Claude Code auto-discovers these at session start — only descriptions are loaded, full content loads on demand via the Skill tool.
@@ -137,6 +139,8 @@ Reaching gpt-5.6-sol — always through the `session-relay` skill (shared bus + 
 4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works. Prefer executable criteria — a test that fails before and passes after, a command with expected output — over judgment calls, and keep each change small enough that its diff is reviewable in one sitting.
 5. **Review scope follows the pipeline.** In pipeline reviews with a downstream filter (multi-agent scans, verification phases), report every issue found with confidence and severity — filtering happens downstream. In ad-hoc reviews, flag only gaps that affect correctness or the stated requirements; treat the rest as optional.
 6. **Ground every progress claim in evidence.** Before reporting progress or completion, audit each claim against a tool result from this session — show the test output, the command and what it returned. If something is unverified, say so explicitly; if tests fail, say so with the output.
+
+Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it.
 
 <constraint>
 Treat the six rules above as preventive (during generation), not remedial (after the fact). Self-correct if a turn drifts.

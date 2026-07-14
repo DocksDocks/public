@@ -98,7 +98,13 @@ const STUB_BODIES: Record<string, string> = {
   git: `case "$1" in --version) echo "git version 2.43.0";; esac`,
   jq: `case "$1" in --version) echo "jq-1.7.1";; esac`,
   claude: `case "$1" in --version) echo "2.1.204 (Claude Code)";; esac`,
-  codex: `case "$1" in --version) echo "codex-cli 0.142.2";; esac`,
+  codex: `case "$1" in
+  --version) echo "codex-cli 0.144.4";;
+  plugin) case "$2" in
+    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"session-relay@docks","version":"0.11.0","installed":true,"enabled":true}],"available":[]}' ;;
+    add) exit 0;;
+  esac;;
+esac`,
   rtk: `case "$1" in --version) echo "rtk 0.43.0";; esac`,
   npx: `exit 0`,
   npm: `case "$1" in
