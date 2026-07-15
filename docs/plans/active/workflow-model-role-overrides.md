@@ -1,9 +1,9 @@
 ---
 title: Add workflow model role overrides
 goal: Add strict docks-kit workflow-role and review-bound overrides that emit one identical Docks workflow record to Claude and Codex global instructions.
-status: ongoing
+status: in_review
 created: "2026-07-15T18:51:35-03:00"
-updated: "2026-07-15T20:02:47-03:00"
+updated: "2026-07-15T20:21:50-03:00"
 started_at: "2026-07-15T19:09:18-03:00"
 assignee: null
 review_author_company: openai
@@ -48,6 +48,7 @@ related_plans:
 review_status: null
 planned_at_commit: 0dcbd24e8963dfb180e26e24e3a94960057443d8
 execution_base_commit: 9caeb7e278c96c6aeb01170ccafdb81a9380cae5
+in_review_since: "2026-07-15T20:21:50-03:00"
 ---
 
 ## Goal
@@ -224,8 +225,8 @@ prior deploy-time workflow overrides.
 | 1 | Add the closed workflow registry and pure contract helpers for exact selector parsing, profile expansion, strict model/effort membership, bounded integers, record validation, and compact JCS. Keep existing deploy-time model validators permissive. | `SoT/models.json:1-31`; new `cli/src/workflowModels.ts`; `cli/src/efforts.ts:4-42`; read-only boundary `cli/src/engine-native/models.ts:30-71` | none | done | Defaults expand exactly as specified; strict workflow validation rejects unknown models/efforts/profiles and bad bounds without changing `validateClaudeModel`/`validateCodexModel` behavior. |
 | 2 | Extend the helper and root CLI. `models workflow [--json]` renders the registry; the five root flags route to a dedicated raw `workflow` EngineNative mode. Bare role flags print the workflow helper plus missing-value usage and exit 2; explicit empty/invalid values use the same validation path. | `cli/src/commands/models.ts:1-46`; `cli/src/main.ts:17-84`; `cli/src/engine-native/index.ts:20-105`; `cli/src/engine-native/parseArgs.ts:27-316` | 1 | done | Root help lists all five flags; root overrides do not run full sync; helper text and JSON agree; every invalid/bare case exits 2 before write preparation. |
 | 3 | Deploy the record safely. Add the exact default line to both prompt SoTs, regenerate the embedded payload, share one record-upsert helper between Claude/Codex sync, and implement workflow-only prepare/commit with partial-override merge, duplicate repair, conflict STOP, idempotence, snapshot rollback, and fresh-session guidance. | `SoT/.claude/CLAUDE.md`; `SoT/.codex/AGENTS.md`; new `cli/src/engine-native/workflowDeploy.ts`; `cli/src/engine-native/claudeSync.ts:206-242`; `cli/src/engine-native/codexSync.ts:263-280`; `cli/src/generated/sotPayload.ts` | 1, 2 | done | Normal sync writes defaults; a root override writes one identical complete line to both deployed prompts; omitted fields persist; invalid/conflicting input leaves both byte-identical to pre-run snapshots; a second identical run is a no-op. |
-| 4 | Add focused unit and golden coverage, including generated-payload integrity. At the producer boundary, fixtures prove the ordered Fable→Opus chain is preserved for Docks candidate-specific fallback and that no docks-kit helper/preflight claims provider-wide fallback; Docks remains the runtime classifier. | new `cli/test/unit/workflowModels.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/unit/payload.test.ts`; `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json` | 1-3 | ongoing | Tests cover defaults, exact/profile selectors, all bounds, partial/all overrides, bare/empty failures, no-mutation failures, one-sided repair, divergent-record STOP, rollback, idempotent replay, stable JSON/JCS, and producer/runtime availability ownership. Every planted workflow mutation is detected. |
-| 5 | Update public help/docs, remove the four obsolete path-qualified Claude `Write(...)` permission rules, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `SoT/.claude/settings.json`; `cli/src/generated/sotPayload.ts` | 1-4 | planned | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability; Claude permissions retain the four supported `Edit(...)` rules and no path-qualified `Write(...)` rules; every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
+| 4 | Add focused unit and golden coverage, including generated-payload integrity. At the producer boundary, fixtures prove the ordered Fable→Opus chain is preserved for Docks candidate-specific fallback and that no docks-kit helper/preflight claims provider-wide fallback; Docks remains the runtime classifier. | new `cli/test/unit/workflowModels.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/unit/payload.test.ts`; `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json` | 1-3 | done | Tests cover defaults, exact/profile selectors, all bounds, partial/all overrides, bare/empty failures, no-mutation failures, one-sided repair, divergent-record STOP, rollback, idempotent replay, stable JSON/JCS, and producer/runtime availability ownership. Every planted workflow mutation is detected. |
+| 5 | Update public help/docs, remove the four obsolete path-qualified Claude `Write(...)` permission rules, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `SoT/.claude/settings.json`; `cli/src/generated/sotPayload.ts` | 1-4 | done | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability; Claude permissions retain the four supported `Edit(...)` rules and no path-qualified `Write(...)` rules; every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
 
 ## Acceptance criteria
 
