@@ -1,9 +1,10 @@
 ---
 title: Add workflow model role overrides
 goal: Add strict docks-kit workflow-role and review-bound overrides that emit one identical Docks workflow record to Claude and Codex global instructions.
-status: in_review
+status: finished
 created: "2026-07-15T18:51:35-03:00"
-updated: "2026-07-15T20:37:21-03:00"
+updated: "2026-07-15T20:41:09-03:00"
+ship_commit: b3d6df4194a93bbc875123d8a790b19de8665c3c
 started_at: "2026-07-15T19:09:18-03:00"
 assignee: null
 review_author_company: openai
