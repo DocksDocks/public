@@ -3,7 +3,7 @@ title: Add workflow model role overrides
 goal: Add strict docks-kit workflow-role and review-bound overrides that emit one identical Docks workflow record to Claude and Codex global instructions.
 status: in_review
 created: "2026-07-15T18:51:35-03:00"
-updated: "2026-07-15T20:30:54-03:00"
+updated: "2026-07-15T20:34:08-03:00"
 started_at: "2026-07-15T19:09:18-03:00"
 assignee: null
 review_author_company: openai
@@ -241,8 +241,8 @@ prior deploy-time workflow overrides.
 |---|---|---|
 | A1 | `bun cli/scripts/generate-sot-payload.ts --check` | Exits 0; generated payload exactly matches the edited SoT and package inputs. |
 | A2 | `bun run test:unit cli/test/unit/workflowModels.test.ts cli/test/unit/engine-di.test.ts cli/test/unit/payload.test.ts` | Exits 0; focused workflow validation, raw-mode dispatch, rollback/idempotence, and payload tests pass. |
-| A3 | `GOLDEN_FILTER='workflow|role override|review bound' bun run golden:dryrun` | Exits 0; selected helper/root-flag/default/override/error cases match committed goldens, including no-mutation failures. |
-| A4 | `GOLDEN_FILTER='workflow|role override|review bound' bun run golden:mutation` | Exits 0 and reports every selected planted mutation detected. |
+| A3 | `GOLDEN_FILTER='workflow\|role override\|review bound' bun run golden:dryrun` | Exits 0; selected helper/root-flag/default/override/error cases match committed goldens, including no-mutation failures. |
+| A4 | `GOLDEN_FILTER='workflow\|role override\|review bound' bun run golden:mutation` | Exits 0 and reports every selected planted mutation detected. |
 | A5 | `bun cli/src/main.ts models workflow --json \| jq -e '.schema == 1 and .defaults.orchestrator == "profile:claude-best" and .defaults.reviewer == "codex:gpt-5.6-sol@xhigh" and .defaults.implementer == "codex:gpt-5.6-sol@xhigh" and .defaults.review.minimum_score == 90 and .defaults.review.max_rounds == 3 and .profiles["claude-best"].candidates[0].model == "fable" and .profiles["claude-best"].candidates[1].model == "opus" and .availability == "checked_when_used"'` | Exits 0; machine helper exposes the exact defaults and ordered profile. |
 | A6 | `jq -e '(.permissions.allow \| index("Edit(./)") != null and index("Write(./)") == null) and (.permissions.deny \| index("Edit(**/.env)") != null and index("Edit(**/.env.local)") != null and index("Edit(**/secrets/**)") != null and all(.[]; startswith("Write(") \| not))' SoT/.claude/settings.json` | Exits 0; supported Edit rules remain and every obsolete path-qualified Write rule is absent. |
 | A7 | `test -f docs/plans/active/effect-v4-maintainer-skill.md && rg -q '30dee8607214c893dd89f6eee65c669ef3dce8c9' docs/plans/active/effect-v4-maintainer-skill.md && rg -q 'stable exact .4.x.y., no beta/snapshot/prerelease' docs/plans/active/effect-v4-maintainer-skill.md` | Exits 0; the requested follow-up exists, pins the reviewed upstream tree, and preserves the stable-only v4 gate. |
