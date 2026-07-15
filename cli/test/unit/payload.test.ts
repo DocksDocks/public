@@ -62,6 +62,20 @@ describe("generated SoT payload", () => {
       .toEqual(defaultWorkflowRecord())
   })
 
+  it("uses Claude Edit permission matchers for every path-qualified file rule", () => {
+    const settings = JSON.parse(payloadText("SoT/.claude/settings.json")) as {
+      permissions: { allow: Array<string>; deny: Array<string> }
+    }
+
+    expect(settings.permissions.allow).toContain("Edit(./)")
+    expect(settings.permissions.allow).not.toContain("Write(./)")
+    for (const path of ["**/.env", "**/.env.local", "**/secrets/**"]) {
+      expect(settings.permissions.deny).toContain(`Edit(${path})`)
+      expect(settings.permissions.deny).not.toContain(`Write(${path})`)
+    }
+    expect(settings.permissions.deny.some((rule) => rule.startsWith("Write("))).toBe(false)
+  })
+
   it("matches every allowlisted authoring byte in stable order", () => {
     expect(payloadPaths("")).toEqual(PAYLOAD_PATHS)
     for (const path of PAYLOAD_PATHS) {
