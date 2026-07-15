@@ -16,6 +16,11 @@ import {
   isEffortModifierValue
 } from "../efforts"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
+import {
+  buildWorkflowRecord,
+  workflowCatalog,
+  type WorkflowOverrides
+} from "../workflowModels"
 
 export class ExitError extends Error {
   constructor(readonly code: number) {
@@ -257,6 +262,65 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
 
 function printCatalog(ctx: Ctx, catalog: string): void {
   for (const line of catalog.split("\n")) ctx.services.logger.echo(line)
+}
+
+const WORKFLOW_FLAGS = {
+  "--model-orchestrator": "orchestrator",
+  "--model-reviewer": "reviewer",
+  "--model-implementer": "implementer",
+  "--review-min-score": "minimumScore",
+  "--review-max-rounds": "maxRounds"
+} as const satisfies Readonly<Record<string, keyof WorkflowOverrides>>
+
+function workflowUsage(ctx: Ctx): void {
+  printCatalog(ctx, workflowCatalog())
+  ctx.services.logger.echo("")
+  ctx.services.logger.echo("Workflow override flags:")
+  ctx.services.logger.echo("  --model-orchestrator=<profile:name|tool:model@effort>")
+  ctx.services.logger.echo("  --model-reviewer=<profile:name|tool:model@effort>")
+  ctx.services.logger.echo("  --model-implementer=<profile:name|tool:model@effort>")
+  ctx.services.logger.echo("  --review-min-score=<0..100>")
+  ctx.services.logger.echo("  --review-max-rounds=<1..10>")
+}
+
+export function parseWorkflowArgs(ctx: Ctx, args: ReadonlyArray<string>): WorkflowOverrides {
+  const overrides: Partial<Record<keyof WorkflowOverrides, string>> = {}
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index] ?? ""
+    if (arg === "-h" || arg === "--help") {
+      workflowUsage(ctx)
+      throw new ExitError(0)
+    }
+
+    const equals = arg.indexOf("=")
+    const flag = equals === -1 ? arg : arg.slice(0, equals)
+    const key = WORKFLOW_FLAGS[flag as keyof typeof WORKFLOW_FLAGS]
+    if (key === undefined) throw new Error(`Unknown workflow arg: ${arg}`)
+
+    let value: string
+    if (equals !== -1) {
+      value = arg.slice(equals + 1)
+    } else {
+      const next = args[index + 1]
+      if (next === undefined || next.startsWith("--")) {
+        throw new Error(`${flag} requires a value: ${flag}=<value>`)
+      }
+      value = next
+      index += 1
+    }
+    if (value === "") throw new Error(`${flag} requires a value: ${flag}=<value>`)
+    overrides[key] = value
+  }
+
+  if (Object.keys(overrides).length === 0) {
+    throw new Error("At least one workflow override flag is required")
+  }
+  buildWorkflowRecord(overrides)
+  return overrides
+}
+
+export function printWorkflowUsage(ctx: Ctx): void {
+  workflowUsage(ctx)
 }
 
 export function validateModifierFlags(ctx: Ctx): void {

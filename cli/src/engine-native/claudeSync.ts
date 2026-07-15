@@ -31,6 +31,7 @@ import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
+import { renderDefaultWorkflowInstructions } from "./workflowDeploy"
 
 export type ClaudeRuntimeState =
   | { readonly kind: "ready"; readonly paths: ClaudeRuntimePaths }
@@ -222,7 +223,7 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const source = payloadText("SoT/.claude/CLAUDE.md")
+  const source = renderDefaultWorkflowInstructions(payloadText("SoT/.claude/CLAUDE.md"))
   const stripReason = ctx.skipRtk ? "--skip-rtk" : rtkMdAbsent ? "~/.claude/RTK.md absent (rtk not initialized)" : ""
   if (stripReason !== "") {
     const stripped = source

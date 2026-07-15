@@ -1,3 +1,7 @@
+import { spawnSync } from "node:child_process"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -11,6 +15,9 @@ import {
   resolveWorkflowSelector,
   workflowRegistryView
 } from "../../src/workflowModels"
+
+const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
+const CLI = join(REPO_DIR, "cli", "src", "main.ts")
 
 describe("workflow model registry", () => {
   it("exposes the closed defaults, ordered profile, strict tools, and deferred availability", () => {
@@ -184,5 +191,82 @@ describe("workflow model registry", () => {
     expect(renderWorkflowRecordLine(defaultWorkflowRecord())).toBe(
       `${WORKFLOW_RECORD_PREFIX}{"implementer":{"candidates":[{"company":"openai","effort":"xhigh","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@xhigh"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"opus","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"xhigh","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@xhigh"},"schema":1}`
     )
+  })
+
+  it("renders the workflow helper as stable text and machine-readable JSON", () => {
+    const json = spawnSync("bun", [CLI, "models", "workflow", "--json"], { encoding: "utf8" })
+    expect(json.status).toBe(0)
+    expect(JSON.parse(json.stdout)).toEqual(workflowRegistryView())
+    expect(json.stderr).toBe("")
+
+    const text = spawnSync("bun", [CLI, "models", "workflow"], { encoding: "utf8" })
+    expect(text.status).toBe(0)
+    expect(text.stdout).toContain("profile:claude-best")
+    expect(text.stdout).toContain("claude:fable@high")
+    expect(text.stdout).toContain("claude:opus@xhigh")
+    expect(text.stdout).toContain("Availability: checked when used by Docks")
+    expect(text.stdout).not.toMatch(/provider-wide fallback|preflight/i)
+  })
+
+  it("routes public root overrides to workflow-only deployment", () => {
+    const home = mkdtempSync(join(tmpdir(), "workflow-public-cli-"))
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    mkdirSync(join(home, ".codex"), { recursive: true })
+    try {
+      const result = spawnSync(
+        "bun",
+        [
+          CLI,
+          "--model-reviewer",
+          "codex:gpt-5.6-terra@high",
+          "--review-min-score=80"
+        ],
+        {
+          encoding: "utf8",
+          env: { ...process.env, HOME: home, AGENTS_DIR: join(home, ".agents") }
+        }
+      )
+      expect(result.status).toBe(0)
+      expect(result.stdout).toBe("")
+      expect(result.stderr).toContain("Workflow models updated")
+      expect(result.stderr).not.toContain("Sync complete")
+
+      const claude = readFileSync(join(home, ".claude", "CLAUDE.md"), "utf8")
+      const codex = readFileSync(join(home, ".codex", "AGENTS.md"), "utf8")
+      const claudeLine = claude.split("\n").find((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
+      const codexLine = codex.split("\n").find((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
+      expect(claudeLine).toBe(codexLine)
+      expect(claudeLine).toContain('"minimum_score":80')
+      expect(claudeLine).toContain('"model":"gpt-5.6-terra"')
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("shows the workflow registry for public bare and explicitly empty root flags", () => {
+    for (const args of [
+      ["--model-orchestrator"],
+      ["--model-reviewer="],
+      ["--review-max-rounds"]
+    ]) {
+      const result = spawnSync("bun", [CLI, ...args], { encoding: "utf8" })
+      expect(result.status, args.join(" ")).toBe(2)
+      expect(result.stdout, args.join(" ")).toContain("Workflow model registry")
+      expect(result.stderr, args.join(" ")).toMatch(/requires a value|must be a base-10 integer/)
+    }
+  })
+
+  it("lists every workflow override in public root help", () => {
+    const result = spawnSync("bun", [CLI, "--help"], { encoding: "utf8" })
+    expect(result.status).toBe(0)
+    for (const flag of [
+      "--model-orchestrator",
+      "--model-reviewer",
+      "--model-implementer",
+      "--review-min-score",
+      "--review-max-rounds"
+    ]) {
+      expect(result.stdout).toContain(flag)
+    }
   })
 })

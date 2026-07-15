@@ -20,6 +20,16 @@ import {
 } from "../../src/engine-native/services"
 import { sotEffort } from "../../src/efforts"
 import { kitHome } from "../../src/kitHome"
+import {
+  deployWorkflowOverrides,
+  type WorkflowFileSystem
+} from "../../src/engine-native/workflowDeploy"
+import {
+  WORKFLOW_RECORD_PREFIX,
+  buildWorkflowRecord,
+  defaultWorkflowRecord,
+  renderWorkflowRecordLine
+} from "../../src/workflowModels"
 
 type LogLevel = "change" | "verbose" | "warn" | "err" | "echo"
 interface LogRecord {
@@ -392,6 +402,144 @@ describe("Codex effort modifier", () => {
 })
 
 describe.sequential("EngineNative full service injection", () => {
+  it("deploys partial workflow overrides, repairs one-sided state, and replays idempotently", () => {
+    const home = mkdtempSync(join(tmpdir(), "engine-di-workflow-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    const claudePath = join(home, ".claude", "CLAUDE.md")
+    const codexPath = join(home, ".codex", "AGENTS.md")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    mkdirSync(join(home, ".codex"), { recursive: true })
+    writeFileSync(claudePath, `claude instructions\n${renderWorkflowRecordLine(defaultWorkflowRecord())}\n`)
+    writeFileSync(codexPath, "codex instructions\n")
+
+    try {
+      process.env["HOME"] = home
+      process.env["AGENTS_DIR"] = join(home, ".agents")
+      const firstRecords: Array<LogRecord> = []
+      expect(runEngineNative([
+        "workflow",
+        "--model-reviewer=codex:gpt-5.6-terra@high",
+        "--review-min-score=80"
+      ], stubServices(firstRecords))).toBe(0)
+
+      const firstClaude = readFileSync(claudePath, "utf8")
+      const firstCodex = readFileSync(codexPath, "utf8")
+      const firstClaudeLines = firstClaude.split("\n").filter((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
+      const firstCodexLines = firstCodex.split("\n").filter((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
+      expect(firstClaudeLines).toHaveLength(1)
+      expect(firstCodexLines).toEqual(firstClaudeLines)
+      expect(firstClaudeLines[0]).toContain('"selector":"profile:claude-best"')
+      expect(firstClaudeLines[0]).toContain('"selector":"codex:gpt-5.6-terra@high"')
+      expect(firstClaudeLines[0]).toContain('"minimum_score":80')
+      expect(firstRecords.some(({ message }) => message.includes("Sync complete"))).toBe(false)
+
+      const secondRecords: Array<LogRecord> = []
+      expect(runEngineNative([
+        "workflow",
+        "--model-reviewer=codex:gpt-5.6-terra@high",
+        "--review-min-score=80"
+      ], stubServices(secondRecords))).toBe(0)
+      expect(readFileSync(claudePath, "utf8")).toBe(firstClaude)
+      expect(readFileSync(codexPath, "utf8")).toBe(firstCodex)
+      expect(secondRecords.some(({ level }) => level === "change")).toBe(false)
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects bare, empty, invalid, malformed, and conflicting workflow input before mutation", () => {
+    const home = mkdtempSync(join(tmpdir(), "engine-di-workflow-invalid-"))
+    const previousHome = process.env["HOME"]
+    const previousAgents = process.env["AGENTS_DIR"]
+    const claudePath = join(home, ".claude", "CLAUDE.md")
+    const codexPath = join(home, ".codex", "AGENTS.md")
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    mkdirSync(join(home, ".codex"), { recursive: true })
+    const defaults = renderWorkflowRecordLine(defaultWorkflowRecord())
+    const reset = (claude = `claude\n${defaults}\n`, codex = `codex\n${defaults}\n`): [string, string] => {
+      writeFileSync(claudePath, claude)
+      writeFileSync(codexPath, codex)
+      return [claude, codex]
+    }
+    const assertUnchanged = ([claude, codex]: [string, string]): void => {
+      expect(readFileSync(claudePath, "utf8")).toBe(claude)
+      expect(readFileSync(codexPath, "utf8")).toBe(codex)
+    }
+
+    try {
+      process.env["HOME"] = home
+      process.env["AGENTS_DIR"] = join(home, ".agents")
+      for (const args of [
+        ["--model-orchestrator"],
+        ["--model-reviewer="],
+        ["--model-implementer=codex:unknown@high"],
+        ["--review-min-score=90", "--review-max-rounds=0"],
+        ["--model-orchestrator=profile:claude-best", "--review-min-score=101"]
+      ]) {
+        const before = reset()
+        const records: Array<LogRecord> = []
+        expect(runEngineNative(["workflow", ...args], stubServices(records))).toBe(2)
+        expect(records.some(({ message }) => message.includes("Workflow model registry"))).toBe(true)
+        expect(records.some(({ level }) => level === "err")).toBe(true)
+        assertUnchanged(before)
+      }
+
+      const malformed = reset(`claude\n${WORKFLOW_RECORD_PREFIX}{broken}\n`)
+      expect(runEngineNative(["workflow", "--review-min-score=80"], stubServices([]))).toBe(2)
+      assertUnchanged(malformed)
+
+      const alternate = renderWorkflowRecordLine(buildWorkflowRecord({ minimumScore: "70" }))
+      const conflicting = reset(`claude\n${defaults}\n`, `codex\n${alternate}\n`)
+      expect(runEngineNative(["workflow", "--review-min-score=80"], stubServices([]))).toBe(2)
+      assertUnchanged(conflicting)
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      if (previousAgents === undefined) delete process.env["AGENTS_DIR"]
+      else process.env["AGENTS_DIR"] = previousAgents
+      rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it("restores the first workflow document when the second atomic write fails", () => {
+    const home = "/workflow-rollback"
+    const claudePath = `${home}/.claude/CLAUDE.md`
+    const codexPath = `${home}/.codex/AGENTS.md`
+    const original = new Map<string, string>([
+      [claudePath, "claude\n"],
+      [codexPath, "codex\n"]
+    ])
+    const files = new Map(original)
+    let failed = false
+    const fileSystem: WorkflowFileSystem = {
+      read: (path) => files.get(path),
+      writeAtomic: (path, bytes) => {
+        if (path === codexPath && !failed) {
+          failed = true
+          throw new Error("injected second write failure")
+        }
+        files.set(path, bytes)
+      },
+      remove: (path) => void files.delete(path)
+    }
+    const records: Array<LogRecord> = []
+    const ctx = modifierCtx(home, records)
+
+    expect(() => deployWorkflowOverrides(ctx, { minimumScore: "80" }, fileSystem)).toThrow(
+      "injected second write failure"
+    )
+    expect(files).toEqual(original)
+    expect(records).toContainEqual({
+      level: "err",
+      message: "Workflow update failed; restored both instruction files to their pre-run state"
+    })
+  })
+
   it("keeps raw help and bare errors in parity with the effort/advisor catalogs", () => {
     const records: Array<LogRecord> = []
     expect(runEngineNative(["sync", "--help"], stubServices(records))).toBe(0)

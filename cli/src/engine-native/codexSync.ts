@@ -12,6 +12,7 @@ import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { sessionRelayReadiness } from "./sessionRelayReadiness"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
+import { renderDefaultWorkflowInstructions } from "./workflowDeploy"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -24,7 +25,7 @@ export function codexSync(ctx: Ctx): void {
   syncCodexModel(ctx, ctx.codexModel)
   syncCodexEffort(ctx, ctx.codexEffort)
   syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"))
-  syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"))
+  syncAgentsMd(ctx, renderDefaultWorkflowInstructions(payloadText("SoT/.codex/AGENTS.md")), p(codexDir, "AGENTS.md"))
   syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
   removeLegacyDocksMarketplace(ctx, userConfig)
   syncPlugins(ctx, sotConfig)
