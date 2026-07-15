@@ -3,7 +3,7 @@ title: Add workflow model role overrides
 goal: Add strict docks-kit workflow-role and review-bound overrides that emit one identical Docks workflow record to Claude and Codex global instructions.
 status: in_review
 created: "2026-07-15T18:51:35-03:00"
-updated: "2026-07-15T20:21:50-03:00"
+updated: "2026-07-15T20:24:44-03:00"
 started_at: "2026-07-15T19:09:18-03:00"
 assignee: null
 review_author_company: openai
@@ -43,8 +43,10 @@ affected_paths:
   - README.md
   - AGENTS.md
   - CLAUDE.md
+  - docs/plans/active/effect-v4-maintainer-skill.md
 related_plans:
   - "docks:workflow-model-roles-and-bounded-reviews"
+  - effect-v4-maintainer-skill
 review_status: null
 planned_at_commit: 0dcbd24e8963dfb180e26e24e3a94960057443d8
 execution_base_commit: 9caeb7e278c96c6aeb01170ccafdb81a9380cae5
@@ -102,6 +104,11 @@ Claude permission diagnostics reject path-qualified `Write(...)` rules because
 `Edit(...)` is the matcher that covers all built-in file-editing tools. The SoT
 already has the equivalent four `Edit(...)` rules, so this change removes only
 the redundant unsupported `Write(...)` entries.
+
+The owner also requested a follow-up plan for Kit Langton's Effect v4 skill.
+Because this checkout remains on Effect 3 and the stable companion package graph
+is not yet v4-compatible, that artifact is a separate stable-gated cold-handoff
+plan; it does not install the v4 skill or widen this implementation.
 
 ## Environment & how-to-run
 
@@ -226,7 +233,7 @@ prior deploy-time workflow overrides.
 | 2 | Extend the helper and root CLI. `models workflow [--json]` renders the registry; the five root flags route to a dedicated raw `workflow` EngineNative mode. Bare role flags print the workflow helper plus missing-value usage and exit 2; explicit empty/invalid values use the same validation path. | `cli/src/commands/models.ts:1-46`; `cli/src/main.ts:17-84`; `cli/src/engine-native/index.ts:20-105`; `cli/src/engine-native/parseArgs.ts:27-316` | 1 | done | Root help lists all five flags; root overrides do not run full sync; helper text and JSON agree; every invalid/bare case exits 2 before write preparation. |
 | 3 | Deploy the record safely. Add the exact default line to both prompt SoTs, regenerate the embedded payload, share one record-upsert helper between Claude/Codex sync, and implement workflow-only prepare/commit with partial-override merge, duplicate repair, conflict STOP, idempotence, snapshot rollback, and fresh-session guidance. | `SoT/.claude/CLAUDE.md`; `SoT/.codex/AGENTS.md`; new `cli/src/engine-native/workflowDeploy.ts`; `cli/src/engine-native/claudeSync.ts:206-242`; `cli/src/engine-native/codexSync.ts:263-280`; `cli/src/generated/sotPayload.ts` | 1, 2 | done | Normal sync writes defaults; a root override writes one identical complete line to both deployed prompts; omitted fields persist; invalid/conflicting input leaves both byte-identical to pre-run snapshots; a second identical run is a no-op. |
 | 4 | Add focused unit and golden coverage, including generated-payload integrity. At the producer boundary, fixtures prove the ordered Fable→Opus chain is preserved for Docks candidate-specific fallback and that no docks-kit helper/preflight claims provider-wide fallback; Docks remains the runtime classifier. | new `cli/test/unit/workflowModels.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/unit/payload.test.ts`; `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json` | 1-3 | done | Tests cover defaults, exact/profile selectors, all bounds, partial/all overrides, bare/empty failures, no-mutation failures, one-sided repair, divergent-record STOP, rollback, idempotent replay, stable JSON/JCS, and producer/runtime availability ownership. Every planted workflow mutation is detected. |
-| 5 | Update public help/docs, remove the four obsolete path-qualified Claude `Write(...)` permission rules, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `SoT/.claude/settings.json`; `cli/src/generated/sotPayload.ts` | 1-4 | done | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability; Claude permissions retain the four supported `Edit(...)` rules and no path-qualified `Write(...)` rules; every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
+| 5 | Update public help/docs, remove the four obsolete path-qualified Claude `Write(...)` permission rules, create the requested stable-gated Effect v4 maintainer-skill follow-up plan, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `SoT/.claude/settings.json`; `cli/src/generated/sotPayload.ts`; `docs/plans/active/effect-v4-maintainer-skill.md` | 1-4 | ongoing | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability; Claude permissions retain the four supported `Edit(...)` rules and no path-qualified `Write(...)` rules; the follow-up pins Kit's immutable skill tree and refuses beta migration; every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
 
 ## Acceptance criteria
 
@@ -238,6 +245,7 @@ prior deploy-time workflow overrides.
 | A4 | `GOLDEN_FILTER='workflow|role override|review bound' bun run golden:mutation` | Exits 0 and reports every selected planted mutation detected. |
 | A5 | `bun cli/src/main.ts models workflow --json | jq -e '.schema == 1 and .defaults.orchestrator == "profile:claude-best" and .defaults.reviewer == "codex:gpt-5.6-sol@xhigh" and .defaults.implementer == "codex:gpt-5.6-sol@xhigh" and .defaults.review.minimum_score == 90 and .defaults.review.max_rounds == 3 and .profiles["claude-best"].candidates[0].model == "fable" and .profiles["claude-best"].candidates[1].model == "opus" and .availability == "checked_when_used"'` | Exits 0; machine helper exposes the exact defaults and ordered profile. |
 | A6 | `jq -e '(.permissions.allow | index("Edit(./)") != null and index("Write(./)") == null) and (.permissions.deny | index("Edit(**/.env)") != null and index("Edit(**/.env.local)") != null and index("Edit(**/secrets/**)") != null and all(.[]; startswith("Write(") | not))' SoT/.claude/settings.json` | Exits 0; supported Edit rules remain and every obsolete path-qualified Write rule is absent. |
+| A7 | `test -f docs/plans/active/effect-v4-maintainer-skill.md && rg -q '30dee8607214c893dd89f6eee65c669ef3dce8c9' docs/plans/active/effect-v4-maintainer-skill.md && rg -q 'stable exact .4.x.y., no beta/snapshot/prerelease' docs/plans/active/effect-v4-maintainer-skill.md` | Exits 0; the requested follow-up exists, pins the reviewed upstream tree, and preserves the stable-only v4 gate. |
 
 The required project CI is
 `bun run typecheck && bun run test:unit && bun run golden:dryrun && bun run golden:mutation`.
@@ -315,7 +323,7 @@ Completion runs it once after A1-A6; it is not duplicated as an acceptance row.
   the one broad gate are explicit.
 - [x] Interface & data contracts: selector grammar, registry JSON, record types,
   exact defaults, merge behavior, and output line are closed above.
-- [x] Executable acceptance: A1-A5 are ordered commands with binary expected
+- [x] Executable acceptance: A1-A7 are ordered commands with binary expected
   outcomes; project CI is recorded separately.
 - [x] Out of scope: Docks/session-relay runtime behavior, permissive deploy
   flags, native fallback, probes, dependencies, and secrets are excluded.
