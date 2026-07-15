@@ -9,7 +9,7 @@
  *   bun cli/test/golden-dryrun.ts
  *   bun cli/test/golden-dryrun.ts --prove-red
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import {
   REPO_DIR,
@@ -20,6 +20,7 @@ import {
   makeStubDir,
   parseArgs,
   runEngine,
+  runPublicCli,
   stableStringify
 } from "./lib/harness"
 
@@ -55,20 +56,48 @@ const COMMANDS: Array<Array<string>> = [
   ],
   ["sync", "claude", "--dry-run", "--claude-plugin=supabase"]
 ]
-const MATRIX: Array<{ fixture: string; cmd: Array<string> }> = [
+interface DryRunMatrixRow {
+  readonly fixture: string
+  readonly cmd: Array<string>
+  readonly label?: string
+  readonly public?: boolean
+}
+
+const MATRIX: Array<DryRunMatrixRow> = [
   ...FIXTURES.flatMap((fixture) => COMMANDS.map((cmd) => ({ fixture, cmd }))),
-  { fixture: "home-drift", cmd: ["model", "claude"] }
+  { fixture: "home-drift", cmd: ["model", "claude"] },
+  { fixture: "home-fresh", cmd: ["models", "workflow"], label: "workflow helper text", public: true },
+  { fixture: "home-fresh", cmd: ["models", "workflow", "--json"], label: "workflow helper json", public: true },
+  {
+    fixture: "home-fresh",
+    cmd: ["--model-reviewer=codex:gpt-5.6-terra@high", "--review-min-score=80"],
+    label: "workflow role override",
+    public: true
+  },
+  {
+    fixture: "home-fresh",
+    cmd: ["--review-max-rounds=0"],
+    label: "workflow review bound invalid",
+    public: true
+  }
 ]
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
 const { proveRed, updateGoldens } = parseArgs(process.argv)
 const stubs = makeStubDir()
 
-function labelFor(fixture: string, cmd: ReadonlyArray<string>): string {
-  return `fixture=${fixture} cmd=${cmd.join(" ")}`
+function labelFor(fixture: string, cmd: ReadonlyArray<string>, label?: string): string {
+  const prefix = label === undefined ? "" : `case=${label} `
+  return `${prefix}fixture=${fixture} cmd=${cmd.join(" ")}`
 }
 
-function runCase(fixture: string, cmd: ReadonlyArray<string>): DryRunCaseGolden {
+function runCase(fixture: string, cmd: ReadonlyArray<string>, usePublic = false): DryRunCaseGolden {
+  if (usePublic) {
+    const run = runPublicCli(cmd, fixture, stubs)
+    const golden = { fixture, command: [...cmd], exitCode: run.exitCode, output: `${run.stdout}${run.stderr}` }
+    rmSync(run.home, { recursive: true, force: true })
+    return golden
+  }
   const run = runEngine("native", cmd, fixture, stubs)
   const golden = { fixture, command: [...cmd], exitCode: run.exitCode, output: run.output }
   cleanup([run])
@@ -91,10 +120,10 @@ function mismatchedGolden(label: string, goldens: DryRunGolden): DryRunCaseGolde
 
 if (updateGoldens) {
   const cases: Record<string, DryRunCaseGolden> = {}
-  for (const { fixture, cmd } of MATRIX) {
-    const label = labelFor(fixture, cmd)
+  for (const { fixture, cmd, label: caseLabel, public: usePublic } of MATRIX) {
+    const label = labelFor(fixture, cmd, caseLabel)
     if (!labelSelected(label)) continue
-    cases[label] = runCase(fixture, cmd)
+    cases[label] = runCase(fixture, cmd, usePublic)
   }
   mkdirSync(dirname(GOLDEN_PATH), { recursive: true })
   writeFileSync(GOLDEN_PATH, stableStringify({ version: 1, cases } satisfies DryRunGolden))
@@ -106,8 +135,8 @@ const goldens = readGoldens()
 let failures = 0
 let checked = 0
 
-for (const { fixture, cmd } of MATRIX) {
-  const label = labelFor(fixture, cmd)
+for (const { fixture, cmd, label: caseLabel, public: usePublic } of MATRIX) {
+  const label = labelFor(fixture, cmd, caseLabel)
   if (!labelSelected(label)) continue
   const expected = proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
   if (expected === undefined) {
@@ -116,7 +145,7 @@ for (const { fixture, cmd } of MATRIX) {
     console.log("  run with --update-goldens to record this case")
     continue
   }
-  const actual = runCase(fixture, cmd)
+  const actual = runCase(fixture, cmd, usePublic)
   checked++
   const problems = [
     ...(actual.exitCode === expected.exitCode

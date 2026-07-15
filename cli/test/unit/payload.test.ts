@@ -9,6 +9,12 @@ import {
   inventoryAuthoringPaths
 } from "../../scripts/generate-sot-payload"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText } from "../../src/payload"
+import {
+  WORKFLOW_RECORD_PREFIX,
+  defaultWorkflowRecord,
+  parseWorkflowRecord,
+  renderWorkflowRecordLine
+} from "../../src/workflowModels"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const GENERATOR = join(REPO_DIR, "cli", "scripts", "generate-sot-payload.ts")
@@ -41,6 +47,19 @@ describe("generated SoT payload", () => {
     expect(claude.split(consent)).toHaveLength(2)
     expect(codex.split(verification)).toHaveLength(2)
     expect(claude.split(verification)).toHaveLength(2)
+  })
+
+  it("embeds one identical validated default workflow record for Claude and Codex", () => {
+    const recordLines = (document: string) => document
+      .split("\n")
+      .filter((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
+    const claude = recordLines(payloadText("SoT/.claude/CLAUDE.md"))
+    const codex = recordLines(payloadText("SoT/.codex/AGENTS.md"))
+
+    expect(claude).toEqual([renderWorkflowRecordLine(defaultWorkflowRecord())])
+    expect(codex).toEqual(claude)
+    expect(parseWorkflowRecord(JSON.parse(claude[0]!.slice(WORKFLOW_RECORD_PREFIX.length)) as unknown))
+      .toEqual(defaultWorkflowRecord())
   })
 
   it("matches every allowlisted authoring byte in stable order", () => {
