@@ -31,7 +31,26 @@ docks-kit models claude --json    # machine-readable
 docks-kit model claude            # current deployed + SoT + picker (TTY)
 docks-kit model claude opus       # per-machine override from the Fable SoT
 docks-kit sync claude --claude-model=opus   # same, as part of a sync
+docks-kit models workflow             # Docks workflow profiles and defaults
+docks-kit models workflow --json      # closed machine-readable registry
 ```
+
+## Docks workflow-role registry
+
+The `workflow` section is strict even though ordinary tool-model modifiers are
+forward-compatible. It accepts only known `profile:<name>` values or exact
+`<tool>:<model>@<effort>` targets whose model and effort both appear in the
+catalog. The defaults are:
+
+- orchestrator: `profile:claude-best`, ordered as `claude:fable@high` then
+  `claude:opus@xhigh`;
+- reviewer and implementer: `codex:gpt-5.6-sol@xhigh`;
+- review minimum score 90 and maximum 3 rounds.
+
+`claude:best@high` is Claude's native one-model alias. It is deliberately not
+the same as the Docks-managed `profile:claude-best` candidate chain.
+Availability is `checked_when_used`: Docks classifies each launch attempt;
+docks-kit neither probes providers nor promises provider-wide fallback.
 
 ## Advisor pairing note (Claude)
 

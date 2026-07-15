@@ -15,9 +15,9 @@ Tool-specific instructions live alongside this file:
 | Path | Purpose |
 |------|---------|
 | `docks-kit` | CLI launcher: runs the compiled binary in `cli/dist/` when present, otherwise Bun-from-source (auto-installs Bun + `node_modules`). No-Bun recovery is the platform release binary |
-| `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
+| `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, `workflow`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
 | `cli/` | Effect-TS CLI + bundled docs topics |
-| `SoT/models.json` | Kit-verified model catalog |
+| `SoT/models.json` | Kit-verified model catalog plus the strict Docks workflow-role registry |
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative) |
 | `SoT/.claude/bin/` | Dependency-free Bun runtime programs for Claude's statusline, SessionStart, and Notification |
 | `install.sh` | Global installer |
@@ -36,6 +36,7 @@ Codex SoT notes:
 - `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - `docks-kit status` verifies Session Relay only through the supported `codex plugin list --json` inventory. `ready` means installed and enabled for a newly started Codex session; it is not evidence about an old process, lifecycle state, receive-path health, or worker quiescence. The global prompt SoTs carry the owner's standing authorization for Docks cross-company plan review, which never overrides host or platform denial.
+- Both global prompt SoTs carry one byte-identical compact `Docks-workflow-models:` record. Root `--model-orchestrator` / `--model-reviewer` / `--model-implementer` / review-bound flags update only that deployed record; `docks-kit models workflow` lists the closed selectors, and a flag-less sync restores defaults.
 - The `codex` CLI binary is upstream-owned, not kit-owned. The official standalone installer keeps package metadata under `$CODEX_HOME/packages/standalone` and places the `codex` symlink in `~/.local/bin` by default; sync only warns with a download-then-run installer command when the CLI is missing. Existing installs can self-update with `codex update`; npm and Homebrew remain upstream alternatives.
 - `SoT/.codex/AGENTS.md` deliberately does not import `@RTK.md`: RTK's published Codex integration is prompt-file based rather than hook based, so importing it leaks implementation detail into agent-visible context. Use Codex hooks for RTK only after the kit installs a hook-backed Codex integration.
 - Claude runtime settings are an authoring template with sentinels. `claudeRuntime.ts` materializes absolute Bun/script paths only after the shared `bun.ts` bootstrap is ready; `claudeSync.ts` writes all runtime assets before atomically committing settings, then prunes the legacy shell scripts and Stop hook. Native `rate_limits` is the sole quota source, so jq/curl/OAuth caches are not runtime dependencies. A missing Bun defers only this cutover and preserves legacy pointers/files.

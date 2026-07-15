@@ -39,7 +39,7 @@ RTK/Bun download boundaries, not as a global sync prerequisite.
 docks-kit sync [claude] [codex] [agents]   deploy the SoT (default: all three)
 docks-kit update [--no-sync]               self-update the kit (autodetects checkout vs global install), then sync
 docks-kit model <claude|codex> [value]     get/set the DEPLOYED model (TTY picker)
-docks-kit models [tool] [--json]           kit-verified model catalog
+docks-kit models [claude|codex|workflow]   model and workflow-role catalogs (`--json`)
 docks-kit toolchain [check|ensure <tool>]  verified-version floors for external tools
 docks-kit status [--json]                  deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]            enabledPlugins tri-state vs installed
@@ -71,6 +71,21 @@ golden-regression coverage for dry-run output, mutation snapshots, and argv logs
 and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 (includes the old→new rename table for the pre-CLI `sync.sh` flags).
 
+### Docks workflow roles (root flags)
+
+| Flag | Effect |
+|------|--------|
+| `--model-orchestrator=<selector>` | Override the Docks orchestrator candidate/profile |
+| `--model-reviewer=<selector>` | Override the Docks reviewer candidate/profile |
+| `--model-implementer=<selector>` | Override the Docks implementer candidate/profile |
+| `--review-min-score=<0..100>` | Override the completion-review target |
+| `--review-max-rounds=<1..10>` | Bound completion-review batches |
+
+Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>` values from
+`docks-kit models workflow`. These root flags update only the identical compact
+record in `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`; omitted fields retain
+their current valid values, while a later flag-less sync restores all defaults.
+
 ## How syncing works
 
 - **Additive by default** — user-only settings keys, plugins, and skills
@@ -83,7 +98,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   (`--yes` accepts; non-TTY falls back to the pinned verified version
   when possible). `docks-kit toolchain check` shows the full table.
 - **Model catalog** — `SoT/models.json` is the research-verified source for
-  model validation, listings, and pickers.
+  model validation, listings, pickers, and the Docks workflow-role registry.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
   programs for statusline, SessionStart, and Notification. Quota display uses
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
@@ -97,7 +112,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.agents/` | Universal-skill manifest |
-| `SoT/models.json` | Kit-verified model catalog |
+| `SoT/models.json` | Kit-verified model and Docks workflow-role catalog |
 | `SoT/toolchain.json` | Verified-version floors |
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |

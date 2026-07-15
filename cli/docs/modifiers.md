@@ -44,6 +44,29 @@ docks-kit model codex gpt-5.5     # codex flavor
 The set path calls the same engine functions as the sync flags —
 one implementation, two entry points.
 
+## Workflow-role overrides (root, no full sync)
+
+The root workflow flags are deployed modifiers for Docks rather than one tool:
+
+```text
+docks-kit --model-orchestrator=profile:claude-best \
+  --model-reviewer=codex:gpt-5.6-terra@high \
+  --review-min-score=80 --review-max-rounds=5
+```
+
+They atomically write one byte-identical complete record to
+`~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. Omitted fields retain the
+current valid record; a missing side is repaired. Invalid or conflicting state
+stops before mutation, a repeated request is a no-op, and failure on the second
+atomic write restores both snapshots. A later flag-less sync restores the
+embedded defaults. Start fresh sessions after changing the record.
+
+Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>` entries from
+`docks-kit models workflow`. `profile:claude-best` is the ordered Docks
+Fable-high then Opus-xhigh chain; `claude:best@high` is instead Claude's native
+single-model alias. Docks checks each candidate when used—there is no docks-kit
+provider preflight.
+
 ## Sticky opt-ins are NOT modifiers
 
 `--claude-plugin=<name>` installs+enables an optional plugin and it STAYS

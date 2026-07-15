@@ -39,6 +39,23 @@ Bare model, effort, or advisor modifiers print the relevant valid-value catalog
 and exit 2. A modifier for a target not selected by the positional arguments is
 ignored with a warning; Claude modifiers never touch Codex config and vice versa.
 
+## Docks workflow root flags
+
+These flags belong at the root (`docks-kit --model-reviewer=...`), not after
+`sync`. They update only the shared deployed workflow record.
+
+| Flag | Accepted value |
+|------|----------------|
+| `--model-orchestrator=<selector>` | `profile:<name>` or `<tool>:<model>@<effort>` |
+| `--model-reviewer=<selector>` | same strict selector grammar |
+| `--model-implementer=<selector>` | same strict selector grammar |
+| `--review-min-score=<n>` | base-10 integer `0..100` |
+| `--review-max-rounds=<n>` | base-10 integer `1..10` |
+
+Use `docks-kit models workflow [--json]` for the closed registry. Bare, empty,
+unknown, or malformed values print that helper and exit 2 before either prompt
+file changes.
+
 ## Renamed legacy flags (pre-CLI sync.sh)
 
 Old flags exit with a rename hint — there is no compat behavior.

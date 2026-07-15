@@ -260,6 +260,8 @@ cd ~/projects/public
 ./docks-kit sync --claude-plugin=supabase   # opt in the supabase plugin (install + enable in deployed settings)
 ./docks-kit sync --claude-plugin=n8n        # opt in the n8n-mcp-skills plugin (add marketplace + install + enable); repeatable/comma-separated
 ./docks-kit model claude opus        # deploy-time: override the Fable SoT on this machine (standalone form of --claude-model=)
+./docks-kit models workflow          # list strict Docks workflow profiles, exact targets, and defaults
+./docks-kit --model-reviewer=codex:gpt-5.6-terra@high --review-min-score=80  # workflow-only deployed override
 ./docks-kit status                   # show deployed vs SoT state
 ./docks-kit toolchain check          # verify installed tools against SoT/toolchain.json floors
 ```
@@ -325,6 +327,25 @@ Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change th
 
 Codex mirrors the model/effort contract with `--codex-model=<m>` and
 `--codex-effort=<level>`; Codex `default` effort restores `xhigh`.
+
+#### Docks workflow-role overrides
+
+The five root flags `--model-orchestrator`, `--model-reviewer`,
+`--model-implementer`, `--review-min-score`, and `--review-max-rounds` are a
+workflow-only operation: they atomically update one identical complete
+`Docks-workflow-models:` record in `~/.claude/CLAUDE.md` and
+`~/.codex/AGENTS.md` without running sync. A partial invocation preserves
+omitted values from the current valid record; missing parallel state is
+repaired, while malformed or divergent records stop before either file changes.
+A flag-less sync reasserts the SoT defaults. Start fresh Claude Code and Codex
+sessions after an override so both tools load the same record.
+
+Selectors are exactly `profile:<name>` or `<tool>:<model>@<effort>` and must be
+present in `docks-kit models workflow`; `claude:best@high` is Claude's native
+single-model alias, while `profile:claude-best` is the Docks-managed ordered
+Fable-high then Opus-xhigh candidate chain. Candidate availability is tested by
+Docks when it launches each role—docks-kit does not preflight providers or
+claim provider-wide fallback.
 
 #### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
 
