@@ -3,7 +3,7 @@ title: Add workflow model role overrides
 goal: Add strict docks-kit workflow-role and review-bound overrides that emit one identical Docks workflow record to Claude and Codex global instructions.
 status: ongoing
 created: "2026-07-15T18:51:35-03:00"
-updated: "2026-07-15T19:09:51-03:00"
+updated: "2026-07-15T19:49:52-03:00"
 started_at: "2026-07-15T19:09:18-03:00"
 assignee: null
 review_author_company: openai
@@ -17,6 +17,7 @@ tags:
   - docks
 affected_paths:
   - SoT/models.json
+  - SoT/.claude/settings.json
   - SoT/.claude/CLAUDE.md
   - SoT/.codex/AGENTS.md
   - cli/src/workflowModels.ts
@@ -62,6 +63,8 @@ Ship a strict, self-documenting workflow configuration surface:
   global instruction files without running an unrelated full sync.
 - A normal flagless `docks-kit sync` deploys the default record again.
 - Invalid input fails before either global instruction file changes.
+- Claude's SoT permission list uses the supported `Edit(...)` matcher for file
+  edits and contains no obsolete path-qualified `Write(...)` rules.
 
 ## Context & rationale
 
@@ -92,6 +95,12 @@ One valid record may repair a missing parallel record. Conflicting or invalid
 deployed records STOP before mutation. The command prepares both output
 documents before committing either and restores the first from its snapshot if
 the second write fails.
+
+During execution the repository owner added one scoped SoT repair: current
+Claude permission diagnostics reject path-qualified `Write(...)` rules because
+`Edit(...)` is the matcher that covers all built-in file-editing tools. The SoT
+already has the equivalent four `Edit(...)` rules, so this change removes only
+the redundant unsupported `Write(...)` entries.
 
 ## Environment & how-to-run
 
@@ -216,7 +225,7 @@ prior deploy-time workflow overrides.
 | 2 | Extend the helper and root CLI. `models workflow [--json]` renders the registry; the five root flags route to a dedicated raw `workflow` EngineNative mode. Bare role flags print the workflow helper plus missing-value usage and exit 2; explicit empty/invalid values use the same validation path. | `cli/src/commands/models.ts:1-46`; `cli/src/main.ts:17-84`; `cli/src/engine-native/index.ts:20-105`; `cli/src/engine-native/parseArgs.ts:27-316` | 1 | planned | Root help lists all five flags; root overrides do not run full sync; helper text and JSON agree; every invalid/bare case exits 2 before write preparation. |
 | 3 | Deploy the record safely. Add the exact default line to both prompt SoTs, regenerate the embedded payload, share one record-upsert helper between Claude/Codex sync, and implement workflow-only prepare/commit with partial-override merge, duplicate repair, conflict STOP, idempotence, snapshot rollback, and fresh-session guidance. | `SoT/.claude/CLAUDE.md`; `SoT/.codex/AGENTS.md`; new `cli/src/engine-native/workflowDeploy.ts`; `cli/src/engine-native/claudeSync.ts:206-242`; `cli/src/engine-native/codexSync.ts:263-280`; `cli/src/generated/sotPayload.ts` | 1, 2 | planned | Normal sync writes defaults; a root override writes one identical complete line to both deployed prompts; omitted fields persist; invalid/conflicting input leaves both byte-identical to pre-run snapshots; a second identical run is a no-op. |
 | 4 | Add focused unit and golden coverage, including generated-payload integrity. At the producer boundary, fixtures prove the ordered Fable→Opus chain is preserved for Docks candidate-specific fallback and that no docks-kit helper/preflight claims provider-wide fallback; Docks remains the runtime classifier. | new `cli/test/unit/workflowModels.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/unit/payload.test.ts`; `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json` | 1-3 | planned | Tests cover defaults, exact/profile selectors, all bounds, partial/all overrides, bare/empty failures, no-mutation failures, one-sided repair, divergent-record STOP, rollback, idempotent replay, stable JSON/JCS, and producer/runtime availability ownership. Every planted workflow mutation is detected. |
-| 5 | Update public help/docs, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `cli/src/generated/sotPayload.ts` | 1-4 | planned | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability, every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
+| 5 | Update public help/docs, remove the four obsolete path-qualified Claude `Write(...)` permission rules, regenerate SoT, inspect the diff, then run the focused acceptance inventory and one required broad gate. | `README.md`; `AGENTS.md`; `CLAUDE.md`; `cli/docs/models.md`; `cli/docs/flags.md`; `cli/docs/modifiers.md`; `SoT/.claude/settings.json`; `cli/src/generated/sotPayload.ts` | 1-4 | planned | Docs distinguish `claude:best@high` from `profile:claude-best`, explain reset/partial-update semantics and attempt-as-probe availability; Claude permissions retain the four supported `Edit(...)` rules and no path-qualified `Write(...)` rules; every acceptance row passes, full CI passes once, and `git diff --check` is clean. |
 
 ## Acceptance criteria
 
@@ -227,10 +236,11 @@ prior deploy-time workflow overrides.
 | A3 | `GOLDEN_FILTER='workflow|role override|review bound' bun run golden:dryrun` | Exits 0; selected helper/root-flag/default/override/error cases match committed goldens, including no-mutation failures. |
 | A4 | `GOLDEN_FILTER='workflow|role override|review bound' bun run golden:mutation` | Exits 0 and reports every selected planted mutation detected. |
 | A5 | `bun cli/src/main.ts models workflow --json | jq -e '.schema == 1 and .defaults.orchestrator == "profile:claude-best" and .defaults.reviewer == "codex:gpt-5.6-sol@xhigh" and .defaults.implementer == "codex:gpt-5.6-sol@xhigh" and .defaults.review.minimum_score == 90 and .defaults.review.max_rounds == 3 and .profiles["claude-best"].candidates[0].model == "fable" and .profiles["claude-best"].candidates[1].model == "opus" and .availability == "checked_when_used"'` | Exits 0; machine helper exposes the exact defaults and ordered profile. |
+| A6 | `jq -e '(.permissions.allow | index("Edit(./)") != null and index("Write(./)") == null) and (.permissions.deny | index("Edit(**/.env)") != null and index("Edit(**/.env.local)") != null and index("Edit(**/secrets/**)") != null and all(.[]; startswith("Write(") | not))' SoT/.claude/settings.json` | Exits 0; supported Edit rules remain and every obsolete path-qualified Write rule is absent. |
 
 The required project CI is
 `bun run typecheck && bun run test:unit && bun run golden:dryrun && bun run golden:mutation`.
-Completion runs it once after A1-A5; it is not duplicated as an acceptance row.
+Completion runs it once after A1-A6; it is not duplicated as an acceptance row.
 
 ## Out of scope / do-NOT-touch
 
@@ -279,6 +289,8 @@ Completion runs it once after A1-A5; it is not duplicated as an acceptance row.
   authentication, billing, shared-quota, generic rate-limit, transport, and
   ambiguous failures STOP rotation.
 - Security: no secrets in SoT; no unverified dependency or installer.
+- Claude file permission matchers: use `Edit(...)`, which covers all built-in
+  file-editing tools; do not add path-qualified `Write(...)` rules.
 - Testing: direct acceptance, focused regression, then one full pre-commit gate.
 
 ## STOP conditions
@@ -363,6 +375,10 @@ Review-receipt: {"S":{"raw":{"attempts":[{"child_id":null,"denial_source":"sandb
   command-surface test runs.
 - `package.json:22-34` — canonical typecheck/unit/golden scripts and pinned
   Effect/Bun-facing dependencies.
+- `SoT/.claude/settings.json:12-97` — the correct `Edit(...)` allow/deny rules
+  already exist alongside four obsolete path-qualified `Write(...)` duplicates.
+- `https://code.claude.com/docs/en/permissions` — current official permission
+  syntax says `Edit` rules apply to all built-in file-editing tools.
 - `/home/vagrant/projects/docks/docs/plans/finished/2026-07-15-workflow-model-roles-and-bounded-reviews.md` — released producer/consumer contract and downstream gate.
 
 ## Notes
