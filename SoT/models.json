@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. The catalog informs, it doesn't imprison: well-formed IDs outside it (claude-* / codex charset) apply with a warning.",
+  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, workflow selectors, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. Deploy-time model flags remain permissive; workflow selectors are strict.",
   "claude": {
     "verified": "2026-07-08",
     "models": [
@@ -27,5 +27,27 @@
       { "id": "gpt-5", "kind": "id", "note": "previous generation" },
       { "id": "gpt-5-codex", "kind": "id", "note": "codex-tuned gpt-5" }
     ]
+  },
+  "workflow": {
+    "schema": 1,
+    "profiles": {
+      "claude-best": {
+        "candidates": [
+          { "company": "anthropic", "tool": "claude", "model": "fable", "effort": "high" },
+          { "company": "anthropic", "tool": "claude", "model": "opus", "effort": "xhigh" }
+        ]
+      }
+    },
+    "defaults": {
+      "orchestrator": "profile:claude-best",
+      "reviewer": "codex:gpt-5.6-sol@xhigh",
+      "implementer": "codex:gpt-5.6-sol@xhigh",
+      "review": {
+        "minimum_score": 90,
+        "max_rounds": 3
+      }
+    },
+    "exact_target_grammar": "<tool>:<model>@<effort>",
+    "availability": "checked_when_used"
   }
 }
