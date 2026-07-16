@@ -12,7 +12,7 @@ metadata:
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-07-14"
+  updated: "2026-07-15"
 ---
 
 # Plugin Bootstrap
@@ -66,8 +66,8 @@ All live in `syncPlugins(ctx, claudeDir)`:
 1. Add missing marketplaces from `extraKnownMarketplaces`.
 2. Install SoT-declared plugins missing a user-scope install record; refresh
    marketplace manifests once before the first install attempt.
-3. Refresh marketplace manifests.
-4. Update installed plugins best-effort.
+3. Refresh marketplace manifests unless `ctx.skipPluginRefresh` is set.
+4. Update installed plugins best-effort unless `ctx.skipPluginRefresh` is set.
 5. On `ctx.prune`, uninstall user-scope plugins absent from SoT `enabledPlugins`.
 6. On `ctx.prune`, remove extra marketplaces except `claude-plugins-official`.
 7. Reassert SoT enabled state: disable SoT-`false` plugins through the CLI, then
@@ -100,9 +100,10 @@ reverse/unique/reverse semantics.
 
 `removeLegacyDocksMarketplace` cleans up the old configured Docks marketplace
 when it points at the same Git source. `enabledPluginIds` parses enabled plugin
-tables from `SoT/.codex/config.toml`; `syncPlugins` runs `codex plugin add` for
-each enabled id so installed plugin caches refresh, then verifies the supported
-`codex plugin list --json` inventory. Session Relay is ready only when exactly
+tables from `SoT/.codex/config.toml`; ordinary `syncPlugins` runs `codex plugin add`
+for each enabled id so installed plugin caches refresh. With `ctx.skipPluginRefresh`,
+the supported `codex plugin list --json` inventory filters the operation to missing
+ids; an invalid inventory falls back to the full refresh path. Session Relay is ready only when exactly
 one `session-relay@docks` row is installed and enabled with a version; this is
 new-session installation readiness, not lifecycle or receive-path health.
 

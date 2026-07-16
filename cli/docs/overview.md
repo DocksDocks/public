@@ -17,7 +17,7 @@ AI-assisted dev environment on every machine.
 | `cli/src/generated/sotPayload.ts` | Deterministic generated payload embedded in standalone/npm execution |
 | `cli/src/engine-native/` | EngineNative mutation logic for sync/model/toolchain |
 | `cli/` | This CLI (Effect-TS on Bun) plus bundled docs |
-| `docks-kit` | Launcher: compiled binary → bun-from-source, with Bun auto-install |
+| `docks-kit` | Launcher: version-matching compiled binary → bun-from-source, with Bun auto-install |
 
 ## Design rules
 

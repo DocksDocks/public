@@ -12,7 +12,7 @@ metadata:
       lines: "1-260"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-07-10"
+  updated: "2026-07-15"
 ---
 
 # Settings Merge
@@ -56,8 +56,8 @@ left untouched and reported; never merge into a parse failure.
 | Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
 | `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
-User-only top-level keys survive both merge modes. Only keys explicitly covered
-by the curated removed manifest are force-pruned.
+User-only top-level keys survive both merge modes. Only keys and exact permission
+array members explicitly covered by the curated removed manifest are force-pruned.
 
 ## File Ownership
 
@@ -91,7 +91,8 @@ SoT values, except user-only keys that the SoT does not declare.
 - `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
   Claude Code's project state and user keys.
 - `syncRemovals` is the narrow exception to additive-by-default and must remain
-  backed by the curated removed manifest. Its legacy statusline/Notification/
+  backed by the curated removed manifest. Exact permission-rule entries remove
+  only the listed strings and preserve all other user rules. Its legacy statusline/Notification/
   Stop subset is gated on the same ready-and-committed runtime state; baseline
   stale entries remain unconditional.
 - The authoring `SoT/.claude/settings.json` contains named sentinels. Only

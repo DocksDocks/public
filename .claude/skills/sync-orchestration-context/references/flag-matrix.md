@@ -27,6 +27,7 @@
 |------|-------|
 | `--dry-run` | `ctx.dryRun` |
 | `--skip-rtk` | `ctx.skipRtk` |
+| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` |
 | `--reconcile` | `ctx.reconcile` |
 | `--prune` | `ctx.prune` |
 | `--yes` | `ctx.assumeYes` |
@@ -84,6 +85,7 @@ only by `--prune`.
 ## Gotchas
 
 - `--skip-rtk` also skips Codex bubblewrap auto-install.
+- `docks-kit update` chains `--skip-plugin-refresh`; a manual flag-less sync still performs full plugin refresh.
 - Combining `--dry-run --reconcile --prune` previews both destructive layers.
 - `--claude-compact-window=abc` exits 2; only digits or digits plus `k`/`K`
   are accepted.

@@ -14,7 +14,7 @@ metadata:
       lines: "1-130"
     - path: cli/src/engine-native/models.ts
       lines: "1-90"
-  updated: "2026-07-10"
+  updated: "2026-07-15"
 ---
 
 # Sync Engine Orchestration
@@ -67,7 +67,7 @@ kit-mechanic skill.
 
 | Invocation | Path | Notes |
 |-----------|------|-------|
-| `./docks-kit <args>` | Compiled binary in `cli/dist/` when present, otherwise Bun-from-source | Canonical checkout UX; Bun is bootstrapped by the launcher when needed. |
+| `./docks-kit <args>` | Version-matching compiled binary in `cli/dist/`, otherwise Bun-from-source | The launcher compares binary `--version` with `package.json`, so stale ignored builds cannot mask newer source. |
 | `cli/src/main.ts` | Effect CLI root command | Parses commands and routes mutating commands through `engine(args)`. |
 | `cli/src/engine.ts` | `engine` / `engineCapture` | Runs EngineNative. `native-raw` child re-spawn remains harness/private compiled-binary plumbing. |
 | `cli/src/engine-native/index.ts` | `runEngineNative` | Dispatches `sync`, `model`, `models`, and `toolchain` modes. |
@@ -89,6 +89,7 @@ target selector and set `ctx.targetFilterSet`; when it remains false,
 | `--reconcile` | `ctx.reconcile` | Settings layer only. |
 | `--prune` | `ctx.prune` | Plugin, marketplace, and kit-managed skills removals. |
 | `--skip-rtk` | `ctx.skipRtk` | Skips optional RTK and bubblewrap installs. |
+| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; update chains this flag. |
 | `--yes` | `ctx.assumeYes` | Auto-accepts verified-pin prompts. |
 | `--claude-model=<m>` | `ctx.claudeModel` | Validated before sync mutations. |
 | `--codex-model=<m>` | `ctx.codexModel` | Charset gate blocks TOML injection. |

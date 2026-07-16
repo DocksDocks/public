@@ -8,9 +8,10 @@ cd ~/projects/public
 ./docks-kit sync
 ```
 
-The `./docks-kit` launcher prefers a compiled binary in `cli/dist/`, then
-falls back to Bun-from-source (auto-installing Bun via download-then-run and
-`bun install --frozen-lockfile` when needed).
+The `./docks-kit` launcher prefers a compiled binary in `cli/dist/` only when
+its reported version matches `package.json`, then falls back to Bun-from-source
+(auto-installing Bun via download-then-run and `bun install --frozen-lockfile`
+when needed). An ignored stale build is reported and bypassed.
 
 ## 2. Global via Bun (effect-solutions-style)
 
@@ -78,7 +79,7 @@ Two supported paths (CI-verified on windows-2025, native PowerShell):
 ## Keeping the kit up to date
 
 ```
-docks-kit update            # autodetect + update + chained flag-less sync
+docks-kit update            # autodetect + update + install-missing-only sync
 docks-kit update --no-sync  # update only
 ```
 
@@ -86,8 +87,10 @@ Autodetection: a kit home with `.git` is a checkout (requires a clean
 worktree and an upstream; `git pull --ff-only`, re-runs
 `bun install --frozen-lockfile` when the lockfile changed); a kit home
 under `node_modules` is a global package (`bun add -g` /
-`npm install -g docks-kit@latest`). A compiled binary inside a checkout
-updates the checkout and tells you to rebuild/download the binary.
+`npm install -g docks-kit@latest`). The chained sync skips refresh-only work
+for already-installed Claude/Codex plugins but still installs missing ones.
+A compiled binary inside a checkout updates the checkout; on the next invocation
+the launcher bypasses that now-stale binary and uses updated source until rebuilt.
 Every `docks-kit sync` also does a best-effort behind-upstream check and
 nudges when the checkout is stale (silent offline / detached / no git).
 

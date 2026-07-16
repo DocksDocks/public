@@ -17,8 +17,10 @@ cd ~/projects/public
 ./docks-kit status          # doctor view: drift, toolchain, plugins, skills
 ```
 
-The `./docks-kit` launcher prefers a compiled binary (`cli/dist/`), then runs
-from source via Bun — auto-installing Bun and dependencies when missing.
+The `./docks-kit` launcher prefers a compiled binary (`cli/dist/`) only when
+its version matches the checkout, then runs from source via Bun — auto-installing
+Bun and dependencies when missing. Stale ignored build artifacts cannot mask
+newer checkout code.
 
 Other install paths (global `bun add -g docks-kit`, curl installer) —
 see `./docks-kit docs install`.
@@ -65,6 +67,7 @@ golden-regression coverage for dry-run output, mutation snapshots, and argv logs
 | `--claude-plugin=<name>` | Sticky opt-in plugin (supabase, n8n) |
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
 | `--skip-rtk` | Skip optional tool bootstrap |
+| `--skip-plugin-refresh` | Install missing plugins but skip refresh-only updates (used automatically by `docks-kit update`) |
 | `--yes` | Auto-accept toolchain prompts (CI/containers) |
 
 **Deploy-time modifiers** change deployed config only — the SoT is untouched

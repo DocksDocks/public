@@ -14,7 +14,7 @@ metadata:
       lines: "1-150"
     - path: SoT/toolchain.json
       lines: "1-80"
-  updated: "2026-07-10"
+  updated: "2026-07-15"
 ---
 
 # Toolchain Verified-Version Floors

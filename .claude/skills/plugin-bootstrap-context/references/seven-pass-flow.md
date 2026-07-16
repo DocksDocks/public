@@ -6,8 +6,8 @@ from the original design, but counters and subprocess calls are TypeScript.
 
 ## Critical Constraints
 
-- Passes 3 and 4 are best-effort; update failures warn/count but do not abort the
-  entire sync.
+- Passes 3 and 4 are skipped when `ctx.skipPluginRefresh` is true. Otherwise
+  they are best-effort; update failures do not abort the entire sync.
 - Pass 5 uses key presence semantics for `enabledPlugins`; `false` keys are kept.
 - Pass 6 never removes `claude-plugins-official`.
 - Passes 5 and 6 run only when `ctx.prune` is true.
@@ -42,13 +42,14 @@ local installs do not satisfy the kit's user-scope install contract.
 
 ## Pass 3: Marketplace Update
 
-Runs `claude plugin marketplace update` best-effort to refresh manifests.
-Failure is non-fatal.
+Runs `claude plugin marketplace update` best-effort to refresh manifests unless
+`ctx.skipPluginRefresh` is true. Failure is non-fatal.
 
 ## Pass 4: Plugin Updates
 
-Iterates installed plugin ids and runs `claude plugin update <id>` best-effort.
-Only output that indicates a successful update increments the updated count.
+Unless `ctx.skipPluginRefresh` is true, iterates installed plugin ids and runs
+`claude plugin update <id>` best-effort. Only output that indicates a successful
+update increments the updated count.
 
 ## Pass 5: Uninstall Removed Plugins
 
@@ -93,3 +94,6 @@ on `.name` collision while preserving user-only entries.
 `enabledPluginIds` scans `SoT/.codex/config.toml` for plugin tables whose body
 contains `enabled = true`. Omitted `enabled` defaults to disabled. The parser
 flushes at every table boundary and EOF so each table is emitted at most once.
+The update fast path cross-checks those desired ids against `codex plugin list
+--json` and calls `codex plugin add` only for missing installed rows. Invalid
+inventory output falls back to ordinary full refresh.

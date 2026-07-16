@@ -14,7 +14,7 @@
 
 ```text
 ./docks-kit
-|-- cli/dist/docks-kit-<os>-<arch>  preferred compiled binary when present
+|-- cli/dist/docks-kit-<os>-<arch>  preferred only when binary version matches package.json
 `-- Bun from source
     |-- find_bun and bootstrap Bun when needed
     |-- bun install --frozen-lockfile when node_modules is absent
