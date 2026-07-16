@@ -32,6 +32,7 @@ export interface Ctx {
   dryRun: boolean
   verbose: boolean
   skipRtk: boolean
+  skipPluginRefresh?: boolean
   reconcile: boolean
   prune: boolean
   assumeYes: boolean
@@ -72,6 +73,7 @@ function makeCtx(services: EngineServices): Ctx {
     dryRun: env["DRY_RUN"] === "1",
     verbose: env["DOCKS_KIT_VERBOSE"] === "1",
     skipRtk: env["SKIP_RTK"] === "1",
+    skipPluginRefresh: false,
     reconcile: env["RECONCILE"] === "1",
     prune: env["PRUNE"] === "1",
     assumeYes: env["ASSUME_YES"] === "1",

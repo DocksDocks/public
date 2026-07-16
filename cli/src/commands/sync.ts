@@ -80,6 +80,9 @@ const prune = Options.boolean("prune").pipe(
 const skipRtk = Options.boolean("skip-rtk").pipe(
   Options.withDescription("Skip optional tool bootstrap (RTK, bubblewrap)")
 )
+const skipPluginRefresh = Options.boolean("skip-plugin-refresh").pipe(
+  Options.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
+)
 const yes = Options.boolean("yes").pipe(
   Options.withDescription("Auto-accept toolchain prompts (containers/CI)")
 )
@@ -129,6 +132,7 @@ export const syncCommand = Command.make(
     reconcile,
     prune,
     skipRtk,
+    skipPluginRefresh,
     yes,
     verbose,
     claudeModel,
@@ -172,6 +176,7 @@ export const syncCommand = Command.make(
       if (config.reconcile) args.push("--reconcile")
       if (config.prune) args.push("--prune")
       if (config.skipRtk) args.push("--skip-rtk")
+      if (config.skipPluginRefresh) args.push("--skip-plugin-refresh")
       if (config.yes) args.push("--yes")
       if (config.verbose) args.push("--verbose")
       if (config.claudePermissive) args.push("--claude-permissive")

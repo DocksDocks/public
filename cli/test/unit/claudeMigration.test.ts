@@ -4,6 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
 import {
+  FIXTURES_DIR,
   cleanup,
   cleanupTemporaryDirs,
   makeStubDir,
@@ -55,6 +56,14 @@ function hooksObject(settings: { [key: string]: Json }): { [key: string]: Json }
   const hooks = settings["hooks"]
   if (hooks === undefined || !isObject(hooks)) throw new Error("deployed hooks are not an object")
   return hooks
+}
+
+function permissionRules(settings: { [key: string]: Json }, key: "allow" | "deny"): Array<string> {
+  const permissions = settings["permissions"]
+  if (!isObject(permissions) || !Array.isArray(permissions[key])) {
+    throw new Error(`deployed permissions.${key} is not an array`)
+  }
+  return permissions[key].filter((value): value is string => typeof value === "string")
 }
 
 function expectLegacyPointers(home: string): void {
@@ -161,6 +170,44 @@ describe.sequential("Claude runtime migration transaction", () => {
       expect(Object.prototype.hasOwnProperty.call(hooks, "Stop")).toBe(false)
     } finally {
       cleanup([run])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
+
+  it("migrates the four obsolete Write permission rules on a flag-less sync", () => {
+    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
+    drift["permissions"] = {
+      allow: ["Write(./)", "Write(user-owned/**)"],
+      deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)", "Write(user-private/**)"],
+      ask: []
+    }
+    const variant = materializeVariant("home-drift", {
+      ".claude/settings.json": stableStringify(drift)
+    })
+    const stubs = makeStubDir()
+    const dryRun = runEngine("native", ["sync", "claude", "--dry-run"], variant, stubs)
+    const dryRunAllow = permissionRules(settingsObject(dryRun.home), "allow")
+    const applied = runEngine("native", ["sync", "claude"], variant, stubs, { reuseHome: dryRun.home })
+    const replay = runEngine("native", ["sync", "claude"], variant, stubs, { reuseHome: applied.home })
+    try {
+      expect(dryRunAllow).toContain("Write(./)")
+      expect(dryRun.output).toContain("[dry-run] del 4 stale permission rule(s)")
+
+      const settings = settingsObject(applied.home)
+      const allow = permissionRules(settings, "allow")
+      const deny = permissionRules(settings, "deny")
+      expect(allow).toContain("Edit(./)")
+      expect(allow).toContain("Write(user-owned/**)")
+      expect(allow).not.toContain("Write(./)")
+      for (const path of ["**/.env", "**/.env.local", "**/secrets/**"]) {
+        expect(deny).toContain(`Edit(${path})`)
+        expect(deny).not.toContain(`Write(${path})`)
+      }
+      expect(deny).toContain("Write(user-private/**)")
+      expect(applied.output).toContain("permission rules: 4")
+      expect(replay.output).not.toContain("Pruned stale artifacts")
+    } finally {
+      cleanup([replay])
       rmSync(variant, { recursive: true, force: true })
     }
   })

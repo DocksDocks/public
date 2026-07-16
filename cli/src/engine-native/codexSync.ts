@@ -432,10 +432,30 @@ function manualPluginRefreshCommand(sotConfigText: string): string {
   return first !== undefined ? `codex plugin add ${first}` : "codex plugin add <plugin@marketplace>"
 }
 
+function installedPluginIdsFromCli(): Set<string> | undefined {
+  const result = spawnSync("codex", ["plugin", "list", "--json"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"]
+  })
+  if (result.error !== undefined || result.status !== 0) return undefined
+  const value = parseJson(result.stdout ?? "")
+  if (value === undefined || !isObject(value) || !Array.isArray(value["installed"])) return undefined
+  const ids = new Set<string>()
+  for (const row of value["installed"]) {
+    if (!isObject(row) || row["installed"] !== true || typeof row["pluginId"] !== "string") continue
+    ids.add(row["pluginId"])
+  }
+  return ids
+}
+
 function syncPlugins(ctx: Ctx, sotConfigText: string): void {
-  const { change, echo, warn } = ctx.services.logger
+  const { change, echo, verbose, warn } = ctx.services.logger
   if (ctx.dryRun) {
-    echo("[dry-run] add enabled Codex plugins from SoT")
+    echo(
+      ctx.skipPluginRefresh
+        ? "[dry-run] add missing enabled Codex plugins from SoT; skip refresh-only plugin updates"
+        : "[dry-run] add enabled Codex plugins from SoT"
+    )
     return
   }
 
@@ -454,9 +474,20 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
     return
   }
 
+  const desiredPluginIds = enabledPluginIdsFromText(sotConfigText)
+  let pluginIds = desiredPluginIds
+  if (ctx.skipPluginRefresh) {
+    const installedPluginIds = installedPluginIdsFromCli()
+    if (installedPluginIds === undefined) {
+      warn("Codex plugin inventory unavailable — falling back to the full refresh path")
+    } else {
+      pluginIds = desiredPluginIds.filter((pluginId) => !installedPluginIds.has(pluginId))
+    }
+  }
+
   let refreshed = 0
   let failed = 0
-  for (const pluginId of enabledPluginIdsFromText(sotConfigText)) {
+  for (const pluginId of pluginIds) {
     const res = spawnSync("codex", ["plugin", "add", pluginId], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
     const addOut = `${res.stdout ?? ""}${res.stderr ?? ""}`
     if (res.error === undefined && res.status === 0) {
@@ -483,6 +514,7 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
       warn(`Session Relay readiness unavailable after refresh: ${readiness.reason}`)
     }
   }
+  if (ctx.skipPluginRefresh && pluginIds.length === 0) verbose("Codex plugins already installed; refresh-only updates skipped")
   if (failed > 0) warn(`${failed} Codex plugin operation(s) failed — re-run sync or install manually`)
 }
 

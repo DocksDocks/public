@@ -26,6 +26,12 @@ const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
   })
 
+export const updateSyncArgs = (home: string): Array<string> => [
+  join(home, "cli/src/main.ts"),
+  "sync",
+  "--skip-plugin-refresh"
+]
+
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     if (spawnSync("git", ["--version"], { stdio: "ignore" }).status !== 0) {
@@ -62,12 +68,12 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
     if (compiled) {
       return yield* Console.log(
-        "This compiled binary still runs the previous version - rebuild (bash cli/build-binaries.sh) or download the latest release binary, then run: docks-kit sync"
+        "This compiled binary still runs the previous version - the checkout launcher will use updated source next time. Run: ./docks-kit sync (rebuild with bash cli/build-binaries.sh to restore the binary fast path)."
       )
     }
     if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
     yield* Console.log("Kit updated - running sync with the new version...")
-    return yield* chainSync(process.execPath, [join(home, "cli/src/main.ts"), "sync"])
+    return yield* chainSync(process.execPath, updateSyncArgs(home))
   })
 
 const updatePackage = (home: string, skipSync: boolean) =>
@@ -93,7 +99,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
     yield* Console.log("Kit updated - running sync with the new version...")
     // Chain through the package dir just updated (global installs update in
     // place) — a bare `docks-kit` PATH lookup could hit a different shim.
-    return yield* chainSync(process.execPath, [join(home, "cli/src/main.ts"), "sync"])
+    return yield* chainSync(process.execPath, updateSyncArgs(home))
   })
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>
@@ -111,6 +117,6 @@ export const updateCommand = Command.make("update", { noSync }, (config) =>
   })
 ).pipe(
   Command.withDescription(
-    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest) and chains a flag-less sync with the new version (--no-sync to skip)."
+    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest) and chains an install-missing-only sync with the new version (--no-sync to skip)."
   )
 )

@@ -56,6 +56,7 @@ function usage(ctx: Ctx): void {
     "  --prune           uninstall kit-managed installs not in SoT (plugins, marketplaces, skills in SoT/.agents/skills.txt)"
   )
   echo("  --skip-rtk        skip optional tool bootstrap (RTK, bubblewrap)")
+  echo("  --skip-plugin-refresh  install missing plugins but skip refresh-only updates")
   echo("  --yes             auto-accept toolchain prompts (containers/CI)")
   echo("  --verbose         also print no-op confirmations (already in sync, up to date, left as-is)")
   echo("")
@@ -153,6 +154,9 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         continue
       case "--skip-rtk":
         ctx.skipRtk = true
+        continue
+      case "--skip-plugin-refresh":
+        ctx.skipPluginRefresh = true
         continue
       case "--reconcile":
         ctx.reconcile = true

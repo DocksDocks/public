@@ -504,6 +504,10 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_CODE_FORK_SUBAGENT",
     "env.CLAUDE_CODE_EFFORT_LEVEL"
   ],
+  permissionRules: {
+    allow: ["Write(./)"],
+    deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)"]
+  },
   claudeJsonKeys: [] as Array<string>,
   runtimeReady: {
     hooks: ["notify.sh"],
@@ -543,6 +547,30 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
     renameSync(`${file}.tmp`, file)
   }
   return presentKeys.length
+}
+
+function prunePermissionRules(
+  ctx: Ctx,
+  file: string,
+  rules: Readonly<Record<"allow" | "deny", ReadonlyArray<string>>>
+): number {
+  if (!existsSync(file)) return 0
+  const doc = parseJson(readFileSync(file, "utf8"))
+  if (doc === undefined || !isObject(doc) || !isObject(doc["permissions"])) return 0
+  const permissions = doc["permissions"]
+  let present = 0
+  for (const key of ["allow", "deny"] as const) {
+    const values = permissions[key]
+    if (!Array.isArray(values)) continue
+    const removed = new Set(rules[key])
+    present += rules[key].filter((rule) => values.includes(rule)).length
+    if (!ctx.dryRun) permissions[key] = values.filter((value) => typeof value !== "string" || !removed.has(value))
+  }
+  if (present > 0 && !ctx.dryRun) {
+    writeFileSync(`${file}.tmp`, jqStringify(doc))
+    renameSync(`${file}.tmp`, file)
+  }
+  return present
 }
 
 function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState): void {
@@ -592,16 +620,25 @@ function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState):
   }
 
   const skeys = pruneJsonKeys(ctx, p(claudeDir, "settings.json"), settingsKeys)
+  const permissionRules = prunePermissionRules(
+    ctx,
+    p(claudeDir, "settings.json"),
+    REMOVED_MANIFEST.permissionRules
+  )
   const cjkeys = pruneJsonKeys(ctx, p(ctx.home, ".claude.json"), REMOVED_MANIFEST.claudeJsonKeys)
 
   if (ctx.dryRun) {
     if (skeys > 0) echo(`[dry-run] del ${skeys} stale key(s) from ${p(claudeDir, "settings.json")}`)
+    if (permissionRules > 0) {
+      echo(`[dry-run] del ${permissionRules} stale permission rule(s) from ${p(claudeDir, "settings.json")}`)
+    }
     if (cjkeys > 0) echo(`[dry-run] del ${cjkeys} stale key(s) from ${p(ctx.home, ".claude.json")}`)
     return
   }
 
-  if (hooksRemoved + filesRemoved + skeys + cjkeys > 0) {
-    change(`Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys})`)
+  if (hooksRemoved + filesRemoved + skeys + permissionRules + cjkeys > 0) {
+    const permissionSummary = permissionRules > 0 ? `, permission rules: ${permissionRules}` : ""
+    change(`Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys}${permissionSummary})`)
     ctx.nextStepTriggers.claudeRestart = true
   }
 }
@@ -637,7 +674,11 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
 
   if (ctx.dryRun) {
-    echo("[dry-run] bootstrap + update plugin marketplaces + plugins from SoT")
+    echo(
+      ctx.skipPluginRefresh
+        ? "[dry-run] bootstrap + install missing plugins from SoT; skip refresh-only plugin updates"
+        : "[dry-run] bootstrap + update plugin marketplaces + plugins from SoT"
+    )
     if (ctx.prune) {
       echo("[dry-run] (--prune) would also uninstall plugins not in SoT and remove extra marketplaces")
     }
@@ -695,13 +736,16 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     }
   }
 
-  // Pass 3 — refresh every installed plugin.
-  cli(["plugin", "marketplace", "update"])
   let updatedPl = 0
   const installedDoc = readJsonFile(installedPlugins)
   const installedKeys = installedDoc !== undefined && isObject(installedDoc) ? sortedKeys(installedDoc["plugins"]) : []
-  for (const pluginId of installedKeys) {
-    if (cli(["plugin", "update", pluginId]).out.includes("Successfully updated")) updatedPl++
+  // Pass 3 — refresh every installed plugin unless the update command
+  // selected its install-missing-only fast path.
+  if (!ctx.skipPluginRefresh) {
+    cli(["plugin", "marketplace", "update"])
+    for (const pluginId of installedKeys) {
+      if (cli(["plugin", "update", pluginId]).out.includes("Successfully updated")) updatedPl++
+    }
   }
 
   // Passes 4 + 5 — prune-gated uninstall + marketplace removal.
