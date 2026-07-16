@@ -34,7 +34,7 @@ docks-kit sync claude agents        # two
 | `--claude-permissive` | Deploy-time modifier: empty permissions.ask/deny (sandboxes) |
 | `--claude-plugin=<name>` | Sticky opt-in plugin (known: supabase, n8n); comma-separate for several |
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
-| `--codex-effort=<level>` | Deploy-time modifier: `model_reasoning_effort`; valid `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`, or `default` (Codex SoT: `xhigh`; model-dependent) |
+| `--codex-effort=<level>` | Deploy-time modifier: `model_reasoning_effort`; valid `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra`, or `default` (Codex SoT: `high`; model-dependent) |
 
 Bare model, effort, or advisor modifiers print the relevant valid-value catalog
 and exit 2. A modifier for a target not selected by the positional arguments is
@@ -47,7 +47,7 @@ These flags belong at the root (`docks-kit --model-reviewer=...`), not after
 
 | Flag | Accepted value |
 |------|----------------|
-| `--model-orchestrator=<selector>` | `profile:<name>` or `<tool>:<model>@<effort>` |
+| `--model-orchestrator=<selector>` | `profile:<name>` or `<tool>:<model>@<effort>[+fast]` |
 | `--model-reviewer=<selector>` | same strict selector grammar |
 | `--model-implementer=<selector>` | same strict selector grammar |
 | `--review-min-score=<n>` | base-10 integer `0..100` |
@@ -55,7 +55,10 @@ These flags belong at the root (`docks-kit --model-reviewer=...`), not after
 
 Use `docks-kit models workflow [--json]` for the closed registry. Bare, empty,
 unknown, or malformed values print that helper and exit 2 before either prompt
-file changes.
+file changes. `+fast` is accepted only on Codex exact targets and writes
+`service_tier: "fast"` in workflow record schema 2. Without `+fast`, the role is
+Standard and the record remains schema 1 unless another role is Fast. Shell
+quotes are optional but recommended around selectors containing `+fast`.
 
 ## Renamed legacy flags (pre-CLI sync.sh)
 

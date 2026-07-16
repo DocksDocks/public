@@ -10,7 +10,8 @@ the SoT is never touched. They all share one contract:
 > touches.
 
 Claude's embedded SoT is `model: fable`, `effortLevel: high`, with advisor
-off (`advisorModel` unset). Codex's embedded reasoning effort is `xhigh`.
+off (`advisorModel` unset). Codex's embedded normal and plan reasoning effort is
+`high`.
 
 | Modifier | Deployed change | Typical use |
 |----------|-----------------|-------------|
@@ -20,7 +21,7 @@ off (`advisorModel` unset). Codex's embedded reasoning effort is `xhigh`.
 | `--claude-compact-window=<n>` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` | Disposable containers running long autonomous work (e.g. `680k`) — not host machines |
 | `--claude-permissive` | `permissions.ask = []`, `permissions.deny = []` | Sandboxes/containers where prompts stall unattended work. Never on a host — the deny list is the safety floor |
 | `--codex-model=<m>` | top-level `model = "…"` in ~/.codex/config.toml | Same as claude-model, for Codex |
-| `--codex-effort=<level>` | top-level `model_reasoning_effort = "…"` (`default` writes `xhigh`) | Tune Codex effort per machine; valid `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` (model-dependent) |
+| `--codex-effort=<level>` | top-level `model_reasoning_effort = "…"` (`default` writes `high`) | Tune Codex effort per machine; valid `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, `ultra` (model-dependent) |
 
 Bare effort/advisor flags print their verified catalog and exit 2. Invalid
 values do the same with a clear error. Passing a tool-specific modifier without
@@ -31,6 +32,13 @@ from machines synced before advisor became opt-in. Any explicit advisor state
 owns that key for the run: `on` writes `fable`; `off` and `default` delete it.
 Codex has no advisor modifier because its documented config has no advisor
 setting; `review_model` applies only to `/review`.
+
+Codex Fast mode is intentionally not a global SoT default or per-machine
+modifier. It is role-scoped through the root workflow flags: append `+fast` to a
+Codex exact selector to emit `service_tier: "fast"` in record schema 2. Without
+the suffix, the role means Standard and emits no tier field. Docks and Session
+Relay consumers must map that absence to an explicit default-tier process
+override rather than inherit a user's global Fast preference.
 
 ## Standalone get/set (no full sync)
 
@@ -50,7 +58,8 @@ The root workflow flags are deployed modifiers for Docks rather than one tool:
 
 ```text
 docks-kit --model-orchestrator=profile:claude-best \
-  --model-reviewer=codex:gpt-5.6-terra@high \
+  --model-reviewer="codex:gpt-5.6-sol@high+fast" \
+  --model-implementer=codex:gpt-5.6-sol@high \
   --review-min-score=80 --review-max-rounds=5
 ```
 
@@ -61,11 +70,13 @@ stops before mutation, a repeated request is a no-op, and failure on the second
 atomic write restores both snapshots. A later flag-less sync restores the
 embedded defaults. Start fresh sessions after changing the record.
 
-Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>` entries from
-`docks-kit models workflow`. `profile:claude-best` is the ordered Docks
+Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>[+fast]`
+entries from `docks-kit models workflow`. `+fast` is Codex-only and quotes are
+optional; its absence means Standard. `profile:claude-best` is the ordered Docks
 Fable-high then Opus-xhigh chain; `claude:best@high` is instead Claude's native
 single-model alias. Docks checks each candidate when used—there is no docks-kit
-provider preflight.
+provider preflight. Install schema-2 support in Docks and Session Relay before
+using a Fast selector.
 
 ## Sticky opt-ins are NOT modifiers
 

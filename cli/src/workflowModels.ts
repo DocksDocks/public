@@ -8,12 +8,14 @@ export type WorkflowTool = "claude" | "codex"
 export type WorkflowCompany = "anthropic" | "openai"
 export type WorkflowRoleName = "orchestrator" | "reviewer" | "implementer"
 export type WorkflowBoundName = "minimum_score" | "max_rounds"
+export type WorkflowServiceTier = "fast"
 
 export interface WorkflowCandidate {
   readonly company: WorkflowCompany
   readonly tool: WorkflowTool
   readonly model: string
   readonly effort: string
+  readonly service_tier?: WorkflowServiceTier
 }
 
 export interface WorkflowRole {
@@ -32,6 +34,19 @@ export interface WorkflowRecordV1 {
   }
 }
 
+export interface WorkflowRecordV2 {
+  readonly schema: 2
+  readonly orchestrator: WorkflowRole
+  readonly reviewer: WorkflowRole
+  readonly implementer: WorkflowRole
+  readonly review: {
+    readonly minimum_score: number
+    readonly max_rounds: number
+  }
+}
+
+export type WorkflowRecord = WorkflowRecordV1 | WorkflowRecordV2
+
 export interface WorkflowOverrides {
   readonly orchestrator?: string
   readonly reviewer?: string
@@ -45,7 +60,7 @@ interface WorkflowProfile {
 }
 
 interface WorkflowRegistryCore {
-  readonly schema: 1
+  readonly schema: 2
   readonly profiles: Readonly<Record<string, WorkflowProfile>>
   readonly defaults: {
     readonly orchestrator: string
@@ -56,7 +71,7 @@ interface WorkflowRegistryCore {
       readonly max_rounds: number
     }
   }
-  readonly exact_target_grammar: "<tool>:<model>@<effort>"
+  readonly exact_target_grammar: "<tool>:<model>@<effort>[+fast]"
   readonly availability: "checked_when_used"
 }
 
@@ -117,9 +132,14 @@ const toolEfforts = (tool: WorkflowTool): ReadonlyArray<string> =>
 function parseCandidate(
   value: unknown,
   label: string,
-  tools: WorkflowRegistryView["tools"]
+  tools: WorkflowRegistryView["tools"],
+  allowServiceTier: boolean
 ): WorkflowCandidate {
-  const candidate = expectRecord(value, label, ["company", "effort", "model", "tool"])
+  const serviceTier = isRecord(value) ? value["service_tier"] : undefined
+  const keys = serviceTier === undefined
+    ? ["company", "effort", "model", "tool"]
+    : ["company", "effort", "model", "service_tier", "tool"]
+  const candidate = expectRecord(value, label, keys)
   const tool = candidate["tool"]
   if (tool !== "claude" && tool !== "codex") throw new Error(`${label} has an invalid tool`)
   const company = candidate["company"]
@@ -133,18 +153,26 @@ function parseCandidate(
   if (typeof effort !== "string" || !tools[tool].efforts.includes(effort)) {
     throw new Error(`${label} has an unverified ${tool} effort`)
   }
+  if (serviceTier !== undefined) {
+    if (!allowServiceTier) throw new Error(`${label} requires workflow record schema 2 for a service tier`)
+    if (tool !== "codex" || serviceTier !== "fast") throw new Error(`${label} has an invalid service tier`)
+    return { company: expectedCompany, tool, model, effort, service_tier: "fast" }
+  }
   return { company: expectedCompany, tool, model, effort }
 }
 
 function parseCandidates(
   value: unknown,
   label: string,
-  tools: WorkflowRegistryView["tools"]
+  tools: WorkflowRegistryView["tools"],
+  allowServiceTier = false
 ): ReadonlyArray<WorkflowCandidate> {
   if (!Array.isArray(value) || value.length < 1 || value.length > 3) {
     throw new Error(`${label} must contain one to three candidates`)
   }
-  return value.map((candidate, index) => parseCandidate(candidate, `${label}[${index}]`, tools))
+  return value.map((candidate, index) =>
+    parseCandidate(candidate, `${label}[${index}]`, tools, allowServiceTier)
+  )
 }
 
 function parseNumericBound(name: WorkflowBoundName, value: unknown): number {
@@ -167,24 +195,29 @@ function resolveSelector(
     return { selector, candidates: profile.candidates }
   }
 
-  const exactMatch = /^(claude|codex):([A-Za-z0-9._-]+)@([A-Za-z0-9._-]+)$/.exec(selector)
+  const exactMatch = /^(claude|codex):([A-Za-z0-9._-]+)@([A-Za-z0-9._-]+)(\+fast)?$/.exec(selector)
   if (exactMatch === null) {
     throw new Error(
-      `Invalid workflow selector '${selector}' — expected profile:<name> or <tool>:<model>@<effort>`
+      `Invalid workflow selector '${selector}' — expected profile:<name> or <tool>:<model>@<effort>[+fast]`
     )
   }
   const tool = exactMatch[1] as WorkflowTool
   const model = exactMatch[2]!
   const effort = exactMatch[3]!
+  const fast = exactMatch[4] !== undefined
   if (!registry.tools[tool].models.includes(model)) {
     throw new Error(`Unknown ${tool} workflow model '${model}'`)
   }
   if (!registry.tools[tool].efforts.includes(effort)) {
     throw new Error(`Unknown ${tool} workflow effort '${effort}'`)
   }
+  if (fast && tool !== "codex") {
+    throw new Error(`Invalid workflow selector '${selector}' — Fast is available only for Codex selectors`)
+  }
+  const candidate: WorkflowCandidate = { company: TOOL_COMPANIES[tool], tool, model, effort }
   return {
     selector,
-    candidates: [{ company: TOOL_COMPANIES[tool], tool, model, effort }]
+    candidates: [fast ? { ...candidate, service_tier: "fast" } : candidate]
   }
 }
 
@@ -199,8 +232,8 @@ function loadWorkflowRegistry(): WorkflowRegistryView {
     "Embedded workflow registry",
     ["availability", "defaults", "exact_target_grammar", "profiles", "schema"]
   )
-  if (workflow["schema"] !== 1) throw new Error("Embedded workflow registry schema must be 1")
-  if (workflow["exact_target_grammar"] !== "<tool>:<model>@<effort>") {
+  if (workflow["schema"] !== 2) throw new Error("Embedded workflow registry schema must be 2")
+  if (workflow["exact_target_grammar"] !== "<tool>:<model>@<effort>[+fast]") {
     throw new Error("Embedded workflow exact-target grammar is invalid")
   }
   if (workflow["availability"] !== "checked_when_used") {
@@ -234,7 +267,7 @@ function loadWorkflowRegistry(): WorkflowRegistryView {
     if (typeof rawDefaults[role] !== "string") throw new Error(`Embedded workflow ${role} default is invalid`)
   }
   const registry: WorkflowRegistryView = {
-    schema: 1,
+    schema: 2,
     profiles,
     defaults: {
       orchestrator: rawDefaults["orchestrator"] as string,
@@ -246,7 +279,7 @@ function loadWorkflowRegistry(): WorkflowRegistryView {
       }
     },
     tools,
-    exact_target_grammar: "<tool>:<model>@<effort>",
+    exact_target_grammar: "<tool>:<model>@<effort>[+fast]",
     availability: "checked_when_used"
   }
   resolveSelector(registry.defaults.orchestrator, registry)
@@ -285,55 +318,74 @@ export function defaultWorkflowRecord(): WorkflowRecordV1 {
 function parseRole(
   value: unknown,
   name: WorkflowRoleName,
-  registry: WorkflowRegistryView
+  registry: WorkflowRegistryView,
+  schema: 1 | 2
 ): WorkflowRole {
   const role = expectRecord(value, `Workflow ${name} role`, ["candidates", "selector"])
   if (typeof role["selector"] !== "string") throw new Error(`Workflow ${name} selector is invalid`)
   const resolved = resolveSelector(role["selector"], registry)
-  const candidates = parseCandidates(role["candidates"], `Workflow ${name} candidates`, registry.tools)
+  const candidates = parseCandidates(
+    role["candidates"],
+    `Workflow ${name} candidates`,
+    registry.tools,
+    schema === 2
+  )
   if (compactJcs(candidates) !== compactJcs(resolved.candidates)) {
     throw new Error(`Workflow ${name} candidates do not match its selector`)
   }
   return resolved
 }
 
-export function parseWorkflowRecord(value: unknown): WorkflowRecordV1 {
+function recordUsesFast(roles: ReadonlyArray<WorkflowRole>): boolean {
+  return roles.some((role) => role.candidates.some((candidate) => candidate.service_tier === "fast"))
+}
+
+export function parseWorkflowRecord(value: unknown): WorkflowRecord {
   const record = expectRecord(
     value,
     "Workflow record",
     ["implementer", "orchestrator", "review", "reviewer", "schema"]
   )
-  if (record["schema"] !== 1) throw new Error("Workflow record schema must be 1")
+  const schema = record["schema"]
+  if (schema !== 1 && schema !== 2) throw new Error("Workflow record schema must be 1 or 2")
   const registry = loadWorkflowRegistry()
   const review = expectRecord(record["review"], "Workflow record review", ["max_rounds", "minimum_score"])
-  return {
-    schema: 1,
-    orchestrator: parseRole(record["orchestrator"], "orchestrator", registry),
-    reviewer: parseRole(record["reviewer"], "reviewer", registry),
-    implementer: parseRole(record["implementer"], "implementer", registry),
+  const orchestrator = parseRole(record["orchestrator"], "orchestrator", registry, schema)
+  const reviewer = parseRole(record["reviewer"], "reviewer", registry, schema)
+  const implementer = parseRole(record["implementer"], "implementer", registry, schema)
+  const parsed = {
+    orchestrator,
+    reviewer,
+    implementer,
     review: {
       minimum_score: parseNumericBound("minimum_score", review["minimum_score"]),
       max_rounds: parseNumericBound("max_rounds", review["max_rounds"])
     }
   }
+  if (schema === 2 && !recordUsesFast([orchestrator, reviewer, implementer])) {
+    throw new Error("Workflow record schema 2 requires a Fast service tier")
+  }
+  return schema === 2 ? { schema: 2, ...parsed } : { schema: 1, ...parsed }
 }
 
 export function buildWorkflowRecord(
   overrides: WorkflowOverrides,
-  base: WorkflowRecordV1 = defaultWorkflowRecord()
-): WorkflowRecordV1 {
+  base: WorkflowRecord = defaultWorkflowRecord()
+): WorkflowRecord {
   const current = parseWorkflowRecord(base)
-  return {
-    schema: 1,
-    orchestrator: overrides.orchestrator === undefined
+  const orchestrator = overrides.orchestrator === undefined
       ? current.orchestrator
-      : resolveWorkflowSelector(overrides.orchestrator),
-    reviewer: overrides.reviewer === undefined
+      : resolveWorkflowSelector(overrides.orchestrator)
+  const reviewer = overrides.reviewer === undefined
       ? current.reviewer
-      : resolveWorkflowSelector(overrides.reviewer),
-    implementer: overrides.implementer === undefined
+      : resolveWorkflowSelector(overrides.reviewer)
+  const implementer = overrides.implementer === undefined
       ? current.implementer
-      : resolveWorkflowSelector(overrides.implementer),
+      : resolveWorkflowSelector(overrides.implementer)
+  const next = {
+    orchestrator,
+    reviewer,
+    implementer,
     review: {
       minimum_score: overrides.minimumScore === undefined
         ? current.review.minimum_score
@@ -343,6 +395,9 @@ export function buildWorkflowRecord(
         : parseWorkflowBound("max_rounds", overrides.maxRounds)
     }
   }
+  return recordUsesFast([orchestrator, reviewer, implementer])
+    ? { schema: 2, ...next }
+    : { schema: 1, ...next }
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -366,7 +421,7 @@ export function compactJcs(value: unknown): string {
   return JSON.stringify(canonicalValue(value))
 }
 
-export function renderWorkflowRecordLine(record: WorkflowRecordV1): string {
+export function renderWorkflowRecordLine(record: WorkflowRecord): string {
   return `${WORKFLOW_RECORD_PREFIX}${compactJcs(parseWorkflowRecord(record))}`
 }
 
@@ -390,6 +445,8 @@ export function workflowCatalog(): string {
     `  implementer   ${registry.defaults.implementer}`,
     `  review        minimum score ${registry.defaults.review.minimum_score}; maximum rounds ${registry.defaults.review.max_rounds}`,
     `Exact targets: ${registry.exact_target_grammar}`,
+    "Fast: append +fast to a Codex exact target. Without +fast, Codex roles use Standard.",
+    "Compatibility: +fast requires a Docks consumer that supports workflow record schema 2.",
     "Availability: checked when used by Docks; docks-kit does not probe providers."
   ].join("\n")
 }

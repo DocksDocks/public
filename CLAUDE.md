@@ -315,7 +315,7 @@ User-added permissions arrays are discarded by `--reconcile` (kit owns the permi
 
 #### Deploy-time modifiers
 
-Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change the **deployed** config for a specific machine profile. The SoT is never touched, and a later flag-less sync reasserts it: Claude returns to Fable/high/advisor-off and Codex returns to its model/xhigh effort. Modifiers run after the base merge/removal passes, are idempotent, honor `--dry-run`, and warn when their tool target is not selected. `docks-kit model <tool> <value>` is the standalone form of the model modifiers.
+Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change the **deployed** config for a specific machine profile. The SoT is never touched, and a later flag-less sync reasserts it: Claude returns to Fable/high/advisor-off and Codex returns to its model/high effort. Modifiers run after the base merge/removal passes, are idempotent, honor `--dry-run`, and warn when their tool target is not selected. `docks-kit model <tool> <value>` is the standalone form of the model modifiers.
 
 | Flag | Changes (deployed only) | Use when |
 |------|-------------------------|----------|
@@ -326,7 +326,9 @@ Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change th
 | `--claude-permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. The SoT `ask` list is already minimal (2026-07-08 slim-down: only `git clean` / `docker volume rm` / `docker system prune` — the local-data destroyers; everything else defers to the auto-mode classifier, since `ask` entries force prompts even in auto mode), so this flag mostly matters for emptying `deny`. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
 Codex mirrors the model/effort contract with `--codex-model=<m>` and
-`--codex-effort=<level>`; Codex `default` effort restores `xhigh`.
+`--codex-effort=<level>`; Codex `default` effort restores `high`. Fast remains
+absent from the global SoT. Role-scoped Fast is expressed only by the optional
+`+fast` workflow-selector suffix; an unsuffixed Codex role means Standard.
 
 #### Docks workflow-role overrides
 
@@ -340,12 +342,16 @@ repaired, while malformed or divergent records stop before either file changes.
 A flag-less sync reasserts the SoT defaults. Start fresh Claude Code and Codex
 sessions after an override so both tools load the same record.
 
-Selectors are exactly `profile:<name>` or `<tool>:<model>@<effort>` and must be
-present in `docks-kit models workflow`; `claude:best@high` is Claude's native
+Selectors are exactly `profile:<name>` or `<tool>:<model>@<effort>[+fast]` and
+must be present in `docks-kit models workflow`; `+fast` is Codex-only and emits
+a schema-2 candidate with `service_tier: "fast"`. Without the suffix, the record
+stays schema 1 and the consumer must force Codex's default service tier rather
+than inherit a global Fast preference. `claude:best@high` is Claude's native
 single-model alias, while `profile:claude-best` is the Docks-managed ordered
 Fable-high then Opus-xhigh candidate chain. Candidate availability is tested by
 Docks when it launches each role—docks-kit does not preflight providers or
-claim provider-wide fallback.
+claim provider-wide fallback. Upgrade Docks and Session Relay to schema-2
+consumer support before deploying a `+fast` selector.
 
 #### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
 

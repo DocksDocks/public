@@ -9,7 +9,7 @@ import {
   parseWorkflowRecord,
   renderWorkflowRecordLine,
   type WorkflowOverrides,
-  type WorkflowRecordV1
+  type WorkflowRecord
 } from "../workflowModels"
 
 export interface WorkflowFileSystem {
@@ -36,7 +36,7 @@ const nodeFileSystem: WorkflowFileSystem = {
 }
 
 interface DocumentRecord {
-  readonly record: WorkflowRecordV1 | undefined
+  readonly record: WorkflowRecord | undefined
   readonly line: string | undefined
 }
 
@@ -45,9 +45,9 @@ function readDocumentRecord(document: string | undefined, label: string): Docume
   if (lines.length === 0) return { record: undefined, line: undefined }
 
   let canonicalLine: string | undefined
-  let canonicalRecord: WorkflowRecordV1 | undefined
+  let canonicalRecord: WorkflowRecord | undefined
   for (const line of lines) {
-    let record: WorkflowRecordV1
+    let record: WorkflowRecord
     try {
       record = parseWorkflowRecord(JSON.parse(line.slice(WORKFLOW_RECORD_PREFIX.length)) as unknown)
     } catch (error) {
@@ -64,7 +64,7 @@ function readDocumentRecord(document: string | undefined, label: string): Docume
   return { record: canonicalRecord, line: canonicalLine }
 }
 
-export function upsertWorkflowRecord(document: string, record: WorkflowRecordV1): string {
+export function upsertWorkflowRecord(document: string, record: WorkflowRecord): string {
   const content = document
     .split("\n")
     .filter((line) => !line.startsWith(WORKFLOW_RECORD_PREFIX))

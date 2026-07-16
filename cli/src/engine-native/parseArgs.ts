@@ -280,9 +280,9 @@ function workflowUsage(ctx: Ctx): void {
   printCatalog(ctx, workflowCatalog())
   ctx.services.logger.echo("")
   ctx.services.logger.echo("Workflow override flags:")
-  ctx.services.logger.echo("  --model-orchestrator=<profile:name|tool:model@effort>")
-  ctx.services.logger.echo("  --model-reviewer=<profile:name|tool:model@effort>")
-  ctx.services.logger.echo("  --model-implementer=<profile:name|tool:model@effort>")
+  ctx.services.logger.echo("  --model-orchestrator=<profile:name|tool:model@effort[+fast]>")
+  ctx.services.logger.echo("  --model-reviewer=<profile:name|tool:model@effort[+fast]>")
+  ctx.services.logger.echo("  --model-implementer=<profile:name|tool:model@effort[+fast]>")
   ctx.services.logger.echo("  --review-min-score=<0..100>")
   ctx.services.logger.echo("  --review-max-rounds=<1..10>")
 }

@@ -84,10 +84,12 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `--review-min-score=<0..100>` | Override the completion-review target |
 | `--review-max-rounds=<1..10>` | Bound completion-review batches |
 
-Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>` values from
-`docks-kit models workflow`. These root flags update only the identical compact
-record in `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`; omitted fields retain
-their current valid values, while a later flag-less sync restores all defaults.
+Selectors are strict `profile:<name>` or `<tool>:<model>@<effort>[+fast]`
+values from `docks-kit models workflow`; `+fast` is Codex-only. A selector
+without `+fast` means Standard, while `+fast` writes a schema-2 candidate with
+`service_tier: "fast"`. These root flags update only the identical compact record
+in `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`; omitted fields retain their
+current valid values, while a later flag-less sync restores all defaults.
 
 ## How syncing works
 

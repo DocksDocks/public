@@ -39,18 +39,26 @@ docks-kit models workflow --json      # closed machine-readable registry
 
 The `workflow` section is strict even though ordinary tool-model modifiers are
 forward-compatible. It accepts only known `profile:<name>` values or exact
-`<tool>:<model>@<effort>` targets whose model and effort both appear in the
-catalog. The defaults are:
+`<tool>:<model>@<effort>[+fast]` targets whose model and effort both appear in
+the catalog. `+fast` is accepted only for Codex exact targets. The defaults are:
 
 - orchestrator: `profile:claude-best`, ordered as `claude:fable@high` then
   `claude:opus@xhigh`;
-- reviewer and implementer: `codex:gpt-5.6-sol@xhigh`;
+- reviewer and implementer: `codex:gpt-5.6-sol@high`;
 - review minimum score 90 and maximum 3 rounds.
 
 `claude:best@high` is Claude's native one-model alias. It is deliberately not
 the same as the Docks-managed `profile:claude-best` candidate chain.
 Availability is `checked_when_used`: Docks classifies each launch attempt;
 docks-kit neither probes providers nor promises provider-wide fallback.
+
+The default and every unsuffixed selector emit the backward-compatible schema-1
+record with no service-tier field; absence means Standard. A `+fast` selector
+promotes the complete record to schema 2 and adds `service_tier: "fast"` only to
+the selected Codex candidate. Replacing the last Fast selector with an
+unsuffixed selector demotes the record back to schema 1. Docks and Session Relay
+must support schema 2 before `+fast` is deployed, and must explicitly select the
+default tier for unsuffixed roles so global Codex configuration cannot leak in.
 
 ## Advisor pairing note (Claude)
 

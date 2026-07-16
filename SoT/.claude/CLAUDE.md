@@ -56,7 +56,7 @@ Treat the 12 heuristics above as protocol, not preference. If a turn ends withou
 
 For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial.
 
-Docks-workflow-models: {"implementer":{"candidates":[{"company":"openai","effort":"xhigh","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@xhigh"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"opus","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"xhigh","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@xhigh"},"schema":1}
+Docks-workflow-models: {"implementer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"opus","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"schema":1}
 
 ## Project Skills
 
@@ -110,7 +110,7 @@ How to apply:
 - Claude models run via the Agent/Workflow `model` parameter (`opus`, `sonnet`, `fable` where org access allows).
 
 Reaching gpt-5.6-sol — always through the `session-relay` skill (shared bus + `relay` CLI, Claude ⇄ Codex), even for one-shots, so every exchange stays resumable:
-- `relay spawn <dir> --tool codex --model gpt-5.6-sol --effort xhigh` (or `--tool claude --model opus` for a Claude worker in another project), then continue it with `send` / `wake`. Codex runs on its own CLI (`~/.codex/config.toml` defaults to gpt-5.6-sol) and is more efficient than Claude on well-specced execution and stronger at computer-use and UI/UX verification — offload those and report results back.
+- `relay spawn <dir> --tool codex --model gpt-5.6-sol --effort high` (or `--tool claude --model opus` for a Claude worker in another project), then continue it with `send` / `wake`. Codex runs on its own CLI (`~/.codex/config.toml` defaults to gpt-5.6-sol/high) and is more efficient than Claude on well-specced execution and stronger at computer-use and UI/UX verification — offload those and report results back.
 - An independent fresh-context review = a NEW spawn (fresh spawn is fresh context). Two independent perspectives on a plan = the red-team pair spawn: a gpt-5.6-sol worker and an opus worker debate over the bus, orchestrator writes the verdict — the concrete form of the "second independent perspective" review above.
 - Pin `--model`/`--effort` on every spawn/wake; never leave an unattended relay child on a top interactive default (e.g. Fable). Each spawn/wake bills the target's subscription — spawn deliberately, never in loops.
 

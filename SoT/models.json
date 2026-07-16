@@ -16,7 +16,7 @@
     ]
   },
   "codex": {
-    "verified": "2026-07-09",
+    "verified": "2026-07-16",
     "models": [
       { "id": "gpt-5.6-sol", "kind": "id", "note": "GPT-5.6 Sol — frontier, recommended default; the kit SoT pin" },
       { "id": "gpt-5.6-terra", "kind": "id", "note": "GPT-5.6 Terra — balanced tier" },
@@ -29,7 +29,7 @@
     ]
   },
   "workflow": {
-    "schema": 1,
+    "schema": 2,
     "profiles": {
       "claude-best": {
         "candidates": [
@@ -40,14 +40,14 @@
     },
     "defaults": {
       "orchestrator": "profile:claude-best",
-      "reviewer": "codex:gpt-5.6-sol@xhigh",
-      "implementer": "codex:gpt-5.6-sol@xhigh",
+      "reviewer": "codex:gpt-5.6-sol@high",
+      "implementer": "codex:gpt-5.6-sol@high",
       "review": {
         "minimum_score": 90,
         "max_rounds": 3
       }
     },
-    "exact_target_grammar": "<tool>:<model>@<effort>",
+    "exact_target_grammar": "<tool>:<model>@<effort>[+fast]",
     "availability": "checked_when_used"
   }
 }

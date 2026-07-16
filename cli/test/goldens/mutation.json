@@ -22,7 +22,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -56,7 +56,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -91,7 +91,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -126,7 +126,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -249,7 +249,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -260,9 +260,9 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
+        ".codex/config.toml": "sha256:95beff0710cae8bfc75856375d584c800d5ee62043053d4beefd0f4c66714772",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -291,7 +291,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -302,9 +302,9 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
+        ".codex/config.toml": "sha256:95beff0710cae8bfc75856375d584c800d5ee62043053d4beefd0f4c66714772",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -361,7 +361,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -396,7 +396,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -431,7 +431,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -470,7 +470,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -505,7 +505,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -573,9 +573,9 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
+        ".codex/config.toml": "sha256:95beff0710cae8bfc75856375d584c800d5ee62043053d4beefd0f4c66714772",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -608,9 +608,9 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
+        ".codex/config.toml": "sha256:95beff0710cae8bfc75856375d584c800d5ee62043053d4beefd0f4c66714772",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -643,9 +643,9 @@
         ".claude/RTK.md": "sha256:0c4abfe50ed5348dd17839e7e1c28224615fe666bbacd83b35e9e9def90ea245",
         ".claude/settings.json": "sha256:d15813809f0637bba37e4aa59d1fa9000bd30b381b6f942538fe430398feaa45",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1b83b013b209f011c57535f789cfb96c8d256e9aa4d3d01127cf97c7f0c77d7f",
+        ".codex/config.toml": "sha256:a4a7d7a0d9d60ea39f93abae3923d2665242967539b0d74cd15331945a35e743",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -674,7 +674,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:0676423954b12002f9a6a3c0029dd6efccb415b594af6184ab510834cc6b762a",
+        ".claude/CLAUDE.md": "sha256:7a3a09fe33abd22eed39648f6e74c4f1f2e8239e18da104d3f6983270ffa9b61",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
@@ -685,9 +685,9 @@
         ".claude/skills/": "dir",
         ".claude/skills/agent-browser": "link:../../.agents/skills/agent-browser",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:b9e8a48a47f9c09ced310f47563d3ecba7228014bc0323096a303ed5a9f6a2da",
+        ".codex/config.toml": "sha256:95beff0710cae8bfc75856375d584c800d5ee62043053d4beefd0f4c66714772",
         ".codex/config.toml.bak": "sha256:10e429414d8d3dd18768733a5054e082f670b196a4eaf9ba7d90a848fd673e56",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -732,7 +732,7 @@
         "--review-max-rounds=0"
       ],
       "exitCode": 2,
-      "output": "Workflow model registry:\nProfiles:\n  profile:claude-best\n    claude:fable@high\n    claude:opus@xhigh\nDefaults:\n  orchestrator  profile:claude-best\n  reviewer      codex:gpt-5.6-sol@xhigh\n  implementer   codex:gpt-5.6-sol@xhigh\n  review        minimum score 90; maximum rounds 3\nExact targets: <tool>:<model>@<effort>\nAvailability: checked when used by Docks; docks-kit does not probe providers.\n\nWorkflow override flags:\n  --model-orchestrator=<profile:name|tool:model@effort>\n  --model-reviewer=<profile:name|tool:model@effort>\n  --model-implementer=<profile:name|tool:model@effort>\n  --review-min-score=<0..100>\n  --review-max-rounds=<1..10>\n\u001b[1;31m[err]\u001b[0m max_rounds must be an integer in 1..10\n",
+      "output": "Workflow model registry:\nProfiles:\n  profile:claude-best\n    claude:fable@high\n    claude:opus@xhigh\nDefaults:\n  orchestrator  profile:claude-best\n  reviewer      codex:gpt-5.6-sol@high\n  implementer   codex:gpt-5.6-sol@high\n  review        minimum score 90; maximum rounds 3\nExact targets: <tool>:<model>@<effort>[+fast]\nFast: append +fast to a Codex exact target. Without +fast, Codex roles use Standard.\nCompatibility: +fast requires a Docks consumer that supports workflow record schema 2.\nAvailability: checked when used by Docks; docks-kit does not probe providers.\n\nWorkflow override flags:\n  --model-orchestrator=<profile:name|tool:model@effort[+fast]>\n  --model-reviewer=<profile:name|tool:model@effort[+fast]>\n  --model-implementer=<profile:name|tool:model@effort[+fast]>\n  --review-min-score=<0..100>\n  --review-max-rounds=<1..10>\n\u001b[1;31m[err]\u001b[0m max_rounds must be an integer in 1..10\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:c0ae18b75551267201f7b87dd1a693b27096786ee77c5561266659786ef80ec5",
@@ -775,13 +775,13 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:4bed77a9a8b736c3cadccce835f01ebaa95799990607a591b1e0e26b4cfa5c44",
         ".claude/settings.json.bak": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -833,7 +833,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d"
       }
@@ -932,7 +932,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d"
       }
@@ -953,7 +953,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d"
       }
@@ -974,7 +974,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d"
       }
@@ -995,7 +995,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d"
       }
@@ -1027,8 +1027,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1041,7 +1041,7 @@
         "--codex-effort"
       ],
       "exitCode": 2,
-      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>\n",
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -1054,7 +1054,7 @@
         "--codex-effort="
       ],
       "exitCode": 2,
-      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort '' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort '' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -1067,7 +1067,7 @@
         "--codex-effort=future"
       ],
       "exitCode": 2,
-      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: xhigh\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort 'future' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
+      "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort 'future' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -1086,8 +1086,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1106,8 +1106,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1126,8 +1126,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1153,13 +1153,13 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:4bed77a9a8b736c3cadccce835f01ebaa95799990607a591b1e0e26b4cfa5c44",
         ".claude/settings.json.bak": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1184,13 +1184,13 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/AGENTS.md.bak": "sha256:698d8f002f1a282d4823f09f7da49622058241e84a504bc2330a7df9b9fffa22",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/AGENTS.md.bak": "sha256:bb9b8cf2a1c844c54d137af4dd8bd86cc6a58140b6ce65f18b315cac4d3e21b0",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1215,12 +1215,12 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:dd73803eedfa55ef4f310e155d549660aec4f762ac96f3403f33a2a2cf89988d",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:2f8f21b4bd3afa98f50e99bd3954e5a1f17548f700dbd9aa17081511da47012a",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:07da2c151c45dbe452efec9e7f28c88090a51660e53648f4ed93d80e9d2c9971",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1368,9 +1368,9 @@
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".claude/": "dir",
-        ".claude/CLAUDE.md": "sha256:f64efe85482491b329ce86f305161768b62b9997255059dab98eacde6cf858f7",
+        ".claude/CLAUDE.md": "sha256:af768b734d90f171f9eb20fcf6e42204d6a4ff005bfda65a02b4fa55c90d0511",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f64efe85482491b329ce86f305161768b62b9997255059dab98eacde6cf858f7"
+        ".codex/AGENTS.md": "sha256:af768b734d90f171f9eb20fcf6e42204d6a4ff005bfda65a02b4fa55c90d0511"
       }
     },
     "fixture=home-fresh cmd=workflow --review-min-score=80 replay=2nd variant=workflow-idempotent-role-override": {
@@ -1384,9 +1384,9 @@
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".claude/": "dir",
-        ".claude/CLAUDE.md": "sha256:698d8f002f1a282d4823f09f7da49622058241e84a504bc2330a7df9b9fffa22",
+        ".claude/CLAUDE.md": "sha256:bb9b8cf2a1c844c54d137af4dd8bd86cc6a58140b6ce65f18b315cac4d3e21b0",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:698d8f002f1a282d4823f09f7da49622058241e84a504bc2330a7df9b9fffa22"
+        ".codex/AGENTS.md": "sha256:bb9b8cf2a1c844c54d137af4dd8bd86cc6a58140b6ce65f18b315cac4d3e21b0"
       }
     },
     "fixture=home-invalid-json cmd=sync claude": {
@@ -1419,7 +1419,7 @@
         ".claude/bin/notify.mjs": "sha256:7d104da5a28870a3806be95fe9af101543c276edee43436ba872892e13229b53",
         ".claude/bin/session-start.mjs": "sha256:1f1bc3b5bee6f57b909fe80063a068d090569302350f5065ea974da968488636",
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
-        ".claude/CLAUDE.md": "sha256:b69cf40f194581aa93b7046c8fb7f00039d0a3eb045641e6f0014713c5ca4577",
+        ".claude/CLAUDE.md": "sha256:3af076104c1e990651752983946f146862111ad6100ee51ff02015083661c12c",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/settings.json": "sha256:d5a6e4991ddca1f7ae3957757250b025c0084fe373264096e94cdc3299e67063",
         ".claude/settings.json.bak": "sha256:fb9f3cab20327b58f92d501faeddcf50c6529d164e98beecaffea4359cc80ae9"
@@ -1439,8 +1439,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:436ac976da16c818781e7348f96ef7e81826faeb5073653849b5eb633f991bae",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:82c9033ad8788137f0c368edc01b630efaa7108016efe88cf233ae38872e773d",
         ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1475,8 +1475,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:5df3b6de7d12d2dc0a425b556b65546030a4c589f8d334c7ef4a88802f85c54e",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:bf7ed1423e97915012365634c984afee407b51c685db44474fb3e4cc234788ce",
         ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1511,8 +1511,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:f99d2d027a3d27301973807aacc6e7bb289b079b75dfe7be16a920e4a797228d",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:c7e0ab39b5686d3d7df1490f5e74db8fe8c4ad6a9b71131b186d935d953bf3ae",
         ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1547,8 +1547,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:aaf5f0744761206cb0e1c0bd06c888fae9264125c56fd0c2ac46330e07d8f626",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:214e50708a46f4e5fdf78a758c12e379358bc187ee7e938979817f24974a296f",
         ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1583,8 +1583,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:7e0d6a0537f67a62bd640f53005e0425f2dadab3a3ccc6e33a6a23b57f67aab2",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:7e864af79c143e09c7f2e93728e8cb3f58291aa240dc7f5cbf68614ccd1fe250",
         ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1619,8 +1619,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:aaf5f0744761206cb0e1c0bd06c888fae9264125c56fd0c2ac46330e07d8f626",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:214e50708a46f4e5fdf78a758c12e379358bc187ee7e938979817f24974a296f",
         ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1655,8 +1655,8 @@
         ".agents/plugins/marketplace.json": "sha256:9407c2a2695f5eede0ce595796322d799fc0517109bdf1f08ca8f43060508886",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:f13c1bf01ef1758f4949a279475fe41042f713f9e1cd4089f2ccacc8dea68de0",
-        ".codex/config.toml": "sha256:71d7d659bf000bc02576f3f0341ad4311f20beadecf45e5c13e40b57c5ec6c94",
+        ".codex/AGENTS.md": "sha256:e34de7052823ed0d54f37275d99655cc7d52362a9db46fb8497b6e323d4e74b8",
+        ".codex/config.toml": "sha256:a232327f7e0260721aa2b385223e67a1023578ddde9362488ed8a0193d8c5ca2",
         ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
