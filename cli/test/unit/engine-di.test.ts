@@ -54,13 +54,13 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
   const platform = makePlatform("linux")
   const missing = new Set(options.missing ?? [])
   const versions: Partial<Record<ToolId, string>> = {
-    "agent-browser": "0.31.1",
+    "agent-browser": "0.32.0",
     "effect-solutions": "0.5.3",
     bun: "1.3.14",
     ...options.versions
   }
   const latest: Partial<Record<ToolId, string>> = {
-    "agent-browser": "0.31.1",
+    "agent-browser": "0.32.0",
     "effect-solutions": "0.5.3",
     rtk: "0.43.0",
     ...options.latest
@@ -712,7 +712,7 @@ describe.sequential("EngineNative full service injection", () => {
     expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
     expect(runEngineNative(["toolchain", "ensure", "agent-browser", "--verbose"], services)).toBe(0)
     expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
-    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m agent-browser up to date (0.31.1)\n"])
+    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m agent-browser up to date (0.32.0)\n"])
     expect(stdout).toEqual([])
   })
 
@@ -818,7 +818,7 @@ describe.sequential("EngineNative full service injection", () => {
           level: "echo",
           message: "[dry-run] npx skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex"
         },
-        { level: "echo", message: "[dry-run] agent-browser up to date (0.31.1)" },
+        { level: "echo", message: "[dry-run] agent-browser up to date (0.32.0)" },
         { level: "echo", message: "[dry-run] effect-solutions up to date (0.5.3)" },
         { level: "echo", message: "" },
         { level: "echo", message: "--- Sync complete ---" },
@@ -872,7 +872,7 @@ describe.sequential("EngineNative full service injection", () => {
         {
           level: "warn",
           message:
-            "skipping agent-browser upgrade (latest 0.99.0 is above kit-verified 0.31.1; pass --yes to accept, or update SoT/toolchain.json after testing)"
+            "skipping agent-browser upgrade (latest 0.99.0 is above kit-verified 0.32.0; pass --yes to accept, or update SoT/toolchain.json after testing)"
         }
       ])
       noBypass()
@@ -894,7 +894,7 @@ describe.sequential("EngineNative full service injection", () => {
       expect(runEngineNative(["toolchain", "ensure", "agent-browser"], verboseServices)).toBe(0)
       expect(runEngineNative(["toolchain", "ensure", "agent-browser", "--verbose"], verboseServices)).toBe(0)
       expect(runEngineNative(["toolchain", "ensure", "agent-browser"], verboseServices)).toBe(0)
-      expect(verboseRecords).toEqual([{ level: "verbose", message: "agent-browser up to date (0.31.1)" }])
+      expect(verboseRecords).toEqual([{ level: "verbose", message: "agent-browser up to date (0.32.0)" }])
       noBypass()
     } finally {
       stdout.mockRestore()

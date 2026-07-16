@@ -50,7 +50,7 @@ interface MutationCaseGolden {
 const RTK_INIT_FAILS = `case "$1" in --version) echo "rtk 0.43.0";; init) exit 1;; esac`
 const AGENT_BROWSER_STALE = `case "$1" in --version) echo "agent-browser 0.30.0";; esac`
 const NPM_INSTALL_FAILS = `case "$1" in
-  view) case "$2" in agent-browser) echo "0.31.1";; esac;;
+  view) case "$2" in agent-browser) echo "0.32.0";; esac;;
   install) exit 1;;
 esac`
 const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in

@@ -32,7 +32,7 @@ describe("skills platform injection", () => {
     mocks.spawnSync.mockReset().mockImplementation((cmd: string, args: Array<string>) => ({
       error: undefined,
       status: 0,
-      stdout: cmd === "agent-browser" && args[0] === "--version" ? "agent-browser 0.31.1\n" : ""
+      stdout: cmd === "agent-browser" && args[0] === "--version" ? "agent-browser 0.32.0\n" : ""
     }))
   })
 
@@ -44,7 +44,7 @@ describe("skills platform injection", () => {
   it("adds --with-deps only for an injected Linux platform", () => {
     const installArgv = (platform: NodeJS.Platform): Array<string> | undefined => {
       mocks.spawnSync.mockClear()
-      expect(agentBrowserInstall("install", "0.31.1", servicesFor(platform))).toBe(0)
+      expect(agentBrowserInstall("install", "0.32.0", servicesFor(platform))).toBe(0)
       return mocks.spawnSync.mock.calls.find(([cmd, args]) => cmd === "agent-browser" && args[0] === "install")?.[1]
     }
 

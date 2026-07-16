@@ -19,7 +19,7 @@
                 "note": "runtime for effect-solutions + the docks-kit CLI; bootstrap installs the verified release (installer takes bun-vX.Y.Z); self-updates via `bun upgrade` when wanted" },
     "effect-solutions": { "kind": "managed", "policy": "track", "verified": "0.5.3", "pinnable": true,
                 "note": "Effect docs CLI (bun global) — track keeps it self-upgrading, gated by the verified pin" },
-    "agent-browser":    { "kind": "managed", "policy": "track", "verified": "0.31.1", "pinnable": true,
+    "agent-browser":    { "kind": "managed", "policy": "track", "verified": "0.32.0", "pinnable": true,
                 "note": "browser-automation CLI (npm global), gated by the verified pin; first install also downloads Chrome for Testing" },
     "skills-cli": { "kind": "pin", "verified": "1.5.15",
                 "note": "the `skills` npm package the kit runs via `npx skills@<verified>` on every agents sync (universal-skill install/remove) — pinned, never @latest" }

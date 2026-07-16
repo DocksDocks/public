@@ -109,7 +109,7 @@ esac`,
   npx: `exit 0`,
   npm: `case "$1" in
   view) case "$2" in
-    agent-browser) echo "0.31.1";;
+    agent-browser) echo "0.32.0";;
     effect-solutions) echo "0.5.3";;
     *) echo "0.0.1";;
   esac;;
@@ -124,7 +124,7 @@ esac`,
   esac
 done
 exit 0`,
-  "agent-browser": `case "$1" in --version) echo "agent-browser 0.31.1";; esac`,
+  "agent-browser": `case "$1" in --version) echo "agent-browser 0.32.0";; esac`,
   "effect-solutions": `exit 0`,
   bwrap: `case "$1" in --version) echo "bubblewrap 0.11.0";; esac`,
   intelephense: `exit 0`,
