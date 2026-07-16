@@ -1,6 +1,6 @@
 #!/bin/bash
 # docks-kit — launcher. Resolution order:
-#   1. compiled binary in cli/dist/ (bun build --compile output)
+#   1. version-matching compiled binary in cli/dist/ (bun build --compile output)
 #   2. Bun from source (auto-installs Bun + node_modules when missing)
 # No-Bun recovery path: download a release binary for your platform.
 set -euo pipefail
@@ -22,7 +22,19 @@ case "$(uname -s)-$(uname -m)" in
   *)              KIT_BIN="" ;;
 esac
 if [[ -n "$KIT_BIN" && -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
-  exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
+  CHECKOUT_VERSION=""
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[[:space:]]*\"version\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]]; then
+      CHECKOUT_VERSION="${BASH_REMATCH[1]}"
+      break
+    fi
+  done < "$REPO_DIR/package.json"
+  IFS= read -r BIN_VERSION < <("$REPO_DIR/cli/dist/$KIT_BIN" --version 2>/dev/null || true)
+  BIN_VERSION="${BIN_VERSION%$'\r'}"
+  if [[ -z "$CHECKOUT_VERSION" || "$BIN_VERSION" == "$CHECKOUT_VERSION" ]]; then
+    exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
+  fi
+  echo "[docks-kit] ignoring stale cli/dist/$KIT_BIN ${BIN_VERSION:-<unknown>}; checkout is $CHECKOUT_VERSION — running from source" >&2
 fi
 
 # Locate bun: PATH, then the known install locations that sit off the
