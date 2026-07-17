@@ -1,12 +1,12 @@
 ---
 title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
-status: ongoing
+status: blocked
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T16:10:24-03:00"
+updated: "2026-07-17T16:12:24-03:00"
 started_at: "2026-07-17T15:28:42-03:00"
-blocked_reason: null
-blocked_since: null
+blocked_reason: "Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."
+blocked_since: "2026-07-17T16:12:24-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -147,7 +147,7 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 | 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | completed | Frozen tests pass for mapping, source/checksum equality, exact version, a fresh home with no `~/.local/bin`, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
 | 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | completed | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
 | 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `CHANGELOG.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | completed | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
-| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | ongoing | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
+| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | completed | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
 
 ## Acceptance criteria
 
@@ -250,8 +250,8 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 - Live dry-run evidence: Claude and Codex each report Session Relay CLI ensure immediately before plugin reconciliation; agents-only reports neither ensure nor plugin refresh.
 - Companion TDD-red receipt JCS bytes: {"captured_at":"2026-07-17T18:34:21.954Z","command":{"argv":["bun","run","test:unit","--","cli/test/unit/sessionRelayCli.test.ts","cli/test/unit/pluginRefresh.test.ts"],"cwd":"/home/vagrant/projects/public"},"exit_code":1,"pre_production_commit":"d193d469fa6abfa02d037ace38636f3b3a48adac","producer":{"blob_id":"3fc09767ff84e9bffef0b0321d5ed0ef201901e8","path":"scripts/capture-tdd-red.mjs","version":"1"},"repository_id":"DocksDocks/public","schema":1,"stderr_sha256":"5c9019ece77114ec77d3a6a50e58a14227816fe5ffe570b0d037de4cb41c44f1","stdout_sha256":"5211be417546f4163863c26fb9d8e161979a660670f9adecf5ba5233dbc520c7","test_paths":[{"blob_id":"b375c2a43f85047aad2afcf93b3b88e4b9e81ae3","path":"cli/test/unit/pluginRefresh.test.ts"},{"blob_id":"8b07cafb5e8ee6d041fd04da43562919afdf9e69","path":"cli/test/unit/sessionRelayCli.test.ts"}],"type":"TddRedReceiptV1"}
 - Companion TDD-red receipt SHA-256: 56d739965e47e757720589a230ad14cab73dac601b317edd442a0883f1ef45b8
-- Status: ongoing
-- Blocked reason: pending
+- Status: blocked
+- Blocked reason: Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests.
 
 ## Mistakes & Dead Ends
 
