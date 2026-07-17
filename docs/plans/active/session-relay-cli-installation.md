@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: blocked
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T16:12:24-03:00"
+updated: "2026-07-17T16:46:14-03:00"
 started_at: "2026-07-17T15:28:42-03:00"
 blocked_reason: "Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."
 blocked_since: "2026-07-17T16:12:24-03:00"
@@ -148,6 +148,7 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 | 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | completed | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
 | 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `CHANGELOG.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | completed | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
 | 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | completed | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
+| 6 | Merge updated `origin/main` at `f8988ae85c8dfe7cb7c891e9609e1a3f273e0f88`, resolve overlapping derived surfaces from source, rerun every acceptance/full gate, and record a new unpublished integration identity `M`. | `package.json`; `cli/src/generated/sotPayload.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan Notes and acceptance evidence | 5 | completed | Merge commit `M` has exact parents `B` and `f8988ae85c8dfe7cb7c891e9609e1a3f273e0f88`; A1–A7P pass on clean `M`; a new create-once local validation ref resolves exactly to `M`; the original remote validation ref remains unchanged; the plan remains blocked and nothing new is published. |
 
 ## Acceptance criteria
 
@@ -162,8 +163,9 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 | A7 | `bun cli/scripts/generate-sot-payload.ts --check && bun run typecheck && bun run test:unit && bun cli/test/statusline-runtime-smoke.mjs posix && bun run golden:dryrun && bun run golden:mutation` | Exit 0; every ordinary local command in the authoritative Linux `golden` workflow job passes. |
 | A7P | Run each golden with `--prove-red`, require a nonzero exit, and require its output to contain respectively `prove-red OK: golden-dryrun` and `prove-red OK: golden-mutation`, exactly as `.github/workflows/parity.yml` does. | Both planted mismatches are detected; neither prove-red command exits zero or fails without its expected proof marker. |
 | A8 | `base=$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#base}" -eq 40; printf '%s' "$base" | grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$base^{commit}"; git diff --check "$base..HEAD"; test -z "$(git status --porcelain=v1)"` | Exit 0; the persisted execution base is a valid commit, the implementation range has no whitespace errors, and the final validation worktree is clean. |
-| A9 | `impl=$(sed -n 's/^- Implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; git merge-base --is-ancestor "$impl" HEAD; git diff --exit-code "$impl..HEAD" -- . ':(exclude)docs/plans/active/session-relay-cli-installation.md'; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the create-once immutable validation ref named from persisted clean implementation identity `I` resolves to exactly `I`, and every later commit through blocked-plan identity `B` changes only this companion plan. |
+| A9 | `impl=$(sed -n 's/^- Original implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); integrated=$(sed -n 's/^- Integrated implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; git merge-base --is-ancestor "$impl" "$integrated"; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the original create-once remote validation ref still resolves exactly to original implementation identity `I`, which is an ancestor of integrated identity `M`. |
 | A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); const reason="Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."; if(!/^status: blocked$/m.test(p)||!p.includes(`blocked_reason: "${reason}"`)||!/^blocked_since: "?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z\|[+-]\d{2}:\d{2})"?$/m.test(p)||!p.includes(`- Blocked reason: ${reason}`)) process.exit(1)'` | Exit 0; the companion plan has the exact producer-required lifecycle fields and display note. |
+| A11 | `integrated=$(sed -n 's/^- Integrated implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#integrated}" -eq 40; printf '%s' "$integrated" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$integrated^{commit}"; test "$(git show -s --format=%P "$integrated")" = "c3b542220d5a24a98ca05383bbe28afc2319b7e2 f8988ae85c8dfe7cb7c891e9609e1a3f273e0f88"; ref="refs/heads/preflight/session-relay-cli-0.9.0-${integrated:0:12}"; test "$(git rev-parse "$ref")" = "$integrated"; test -z "$(git ls-remote origin "$ref")"; git diff --exit-code "$integrated..HEAD" -- . ':(exclude)docs/plans/active/session-relay-cli-installation.md'` | Exit 0; integrated identity `M` is the exact required merge, the new create-once validation ref is local-only and resolves to `M`, and every later change is confined to this companion plan. |
 
 ## Out of scope / do-NOT-touch
 
@@ -208,7 +210,7 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 - **File manifest:** Present; each step names exact repository paths and external plan ownership.
 - **Environment & commands:** Present; Bun/Vitest/TypeScript, focused/golden/full commands, payload generation, and validation-ref grammar are exact.
 - **Interface & data contracts:** Present; the closed manifest, four-target mapping, transaction order, exact version output, and TDD receipt are defined.
-- **Executable acceptance:** Present; A1–A10 are ordered, nonempty commands with expected outcomes.
+- **Executable acceptance:** Present; A1–A11 are ordered, nonempty commands with expected outcomes.
 - **Out of scope:** Present; publication, Docks edits, Rust, Windows, runtime semantics, and broad refactors are prohibited.
 - **Decision rationale:** Present; a dedicated installer module plus tool-owned ordering calls preserves existing ownership and makes failure atomicity testable.
 - **Known gotchas:** Present; RTK ordering, default dual-tool sync, skip-refresh semantics, checksum grammar, sibling staging, and fixture-pin blocking are explicit.
@@ -240,13 +242,19 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 ## Notes
 
 - Repository ID: `DocksDocks/public`.
-- Immutable validation ref: `refs/heads/preflight/session-relay-cli-0.9.0-020fa42ad350`
-- Implementation commit: 020fa42ad350d8cd6ddc16be6eb66e46743a3b15
-- Plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
+- Original immutable validation ref: `refs/heads/preflight/session-relay-cli-0.9.0-020fa42ad350`
+- Original implementation commit: 020fa42ad350d8cd6ddc16be6eb66e46743a3b15
+- Integrated immutable validation ref: `refs/heads/preflight/session-relay-cli-0.9.0-6834b07e4a20` (local create-once ref; intentionally unpublished)
+- Integrated implementation commit: 6834b07e4a20d24fb48f381505e94c5410543b6e
+- Integrated upstream commit: f8988ae85c8dfe7cb7c891e9609e1a3f273e0f88 (`cli-v0.8.2`)
+- Original reviewed plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
 - Execution base commit: add253bbe43011e1cd8c1333f4e0b2c19883e4e9
-- Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
-- Focused green evidence: frozen installer/order suite 27/27; focused engine/installer/order suite 44/44; focused dry-run 18 cases; focused mutation 33 cases.
-- Full Linux gate evidence: generated payload, typecheck, 177 unit tests across 22 files, POSIX runtime smoke, 29 dry-run golden cases, and 76 mutation golden cases passed; both prove-red commands detected their planted mismatches with the required markers.
+- Original review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
+- Integration identity update did not regenerate the original draft review or companion TDD-red receipt; both remain historical inputs bound before production edits.
+- Original focused green evidence: frozen installer/order suite 27/27; focused engine/installer/order suite 44/44; focused dry-run 18 cases; focused mutation 33 cases.
+- Original full Linux gate evidence: generated payload, typecheck, 177 unit tests across 22 files, POSIX runtime smoke, 29 dry-run golden cases, and 76 mutation golden cases passed; both prove-red commands detected their planted mismatches with the required markers.
+- Integrated focused green evidence: merged installer/plugin-order suite 28/28; focused dry-run 18 cases; focused mutation 33 cases; payload freshness and both live dry-run routing checks passed.
+- Integrated full Linux gate evidence: generated payload, typecheck, 179 unit tests across 22 files, POSIX runtime smoke, 29 dry-run golden cases, and 76 mutation golden cases passed; prove-red detected 29 dry-run and 73 mutation planted mismatches with the required markers.
 - Live dry-run evidence: Claude and Codex each report Session Relay CLI ensure immediately before plugin reconciliation; agents-only reports neither ensure nor plugin refresh.
 - Companion TDD-red receipt JCS bytes: {"captured_at":"2026-07-17T18:34:21.954Z","command":{"argv":["bun","run","test:unit","--","cli/test/unit/sessionRelayCli.test.ts","cli/test/unit/pluginRefresh.test.ts"],"cwd":"/home/vagrant/projects/public"},"exit_code":1,"pre_production_commit":"d193d469fa6abfa02d037ace38636f3b3a48adac","producer":{"blob_id":"3fc09767ff84e9bffef0b0321d5ed0ef201901e8","path":"scripts/capture-tdd-red.mjs","version":"1"},"repository_id":"DocksDocks/public","schema":1,"stderr_sha256":"5c9019ece77114ec77d3a6a50e58a14227816fe5ffe570b0d037de4cb41c44f1","stdout_sha256":"5211be417546f4163863c26fb9d8e161979a660670f9adecf5ba5233dbc520c7","test_paths":[{"blob_id":"b375c2a43f85047aad2afcf93b3b88e4b9e81ae3","path":"cli/test/unit/pluginRefresh.test.ts"},{"blob_id":"8b07cafb5e8ee6d041fd04da43562919afdf9e69","path":"cli/test/unit/sessionRelayCli.test.ts"}],"type":"TddRedReceiptV1"}
 - Companion TDD-red receipt SHA-256: 56d739965e47e757720589a230ad14cab73dac601b317edd442a0883f1ef45b8
