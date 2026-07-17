@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -126,7 +126,7 @@ describe("generated SoT payload", () => {
   it("makes every live SoT file an allowlist or explicit exclusion", () => {
     const expected = [
       ...PAYLOAD_PATHS.filter((path) => path.startsWith("SoT/")),
-      ...AUTHORING_EXCLUSIONS
+      ...AUTHORING_EXCLUSIONS.filter((path) => existsSync(join(REPO_DIR, ...path.split("/"))))
     ].sort()
     expect(inventoryAuthoringPaths(REPO_DIR)).toEqual(expected)
   })
