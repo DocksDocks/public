@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: ongoing
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T16:07:50-03:00"
+updated: "2026-07-17T16:10:24-03:00"
 started_at: "2026-07-17T15:28:42-03:00"
 blocked_reason: null
 blocked_since: null
@@ -240,8 +240,8 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 ## Notes
 
 - Repository ID: `DocksDocks/public`.
-- Immutable validation ref: pending
-- Implementation commit: pending
+- Immutable validation ref: `refs/heads/preflight/session-relay-cli-0.9.0-020fa42ad350`
+- Implementation commit: 020fa42ad350d8cd6ddc16be6eb66e46743a3b15
 - Plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
 - Execution base commit: add253bbe43011e1cd8c1333f4e0b2c19883e4e9
 - Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
