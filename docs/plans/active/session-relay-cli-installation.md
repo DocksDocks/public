@@ -3,8 +3,10 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: planned
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T15:07:00-03:00"
+updated: "2026-07-17T15:20:52-03:00"
 started_at: null
+blocked_reason: null
+blocked_since: null
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -143,7 +145,7 @@ The helper must exit nonzero because the new behavior is absent while still prod
 | 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | planned | Frozen tests pass for mapping, source/checksum equality, exact version, a fresh home with no `~/.local/bin`, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
 | 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | planned | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
 | 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | planned | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
-| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean validation implementation, push one create-once validation ref, then block this plan on production digests. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | planned | All gates pass; the ref `refs/heads/preflight/session-relay-cli-0.9.0-<first12>` resolves to the exact clean final commit; no tag, Release, npm publication, or `main` update occurs; plan status is `blocked` with the exact required reason. |
+| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | planned | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
 
 ## Acceptance criteria
 
@@ -157,8 +159,8 @@ The helper must exit nonzero because the new behavior is absent while still prod
 | A6 | `./docks-kit sync agents --dry-run --skip-rtk` | Exit 0; output contains no Session Relay CLI ensure or plugin refresh. |
 | A7 | `./sync.sh --ci` | Exit 0; full repository typecheck, unit, golden, generated-payload, prove-red, and related gates pass. |
 | A8 | `base=$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#base}" -eq 40; printf '%s' "$base" | grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$base^{commit}"; git diff --check "$base..HEAD"; test -z "$(git status --porcelain=v1)"` | Exit 0; the persisted execution base is a valid commit, the implementation range has no whitespace errors, and the final validation worktree is clean. |
-| A9 | `head=$(git rev-parse HEAD); ref="refs/heads/preflight/session-relay-cli-0.9.0-${head:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" | awk '{print $1}')" = "$head"` | Exit 0; the create-once immutable validation ref named from the final commit resolves to that exact commit. |
-| A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); if(!/^status: blocked$/m.test(p)||!p.includes("- Blocked reason: Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests.")) process.exit(1)'` | Exit 0; the companion plan is blocked with the exact producer-required reason. |
+| A9 | `impl=$(sed -n 's/^- Implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the create-once immutable validation ref named from persisted clean implementation identity `I` resolves to exactly `I`, even after the later blocked-plan commit `B`. |
+| A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); const reason="Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."; if(!/^status: blocked$/m.test(p)||!p.includes(`blocked_reason: "${reason}"`)||!/^blocked_since: "?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z\|[+-]\d{2}:\d{2})"?$/m.test(p)||!p.includes(`- Blocked reason: ${reason}`)) process.exit(1)'` | Exit 0; the companion plan has the exact producer-required lifecycle fields and display note. |
 
 ## Out of scope / do-NOT-touch
 
@@ -212,7 +214,7 @@ The helper must exit nonzero because the new behavior is absent while still prod
 
 ## Self-review
 
-Score: 98/100 · two local passes · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Independent S review findings S1–S4 were reproduced and accepted: the plan now fixes the red-capture command and byte lifecycle, fresh-home parent creation, persisted execution-base resolution, and executable block/ref gates. S5 was reproduced and rejected because the reviewed producer contract explicitly requires `preflight/session-relay-cli-0.9.0-<first12>`; `0.9.0` is the validating Docks-kit release line, not the installed Session Relay version.
+Score: 99/100 · three local passes · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Independent sealed S review findings S1–S4 were reproduced and accepted: the plan now fixes the red-capture command and byte lifecycle, fresh-home parent creation, persisted execution-base resolution, and executable block/ref gates. Its S5 was reproduced and rejected because the reviewed producer contract explicitly requires `preflight/session-relay-cli-0.9.0-<first12>`; `0.9.0` is the validating Docks-kit release line, not the installed Session Relay version. A separate fresh-context recheck then caught and repaired the implementation-commit-versus-blocked-plan identity split and required exact `blocked_reason`/`blocked_since` validation. No known execution gap remains.
 
 ## Review
 
