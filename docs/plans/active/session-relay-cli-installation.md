@@ -1,10 +1,10 @@
 ---
 title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
-status: planned
+status: ongoing
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T15:28:30-03:00"
-started_at: null
+updated: "2026-07-17T15:28:42-03:00"
+started_at: "2026-07-17T15:28:42-03:00"
 blocked_reason: null
 blocked_since: null
 assignee: null
@@ -244,7 +244,7 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 - Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
 - Companion TDD-red receipt JCS bytes: pending
 - Companion TDD-red receipt SHA-256: pending
-- Status: planned
+- Status: ongoing
 - Blocked reason: pending
 
 ## Mistakes & Dead Ends
