@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: planned
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T15:25:40-03:00"
+updated: "2026-07-17T15:28:30-03:00"
 started_at: null
 blocked_reason: null
 blocked_since: null
@@ -34,7 +34,7 @@ affected_paths:
   - cli/test/unit/sessionRelayCli.test.ts
 related_plans:
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-prebuilt-cli-distribution.md
-review_status: null
+review_status: ready
 planned_at_commit: 84beca95947aba7813881d277cb693bb018e2879
 execution_base_commit: null
 ---
@@ -218,7 +218,9 @@ Score: 99/100 · four local passes · caught: made the fixture-pin/non-productio
 
 ## Review
 
-(filled by plan-review on completion)
+Review-receipt: {"input_sha256":"1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e","outcome":"single","phase":"draft","reviewed_commit":"1621c93610830a700ef8f8d3c948af8ad050a3a6","reviewer":{"company":"openai","mode":"fresh_subagent","verdict":"ready"},"schema":1}
+
+Fresh-context independent review reproduced the sealed-review repairs, then accepted the plan at `1621c93610830a700ef8f8d3c948af8ad050a3a6` with no remaining concrete finding.
 
 ## Sources
 
@@ -237,9 +239,9 @@ Score: 99/100 · four local passes · caught: made the fixture-pin/non-productio
 - Repository ID: `DocksDocks/public`.
 - Immutable validation ref: pending
 - Implementation commit: pending
-- Plan input SHA-256: pending
+- Plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
 - Execution base commit: pending
-- Review receipt SHA-256: pending
+- Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
 - Companion TDD-red receipt JCS bytes: pending
 - Companion TDD-red receipt SHA-256: pending
 - Status: planned
