@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: planned
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T15:20:52-03:00"
+updated: "2026-07-17T15:25:40-03:00"
 started_at: null
 blocked_reason: null
 blocked_since: null
@@ -159,7 +159,7 @@ The helper must exit nonzero because the new behavior is absent while still prod
 | A6 | `./docks-kit sync agents --dry-run --skip-rtk` | Exit 0; output contains no Session Relay CLI ensure or plugin refresh. |
 | A7 | `./sync.sh --ci` | Exit 0; full repository typecheck, unit, golden, generated-payload, prove-red, and related gates pass. |
 | A8 | `base=$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#base}" -eq 40; printf '%s' "$base" | grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$base^{commit}"; git diff --check "$base..HEAD"; test -z "$(git status --porcelain=v1)"` | Exit 0; the persisted execution base is a valid commit, the implementation range has no whitespace errors, and the final validation worktree is clean. |
-| A9 | `impl=$(sed -n 's/^- Implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the create-once immutable validation ref named from persisted clean implementation identity `I` resolves to exactly `I`, even after the later blocked-plan commit `B`. |
+| A9 | `impl=$(sed -n 's/^- Implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; git merge-base --is-ancestor "$impl" HEAD; git diff --exit-code "$impl..HEAD" -- . ':(exclude)docs/plans/active/session-relay-cli-installation.md'; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the create-once immutable validation ref named from persisted clean implementation identity `I` resolves to exactly `I`, and every later commit through blocked-plan identity `B` changes only this companion plan. |
 | A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); const reason="Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."; if(!/^status: blocked$/m.test(p)||!p.includes(`blocked_reason: "${reason}"`)||!/^blocked_since: "?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z\|[+-]\d{2}:\d{2})"?$/m.test(p)||!p.includes(`- Blocked reason: ${reason}`)) process.exit(1)'` | Exit 0; the companion plan has the exact producer-required lifecycle fields and display note. |
 
 ## Out of scope / do-NOT-touch
@@ -214,7 +214,7 @@ The helper must exit nonzero because the new behavior is absent while still prod
 
 ## Self-review
 
-Score: 99/100 · three local passes · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Independent sealed S review findings S1–S4 were reproduced and accepted: the plan now fixes the red-capture command and byte lifecycle, fresh-home parent creation, persisted execution-base resolution, and executable block/ref gates. Its S5 was reproduced and rejected because the reviewed producer contract explicitly requires `preflight/session-relay-cli-0.9.0-<first12>`; `0.9.0` is the validating Docks-kit release line, not the installed Session Relay version. A separate fresh-context recheck then caught and repaired the implementation-commit-versus-blocked-plan identity split and required exact `blocked_reason`/`blocked_since` validation. No known execution gap remains.
+Score: 99/100 · four local passes · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Independent sealed S review findings S1–S4 were reproduced and accepted: the plan now fixes the red-capture command and byte lifecycle, fresh-home parent creation, persisted execution-base resolution, and executable block/ref gates. Its S5 was reproduced and rejected because the reviewed producer contract explicitly requires `preflight/session-relay-cli-0.9.0-<first12>`; `0.9.0` is the validating Docks-kit release line, not the installed Session Relay version. A separate fresh-context recheck then caught and repaired the implementation-commit-versus-blocked-plan identity split, exact `blocked_reason`/`blocked_since` validation, and proof that every post-`I` change is plan-only. No known execution gap remains.
 
 ## Review
 
