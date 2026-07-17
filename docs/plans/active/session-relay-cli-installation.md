@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: planned
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T14:47:36-03:00"
+updated: "2026-07-17T15:07:00-03:00"
 started_at: null
 assignee: null
 review_author_company: openai
@@ -108,25 +108,39 @@ Every other pair throws one actionable unsupported-platform error before probing
 
 1. Validate the closed manifest and host target.
 2. If the installed path exists and exact `--version` succeeds, return without network access.
-3. Require `curl`, create only uniquely named sibling stage/checksum paths, and download the pinned asset plus `SHA256SUMS` from the same tag.
-4. Parse exactly one checksum row for the selected asset and require its digest to equal the source pin.
-5. SHA-256 the downloaded stage bytes and require equality with both the checksum row and source pin.
-6. Apply mode `0755` to the stage and run the staged path with `--version`; require exact stdout `session-relay 0.12.0` after trimming one trailing line ending and exit 0.
-7. Atomically rename the staged sibling over the stable path.
-8. Remove only owned temporary siblings in all outcomes. No failure may alter the prior stable path bytes or mode.
+3. Prepare the stable path's parent with recursive mode `0755`; fail closed if the resolved parent is not a directory. This may create `~/.local/bin` on a fresh home, but may not touch an existing stable executable.
+4. Require `curl`, create only uniquely named sibling stage/checksum paths, and download the pinned asset plus `SHA256SUMS` from the same tag.
+5. Parse exactly one checksum row for the selected asset and require its digest to equal the source pin.
+6. SHA-256 the downloaded stage bytes and require equality with both the checksum row and source pin.
+7. Apply mode `0755` to the stage and run the staged path with `--version`; require exact stdout `session-relay 0.12.0` after trimming one trailing line ending and exit 0.
+8. Atomically rename the staged sibling over the stable path.
+9. Remove only owned temporary siblings in all outcomes. No failure may alter the prior stable path bytes or mode.
 
 Dry-run validates manifest/mapping and reports the intended pinned ensure without download, chmod, smoke, or rename. Direct `docks-kit toolchain ensure session-relay` uses the same function.
 
 ### TDD-red receipt
 
-Before production edits, the frozen test commit is captured by `/home/vagrant/projects/docks/scripts/capture-tdd-red.mjs` into a fresh canonical `/tmp/session-relay-public-red.*` directory at mode `0700`. The receipt is one mode-`0600` canonical `TddRedReceiptV1`. Its exact one-line JCS bytes and SHA-256 are copied without parse/reserialization into the fixed Notes fields below, verified byte-for-byte, and the directory is removed only after canonical path plus device/inode revalidation. The capture runs once and is never regenerated after production edits.
+Before production edits, create a fresh directory with `mktemp -d /tmp/session-relay-public-red.XXXXXXXX`, immediately resolve it with `realpath`, require the canonical path prefix `/tmp/session-relay-public-red.`, set mode `0700`, record its literal `stat -Lc '%d:%i'` device/inode identity, and choose a receipt path that is a direct child. From the repository root, run exactly:
+
+```bash
+node /home/vagrant/projects/docks/scripts/capture-tdd-red.mjs \
+  --repo "$PWD" \
+  --repository-id DocksDocks/public \
+  --pre-production-commit "$(git rev-parse HEAD)" \
+  --test cli/test/unit/pluginRefresh.test.ts \
+  --test cli/test/unit/sessionRelayCli.test.ts \
+  --receipt-out "$PUBLIC_RED_PATH" \
+  -- bun run test:unit -- cli/test/unit/sessionRelayCli.test.ts cli/test/unit/pluginRefresh.test.ts
+```
+
+The helper must exit nonzero because the new behavior is absent while still producing one direct-child mode-`0600` canonical `TddRedReceiptV1`. Read the receipt once as opaque bytes, require exactly one nonempty line, compute SHA-256 over those exact JCS bytes excluding the trailing newline, and replace only the two fixed `Companion TDD-red receipt` Notes values through plan-manager/apply-patch. Verify the bytes following `Companion TDD-red receipt JCS bytes: ` are byte-identical to the receipt and that the recorded SHA-256 matches. Before removing anything, re-resolve the literal directory and receipt paths, revalidate prefix, direct-child ownership, mode, and the recorded device/inode; then remove only that receipt and directory. Store resolved literals in operation state rather than depending on cross-shell environment variables or traps. The capture runs once and is never regenerated after production edits.
 
 ## Steps
 
 | # | Task | Files | Depends | Status | Done condition |
 |---|---|---|---|---|---|
 | 1 | Add complete installer and sync-order tests, commit them, run the one canonical failing baseline, and embed the exact red receipt before production edits. | `cli/test/unit/sessionRelayCli.test.ts`; `cli/test/unit/pluginRefresh.test.ts`; this plan Notes only through plan-manager | — | planned | The focused command fails only because the new installer/ordering contract is absent; the two test blobs, capture-helper blob, pre-production commit, command, nonzero exit, and stdout/stderr hashes are sealed in the fixed Notes receipt fields. |
-| 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | planned | Frozen tests pass for mapping, source/checksum equality, exact version, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
+| 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | planned | Frozen tests pass for mapping, source/checksum equality, exact version, a fresh home with no `~/.local/bin`, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
 | 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | planned | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
 | 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | planned | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
 | 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean validation implementation, push one create-once validation ref, then block this plan on production digests. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | planned | All gates pass; the ref `refs/heads/preflight/session-relay-cli-0.9.0-<first12>` resolves to the exact clean final commit; no tag, Release, npm publication, or `main` update occurs; plan status is `blocked` with the exact required reason. |
@@ -142,7 +156,9 @@ Before production edits, the frozen test commit is captured by `/home/vagrant/pr
 | A5 | `./docks-kit sync claude codex --dry-run --skip-rtk` | Exit 0; each selected tool reports the pinned CLI ensure before its plugin pass, with no mutation. |
 | A6 | `./docks-kit sync agents --dry-run --skip-rtk` | Exit 0; output contains no Session Relay CLI ensure or plugin refresh. |
 | A7 | `./sync.sh --ci` | Exit 0; full repository typecheck, unit, golden, generated-payload, prove-red, and related gates pass. |
-| A8 | `git diff --check "$execution_base_commit..HEAD" && test -z "$(git status --porcelain=v1)"` | Exit 0; the implementation range has no whitespace errors and the final validation worktree is clean. |
+| A8 | `base=$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#base}" -eq 40; printf '%s' "$base" | grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$base^{commit}"; git diff --check "$base..HEAD"; test -z "$(git status --porcelain=v1)"` | Exit 0; the persisted execution base is a valid commit, the implementation range has no whitespace errors, and the final validation worktree is clean. |
+| A9 | `head=$(git rev-parse HEAD); ref="refs/heads/preflight/session-relay-cli-0.9.0-${head:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" | awk '{print $1}')" = "$head"` | Exit 0; the create-once immutable validation ref named from the final commit resolves to that exact commit. |
+| A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); if(!/^status: blocked$/m.test(p)||!p.includes("- Blocked reason: Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests.")) process.exit(1)'` | Exit 0; the companion plan is blocked with the exact producer-required reason. |
 
 ## Out of scope / do-NOT-touch
 
@@ -171,7 +187,7 @@ Before production edits, the frozen test commit is captured by `/home/vagrant/pr
 - Every downloaded executable must be checksummed before installation and smoke-tested before replacing an existing executable.
 - The stable installed command is `session-relay`; the plugin-internal compatibility launcher remains `plugins/session-relay/bin/relay`.
 - Supported release targets are exactly `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`, `x86_64-apple-darwin`, and `aarch64-apple-darwin`.
-- Production blocked reason is exactly: `Awaiting the four independently hashed session-relay--v0.12.0 production asset digests.`
+- Production blocked reason is exactly: `Awaiting the four independently hashed \`session-relay--v0.12.0\` production asset digests.`
 
 ## STOP conditions
 
@@ -187,7 +203,7 @@ Before production edits, the frozen test commit is captured by `/home/vagrant/pr
 - **File manifest:** Present; each step names exact repository paths and external plan ownership.
 - **Environment & commands:** Present; Bun/Vitest/TypeScript, focused/golden/full commands, payload generation, and validation-ref grammar are exact.
 - **Interface & data contracts:** Present; the closed manifest, four-target mapping, transaction order, exact version output, and TDD receipt are defined.
-- **Executable acceptance:** Present; A1–A8 are ordered, nonempty commands with expected outcomes.
+- **Executable acceptance:** Present; A1–A10 are ordered, nonempty commands with expected outcomes.
 - **Out of scope:** Present; publication, Docks edits, Rust, Windows, runtime semantics, and broad refactors are prohibited.
 - **Decision rationale:** Present; a dedicated installer module plus tool-owned ordering calls preserves existing ownership and makes failure atomicity testable.
 - **Known gotchas:** Present; RTK ordering, default dual-tool sync, skip-refresh semantics, checksum grammar, sibling staging, and fixture-pin blocking are explicit.
@@ -196,7 +212,7 @@ Before production edits, the frozen test commit is captured by `/home/vagrant/pr
 
 ## Self-review
 
-Score: 96/100 · one local pass · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Remaining four points reflect pending independent X/S review rather than a known execution gap.
+Score: 98/100 · two local passes · caught: made the fixture-pin/non-production boundary explicit, preserved RTK-first ordering, required the second default-sync ensure to avoid a duplicate download, and added replacement-failure preservation plus create-once ref gates. Independent S review findings S1–S4 were reproduced and accepted: the plan now fixes the red-capture command and byte lifecycle, fresh-home parent creation, persisted execution-base resolution, and executable block/ref gates. S5 was reproduced and rejected because the reviewed producer contract explicitly requires `preflight/session-relay-cli-0.9.0-<first12>`; `0.9.0` is the validating Docks-kit release line, not the installed Session Relay version.
 
 ## Review
 
