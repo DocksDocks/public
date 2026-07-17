@@ -36,7 +36,7 @@ related_plans:
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-prebuilt-cli-distribution.md
 review_status: ready
 planned_at_commit: 84beca95947aba7813881d277cb693bb018e2879
-execution_base_commit: null
+execution_base_commit: add253bbe43011e1cd8c1333f4e0b2c19883e4e9
 ---
 
 # Install the verified Session Relay CLI
@@ -240,7 +240,7 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 - Immutable validation ref: pending
 - Implementation commit: pending
 - Plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
-- Execution base commit: pending
+- Execution base commit: add253bbe43011e1cd8c1333f4e0b2c19883e4e9
 - Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
 - Companion TDD-red receipt JCS bytes: pending
 - Companion TDD-red receipt SHA-256: pending
