@@ -32,6 +32,7 @@ import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
 import { renderDefaultWorkflowInstructions } from "./workflowDeploy"
+import { ensureSessionRelayCli } from "./sessionRelayCli"
 
 export type ClaudeRuntimeState =
   | { readonly kind: "ready"; readonly paths: ClaudeRuntimePaths }
@@ -82,6 +83,7 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
   syncClaudeAdvisor(ctx, ctx.claudeAdvisor)
   syncClaudeJson(ctx)
   syncConnectorEnv(ctx)
+  ensureSessionRelayCli(ctx)
   syncPlugins(ctx, claudeDir)
   syncOptionalPlugins(ctx, claudeDir)
   syncLspServers(ctx)

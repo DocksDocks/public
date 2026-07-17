@@ -160,6 +160,8 @@ exit 0
 export interface EngineRun {
   readonly exitCode: number
   readonly output: string // stdout+stderr merged, order-stable via 2>&1
+  /** Alias for ordered merged output; retained for focused assertions. */
+  readonly stdout: string
   readonly home: string
   readonly argvLog: string
 }
@@ -235,6 +237,10 @@ function materializeHome(kind: string, fixture: string, reuseHome?: string): str
   rmSync(home, { recursive: true })
   const src = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(src, home, { recursive: true })
+  const sessionRelay = join(home, ".local", "bin", "session-relay")
+  mkdirSync(dirname(sessionRelay), { recursive: true })
+  writeFileSync(sessionRelay, "#!/bin/sh\nprintf 'session-relay 0.12.0\\n'\n")
+  chmodSync(sessionRelay, 0o755)
   return home
 }
 
@@ -274,9 +280,11 @@ export function runEngine(
     encoding: "utf8",
     timeout: 120_000
   })
+  const output = normalizeOutput(res.stdout ?? "", home, stubDir)
   return {
     exitCode: res.status ?? 1,
-    output: normalizeOutput(res.stdout ?? "", home, stubDir),
+    output,
+    stdout: output,
     home,
     argvLog
   }
@@ -391,6 +399,10 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
     const p = join(dir, e.name)
     const rel = p.slice(root.length + 1)
     if (rel === ".golden-argv.log") continue
+    // Every materialized HOME gets the exact current Session Relay command so
+    // unrelated sync cases stay offline. It is harness state, not an engine
+    // mutation; direct installer tests cover its bytes and mode separately.
+    if (rel === ".local/bin/session-relay") continue
     // `.bun/install` is a runtime artifact of the native side's bun
     // interpreter (module cache keyed off $HOME) — the engine never writes
     // there. `.bun` itself is still recursed (engine bootstraps can create
@@ -401,7 +413,7 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
     if (st.isSymbolicLink()) {
       acc[rel] = `link:${readlinkSync(p)}`
     } else if (st.isDirectory()) {
-      if (rel !== ".bun") acc[`${rel}/`] = "dir"
+      if (rel !== ".bun" && rel !== ".local" && rel !== ".local/bin") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
       // Hash with CRLF and materialized runtime paths canonicalized so

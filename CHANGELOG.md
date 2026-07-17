@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-17 — Session Relay CLI installation boundary (0.9.0 source)
+
+- Added a source-pinned prebuilt Session Relay `0.12.0` installer for Linux and
+  macOS on x64/arm64. Claude and Codex sync run it immediately before plugin
+  reconciliation; agents-only sync does not enter the installer boundary.
+- The installer requires the committed target digest, same-release
+  `SHA256SUMS` row, and downloaded bytes to agree before it marks the staged
+  command executable, verifies its exact version, and atomically replaces
+  `~/.local/bin/session-relay`. Failed fresh installs and upgrades preserve the
+  prior stable command.
+- This `0.9.0` source remains blocked from publication: the four committed
+  digests are deterministic test-fixture pins until the corresponding
+  `session-relay--v0.12.0` production assets are independently hashed.
+
 ## 2026-07-10 — Claude statusline and hooks move to native Bun runtime
 
 - Replaced the deployed `statusline.sh`, `fetch-usage.sh`, and `hooks/notify.sh`

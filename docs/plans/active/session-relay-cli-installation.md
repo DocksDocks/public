@@ -3,7 +3,7 @@ title: Install the verified Session Relay CLI
 goal: Add a source-pinned, failure-preserving Session Relay CLI installer that runs before Claude or Codex plugin sync without requiring Rust.
 status: ongoing
 created: "2026-07-17T14:47:36-03:00"
-updated: "2026-07-17T15:35:00-03:00"
+updated: "2026-07-17T16:07:50-03:00"
 started_at: "2026-07-17T15:28:42-03:00"
 blocked_reason: null
 blocked_since: null
@@ -16,7 +16,9 @@ review_waivers: []
 tags: [session-relay, toolchain, installer, supply-chain]
 affected_paths:
   - AGENTS.md
+  - CHANGELOG.md
   - README.md
+  - package.json
   - SoT/toolchain.json
   - cli/docs/sync-layers.md
   - cli/docs/toolchain.md
@@ -61,7 +63,7 @@ The manifest is the source pin: repository `DocksDocks/docks`, tag and CLI versi
 - Focused red/green command: `bun run test:unit -- cli/test/unit/sessionRelayCli.test.ts cli/test/unit/pluginRefresh.test.ts`.
 - Generated payload: `bun cli/scripts/generate-sot-payload.ts`, followed by `bun cli/scripts/generate-sot-payload.ts --check`.
 - Focused golden checks: `GOLDEN_FILTER='sync (claude|codex|agents)|toolchain ensure session-relay' bun run golden:dryrun` and the same filter with `bun run golden:mutation`.
-- Full pre-commit gate: `./sync.sh --ci`.
+- Full pre-commit gate: the Linux `golden` job from `.github/workflows/parity.yml` — generated payload check, typecheck, unit suite, POSIX runtime smoke, both golden suites, and both prove-red assertions.
 - Dry-run smoke: `./docks-kit sync claude codex --dry-run --skip-rtk` must show Session Relay CLI ensure before each tool's plugin pass; `./docks-kit sync agents --dry-run --skip-rtk` must not show it.
 
 ## Interfaces & data shapes
@@ -142,10 +144,10 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 | # | Task | Files | Depends | Status | Done condition |
 |---|---|---|---|---|---|
 | 1 | Add complete installer and sync-order tests, commit them, run the one canonical failing baseline, and embed the exact red receipt before production edits. | `cli/test/unit/sessionRelayCli.test.ts`; `cli/test/unit/pluginRefresh.test.ts`; this plan Notes only through plan-manager | — | completed | The focused command fails only because the new installer/ordering contract is absent; the two test blobs, capture-helper blob, pre-production commit, command, nonzero exit, and stdout/stderr hashes are sealed in the fixed Notes receipt fields. |
-| 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | planned | Frozen tests pass for mapping, source/checksum equality, exact version, a fresh home with no `~/.local/bin`, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
-| 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | planned | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
-| 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | planned | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
-| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | planned | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
+| 2 | Add the closed Session Relay release pin and the minimal dedicated installer transaction. | `SoT/toolchain.json`; `cli/src/engine-native/sessionRelayCli.ts`; `cli/src/engine-native/deps.ts`; `cli/src/engine-native/modes.ts` | 1 | completed | Frozen tests pass for mapping, source/checksum equality, exact version, a fresh home with no `~/.local/bin`, offline/unsupported/checksum/version/chmod/download/rename failures, upgrade success, cleanup, and byte-for-byte preservation. |
+| 3 | Place CLI ensure immediately before Session Relay plugin work for each supported tool sync, never for agents-only sync. | `cli/src/engine-native/claudeSync.ts`; `cli/src/engine-native/codexSync.ts`; frozen sync-order tests | 1, 2 | completed | Argv/event evidence proves ensure completes before any `session-relay@docks` install/add/update and failure prevents that plugin operation; agents-only output contains no ensure/download/smoke event. |
+| 4 | Regenerate embedded SoT data and update user-facing ownership/order documentation. | `cli/src/generated/sotPayload.ts`; `AGENTS.md`; `README.md`; `CHANGELOG.md`; `cli/docs/toolchain.md`; `cli/docs/sync-layers.md` | 2, 3 | completed | Payload check passes; docs name the four targets, pinned install path, direct ensure command, plugin ordering, failure preservation, and pending-production-digest boundary. |
+| 5 | Refresh intentional golden surfaces, run focused checks and full CI, commit a clean implementation identity `I`, persist `I` in Notes, push one create-once validation ref, then make a distinct plan-only blocked transition `B`. | `cli/test/golden-dryrun.ts`; `cli/test/golden-mutation.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan lifecycle fields | 2–4 | ongoing | All implementation gates pass at clean `I`; `refs/heads/preflight/session-relay-cli-0.9.0-<I first12>` resolves to exactly `I`; later `B` changes only this plan to `status: blocked` with exact `blocked_reason` and non-null `blocked_since`; no tag, Release, npm publication, or `main` update occurs. |
 
 ## Acceptance criteria
 
@@ -157,7 +159,8 @@ The helper must exit zero only after the frozen test command exits nonzero and i
 | A4 | `GOLDEN_FILTER='sync (claude|codex|agents)|toolchain ensure session-relay' bun run golden:mutation` | Exit 0; mutation snapshots and argv ordering match the reviewed contract. |
 | A5 | `./docks-kit sync claude codex --dry-run --skip-rtk` | Exit 0; each selected tool reports the pinned CLI ensure before its plugin pass, with no mutation. |
 | A6 | `./docks-kit sync agents --dry-run --skip-rtk` | Exit 0; output contains no Session Relay CLI ensure or plugin refresh. |
-| A7 | `./sync.sh --ci` | Exit 0; full repository typecheck, unit, golden, generated-payload, prove-red, and related gates pass. |
+| A7 | `bun cli/scripts/generate-sot-payload.ts --check && bun run typecheck && bun run test:unit && bun cli/test/statusline-runtime-smoke.mjs posix && bun run golden:dryrun && bun run golden:mutation` | Exit 0; every ordinary local command in the authoritative Linux `golden` workflow job passes. |
+| A7P | Run each golden with `--prove-red`, require a nonzero exit, and require its output to contain respectively `prove-red OK: golden-dryrun` and `prove-red OK: golden-mutation`, exactly as `.github/workflows/parity.yml` does. | Both planted mismatches are detected; neither prove-red command exits zero or fails without its expected proof marker. |
 | A8 | `base=$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#base}" -eq 40; printf '%s' "$base" | grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$base^{commit}"; git diff --check "$base..HEAD"; test -z "$(git status --porcelain=v1)"` | Exit 0; the persisted execution base is a valid commit, the implementation range has no whitespace errors, and the final validation worktree is clean. |
 | A9 | `impl=$(sed -n 's/^- Implementation commit: //p' docs/plans/active/session-relay-cli-installation.md); test "${#impl}" -eq 40; printf '%s' "$impl" \| grep -Eq '^[0-9a-f]{40}$'; git cat-file -e "$impl^{commit}"; git merge-base --is-ancestor "$impl" HEAD; git diff --exit-code "$impl..HEAD" -- . ':(exclude)docs/plans/active/session-relay-cli-installation.md'; ref="refs/heads/preflight/session-relay-cli-0.9.0-${impl:0:12}"; remote=$(git ls-remote --exit-code origin "$ref"); test "$(printf '%s\n' "$remote" \| awk '{print $1}')" = "$impl"` | Exit 0; the create-once immutable validation ref named from persisted clean implementation identity `I` resolves to exactly `I`, and every later commit through blocked-plan identity `B` changes only this companion plan. |
 | A10 | `node -e 'const fs=require("node:fs"); const p=fs.readFileSync("docs/plans/active/session-relay-cli-installation.md","utf8"); const reason="Awaiting the four independently hashed `session-relay--v0.12.0` production asset digests."; if(!/^status: blocked$/m.test(p)||!p.includes(`blocked_reason: "${reason}"`)||!/^blocked_since: "?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z\|[+-]\d{2}:\d{2})"?$/m.test(p)||!p.includes(`- Blocked reason: ${reason}`)) process.exit(1)'` | Exit 0; the companion plan has the exact producer-required lifecycle fields and display note. |
@@ -242,6 +245,9 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 - Plan input SHA-256: 1889f3d99d63646b8757597e6016db9f4e224f588f13e580b8f24f8ca0287c8e
 - Execution base commit: add253bbe43011e1cd8c1333f4e0b2c19883e4e9
 - Review receipt SHA-256: 01114385d963fd04870465d64ecea948e81f0e5381b3ba4ad35513d09dab1246
+- Focused green evidence: frozen installer/order suite 27/27; focused engine/installer/order suite 44/44; focused dry-run 18 cases; focused mutation 33 cases.
+- Full Linux gate evidence: generated payload, typecheck, 177 unit tests across 22 files, POSIX runtime smoke, 29 dry-run golden cases, and 76 mutation golden cases passed; both prove-red commands detected their planted mismatches with the required markers.
+- Live dry-run evidence: Claude and Codex each report Session Relay CLI ensure immediately before plugin reconciliation; agents-only reports neither ensure nor plugin refresh.
 - Companion TDD-red receipt JCS bytes: {"captured_at":"2026-07-17T18:34:21.954Z","command":{"argv":["bun","run","test:unit","--","cli/test/unit/sessionRelayCli.test.ts","cli/test/unit/pluginRefresh.test.ts"],"cwd":"/home/vagrant/projects/public"},"exit_code":1,"pre_production_commit":"d193d469fa6abfa02d037ace38636f3b3a48adac","producer":{"blob_id":"3fc09767ff84e9bffef0b0321d5ed0ef201901e8","path":"scripts/capture-tdd-red.mjs","version":"1"},"repository_id":"DocksDocks/public","schema":1,"stderr_sha256":"5c9019ece77114ec77d3a6a50e58a14227816fe5ffe570b0d037de4cb41c44f1","stdout_sha256":"5211be417546f4163863c26fb9d8e161979a660670f9adecf5ba5233dbc520c7","test_paths":[{"blob_id":"b375c2a43f85047aad2afcf93b3b88e4b9e81ae3","path":"cli/test/unit/pluginRefresh.test.ts"},{"blob_id":"8b07cafb5e8ee6d041fd04da43562919afdf9e69","path":"cli/test/unit/sessionRelayCli.test.ts"}],"type":"TddRedReceiptV1"}
 - Companion TDD-red receipt SHA-256: 56d739965e47e757720589a230ad14cab73dac601b317edd442a0883f1ef45b8
 - Status: ongoing
@@ -250,3 +256,4 @@ Fresh-context independent review reproduced the sealed-review repairs, then acce
 ## Mistakes & Dead Ends
 
 - The first capture-helper invocation used an incorrectly transcribed commit suffix and failed before running tests or writing a receipt. The commit was re-read from Git, the still-empty canonical receipt directory was verified, and the one successful canonical capture used exact commit `d193d469fa6abfa02d037ace38636f3b3a48adac`; no production file had been edited.
+- The initially reviewed A7 named `./sync.sh --ci`, but this repository has no `sync.sh`. The failed command exited 127 without mutation. A7 now follows the tracked `.github/workflows/parity.yml` Linux `golden` job directly, with the repo-required typecheck added explicitly.

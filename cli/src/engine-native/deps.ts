@@ -29,6 +29,7 @@ export type ToolId =
   | "bwrap"
   | "agent-browser"
   | "effect-solutions"
+  | "session-relay"
   | "chrome-for-testing"
   | "ffplay"
   | "intelephense"
@@ -259,6 +260,11 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   rtk: spec("rtk", "optional", () => "see https://github.com/rtk-ai/rtk (kit auto-install is Unix-only)", {
     version: versionProbe("rtk"),
     latest: latestRtk
+  }),
+  "session-relay": spec("session-relay", "optional", () => "docks-kit toolchain ensure session-relay", {
+    resolve: (exec) => pathProbe(p(home(), ".local", "bin", "session-relay"))(exec),
+    version: (exec) => exec.capture(p(home(), ".local", "bin", "session-relay"), ["--version"]),
+    locate: () => ({ path: p(home(), ".local", "bin", "session-relay"), binDir: p(home(), ".local", "bin") })
   }),
   bun: spec(
     "bun",

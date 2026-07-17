@@ -12,6 +12,7 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { ensureRtk } from "./claudeSync"
+import { ensureSessionRelayCli } from "./sessionRelayCli"
 import { bunBootstrap } from "./bun"
 import { agentBrowserInstall, effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
@@ -142,8 +143,10 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
       return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
     case "agent-browser":
       return ensure(ctx, "agent-browser", agentBrowserInstall)
+    case "session-relay":
+      return ensureSessionRelayCli(ctx)
     default:
-      err("toolchain ensure supports managed tools only (rtk, bun, effect-solutions, agent-browser)")
+      err("toolchain ensure supports managed tools only (rtk, bun, effect-solutions, agent-browser, session-relay)")
       return 2
   }
 }

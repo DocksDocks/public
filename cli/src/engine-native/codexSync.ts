@@ -13,6 +13,7 @@ import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "
 import { sessionRelayReadiness } from "./sessionRelayReadiness"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
 import { renderDefaultWorkflowInstructions } from "./workflowDeploy"
+import { ensureSessionRelayCli } from "./sessionRelayCli"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -28,6 +29,7 @@ export function codexSync(ctx: Ctx): void {
   syncAgentsMd(ctx, renderDefaultWorkflowInstructions(payloadText("SoT/.codex/AGENTS.md")), p(codexDir, "AGENTS.md"))
   syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
   removeLegacyDocksMarketplace(ctx, userConfig)
+  ensureSessionRelayCli(ctx)
   syncPlugins(ctx, sotConfig)
 }
 

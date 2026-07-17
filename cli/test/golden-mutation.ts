@@ -144,6 +144,7 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--verbose"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "session-relay"] },
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },

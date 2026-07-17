@@ -4,8 +4,8 @@
 
 | Field | Meaning |
 |-------|---------|
-| `kind` | `check` (doctor visibility) / `managed` (kit installs + upgrades) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
-| `policy` | `track` (upgrade toward latest, gated by `verified`) / `present` (install when missing, never upgrade) |
+| `kind` | `check` (doctor visibility) / `managed` (kit installs + upgrades) / `managed-release` (dedicated source-pinned release transaction) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
+| `policy` | `track` (upgrade toward latest, gated by `verified`) / `present` (install when missing, never upgrade) / `exact` (install the declared release only) |
 | `floor` | Minimum acceptable version (below → upgrade automatically) |
 | `verified` | Last kit-tested version — the gate line |
 | `pinnable` | Whether an exact version can be installed (rtk: `RTK_VERSION=vX.Y.Z`) |
@@ -36,6 +36,17 @@ now kit-approved" act.
   toolchain ensure. Windows resolves only a real absolute `bun.exe` for hooks.
 - **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
   toward npm latest, gated by their `verified` pins.
+- **session-relay** — policy `exact`: Claude/Codex sync and
+  `docks-kit toolchain ensure session-relay` select exactly one of four targets
+  (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`,
+  `x86_64-apple-darwin`, `aarch64-apple-darwin`). The installer downloads the
+  pinned `session-relay--v0.12.0` asset and same-release `SHA256SUMS`, requires
+  source pin = selected row = downloaded bytes, chmods/smoke-tests only the
+  sibling stage, then renames it over `~/.local/bin/session-relay`. Offline,
+  unsupported-host, checksum, chmod, version, download, or rename failures
+  preserve an existing command byte-for-byte. The four committed digests are
+  validation fixtures pending independently hashed production assets; this
+  pin must not ship until they are replaced and reviewed.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
 normal sync. curl is checked only at a requested POSIX RTK/Bun installer
@@ -56,5 +67,6 @@ probe falls back to the pinned `verified`, never to an ungated latest.
 ```
 docks-kit toolchain check            # doctor table (also inside docks-kit status)
 docks-kit toolchain ensure rtk       # install/upgrade one tool per policy
+docks-kit toolchain ensure session-relay # install exact verified release
 docks-kit sync --yes                 # unattended: auto-accept gates
 ```

@@ -102,6 +102,12 @@ current valid values, while a later flag-less sync restores all defaults.
   versions above the kit-verified pin prompt before installing
   (`--yes` accepts; non-TTY falls back to the pinned verified version
   when possible). `docks-kit toolchain check` shows the full table.
+- **Session Relay CLI** — Claude/Codex syncs ensure the source-pinned
+  precompiled `session-relay` command in `~/.local/bin` immediately before
+  Session Relay plugin reconciliation. Linux/macOS x64/arm64 assets must match
+  both the committed digest and their release `SHA256SUMS`, then pass an exact
+  staged version smoke before atomic replacement; failures preserve any prior
+  command. Production digests for `session-relay--v0.12.0` are still pending.
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, pickers, and the Docks workflow-role registry.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
