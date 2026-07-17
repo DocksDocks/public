@@ -8,7 +8,7 @@ metadata:
       lines: "1-380"
     - path: SoT/.agents/skills.txt
       lines: "1-40"
-  updated: "2026-07-10"
+  updated: "2026-07-17"
 ---
 
 # Universal Skills Bootstrap
@@ -66,9 +66,9 @@ whitespace before producing one slug per line. Do not parse `skills.txt` ad hoc.
 npx --yes skills add <slug> -g -y -a claude-code codex
 ```
 
-The slug is positional and must come first. Remove uses `skills remove --global
--y -a '*' -s <basename>` so all per-tool entries for a kit-managed skill are
-cleaned up.
+The slug is positional and must come first. Remove is also positional:
+`skills remove --global <basename> -y`. Do not pass `-a '*'`:
+`skills@1.5.15` documents that form but rejects it at runtime.
 
 ## Prune Snapshot
 

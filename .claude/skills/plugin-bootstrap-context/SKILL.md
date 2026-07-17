@@ -5,14 +5,14 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "458-720"
+      lines: "623-810"
     - path: cli/src/engine-native/codexSync.ts
       lines: "249-500"
     - path: SoT/.claude/settings.json
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-07-15"
+  updated: "2026-07-17"
 ---
 
 # Plugin Bootstrap
@@ -31,6 +31,12 @@ absent key is removed by prune.
 <constraint>
 Never remove the `claude-plugins-official` marketplace. It is a protected
 built-in marketplace even when pruning extras.
+</constraint>
+
+<constraint>
+Marketplace prune must preserve any marketplace referenced by a project- or
+local-scope install record. Removing that shared cache invalidates the scoped
+installation even when the user-scope uninstall is correctly scoped.
 </constraint>
 
 <constraint>
@@ -69,7 +75,7 @@ All live in `syncPlugins(ctx, claudeDir)`:
 3. Refresh marketplace manifests unless `ctx.skipPluginRefresh` is set.
 4. Update installed plugins best-effort unless `ctx.skipPluginRefresh` is set.
 5. On `ctx.prune`, uninstall user-scope plugins absent from SoT `enabledPlugins`.
-6. On `ctx.prune`, remove extra marketplaces except `claude-plugins-official`.
+6. On `ctx.prune`, remove extra marketplaces except the protected official marketplace and marketplaces used by project/local installs.
 7. Reassert SoT enabled state: disable SoT-`false` plugins through the CLI, then
    normalize deployed `enabledPlugins` so SoT-declared values win and user-only
    keys survive.
@@ -111,6 +117,8 @@ new-session installation readiness, not lifecycle or receive-path health.
 
 - User-scope install records matter. Project/local records do not satisfy the
   kit's global install contract.
+- Project/local records protect their marketplace cache from prune even though
+  they do not satisfy the kit's user-scope install contract.
 - `false` entries are still installed because they support project-level enable.
 - LSP binaries are installed when LSP plugin keys are present, regardless of
   truthiness, for the same project-enable reason.
@@ -123,8 +131,8 @@ new-session installation readiness, not lifecycle or receive-path health.
   under the same name must be removed manually before sync can re-add it.
 - Re-disabling an already-disabled plugin can be a CLI error; guard before
   calling the disable verb.
-- Per-project `enabledPlugins: true` is ignored by Claude Code when the user
-  scope key is absent.
+- A project-level `enabledPlugins: true` override is ignored when the user-scope
+  key is absent; a project-scope plugin installation is an independent record.
 
 ## References
 

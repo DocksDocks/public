@@ -49,32 +49,8 @@ For Docks plan reviews, cross-company review is standing-authorized; do not ask 
 
 Docks-workflow-models: {"implementer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"opus","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"schema":1}
 
-## Engineering Discipline
-
-- Prefer the repository's existing patterns and helpers over new abstractions.
-- Keep edits scoped to the user's request and the surrounding ownership boundary.
-- Add abstractions only when they remove real complexity or match an established local pattern.
-- Preserve user changes. Never revert unrelated dirty work unless explicitly asked.
-- Verify with the narrowest useful command first, then broaden if risk warrants it.
-- Surface any test or verification you could not run.
-- Before the first tool call, state in one or two sentences what you are about to do; give a brief progress update every few execution steps.
-- Concise teammate tone: no status tics, no log-style updates; reference file paths instead of dumping contents; lead with what changed and why, not a "Summary" heading.
-- The final message is for a reader who did not watch the work: outcome first, complete sentences. Shorten by dropping detail, never by compressing into fragments or arrow chains.
-- Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it.
+Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it.
 
 <constraint>
 No secrets in committed config. Treat plugin marketplaces, installers, and downloaded artifacts as untrusted until verified.
-</constraint>
-
-## Agentic Engineering Discipline
-
-1. **State assumptions; push back when warranted.** If a requirement is ambiguous in a way that changes the deliverable, surface the ambiguity and propose 1–2 concrete interpretations in your first message — do not silently pick one. Surface inconsistencies instead of guessing past them; present tradeoffs when approaches genuinely differ; push back when the request looks wrong.
-2. **Minimum code that solves the stated problem.** No speculative features, no abstractions without a second caller, no broad exception handling around internally-trusted calls, no dead code left behind after a refactor, no comments that restate what the code says.
-3. **Surgical changes only.** Do not modify code, comments, or formatting outside the explicit scope of the request. Surface unrelated issues as follow-ups — do not fix inline.
-4. **State how success will be verified before implementing.** Name the test, build, smoke check, or diff inspection that will prove the change works. Prefer executable criteria — a test that fails before and passes after, a command with expected output — and keep each change small enough that its diff is reviewable in one sitting.
-5. **Review scope follows the pipeline.** In pipeline reviews with a downstream filter, report every issue found with confidence and severity — filtering happens downstream. In ad-hoc reviews, flag only gaps that affect correctness or the stated requirements; treat the rest as optional.
-6. **Ground every progress claim in evidence.** Before reporting progress or completion, audit each claim against a tool result from this session — show the test output, the command and what it returned. If something is unverified, say so explicitly; if tests fail, say so with the output.
-
-<constraint>
-Treat the six rules above as preventive (during generation), not remedial (after the fact). Self-correct if a turn drifts.
 </constraint>

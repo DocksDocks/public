@@ -17,13 +17,15 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 
 Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnownMarketplaces`.
 
-| Plugin | Source | Purpose |
-|--------|--------|---------|
-| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands (where parallel-agent value is irreducible), portable skills, and Opus/Sonnet-tiered subagents. See the plugin README for the current inventory |
-| `session-relay` | [DocksDocks/docks](https://github.com/DocksDocks/docks) (same marketplace as `docks`) | Cross-session, cross-project, cross-tool agent message bus (Claude Code + Codex). A SessionStart hook auto-registers each session and drains its inbox; a `bus` MCP server exposes whoami/register/roster/send/inbox over a shared on-disk store keyed by session id; a `relay` CLI wakes an idle target with a tool-aware doorbell (headless `claude -p --resume` from the target's project dir, or `codex exec resume`). Globally enabled (`true`); Codex installs it as `session-relay@docks` via the personal marketplace file |
-| `n8n-mcp-skills` | [czlonkowski/n8n-skills](https://github.com/czlonkowski/n8n-skills) | n8n workflow skill pack — teaches Claude Code how to author production-ready n8n workflows. **Not in the default SoT** — opt in per machine with `./docks-kit sync --claude-plugin=n8n` (adds the marketplace, installs, and enables it in deployed settings only). Kept out of the lean default so ~7 unrelated skills stay out of every project's system prompt |
-| `supabase` (official) | built-in `claude-plugins-official` | Bundles two skills (`supabase` for the full product surface — Auth/Database/Edge Functions/Realtime/Storage/Vectors/Cron/Queues/Postgres extensions — and `supabase-postgres-best-practices` for Postgres performance/schema guidance) plus the `supabase` MCP server. **Not in the default SoT** — opt in per machine with `./docks-kit sync --claude-plugin=supabase` (installs + enables in deployed settings; the marketplace is built-in, so nothing extra is cloned). Kept out of the default to keep both skill descriptions + the MCP tool surface out of unrelated projects. **Account caveat:** the bundled MCP server's OAuth is account-global — see the scoping bullet below before enabling it in a repo on a different Supabase account |
-| `effect-kit` | [DocksDocks/docks](https://github.com/DocksDocks/docks) (same marketplace as `docks`, at `plugins/effect-kit/`; the old standalone DocksDocks/effect-kit repo is archived) | Cross-tool Effect-TS skill kit — `effect-ts-setup` (repo bootstrap), `effect-ts-specialist` (idiomatic Effect 3.x patterns), `effect-ts-port` (Fastify/Next.js/React → Effect migration). Skills only (no agents); globally enabled (`true`). Both tools install it as `effect-kit@docks` (Codex via the personal marketplace file alongside `docks`). Optional companion CLI `effect-solutions` (Kit Langton's idiomatic-Effect docs) is auto-installed by `./docks-kit sync agents` via Bun and symlinked into `~/.local/bin` — the skills work without it. Note: effect-kit also bundles productivity skills (`context-tree`, `plan-init`, `plan-manager`, `plan-review`, `write-skill`) that duplicate docks' by name; they remain namespaced (`effect-kit:*` vs `docks:*`) but add to the skill-listing budget |
+| Default plugin | Source | Purpose |
+|----------------|--------|---------|
+| `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands, portable skills, and tiered subagents. |
+| `session-relay` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Cross-session, cross-project, cross-tool agent message bus for Claude Code and Codex. |
+| `effect-kit` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Cross-tool Effect skills. Installed as `effect-kit@docks`; the optional `effect-solutions` CLI remains independently managed. |
+| `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
+| `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
+
+Context7, Frontend Design, Chrome DevTools, Supabase, n8n, and universal `agent-browser` discovery are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
 #### Per-project plugin scoping
 
@@ -45,11 +47,21 @@ Per-project enable lives in the project's `.claude/settings.json`:
 }
 ```
 
-The user-scope key MUST remain present (just `false`) — Claude Code [silently ignores](https://github.com/anthropics/claude-code/issues/27247) project-level `enabledPlugins` entries whose key is absent from user settings, so `false` is what keeps a plugin installed-but-disabled yet still per-project re-enablable. The kit currently ships **no** `false`-keyed plugins — every declared plugin is `true` — but the value stays supported for that installed-but-disabled case (the example above is illustrative). Plugins the kit doesn't want by default are dropped from the SoT entirely: the two situational ones (`supabase`, `n8n`) are opted back in per machine via `--claude-plugin=supabase` / `--claude-plugin=n8n` (see § Optional plugins), and anything else (e.g. `agent-sdk-dev`, `commit-commands`) is simply left out for the user to add manually.
+The user-scope key MUST remain present (just `false`) when a project wants to override a globally installed plugin's enabled state. The kit currently ships no `false`-keyed plugins — every declared default is `true`. Plugins outside the five defaults are absent from the user-scope SoT and are removed by `--prune`.
 
-Reference examples in this repo:
-- `n8n-mcp-skills` is no longer in the default SoT — opt in per machine with `./docks-kit sync --claude-plugin=n8n`. Because its user-scope key is now absent, a project-level `enabledPlugins: true` alone won't activate it (the key-absent gotcha above); `--claude-plugin=n8n` is what re-adds the marketplace and the user-scope entry.
-- `supabase@claude-plugins-official` is not in the default SoT. Opt in for the whole machine with `./docks-kit sync --claude-plugin=supabase`. **Account caveat** (learned 2026-07-02): the plugin's bundled MCP server is a fixed, unparameterized pointer to the hosted `https://mcp.supabase.com/mcp`, and its OAuth session holds **one Supabase account at a time, account-wide** — the plugin toggle controls whether the tools load, never which account they act on. `--claude-plugin=supabase` therefore fits only while every repo you use it in shares the same Supabase account. A repo on a different account — or one that wants project-scoped tools, read-only enforcement, or headless PAT auth — should skip the flag and check in its own `.mcp.json` pinning `https://mcp.supabase.com/mcp?project_ref=<ref>` (optionally `&read_only=true`) with `"Authorization": "Bearer ${SUPABASE_ACCESS_TOKEN_<ALIAS>}"` — one PAT env var per account, stored in a `0600` secrets file sourced by the shell rc, never committed. General rule: **a plugin bundling an MCP server with account-level auth only fits the tri-state pattern when all projects share one account**; otherwise pin per-repo `.mcp.json` entries and vendor the skills you need (the supabase skills are MIT, Supabase-authored — use the vendored-skill `upstream:` convention). Don't reference the upstream `supabase/agent-skills` marketplace — the postgres skill is bundled inside the official `supabase` plugin, and pointing at an unregistered marketplace produces a stale "Plugin not found" warning in `/doctor`.
+For n8n on this machine, install the marketplace and plugin directly at project scope so unrelated Claude Code sessions do not discover its skills:
+
+```bash
+cd /home/docks/projects/n8n-workflows
+claude plugin marketplace add czlonkowski/n8n-skills --scope project
+claude plugin install n8n-mcp-skills@n8n-mcp-skills --scope project
+```
+
+Keep `/home/docks/projects/n8n-workflows/.claude/settings.json` enabling `n8n-mcp-skills@n8n-mcp-skills`. The project-scope install is independent of the absent user-scope key and survives the kit's user-scope prune. `./docks-kit sync --claude-plugin=n8n` remains the explicit machine-wide opt-in.
+
+OMP 17.0.2's `claude-plugins` provider does not honor Claude's `projectPath`; it exposes every project-scoped plugin unless its skills are filtered. Keep the public/global OMP surface lean with `omp config set skills.ignoredSkills '["n8n-*","using-n8n-*","supabase*"]'`, then override that array in each owning project's `.omp/config.yml`: the n8n project keeps only `supabase*` ignored, while a Supabase project keeps `n8n-*` and `using-n8n-*` ignored. Project settings replace the global array, so each project regains only its own scoped plugin skills.
+
+Supabase is also absent from the default SoT. `./docks-kit sync --claude-plugin=supabase` enables it machine-wide only when every repo can safely share its account-global OAuth session; otherwise use a project-owned `.mcp.json`.
 
 #### Install plugins on a new machine
 
@@ -57,7 +69,7 @@ Reference examples in this repo:
 
 The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `SoT/.claude/settings.json`, then run `./docks-kit sync`. To pick up the new plugin in an active session, run `/reload-plugins`.
 
-Official plugins live in the built-in `claude-plugins-official` marketplace but load only when enabled — an absent key means **not installed** (like the ~12 unused LSP plugins in that marketplace: `clangd-lsp`, `gopls-lsp`, `pyright-lsp`, …), not on-by-default. Kept `true`: `context7`, `frontend-design`, `php-lsp`, `typescript-lsp`. `agent-sdk-dev`, `commit-commands`, and `supabase` are dropped from the SoT entirely — an absent key isn't installed on a fresh machine, so removal (not `false`) is all it takes to keep them off. Only `supabase` has an opt-in flag (`--claude-plugin=supabase`, see § Optional plugins); the other two are left for the user to add back manually if wanted. Caveat for a machine that *already* deployed one: the additive settings merge keeps a previously-deployed entry after its key vanishes from SoT, so removing the key alone won't uninstall it on an existing machine — run `./docks-kit sync --prune` to purge. `claude-md-management` and `skill-creator` are deliberately absent — the docks plugin's skill-authoring surface (`docks:write-skill`, `docks:skill-maintenance`) covers them; `code-simplifier` was dropped as unused.
+Official plugins live in the built-in `claude-plugins-official` marketplace but load only when enabled. The default SoT keeps only `php-lsp` and `typescript-lsp`; Context7, Frontend Design, Agent SDK, Commit Commands, Chrome DevTools, and Supabase are non-default and absent. An existing additive user installation remains until `./docks-kit sync claude --prune` removes it.
 
 The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost — their `lspServers` config ships in the marketplace manifest (the plugin dirs on GitHub contain only a README; that's expected, not a broken install) and registers go-to-definition / find-references / post-edit diagnostics for `.php` and `.ts`/`.tsx`/`.js`/`.jsx` files. They are a no-op until the language-server binary is on PATH — `./docks-kit sync claude` auto-installs the missing ones (`claude::sync_lsp_servers`: `npm install -g intelephense typescript-language-server typescript`; warns and skips when npm itself is absent). nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
 
@@ -73,13 +85,9 @@ The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost
 
 MCP server *definitions* cannot live in `settings.json` — the schema rejects an `mcpServers` key (only the control keys `enabledMcpjsonServers` / `disabledMcpjsonServers` / `enableAllProjectMcpServers` are valid there). User-scoped servers live in `~/.claude.json`; project-scoped ones in a checked-in `.mcp.json`.
 
-The kit declares **user-scoped** MCP servers in `SoT/.claude/mcp-servers.json`, and `claude::sync_claude_json` merges them into `~/.claude.json` alongside `showTurnDuration`. The merge is **additive** — `(.mcpServers // {}) * <SoT>` — so a server you add manually survives and SoT wins per server key. Like every other sync layer, dropping a server from the SoT file does NOT remove it from `~/.claude.json` (additive by default; delete it there by hand or add it to the `removed` manifest's `claudeJsonKeys`).
+`SoT/.claude/mcp-servers.json` is intentionally empty. `claudeSync.ts syncClaudeJson` still supports additive user-scoped MCP declarations, but the kit deploys none globally; project-specific servers belong in checked-in `.mcp.json` files.
 
-| Server | Source | Purpose |
-|--------|--------|---------|
-| `chrome-devtools` | `ChromeDevTools/chrome-devtools-mcp` (official Google Chrome team), launched via `npx -y chrome-devtools-mcp@latest` | Deep browser debugging the `agent-browser` CLI can't do: performance traces, Lighthouse audits, network/console inspection, heap snapshots. The `-y` flag stops a first-run `npx` install prompt from hanging the stdio launch. |
-
-**Relationship to `agent-browser`:** complementary, not redundant. `agent-browser` (CLI skill, lazy-loaded, idle-zero, lean per-op responses) is the default path for automation, scraping, form-filling, and parallel multi-session work; `chrome-devtools` MCP is the specialist for perf/Lighthouse/heap/network debugging. Both stay cheap to keep enabled because Claude Code's **Tool Search** (default-on) defers MCP tool schemas until invoked — the ~40 chrome-devtools tool definitions are not loaded into context at session start (confirmed: they surface only via the on-demand schema fetch, not the cached prefix).
+Chrome DevTools and Context7 are non-default. Add Chrome DevTools at project or user scope only for performance, network, console, or heap debugging that the project's own browser tooling cannot cover. Frontend Design is likewise an optional official plugin rather than a global default.
 
 ### RTK (Rust Token Killer)
 
@@ -87,7 +95,7 @@ Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToo
 
 *Verified working: **rtk 0.43.0** ([release notes](https://github.com/rtk-ai/rtk/releases/tag/v0.43.0), 2026-07-02). Upgrade rationale and supply-chain notes live in commit messages; only the current verified version is recorded here.* RTK versions are now gated by `SoT/toolchain.json` (verified pin 0.43.0) — upgrades above the pin prompt; bump `verified` after testing a release.
 
-`rtk init -g` generates `~/.claude/RTK.md` and the `@RTK.md` import in `~/.claude/CLAUDE.md`. The PreToolUse hook entry comes from this kit's SoT (`SoT/.claude/settings.json`) — the command is `rtk hook claude` (direct, no shim script). RTK 0.38.0 dropped the previous `~/.claude/hooks/rtk-rewrite.sh` shim; older docs that mention it are stale.
+`rtk init -g` may generate `~/.claude/RTK.md`, but neither global prompt imports it. The kit uses only the PreToolUse hook from `SoT/.claude/settings.json` (`rtk hook claude`) so command rewriting remains transparent without loading RTK help prose into every session.
 
 <constraint>
 **RTK upgrade gotcha** — `rtk init -g` rewrites `~/.claude/settings.json` and **clears `hooks.PreToolUse` to `[]` even when its "Patch existing settings.json? [y/N]" prompt defaults to N** (observed RTK 0.38.0, 2026-05-05). It prints a "MANUAL STEP: add this hook" message after destroying the existing one. Never run `rtk init -g` blindly during an upgrade — either snapshot `~/.claude/settings.json` first and restore the `PreToolUse` block after, or just re-run `./docks-kit sync claude --reconcile` to redeploy the SoT entry. The kit's engine skips `rtk init -g` when `~/.claude/RTK.md` already exists, so it won't trip on routine syncs — only manual invocations.
@@ -250,7 +258,7 @@ git clone <this-repo> ~/projects/public
 cd ~/projects/public
 ./docks-kit sync                     # full sync + RTK bootstrap + plugin bootstrap (additive)
 ./docks-kit sync --dry-run           # preview before applying
-./docks-kit sync --skip-rtk          # skip RTK install (also strips @RTK.md import from CLAUDE.md)
+./docks-kit sync --skip-rtk          # skip RTK install; prompt deployment is unchanged
 ./docks-kit sync --yes               # auto-accept toolchain install/upgrade prompts
 ./docks-kit sync --reconcile         # replace ~/.claude/settings.json wholesale (settings layer only)
 ./docks-kit sync --prune             # uninstall plugins/marketplaces not in SoT (plugin layer only)
@@ -385,7 +393,7 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `./docks-kit sync` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **Fable session silently running on Opus** — Fable 5's safety classifiers flagged a message and auto-switched the session to Opus 4.8 (`switchModelsOnFlag`). Check the status line model name; `/model fable` to return. `claude --safe-mode` isolates whether kit customizations trip the first-request flag.
-- **`@RTK.md` import missing** — generated by `rtk init -g`. If RTK is not installed, run `./docks-kit sync --skip-rtk` to strip the import cleanly.
+- **RTK hook missing** — neither global prompt imports `RTK.md`; verify `hooks.PreToolUse` in `~/.claude/settings.json`, then run `./docks-kit sync claude --reconcile` to restore the hook.
 - **`/plugin marketplace add DocksDocks/docks` fails with "marketplace.json not found"** — clear the partial cache: `/plugin marketplace remove DocksDocks-docks` then re-add.
 - **Plugin commands not appearing after install** — run `/reload-plugins`. Commands are namespaced as `/docks:<name>` (e.g., `/docks:security`).
 

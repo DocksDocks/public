@@ -22,6 +22,7 @@ export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const
 export const PAYLOAD_PATHS = [...TEXT_PAYLOAD_PATHS, ...BINARY_PAYLOAD_PATHS] as const
 
 export const AUTHORING_EXCLUSIONS = [
+  "SoT/.claude/settings.local.json",
   "SoT/.codex/agents/.gitkeep"
 ] as const
 

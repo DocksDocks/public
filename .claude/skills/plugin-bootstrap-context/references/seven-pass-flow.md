@@ -9,7 +9,7 @@ from the original design, but counters and subprocess calls are TypeScript.
 - Passes 3 and 4 are skipped when `ctx.skipPluginRefresh` is true. Otherwise
   they are best-effort; update failures do not abort the entire sync.
 - Pass 5 uses key presence semantics for `enabledPlugins`; `false` keys are kept.
-- Pass 6 never removes `claude-plugins-official`.
+- Pass 6 never removes `claude-plugins-official` or a marketplace referenced by a project/local install.
 - Passes 5 and 6 run only when `ctx.prune` is true.
 - Pass 7 runs on every sync to enforce SoT enabled state.
 
@@ -63,8 +63,9 @@ and therefore kept.
 
 Runs only under `ctx.prune`.
 
-For each known marketplace, skip blank names and `claude-plugins-official`. If
-the name is absent from SoT `extraKnownMarketplaces`, remove it.
+For each known marketplace, skip `claude-plugins-official` and marketplaces
+derived from project/local install records in `installed_plugins.json`. Remove
+the remaining names absent from SoT `extraKnownMarketplaces`.
 
 ## Pass 7: Enforce SoT Enabled State
 
