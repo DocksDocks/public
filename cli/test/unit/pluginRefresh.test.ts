@@ -28,6 +28,27 @@ function claudeInstalledPlugins(): string {
 }
 
 describe.sequential("refresh-only plugin skip", () => {
+  it("ensures Session Relay before Claude and Codex plugin work, but never for agents-only", () => {
+    const stubs = makeStubDir()
+    const tools = runEngine("native", ["sync", "claude", "codex", "--dry-run", "--skip-rtk"], "home-drift", stubs)
+    const agents = runEngine("native", ["sync", "agents", "--dry-run", "--skip-rtk"], "home-drift", stubs)
+    try {
+      expect(tools.exitCode).toBe(0)
+      const firstEnsure = tools.stdout.indexOf("[dry-run] ensure Session Relay CLI 0.12.0")
+      const claudePlugins = tools.stdout.indexOf("[dry-run] bootstrap + update plugin marketplaces + plugins from SoT")
+      const secondEnsure = tools.stdout.indexOf("[dry-run] ensure Session Relay CLI 0.12.0", firstEnsure + 1)
+      const codexPlugins = tools.stdout.indexOf("[dry-run] add enabled Codex plugins from SoT")
+      expect(firstEnsure).toBeGreaterThanOrEqual(0)
+      expect(firstEnsure).toBeLessThan(claudePlugins)
+      expect(secondEnsure).toBeGreaterThan(claudePlugins)
+      expect(secondEnsure).toBeLessThan(codexPlugins)
+      expect(agents.exitCode).toBe(0)
+      expect(agents.stdout).not.toContain("Session Relay CLI")
+    } finally {
+      cleanup([tools, agents])
+    }
+  })
+
   it("avoids warmed Claude and Codex refresh calls through both parser layers", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/plugins/installed_plugins.json": claudeInstalledPlugins()
