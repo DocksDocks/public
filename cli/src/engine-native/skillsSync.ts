@@ -350,7 +350,7 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
       echo(`[dry-run] kit-managed skill no longer in SoT — would remove: ${base}`)
       continue
     }
-    const res = spawnSync("npx", ["--yes", skillsCli(ctx), "remove", "--global", "-y", "-a", "*", "-s", base], {
+    const res = spawnSync("npx", ["--yes", skillsCli(ctx), "remove", "--global", base, "-y"], {
       stdio: "ignore"
     })
     if (res.error === undefined && res.status === 0) {
@@ -365,7 +365,7 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
     change(`Kit-managed skills removed (-${removed})`)
     ctx.nextStepTriggers.skillsRestart = true
   }
-  if (failed > 0) warn(`${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove -g -y -a '*' -s <name>`)
+  if (failed > 0) warn(`${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove --global <name> -y`)
 }
 
 function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string): void {

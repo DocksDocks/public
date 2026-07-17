@@ -191,13 +191,11 @@
     "refreshInterval": 5
   },
   "enabledPlugins": {
-    "context7@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "php-lsp@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
     "docks@docks": true,
     "session-relay@docks": true,
-    "effect-kit@docks": true
+    "effect-kit@docks": true,
+    "php-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "docks": {

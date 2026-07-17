@@ -814,11 +814,6 @@ describe.sequential("EngineNative full service injection", () => {
       const dryRecords: Array<LogRecord> = []
       expect(runEngineNative(["sync", "agents", "--dry-run"], stubServices(dryRecords))).toBe(0)
       expect(dryRecords).toEqual([
-        {
-          level: "echo",
-          message: "[dry-run] npx skills@1.5.15 add vercel-labs/agent-browser -g -y -a claude-code codex"
-        },
-        { level: "echo", message: "[dry-run] agent-browser up to date (0.32.0)" },
         { level: "echo", message: "[dry-run] effect-solutions up to date (0.5.3)" },
         { level: "echo", message: "" },
         { level: "echo", message: "--- Sync complete ---" },

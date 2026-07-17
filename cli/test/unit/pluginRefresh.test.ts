@@ -80,3 +80,35 @@ esac`
     }
   })
 })
+
+describe.sequential("project-scoped plugin preservation", () => {
+  it("keeps marketplaces used by project-scoped plugins during prune", () => {
+    const installed = JSON.parse(claudeInstalledPlugins()) as {
+      plugins: Record<string, Array<Record<string, string>>>
+    }
+    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
+    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
+      scope: "project",
+      projectPath: "/home/docks/projects/n8n-workflows",
+      version: "test"
+    }]
+    const variant = materializeVariant("home-drift", {
+      ".claude/plugins/installed_plugins.json": stableStringify(installed),
+      ".claude/plugins/known_marketplaces.json": stableStringify({
+        userplace: { source: "user/userplace" },
+        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
+      })
+    })
+    const run = runEngine("native", ["sync", "claude", "--prune"], variant, makeStubDir())
+    try {
+      expect(run.exitCode).toBe(0)
+      const argv = readArgvLog(run)
+      expect(argv).toContain("claude\tplugin uninstall -y --scope user user-plugin@userplace")
+      expect(argv).toContain("claude\tplugin marketplace remove userplace")
+      expect(argv).not.toContain("claude\tplugin marketplace remove n8n-mcp-skills")
+    } finally {
+      cleanup([run])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
+})

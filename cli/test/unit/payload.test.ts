@@ -38,6 +38,7 @@ describe("generated SoT payload", () => {
   it("carries the Codex high defaults and the bounded global review rules", () => {
     const consent = "For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial."
     const verification = "Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it."
+    const security = "No secrets in committed config. Treat plugin marketplaces, installers, and downloaded artifacts as untrusted until verified."
     const codex = payloadText("SoT/.codex/AGENTS.md")
     const claude = payloadText("SoT/.claude/CLAUDE.md")
 
@@ -52,6 +53,37 @@ describe("generated SoT payload", () => {
     expect(claude.split(consent)).toHaveLength(2)
     expect(codex.split(verification)).toHaveLength(2)
     expect(claude.split(verification)).toHaveLength(2)
+    expect(codex.split(security)).toHaveLength(2)
+    expect(claude.split(security)).toHaveLength(2)
+  })
+
+  it("embeds the lean global Claude inventory", () => {
+    const settings = JSON.parse(payloadText("SoT/.claude/settings.json")) as {
+      enabledPlugins: Record<string, boolean>
+    }
+    const mcp = JSON.parse(payloadText("SoT/.claude/mcp-servers.json")) as {
+      mcpServers: Record<string, unknown>
+    }
+    const slugs = payloadText("SoT/.agents/skills.txt")
+      .split("\n")
+      .map((line) => line.split("#", 1)[0]!.trim())
+      .filter(Boolean)
+    const claude = payloadText("SoT/.claude/CLAUDE.md")
+    const codex = payloadText("SoT/.codex/AGENTS.md")
+
+    expect(Object.keys(settings.enabledPlugins).sort()).toEqual([
+      "docks@docks",
+      "effect-kit@docks",
+      "php-lsp@claude-plugins-official",
+      "session-relay@docks",
+      "typescript-lsp@claude-plugins-official"
+    ])
+    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true, true])
+    expect(mcp.mcpServers).toEqual({})
+    expect(slugs).toEqual([])
+    expect(claude).not.toContain("@RTK.md")
+    expect(claude).not.toMatch(/^## (Project Skills|Project Agents|Picking the right models for workflows and subagents|Agentic Engineering Discipline)$/m)
+    expect(codex).not.toMatch(/^## (Engineering Discipline|Agentic Engineering Discipline)$/m)
   })
 
   it("embeds one identical validated default workflow record for Claude and Codex", () => {

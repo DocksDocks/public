@@ -23,7 +23,7 @@ import {
   syncClaudeModel
 } from "./claudeSettingsModifiers"
 import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths } from "./claudeRuntime"
-import { p, writeBytesIfChanged, writeFileIfChanged, writeTextIfChanged } from "./exec"
+import { p, writeBytesIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
@@ -206,36 +206,13 @@ function syncClaudeRuntime(ctx: Ctx, runtime: ClaudeRuntimeState): void {
 
 function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  // The @RTK.md import only resolves once `rtk init` has generated
-  // ~/.claude/RTK.md (the rtk phase runs before this). Deploying the import
-  // without the file leaves a dangling reference in every Claude session
-  // (seen on Windows, where rtk never auto-installs) — strip it while the
-  // file is absent; a later sync after rtk init restores it.
-  const rtkMdAbsent = !existsSync(p(claudeDir, "RTK.md"))
   if (ctx.dryRun) {
-    if (ctx.skipRtk) {
-      echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (stripping @RTK.md import: --skip-rtk)")
-    } else if (rtkMdAbsent) {
-      echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md (would strip @RTK.md import while ~/.claude/RTK.md is absent)")
-    } else {
-      echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md")
-    }
+    echo("[dry-run] cp SoT/.claude/CLAUDE.md -> ~/.claude/CLAUDE.md")
     return
   }
 
   const source = renderDefaultWorkflowInstructions(payloadText("SoT/.claude/CLAUDE.md"))
-  const stripReason = ctx.skipRtk ? "--skip-rtk" : rtkMdAbsent ? "~/.claude/RTK.md absent (rtk not initialized)" : ""
-  if (stripReason !== "") {
-    const stripped = source
-      .split("\n")
-      .filter((l) => l !== "@RTK.md")
-      .join("\n")
-    if (writeFileIfChanged(p(claudeDir, "CLAUDE.md"), stripped)) {
-      change(`CLAUDE.md synced (@RTK.md import stripped: ${stripReason})`)
-    } else {
-      verbose("CLAUDE.md already in sync")
-    }
-  } else if (writeTextIfChanged(p(claudeDir, "CLAUDE.md"), source)) {
+  if (writeTextIfChanged(p(claudeDir, "CLAUDE.md"), source)) {
     change("CLAUDE.md synced")
   } else {
     verbose("CLAUDE.md already in sync")
@@ -668,6 +645,24 @@ function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): b
   return records.some((r) => isObject(r) && r["scope"] === "user")
 }
 
+function nonUserScopeMarketplaces(installedDoc: Json | undefined): Set<string> {
+  const marketplaces = new Set<string>()
+  if (installedDoc === undefined || !isObject(installedDoc) || !isObject(installedDoc["plugins"])) {
+    return marketplaces
+  }
+
+  for (const [pluginId, value] of Object.entries(installedDoc["plugins"])) {
+    const records = Array.isArray(value) ? value : [value]
+    const hasNonUserInstall = records.some(
+      (record) => isObject(record) && (record["scope"] === "project" || record["scope"] === "local")
+    )
+    if (!hasNonUserInstall) continue
+    const separator = pluginId.lastIndexOf("@")
+    if (separator > 0) marketplaces.add(pluginId.slice(separator + 1))
+  }
+  return marketplaces
+}
+
 function syncPlugins(ctx: Ctx, claudeDir: string): void {
   const { change, echo, verbose, warn } = ctx.services.logger
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
@@ -739,6 +734,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   let updatedPl = 0
   const installedDoc = readJsonFile(installedPlugins)
   const installedKeys = installedDoc !== undefined && isObject(installedDoc) ? sortedKeys(installedDoc["plugins"]) : []
+  const nonUserMarketplaces = nonUserScopeMarketplaces(installedDoc)
   // Pass 3 — refresh every installed plugin unless the update command
   // selected its install-missing-only fast path.
   if (!ctx.skipPluginRefresh) {
@@ -767,6 +763,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     const known = readJsonFile(knownMarketplaces)
     for (const mpName of sortedKeys(known)) {
       if (mpName === "claude-plugins-official") continue
+      if (nonUserMarketplaces.has(mpName)) continue
       const declared = isObject(sotMarketplaces) ? sotMarketplaces[mpName] : undefined
       if (declared !== undefined && declared !== null && declared !== false) continue
       if (cli(["plugin", "marketplace", "remove", mpName]).ok) {

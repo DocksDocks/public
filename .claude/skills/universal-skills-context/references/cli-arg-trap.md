@@ -25,10 +25,11 @@ is interpreted as another agent name.
 
 ## Remove Invocation
 
-Remove uses all agents intentionally:
+Remove is also positional:
 
 ```text
-npx --yes skills remove --global -y -a '*' -s <basename>
+npx --yes skills remove --global <basename> -y
 ```
 
-`<basename>` is the skill name, not the full owner/repo slug.
+This targets every detected agent while deleting only the named skill.
+`skills@1.5.15` documents `-a '*'` but rejects it at runtime.

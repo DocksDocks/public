@@ -45,9 +45,8 @@ download boundary; Windows Bun bootstrap uses PowerShell's native download.
 
 Every kit-driven install is pinned to a `verified` version or gated by one —
 never floating `@latest` (the npm-worm / Shai-Hulud attack surface). That
-includes the `npx skills@<verified>` invocations on every agents sync, the
-`chrome-devtools-mcp` MCP server pin in SoT/.claude/mcp-servers.json, and the
-release workflow (actions pinned to commit SHAs, exact bun/npm versions).
+includes the `npx skills@<verified>` invocations on agents sync and the release
+workflow (actions pinned to commit SHAs, exact bun/npm versions).
 Callbacks receive the exact gate-approved version; an offline "latest unknown"
 probe falls back to the pinned `verified`, never to an ungated latest.
 
