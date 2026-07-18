@@ -3,7 +3,7 @@ title: Release Session Relay CLI production pins
 goal: Replace fixture Session Relay hashes with the four authorized production digests, prove the immutable cli-v0.9.0 release, and archive the superseded installer plan.
 status: planned
 created: "2026-07-18T19:47:14-03:00"
-updated: "2026-07-18T20:00:47-03:00"
+updated: "2026-07-18T20:12:28-03:00"
 started_at: null
 assignee: null
 review_author_company: openai
@@ -47,7 +47,7 @@ The user-directed lifecycle has two phases: Steps 1–3 are the implementation s
 - Request: `/home/vagrant/.local/state/docks-release/session-relay-0.12.0/run.UA6vob/public-release-request.json`; verify with `sha256sum` before using it.
 - Runtime pins: Bun `1.3.14` from `SoT/toolchain.json`; package version `0.9.0`; Vitest through `bun run test:unit`; GitHub operations through authenticated `gh`; npm read-back through `npm view`.
 - npm read isolation: before every npm read, create a fresh cache with `NPM_READ_CACHE="$(mktemp -d /tmp/docks-npm-read.XXXXXX)"`, require `chmod 700 "$NPM_READ_CACHE"`, and invoke only that read as `NPM_CONFIG_CACHE="$NPM_READ_CACHE" npm ...`. Never reuse the default npm cache or a cache from another read.
-- Primary Codex review launch: after `reviewer-workspace-prepare <request-id> primary` returns its helper-owned workspace, run `CODEX_REVIEW_HOME="$(mktemp -d "$REVIEWER_WORKSPACE/codex-home.XXXXXX")" && chmod 700 "$CODEX_REVIEW_HOME" && test "$(stat -c '%a' "$CODEX_REVIEW_HOME")" = 700`, then prefix the helper-derived argv with only `CODEX_HOME="$CODEX_REVIEW_HOME"`. Preserve the helper-derived argv byte-for-byte, including `gpt-5.6-sol`, effort `high`, explicit `service_tier="default"`, `--ephemeral`, `--ignore-user-config`, `-s read-only`, the sealed read-only bundle, output schema, and policy. Do not export another launch-only environment variable, relocate the directory, or clean it directly; `reviewer-workspace-cleanup` alone removes the workspace and its `CODEX_HOME` child.
+- Primary Codex review launch, for every draft, repair, and completion attempt: after `reviewer-workspace-prepare <request-id> primary` returns its helper-owned reviewer workspace outside the Git worktree, create that attempt's unique home with `CODEX_HOME="$(mktemp -d "$REVIEWER_WORKSPACE/codex-home.XXXXXX")" && chmod 700 "$CODEX_HOME" && test "$(stat -c '%a' "$CODEX_HOME")" = 700`. Without printing, hashing, parsing, or logging any credential bytes, stage authentication only with `install -m 600 /home/vagrant/.codex/auth.json "$CODEX_HOME/auth.json"`, assert `test "$(stat -c '%a' "$CODEX_HOME/auth.json")" = 600`, and run `CODEX_HOME="$CODEX_HOME" codex login status`; a missing source credential, failed copy/mode assertion, or unavailable login aborts before reviewer launch. Then prefix the unchanged helper-derived argv with only `CODEX_HOME="$CODEX_HOME"`; preserve all helper-derived model, effort, explicit `service_tier="default"`, `--ephemeral`, `--ignore-user-config`, `-s read-only`, sealed-bundle, output-schema, and policy arguments byte-for-byte. Whether preflight or launch succeeds or fails, invoke the matching `reviewer-workspace-cleanup` and require it to remove the workspace, staged credential, and `CODEX_HOME` together. Never directly clean the home or credential, copy credentials into the repository or sealed bundle, retain a persistent copy, or add another launch-environment override.
 - Generated payload: `bun cli/scripts/generate-sot-payload.ts`, then `bun cli/scripts/generate-sot-payload.ts --check`.
 - Disposable completion checkout setup: `bun install --frozen-lockfile` before acceptance or CI.
 - Project CI command, run exactly once by completion after the ordered acceptance inventory:
@@ -137,7 +137,7 @@ The ordered completion inventory is A1–A6. Production checks P1–P5 run only 
 - Plan-only receipt/start/ship commits may make current `HEAD` differ from `PUBLIC_RELEASE_COMMIT`; the tag must use the receipt's exact `reviewed_head`, never ambient `HEAD`.
 - The source Session Relay Release has five assets, whereas the public docks-kit Release must have six; do not conflate the inventories.
 - `Completion-review-receipt:` is one exact line. Hash the full line bytes including the literal label and payload, excluding the terminating newline.
-- `--ignore-user-config` does not make Codex runtime state writable. Every primary Codex attempt still needs its unique helper-workspace-local mode-`0700` `CODEX_HOME`, and only helper cleanup may remove it.
+- `--ignore-user-config` does not provide credentials or make Codex runtime state writable. Every primary Codex attempt needs its own helper-workspace-local mode-`0700` `CODEX_HOME`, a mode-`0600` `auth.json` copied only with `install -m 600`, and a successful `codex login status` under that home before launch; only helper cleanup may remove the staged credential and home.
 - npm may try to write cache metadata even for `npm view`; every npm read must use its own mode-`0700` `/tmp/docks-npm-read.XXXXXX` cache.
 
 ## Global constraints
@@ -148,7 +148,7 @@ The ordered completion inventory is A1–A6. Production checks P1–P5 run only 
 - Tag exactly `PUBLIC_RELEASE_COMMIT` as `cli-v0.9.0`; push the tag; wait for the single `release-cli.yml` run.
 - `PUBLIC_RELEASE_COMMIT` must be 40 lowercase hex, contain implementation and digest pins, and be an ancestor of current `HEAD`.
 - `PUBLIC_PLAN_COMMIT` must be the full post-ship `HEAD`, descend from and differ from `PUBLIC_RELEASE_COMMIT`.
-- Every primary Codex launch sets only `CODEX_HOME` to a unique mode-`0700` child of the helper-created reviewer workspace and otherwise executes the helper-derived argv unchanged; cleanup is helper-only.
+- Every primary Codex attempt stages `/home/vagrant/.codex/auth.json` only as a mode-`0600` copy inside its unique mode-`0700` helper-workspace `CODEX_HOME`, verifies `codex login status` under that home before launch, sets only `CODEX_HOME` on the unchanged helper-derived reviewer argv, and relies exclusively on helper cleanup to remove both copy and workspace; credential bytes must never be printed, hashed, parsed, logged, copied into the repository/bundle, or persisted.
 - Every npm read uses a unique writable mode-`0700` cache under `/tmp`; the default cache and previously used temp caches are forbidden.
 - If any invariant, review, test, tag, workflow, Release, npm, or lifecycle operation fails, STOP and report; never fabricate final fields.
 - Do not push the branch; the parent owns branch push.
@@ -156,6 +156,7 @@ The ordered completion inventory is A1–A6. Production checks P1–P5 run only 
 ## STOP conditions
 
 - The request hash or any closed request identity differs from the values above.
+- A primary Codex attempt cannot create its helper-workspace-local `CODEX_HOME`, stage the credential at mode `0600`, pass `codex login status`, preserve the helper-derived argv/policy unchanged, or complete helper-owned cleanup; abort before launch when the preflight fails and never retry the same canonical input.
 - The existing tag or Release `cli-v0.9.0` is present before authorized tag creation, or the tag cannot be proven to point exactly at the receipt-reviewed commit.
 - Draft/completion review is unavailable, invalid, not ready, or does not yield a reusable passed receipt.
 - Any A/P command fails, any later edit invalidates the reviewed implementation, or more/less than one matching release workflow run exists.
@@ -208,3 +209,4 @@ The ordered completion inventory is A1–A6. Production checks P1–P5 run only 
 
 - **2026-07-18T20:00:47-03:00**: A prior canonical-review orchestration reached a nested Codex reviewer without a writable managed HOME and terminated before reviewer execution -> the launch environment omitted a writable runtime-home prerequisite even though the argv and sealed bundle were otherwise fixed -> never reuse that old canonical input; for each new primary Codex attempt create a unique mode-`0700` `CODEX_HOME` child inside the helper-created reviewer workspace and let only the helper clean it.
 - **2026-07-18T20:00:47-03:00**: A later Claude orchestrator spawn failed OAuth before doing any plan or review work -> no review evidence or lifecycle authority resulted, and retrying that orchestration would not repair the Codex runtime-home prerequisite -> change and commit the canonical plan input first, then run the public plan-manager review over the new sealed input without routing around a terminal result.
+- **2026-07-18T20:12:28-03:00**: The fresh primary review over plan input `c48fd71cb164af4eb13aa00e1ee5d3207391e5fa` used a writable isolated `CODEX_HOME` but had no staged authentication, so Codex terminated with HTTP 401 before emitting reviewer output; the candidate was exhausted and no review receipt, start, release, tag, or branch push occurred -> a writable runtime home is insufficient when it omits the authenticated state -> never retry that canonical input; every new primary Codex attempt must stage the source credential ephemerally at mode `0600`, prove `codex login status`, preserve only `CODEX_HOME` as the launch override, and let helper cleanup remove the copy with the workspace.
