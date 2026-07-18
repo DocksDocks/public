@@ -21,7 +21,7 @@ related_plans:
   - docs/plans/active/session-relay-cli-installation.md
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-18-session-relay-prebuilt-cli-distribution.md
 review_status: null
-planned_at_commit: null
+planned_at_commit: 0616e5bb50e064ba6f009c161678f5a7d99ca479
 execution_base_commit: null
 ---
 
