@@ -1,10 +1,11 @@
 ---
 title: Release Session Relay CLI production pins
 goal: Replace fixture Session Relay hashes with the four authorized production digests, prove the immutable cli-v0.9.0 release, and archive the superseded installer plan.
-status: ongoing
+status: in_review
 created: "2026-07-18T19:47:14-03:00"
-updated: "2026-07-18T23:54:07-03:00"
+updated: "2026-07-18T23:59:22-03:00"
 started_at: "2026-07-18T23:47:22-03:00"
+in_review_since: "2026-07-18T23:59:22-03:00"
 assignee: codex
 review_author_company: openai
 review_author_tool: codex
@@ -20,9 +21,9 @@ affected_paths:
 related_plans:
   - docs/plans/active/session-relay-cli-installation.md
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-18-session-relay-prebuilt-cli-distribution.md
-review_status: ready
+review_status: null
 planned_at_commit: 0616e5bb1b87ba19318c116e174b8633c226fa0e
-execution_base_commit: null
+execution_base_commit: e94a98043e1607c5958c0d3e75627c4dcc88832f
 ---
 
 # Release Session Relay CLI production pins
@@ -179,9 +180,9 @@ The one `release-cli.yml` run for `cli-v0.9.0` must succeed at `PUBLIC_RELEASE_C
 
 | # | Task | Files | Depends | Status | Done condition |
 |---|---|---|---|---|---|
-| 1 | Supersede the blocked installer plan truthfully: move it to the dated finished path, set its terminal lifecycle fields, and append `Superseded by \`session-relay-cli-production-release\`` without changing its historical blocked/review evidence into a production-success claim. | `docs/plans/active/session-relay-cli-installation.md`; `docs/plans/finished/2026-07-18-session-relay-cli-installation.md` | — | planned | The active path is absent; the finished path retains the old evidence and explicitly says superseded, while no prose says the fixture-pin plan itself completed production publication. |
-| 2 | Validate the canonical request hash/type/repository/version/tag/source identities, then replace exactly the four Session Relay asset digest values and regenerate the embedded payload. | `SoT/toolchain.json:24-30`; `cli/src/generated/sotPayload.ts` via `cli/scripts/generate-sot-payload.ts:38-74,126-175` | 1 | planned | A structural comparison proves every non-asset manifest field is unchanged, the four assets equal the request map exactly, no fixture digest remains, and generated-payload freshness passes. |
-| 3 | Run ordered direct acceptance and the full public gate, commit the release-preparation implementation, mark Steps 1–3 done, and invoke exactly `plan-manager complete docs/plans/active/session-relay-cli-production-release.md`; retain the passed `Completion-review-receipt:` unchanged thereafter. | This plan lifecycle/status rows; affected implementation paths above | 1, 2 | planned | Completion review is `passed`; its exact receipt line names a valid `reviewed_head` that contains Steps 1–2, the four pins, and generated payload, and is an ancestor of current `HEAD`. |
+| 1 | Supersede the blocked installer plan truthfully: move it to the dated finished path, set its terminal lifecycle fields, and append `Superseded by \`session-relay-cli-production-release\`` without changing its historical blocked/review evidence into a production-success claim. | `docs/plans/active/session-relay-cli-installation.md`; `docs/plans/finished/2026-07-18-session-relay-cli-installation.md` | — | done | The active path is absent; the finished path retains the old evidence and explicitly says superseded, while no prose says the fixture-pin plan itself completed production publication. |
+| 2 | Validate the canonical request hash/type/repository/version/tag/source identities, then replace exactly the four Session Relay asset digest values and regenerate the embedded payload. | `SoT/toolchain.json:24-30`; `cli/src/generated/sotPayload.ts` via `cli/scripts/generate-sot-payload.ts:38-74,126-175` | 1 | done | A structural comparison proves every non-asset manifest field is unchanged, the four assets equal the request map exactly, no fixture digest remains, and generated-payload freshness passes. |
+| 3 | Run ordered direct acceptance and the full public gate, commit the release-preparation implementation, mark Steps 1–3 done, and invoke exactly `plan-manager complete docs/plans/active/session-relay-cli-production-release.md`; retain the passed `Completion-review-receipt:` unchanged thereafter. | This plan lifecycle/status rows; affected implementation paths above | 1, 2 | done | Completion review is `passed`; its exact receipt line names a valid `reviewed_head` that contains Steps 1–2, the four pins, and generated payload, and is an ancestor of current `HEAD`. |
 | 4 | Derive and validate `PUBLIC_RELEASE_COMMIT` from the receipt; run the exact five-surface absence preflight in Environment & how-to-run; only then create lightweight tag `cli-v0.9.0` at exactly that commit, push only the tag, and run the exact single-run wait command. | Git tag, GitHub Actions, GitHub Release, and npm reads only; no worktree file | 3 | planned | The preflight proves the local tag, remote tag, GitHub Release, every historical matching workflow run, and npm version absent before mutation; local/remote tag targets equal `PUBLIC_RELEASE_COMMIT`; exactly one matching run exists, has `headSha` equal to it, and concludes `success`. |
 | 5 | Independently run P1–P5, then mark Steps 4–5 done and invoke exactly `plan-manager ship docs/plans/active/session-relay-cli-production-release.md` with its auto-commit; after ship, run S1 against the exact finished path. | This plan lifecycle/status rows; GitHub/npm read-only evidence | 4 | planned | All live proof commands pass; exact finished path `docs/plans/finished/2026-07-18-session-relay-cli-production-release.md` retains the completion receipt; S1 proves post-ship `PUBLIC_PLAN_COMMIT` is a different strict descendant of `PUBLIC_RELEASE_COMMIT` and the intervening diff is exactly the active-to-finished plan lifecycle move. |
 
