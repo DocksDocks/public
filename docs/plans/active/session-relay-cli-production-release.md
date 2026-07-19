@@ -3,7 +3,7 @@ title: Release Session Relay CLI production pins
 goal: Replace fixture Session Relay hashes with the four authorized production digests, prove the immutable cli-v0.9.0 release, and archive the superseded installer plan.
 status: planned
 created: "2026-07-18T19:47:14-03:00"
-updated: "2026-07-18T23:32:00-03:00"
+updated: "2026-07-18T23:43:32-03:00"
 started_at: null
 assignee: null
 review_author_company: openai
@@ -86,7 +86,25 @@ test "$(git rev-parse --verify "${PUBLIC_RELEASE_COMMIT}^{commit}")" = "$PUBLIC_
 git merge-base --is-ancestor "$PUBLIC_RELEASE_COMMIT" HEAD
 git tag cli-v0.9.0 "$PUBLIC_RELEASE_COMMIT"
 test "$(git cat-file -t refs/tags/cli-v0.9.0)" = commit
-git push origin refs/tags/cli-v0.9.0:refs/tags/cli-v0.9.0
+PUSH_STATUS=0
+git push origin refs/tags/cli-v0.9.0:refs/tags/cli-v0.9.0 || PUSH_STATUS=$?
+REMOTE_TAG_REF=refs/tags/cli-v0.9.0
+if ! REMOTE_TAG_ROW="$(git ls-remote --tags origin "$REMOTE_TAG_REF")"; then
+  echo "cannot reconcile cli-v0.9.0 remote state after push status $PUSH_STATUS" >&2
+  exit 1
+fi
+EXPECTED_REMOTE_TAG_ROW="$(printf '%s\t%s' "$PUBLIC_RELEASE_COMMIT" "$REMOTE_TAG_REF")"
+if test -z "$REMOTE_TAG_ROW"; then
+  echo "cli-v0.9.0 is absent after push status $PUSH_STATUS; do not retry" >&2
+  exit 1
+fi
+if test "$REMOTE_TAG_ROW" != "$EXPECTED_REMOTE_TAG_ROW"; then
+  echo "cli-v0.9.0 remote target conflicts with PUBLIC_RELEASE_COMMIT" >&2
+  exit 1
+fi
+if test "$PUSH_STATUS" -ne 0; then
+  echo "git push exited $PUSH_STATUS but the remote exact ref is correct; continuing without retry" >&2
+fi
 ```
 
 - After the tag-only push, poll only for readiness for at most 300 seconds; more than one matching run is immediately terminal, zero runs remain retryable only inside this bounded discovery loop, and no command creates a second run:
@@ -216,6 +234,7 @@ Run S1 exactly once after `plan-manager ship` auto-commits the active-to-finishe
 - `cli/src/generated/sotPayload.ts` is derived. Hand-editing it or forgetting regeneration creates source/binary drift.
 - The release workflow deliberately downgrades npm publish failure to a warning; workflow success alone is not npm proof, so P4 is mandatory.
 - GitHub Actions and npm visibility are eventually consistent after the irreversible tag push. Use only the bounded readiness loops above; timeout is terminal, but zero visible runs or an npm 404 before the deadline is not permission to create a second run, retag, or reuse a cache.
+- A tag push can succeed remotely while the client exits nonzero. Never retry: reconcile the exact remote ref once; continue only when it already equals `PUBLIC_RELEASE_COMMIT`, and stop on an absent, conflicting, or unreadable remote state.
 - `gh release create ... || true` means an old Release could be reused; the pre-existing tag/Release check and exactly-one-run invariant prevent accidental reuse from being accepted.
 - Plan-only receipt/start/ship commits may make current `HEAD` differ from `PUBLIC_RELEASE_COMMIT`; the tag must use the receipt's exact `reviewed_head`, never ambient `HEAD`.
 - The source Session Relay Release has five assets, whereas the public docks-kit Release must have six; do not conflate the inventories.
@@ -236,7 +255,7 @@ Run S1 exactly once after `plan-manager ship` auto-commits the active-to-finishe
 - Every primary Codex attempt stages `/home/vagrant/.codex/auth.json` only as a mode-`0600` copy inside its unique mode-`0700` helper-workspace `CODEX_HOME`, verifies `codex login status` under that home before launch, sets only `CODEX_HOME` on the unchanged pinned-source-helper-built full argv, and launches that same JSON array only through the direct Node `spawnSync(argv[0], argv.slice(1), {env:{...process.env,CODEX_HOME}, stdio:['ignore', stdoutFd, stderrFd]})` controller. The controller must assert the received argv is unchanged, must not serialize or reconstruct it through a shell, and must rely exclusively on helper cleanup to remove the controller, logs, credential copy, home, and workspace; inherited stdin is forbidden, and credential bytes must never be printed, hashed, parsed, logged, copied into the repository/bundle, or persisted.
 - Every draft, repair, and completion plan-review operation uses only the pinned Docks source helper path at commit `813c74bb3ffde67c8cb20688bfa377962b86314f` and file SHA-256 `c75413803f18f3807bc288183dcbcf559e790a4ce6ffeb89fcb1614df817a1cc`; immediately before each review, revalidate commit, hash, zero generated `oneOf` keys, and at least one generated `anyOf` key.
 - Every npm read uses a unique writable mode-`0700` cache under `/tmp`; the default cache and previously used temp caches are forbidden.
-- If any invariant, review, test, tag, workflow, Release, npm, or lifecycle operation fails, STOP and report; never fabricate final fields.
+- If any invariant, review, test, workflow, Release, npm, or lifecycle operation fails, STOP and report; a nonzero tag-push result may continue only after the same block proves the exact remote ref equals `PUBLIC_RELEASE_COMMIT` without retry; never fabricate final fields.
 - Do not push the branch; the parent owns branch push.
 
 ## STOP conditions
@@ -244,7 +263,7 @@ Run S1 exactly once after `plan-manager ship` auto-commits the active-to-finishe
 - The request hash or any closed request identity differs from the values above.
 - A primary Codex attempt cannot create its helper-workspace-local `CODEX_HOME`, stage the credential at mode `0600`, pass `codex login status`, build the full argv exactly once from the pinned source helper, prove the controller received that array unchanged, use the exact direct Node `spawnSync` call with `stdio[0] = 'ignore'`, or complete helper-owned cleanup; abort before launch when the preflight fails and never retry the same canonical input.
 - The pinned Docks source helper commit/hash differs, its freshly generated current schema contains any `oneOf` key or no `anyOf` key, or any operation resolves to the installed `0.12.9` helper.
-- The existing tag or Release `cli-v0.9.0` is present before authorized tag creation, or the tag cannot be proven to point exactly at the receipt-reviewed commit.
+- The existing tag or Release `cli-v0.9.0` is present before authorized tag creation; the one authorized push cannot be reconciled to an exact remote ref equal to `PUBLIC_RELEASE_COMMIT`; or the remote ref is absent, conflicting, or unreadable after that push. A nonzero push with an exact remote-equal ref is reconciled success and is not retried.
 - Draft/completion review is unavailable, invalid, not ready, or does not yield a reusable passed receipt.
 - Any A/P command fails, any later edit invalidates the reviewed implementation, or more/less than one matching release workflow run exists.
 - GitHub Release assets/checksums, npm state, or live Session Relay checksums disagree with the request/pins.
