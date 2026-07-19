@@ -1,9 +1,9 @@
 ---
 title: Release Session Relay CLI production pins
 goal: Replace fixture Session Relay hashes with the four authorized production digests, prove the immutable cli-v0.9.0 release, and archive the superseded installer plan.
-status: in_review
+status: finished
 created: "2026-07-18T19:47:14-03:00"
-updated: "2026-07-19T00:18:51-03:00"
+updated: "2026-07-19T00:19:48-03:00"
 started_at: "2026-07-18T23:47:22-03:00"
 in_review_since: "2026-07-18T23:59:22-03:00"
 assignee: codex
@@ -24,6 +24,7 @@ related_plans:
 review_status: passed
 planned_at_commit: 0616e5bb1b87ba19318c116e174b8633c226fa0e
 execution_base_commit: e94a98043e1607c5958c0d3e75627c4dcc88832f
+ship_commit: 6fb2410b81ff5da31d89f3ddcafc8e9c26a4cb54
 ---
 
 # Release Session Relay CLI production pins
