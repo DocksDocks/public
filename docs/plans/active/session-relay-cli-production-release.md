@@ -3,7 +3,7 @@ title: Release Session Relay CLI production pins
 goal: Replace fixture Session Relay hashes with the four authorized production digests, prove the immutable cli-v0.9.0 release, and archive the superseded installer plan.
 status: planned
 created: "2026-07-18T19:47:14-03:00"
-updated: "2026-07-18T22:07:00-03:00"
+updated: "2026-07-18T22:15:17-03:00"
 started_at: null
 assignee: null
 review_author_company: openai
@@ -21,7 +21,7 @@ related_plans:
   - docs/plans/active/session-relay-cli-installation.md
   - /home/vagrant/projects/docks/docs/plans/finished/2026-07-18-session-relay-prebuilt-cli-distribution.md
 review_status: null
-planned_at_commit: 0616e5bb50e064ba6f009c161678f5a7d99ca479
+planned_at_commit: 0616e5bb1b87ba19318c116e174b8633c226fa0e
 execution_base_commit: null
 ---
 
@@ -279,3 +279,4 @@ Primary review (2026-07-18): [primary: openai gpt-5.6-sol high] blocking_gap —
 - **2026-07-18T20:19:18-03:00**: The first credential-staged review passed `codex login status` and preserved the helper-derived argv, but the API rejected the sealed schema with HTTP 400 `invalid_json_schema` because `oneOf` is forbidden at `policy.candidates.items`; no reviewer output was emitted -> the attempt ended `nonzero_exit` and remains terminal for that canonical input -> never retry that input or its installed `0.12.9` helper; only a changed, committed plan input reviewed through the exact pinned source helper may proceed.
 - **2026-07-18T20:42:43-03:00**: The pinned source-helper/auth attempt at `7ce5938a4100d503f6d64e5a0674f1ff33c581e0` launched its background Codex child with inherited nonterminal stdin, so the child exited before reviewer output with `stdin is not a terminal`; no review receipt, start, release, tag, or push occurred -> helper, argv, and authentication correctness do not make a background launch noninteractive -> never retry that canonical input; every fresh draft, repair, or completion primary Codex process must preserve the same pinned source helper/argv/auth rules and attach stdin exactly from `/dev/null`, including when backgrounded to capture `child_id`.
 - **2026-07-18T21:36:34-03:00**: The schema-5 round-2 launch over the input committed at `9f80984e67dd2658ae5dd7e6e39f909e7c983a9a` is terminal for that exact input and must not be retried -> shell-mediated background launch remained an unsafe boundary even after adding a textual stdin requirement, because command transport could still alter the helper-built argv or fd0 contract before Codex started -> this substantive amended canonical input permits one fresh schema-5 full review series only; every future primary launch must pass the exact helper-built JSON array through the direct Node controller, assert it is unchanged, and invoke the exact `spawnSync` stdio/environment contract without any shell serialization, `mapfile`, `eval`, or argv reconstruction.
+- **2026-07-18T22:15:17-03:00**: The preceding schema-5 round-2 result is terminal for repaired input `e75049e731afbe9afb74f645b76287729b3e82b5ffd95b9e8cb1c0a566191ee7` and must not be retried; the committed plan still bound `planned_at_commit` to nonexistent object `0616e5bb50e064ba6f009c161678f5a7d99ca479` -> the lifecycle identity could not validate even though the actual plan-creation commit and its parent/blob evidence were already pinned elsewhere -> correct the canonical input to actual plan-creation commit `0616e5bb1b87ba19318c116e174b8633c226fa0e`, commit it substantively, and start only one fresh schema-5 full review series from that changed input.
