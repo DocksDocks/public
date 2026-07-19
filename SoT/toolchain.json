@@ -23,10 +23,10 @@
                 "note": "browser-automation CLI (npm global), gated by the verified pin; first install also downloads Chrome for Testing" },
     "session-relay": { "kind": "managed-release", "policy": "exact", "verified": "0.12.0", "repository": "DocksDocks/docks", "tag": "session-relay--v0.12.0", "plugin_id": "session-relay@docks", "plugin_version": "0.12.0", "install_path": "~/.local/bin/session-relay",
                 "assets": {
-                  "x86_64-unknown-linux-musl": "d498f9af0a97767ef71d368e362bef9e8137a6745ed0d811e65a9419702ae6b2",
-                  "aarch64-unknown-linux-musl": "d498f9af0a97767ef71d368e362bef9e8137a6745ed0d811e65a9419702ae6b2",
-                  "x86_64-apple-darwin": "d498f9af0a97767ef71d368e362bef9e8137a6745ed0d811e65a9419702ae6b2",
-                  "aarch64-apple-darwin": "d498f9af0a97767ef71d368e362bef9e8137a6745ed0d811e65a9419702ae6b2"
+                  "x86_64-unknown-linux-musl": "ead7faead73ba5835879e4823bc4bca6b6d1003d8a9bcbdbea6cf9f266ce5b42",
+                  "aarch64-unknown-linux-musl": "d7171bbaa33c4da8b0a9e15f9bfe7a3fb31930a1fad95cc9f682f153369b421b",
+                  "x86_64-apple-darwin": "be12a6f782453d8cc90d98ab77f408f0e7c61b55f8ccdf36bf0584c8cec2f1d8",
+                  "aarch64-apple-darwin": "5022354025d0c639406cf8b027d824724d8366f74e2b778c37d705e7e9f53889"
                 } },
     "skills-cli": { "kind": "pin", "verified": "1.5.15",
                 "note": "the `skills` npm package the kit runs via `npx skills@<verified>` on every agents sync (universal-skill install/remove) — pinned, never @latest" }
