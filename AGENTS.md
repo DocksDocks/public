@@ -4,24 +4,29 @@ Canonical instructions for coding agents working on this project. Compatible wit
 
 ## Repository purpose
 
-Portable configuration kit for AI coding agents. Per-tool Single Source of Truth (SoT) directories get deployed to each tool's user-config location via `./docks-kit sync` — clone once, sync to your home directory, get a consistent AI-assisted dev environment everywhere. The kit focuses on **token efficiency without sacrificing quality**: every setting and hook is tuned to minimize token consumption while preserving rigorous output. When adding or editing anything, ask: *does this change reduce tokens without weakening correctness?*
+Portable configuration kit for AI coding agents. Per-tool Single Source of Truth (SoT) directories get deployed to each tool's user-config location via `./docks-kit sync` — clone once and get a consistent AI-assisted dev environment across supported Linux and macOS hosts. The kit focuses on **token efficiency without sacrificing quality**: every setting and hook is tuned to minimize token consumption while preserving rigorous output. When adding or editing anything, ask: *does this change reduce tokens without weakening correctness?*
 
 Tool-specific instructions live alongside this file:
 - **`CLAUDE.md`** — Claude Code SoT (`SoT/.claude/`), env vars, hooks, plugins, RTK, status line, session management, permission mode, open concerns.
 - Codex uses this `AGENTS.md` file plus the Codex SoT under `SoT/.codex/`; no separate root `CODEX.md` is needed.
 
+
+docks-kit runtime, standalone binary, and Session Relay prebuilt support is
+exactly Linux x64/arm64 and macOS x64/arm64. Unsupported hosts fail before the
+launcher can fall back to Bun source.
+
 ## Repository layout (cross-cutting)
 
 | Path | Purpose |
 |------|---------|
-| `docks-kit` | CLI launcher: runs the platform binary in `cli/dist/` only when its `--version` matches `package.json`, otherwise Bun-from-source (auto-installs Bun + `node_modules`). No-Bun recovery is the standalone platform release binary |
+| `docks-kit` | CLI launcher: on supported hosts, runs the platform binary in `cli/dist/` only when its `--version` matches `package.json`, otherwise Bun-from-source (auto-installs Bun + `node_modules`). Unsupported hosts fail before source fallback. No-Bun recovery is the standalone platform release binary |
 | `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, `workflow`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
 | `cli/` | Effect-TS CLI + bundled docs topics |
 | `SoT/models.json` | Kit-verified model catalog plus the strict Docks workflow-role registry |
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative) |
 | `SoT/.claude/bin/` | Dependency-free Bun runtime programs for Claude's statusline, SessionStart, and Notification |
 | `install.sh` | Global installer |
-| `.github/workflows/release-cli.yml` | `cli-v*` release binaries + npm publish |
+| `.github/workflows/release-cli.yml` | `cli-v*` release: four Linux/macOS x64/arm64 binaries, `SHA256SUMS`, and npm publish |
 | `README.md` | Front door |
 | `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
 | `SoT/.agents/skills.txt` | Universal-skill manifest, intentionally empty by default. Adding an [agentskills.io](https://agentskills.io/specification) slug opts it into EngineNative's shared `~/.agents/skills/` bootstrap and Claude symlink. |

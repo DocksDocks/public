@@ -2,8 +2,8 @@
 
 Portable configuration kit for AI coding agents. Per-tool **Single Source of
 Truth (SoT)** directories are deployed to each tool's user-config location —
-clone once, sync everywhere, get a consistent AI-assisted dev environment on
-every machine. Tuned for **token efficiency without sacrificing quality**.
+clone once and get a consistent AI-assisted dev environment across supported
+Linux and macOS machines. Tuned for **token efficiency without sacrificing quality**.
 
 Supported tools: **Claude Code**, **Codex**, and any agent consuming
 [agentskills.io](https://agentskills.io) universal skills.
@@ -17,10 +17,12 @@ cd ~/projects/public
 ./docks-kit status          # doctor view: drift, toolchain, plugins, skills
 ```
 
-The `./docks-kit` launcher prefers a compiled binary (`cli/dist/`) only when
-its version matches the checkout, then runs from source via Bun — auto-installing
-Bun and dependencies when missing. Stale ignored build artifacts cannot mask
-newer checkout code.
+The `./docks-kit` launcher supports Linux x64/arm64 and macOS x64/arm64.
+On those hosts it prefers a compiled binary (`cli/dist/`) only when its version
+matches the checkout, then runs from source via Bun—auto-installing Bun and
+dependencies when missing. Unsupported hosts fail immediately and never fall
+back to Bun source. Stale ignored build artifacts cannot mask newer checkout
+code.
 
 Other install paths (global `bun add -g docks-kit`, curl installer) —
 see `./docks-kit docs install`.
@@ -32,7 +34,7 @@ The executable carries the generated sync payload; no checkout or adjacent
 `SoT/` directory is required.
 
 Prerequisites for source/global installs: Bun; Node/npm for npm-global tools.
-`jq` is optional doctor/test tooling. `curl` is used only at requested POSIX
+`jq` is optional doctor/test tooling. `curl` is used only at requested Linux/macOS
 RTK/Bun download boundaries, not as a global sync prerequisite.
 
 ## CLI
@@ -135,19 +137,21 @@ current valid values, while a later flag-less sync restores all defaults.
 
 ## Platform support
 
-| Platform | CLI | Sync engine |
-|----------|-----|-------------|
-| Linux | ✅ native | ✅ native |
-| macOS (x64/arm64) | ✅ native | ✅ native |
-| Windows | ✅ native binary (`.exe` and `bun add -g` CI-verified) | ✅ EngineNative (TS, default engine — no Git Bash); real-machine verified 2026-07-09 — RTK hooks are native too (rtk ≥0.37.2) |
+| Platform | Architecture | docks-kit binary | Session Relay prebuilt | Sync engine |
+|----------|--------------|------------------|------------------------|-------------|
+| Linux | x64 | ✅ | ✅ | ✅ native |
+| Linux | arm64 | ✅ | ✅ | ✅ native |
+| macOS | x64 | ✅ | ✅ | ✅ native |
+| macOS | arm64 | ✅ | ✅ | ✅ native |
 
 Details: `docks-kit docs platforms`.
 
 ## Releases
 
-Tagging `cli-v*` builds five standalone binaries (+ SHA256SUMS) and attaches
-them to the GitHub release; npm publish runs when the `NPM_TOKEN` secret is
-configured. Package bundles the CLI + generated payload, so npm releases are
+Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
+x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
+publish runs when the `NPM_TOKEN` secret is configured.
+Package bundles the CLI + generated payload, so npm releases are
 versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs

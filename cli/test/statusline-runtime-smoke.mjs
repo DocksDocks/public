@@ -3,10 +3,9 @@ import { tmpdir } from "node:os"
 import { basename, join, resolve } from "node:path"
 
 import { claudeRuntimePaths, materializeClaudeSettings } from "../src/engine-native/claudeRuntime.ts"
-import { makePlatform } from "../src/engine-native/services.ts"
 
 const mode = process.argv[2] ?? "posix"
-if (!["posix", "powershell", "git-bash"].includes(mode)) throw new Error(`unknown outer shell: ${mode}`)
+if (mode !== "posix") throw new Error(`unsupported outer shell: ${mode}; supported: posix`)
 
 const repo = resolve(import.meta.dir, "..", "..")
 const root = mkdtempSync(join(tmpdir(), "statusline O'Brien-"))
@@ -46,11 +45,6 @@ function commandHandler(settings, event) {
   return handler
 }
 
-function outerCommand(command) {
-  if (mode === "posix") return ["bash", "-lc", command]
-  if (mode === "powershell") return ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command]
-  return ["C:\\Program Files\\Git\\bin\\bash.exe", "-lc", command]
-}
 
 try {
   mkdirSync(binDir, { recursive: true })
@@ -61,11 +55,10 @@ try {
 
   const bun = Bun.which("bun")
   if (bun === null || bun === "") throw new Error("bun executable was not resolved")
-  if (process.platform === "win32" && !/\.exe$/i.test(bun)) throw new Error(`Windows Bun is not an .exe: ${bun}`)
 
   const template = JSON.parse(readFileSync(join(repo, "SoT", ".claude", "settings.json"), "utf8"))
   const runtime = claudeRuntimePaths(claudeDir, bun)
-  const materialized = materializeClaudeSettings(template, runtime, makePlatform(process.platform))
+  const materialized = materializeClaudeSettings(template, runtime)
   const settingsPath = join(claudeDir, "settings.json")
   writeFileSync(settingsPath, `${JSON.stringify(materialized, null, 2)}\n`)
   const settings = JSON.parse(readFileSync(settingsPath, "utf8"))
@@ -117,25 +110,23 @@ try {
     `${PIPE}${ESC}38;2;100;200;200m5h 44%${ESC}0m` +
     `${DOT}${ESC}38;2;230;180;90m7d 55%${ESC}0m\n`
   const stdin = JSON.stringify(input)
-  if (mode !== "git-bash") {
-    const directTimings = []
-    for (let index = 0; index < 30; index += 1) {
-      const run = record([runtime.bun, runtime.statusline], stdin, baseEnv)
-      assertRun(`statusLine direct Bun run ${index + 1}`, run, expected)
-      directTimings.push(run.elapsed)
-    }
-    const measuredDirect = directTimings.slice(5).sort((a, b) => a - b)
-    const directP95 = measuredDirect[Math.ceil(measuredDirect.length * 0.95) - 1]
-    const directCeiling = mode === "posix" ? 100 : 200
-    if (directP95 > directCeiling) {
-      throw new Error(`statusLine direct Bun p95 ${directP95.toFixed(2)}ms exceeds ${directCeiling}ms`)
-    }
-    console.log(`runtime-smoke: direct Bun exact bytes OK; p95=${directP95.toFixed(2)}ms ceiling=${directCeiling}ms`)
+  const directTimings = []
+  for (let index = 0; index < 30; index += 1) {
+    const run = record([runtime.bun, runtime.statusline], stdin, baseEnv)
+    assertRun(`statusLine direct Bun run ${index + 1}`, run, expected)
+    directTimings.push(run.elapsed)
   }
+  const measuredDirect = directTimings.slice(5).sort((a, b) => a - b)
+  const directP95 = measuredDirect[Math.ceil(measuredDirect.length * 0.95) - 1]
+  const directCeiling = 100
+  if (directP95 > directCeiling) {
+    throw new Error(`statusLine direct Bun p95 ${directP95.toFixed(2)}ms exceeds ${directCeiling}ms`)
+  }
+  console.log(`runtime-smoke: direct Bun exact bytes OK; p95=${directP95.toFixed(2)}ms ceiling=${directCeiling}ms`)
   const timings = []
   for (let index = 0; index < 30; index += 1) {
-    const run = record(outerCommand(settings.statusLine.command), stdin, baseEnv)
-    assertRun(`statusLine ${mode} run ${index + 1}`, run, expected)
+    const run = record(["bash", "-lc", settings.statusLine.command], stdin, baseEnv)
+    assertRun(`statusLine posix run ${index + 1}`, run, expected)
     timings.push(run.elapsed)
   }
   // Outer-shell spawn time is dominated by runner load (p95 of 25 samples is
@@ -143,9 +134,9 @@ try {
   // moves when the stored command got systematically slower.
   const measured = timings.slice(5).sort((a, b) => a - b)
   const median = measured[Math.floor(measured.length / 2)]
-  const ceiling = mode === "posix" ? 250 : 750
-  if (median > ceiling) throw new Error(`statusLine ${mode} median ${median.toFixed(2)}ms exceeds ${ceiling}ms`)
-  console.log(`runtime-smoke: ${mode} exact commands OK; median=${median.toFixed(2)}ms ceiling=${ceiling}ms`)
+  const ceiling = 250
+  if (median > ceiling) throw new Error(`statusLine posix median ${median.toFixed(2)}ms exceeds ${ceiling}ms`)
+  console.log(`runtime-smoke: posix exact commands OK; median=${median.toFixed(2)}ms ceiling=${ceiling}ms`)
 } finally {
   rmSync(root, { recursive: true, force: true })
 }

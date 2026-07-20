@@ -1,5 +1,8 @@
 # Installing docks-kit
 
+Supported hosts are Linux x64/arm64 and macOS x64/arm64. Unsupported hosts
+fail before the launcher can fall back to Bun source.
+
 ## 1. Repo checkout (development / current users)
 
 ```
@@ -8,10 +11,11 @@ cd ~/projects/public
 ./docks-kit sync
 ```
 
-The `./docks-kit` launcher prefers a compiled binary in `cli/dist/` only when
-its reported version matches `package.json`, then falls back to Bun-from-source
-(auto-installing Bun via download-then-run and `bun install --frozen-lockfile`
-when needed). An ignored stale build is reported and bypassed.
+On a supported host, the `./docks-kit` launcher prefers a compiled binary in
+`cli/dist/` only when its reported version matches `package.json`, then falls
+back to Bun-from-source (auto-installing Bun via download-then-run and
+`bun install --frozen-lockfile` when needed). An ignored stale build is reported
+and bypassed.
 
 ## 2. Global via Bun (effect-solutions-style)
 
@@ -51,7 +55,7 @@ install; `docks-kit --version`, model catalogs, toolchain checks, and real sync
 remain functional with the script blocked. CI pins the one-package/one-command
 identity above and will fail if the script-bearing set changes.
 
-## 3. curl installer (Unix-only)
+## 3. curl installer (Linux/macOS)
 
 ```
 curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
@@ -61,20 +65,7 @@ bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh
 Download-then-run, never `curl | bash` — stream truncation has bitten this
 kit before. The installer bootstraps Bun when absent, runs
 `bun add -g docks-kit`, and links the binary into `~/.local/bin`.
-**Linux/macOS only** — on Windows use the compiled `.exe` or `bun add -g`
-(both CI-verified; see below).
-
-## Windows entrypoints
-
-Two supported paths (CI-verified on windows-2025, native PowerShell):
-
-- **Compiled binary** — `docks-kit-windows-x64.exe` release asset. No Bun,
-  no Git Bash: the exe embeds the runtime and generated payload, and
-  EngineNative runs in-process from any working directory.
-- **`bun add -g docks-kit`** — bun creates a working shim for the
-  `#!/usr/bin/env bun` bin; the package carries the same generated payload.
-
-`install.sh` is not a Windows path.
+This installer supports Linux and macOS only.
 
 ## Keeping the kit up to date
 
@@ -105,6 +96,6 @@ sync/config reads.
 - Bun for source/global installs; release binaries embed the runtime
 - Node/npm for npm-global tools (agent-browser, LSP servers)
 - jq is optional doctor/test tooling; sync has no jq runtime dependency
-- curl is required only when a requested POSIX RTK/Bun bootstrap must download
+- curl is required only when a requested Linux/macOS RTK/Bun bootstrap must download
   an installer; an already-present Bun does not require it
 - See `docks-kit toolchain check` for the full picture on this machine

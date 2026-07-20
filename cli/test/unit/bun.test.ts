@@ -20,7 +20,6 @@ import { bunBootstrap, type BunRuntimeState } from "../../src/engine-native/bun"
 import type { Ctx } from "../../src/engine-native"
 import type { ProbeExecutor } from "../../src/engine-native/deps"
 import { makeDependencyManager, makeEngineServices, makePlatform, type EngineServices } from "../../src/engine-native/services"
-import { decodePowerShellCommand } from "../../src/engine-native/powershell"
 
 interface ProbeState {
   curl: boolean
@@ -39,12 +38,12 @@ interface TestRig {
 const originalHome = process.env["HOME"]
 const originalBunInstall = process.env["BUN_INSTALL"]
 
-function executor(state: ProbeState, platform: NodeJS.Platform, home: string): ProbeExecutor {
-  const fallback = platform === "win32" ? `${home}/.bun/bin/bun.exe` : `${home}/.bun/bin/bun`
+function executor(state: ProbeState, home: string): ProbeExecutor {
+  const fallback = `${home}/.bun/bin/bun`
   const customRoot = process.env["BUN_INSTALL"]
   const custom = customRoot === undefined || customRoot === ""
     ? fallback
-    : `${customRoot}/bin/${platform === "win32" ? "bun.exe" : "bun"}`
+    : `${customRoot}/bin/bun`
   return {
     commandExists: (name) => name === "curl" ? state.curl : false,
     capture: (cmd, args) => {
@@ -62,7 +61,7 @@ function executor(state: ProbeState, platform: NodeJS.Platform, home: string): P
 }
 
 function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): TestRig {
-  const home = platformId === "win32" ? "C:/Users/First Last" : "/home/test"
+  const home = "/home/test"
   process.env["HOME"] = home
   const platform = makePlatform(platformId)
   const lines: Array<string> = []
@@ -74,7 +73,7 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
   })
   const services: EngineServices = {
     logger: base.logger,
-    deps: makeDependencyManager(platform, executor(state, platformId, home)),
+    deps: makeDependencyManager(platform, executor(state, home)),
     platform
   }
   const ctx: Ctx = {
@@ -174,35 +173,6 @@ describe("per-run Bun bootstrap", () => {
     expect(mocks.rmSync).toHaveBeenCalledWith(expect.stringMatching(/bun-install-\d+\.sh$/), { force: true })
   })
 
-  it("downloads and runs the Windows installer without curl", () => {
-    process.env["BUN_INSTALL"] = "C:/Users/O'Brien Bun"
-    mocks.tmpdir.mockReturnValue("C:/Temp/O'Brien Folder")
-    const test = rig("win32", { curl: false, installed: false })
-    mocks.spawnSync.mockImplementation((cmd: string, args: Array<string>) => {
-      if (cmd === "powershell.exe" && args.includes("-File")) test.state.installed = true
-      return { error: undefined, status: 0 }
-    })
-
-    expect(expectReady(bunBootstrap(test.ctx, test.services))).toBe("C:/Users/O'Brien Bun/bin/bun.exe")
-    const downloadArgs = mocks.spawnSync.mock.calls[0]?.[1]
-    expect(downloadArgs?.slice(0, 3)).toEqual(["-NoProfile", "-NonInteractive", "-EncodedCommand"])
-    const download = decodePowerShellCommand(downloadArgs?.[3] ?? "")
-    expect(download).toContain("Invoke-WebRequest -Uri 'https://bun.sh/install.ps1'")
-    expect(download).toContain("-OutFile 'C:/Temp/O''Brien Folder/")
-    expect(mocks.spawnSync).toHaveBeenNthCalledWith(2, "powershell.exe", [
-      "-NoProfile",
-      "-NonInteractive",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      expect.stringContaining("O'Brien Folder/bun-install-"),
-      "-Version",
-      "1.3.14",
-      "-DownloadWithoutCurl"
-    ], { stdio: "ignore" })
-    expect(mocks.rmSync).toHaveBeenCalledWith(expect.stringMatching(/bun-install-\d+\.ps1$/), { force: true })
-    expect(test.lines.join("")).not.toContain("curl not installed")
-  })
 
   it("returns install-failed after a successful download that produces no Bun", () => {
     const test = rig("linux", { curl: true, installed: false })

@@ -112,34 +112,29 @@ const home = (): string => {
   return envHome !== undefined && envHome !== "" ? envHome : homedir()
 }
 
-const absoluteWindowsExe = (path: string): boolean =>
-  /\.exe$/i.test(path) && (/^[A-Za-z]:[\\/]/.test(path) || /^\\\\/.test(path))
 
 // The resolved path gets persisted into global direct-exec hooks, so a
 // relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
 // break outside the sync working directory.
-const absoluteExecutable = (path: string, platform: NodeJS.Platform): boolean =>
-  platform === "win32" ? absoluteWindowsExe(path) : isAbsolute(path)
 
-const findBun = (exec: ProbeExecutor, platform: NodeJS.Platform = rawPlatform()): { command: string; path: string } | undefined => {
+const findBun = (exec: ProbeExecutor): { command: string; path: string } | undefined => {
   const onPath = exec.which("bun")
-  if (onPath !== "" && absoluteExecutable(onPath, platform)) {
-    return { command: platform === "win32" ? onPath : "bun", path: onPath }
+  if (onPath !== "" && isAbsolute(onPath)) {
+    return { command: "bun", path: onPath }
   }
   const root =
     process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
       ? process.env["BUN_INSTALL"]!
       : p(home(), ".bun")
-  const name = platform === "win32" ? "bun.exe" : "bun"
-  for (const candidate of [p(root, "bin", name), p(home(), ".bun", "bin", name)]) {
+  for (const candidate of [p(root, "bin", "bun"), p(home(), ".bun", "bin", "bun")]) {
     const found = exec.which(candidate)
-    if (found !== "" && absoluteExecutable(found, platform)) return { command: found, path: found }
+    if (found !== "" && isAbsolute(found)) return { command: found, path: found }
   }
   return undefined
 }
 
-const resolveBun = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
-  const bun = findBun(exec, platform)
+const resolveBun = (exec: ProbeExecutor): ProbeResult => {
+  const bun = findBun(exec)
   return bun === undefined
     ? { state: "missing" }
     : { state: "present", path: bun.path }
@@ -161,28 +156,23 @@ const versionEffectSolutions = (exec: ProbeExecutor): string => {
   return match?.[1] ?? ""
 }
 
-const locateEffectSolutions = (exec: ProbeExecutor, platform: NodeJS.Platform): DependencyLocation => {
-  const strictBun = findBun(exec, platform)
+const locateEffectSolutions = (exec: ProbeExecutor): DependencyLocation => {
+  const strictBun = findBun(exec)
   const pathBun = exec.which("bun")
   const bun = strictBun ?? (pathBun !== "" ? { command: "bun", path: pathBun } : undefined)
   if (bun === undefined) return { path: "", binDir: "" }
   const globalBin = exec.capture(bun.command, ["pm", "-g", "bin"])
-  const names =
-    platform === "win32"
-      ? ["effect-solutions.exe", "effect-solutions.cmd", "effect-solutions.bunx"]
-      : ["effect-solutions"]
-  const path = names.map((name) => p(globalBin, name)).find((candidate) => globalBin !== "" && exec.which(candidate) !== "")
-  return { path: path ?? "", binDir: globalBin }
+  const path = globalBin !== "" ? p(globalBin, "effect-solutions") : ""
+  const resolved = path !== "" && exec.which(path) !== "" ? path : ""
+  return { path: resolved, binDir: globalBin }
 }
 
 const resolveChrome = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
   const root = p(home(), ".agent-browser", "browsers")
   const relative =
-    platform === "win32"
-      ? "chrome.exe"
-      : platform === "darwin"
-        ? "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-        : "chrome"
+    platform === "darwin"
+      ? "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+      : "chrome"
   if (existsSync(root)) {
     for (const directory of readdirSync(root).filter((name) => name.startsWith("chrome-")).sort().reverse()) {
       const path = exec.which(p(root, directory, relative))
@@ -215,23 +205,19 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "git",
     "optional",
     (pf = rawPlatform()) =>
-      pf === "win32"
-        ? "winget install Git.Git (then open a new terminal)"
-        : pf === "darwin"
-          ? "brew install git"
-          : "sudo apt install -y git (or your distro's package manager)",
+      pf === "darwin"
+        ? "brew install git"
+        : "sudo apt install -y git (or your distro's package manager)",
     { version: versionProbe("git") }
   ),
   jq: spec("jq", "optional", (pf = rawPlatform()) =>
-    pf === "win32"
-      ? "winget install jqlang.jq (then open a new terminal)"
-      : pf === "darwin"
-        ? "brew install jq"
-        : "sudo apt install -y jq",
+    pf === "darwin"
+      ? "brew install jq"
+      : "sudo apt install -y jq",
     { version: versionProbe("jq") }
   ),
   curl: spec("curl", "optional", (pf = rawPlatform()) =>
-    pf === "win32" ? "winget install cURL.cURL" : pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
+    pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
     { version: versionProbe("curl") }
   ),
   node: spec("node", "optional", () => "install Node.js via https://nodejs.org (or your package manager)", {
@@ -242,22 +228,16 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   claude: spec(
     "claude",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "win32"
-        ? "winget install Anthropic.ClaudeCode"
-        : "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+    () => "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
     { version: versionProbe("claude") }
   ),
   codex: spec(
     "codex",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "win32"
-        ? `powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"`
-        : 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
+    () => 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
     { version: versionProbe("codex") }
   ),
-  rtk: spec("rtk", "optional", () => "see https://github.com/rtk-ai/rtk (kit auto-install is Unix-only)", {
+  rtk: spec("rtk", "optional", () => "see https://github.com/rtk-ai/rtk (kit auto-install is Linux/macOS-only)", {
     version: versionProbe("rtk"),
     latest: latestRtk
   }),
@@ -269,12 +249,11 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   bun: spec(
     "bun",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "win32" ? `powershell -c "irm bun.sh/install.ps1 | iex"` : "curl -fsSL https://bun.sh/install | bash",
+    () => "curl -fsSL https://bun.sh/install | bash",
     {
       resolve: resolveBun,
       version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
-      locate: (exec, platform) => ({ path: findBun(exec, platform)?.path ?? "", binDir: "" })
+      locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),
@@ -298,7 +277,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "ffplay",
     "optional",
     (pf = rawPlatform()) =>
-      pf === "win32" ? "winget install Gyan.FFmpeg" : pf === "darwin" ? "brew install ffmpeg" : "sudo apt install -y ffmpeg",
+      pf === "darwin" ? "brew install ffmpeg" : "sudo apt install -y ffmpeg",
     { versionArgs: ["-version"], resolve: pathProbe("ffplay") }
   ),
   intelephense: spec("intelephense", "optional", () => "npm install -g intelephense", {

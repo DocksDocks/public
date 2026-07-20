@@ -6,8 +6,7 @@ import { claudeRuntimePaths, materializeClaudeSettings, statusLineCommand, type 
 import { commitClaudeSettings, prepareClaudeSettings } from "../../src/engine-native/claudeSync"
 import type { Ctx } from "../../src/engine-native"
 import { jqStringify, type Json } from "../../src/engine-native/jq"
-import { makeEngineServices, makePlatform } from "../../src/engine-native/services"
-import { decodePowerShellCommand } from "../../src/engine-native/powershell"
+import { makeEngineServices } from "../../src/engine-native/services"
 
 const BUN_SENTINEL = "__DOCKS_KIT_BUN__"
 const SESSION_SENTINEL = "__DOCKS_KIT_SESSION_START__"
@@ -31,13 +30,6 @@ const POSIX_RUNTIME: ClaudeRuntimePaths = {
   statusline: "/home/O'Brien/.claude/bin/statusline.mjs",
   sessionStart: "/home/O'Brien/.claude/bin/session-start.mjs",
   notify: "/home/O'Brien/.claude/bin/notify.mjs"
-}
-
-const WINDOWS_RUNTIME: ClaudeRuntimePaths = {
-  bun: "C:\\Users\\O'Brien\\.bun\\bin\\bun.exe",
-  statusline: "C:\\Users\\O'Brien\\.claude\\bin\\statusline.mjs",
-  sessionStart: "C:\\Users\\O'Brien\\.claude\\bin\\session-start.mjs",
-  notify: "C:\\Users\\O'Brien\\.claude\\bin\\notify.mjs"
 }
 
 function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines: Array<string> } {
@@ -71,20 +63,8 @@ describe("statusline shell guards", () => {
   it("quotes POSIX apostrophes and silently succeeds when a file is missing", () => {
     const bun = "'/home/O'\"'\"'Brien/.bun/bin/bun'"
     const script = "'/home/O'\"'\"'Brien/.claude/bin/statusline.mjs'"
-    expect(statusLineCommand(POSIX_RUNTIME, makePlatform("linux"))).toBe(
+    expect(statusLineCommand(POSIX_RUNTIME)).toBe(
       `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
-    )
-  })
-
-  it("encodes an apostrophe-safe PowerShell guard as UTF-16LE", () => {
-    const command = statusLineCommand(WINDOWS_RUNTIME, makePlatform("win32"))
-    expect(command).toMatch(/^powershell\.exe -NoProfile -NonInteractive -EncodedCommand [A-Za-z0-9+/=]+$/)
-    const encoded = command.slice(command.lastIndexOf(" ") + 1)
-    expect(decodePowerShellCommand(encoded)).toBe(
-      "$ProgressPreference = 'SilentlyContinue'; " +
-      "if ((Test-Path -LiteralPath 'C:/Users/O''Brien/.bun/bin/bun.exe' -PathType Leaf) -and " +
-      "(Test-Path -LiteralPath 'C:/Users/O''Brien/.claude/bin/statusline.mjs' -PathType Leaf)) { " +
-      "& 'C:/Users/O''Brien/.bun/bin/bun.exe' 'C:/Users/O''Brien/.claude/bin/statusline.mjs' }"
     )
   })
 })
@@ -92,7 +72,7 @@ describe("statusline shell guards", () => {
 describe("Claude settings materialization", () => {
   it("emits direct exec hooks, a guarded statusline, and no Stop key", () => {
     const source = template()
-    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME, makePlatform("linux"))
+    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME)
     expect(materialized).toEqual({
       hooks: {
         SessionStart: [{ hooks: [{ type: "command", command: POSIX_RUNTIME.bun, args: [POSIX_RUNTIME.sessionStart], timeout: 5 }] }],
@@ -101,7 +81,7 @@ describe("Claude settings materialization", () => {
       },
       statusLine: {
         type: "command",
-        command: statusLineCommand(POSIX_RUNTIME, makePlatform("linux")),
+        command: statusLineCommand(POSIX_RUNTIME),
         refreshInterval: 5
       },
       model: "opus"
@@ -111,7 +91,7 @@ describe("Claude settings materialization", () => {
   })
 
   it("strips only Bun-owned pointers when runtime is deferred", () => {
-    expect(materializeClaudeSettings(template(), undefined, makePlatform("linux"))).toEqual({
+    expect(materializeClaudeSettings(template(), undefined)).toEqual({
       hooks: {
         PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }]
       },
@@ -122,18 +102,18 @@ describe("Claude settings materialization", () => {
   it("rejects Stop, wrong sentinel locations, duplicate sentinels, and residue", () => {
     const withStop = template()
     Object.assign(withStop.hooks, { Stop: [{ hooks: [] }] })
-    expect(() => materializeClaudeSettings(withStop, POSIX_RUNTIME, makePlatform("linux"))).toThrow(/hooks\.Stop/)
+    expect(() => materializeClaudeSettings(withStop, POSIX_RUNTIME)).toThrow(/hooks\.Stop/)
 
     const wrongLocation = template()
     wrongLocation.hooks.SessionStart[0].hooks[0].command = "bun"
-    expect(() => materializeClaudeSettings(wrongLocation, POSIX_RUNTIME, makePlatform("linux"))).toThrow(/SessionStart/)
+    expect(() => materializeClaudeSettings(wrongLocation, POSIX_RUNTIME)).toThrow(/SessionStart/)
 
     const duplicate = template()
     duplicate.hooks.Notification[0].hooks[0].args.push(NOTIFY_SENTINEL)
-    expect(() => materializeClaudeSettings(duplicate, POSIX_RUNTIME, makePlatform("linux"))).toThrow(/Notification/)
+    expect(() => materializeClaudeSettings(duplicate, POSIX_RUNTIME)).toThrow(/Notification/)
 
     const residue = { ...template(), note: BUN_SENTINEL }
-    expect(() => materializeClaudeSettings(residue, POSIX_RUNTIME, makePlatform("linux"))).toThrow(/sentinel residue/)
+    expect(() => materializeClaudeSettings(residue, POSIX_RUNTIME)).toThrow(/sentinel residue/)
   })
 })
 

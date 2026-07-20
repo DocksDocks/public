@@ -96,8 +96,7 @@ describe("checkout launcher binary selection", () => {
     ["Linux", "x86_64", "docks-kit-linux-x64"],
     ["Linux", "aarch64", "docks-kit-linux-arm64"],
     ["Darwin", "x86_64", "docks-kit-darwin-x64"],
-    ["Darwin", "arm64", "docks-kit-darwin-arm64"],
-    ["MINGW64_NT-10.0-19045", "x86_64", "docks-kit-windows-x64.exe"]
+    ["Darwin", "arm64", "docks-kit-darwin-arm64"]
   ])("keeps a matching %s-%s release binary on the fast path", (system, machine, binaryName) => {
     const fixture = launcherFixture(binaryName, CURRENT_VERSION)
     const result = runLauncher(fixture, { system, machine }, ["probe"])
@@ -105,5 +104,20 @@ describe("checkout launcher binary selection", () => {
     expect(result.status).toBe(0)
     expect(result.stdout.trim()).toBe("compiled:probe")
     expect(result.stderr).toBe("")
+  })
+
+  it.each([
+    ["MINGW64_NT-10.0-19045", "x86_64"],
+    ["Linux", "i686"],
+    ["FreeBSD", "x86_64"]
+  ])("rejects unsupported %s-%s before the Bun source fallback", (system, machine) => {
+    const fixture = launcherFixture("docks-kit-linux-x64", CURRENT_VERSION)
+    const result = runLauncher(fixture, { system, machine }, ["probe"])
+
+    expect(result.status).toBe(1)
+    expect(result.stdout).toBe("")
+    expect(result.stderr).toContain(`unsupported host ${system}-${machine}`)
+    expect(result.stderr).toContain("supports only Linux and macOS on x64 or arm64")
+    expect(result.stderr).not.toContain("source:")
   })
 })

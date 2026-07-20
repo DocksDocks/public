@@ -6,11 +6,8 @@ import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
 import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
 
 describe("DependencyManager registry", () => {
-  it("gives the win32 git hint (winget)", () => {
-    expect(DEPENDENCIES.git.installHint("win32")).toBe("winget install Git.Git (then open a new terminal)")
-  })
 
-  it("gives executable unix git hints", () => {
+  it("gives executable Linux and macOS git hints", () => {
     expect(DEPENDENCIES.git.installHint("darwin")).toBe("brew install git")
     expect(DEPENDENCIES.git.installHint("linux")).toBe("sudo apt install -y git (or your distro's package manager)")
   })
@@ -28,7 +25,6 @@ describe("DependencyManager registry", () => {
   })
 
   it("gives platform-correct jq hints", () => {
-    expect(DEPENDENCIES.jq.installHint("win32")).toContain("winget install jqlang.jq")
     expect(DEPENDENCIES.jq.installHint("darwin")).toBe("brew install jq")
     expect(DEPENDENCIES.jq.installHint("linux")).toBe("sudo apt install -y jq")
   })
@@ -36,7 +32,7 @@ describe("DependencyManager registry", () => {
   it("every dependency has a non-empty hint and version args", () => {
     for (const spec of Object.values(DEPENDENCIES)) {
       expect(spec.installHint("linux").length).toBeGreaterThan(0)
-      expect(spec.installHint("win32").length).toBeGreaterThan(0)
+      expect(spec.installHint("darwin").length).toBeGreaterThan(0)
       expect(spec.versionArgs.length).toBeGreaterThan(0)
     }
   })
@@ -62,7 +58,7 @@ describe("DependencyManager registry", () => {
     expect(captures).toEqual([])
   })
 
-  it("locates only the platform-correct effect-solutions executable", () => {
+  it("locates the supported effect-solutions executable", () => {
     const globalBin = "/bun/global/bin"
     const executor = (files: ReadonlyArray<string>): ProbeExecutor => ({
       commandExists: (name) => name === "effect-solutions",
@@ -70,14 +66,8 @@ describe("DependencyManager registry", () => {
       which: (name) => (name === "bun" || files.includes(name) ? name : "")
     })
 
-    const unixBare = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions`]))
-    expect(unixBare.path("effect-solutions")).toBe(`${globalBin}/effect-solutions`)
-
-    const unixStaleShim = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions.cmd`]))
-    expect(unixStaleShim.path("effect-solutions")).toBe("")
-
-    const windowsShim = makeDependencyManager(makePlatform("win32"), executor([`${globalBin}/effect-solutions.cmd`]))
-    expect(windowsShim.path("effect-solutions")).toBe(`${globalBin}/effect-solutions.cmd`)
+    const resolved = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions`]))
+    expect(resolved.path("effect-solutions")).toBe(`${globalBin}/effect-solutions`)
   })
 
   it("preserves the original fixed-home Bun version fallbacks", () => {
@@ -135,40 +125,6 @@ describe("DependencyManager registry", () => {
     }
   })
 
-  it("requires an absolute bun.exe on Windows and ignores a shadowing bun.cmd", () => {
-    const previousHome = process.env["HOME"]
-    const previousBunInstall = process.env["BUN_INSTALL"]
-    try {
-      process.env["HOME"] = "C:/Users/Test"
-      process.env["BUN_INSTALL"] = "C:/Custom Bun"
-      const fallback = "C:/Custom Bun/bin/bun.exe"
-      const withFallback = makeDependencyManager(makePlatform("win32"), {
-        commandExists: () => true,
-        capture: () => "",
-        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : name === fallback ? fallback : ""
-      })
-      expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
-
-      const onlyCmd = makeDependencyManager(makePlatform("win32"), {
-        commandExists: () => true,
-        capture: () => "",
-        which: (name) => name === "bun" ? "C:/shadow/bun.cmd" : ""
-      })
-      expect(onlyCmd.probe("bun")).toEqual({ state: "missing" })
-
-      const pathExe = makeDependencyManager(makePlatform("win32"), {
-        commandExists: () => true,
-        capture: () => "",
-        which: (name) => name === "bun" ? "C:/Tools/BUN.EXE" : ""
-      })
-      expect(pathExe.path("bun")).toBe("C:/Tools/BUN.EXE")
-    } finally {
-      if (previousHome === undefined) delete process.env["HOME"]
-      else process.env["HOME"] = previousHome
-      if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"]
-      else process.env["BUN_INSTALL"] = previousBunInstall
-    }
-  })
 
   it("finds agent-browser managed Chrome without invoking a command", () => {
     const root = mkdtempSync(join(tmpdir(), "deps-chrome-"))

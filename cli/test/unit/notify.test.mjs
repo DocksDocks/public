@@ -29,7 +29,6 @@ describe("Notification player selection", () => {
       SOUND
     ])
     expect(selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["paplay", "aplay"]) })).toEqual(["/usr/bin/paplay", SOUND])
-    expect(selectPlayer({ platform: "win32", sound: SOUND, which: whichFrom(["aplay"]) })).toEqual(["/usr/bin/aplay", "-q", SOUND])
     expect(selectPlayer({ platform: "linux", sound: SOUND, which: () => null })).toBeUndefined()
   })
 })

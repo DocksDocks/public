@@ -36,7 +36,6 @@ export interface DependencyManager {
 export interface Platform {
   readonly raw: () => NodeJS.Platform
   readonly name: () => PlatformName
-  readonly isWindows: () => boolean
   readonly isLinux: () => boolean
   readonly shellRcApplicable: () => boolean
 }
@@ -51,13 +50,12 @@ export interface EngineServiceOptions {
   readonly sinks?: LoggerSinks
 }
 
-/** Platform view over an injectable platform id (tests pass e.g. "win32"). */
+/** Platform view over an injectable platform id. */
 export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => ({
   raw: () => pf,
   name: () => platformName(pf),
-  isWindows: () => pf === "win32",
   isLinux: () => pf === "linux",
-  shellRcApplicable: () => pf !== "win32"
+  shellRcApplicable: () => pf === "linux" || pf === "darwin"
 })
 
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */

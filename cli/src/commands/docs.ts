@@ -20,7 +20,7 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "toolchain": { summary: "Verified-version floors, gate policy, --yes semantics", body: toolchain },
   "plugins": { summary: "enabledPlugins tri-state + optional plugin opt-ins", body: plugins },
   "install": { summary: "Install paths: repo checkout, bun add -g, curl installer", body: install },
-  "platforms": { summary: "Platform support: Linux/macOS native, Windows via Git Bash/WSL", body: platforms }
+  "platforms": { summary: "Platform support: Linux/macOS x64 and arm64", body: platforms }
 }
 
 const topic = Args.text({ name: "topic" }).pipe(

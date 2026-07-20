@@ -11,17 +11,18 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUN_PIN="1.3.14"
 # END GENERATED BUN PIN
 
-case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64)   KIT_BIN="docks-kit-linux-x64" ;;
-  Linux-aarch64)  KIT_BIN="docks-kit-linux-arm64" ;;
-  Darwin-x86_64)  KIT_BIN="docks-kit-darwin-x64" ;;
-  Darwin-arm64)   KIT_BIN="docks-kit-darwin-arm64" ;;
-  # Git Bash unames look like MINGW64_NT-10.0-19045-x86_64. The compiled
-  # binary is the supported Windows path; the Bun fallback below is Unix-shaped.
-  MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) KIT_BIN="docks-kit-windows-x64.exe" ;;
-  *)              KIT_BIN="" ;;
+HOST="$(uname -s)-$(uname -m)"
+case "$HOST" in
+  Linux-x86_64)  KIT_BIN="docks-kit-linux-x64" ;;
+  Linux-aarch64) KIT_BIN="docks-kit-linux-arm64" ;;
+  Darwin-x86_64) KIT_BIN="docks-kit-darwin-x64" ;;
+  Darwin-arm64)  KIT_BIN="docks-kit-darwin-arm64" ;;
+  *)
+    echo "[docks-kit] unsupported host $HOST; docks-kit supports only Linux and macOS on x64 or arm64." >&2
+    exit 1
+    ;;
 esac
-if [[ -n "$KIT_BIN" && -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
+if [[ -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
   CHECKOUT_VERSION=""
   while IFS= read -r line; do
     if [[ "$line" =~ ^[[:space:]]*\"version\"[[:space:]]*:[[:space:]]*\"([^\"]+)\" ]]; then

@@ -1,7 +1,5 @@
 import { p } from "./exec"
 import { isObject, parseJson, type Json } from "./jq"
-import { encodePowerShellCommand, powerShellLiteral } from "./powershell"
-import type { Platform } from "./services"
 
 const BUN_SENTINEL = "__DOCKS_KIT_BUN__"
 const SESSION_START_SENTINEL = "__DOCKS_KIT_SESSION_START__"
@@ -89,22 +87,15 @@ function posixLiteral(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`
 }
 
-export function statusLineCommand(runtime: ClaudeRuntimePaths, platform: Platform): string {
-  if (!platform.isWindows()) {
-    const bun = posixLiteral(runtime.bun)
-    const script = posixLiteral(runtime.statusline)
-    return `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
-  }
-  const bun = powerShellLiteral(runtime.bun.replaceAll("\\", "/"))
-  const script = powerShellLiteral(runtime.statusline.replaceAll("\\", "/"))
-  const guard = `$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath ${bun} -PathType Leaf) -and (Test-Path -LiteralPath ${script} -PathType Leaf)) { & ${bun} ${script} }`
-  return `powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encodePowerShellCommand(guard)}`
+export function statusLineCommand(runtime: ClaudeRuntimePaths): string {
+  const bun = posixLiteral(runtime.bun)
+  const script = posixLiteral(runtime.statusline)
+  return `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
 }
 
 export function materializeClaudeSettings(
   template: Json,
-  runtime: ClaudeRuntimePaths | undefined,
-  platform: Platform
+  runtime: ClaudeRuntimePaths | undefined
 ): Json {
   validateTemplate(template)
   const result = cloneJson(template)
@@ -122,7 +113,7 @@ export function materializeClaudeSettings(
     notification["command"] = runtime.bun
     notification["args"] = [runtime.notify]
     if (!isObject(result) || !isObject(result["statusLine"])) throw new Error("Claude statusLine object is missing")
-    result["statusLine"]["command"] = statusLineCommand(runtime, platform)
+    result["statusLine"]["command"] = statusLineCommand(runtime)
   }
 
   for (const sentinel of [BUN_SENTINEL, SESSION_START_SENTINEL, NOTIFY_SENTINEL, STATUSLINE_SENTINEL]) {

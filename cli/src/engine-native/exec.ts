@@ -7,11 +7,7 @@ import { spawnSync } from "node:child_process"
 import { accessSync, chmodSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, isAbsolute, join } from "node:path"
 
-/**
- * Engine paths are built with "/" because they appear verbatim in output
- * (dry-run lines, warns), where node:path.join would print "\" on Windows
- * and break the golden contract. fs accepts "/" on every platform.
- */
+/** Keep engine paths slash-separated so rendered output is host-stable. */
 export function p(...parts: Array<string>): string {
   return parts.join("/")
 }
@@ -22,18 +18,15 @@ export function capture(cmd: string, args: ReadonlyArray<string>): string {
   return (res.stdout ?? "").replace(/[\r\n]+$/, "")
 }
 
-/** `command -v` — resolve a name on PATH (PATHEXT-aware on Windows). */
+/** `command -v` — resolve an executable name on PATH. */
 export function which(name: string): string {
-  if (isAbsolute(name) || name.includes("/") || name.includes("\\")) {
+  if (isAbsolute(name) || name.includes("/")) {
     return isExecutable(name) ? name : ""
   }
-  const exts = process.platform === "win32" ? (process.env["PATHEXT"] ?? ".EXE;.CMD;.BAT;.COM").split(";").concat("") : [""]
   for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
     if (dir === "") continue
-    for (const ext of exts) {
-      const cand = join(dir, name + ext.toLowerCase())
-      if (isExecutable(cand)) return cand
-    }
+    const candidate = join(dir, name)
+    if (isExecutable(candidate)) return candidate
   }
   return ""
 }
@@ -45,7 +38,7 @@ export function commandExists(name: string): boolean {
 export function isExecutable(p: string): boolean {
   try {
     if (!statSync(p).isFile()) return false
-    if (process.platform !== "win32") accessSync(p, constants.X_OK)
+    accessSync(p, constants.X_OK)
     return true
   } catch {
     return false

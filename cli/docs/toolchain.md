@@ -33,7 +33,7 @@ now kit-approved" act.
 - **bun** — policy `present`: bootstrap only (pinned to `verified` via the
   installer's version argument), never auto-upgraded. `bun.ts` owns one
   per-engine-run memo shared by Claude runtime, effect-solutions, and direct
-  toolchain ensure. Windows resolves only a real absolute `bun.exe` for hooks.
+  toolchain ensure on supported Linux/macOS hosts.
 - **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
   toward npm latest, gated by their `verified` pins.
 - **session-relay** — policy `exact`: Claude/Codex sync and
@@ -49,8 +49,8 @@ now kit-approved" act.
   pin must not ship until they are replaced and reviewed.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
-normal sync. curl is checked only at a requested POSIX RTK/Bun installer
-download boundary; Windows Bun bootstrap uses PowerShell's native download.
+normal sync. curl is checked only at a requested Linux/macOS RTK/Bun installer
+download boundary.
 
 ## Supply-chain stance
 

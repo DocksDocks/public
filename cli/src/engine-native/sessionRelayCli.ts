@@ -9,7 +9,7 @@ import {
   rmSync,
   statSync
 } from "node:fs"
-import { basename, dirname, join } from "node:path"
+import { dirname, join } from "node:path"
 
 import { isObject, parseJson, type Json } from "./jq"
 import type { Ctx } from "./index"

@@ -31,12 +31,9 @@ export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 
 function bunRuntime(): string {
   if (process.versions["bun"] !== undefined) return process.execPath
-  const names = process.platform === "win32" ? ["bun.exe", "bun"] : ["bun"]
   for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
-    for (const name of names) {
-      const candidate = join(directory, name)
-      if (existsSync(candidate)) return candidate
-    }
+    const candidate = join(directory, "bun")
+    if (existsSync(candidate)) return candidate
   }
   return "bun"
 }
@@ -198,15 +195,14 @@ export function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): st
 function maskedPath(names: ReadonlyArray<string>): string {
   const dirs = (process.env["PATH"] ?? "").split(delimiter)
   if (names.length === 0) return dirs.join(delimiter)
-  const exts = process.platform === "win32" ? ["", ".exe", ".cmd", ".bat"] : [""]
   const holdsMasked = (dir: string): boolean =>
-    dir !== "" && names.some((n) => exts.some((e) => existsSync(join(dir, n + e))))
-  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, names, exts) : dir)).join(delimiter)
+    dir !== "" && names.some((name) => existsSync(join(dir, name)))
+  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, names) : dir)).join(delimiter)
 }
 
-function shadowDir(dir: string, names: ReadonlyArray<string>, exts: ReadonlyArray<string>): string {
+function shadowDir(dir: string, names: ReadonlyArray<string>): string {
   const shadow = temporaryDir("golden-mask-")
-  const blocked = new Set(names.flatMap((n) => exts.map((e) => (n + e).toLowerCase())))
+  const blocked = new Set(names)
   for (const entry of readdirSync(dir)) {
     if (blocked.has(entry.toLowerCase())) continue
     try {
@@ -350,13 +346,9 @@ export function runPublicCli(
 }
 
 /**
- * Replace per-run temp paths so two runs' outputs are comparable.
- *
- * On Windows the engine runs under Git Bash, which prints MSYS-converted
- * forms of the same directories (`C:\Users\…\Temp\x` → `/tmp/x`,
- * `D:\a\repo` → `/d/a/repo`), so each root is scrubbed in every spelling.
- * The temp roots additionally get a basename fallback — their mkdtemp
- * suffix is unique, so any remaining path spelling still normalizes.
+ * Replace per-run temp paths so two runs' outputs are comparable. Each root is
+ * scrubbed in its native and forward-slash spelling. The temp roots also get
+ * a basename fallback because their mkdtemp suffix is unique.
  */
 export function normalizeOutput(out: string, home: string, stubDir: string): string {
   let s = out.replaceAll("\r\n", "\n")
@@ -370,10 +362,7 @@ export function normalizeOutput(out: string, home: string, stubDir: string): str
 
 function pathForms(p: string): Array<string> {
   const fwd = p.replaceAll("\\", "/")
-  const forms = [p, fwd]
-  const drive = /^([A-Za-z]):\//.exec(fwd)
-  if (drive !== null) forms.push(`/${drive[1]!.toLowerCase()}${fwd.slice(2)}`) // MSYS form
-  return [...new Set(forms)]
+  return [...new Set([p, fwd])]
 }
 
 function escapeRegExp(s: string): string {
@@ -416,8 +405,8 @@ export function snapshotTree(root: string, dir = root, acc: TreeSnapshot = {}): 
       if (rel !== ".bun" && rel !== ".local" && rel !== ".local/bin") acc[`${rel}/`] = "dir"
       snapshotTree(root, p, acc)
     } else {
-      // Hash with CRLF and materialized runtime paths canonicalized so
-      // platform transport and per-run HOME/stub roots are not regressions.
+      // Hash with CRLF and materialized runtime paths canonicalized so line
+      // endings and per-run HOME/stub roots are not regressions.
       const body = normalizeTreeBody(readFileSync(p).toString("binary"), root)
       acc[rel] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
     }

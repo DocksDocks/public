@@ -25,7 +25,7 @@ function servicesFor(platform: NodeJS.Platform) {
   }
 }
 
-describe("skills platform injection", () => {
+describe("skills platform behavior", () => {
   beforeEach(() => {
     mocks.lstatSync.mockReset().mockReturnValue({ isSymbolicLink: () => true })
     mocks.symlinkSync.mockReset()
@@ -36,9 +36,9 @@ describe("skills platform injection", () => {
     }))
   })
 
-  it("uses the injected win32 symlink type", () => {
-    expect(linkOrCopy("target", "link", makePlatform("win32"))).toBe(true)
-    expect(mocks.symlinkSync).toHaveBeenCalledWith("target", "link", "dir")
+  it("uses a portable directory symlink", () => {
+    expect(linkOrCopy("target", "link")).toBe(true)
+    expect(mocks.symlinkSync).toHaveBeenCalledWith("target", "link")
   })
 
   it("adds --with-deps only for an injected Linux platform", () => {

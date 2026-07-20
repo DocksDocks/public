@@ -35,18 +35,18 @@ describe("engine service layers", () => {
     ])
   })
 
-  it("PlatformTest: win32 maps to windows and disables shell-rc handling", () => {
+  it("PlatformTest exposes the supported Linux and macOS capabilities", () => {
     const program = Effect.gen(function* () {
       const platform = yield* PlatformService
-      return [platform.name(), platform.isWindows(), platform.isLinux(), platform.shellRcApplicable()]
+      return [platform.name(), platform.isLinux(), platform.shellRcApplicable()]
     })
-    expect(Effect.runSync(Effect.provide(program, PlatformTest("win32")))).toEqual(["windows", true, false, false])
-    expect(Effect.runSync(Effect.provide(program, PlatformTest("linux")))).toEqual(["linux", false, true, true])
+    expect(Effect.runSync(Effect.provide(program, PlatformTest("linux")))).toEqual(["linux", true, true])
+    expect(Effect.runSync(Effect.provide(program, PlatformTest("darwin")))).toEqual(["darwin", false, true])
   })
 
   it("combined graph: an injected platform drives the manager's install hints", () => {
-    const win = makeDependencyManager(makePlatform("win32"))
-    expect(win.spec("git").installHint()).toBe("winget install Git.Git (then open a new terminal)")
+    const linux = makeDependencyManager(makePlatform("linux"))
+    expect(linux.spec("git").installHint()).toContain("apt")
     const mac = makeDependencyManager(makePlatform("darwin"))
     expect(mac.spec("git").installHint()).toBe("brew install git")
   })

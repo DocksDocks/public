@@ -4,6 +4,10 @@
   "description": "Portable AI coding agent config kit — SoT sync engine + typed CLI for Claude Code, Codex, and universal agent skills",
   "type": "module",
   "license": "MIT",
+  "os": [
+    "linux",
+    "darwin"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/DocksDocks/public.git"

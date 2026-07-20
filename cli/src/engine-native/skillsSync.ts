@@ -5,12 +5,12 @@
  * and the snapshot write.
  */
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
 import { p, writeFileIfChanged } from "./exec"
 import { bunBootstrap } from "./bun"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
-import type { EngineServices, Platform } from "./services"
+import type { EngineServices } from "./services"
 import { ensure, field } from "./toolchain"
 import { payloadText } from "../payload"
 
@@ -139,9 +139,6 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
   if (linkStat?.isSymbolicLink() === true) {
     const current = safeReadlink(claudeLink)
     if (current === relTarget) return false
-    // win32: `npx skills add` creates absolute symlinks/junctions — any link
-    // that RESOLVES to the canonical dir is healthy, not stale.
-    if (ctx.services.platform.isWindows() && realpathEquals(claudeLink, canonical)) return false
     if (ctx.dryRun) {
       echo(`[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`)
       return true
@@ -178,36 +175,22 @@ function safeReadlink(path: string): string {
   }
 }
 
-function realpathEquals(a: string, b: string): boolean {
-  try {
-    return realpathSync(a) === realpathSync(b)
-  } catch {
-    return false
-  }
-}
 
-/**
- * Remove a symlink/junction without crashing: Bun's rmSync throws EFAULT on
- * win32 directory symlinks. unlink handles file symlinks, rmdir handles
- * dir symlinks/junctions, rmSync is the POSIX catch-all.
- */
+/** Remove a symlink without touching a real directory. */
 function removeLink(path: string): boolean {
-  for (const rm of [() => unlinkSync(path), () => rmdirSync(path), () => rmSync(path, { force: true })]) {
-    try {
-      rm()
-      return true
-    } catch {
-      // try the next removal shape
-    }
+  try {
+    rmSync(path, { force: true })
+    return true
+  } catch {
+    return lstat(path) === undefined
   }
-  return lstat(path) === undefined
 }
 
-/** skills::_link_or_copy — real symlink preferred, copy fallback (Windows). */
-export function linkOrCopy(target: string, link: string, platform: Platform): boolean {
+/** skills::_link_or_copy — real symlink preferred, copy fallback. */
+export function linkOrCopy(target: string, link: string): boolean {
   removeLink(link)
   try {
-    symlinkSync(target, link, platform.isWindows() ? "dir" : undefined)
+    symlinkSync(target, link)
   } catch {
     // fall through to the copy fallback below
   }
@@ -223,11 +206,11 @@ export function linkOrCopy(target: string, link: string, platform: Platform): bo
 }
 
 function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): boolean {
-  const linked = linkOrCopy(target, link, services.platform)
+  const linked = linkOrCopy(target, link)
   if (!linked) {
     services.logger.warn(`could not create ${link} (symlink and copy both failed)`)
   } else if (lstat(link)?.isSymbolicLink() !== true) {
-    services.logger.warn(`symlinks unsupported here — ${link} is a copy (refreshed on sync; enable Windows Developer Mode for real links)`)
+    services.logger.warn(`symlinks unsupported here — ${link} is a copy refreshed on sync`)
   }
   return linked
 }
@@ -298,14 +281,6 @@ export function effectSolutionsInstall(
 
     const location = services.deps.location("effect-solutions")
     const gbin = location.binDir
-    // win32: bun writes an .exe shim (not the bare Unix name), and the
-    // ~/.local/bin link step below is Unix-only plumbing (non-interactive
-    // agent PATH) — bun's global bin is already the Windows PATH entry.
-    if (services.platform.isWindows()) {
-      if (location.path !== "") change(`effect-solutions CLI ready (${gbin})`)
-      else warn(`effect-solutions installed but no shim found under '${gbin !== "" ? gbin : "<unknown>"}' — check bun pm -g bin`)
-      return 0
-    }
     if (location.path !== "") {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
       linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)

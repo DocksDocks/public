@@ -96,12 +96,10 @@ hooks/env changed → restart line; skills changed → discovery line) or under
 
 ### Platform seam
 
-All platform branching routes through `os.ts` — the only engine module that
-reads `process.platform`, with one named exemption: `exec.ts`'s path/exec
-primitives (`commandExists` PATHEXT resolution and `X_OK` probing) stay
-self-contained because they sit below the seam. `deps.ts` install hints
-default their platform from `os.ts` and keep the parameter injectable for
-tests.
+All host detection routes through `os.ts`, the engine module that reads
+`process.platform`. `exec.ts` contains only POSIX executable and PATH probes.
+`deps.ts` install hints default their platform from `os.ts` and keep the
+parameter injectable for tests.
 
 ### Verbosity plumbing
 
@@ -122,7 +120,7 @@ active logger binding.
 | `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
 | `claudeSync.ts` | Claude pipeline: RTK, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
 | `bun.ts` | per-run memoized Bun resolution/bootstrap shared by Claude runtime, effect-solutions, and direct toolchain ensure |
-| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX/encoded-PowerShell statusline commands |
+| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX statusline commands |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
@@ -132,24 +130,20 @@ active logger binding.
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
-| `exec.ts` | path helpers, command probes, capture/spawn wrappers, Windows command resolution, change-detecting write/copy helpers |
+| `exec.ts` | slash-stable path helpers, POSIX command probes, capture/spawn wrappers, and change-detecting write/copy helpers |
 | `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
-| `deps.ts` | external-tool registry: identity, requirement class, presence probe, platform-correct install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
-| `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isWindows`, `isLinux`, shell-rc applicability) |
+| `deps.ts` | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
+| `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isLinux`, shell-rc applicability) |
 | `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
 
-## Windows Specifics
+## Platform Support
 
-- Home resolves through Node's platform APIs; CI deliberately unsets `HOME` so
-  `%USERPROFILE%` is exercised.
-- Paths are built through `node:path`.
-- Connector env uses `setx` on win32; Unix shell rc files are not touched.
-- Symlink creation falls back to copy where the platform or permissions require
-  it.
-- Bubblewrap and shell-rc work are Linux/macOS only.
-- Claude command hooks directly exec the resolved absolute `bun.exe`; the
-  statusline stores an encoded PowerShell missing-file guard because Claude
-  shell-evaluates `statusLine.command` through PowerShell or Git Bash.
+- EngineNative supports Linux and macOS on x64 and arm64.
+- Unsupported hosts fail before launcher fallback, dependency probes, downloads,
+  settings writes, or sync work.
+- Runtime hooks use POSIX commands and absolute Bun paths.
+- Symlink creation remains capability-driven: permission or filesystem failures
+  fall back to copy without predicting the host.
 
 ## Tests
 
@@ -158,12 +152,10 @@ active logger binding.
   `cli/test/goldens/dryrun.json`.
 - `bun run golden:mutation` compares live native mutation snapshots, argv logs,
   output, and TOML invariants to `cli/test/goldens/mutation.json`.
-- `.github/workflows/parity.yml` is now the golden-regression workflow: Linux
-  runs unit + golden + prove-red plus the exact materialized POSIX runtime
-  commands; the `native-windows` job executes the same stored statusline command
-  through PowerShell and Git Bash plus direct Bun hooks.
-- `.github/workflows/windows-entrypoints.yml` verifies the release binary and
-  `bun add -g` entrypoints on Windows.
+- `.github/workflows/parity.yml` is the golden-regression workflow: Linux runs
+  unit + golden + prove-red plus the exact materialized POSIX runtime commands.
+- `.github/workflows/release-cli.yml` publishes the four Linux/macOS x64/arm64
+  binaries, `SHA256SUMS`, and the npm package.
 
 ## Non-Goals
 

@@ -15,7 +15,6 @@ import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { materializeClaudeSettings } from "../../src/engine-native/claudeRuntime"
 import { deepMerge, isObject, jqStringify, parseJson, uniqueStrings, type Json } from "../../src/engine-native/jq"
-import { makePlatform } from "../../src/engine-native/services"
 import { mergeSettings, reconcileSettings } from "../../src/engine-native/settings"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
@@ -75,7 +74,7 @@ describe("settings merge semantics", () => {
         statusline: "/home/test/.claude/bin/statusline.mjs",
         sessionStart: "/home/test/.claude/bin/session-start.mjs",
         notify: "/home/test/.claude/bin/notify.mjs"
-      }, makePlatform("linux"))
+      })
       expect(JSON.stringify(deployed)).not.toContain("__DOCKS_KIT_")
     })
   )
@@ -115,8 +114,7 @@ const JQ_RECONCILE = `.[0] as $repo | .[1] as $user | $user * $repo`
 function jqSlurp(program: string, docs: Array<Json>): string {
   const res = spawnSync("jq", ["-s", program], { input: docs.map((d) => JSON.stringify(d)).join("\n"), encoding: "utf8" })
   if (res.status !== 0) throw new Error(`jq failed: ${res.stderr}`)
-  // Windows jq writes CRLF to stdout (text-mode CRT); the differential is
-  // about JSON structure/order/format, so compare canonical-LF.
+  // Normalize line endings before comparing JSON structure, order, and format.
   return res.stdout.replaceAll("\r\n", "\n")
 }
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-20 — Linux/macOS-only support cutover (0.10.0 source)
+
+- Removed Windows launcher, EngineNative, PowerShell, dependency-install,
+  symlink, binary-build, and positive test paths. Unsupported hosts now fail
+  before compiled-binary selection, Bun fallback, downloads, or sync work.
+- Reduced standalone release output to Linux x64/arm64 and macOS x64/arm64 plus
+  `SHA256SUMS`; removed the Windows entrypoint workflow and Windows parity jobs.
+- Declared the npm package and current installation/runtime documentation as
+  Linux/macOS-only. Historical release evidence remains unchanged.
+
 ## 2026-07-17 — Session Relay CLI installation boundary (0.9.0 source)
 
 - Added a source-pinned prebuilt Session Relay `0.12.0` installer for Linux and

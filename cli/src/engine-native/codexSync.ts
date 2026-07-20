@@ -86,7 +86,7 @@ function bwrapSupportedOs(ctx: Ctx): boolean {
   const { warn } = ctx.services.logger
   const pn = ctx.services.platform.name()
   if (pn === "linux") return true
-  if (pn === "darwin" || pn === "windows") return false
+  if (pn === "darwin") return false
   warn("Unknown OS — skipping bubblewrap check; Codex sandbox may not work")
   return false
 }
