@@ -1,6 +1,6 @@
 name: release-cli
 
-# Builds the five docks-kit standalone binaries + SHA256SUMS and attaches them
+# Builds the four docks-kit standalone binaries + SHA256SUMS and attaches them
 # to the GitHub release for the pushed cli-v* tag, then publishes to npm when
 # NPM_TOKEN is configured (optional — the publish step is skipped without it).
 #
@@ -35,7 +35,7 @@ jobs:
       - name: Typecheck
         run: bunx tsc --noEmit -p cli
 
-      - name: Build binaries (all five targets)
+      - name: Build binaries (all four targets)
         run: bash cli/build-binaries.sh
 
       - name: Attach binaries to the release

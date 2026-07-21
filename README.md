@@ -109,7 +109,8 @@ current valid values, while a later flag-less sync restores all defaults.
   Session Relay plugin reconciliation. Linux/macOS x64/arm64 assets must match
   both the committed digest and their release `SHA256SUMS`, then pass an exact
   staged version smoke before atomic replacement; failures preserve any prior
-  command. Production digests for `session-relay--v0.12.0` are still pending.
+  command. The four production digests are pinned for the stable
+  `session-relay--v0.12.0` assets and match the same-release `SHA256SUMS`.
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, pickers, and the Docks workflow-role registry.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`

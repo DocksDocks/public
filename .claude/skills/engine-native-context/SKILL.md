@@ -1,20 +1,22 @@
 ---
 name: engine-native-context
-description: "Use when modifying cli/src/engine-native, cli/src/engine.ts, cli/src/main.ts native-raw harness path, cli/test/golden-dryrun.ts, cli/test/golden-mutation.ts, cli/test/lib/harness.ts, or cli/test/goldens; covers the golden-regression contract, the removed-engine failure for DOCKS_KIT_ENGINE value bash, p() slash-join rule, ExitError aborts, jq/TOML compatibility helpers, prove-red, GOLDEN_FILTER, and Windows spawn/path specifics."
+description: "Use when modifying cli/src/engine-native, cli/src/engine.ts, cli/src/main.ts native-raw harness path, cli/test/golden-dryrun.ts, cli/test/golden-mutation.ts, cli/test/lib/harness.ts, or cli/test/goldens; covers the golden-regression contract, the removed-engine failure for DOCKS_KIT_ENGINE value bash, p() slash-join rule, ExitError aborts, jq/TOML compatibility helpers, prove-red, GOLDEN_FILTER, and supported-host rejection before engine execution."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/index.ts
-      lines: "1-140"
+      lines: "1-180"
     - path: cli/src/engine.ts
       lines: "1-120"
+    - path: cli/test/unit/engine.test.ts
+      lines: "1-75"
     - path: cli/test/golden-dryrun.ts
       lines: "1-220"
     - path: cli/test/golden-mutation.ts
       lines: "1-360"
     - path: cli/test/lib/harness.ts
-      lines: "1-320"
-  updated: "2026-07-09"
+      lines: "1-350"
+  updated: "2026-07-21"
 ---
 
 # EngineNative Golden Contract
@@ -74,14 +76,11 @@ a failed child process turns a real sync failure into a success log.
 - TOML transforms stay line-based; using a TOML library would reformat user
   config and break snapshots.
 
-## Windows Specifics
+## Supported-host boundary
 
-- `which()` is PATHEXT-aware.
-- HOME falls back to `os.homedir()` when `HOME` is unset, which covers
-  `%USERPROFILE%` on Windows.
-- Golden normalization canonicalizes CRLF to LF and scrubs temp paths.
-- POSIX shebang stubs stay POSIX-only; Windows coverage comes from native
-  PowerShell CI and entrypoint smoke jobs.
+- `engine.ts requireSupportedHost, pre-execution gate` accepts only Linux/macOS x64/arm64 and runs before EngineNative or the `engineCapture` child fallback.
+- Keep `engine.test.ts unsupported host boundary` cases, including `win32`; they prove unsupported hosts cannot reach EngineNative or Bun/source fallback.
+- Golden normalization canonicalizes CRLF to LF and scrubs temp paths for deterministic fixtures; that normalization is not a supported-host path.
 
 ## Gotchas
 

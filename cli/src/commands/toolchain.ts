@@ -2,7 +2,7 @@ import { Args, Command, Options } from "@effect/cli"
 import { Effect, Option } from "effect"
 import { bail, engine } from "../engine"
 
-const MANAGED = ["rtk", "bun", "effect-solutions", "agent-browser"]
+const MANAGED = ["rtk", "bun", "effect-solutions", "agent-browser", "session-relay"]
 
 const op = Args.text({ name: "op" }).pipe(
   Args.withDescription("check (default) | ensure <tool>"),

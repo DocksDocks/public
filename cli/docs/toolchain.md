@@ -44,9 +44,9 @@ now kit-approved" act.
   source pin = selected row = downloaded bytes, chmods/smoke-tests only the
   sibling stage, then renames it over `~/.local/bin/session-relay`. Offline,
   unsupported-host, checksum, chmod, version, download, or rename failures
-  preserve an existing command byte-for-byte. The four committed digests are
-  validation fixtures pending independently hashed production assets; this
-  pin must not ship until they are replaced and reviewed.
+  preserve an existing command byte-for-byte. The four pinned production
+  digests correspond to the stable `session-relay--v0.12.0` assets and match
+  its `SHA256SUMS`.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
 normal sync. curl is checked only at a requested Linux/macOS RTK/Bun installer

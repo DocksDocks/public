@@ -1,9 +1,13 @@
 ---
 name: toolchain-context
-description: "Use when modifying cli/src/engine-native/toolchain.ts ensure/gate/report/version probes, cli/src/engine-native/bun.ts bunBootstrap, SoT/toolchain.json kind/policy/floor/verified entries, --yes behavior, or install callbacks in claudeSync.ts and skillsSync.ts for rtk, agent-browser, and effect-solutions. Not for settings merge or plugin reconcile."
+description: "Use when modifying cli/src/commands/toolchain.ts MANAGED; cli/src/engine-native/modes.ts modeToolchain; cli/src/engine-native/toolchain.ts ensure/gate/report/version probes; cli/src/engine-native/sessionRelayCli.ts ensureSessionRelayCli; cli/src/engine-native/bun.ts bunBootstrap; SoT/toolchain.json tool entries; --yes behavior; or managed install callbacks. Not for settings merge or plugin reconcile."
 user-invocable: false
 metadata:
   source_files:
+    - path: cli/src/commands/toolchain.ts
+      lines: "1-60"
+    - path: cli/src/engine-native/modes.ts
+      lines: "110-160"
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-250"
     - path: cli/src/engine-native/claudeSync.ts
@@ -12,9 +16,11 @@ metadata:
       lines: "190-315"
     - path: cli/src/engine-native/bun.ts
       lines: "1-150"
+    - path: cli/src/engine-native/sessionRelayCli.ts
+      lines: "1-260"
     - path: SoT/toolchain.json
       lines: "1-80"
-  updated: "2026-07-15"
+  updated: "2026-07-21"
 ---
 
 # Toolchain Verified-Version Floors
@@ -42,12 +48,14 @@ version or gated by the verified version in `SoT/toolchain.json`.
 
 ## Manifest Split
 
-- `kind: check/managed/pin` describes whether the tool is reported, managed by
-  sync, or a manifest pin for an `npx`-style tool. jq/curl are check-only;
-  consumers decide whether a missing optional tool prevents that operation.
+- `kind: check/managed/managed-release/pin` describes whether the tool is
+  reported, managed by sync, a dedicated source-pinned binary transaction, or
+  a manifest pin for an `npx`-style tool. jq/curl are check-only; consumers
+  decide whether a missing optional tool prevents that operation.
 - `policy: present` installs when missing and leaves present tools alone.
 - `policy: track` compares installed against latest and upgrades only when
   latest is strictly newer and gate-approved.
+- `policy: exact` installs only the declared release.
 - `verified` is the kit-reviewed ceiling used for supply-chain gating.
 - `pinnable` allows a non-TTY install to fall back to the verified version when
   latest is above the reviewed ceiling or unavailable.
@@ -86,6 +94,7 @@ nothing. Do not treat unknown latest as permission to install a floating latest.
 | `agent-browser` | `agentBrowserInstall` in `skillsSync.ts` | npm global package; first install also downloads browser deps. |
 | `effect-solutions` | `skillsSync.ts effectSolutionsInstall, Bun dependency` | Calls shared Bun bootstrap, then links Bun and CLI into `~/.local/bin`. |
 | `bun` | `bun.ts bunBootstrap, per-run memo` | Resolves or download-then-runs the pinned installer once per EngineNative invocation; shared by Claude runtime, effect-solutions, and direct ensure. |
+| `session-relay` | `sessionRelayCli.ts ensureSessionRelayCli, source-pin/checksum/stage/rename transaction` | Exact stable release for the four supported Linux/macOS x64/arm64 targets. |
 
 ## Gotchas
 
@@ -95,6 +104,4 @@ nothing. Do not treat unknown latest as permission to install a floating latest.
   standalone managed tool.
 - RTK, hooks, and npm global packages are supply-chain sensitive. Bump
   `verified` only after testing the release.
-- POSIX Bun bootstrap checks curl only when Bun is actually missing. Windows
-  downloads through encoded PowerShell and invokes `install.ps1` with
-  `-DownloadWithoutCurl`; direct hooks accept only an absolute real `bun.exe`.
+- The public CLI reaches Bun bootstrap only after the supported Linux/macOS host gate; bunBootstrap checks curl only when Bun is actually missing.
