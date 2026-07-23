@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-07-22 — exact latest Opus workflow fallback
+## 2026-07-22 — exact latest Opus workflow fallback (0.10.1 source)
 
 - Pinned the `claude-best` workflow fallback to Anthropic's current
   `claude-opus-4-8` model ID. This avoids task runtimes resolving the bare
