@@ -16,9 +16,7 @@ import type { Ctx } from "./index"
 import { ExitError } from "./parseArgs"
 import { payloadText } from "../payload"
 
-const VERSION = "0.12.0"
 const REPOSITORY = "DocksDocks/docks"
-const TAG = "session-relay--v0.12.0"
 const PLUGIN_ID = "session-relay@docks"
 const INSTALL_PATH = "~/.local/bin/session-relay"
 const TARGETS = [
@@ -33,11 +31,11 @@ export type SessionRelayTarget = typeof TARGETS[number]
 export interface SessionRelayManifest {
   readonly kind: "managed-release"
   readonly policy: "exact"
-  readonly verified: typeof VERSION
+  readonly verified: string
   readonly repository: typeof REPOSITORY
-  readonly tag: typeof TAG
+  readonly tag: string
   readonly plugin_id: typeof PLUGIN_ID
-  readonly plugin_version: typeof VERSION
+  readonly plugin_version: string
   readonly install_path: typeof INSTALL_PATH
   readonly assets: Readonly<Record<SessionRelayTarget, string>>
 }
@@ -83,14 +81,18 @@ export function parseSessionRelayManifest(text: string): SessionRelayManifest {
     ["kind", "policy", "verified", "repository", "tag", "plugin_id", "plugin_version", "install_path", "assets"],
     "Session Relay manifest"
   )
+  const version = value["verified"]
+  if (typeof version !== "string" || !/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(version)) {
+    throw new Error("Session Relay manifest verified must be a canonical stable SemVer core")
+  }
   const expected = {
     kind: "managed-release",
     policy: "exact",
-    verified: VERSION,
+    verified: version,
     repository: REPOSITORY,
-    tag: TAG,
+    tag: `session-relay--v${version}`,
     plugin_id: PLUGIN_ID,
-    plugin_version: VERSION,
+    plugin_version: version,
     install_path: INSTALL_PATH
   } as const
   for (const [key, wanted] of Object.entries(expected)) {
@@ -132,9 +134,9 @@ function trimOneLineEnding(text: string): string {
   return text
 }
 
-function exactVersion(ops: SessionRelayInstallOps, path: string): boolean {
+function exactVersion(ops: SessionRelayInstallOps, path: string, version: string): boolean {
   const result = ops.runVersion(path)
-  return result.ok && trimOneLineEnding(result.stdout) === `session-relay ${VERSION}`
+  return result.ok && trimOneLineEnding(result.stdout) === `session-relay ${version}`
 }
 
 function selectedChecksum(text: string, assetName: string): string {
@@ -182,7 +184,7 @@ export function installSessionRelayCli(
   }
 
   const stable = join(input.home, ".local", "bin", "session-relay")
-  if (existsSync(stable) && exactVersion(ops, stable)) return
+  if (existsSync(stable) && exactVersion(ops, stable, manifest.verified)) return
 
   const parent = dirname(stable)
   try {
@@ -221,13 +223,15 @@ export function installSessionRelayCli(
     } catch (error) {
       fail(input, `Failed to chmod staged Session Relay CLI: ${error instanceof Error ? error.message : String(error)}`)
     }
-    if (!exactVersion(ops, stage)) fail(input, `Staged Session Relay CLI did not report exact version session-relay ${VERSION}`)
+    if (!exactVersion(ops, stage, manifest.verified)) {
+      fail(input, `Staged Session Relay CLI did not report exact version session-relay ${manifest.verified}`)
+    }
     try {
       ops.rename(stage, stable)
     } catch (error) {
       fail(input, `Failed to atomically replace Session Relay CLI: ${error instanceof Error ? error.message : String(error)}`)
     }
-    input.log(`Session Relay CLI ready (${VERSION})`)
+    input.log(`Session Relay CLI ready (${manifest.verified})`)
   } finally {
     try {
       rmSync(stage, { force: true })
