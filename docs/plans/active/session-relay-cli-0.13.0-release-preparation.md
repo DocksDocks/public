@@ -22,7 +22,7 @@ related_plans:
   - docs/plans/finished/2026-07-18-session-relay-cli-production-release.md
 review_status: null
 planned_at_commit: 6f9691cc19349ccd0ce81e8c8bf5cc573f76f3f1
-execution_base_commit: null
+execution_base_commit: c0dfa7aeb6ea3bc7de5a78bd4896b1993746b117
 ---
 
 # Prepare Session Relay CLI 0.13.0 source
