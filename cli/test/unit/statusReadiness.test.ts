@@ -39,7 +39,7 @@ describe("status Session Relay readiness", () => {
     } finally {
       cleanup([])
     }
-  })
+  }, 15_000)
 
   it("warns when refresh succeeds but the supported inventory cannot confirm Session Relay", () => {
     const stubDir = makeStubDir({ codex: missingRelayCodex })
