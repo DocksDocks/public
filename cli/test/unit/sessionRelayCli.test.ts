@@ -21,8 +21,8 @@ import {
   type SessionRelayInstallOps
 } from "../../src/engine-native/sessionRelayCli"
 
-const VERSION = "0.12.0"
-const ASSET_BYTES = Buffer.from("#!/bin/sh\nprintf 'session-relay 0.12.0\\n'\n")
+const VERSION = "0.13.0"
+const ASSET_BYTES = Buffer.from("#!/bin/sh\nprintf 'session-relay 0.13.0\\n'\n")
 const ASSET_DIGEST = createHash("sha256").update(ASSET_BYTES).digest("hex")
 const TARGETS = [
   "x86_64-unknown-linux-musl",
@@ -49,7 +49,7 @@ function manifest(overrides: Record<string, unknown> = {}): string {
     policy: "exact",
     verified: VERSION,
     repository: "DocksDocks/docks",
-    tag: "session-relay--v0.12.0",
+    tag: `session-relay--v${VERSION}`,
     plugin_id: "session-relay@docks",
     plugin_version: VERSION,
     install_path: "~/.local/bin/session-relay",
@@ -75,9 +75,7 @@ function ops(events: Array<string>, options: OpsOptions = {}): SessionRelayInsta
       const checksums = basename(url) === "SHA256SUMS"
       if (options.downloadFailure === (checksums ? "checksums" : "asset")) return false
       if (checksums) {
-        const target = basename(dirname(url)) === "session-relay--v0.12.0"
-          ? "x86_64-unknown-linux-musl"
-          : "x86_64-unknown-linux-musl"
+        const target = "x86_64-unknown-linux-musl"
         writeFileSync(
           destination,
           options.checksumText ?? `${ASSET_DIGEST}  session-relay-${target}\n`
@@ -138,16 +136,38 @@ describe("sessionRelayTarget", () => {
 })
 
 describe("parseSessionRelayManifest", () => {
-  it("accepts only the closed source-pinned four-target contract", () => {
-    expect(parseSessionRelayManifest(manifest()).assets).toEqual(
+  it("accepts the closed source-pinned four-target contract with one canonical version", () => {
+    const parsed = parseSessionRelayManifest(manifest())
+
+    expect(parsed.verified).toBe(VERSION)
+    expect(parsed.tag).toBe(`session-relay--v${VERSION}`)
+    expect(parsed.plugin_version).toBe(VERSION)
+    expect(parsed.assets).toEqual(
       Object.fromEntries(TARGETS.map((target) => [target, ASSET_DIGEST]))
     )
   })
 
   it.each([
+    "0.13",
+    "0.13.0-rc.1",
+    "0.13.0+build.1",
+    "00.13.0",
+    "0.013.0",
+    " 0.13.0"
+  ])("rejects malformed or non-stable version %j", (verified) => {
+    expect(() => parseSessionRelayManifest(manifest({ verified }))).toThrow(/verified|version/i)
+  })
+
+  it.each([
+    [{ tag: "session-relay--v0.13.1" }, /tag/i],
+    [{ plugin_version: "0.13.1" }, /plugin.*version/i]
+  ])("rejects tag or plugin version that does not match verified", (override, error) => {
+    expect(() => parseSessionRelayManifest(manifest(override))).toThrow(error)
+  })
+
+  it.each([
     [{ extra: true }, /unexpected|closed/i],
     [{ repository: "fork/docks" }, /repository/i],
-    [{ plugin_version: "0.11.0" }, /plugin.*version/i],
     [{ assets: { "x86_64-unknown-linux-musl": ASSET_DIGEST } }, /assets|target/i]
   ])("rejects a noncanonical manifest", (override, error) => {
     expect(() => parseSessionRelayManifest(manifest(override))).toThrow(error)
@@ -170,7 +190,7 @@ describe("installSessionRelayCli", () => {
       "chmod 755",
       "version stage",
       "rename",
-      "log Session Relay CLI ready (0.12.0)"
+      `log Session Relay CLI ready (${VERSION})`
     ])
     expect(existsSync(dirname(stable))).toBe(true)
   })
@@ -206,7 +226,7 @@ describe("installSessionRelayCli", () => {
 
     expect(existsSync(join(root, ".local"))).toBe(false)
     expect(events).toEqual([
-      "[dry-run] ensure Session Relay CLI 0.12.0 from DocksDocks/docks@session-relay--v0.12.0 (x86_64-unknown-linux-musl) -> ~/.local/bin/session-relay"
+      `[dry-run] ensure Session Relay CLI ${VERSION} from DocksDocks/docks@session-relay--v${VERSION} (x86_64-unknown-linux-musl) -> ~/.local/bin/session-relay`
     ])
   })
 
@@ -226,6 +246,24 @@ describe("installSessionRelayCli", () => {
     expect(existsSync(join(root, ".local"))).toBe(false)
   })
 
+  it("reports the manifest version and preserves the stable executable on staged smoke failure", () => {
+    const root = home()
+    const stable = join(root, ".local", "bin", "session-relay")
+    const oldBytes = Buffer.from("old relay bytes")
+    mkdirSync(dirname(stable), { recursive: true })
+    writeFileSync(stable, oldBytes)
+    chmodSync(stable, 0o711)
+
+    expect(() => install(root, [], { stagedVersion: "session-relay 0.11.0" })).toThrow(
+      `Staged Session Relay CLI did not report exact version session-relay ${VERSION}`
+    )
+
+    expect(readFileSync(stable)).toEqual(oldBytes)
+    expect(statSync(stable).mode & 0o777).toBe(0o711)
+    expect(existsSync(join(dirname(stable), ".session-relay.stage-fixed"))).toBe(false)
+    expect(existsSync(join(dirname(stable), ".session-relay.checksums-fixed"))).toBe(false)
+  })
+
   it.each([
     ["asset download", { downloadFailure: "asset" }],
     ["checksum download", { downloadFailure: "checksums" }],
@@ -233,7 +271,6 @@ describe("installSessionRelayCli", () => {
     ["source pin versus checksum row", { checksumText: `${"0".repeat(64)}  session-relay-x86_64-unknown-linux-musl\n` }],
     ["duplicate checksum row", { checksumText: `${ASSET_DIGEST}  session-relay-x86_64-unknown-linux-musl\n${ASSET_DIGEST}  session-relay-x86_64-unknown-linux-musl\n` }],
     ["chmod", { chmodFailure: true }],
-    ["staged version", { stagedVersion: "session-relay 0.11.0" }],
     ["atomic rename", { renameFailure: true }]
   ] as const)("preserves an existing executable byte-for-byte on %s failure", (_label, failure) => {
     const root = home()
