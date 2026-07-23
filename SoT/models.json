@@ -1,7 +1,7 @@
 {
   "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, workflow selectors, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. Deploy-time model flags remain permissive; workflow selectors are strict.",
   "claude": {
-    "verified": "2026-07-08",
+    "verified": "2026-07-22",
     "models": [
       { "id": "best", "kind": "alias", "note": "Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)" },
       { "id": "opus", "kind": "alias", "note": "latest Opus (currently Opus 4.8)" },
@@ -34,7 +34,7 @@
       "claude-best": {
         "candidates": [
           { "company": "anthropic", "tool": "claude", "model": "fable", "effort": "high" },
-          { "company": "anthropic", "tool": "claude", "model": "opus", "effort": "xhigh" }
+          { "company": "anthropic", "tool": "claude", "model": "claude-opus-4-8", "effort": "xhigh" }
         ]
       }
     },

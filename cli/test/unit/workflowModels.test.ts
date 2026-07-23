@@ -27,7 +27,7 @@ describe("workflow model registry", () => {
         "claude-best": {
           candidates: [
             { company: "anthropic", tool: "claude", model: "fable", effort: "high" },
-            { company: "anthropic", tool: "claude", model: "opus", effort: "xhigh" }
+            { company: "anthropic", tool: "claude", model: "claude-opus-4-8", effort: "xhigh" }
           ]
         }
       },
@@ -78,7 +78,7 @@ describe("workflow model registry", () => {
         selector: "profile:claude-best",
         candidates: [
           { company: "anthropic", tool: "claude", model: "fable", effort: "high" },
-          { company: "anthropic", tool: "claude", model: "opus", effort: "xhigh" }
+          { company: "anthropic", tool: "claude", model: "claude-opus-4-8", effort: "xhigh" }
         ]
       },
       reviewer: {
@@ -100,7 +100,7 @@ describe("workflow model registry", () => {
   it("resolves profiles and strict exact targets without treating the default pseudo-value as executable", () => {
     expect(resolveWorkflowSelector("profile:claude-best").candidates.map(({ model }) => model)).toEqual([
       "fable",
-      "opus"
+      "claude-opus-4-8"
     ])
     expect(resolveWorkflowSelector("claude:best@high")).toEqual({
       selector: "claude:best@high",
@@ -250,7 +250,7 @@ describe("workflow model registry", () => {
       '{"a":{"b":3,"y":2},"list":[{"c":5,"d":4}],"z":1}'
     )
     expect(renderWorkflowRecordLine(defaultWorkflowRecord())).toBe(
-      `${WORKFLOW_RECORD_PREFIX}{"implementer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"opus","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"schema":1}`
+      `${WORKFLOW_RECORD_PREFIX}{"implementer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"claude-opus-4-8","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"schema":1}`
     )
   })
 
@@ -264,7 +264,7 @@ describe("workflow model registry", () => {
     expect(text.status).toBe(0)
     expect(text.stdout).toContain("profile:claude-best")
     expect(text.stdout).toContain("claude:fable@high")
-    expect(text.stdout).toContain("claude:opus@xhigh")
+    expect(text.stdout).toContain("claude:claude-opus-4-8@xhigh")
     expect(text.stdout).toContain("<tool>:<model>@<effort>[+fast]")
     expect(text.stdout).toContain("Without +fast, Codex roles use Standard")
     expect(text.stdout).toContain("Availability: checked when used by Docks")

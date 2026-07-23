@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-22 — exact latest Opus workflow fallback
+
+- Pinned the `claude-best` workflow fallback to Anthropic's current
+  `claude-opus-4-8` model ID. This avoids task runtimes resolving the bare
+  `opus` family alias to the invalid `claude-opus-4-0` catalog entry.
+
 ## 2026-07-20 — Linux/macOS-only support cutover (0.10.0 source)
 
 - Removed Windows launcher, EngineNative, PowerShell, dependency-install,
