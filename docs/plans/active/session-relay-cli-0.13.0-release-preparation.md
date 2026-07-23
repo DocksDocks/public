@@ -3,7 +3,7 @@ title: Prepare Session Relay CLI 0.13.0 source
 goal: Decouple the installer from 0.12.0 using fixture-only 0.13.0 tests, seal an immutable validation identity, and remain blocked until four production digests exist.
 status: planned
 created: "2026-07-22T23:07:51-03:00"
-updated: "2026-07-22T23:07:51-03:00"
+updated: "2026-07-22T23:22:45-03:00"
 started_at: null
 assignee: null
 review_author_company: openai
@@ -29,7 +29,7 @@ execution_base_commit: null
 
 ## Goal
 
-Prepare independently reviewable `DocksDocks/public` source for Session Relay `0.13.0` without publishing or guessing production hashes. Frozen fixture tests must prove that the installer accepts a closed `0.13.0` manifest and derives every version-coupled check/output from that manifest, while the production `SoT/toolchain.json` entry and generated payload remain pinned byte-for-byte to `0.12.0`. Seal the clean implementation behind one create-once validation ref, then leave this plan blocked until a later, separately reviewed publication plan supplies four independently hashed `session-relay--v0.13.0` assets.
+Prepare independently reviewable `DocksDocks/public` source for Session Relay `0.13.0` without publishing or guessing production hashes. Frozen fixture tests must prove that the installer accepts a closed `0.13.0` manifest and derives every version-coupled check/output from that manifest, while the production `SoT/toolchain.json` entry and generated payload remain pinned byte-for-byte to `0.12.0`. Capture the clean implementation-source commit, apply the exact plan-only blocked transition, and then bind those blocked plan bytes to one create-once validation ref until a later, separately reviewed publication plan supplies four independently hashed `session-relay--v0.13.0` assets.
 
 ## Context & rationale
 
@@ -49,7 +49,7 @@ The production pin must not move during source preparation because the four real
 - Canonical red-capture helper: `/home/vagrant/projects/docks/scripts/capture-tdd-red.mjs`.
 - Exact blocked reason: `Awaiting the four independently hashed \`session-relay--v0.13.0\` production asset digests.`
 - Immutable validation ref: `refs/heads/preflight/session-relay-cli-0.13.0-<first 12 hex of PUBLIC_COMMIT>`.
-- Project CI command, run once after A1–A4 pass and before `PUBLIC_COMMIT` is sealed:
+- Project CI command, run once after A1–A4 pass and before `SOURCE_COMMIT` is captured:
 
 ```bash
 set -euo pipefail
@@ -126,7 +126,7 @@ SoT/toolchain.json tools["session-relay"].tag = "session-relay--v0.12.0"
 SoT/toolchain.json tools["session-relay"].plugin_version = "0.12.0"
 ```
 
-All four existing production `0.12.0` digests remain unchanged. `cli/src/generated/sotPayload.ts` remains generator-current and byte-identical across `execution_base_commit..PUBLIC_COMMIT`. The `0.13.0` value and any deterministic digest used before publication exist only inside test fixture construction in `cli/test/unit/sessionRelayCli.test.ts`. `cli/test/unit/pluginRefresh.test.ts` reads or derives its ensure marker from the current production SoT rather than hard-coding a future version, so its dry-run integration continues to prove production `0.12.0` ordering.
+All four existing production `0.12.0` digests remain unchanged. `cli/src/generated/sotPayload.ts` remains generator-current and byte-identical across `execution_base_commit..SOURCE_COMMIT`; the later plan-only `SOURCE_COMMIT..PUBLIC_COMMIT` range cannot change it. The `0.13.0` value and any deterministic digest used before publication exist only inside test fixture construction in `cli/test/unit/sessionRelayCli.test.ts`. `cli/test/unit/pluginRefresh.test.ts` reads or derives its ensure marker from the current production SoT rather than hard-coding a future version, so its dry-run integration continues to prove production `0.12.0` ordering.
 
 ### TDD receipt byte lifecycle
 
@@ -166,7 +166,7 @@ CAPTURE_SHA256="$(node /home/vagrant/projects/docks/scripts/capture-tdd-red.mjs 
 
 The helper succeeds only when the focused command exits nonzero, both working test blobs equal their tracked blobs at `PRE_PRODUCTION_COMMIT`, and it exclusively creates mode-`0600`, no-trailing-newline RFC 8785 JCS bytes for one closed `TddRedReceiptV1`. Require `CAPTURE_SHA256` to be 64 lowercase hex, `sha256sum "$PUBLIC_RED_PATH"` to equal it, the file to be nonempty and mode `0600`, the receipt `pre_production_commit` and sorted `test_paths` to match, and the failure to be the intended missing manifest-derived `0.13.0` behavior rather than setup, signal, timeout, or unrelated failure.
 4. Public plan-manager copies the exact file bytes without parse/reserialize/newline immediately after the literal prefix `Public TDD-red receipt JCS bytes: ` and records the adjacent `Public TDD-red receipt SHA-256: ` prefix followed by `CAPTURE_SHA256`. It commits that plan-only evidence before `sessionRelayCli.ts` changes. Read the committed substring back and prove byte/hash equality. Never overwrite, regenerate, normalize, or conversationally reconstruct the receipt. Retain the original no-clobber file until Docks has materialized and bound the same bytes.
-5. At `PUBLIC_COMMIT`, require each frozen test blob id to equal its `TddRedReceiptV1.test_paths[].blob_id`, require `PRE_PRODUCTION_COMMIT` to be a strict ancestor, and require the focused command to exit zero. Any needed frozen-test edit invalidates the receipt and is a STOP, not an invitation to recapture silently.
+5. At `SOURCE_COMMIT`, require each frozen test blob id to equal its `TddRedReceiptV1.test_paths[].blob_id`, require `PRE_PRODUCTION_COMMIT` to be a strict ancestor, and require the focused command to exit zero. Any needed frozen-test edit invalidates the receipt and is a STOP, not an invitation to recapture silently.
 
 ### Immutable identities consumed by Docks
 
@@ -186,29 +186,40 @@ status = blocked
 blocked_reason = Awaiting the four independently hashed `session-relay--v0.13.0` production asset digests.
 ```
 
-`plan_input_sha256` is the canonical input accepted by the passed pre-execution draft review; later manager-owned receipt/lifecycle evidence does not redefine that review identity. The draft `Review-receipt:` must be the one canonical passed schema-5 receipt produced by public plan-manager, and its `reviewed_commit` must be an ancestor of `execution_base_commit`. `execution_base_commit` is the exact first-start transition commit recorded by the required second plan-only identity commit.
+`plan_input_sha256` is the canonical input accepted by the passed pre-execution draft review; later manager-owned receipt/lifecycle evidence does not redefine that review identity. The draft `Review-receipt:` must be the one canonical passed schema-6 receipt produced by public plan-manager, and its `reviewed_commit` must be an ancestor of `execution_base_commit`. `execution_base_commit` is the exact first-start transition commit recorded by the required second plan-only identity commit.
 
-`PUBLIC_COMMIT` is captured only after implementation, A1–A4, and the separate full project CI gate pass on a clean worktree. The create-once ref is pushed without force and reconciled by exact full SHA. After that ref is verified, public plan-manager alone applies the exact block transition in one plan-only commit: `status: blocked`, quoted `blocked_reason` above, non-null quoted `blocked_since`, bumped `updated`, unchanged `started_at`, and unchanged `execution_base_commit`. Record that descendant as `BLOCKED_PLAN_COMMIT`; no branch, tag, release, or block commit is pushed by this plan. Docks must bind both the immutable ref/`PUBLIC_COMMIT` source identity and the exact locally committed blocked lifecycle identity; it must not infer one from the other.
+`SOURCE_COMMIT` is captured only after implementation, A1–A4, and the separate full project CI gate pass on a clean worktree. Public plan-manager then applies the exact block transition in one plan-only commit: `status: blocked`, quoted `blocked_reason` above, non-null quoted `blocked_since`, bumped `updated`, unchanged `started_at`, and unchanged `execution_base_commit`. That blocked descendant is `PUBLIC_COMMIT`; the create-once validation ref is derived from and resolves exactly to it. Docks therefore fetches one immutable commit whose plan bytes already carry the independently reviewed input identity, execution base, receipt evidence, red evidence, exact blocked status, and exact reason. `SOURCE_COMMIT` remains the distinct clean implementation-source identity used to prove the intervening plan-only block delta. No branch, tag, release, or mutable branch tip is pushed; the create-once validation ref is the only permitted remote mutation.
 
 ## Steps
 
 | # | Task | Files | Depends | Status | Done when / failure action |
 |---|---|---|---|---|---|
-| 1 | Obtain the one independent schema-5 draft review and start through public plan-manager. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (manager-owned review/lifecycle commits) | — | planned | The exact canonical plan input has one passed draft `Review-receipt:`, `status: ongoing`, non-null `started_at`, and a full 40-hex `execution_base_commit` recorded by the required second plan-only identity commit. STOP on unavailable/not-ready/stale evidence or any waiver not explicitly authorized by the current user. |
+| 1 | Obtain the one independent schema-6 draft review and start through public plan-manager. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (manager-owned review/lifecycle commits) | — | planned | The exact canonical plan input has one passed schema-6 draft `Review-receipt:`, `status: ongoing`, non-null `started_at`, and a full 40-hex `execution_base_commit` recorded by the required second plan-only identity commit. STOP on unavailable/not-ready/stale evidence or any waiver not explicitly authorized by the current user. |
 | 2 | Freeze the future-version contract in the exact two test blobs and capture/embed canonical red evidence before source edits. | `cli/test/unit/sessionRelayCli.test.ts`; `cli/test/unit/pluginRefresh.test.ts`; this plan only for manager-owned receipt lines | 1 | planned | The tests commit cleanly as `PRE_PRODUCTION_COMMIT`; the exact focused command fails only because production code still couples parsing/smoke/output to `0.12.0`; the helper emits one no-clobber `TddRedReceiptV1`; its exact bytes/hash are committed in this plan; both test blobs never change afterward. |
 | 3 | Derive all version-coupled validation, smoke checks, and output from one validated manifest version without loosening any other closure. | `cli/src/engine-native/sessionRelayCli.ts` | 2 | planned | A `0.13.0` fixture passes; malformed versions and mismatched tag/plugin version fail before mutation; production `0.12.0` still passes; repository/plugin/install path/targets/digests/checksum/atomicity behavior is unchanged; no module-level `0.12.0`/version tag authority remains. |
-| 4 | Run ordered acceptance and the separate full gate, seal a clean implementation identity, and create the immutable validation ref exactly once. | The three affected implementation/test paths; this plan for manager-owned evidence/status rows | 3 | planned | A1–A4 and the full project CI command pass; the execution diff changes exactly this plan plus the three affected paths and leaves `SoT/toolchain.json`/`cli/src/generated/sotPayload.ts` unchanged; clean `PUBLIC_COMMIT` is captured; the local and remote create-once validation ref resolve exactly to it without force. |
-| 5 | Apply the exact blocked handoff after ref verification and return its identities to Docks. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (public plan-manager-owned transition) | 4 | planned | Public plan-manager commits only the exact blocked lifecycle fields/reason, the worktree is clean, and Docks can independently bind the passed plan input, execution base, draft receipt hash, red bytes/hash and ancestry, ref/`PUBLIC_COMMIT`, `BLOCKED_PLAN_COMMIT`, status, and reason. No production digest or release mutation occurs. |
+| 4 | Run ordered acceptance and the separate full gate, then capture the clean implementation-source identity. | The three affected implementation/test paths; this plan for manager-owned evidence/status rows | 3 | planned | A1–A4 and the full project CI command pass; the execution diff changes exactly this plan plus the three affected paths and leaves `SoT/toolchain.json`/`cli/src/generated/sotPayload.ts` unchanged; clean `SOURCE_COMMIT` is captured before the blocked lifecycle transition. |
+| 5 | Apply the exact blocked handoff, bind that blocked plan commit to the immutable validation ref, and return both identities to Docks. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (public plan-manager-owned transition) | 4 | planned | Public plan-manager creates plan-only `PUBLIC_COMMIT` with the exact blocked fields/reason; `SOURCE_COMMIT` is its strict ancestor; the local and remote create-once ref resolve exactly to `PUBLIC_COMMIT`; and Docks can independently bind the passed plan input, execution base, draft receipt hash, red bytes/hash and ancestry, clean source identity, blocked ref/commit, status, and reason. No production digest or release mutation occurs. |
 
-### Clean commit and create-once validation-ref sequence
+### Clean source commit, blocked plan commit, and create-once validation-ref sequence
 
-Run only after Step 4 acceptance and full CI pass:
+Run after Step 4 acceptance and full CI pass:
+
+```bash
+set -euo pipefail
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+SOURCE_COMMIT="$(git rev-parse HEAD)"
+test "$(git rev-parse --verify "${SOURCE_COMMIT}^{commit}")" = "$SOURCE_COMMIT"
+```
+
+Invoke public `plan-manager block docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` with the exact blocked reason. It must commit only this plan. After that manager-owned transition, bind the resulting blocked plan bytes:
 
 ```bash
 set -euo pipefail
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
 PUBLIC_COMMIT="$(git rev-parse HEAD)"
-test "$(git rev-parse --verify "${PUBLIC_COMMIT}^{commit}")" = "$PUBLIC_COMMIT"
+test "$SOURCE_COMMIT" != "$PUBLIC_COMMIT"
+git merge-base --is-ancestor "$SOURCE_COMMIT" "$PUBLIC_COMMIT"
+test "$(git diff --name-only "$SOURCE_COMMIT..$PUBLIC_COMMIT")" = docs/plans/active/session-relay-cli-0.13.0-release-preparation.md
 PUBLIC_REF="refs/heads/preflight/session-relay-cli-0.13.0-${PUBLIC_COMMIT:0:12}"
 ZERO=0000000000000000000000000000000000000000
 if git show-ref --verify --quiet "$PUBLIC_REF"; then
@@ -226,7 +237,7 @@ fi
 test "$REMOTE_ROWS" = "$(printf '%s\t%s' "$PUBLIC_COMMIT" "$PUBLIC_REF")"
 ```
 
-No force flag is permitted. A push error is reconciled once by exact remote read-back; if the ref is absent or differs afterward, STOP and do not retry, delete, advance, or replace it. After exact remote verification, invoke public `plan-manager block docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` with the exact reason. Require the resulting `BLOCKED_PLAN_COMMIT` to be a strict descendant of `PUBLIC_COMMIT`, to change only this plan, and to leave a clean worktree.
+No force flag is permitted. A push error is reconciled once by exact remote read-back; if the ref is absent or differs afterward, STOP and do not retry, delete, advance, or replace it. `PUBLIC_COMMIT` and the immutable ref tip must remain the same blocked plan commit; never point the ref at `SOURCE_COMMIT` or a later lifecycle commit.
 
 ## Acceptance criteria
 
@@ -238,8 +249,8 @@ Run A1–A4 in order before the separately recorded full project CI command. Run
 | A2 | `bun run typecheck` | Exit 0; the widened manifest version type and explicit version flow are type-safe without suppression. |
 | A3 | `bun cli/scripts/generate-sot-payload.ts --check && node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const m=JSON.parse(fs.readFileSync("SoT/toolchain.json","utf8")).tools["session-relay"]; assert.equal(m.verified,"0.12.0"); assert.equal(m.tag,"session-relay--v0.12.0"); assert.equal(m.plugin_version,"0.12.0"); assert.deepEqual(Object.keys(m.assets).sort(),["aarch64-apple-darwin","aarch64-unknown-linux-musl","x86_64-apple-darwin","x86_64-unknown-linux-musl"]);'` | Exit 0; generated payload is current and the production manifest remains the exact four-target `0.12.0` pin. |
 | A4 | `./docks-kit sync claude codex --dry-run --skip-rtk && ./docks-kit sync agents --dry-run --skip-rtk` | Exit 0; production `0.12.0` ensure appears before each selected tool plugin pass, agents-only emits no Session Relay ensure, and no mutation occurs. |
-| A5 | `set -euo pipefail; base="$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-0.13.0-release-preparation.md)"; test "${#base}" -eq 40; git merge-base --is-ancestor "$base" "$PUBLIC_COMMIT"; git diff --quiet "$base..$PUBLIC_COMMIT" -- SoT/toolchain.json cli/src/generated/sotPayload.ts; actual="$(git diff --name-only "$base..$PUBLIC_COMMIT" | LC_ALL=C sort)"; expected="$(printf '%s\n' cli/src/engine-native/sessionRelayCli.ts cli/test/unit/pluginRefresh.test.ts cli/test/unit/sessionRelayCli.test.ts docs/plans/active/session-relay-cli-0.13.0-release-preparation.md | LC_ALL=C sort)"; test "$actual" = "$expected"; test -z "$(git status --porcelain=v1 --untracked-files=all)"` | Exit 0; the exact execution range contains only this plan and the three declared source/test paths, production SoT/generated payload are unchanged, and `PUBLIC_COMMIT` was sealed cleanly. |
-| A6 | `set -euo pipefail; test "$(git rev-parse "$PUBLIC_REF")" = "$PUBLIC_COMMIT"; test "$(git ls-remote --heads origin "$PUBLIC_REF")" = "$(printf '%s\t%s' "$PUBLIC_COMMIT" "$PUBLIC_REF")"; test "$(git diff --name-only "$PUBLIC_COMMIT..$BLOCKED_PLAN_COMMIT")" = docs/plans/active/session-relay-cli-0.13.0-release-preparation.md; PLAN_PATH=docs/plans/active/session-relay-cli-0.13.0-release-preparation.md node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const p=fs.readFileSync(process.env.PLAN_PATH,"utf8"); const reason="Awaiting the four independently hashed `session-relay--v0.13.0` production asset digests."; assert.match(p,/^status: blocked$/m); assert.ok(p.includes(`blocked_reason: "${reason}"`)); assert.match(p,/^blocked_since: "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})"$/m);' && test -z "$(git status --porcelain=v1 --untracked-files=all)"` | Exit 0; local/remote immutable ref identity is exact, the later descendant is plan-only, and current local lifecycle state is cleanly blocked for exactly the four real digests. |
+| A5 | `set -euo pipefail; base="$(sed -n 's/^execution_base_commit: //p' docs/plans/active/session-relay-cli-0.13.0-release-preparation.md)"; test "${#base}" -eq 40; git merge-base --is-ancestor "$base" "$SOURCE_COMMIT"; git diff --quiet "$base..$SOURCE_COMMIT" -- SoT/toolchain.json cli/src/generated/sotPayload.ts; actual="$(git diff --name-only "$base..$SOURCE_COMMIT" \| LC_ALL=C sort)"; expected="$(printf '%s\n' cli/src/engine-native/sessionRelayCli.ts cli/test/unit/pluginRefresh.test.ts cli/test/unit/sessionRelayCli.test.ts docs/plans/active/session-relay-cli-0.13.0-release-preparation.md \| LC_ALL=C sort)"; test "$actual" = "$expected"; test -z "$(git status --porcelain=v1 --untracked-files=all)"` | Exit 0; the exact implementation range contains only this plan and the three declared source/test paths, production SoT/generated payload are unchanged, and `SOURCE_COMMIT` was captured cleanly before blocking. |
+| A6 | `set -euo pipefail; test "$(git rev-parse HEAD)" = "$PUBLIC_COMMIT"; test "$SOURCE_COMMIT" != "$PUBLIC_COMMIT"; git merge-base --is-ancestor "$SOURCE_COMMIT" "$PUBLIC_COMMIT"; test "$(git diff --name-only "$SOURCE_COMMIT..$PUBLIC_COMMIT")" = docs/plans/active/session-relay-cli-0.13.0-release-preparation.md; test "$(git rev-parse "$PUBLIC_REF")" = "$PUBLIC_COMMIT"; test "$(git ls-remote --heads origin "$PUBLIC_REF")" = "$(printf '%s\t%s' "$PUBLIC_COMMIT" "$PUBLIC_REF")"; PLAN_PATH=docs/plans/active/session-relay-cli-0.13.0-release-preparation.md PUBLIC_COMMIT="$PUBLIC_COMMIT" node --input-type=module -e 'import {execFileSync} from "node:child_process"; import assert from "node:assert/strict"; const p=execFileSync("git",["show",`${process.env.PUBLIC_COMMIT}:${process.env.PLAN_PATH}`],{encoding:"utf8"}); const reason="Awaiting the four independently hashed `session-relay--v0.13.0` production asset digests."; assert.match(p,/^status: blocked$/m); assert.ok(p.includes(`blocked_reason: "${reason}"`)); assert.match(p,/^blocked_since: "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z\|[+-]\d{2}:\d{2})"$/m);' && test -z "$(git status --porcelain=v1 --untracked-files=all)"` | Exit 0; `PUBLIC_COMMIT` is the checked-out strict plan-only descendant of clean `SOURCE_COMMIT`, exact committed bytes are blocked for the four real digests, and the local/remote immutable ref resolves exactly to those blocked bytes. |
 
 ## Out of scope / do-NOT-touch
 
@@ -247,7 +258,7 @@ Run A1–A4 in order before the separately recorded full project CI command. Run
 - Do not place `0.13.0` in production manifests, generated payloads, goldens, docs pins, changelogs, package versions, plugin manifests, or install output outside fixture-driven unit execution.
 - Do not create or consume a guessed/placeholder production digest. Fixture digests must be computed only from deterministic fixture bytes and never copied into production SoT.
 - Do not edit Claude/Codex sync orchestration, Session Relay install paths, target mapping, checksum closure, plugin reconciliation, Rust source, Docks source, or release workflows.
-- Do not tag, publish a GitHub Release, install a `0.13.0` executable, promote a branch, push `main`, push the block commit, or release docks-kit.
+- Do not tag, publish a GitHub Release, install a `0.13.0` executable, promote or push `main`, advance/delete/force-update the validation ref, push another branch, or release docks-kit. The one create-once validation-ref push of blocked `PUBLIC_COMMIT` is the sole remote mutation.
 - Do not independently review, start, block, unblock, complete, or ship from an implementation worker; public plan-manager owns those lifecycle operations.
 
 ## Known gotchas
@@ -259,7 +270,7 @@ Run A1–A4 in order before the separately recorded full project CI command. Run
 - `pluginRefresh.test.ts` executes against the embedded production payload. It must continue to observe `0.12.0`; only `sessionRelayCli.test.ts` supplies the future fixture.
 - A red receipt binds tracked blob ids, not filenames alone. Either test changing after capture destroys the Docks ancestry proof even if the command still passes.
 - `Review-receipt:` payload bytes and the whole markdown line have different hashes. Docks records SHA-256 of the exact compact-JCS payload bytes after the prefix.
-- `PUBLIC_COMMIT` precedes the required plan-only block transition under the reviewed cross-repository sequence. Preserve and report the distinct `BLOCKED_PLAN_COMMIT`; never move the immutable validation ref to it.
+- `SOURCE_COMMIT` is the clean implementation-source identity. `PUBLIC_COMMIT` is its strict plan-only blocked descendant and the immutable validation-ref tip; Docks fetches and verifies the blocked plan bytes at that exact commit.
 - The validation-ref push is the only remote mutation in this plan and is create-once. Network ambiguity is reconciled by one exact remote read, never by force or blind retry.
 
 ## Global constraints
@@ -284,10 +295,10 @@ Run A1–A4 in order before the separately recorded full project CI command. Run
 - STOP if implementation requires any `SoT/toolchain.json`, generated payload, golden, documentation, sync-orchestration, target, digest, install-path, plugin-id, repository, checksum, or atomic-install change.
 - STOP if accepting a manifest version would require prerelease/build metadata, a floating range, coercion, or more than one version authority.
 - STOP if A1–A4 or the full project CI command fails; fix only production source unless the frozen test was proven wrong, in which case stop and return for plan amendment instead of weakening it.
-- STOP if the worktree is dirty when `PUBLIC_COMMIT` is captured, the execution diff contains any undeclared path, or production SoT/generated payload differs from `execution_base_commit`.
+- STOP if the worktree is dirty when `SOURCE_COMMIT` is captured, the implementation range contains any undeclared path, or production SoT/generated payload differs from `execution_base_commit`.
 - STOP if the validation ref already exists locally or remotely at another commit, if push/read-back is ambiguous, or if any force/update/delete/retry would be required.
-- STOP if the exact block transition would alter any non-plan path, reset `started_at`/`execution_base_commit`, or use a different reason.
-- STOP before any production digest, SoT pin, generated payload, docs pin, tag, Release, install, promotion, Docks edit, block-commit push, or docks-kit release. Preserve any real digest input for the later independently reviewed publication plan.
+- STOP if the exact block transition would alter any non-plan path, reset `started_at`/`execution_base_commit`, use a different reason, or fail to make `PUBLIC_COMMIT` a strict plan-only descendant of `SOURCE_COMMIT`.
+- STOP before any production digest, SoT pin, generated payload, docs pin, tag, Release, install, promotion, Docks edit, mutable-branch push, validation-ref update/delete/force, or docks-kit release. Preserve any real digest input for the later independently reviewed publication plan.
 
 ## Open questions
 
@@ -301,15 +312,15 @@ None. The reviewed cross-repository contract fixes the future version, fixture-o
 - **Executable acceptance:** A1–A6 cover focused behavior, type safety, production-pin/payload invariance, sync smoke, exact execution diff/clean commit, remote ref, and blocked lifecycle; full project CI is separately executable once.
 - **Out of scope:** Production pins/digests/payload/docs, sync orchestration, Rust/Docks source, publication, installation, promotion, branch/tag release, and lifecycle-owner violations are prohibited.
 - **Decision rationale:** Manifest-derived source capability allows future exact versions without moving production authority before real artifacts exist.
-- **Known gotchas:** Floating-vs-derived versions, redundant equality checks, all smoke/log sites, embedded production payload, blob-bound red evidence, payload-vs-line receipt hashes, distinct source/block commits, and push ambiguity are recorded.
+- **Known gotchas:** Floating-vs-derived versions, redundant equality checks, all smoke/log sites, embedded production payload, blob-bound red evidence, payload-vs-line receipt hashes, clean source versus blocked ref-tip identities, and push ambiguity are recorded.
 - **Global constraints:** Exact version/tag/reason, production `0.12.0`, four targets, failure-preserving installer closure, frozen tests/command, ownership, and secret hygiene are copied explicitly.
-- **No undefined terms / forward refs:** `PRE_PRODUCTION_COMMIT`, `PUBLIC_RED_PATH`, `CAPTURE_SHA256`, `plan_input_sha256`, `PUBLIC_COMMIT`, `PUBLIC_REF`, and `BLOCKED_PLAN_COMMIT` are defined before operational use.
+- **No undefined terms / forward refs:** `PRE_PRODUCTION_COMMIT`, `PUBLIC_RED_PATH`, `CAPTURE_SHA256`, `plan_input_sha256`, `SOURCE_COMMIT`, `PUBLIC_COMMIT`, and `PUBLIC_REF` are defined before operational use.
 
 ## Self-review
 
-- `standalone_executability` — caught/fixed: added the persistent receipt setup, exact capture/read-back lifecycle, full gate, create-once ref reconciliation, and separate blocked descendant identity.
+- `standalone_executability` — caught/fixed: added the persistent receipt setup, exact capture/read-back lifecycle, full gate, separate clean source identity, blocked ref-tip identity, and create-once reconciliation.
 - `actionability` — caught/fixed: each step names exact paths, owner, dependencies, executable command, observable done condition, and failure action.
-- `dependency_order` — pass: review/start precede tests; frozen red evidence precedes source edits; acceptance precedes commit/ref; exact block transition follows ref verification.
+- `dependency_order` — pass: review/start precede tests; frozen red evidence precedes source edits; acceptance and full CI precede `SOURCE_COMMIT`; the exact plan-only block transition creates `PUBLIC_COMMIT` before its create-once ref.
 - `evidence_reverification` — pass: current installer constants/parser/smoke/log sites, both unit tests, production manifest, payload generation command, parity workflow, capture helper, prior public plans, and the reviewed Docks prerequisite were reopened at `planned_at_commit`.
 - `goal_coverage` — caught/fixed: production SoT and generated payload are protected both by scope and executable blob/diff checks while fixture `0.13.0` covers every version-coupled path.
 - `executable_acceptance` — caught/fixed: ordered focused/type/pin/smoke/range/ref/block checks have concrete exits and expected evidence; full CI is recorded separately per workspace policy.
