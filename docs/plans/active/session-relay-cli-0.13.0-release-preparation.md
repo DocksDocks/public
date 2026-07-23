@@ -1,10 +1,12 @@
 ---
 title: Prepare Session Relay CLI 0.13.0 source
 goal: Decouple the installer from 0.12.0 using fixture-only 0.13.0 tests, seal an immutable validation identity, and remain blocked until four production digests exist.
-status: ongoing
+status: blocked
 created: "2026-07-22T23:07:51-03:00"
-updated: "2026-07-22T23:41:14-03:00"
+updated: "2026-07-22T23:53:43-03:00"
 started_at: "2026-07-22T23:28:58-03:00"
+blocked_reason: "Awaiting the four independently hashed `session-relay--v0.13.0` production asset digests."
+blocked_since: "2026-07-22T23:53:43-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -198,11 +200,11 @@ blocked_reason = Awaiting the four independently hashed `session-relay--v0.13.0`
 
 | # | Task | Files | Depends | Status | Done when / failure action |
 |---|---|---|---|---|---|
-| 1 | Obtain the one independent schema-6 draft review and start through public plan-manager. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (manager-owned review/lifecycle commits) | — | planned | The exact canonical plan input has one passed schema-6 draft `Review-receipt:`, `status: ongoing`, non-null `started_at`, and a full 40-hex `execution_base_commit` recorded by the required second plan-only identity commit. STOP on unavailable/not-ready/stale evidence or any waiver not explicitly authorized by the current user. |
+| 1 | Obtain the one independent schema-6 draft review and start through public plan-manager. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (manager-owned review/lifecycle commits) | — | done | The exact canonical plan input has one passed schema-6 draft `Review-receipt:`; its eligible `start` intent was consumed into `ongoing`, with non-null `started_at` and a full 40-hex `execution_base_commit` recorded by the required second plan-only identity commit. STOP on unavailable/not-ready/stale evidence or any waiver not explicitly authorized by the current user. |
 | 2 | Freeze the future-version contract in the exact two test blobs and capture/embed canonical red evidence before source edits. | `cli/test/unit/sessionRelayCli.test.ts`; `cli/test/unit/pluginRefresh.test.ts`; this plan only for manager-owned receipt lines | 1 | done | The tests commit cleanly as `PRE_PRODUCTION_COMMIT`; the exact focused command fails only because production code still couples parsing/smoke/output to `0.12.0`; the helper emits one no-clobber `TddRedReceiptV1`; its exact bytes/hash are committed in this plan; both test blobs never change afterward. |
-| 3 | Derive all version-coupled validation, smoke checks, and output from one validated manifest version without loosening any other closure. | `cli/src/engine-native/sessionRelayCli.ts` | 2 | planned | A `0.13.0` fixture passes; malformed versions and mismatched tag/plugin version fail before mutation; production `0.12.0` still passes; repository/plugin/install path/targets/digests/checksum/atomicity behavior is unchanged; no module-level `0.12.0`/version tag authority remains. |
-| 4 | Run ordered acceptance and the separate full gate, then capture the clean implementation-source identity. | The three affected implementation/test paths; this plan for manager-owned evidence/status rows | 3 | planned | A1–A4 and the full project CI command pass; the execution diff changes exactly this plan plus the three affected paths and leaves `SoT/toolchain.json`/`cli/src/generated/sotPayload.ts` unchanged; clean `SOURCE_COMMIT` is captured before the blocked lifecycle transition. |
-| 5 | Apply the exact blocked handoff, bind that blocked plan commit to the immutable validation ref, and return both identities to Docks. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (public plan-manager-owned transition) | 4 | planned | Public plan-manager creates plan-only `PUBLIC_COMMIT` with the exact blocked fields/reason; `SOURCE_COMMIT` is its strict ancestor; the local and remote create-once ref resolve exactly to `PUBLIC_COMMIT`; and Docks can independently bind the passed plan input, execution base, draft receipt hash, red bytes/hash and ancestry, clean source identity, blocked ref/commit, status, and reason. No production digest or release mutation occurs. |
+| 3 | Derive all version-coupled validation, smoke checks, and output from one validated manifest version without loosening any other closure. | `cli/src/engine-native/sessionRelayCli.ts` | 2 | done | A `0.13.0` fixture passes; malformed versions and mismatched tag/plugin version fail before mutation; production `0.12.0` still passes; repository/plugin/install path/targets/digests/checksum/atomicity behavior is unchanged; no module-level `0.12.0`/version tag authority remains. |
+| 4 | Run ordered acceptance and the separate full gate, then capture the clean implementation-source identity. | The three affected implementation/test paths; this plan for manager-owned evidence/status rows | 3 | done | A1–A4 and the full project CI command pass; the execution diff changes exactly this plan plus the three affected paths and leaves `SoT/toolchain.json`/`cli/src/generated/sotPayload.ts` unchanged; clean `SOURCE_COMMIT` is captured before the blocked lifecycle transition. |
+| 5 | Apply the exact blocked handoff, bind that blocked plan commit to the immutable validation ref, and return both identities to Docks. | `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md` only (public plan-manager-owned transition) | 4 | blocked | Public plan-manager creates plan-only `PUBLIC_COMMIT` with the exact blocked fields/reason; `SOURCE_COMMIT` is its strict ancestor; the local and remote create-once ref resolve exactly to `PUBLIC_COMMIT`; and Docks can independently bind the passed plan input, execution base, draft receipt hash, red bytes/hash and ancestry, clean source identity, blocked ref/commit, status, and reason. No production digest or release mutation occurs. |
 
 ### Clean source commit, blocked plan commit, and create-once validation-ref sequence
 
@@ -351,6 +353,22 @@ None. The reviewed cross-repository contract fixes the future version, fixture-o
 - `/home/vagrant/projects/docks/docs/plans/active/session-relay-linux-workspace-release.md:64-79,100-127,139-159,222-235` — reviewed companion path/ref, fixture-only public contract, required identity tuple, source-preparation order, exact block reason, and STOP boundaries.
 - `docs/plans/finished/2026-07-18-session-relay-cli-installation.md:70-141` — original closed installer, transaction, focused tests, and TDD receipt protocol.
 - `docs/plans/finished/2026-07-18-session-relay-cli-production-release.md:30-42,152-178` — prior fixture-to-production separation and exact digest-authority precedent.
+
+## Notes
+
+- Repository ID: `DocksDocks/public`.
+- Source commit: 3ce9db40c9da62bd396a34665ad0a98ca126394f
+- Reviewed plan input SHA-256: 818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3
+- Execution base commit: c0dfa7aeb6ea3bc7de5a78bd4896b1993746b117
+- Draft review receipt SHA-256: 097206c0611c3357e10c0bf69a70819ea67901ef1ae8c3ef1d9e8207520f7c52
+- Public TDD-red receipt source: `/home/vagrant/.local/state/docks-release/session-relay-0.13.0/public-preparation.f5vybcy3/public-red.json`
+- Public TDD-red receipt evidence: 861 exact no-trailing-newline JCS bytes, mode `0600`, SHA-256 833e777a509b44584f873628a65212fd92bd8a9305cd2f5f6699fc172738402c.
+- Frozen test ancestry: pre-production commit f67ae74df6391d9d649f2a7479f2c996a284e175 is a strict ancestor of the source commit; `cli/test/unit/pluginRefresh.test.ts` remains blob `7f8dd6507c8ed6ee5ac2549894aaa349cf0ef650` and `cli/test/unit/sessionRelayCli.test.ts` remains blob `265e3a99a6c0e713a72c9d6b1f3d5d2638010613`.
+- Focused green evidence: frozen installer/order suite 35/35; typecheck passed; generated payload is current; production remains the exact four-target `0.12.0` pin; Claude/Codex dry-runs place the `0.12.0` ensure before plugin work and agents-only emits no Session Relay ensure.
+- Full project CI evidence: generated payload, 190 unit tests across 23 files, POSIX runtime smoke, 29 dry-run golden cases, and 76 mutation golden cases passed; prove-red detected 29 dry-run and 73 mutation planted mismatches with the required markers.
+- Protected production authority: `SoT/toolchain.json` and `cli/src/generated/sotPayload.ts` are byte-identical across `execution_base_commit..SOURCE_COMMIT`.
+- Status: blocked
+- Blocked reason: Awaiting the four independently hashed `session-relay--v0.13.0` production asset digests.
 
 Review-orchestration-state: {"apply_state":"consumed","current_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","initial_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","lifecycle_intent":"start","orchestration_attempt":1,"phase":"draft","plan_path":"docs/plans/active/session-relay-cli-0.13.0-release-preparation.md","request_ids":["81c193d7-f1ac-49f3-930f-5b39eb275449"],"retry_authorization":null,"round_index":1,"schema":2,"series_id":"260ab81a-74c1-4892-a18e-47c4637c6d27","series_sha256":"d7b83bb584ece2ee0bb3b09bd1b27750eb5db7d425b749e761f44bba6885b046","state_sha256":"e93c1661c30096d76678bac33817395ad7fb57a9298751b20f097f588f54f089","status":"passed","stop_reason":null,"terminal_evidence_sha256":null,"terminated_from_state":null,"terminated_from_state_sha256":null,"transitioned_from_state_sha256":"fef492529e23ce5ab5f3ba79e757628a59e8f16873b73288c2645619018308c6"}
 
