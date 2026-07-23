@@ -1,10 +1,10 @@
 ---
 title: Prepare Session Relay CLI 0.13.0 source
 goal: Decouple the installer from 0.12.0 using fixture-only 0.13.0 tests, seal an immutable validation identity, and remain blocked until four production digests exist.
-status: planned
+status: ongoing
 created: "2026-07-22T23:07:51-03:00"
-updated: "2026-07-22T23:22:45-03:00"
-started_at: null
+updated: "2026-07-22T23:28:58-03:00"
+started_at: "2026-07-22T23:28:58-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -348,7 +348,7 @@ None. The reviewed cross-repository contract fixes the future version, fixture-o
 - `docs/plans/finished/2026-07-18-session-relay-cli-installation.md:70-141` — original closed installer, transaction, focused tests, and TDD receipt protocol.
 - `docs/plans/finished/2026-07-18-session-relay-cli-production-release.md:30-42,152-178` — prior fixture-to-production separation and exact digest-authority precedent.
 
-Review-orchestration-state: {"apply_state":"pending","current_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","initial_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","lifecycle_intent":"start","orchestration_attempt":1,"phase":"draft","plan_path":"docs/plans/active/session-relay-cli-0.13.0-release-preparation.md","request_ids":["81c193d7-f1ac-49f3-930f-5b39eb275449"],"retry_authorization":null,"round_index":1,"schema":2,"series_id":"260ab81a-74c1-4892-a18e-47c4637c6d27","series_sha256":"d7b83bb584ece2ee0bb3b09bd1b27750eb5db7d425b749e761f44bba6885b046","state_sha256":"fef492529e23ce5ab5f3ba79e757628a59e8f16873b73288c2645619018308c6","status":"passed","stop_reason":null,"terminal_evidence_sha256":null,"terminated_from_state":null,"terminated_from_state_sha256":null,"transitioned_from_state_sha256":null}
+Review-orchestration-state: {"apply_state":"consumed","current_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","initial_input_sha256":"818766be3668ad02bfce234cdb25e5d65bf0760bd7c7b2aea05fb8f075a99ed3","lifecycle_intent":"start","orchestration_attempt":1,"phase":"draft","plan_path":"docs/plans/active/session-relay-cli-0.13.0-release-preparation.md","request_ids":["81c193d7-f1ac-49f3-930f-5b39eb275449"],"retry_authorization":null,"round_index":1,"schema":2,"series_id":"260ab81a-74c1-4892-a18e-47c4637c6d27","series_sha256":"d7b83bb584ece2ee0bb3b09bd1b27750eb5db7d425b749e761f44bba6885b046","state_sha256":"e93c1661c30096d76678bac33817395ad7fb57a9298751b20f097f588f54f089","status":"passed","stop_reason":null,"terminal_evidence_sha256":null,"terminated_from_state":null,"terminated_from_state_sha256":null,"transitioned_from_state_sha256":"fef492529e23ce5ab5f3ba79e757628a59e8f16873b73288c2645619018308c6"}
 
 
 
