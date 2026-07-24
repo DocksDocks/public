@@ -1,9 +1,9 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Verify the immutable docks-kit 0.10.2 release against the published five-asset Linux/macOS contract, preserve its receipt/tag/run, and archive without changing release bytes.
-status: ongoing
+status: finished
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T11:28:39-03:00"
+updated: "2026-07-24T11:29:34-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
 assignee: null
 review_author_company: openai
@@ -28,6 +28,7 @@ related_plans:
 review_status: passed
 planned_at_commit: e875475a7ddc91d3ed3301789f4e1933f46d60c1
 execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
+ship_commit: 4b7cbd6b4a62332195040d2368fb4ccd034dc4d3
 ---
 
 # Release docks-kit 0.10.2 with Session Relay 0.13.0
