@@ -1,12 +1,10 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Verify the immutable docks-kit 0.10.2 release against the published five-asset Linux/macOS contract, preserve its receipt/tag/run, and archive without changing release bytes.
-status: blocked
+status: ongoing
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T09:55:45-03:00"
+updated: "2026-07-24T09:59:06-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
-blocked_reason: "The current user accepted the published five-asset stable contract—`SHA256SUMS` plus `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, `docks-kit-linux-x64`, and `docks-kit-linux-arm64`—and explicitly confirmed that Windows is unsupported. P1 remains passed for immutable `cli-v0.10.2` at `ac5f17e949022b56bb97a81155662bda916820a3`; sole workflow run `30072118556` succeeded. This plan-only post-completion contract amendment preserves the exact completion receipt, tag, run, implementation identities, and Release bytes. Await direct plan-manager unblock, then rerun P2 under the accepted contract followed by P3 and P4 read-only. No review renewal, retag, second run, asset upload/deletion, workflow edit, or branch push is authorized."
-blocked_since: "2026-07-24T03:26:56-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -564,6 +562,7 @@ None — the current user's accepted five-total/four-binary Linux/macOS stable c
 
 - Current-user post-completion decision: accept the published stable matrix exactly as five assets total—`SHA256SUMS` plus four Linux/macOS x64/arm64 binaries—and record that Windows is unsupported. This plan-only correction does not alter Release bytes or renew completion review.
 - P1 remains passed: lightweight `cli-v0.10.2` resolves to exact `ac5f17e949022b56bb97a81155662bda916820a3`, and sole workflow run `30072118556` completed successfully at that head. Rerun P2 under the corrected read-only contract, then P3/P4.
+- Plan-manager applied the current user's direct unblock at `2026-07-24T09:59:06-03:00` after the plan-only contract amendment. No review family was opened; the passed completion receipt, immutable tag/run, and release bytes remain unchanged.
 - Manager-owned execution evidence recorded without rerunning implementation commands: `PUBLIC_TEST_ARTIFACT_COMMIT=3ccb503445184a8beb79d0a7bf616ade3203ca21`, with direct parent `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; its own diff contains exactly `cli/test/unit/toolchain.test.ts`, `cli/test/unit/engine-di.test.ts`, `cli/test/goldens/dryrun.json`, and `cli/test/goldens/mutation.json`.
 - Step 2 evidence: changed-input schema-6 draft review for input `edc8187de77daa487abc9691aa4a0ef3922b3309a5e7f1b5bfb8cc0878e6de1e` passed and settled in plan-only commit `053b1bc09df0e4b89e20e3cb903b54ccee02019c`; plan-manager consumed the explicit unblock intent in plan-only commit `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; A1–A3 then passed before the four-artifact edit.
 - A1 passed: the exact authority request, publication receipt, source proof, asset digests, repository ids, versions, tags, and commits matched the closed authority chain.
