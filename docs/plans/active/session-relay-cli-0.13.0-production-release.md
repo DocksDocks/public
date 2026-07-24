@@ -1,10 +1,11 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from the retained four-file implementation and one reviewed four-artifact expectation commit, prove the single immutable release, and preserve the Session Relay authority chain.
-status: ongoing
+status: in_review
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T06:01:08.000Z"
+updated: "2026-07-24T06:07:34.531Z"
 started_at: "2026-07-24T04:30:00.000Z"
+in_review_since: "2026-07-24T06:07:34.531Z"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -25,7 +26,7 @@ related_plans:
   - docs/plans/active/session-relay-cli-0.13.0-release-preparation.md
   - docs/plans/finished/2026-07-18-session-relay-cli-production-release.md
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-linux-workspace-release.md
-review_status: passed
+review_status: null
 planned_at_commit: e875475a7ddc91d3ed3301789f4e1933f46d60c1
 execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
 ---
