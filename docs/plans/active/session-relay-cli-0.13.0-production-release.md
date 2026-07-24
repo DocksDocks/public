@@ -1,10 +1,12 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from a reviewed four-file pin and fixture update, prove the single immutable release, and preserve the Session Relay authority chain.
-status: ongoing
+status: blocked
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T01:48:53-03:00"
+updated: "2026-07-24T02:01:12-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
+blocked_reason: "A4 fails before Node because its outer shell single-quoted `node -e` carrier contains literal single quotes inside JavaScript strings and exposes `${SESSION_RELAY_VERSION}` to shell expansion under `set -u`. The product implementation remains restored and unchanged. This plan-only amendment replaces only the command carrier with a single-quoted heredoc, preserves every A4 assertion and the authorized four-file scope, and is not a waiver. The plan remains blocked until the fresh changed-input schema-6 review passes and plan-manager consumes the current user's unblock intent."
+blocked_since: "2026-07-24T02:01:12-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -21,7 +23,7 @@ related_plans:
   - docs/plans/active/session-relay-cli-0.13.0-release-preparation.md
   - docs/plans/finished/2026-07-18-session-relay-cli-production-release.md
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-linux-workspace-release.md
-review_status: passed
+review_status: null
 planned_at_commit: e875475a7ddc91d3ed3301789f4e1933f46d60c1
 execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
 ---
@@ -271,7 +273,9 @@ PLAN_BASE="$PLAN_BASE" node --input-type=module -e 'import assert from "node:ass
 ```bash
 set -euo pipefail
 PLAN_BASE=e875475a7ddc91d3ed3301789f4e1933f46d60c1
-PLAN_BASE="$PLAN_BASE" node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; import {execFileSync} from "node:child_process"; const show=(path)=>execFileSync("git",["show",`${process.env.PLAN_BASE}:${path}`],{encoding:"utf8"}); const beforePkg=JSON.parse(show("package.json")); const afterPkg=JSON.parse(fs.readFileSync("package.json","utf8")); assert.equal(beforePkg.version,"0.10.1"); assert.equal(afterPkg.version,"0.10.2"); assert.deepEqual({...afterPkg,version:null},{...beforePkg,version:null}); const beforeTc=JSON.parse(show("SoT/toolchain.json")); const afterTc=JSON.parse(fs.readFileSync("SoT/toolchain.json","utf8")); const expected={kind:"managed-release",policy:"exact",verified:"0.13.0",repository:"DocksDocks/docks",tag:"session-relay--v0.13.0",plugin_id:"session-relay@docks",plugin_version:"0.13.0",install_path:"~/.local/bin/session-relay",assets:{"x86_64-unknown-linux-musl":"f8c6374c2c704f48135cd646028fbd9e53fd43f9800b4a255fa36a0818744b7b","aarch64-unknown-linux-musl":"6ebc6d9a38a8c3d1f191647d3ab679d56b69cffba36c3bc3c8eb99b0e163852e","x86_64-apple-darwin":"06c046182922c6897e81278fecd7280008fa8040a489910993283017101f1be3","aarch64-apple-darwin":"0686e68e3a88dd0dee647fc18211e941dd0d8012818d0bcfb79fac142b5baf21"}}; assert.deepEqual(afterTc.tools["session-relay"],expected); afterTc.tools["session-relay"]=beforeTc.tools["session-relay"]; assert.deepEqual(afterTc,beforeTc); assert.match(fs.readFileSync("cli/src/generated/sotPayload.ts","utf8"),/^export const GENERATED_PACKAGE_VERSION = "0\.10\.2"$/m); const beforeHarness=show("cli/test/lib/harness.ts"); const afterHarness=fs.readFileSync("cli/test/lib/harness.ts","utf8"); const anchor="export const FIXTURES_DIR = join(REPO_DIR, \"cli\", \"test\", \"fixtures\")\n"; const versionBlock="const SESSION_RELAY_VERSION = (\n  JSON.parse(readFileSync(join(REPO_DIR, \"SoT\", \"toolchain.json\"), \"utf8\")) as {\n    tools: { \"session-relay\": { verified: string } }\n  }\n).tools[\"session-relay\"].verified\n"; const hardcoded="  writeFileSync(sessionRelay, \"#!/bin/sh\\nprintf 'session-relay 0.12.0\\\\n'\\n\")"; const dynamic="  writeFileSync(sessionRelay, `#!/bin/sh\\nprintf 'session-relay ${SESSION_RELAY_VERSION}\\\\n'\\n`)"; assert.equal(afterHarness,beforeHarness.replace(anchor,anchor+"\n"+versionBlock).replace(hardcoded,dynamic));'
+PLAN_BASE="$PLAN_BASE" node --input-type=module <<'NODE'
+import fs from "node:fs"; import assert from "node:assert/strict"; import {execFileSync} from "node:child_process"; const show=(path)=>execFileSync("git",["show",`${process.env.PLAN_BASE}:${path}`],{encoding:"utf8"}); const beforePkg=JSON.parse(show("package.json")); const afterPkg=JSON.parse(fs.readFileSync("package.json","utf8")); assert.equal(beforePkg.version,"0.10.1"); assert.equal(afterPkg.version,"0.10.2"); assert.deepEqual({...afterPkg,version:null},{...beforePkg,version:null}); const beforeTc=JSON.parse(show("SoT/toolchain.json")); const afterTc=JSON.parse(fs.readFileSync("SoT/toolchain.json","utf8")); const expected={kind:"managed-release",policy:"exact",verified:"0.13.0",repository:"DocksDocks/docks",tag:"session-relay--v0.13.0",plugin_id:"session-relay@docks",plugin_version:"0.13.0",install_path:"~/.local/bin/session-relay",assets:{"x86_64-unknown-linux-musl":"f8c6374c2c704f48135cd646028fbd9e53fd43f9800b4a255fa36a0818744b7b","aarch64-unknown-linux-musl":"6ebc6d9a38a8c3d1f191647d3ab679d56b69cffba36c3bc3c8eb99b0e163852e","x86_64-apple-darwin":"06c046182922c6897e81278fecd7280008fa8040a489910993283017101f1be3","aarch64-apple-darwin":"0686e68e3a88dd0dee647fc18211e941dd0d8012818d0bcfb79fac142b5baf21"}}; assert.deepEqual(afterTc.tools["session-relay"],expected); afterTc.tools["session-relay"]=beforeTc.tools["session-relay"]; assert.deepEqual(afterTc,beforeTc); assert.match(fs.readFileSync("cli/src/generated/sotPayload.ts","utf8"),/^export const GENERATED_PACKAGE_VERSION = "0\.10\.2"$/m); const beforeHarness=show("cli/test/lib/harness.ts"); const afterHarness=fs.readFileSync("cli/test/lib/harness.ts","utf8"); const anchor="export const FIXTURES_DIR = join(REPO_DIR, \"cli\", \"test\", \"fixtures\")\n"; const versionBlock="const SESSION_RELAY_VERSION = (\n  JSON.parse(readFileSync(join(REPO_DIR, \"SoT\", \"toolchain.json\"), \"utf8\")) as {\n    tools: { \"session-relay\": { verified: string } }\n  }\n).tools[\"session-relay\"].verified\n"; const hardcoded="  writeFileSync(sessionRelay, \"#!/bin/sh\\nprintf 'session-relay 0.12.0\\\\n'\\n\")"; const dynamic="  writeFileSync(sessionRelay, `#!/bin/sh\\nprintf 'session-relay ${SESSION_RELAY_VERSION}\\\\n'\\n`)"; assert.equal(afterHarness,beforeHarness.replace(anchor,anchor+"\n"+versionBlock).replace(hardcoded,dynamic));
+NODE
 ```
 
 ### A7 — exact scope and frozen surfaces
