@@ -1,10 +1,12 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from a reviewed three-file pin update, prove the single immutable release, and preserve the Session Relay authority chain.
-status: ongoing
+status: blocked
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T04:30:00.000Z"
+updated: "2026-07-24T01:13:06-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
+blocked_reason: "A1-A5 passed on the intended three-file edit, but A6 failed exactly three `pluginRefresh` tests at assertions `cli/test/unit/pluginRefresh.test.ts:72`, `:102`, and `:133`. Independently verified root cause: `cli/test/lib/harness.ts:230-239` always materializes `session-relay 0.12.0`; after the intended SoT pin becomes `0.13.0`, the tests enter the reinstall path while the default curl stub at lines 118-123 exits 0 without creating installer files, yielding ENOENT and exit 1. The product edits were restored and the baseline is clean. The parent/Docks contract limits public writes to the three production files plus the child plan and freezes tests, workflow, and lockfile, so neither a harness correction nor acceptance weakening is authorized. Required user decision: (a) explicitly expand public scope to a focused test-harness change that dynamically materializes the current SoT version, then recertify and review the changed plan; or (b) keep the three-file boundary and stop the release. A waiver must not be treated as passing A6."
+blocked_since: "2026-07-24T01:13:06-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
