@@ -268,8 +268,6 @@ cd ~/projects/public
 ./docks-kit sync --claude-plugin=supabase   # opt in the supabase plugin (install + enable in deployed settings)
 ./docks-kit sync --claude-plugin=n8n        # opt in the n8n-mcp-skills plugin (add marketplace + install + enable); repeatable/comma-separated
 ./docks-kit model claude opus        # deploy-time: override the Fable SoT on this machine (standalone form of --claude-model=)
-./docks-kit models workflow          # list strict Docks workflow profiles, exact targets, and defaults
-./docks-kit --model-reviewer=codex:gpt-5.6-terra@high --review-min-score=80  # workflow-only deployed override
 ./docks-kit status                   # show deployed vs SoT state
 ./docks-kit toolchain check          # verify installed tools against SoT/toolchain.json floors
 ```
@@ -334,32 +332,7 @@ Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change th
 | `--claude-permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. The SoT `ask` list is already minimal (2026-07-08 slim-down: only `git clean` / `docker volume rm` / `docker system prune` — the local-data destroyers; everything else defers to the auto-mode classifier, since `ask` entries force prompts even in auto mode), so this flag mostly matters for emptying `deny`. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
 Codex mirrors the model/effort contract with `--codex-model=<m>` and
-`--codex-effort=<level>`; Codex `default` effort restores `high`. Fast remains
-absent from the global SoT. Role-scoped Fast is expressed only by the optional
-`+fast` workflow-selector suffix; an unsuffixed Codex role means Standard.
-
-#### Docks workflow-role overrides
-
-The five root flags `--model-orchestrator`, `--model-reviewer`,
-`--model-implementer`, `--review-min-score`, and `--review-max-rounds` are a
-workflow-only operation: they atomically update one identical complete
-`Docks-workflow-models:` record in `~/.claude/CLAUDE.md` and
-`~/.codex/AGENTS.md` without running sync. A partial invocation preserves
-omitted values from the current valid record; missing parallel state is
-repaired, while malformed or divergent records stop before either file changes.
-A flag-less sync reasserts the SoT defaults. Start fresh Claude Code and Codex
-sessions after an override so both tools load the same record.
-
-Selectors are exactly `profile:<name>` or `<tool>:<model>@<effort>[+fast]` and
-must be present in `docks-kit models workflow`; `+fast` is Codex-only and emits
-a schema-2 candidate with `service_tier: "fast"`. Without the suffix, the record
-stays schema 1 and the consumer must force Codex's default service tier rather
-than inherit a global Fast preference. `claude:best@high` is Claude's native
-single-model alias, while `profile:claude-best` is the Docks-managed ordered
-Fable-high then Opus-xhigh candidate chain. Candidate availability is tested by
-Docks when it launches each role—docks-kit does not preflight providers or
-claim provider-wide fallback. Upgrade Docks and Session Relay to schema-2
-consumer support before deploying a `+fast` selector.
+`--codex-effort=<level>`; Codex `default` effort restores `high`.
 
 #### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
 
@@ -399,7 +372,7 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 
 ### Plans
 
-Multi-commit work-item plans live under `docs/plans/` (active convention; see `AGENTS.md` § Plans for the cross-tool description). The Claude Code interface is the `plan-manager` agent invoked via `/docks:plan`: it reads plans, evaluates schedule triggers, and dispatches to the assignee agent named in each plan's frontmatter.
+Multi-commit work-item plans live under `docs/plans/` (see `AGENTS.md` § Plans). Main context invokes `plan-manager` directly; it owns classification through verified archive, while only the read-only `plan-reviewer` has Claude/Codex wrappers.
 
 ### Open Concerns
 

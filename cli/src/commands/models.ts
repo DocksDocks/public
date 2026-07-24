@@ -2,10 +2,9 @@ import { Args, Command, Options } from "@effect/cli"
 import { Console, Effect, Option } from "effect"
 import { bail } from "../engine"
 import { modelCatalog, type Tool } from "../manifests"
-import { workflowCatalog, workflowRegistryJson } from "../workflowModels"
 
 const tool = Args.text({ name: "tool" }).pipe(
-  Args.withDescription("claude | codex | workflow (omit for both tool catalogs)"),
+  Args.withDescription("claude | codex (omit for both tool catalogs)"),
   Args.optional
 )
 const json = Options.boolean("json").pipe(
@@ -25,11 +24,8 @@ const renderTool = (t: Tool) =>
 export const modelsCommand = Command.make("models", { tool, json }, (config) =>
   Effect.gen(function* () {
     const requested = Option.getOrUndefined(config.tool)
-    if (requested === "workflow") {
-      return yield* Console.log(config.json ? workflowRegistryJson() : workflowCatalog())
-    }
     if (requested !== undefined && requested !== "claude" && requested !== "codex") {
-      return yield* bail(`Unknown tool '${requested}' (valid: claude, codex, workflow)`)
+      return yield* bail(`Unknown tool '${requested}' (valid: claude, codex)`)
     }
     const tools: Array<Tool> = requested !== undefined ? [requested as Tool] : ["claude", "codex"]
 
@@ -46,5 +42,5 @@ export const modelsCommand = Command.make("models", { tool, json }, (config) =>
     )
   })
 ).pipe(
-  Command.withDescription("List kit-verified tool models or the Docks workflow role registry (SoT/models.json).")
+  Command.withDescription("List kit-verified Claude and Codex models (SoT/models.json).")
 )

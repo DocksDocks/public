@@ -66,20 +66,6 @@ interface DryRunMatrixRow {
 const MATRIX: Array<DryRunMatrixRow> = [
   ...FIXTURES.flatMap((fixture) => COMMANDS.map((cmd) => ({ fixture, cmd }))),
   { fixture: "home-drift", cmd: ["model", "claude"] },
-  { fixture: "home-fresh", cmd: ["models", "workflow"], label: "workflow helper text", public: true },
-  { fixture: "home-fresh", cmd: ["models", "workflow", "--json"], label: "workflow helper json", public: true },
-  {
-    fixture: "home-fresh",
-    cmd: ["--model-reviewer=codex:gpt-5.6-terra@high", "--review-min-score=80"],
-    label: "workflow role override",
-    public: true
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["--review-max-rounds=0"],
-    label: "workflow review bound invalid",
-    public: true
-  }
 ]
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")

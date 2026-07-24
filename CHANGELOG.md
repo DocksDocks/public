@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Removed the Docks workflow model registry, prompt records, root override flags,
+  and `models workflow` selector. Plan orchestration now owns reviewer selection
+  at invocation time while ordinary Claude/Codex model and sync behavior remains
+  unchanged.
+- Added matching global prompt guidance for reuse-first selective skill routing,
+  Base UI-backed shadcn defaults, and literal external authority; aligned the
+  project plan contract and wrappers with the three-skill `PlanRunV1` workflow.
+
 ## 2026-07-22 — exact latest Opus workflow fallback (0.10.1 source)
 
 - Pinned the `claude-best` workflow fallback to Anthropic's current

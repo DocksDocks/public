@@ -118,28 +118,6 @@ const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string
   { fixture: "home-drift", cmd: ["model", "claude", "opus"] },
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
   { fixture: "home-drift", cmd: ["model", "codex", "gpt-5.5"] },
-  {
-    fixture: "home-fresh",
-    cmd: ["workflow", "--model-reviewer=codex:gpt-5.6-terra@high"],
-    variant: "workflow-role-override"
-  },
-  {
-    fixture: "home-drift",
-    cmd: [
-      "workflow",
-      "--model-orchestrator=claude:best@high",
-      "--model-reviewer=codex:gpt-5.6-terra@high",
-      "--model-implementer=codex:gpt-5.6-luna@medium",
-      "--review-min-score=80",
-      "--review-max-rounds=5"
-    ],
-    variant: "workflow-all-role-overrides-and-review-bounds"
-  },
-  {
-    fixture: "home-drift",
-    cmd: ["workflow", "--review-max-rounds=0"],
-    variant: "workflow-review-bound-invalid"
-  },
   { fixture: "home-invalid-json", cmd: ["sync", "claude"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--verbose"] },
@@ -188,17 +166,6 @@ const REPLAYS: Array<{ fixture: string; cmd: Array<string>; cmd2?: Array<string>
   // Model modifier as the ONLY second-run mutation: the restart advice must
   // print from the model trigger alone (everything else is already in sync).
   { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] },
-  {
-    fixture: "home-fresh",
-    cmd: ["workflow", "--review-min-score=80"],
-    variant: "workflow-idempotent-role-override"
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["workflow", "--review-min-score=80"],
-    cmd2: ["sync"],
-    variant: "workflow-default-restoration"
-  }
 ]
 
 const TOML_DIR = join(FIXTURES_DIR, "codex-toml")

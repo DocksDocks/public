@@ -1,498 +1,363 @@
 # AGENTS.md — docs/plans/
 
-Multi-commit work lives here as complete cold-handoff plan files. A fresh agent
-must be able to execute a plan without conversation context. The Markdown plan
-is the only tracked artifact; rendered views are disposable.
+Canonical plans are complete cold handoffs for work that benefits from durable
+coordination. The Markdown plan is the only tracked artifact; rendered views are
+disposable. `active/` is multi-occupancy and `finished/` is the terminal archive.
 
-Use direct implementation for a clear low-risk change describable as one concrete diff with one bounded acceptance path. Use a canonical plan for multi-commit work, scheduling, cold handoff, an unresolved approach, a cross-subsystem or public-contract change, destructive or security-sensitive work, or an explicit user request. Never create a placeholder plan merely to unlock review.
+Use direct implementation for one clear, reversible, low-risk local diff with one
+bounded acceptance path. Direct work creates no plan, reviewer invocation, or
+automatic commit. Use a canonical plan for an explicit planning request,
+multi-commit or cross-repository work, scheduling, cold handoff, an unresolved
+decision, a cross-subsystem or public-contract change, security-sensitive or
+destructive work, or any requested external effect. Never create a placeholder
+plan merely to unlock review.
 
 <constraint>
-The five ownership boundaries are disjoint. `plan-workspace` maintains this workspace; `plan-creator` may add one missing canonical active plan; `plan-manager` is the sole public owner of every existing-plan operation, review dispatch/reconciliation, receipt, and lifecycle write; `plan-reviewer` returns read-only typed evidence over one sealed bundle. Historical `plan-improver` is not a live skill; `plan-repairer` returns one exact patch or `cannot_repair`, and `plan-manager` alone validates, applies, and persists the result. Never transfer authority between phases because one phase is unavailable.
+There are exactly three live owners. `plan-workspace` maintains this workspace.
+Main-context `plan-manager` owns goal classification, drafting, bounded review,
+one accepted repair, lifecycle, implementation/delegation, observed acceptance,
+archive, and guarded GitHub issue publication. Internal `plan-reviewer` reads one
+immutable bundle and returns `PlanReviewV1` evidence only. Only the reviewer has
+Claude/Codex wrappers; main invokes `plan-manager` directly.
 </constraint>
 
 <constraint>
-Current records use schema 6. Schemas 1–5 are historical validation-only: preserve their bytes and validation results, but never emit a new request, output, run, receipt, waiver, manifest, or orchestration record under an old schema. A malformed, stale, unclosed, duplicate, or hash-mismatched current record fails closed before any plan mutation.
+Current plans contain exactly one unfenced `Plan-run: <compact JCS PlanRunV1>`
+line. Schemas 1–6 are historical validation/quarantine formats only: preserve
+their bytes and validation behavior, but never emit one as current authority.
+Malformed, crossed, active, prepared, committed, cancelled, or otherwise
+unsettled legacy evidence never blocks an unrelated goal and never authorizes a
+current dispatch or external effect.
 </constraint>
 
 ## Skill routing
 
-| User intent | Skill |
+| Request | Owner |
 |---|---|
-| Bootstrap, migrate, audit, or explicitly refresh the workspace | `plan-workspace` |
-| Draft and commit one previously nonexistent canonical active plan | `plan-creator` |
-| List/show/review or change the lifecycle of an existing plan | `plan-manager` |
-| Publish an existing canonical plan as a GitHub issue (`--issues` or `publish <slug> as an issue`) | `plan-manager` |
-| Produce internal read-only evidence from a sealed review bundle | `plan-reviewer` |
-| Return one exact accepted-blocker patch or `cannot_repair` to the manager | `plan-repairer` |
+| Bootstrap, migrate, audit, or explicitly refresh `docs/plans/` | `plan-workspace` |
+| Decide direct work versus a canonical plan; create, review, repair, execute, verify, block, schedule, finish, archive, list, show, or publish a plan | main-context `plan-manager` |
+| Inspect one immutable draft-review bundle and return typed findings | internal `plan-reviewer` |
 
-The first three are public skills. The reviewer and repairer are internal.
+No creator, repairer, improver, or manager wrapper is live. A missing reviewer
+wrapper does not create another role: dispatch a fresh read-only task with the
+same `PlanReviewV1` contract.
 
-## Runtime agent dispatch
-
-Skills are canonical. Optional thin Claude/Codex wrappers exist only for
-`plan-manager` and `plan-reviewer`. A manager wrapper may prepare/apply but must
-return reviewer dispatch to main context. A reviewer wrapper is read-only and
-returns typed evidence only. There is no workspace, creator, or repairer
-wrapper. If an allowed wrapper does not resolve, run its canonical skill in the
-proper context; never invent or seed another wrapper family.
-
-## Directory layout
+## Directory and frontmatter
 
 ```text
 docs/plans/
 ├── AGENTS.md
 ├── CLAUDE.md      # exactly @AGENTS.md
 ├── active/        # every nonterminal plan; status is frontmatter
-└── finished/      # terminal archive with ship-date filename prefix
+└── finished/      # terminal archive, unique date-prefixed filename
 ```
 
-`active/` is multi-occupancy. There is no current-plan slot and one plan never
-blocks unrelated work merely by existing. Status lives in exactly one place:
-frontmatter. Only terminal shipment moves a file to `finished/`.
-
-## Frontmatter
-
-Every plan starts with a closed frontmatter map:
+Every current plan starts with a closed frontmatter map. Project-specific fields
+may extend this shape only when the nested contract names them.
 
 ```yaml
 ---
 title: Short imperative title, ≤70 chars
-goal: One precise sentence, ≤200 chars
-status: planned | ongoing | blocked | scheduled | in_review | finished
-created: "2026-07-18T12:00:00+00:00"
-updated: "2026-07-18T12:00:00+00:00"
+goal: One observable sentence, ≤200 chars
+status: drafting | planned | scheduled | ongoing | blocked | finished
+created: "2026-07-24T12:00:00+00:00"
+updated: "2026-07-24T12:00:00+00:00"
 started_at: null
+finished_at: null
 assignee: null
-review_author_company: openai | anthropic | unknown
-review_author_tool: <string>
-review_author_model: <string>
-review_author_effort: <string>
-review_waivers: []
 tags: []
 affected_paths: []
 related_plans: []
-review_status: null
-planned_at_commit: <full 40-hex creation parent>
-execution_base_commit: null
 ---
 ```
 
-Status-specific fields exist only while applicable:
+`blocked` adds `blocked_reason` and `blocked_since`. `scheduled` adds
+`trigger: date | manual-approval`, and a date trigger adds `scheduled_date` plus
+`auto_execute`. Set `started_at` once on first `ongoing`; set `finished_at` only
+when archiving. All timestamps are quoted ISO 8601 with an offset.
 
-| Status | Additional fields |
-|---|---|
-| `blocked` | `blocked_reason`, `blocked_since` |
-| `scheduled` | `trigger: date | manual-approval`, date trigger's `scheduled_date`, `auto_execute` |
-| `in_review` | `in_review_since` set once |
-| `finished` | `ship_commit` full SHA |
+## Cold-handoff body
 
-All times are quoted ISO 8601 with offset, captured at the write. `started_at`
-is set once on the first transition to `ongoing`. `planned_at_commit` is the
-parent of the plan-only add commit and the draft/drift base.
-`execution_base_commit` is the plan-only first-start commit; a second plan-only
-identity commit records that SHA before implementation.
+Every canonical plan contains `## Goal`, `## Context & rationale`,
+`## Environment & how-to-run`, `## Steps`, `## Acceptance criteria`,
+`## Out of scope / do-NOT-touch`, `## STOP conditions`, `## Open questions`,
+`## Review`, and manager-written `## Verification Results`. Use a specific
+`N/A — <reason>` only when a section truly does not apply.
 
-## Creation boundary
+The Steps table is exact:
 
-`plan-creator` acts only when `docs/plans/active/<slug>.md` is absent. It writes
-`planned` or `scheduled`, runs one local self-review, commits only that added
-path, reads the committed bytes back, and returns exactly:
+| # | Task | Files | Depends | Effect | Status | Done when / failure action |
+|---:|---|---|---|---|---|---|
+| 1 | concrete action | exact paths | — | `local` | `planned` | observable proof or STOP |
+
+`Effect` is exactly `local | probe | production_access | publish | push |
+release | deploy`. Status is exactly `planned | in-flight | done | blocked |
+skipped`. Every row names exact paths and an observable done condition.
+Acceptance uses ordered unique ids in an `ID | Command | Expected` table. Plans
+must not contain `TBD`, `TODO`, vague follow-ups, or undefined forward references.
+
+## Current record
 
 ```text
-PlanCreatedV1 {
-  plan_path,
-  creation_commit,
-  planned_at_commit,
-  plan_input_sha256,
-  status
+ReviewPhaseV1 = {
+  state: "not_required"|"not_started"|"reserved"|"retryable"|"repairing"|"passed"|"degraded"|"blocked"|"cancelled",
+  invocations: 0|1|2,
+  input_sha256: null|64hex,
+  result_sha256: null|64hex
+}
+
+PlanRunV1 = {
+  schema: 1,
+  goal_id: uuid,
+  run_id: uuid,
+  repository_id: string,
+  plan_path: normalized-relative-path,
+  requested_effects: ["local", ...("probe"|"production_access"|"publish"|"push"|"release"|"deploy")],
+  risk: "local"|"sensitive"|"external",
+  plan_sha256: 64hex,
+  source_base: null|40hex,
+  source_sha256: 64hex,
+  draft_review: ReviewPhaseV1,
+  execution_parent: null|40hex,
+  implementation_commit: null|40hex,
+  completion_review: ReviewPhaseV1,
+  acceptance: null|{source_sha256:64hex,verification_sha256:64hex},
+  blocker: null|{kind:"user_decision"|"missing_authority"|"concurrent_change"|"user_cancelled"|"verification_failed"|"review_failed"|"legacy_invalid",evidence_sha256:64hex}
 }
 ```
 
-Creation performs exactly one local self-review. `PlanCreatedV1` is invocation-terminal for `plan-creator` and turn-terminal at main unless the same current-user request explicitly asked to create and review. Main must not infer or automatically append an intent-`none` review.
+Compact JCS is byte-authoritative. `repository_id + plan_path + run_id` is the
+run identity. Cross-repository goals use one child run per repository joined by
+`goal_id`; never record an unqualified commit as cross-repository identity.
+`requested_effects` is unique and canonical-ordered, always beginning with
+`local`. It records intended scope, never authority.
 
-The creator never performs canonical review, dispatches, edits the committed plan, implements a step, or changes lifecycle beyond the initial status.
+`plan_sha256` covers the canonical plan after excluding only lifecycle status and
+timestamps, the `Plan-run` line, `## Review`, and `## Verification Results`.
+Goal, scope, paths, steps, effects, safety, acceptance, and open decisions remain
+bound. `source_base` plus `source_sha256` binds a canonical sorted existence,
+kind, mode, and content manifest for every affected path at review time,
+including dirty/untracked bytes and tombstones. `acceptance.source_sha256` binds
+the final affected-path manifest; `verification_sha256` binds canonical
+Verification Results bytes.
+`source_base` is null only before draft review starts and is required thereafter.
+`execution_parent` is null before start and is required, immutable, and exclusive
+to `ongoing`, post-start `blocked`, and `finished` tuples.
 
-## Body spine
+## Closed phase table and transitions
 
-Every plan contains:
+| Phase state | Invocations | Input | Result | Extra rule |
+|---|---:|---|---|---|
+| `not_required` | 0 | null | null | completion only, local risk |
+| `not_started` | 0 | null | null | draft, or sensitive/external completion |
+| `reserved` | 1–2 | hash | null | one live launch only |
+| `retryable` | 1 | hash | failure hash | transport failure only |
+| `repairing` | 1 | hash | reviewer-result hash | accepted repair verdict only |
+| `passed` | 1–2 | hash | reviewer-result hash | validated matching output |
+| `degraded` | 2 | hash | failure-set hash | draft only, local risk only |
+| `blocked` | 1–2 | hash | evidence/result hash | terminal for this run |
+| `cancelled` | 1–2 | hash | cancellation hash | terminal for this run |
 
-- `## Goal`
-- `## Steps`
-- `## Acceptance criteria`
-- `## Cold-handoff checklist`
-- `## Review` with `(filled by main-context plan-manager after completion evidence)`
+Legal phase transitions are only `not_started → reserved`; `reserved → passed |
+repairing | blocked | cancelled | retryable | degraded`; `retryable → reserved |
+blocked | cancelled`; and `repairing → reserved | blocked | cancelled`.
+`reserved → retryable` is invocation 1 only. `reserved → degraded` is invocation
+2, draft/local transport failure only. The second `reserved` consumes the final
+permit. `not_required`, `passed`, `degraded`, `blocked`, and `cancelled` are
+terminal.
 
-Substantive, multi-commit, or handoff plans also contain, or explicitly justify
-`N/A — <reason>` for:
+Before spawning, transactionally increment the invocation count and persist
+`reserved` with the exact input digest. A lost result still consumes that permit.
+An arriving result may mutate only the matching phase while it remains
+`reserved` with the same run id, invocation, and input hash; stale results are
+discarded. Cold entry into `reserved` changes it to `blocked` with dangling-launch
+evidence and never redispatches.
 
-- `## Context & rationale`
-- `## Environment & how-to-run`
-- `## Interfaces & data shapes` when work crosses boundaries
-- `## Out of scope / do-NOT-touch`
-- `## Known gotchas` and `## Global constraints` when applicable
-- `## STOP conditions` for risky assumptions
-- `## Self-review`
-- `## Open questions` for unresolved human decisions
-- `## Sources` for evidence anchors
+## Closed lifecycle and tuple matrix
 
-| Section | Contract |
-|---|---|
-| Goal | observable success and why it matters |
-| Context & rationale | why now and why each non-obvious decision was chosen |
-| Environment & how-to-run | repository, runtime, setup, exact commands and flags |
-| Steps | `# | Task | Files | Depends | Status | Done when / failure action` |
-| Interfaces & data shapes | exact signatures, schemas, and neighboring handoffs |
-| Acceptance criteria | ordered nonempty `ID | Command | Expected` table |
-| Out of scope | adjacent work and protected files stated positively |
-| STOP conditions | evidence that forbids improvisation or mutation |
-| Review | manager-owned completion record only |
+Lifecycle transitions are only absent → `drafting`; `drafting` → `planned |
+scheduled | ongoing | blocked`; `planned` ↔ `scheduled`; `planned | scheduled` →
+`ongoing | blocked`; and `ongoing` → `finished | blocked`. `finished` is terminal.
 
-Step status is exactly `planned|in-flight|done|blocked|skipped`. Every row names
-exact paths and a verifiable done condition. Acceptance ids are unique `A1…` in
-execution order. `TBD`, `TODO`, vague follow-ups, and undefined forward
-references are not cold handoffs.
+| Frontmatter status | Draft phase | Completion phase | Implementation / acceptance | Blocker |
+|---|---|---|---|---|
+| `drafting` | active states through `passed`, plus local-only `degraded` | risk baseline | both null | null |
+| `planned` / `scheduled` | `passed`, or local-only `degraded` | risk baseline | both null | null |
+| `ongoing` local | `passed | degraded` | `not_required` | implementation null; acceptance null | null |
+| `ongoing` sensitive/external before completion | `passed` | `not_started` | both null | null |
+| `ongoing` sensitive/external during/after completion | `passed` | `reserved | retryable | repairing | passed` | implementation required; acceptance required except that replacement clears stale acceptance while `repairing`, then the next reservation rebinds it | null |
+| `blocked` before start | baseline or terminal draft | risk baseline | both null | required |
+| `blocked` local before acceptance | `passed | degraded` | `not_required` | both null | required |
+| `blocked` local after acceptance | `passed | degraded` | `not_required` | implementation null; acceptance required | `concurrent_change` only |
+| `blocked` sensitive/external before completion | `passed` | `not_started` | both null | required |
+| `blocked` sensitive/external during completion | `passed` | `blocked | cancelled` | implementation and acceptance required | required |
+| `blocked` sensitive/external after completion | `passed` | `passed` | implementation and acceptance required | `missing_authority | concurrent_change` only |
+| `finished` local | `passed | degraded` | `not_required` | implementation null; acceptance required | null |
+| `finished` sensitive/external | `passed` | `passed` | implementation and acceptance required | null |
 
-## Cold-handoff checklist
+Draft baseline is `not_started`. Completion baseline is local `not_required` or
+sensitive/external `not_started`. A pre-dispatch `user_decision` or
+`missing_authority` blocker whose phases remain baseline may return to
+`drafting` or `ongoing` when new current-user input answers it; consumed permits
+never reset. Every other blocked or cancelled run is terminal. Continuation uses
+a new `run_id` and treats old output as non-authoritative.
 
-Each item is present and specific or carries a reason proving it is genuinely
-inapplicable:
+## Main-context orchestration
 
-1. File manifest — every step names exact paths.
-2. Environment and commands — versions, setup, variables, commands, flags.
-3. Interface and data contracts — exact cross-step signatures and shapes.
-4. Executable acceptance — ordered commands with expected observable output.
-5. Out of scope — protected adjacent work and its blast-radius rationale.
-6. Decision rationale — the why behind every non-obvious choice.
-7. Known gotchas — traps otherwise available only in conversation.
-8. Global constraints — exact values and limits copied from the request.
-9. No undefined terms or forward references.
+1. Classify the goal. Direct local work stays untracked. Otherwise create one
+   canonical `drafting` plan and current record in the working tree.
+2. Research repository facts, bind the plan/source manifests, reserve draft
+   invocation 1, and launch one fresh `plan-reviewer` over a private immutable
+   bundle. The prompt carries only bundle path plus run/invocation/hash bindings.
+3. On `pass`, continue. On a repository-grounded `repair`, patch only the exact
+   accepted blocking set, recompute both hashes, reserve invocation 2, and use a
+   fresh reviewer. On a real missing decision/authority, block with evidence.
+   A first transport failure may spend invocation 2 as a retry instead of repair.
+   Two transport failures may degrade only reversible local draft work; sensitive,
+   destructive, public-contract, security, or external work blocks.
+4. A plan-only request writes `planned` or `scheduled` and makes one owned-path
+   checkpoint commit/read-back. A canonical implementation writes `ongoing`,
+   captures `execution_parent`, and makes one reviewed start checkpoint.
+5. Implement or delegate local steps, run their requested smoke/acceptance paths,
+   and write canonical Verification Results. Diagnose ordinary verification
+   failures inside the implementation loop; repeated same-signature failure with
+   no relevant-byte progress blocks and never reopens draft review.
+6. Ordinary local work records acceptance, writes `finished`, moves once to a
+   unique archive path, and commits implementation plus finished plan as one final
+   checkpoint. It has no completion reviewer.
+7. Sensitive, destructive, public-contract, security, or external work first
+   commits the implementation checkpoint, binds its exact diff, and runs a fresh
+   code-review agent returning `CompletionReviewV1`. One accepted blocker fix
+   replaces/amends the unpublished checkpoint, reruns invalidated checks, and
+   consumes invocation 2 on the replacement SHA. Only a matching pass may create
+   the archive checkpoint.
 
-Then cold-read only the plan as a weaker executor and list every unanswered
-decision. Repair it or make it an open question; a generic `N/A` is a defect.
+No numeric score, finding quota, fallback provider/model, resumed reviewer,
+third invocation, completion-plan recursion, automatic push, or per-round
+state/request/receipt commit exists.
 
-## Local self-review
+## Transactions and checkpoint commits
 
-Before creation, critique once against exactly:
+Every plan mutation acquires an atomic exclusive lock keyed by repository and
+normalized plan path; verifies exact bytes and run preimage; reduces one closed
+transition; writes and fsyncs a sibling; atomically renames; reads back; then
+releases. A checkpoint additionally acquires the repository lock, verifies
+expected HEAD, index, and owned-path preimage, commits only owned paths, and
+reads the commit back before release. Any mismatch fails before write, dispatch,
+or external action and records `concurrent_change` when the tuple permits.
 
-1. `standalone_executability`
-2. `actionability`
-3. `dependency_order`
-4. `evidence_reverification`
-5. `goal_coverage`
-6. `executable_acceptance`
-7. `failure_modes`
-8. `open_questions`
+A same-host dead-owner lock may be reclaimed only after matching owner PID,
+`run_id`, and unchanged preimages. A live, foreign, ambiguous, or changed stale
+lock blocks. Never weaken a lock, reset the index, include unrelated changes, or
+infer that another session owns a change.
 
-Record specific passes and caught/fixed gaps in `## Self-review`. A genuine
-unknown is never silently defaulted. This one-pass author check has no score and
-is not canonical reviewer evidence.
+Checkpoint ceilings: direct local work 0 automatic commits; reviewed plan-only 1;
+ordinary canonical implementation 2 (start, final); sensitive/external work 3
+(start, implementation, archive). A real terminal blocker may add one cold-handoff
+blocker commit. No automatic push follows any checkpoint.
 
-## Open questions and native picker
+## Reviewer records
 
-Each unresolved entry has an id, context, and either `choice` with bounded
-options, one `(recommended)`, and `custom allowed`, or `text` for a genuinely
-open answer. Whenever a plan with unresolved questions is presented after a
-write, surface every entry through the runtime's native question UI in the same
-turn. If the user defers, retain `NEEDS CLARIFICATION` plus the matching STOP
-condition. When no native UI exists, ask one concise numbered question and end
-the turn without making a dependent mutation.
+```text
+PlanReviewV1 = {
+  schema:1, run_id:uuid, invocation:1|2,
+  plan_sha256:64hex, source_sha256:64hex,
+  verdict:"pass"|"repair"|"blocked",
+  findings:[{id,kind:"missing_decision"|"contradiction"|"unsafe_scope"|"missing_acceptance",locator,defect,fix}]
+}
 
-## Existing-plan ownership
+CompletionReviewV1 = {
+  schema:1, run_id:uuid, invocation:1|2,
+  implementation_commit:40hex, diff_sha256:64hex,
+  verdict:"pass"|"repair"|"blocked",
+  findings:[{id,kind,locator,defect,fix}]
+}
 
-Only `plan-manager` may:
+ReviewInvalidInputV1 = {
+  schema:1,
+  error:"invalid_input",
+  reason:"bundle_unavailable"|"bundle_integrity_failed"|"bundle_binding_mismatch"
+}
+```
 
-- select or render an existing plan;
-- publish an existing canonical plan as a guarded GitHub issue and record its URL;
-- prepare a draft/completion review and return dispatch to main context;
-- independently reproduce and partition findings;
-- invoke one exact accepted-blocker repair;
-- persist orchestration state and canonical receipts;
-- persist and read back prepared requests and single-candidate dispatch commitments;
-- validate and commit controller-abort or authorized-abandonment terminal families;
-- apply an eligible intent once;
-- write status, schedule, block, review, completion, or archive changes;
-- commit a plan-only lifecycle change.
+The two verdict records are closed compact JCS objects capped at 32 KiB. `pass`
+has no findings; other verdicts have at least one. Draft `repair` contains only
+defects resolvable from already-grounded repository facts. Draft `blocked`
+contains only a required user decision or missing safety authority. The manager
+validates every binding and accepts only reproducible findings; reviewer prose
+never mutates state.
 
-Every write is read back. Lifecycle transitions are status-field edits and
-plan-only commits; terminal shipment alone moves the plan to a unique
-`finished/<ship-date>-<slug>.md` path.
+`ReviewInvalidInputV1` is a closed failure result, never a review verdict.
+Classify it before generic transport, parse/output, or verdict handling. The
+manager consumes it only through `review_invalid_input` against the exact
+reserved `run_id`, invocation, and `input_sha256`; it hashes the closed result
+and immediately records the review phase and plan status as terminal `blocked`
+with blocker `review_failed`. It never retries, degrades, repairs, changes any
+other lifecycle state, or infers authority from this result.
+
+## Effects and live authority
+
+Local planning, edits, verification, and lifecycle may continue without external
+authority. Every non-local row requires a live value derived from the exact
+current-user message still present in main context:
+
+```text
+ExternalAuthorityV1 = {
+  scopes: ["probe"|"production_access"|"publish"|"push"|"release"|"deploy", ...],
+  mode: "read"|"mutate",
+  targets: [exact-target, ...],
+  source_sha256: sha256(exact-current-user-message-bytes)
+}
+```
+
+Scopes are unique and canonical-ordered. `probe` must be the sole scope and
+`mode:"read"`; every other scope requires `mode:"mutate"`. Scope, mode, target,
+and live source digest must match at the instant of action. Persisted plan intent,
+an old prompt digest, a schedule, a passed review/test, or a receipt grants
+nothing. Cold recovery requires a new explicit current-user instruction.
+
+A named `release` authorizes only that repository's documented atomic release
+recipe, including its necessary tag/push/artifact publication; it grants no
+deployment or production access. Standalone `push`, `publish`, `deploy`, or
+production mutation needs its own literal scope and target. A probe never grants
+mutation. Without authority, skip and report the external row while continuing
+safe local rows; block only when the missing effect is acceptance-critical.
 
 ## GitHub issue publication
 
-`--issues` and `publish <slug> as an issue` route only to `plan-manager`. This
-operation publishes an existing canonical plan; it never dispatches review,
-changes lifecycle status, or transfers creation ownership from `plan-creator`.
-A missing canonical plan is a STOP, not a route to `plan-creator`.
+`--issues` or `publish <slug> as an issue` is a `publish` effect. Require an
+existing canonical plan plus exact live publish authority for the repository.
+Before creating anything, require successful `gh auth status`, a GitHub remote,
+and `gh repo view --json visibility`. For a public repository, warn that the
+issue is public and require explicit confirmation when the plan names a
+vulnerability, credential location, or other sensitive finding. A failed check,
+missing authority, or declined confirmation creates no issue and writes nothing.
 
-Before publishing, plan-manager must preflight `gh auth status`, require a
-GitHub remote, and run `gh repo view --json visibility`. If authentication,
-the remote, or the visibility lookup fails, publish nothing and report the
-failure. For a public repository, warn that the issue will be public and obtain
-explicit confirmation before publishing a plan that names a vulnerability,
-credential location, or other sensitive finding. Missing or declined required
-confirmation publishes nothing.
+Create the issue with the canonical title/body, record the returned URL in
+`## Notes` through the plan transaction, and read it back. Publication never
+changes lifecycle status, dispatches review, or makes the issue authoritative.
+Report success only after the owned Notes checkpoint succeeds.
 
-Publish with
-`gh issue create --title "<plan title>" --body-file <plan path>`. Record the
-returned issue URL in `## Notes`, read the write back, and auto-commit only the
-plan. Report the issue URL as a successful result only after that Notes commit
-succeeds. The Markdown plan remains the source of truth; GitHub is a published
-view, not a lifecycle or review record.
+## Legacy quarantine and views
 
-## Current schema-6 review orchestration
+List, show, and workspace audit scan frontmatter first; they do not validate every
+active plan as a prerequisite. Classify legacy evidence only for the requested
+target. A record-free plan or complete settled terminal schema-1–6 family may be
+migrated target-locally during an explicitly requested local start. Active,
+prepared, commitment, cancellation, crossed, malformed, or otherwise unsettled
+evidence is `legacy-quarantined`: render it, but never dispatch, resume, abandon,
+repair, consume, or rewrite it.
 
-|Observed condition|Owner and next action|Forbidden action|
-|---|---|---|
-|No plan identity; clear low-risk direct task|main implements and runs targeted verification|create/review/repair a canonical plan|
-|New canonical plan requested/required|creator drafts, self-reviews once, returns `PlanCreatedV1`|automatic manager review|
-|Planned/scheduled explicit review or lifecycle start/fire|manager runs the existing bounded schema-6 operation|more than one full + one repair round|
-|`ongoing`; only catalog/generated-manifest/external snapshot/pin/hash/count changed; nine authority boundaries unchanged|implementation rebinds observed execution inputs and reruns the failed gate once|begin/prepare/dispatch/repair plan review|
-|Goal, scope, affected paths, safety authority, budget/resources, architecture/interfaces, acceptance contract, lifecycle intent, or settled user decision changed|plain turn-terminal response to block and explicitly amend; later review the amended blocked plan|infer amendment, create orchestration evidence, or review stale plan|
-|Ambiguous pre-review drift|plain turn-terminal response naming the unresolved boundary and allowed amendment action|emit orchestration `NeedsUserAction` or default to review|
-|Exact caller-held schema-6 result|manager settles immediately through the atomic family reducer; pass may consume one eligible intent, non-pass stops|fresh bundle/reviewer/repairer|
-|Attempt-1 retryable `stopped` plus exact current-user authorization|begin same-key attempt 2 once|automatic retry, attempt 3, or retry from `stuck`/nonretryable state|
-|Other terminal result for the same `(phase,intent_group,input_sha256)`|render/stop or consume the one eligible intent|reprepare, redispatch, or metadata reset|
-|Completion requested after implementation|completion review only|another draft review|
-
-Execution rebind is operation-local: one rebind plus one rerun of the failed command. If observations do not change or the same mismatch remains, return one plain turn-terminal user action; never repeat rebind or open review.
-
-`turn-terminal` is the final user response for this turn: no later tool, subagent, review, repair, retry, reprepare, plan, or lifecycle action. `invocation-terminal` is the final result of the current child skill or wrapper; main may consume it in the same turn. `candidate-terminal` is any typed output or failure from the sole runtime-current reviewer. It ends that reviewer invocation and returns once; no transport, provider, model, or candidate fallback follows.
-
-Every completed main manager operation—successful settlement, intent application, no-op result, or user action—is turn-terminal. Reviewer outputs, repairer results, `PlanCreatedV1`, and delegated wrapper handoffs are invocation-terminal. Direct helper returns inside main are intermediate.
-
-An exact caller-held schema-6 result settles immediately through the atomic family reducer: pass may consume one eligible intent, while non-pass stops. It never creates a fresh bundle or dispatches a reviewer or repairer. Any other terminal result for the same `(phase,intent_group,input_sha256)` stops or consumes the one eligible intent without reprepare, redispatch, or metadata reset. Attempt 2 begins only from an attempt-1 retryable `stopped` result plus exact current-user authorization; it is never automatic, never attempt 3, and never available from `stuck` or nonretryable state. Completion requested after implementation routes only to completion review, never another draft review.
-
-Emit concise progress text only, not `PlanProgressV1`: `Plan review: attempt A/2, round R/2, stage <full|repair|settling>`. Update only on stage changes; there is no candidate-fallback stage.
-The current policy is exactly
-`{schema:6,role:"primary",fallback:"none",max_rounds:2,candidates:[runtimeCurrent],provenance:{role:"skill_default",fallback:"skill_default",max_rounds:"skill_default",candidates:"runtime_global"}}`.
-`runtimeCurrent` matches `request.author` company, tool, model, and effort. A
-Codex candidate additionally has `service_tier:"default"`; a Claude candidate
-has no `service_tier`. The request candidate identity must equal
-`request.author`. A user, wrapper, record, transport failure, or reviewer
-failure cannot add, reorder, narrow, or replace that sole candidate.
-
-### Draft review
-
-For `request.phase === "draft"`, `blocking_gap` is eligible only when implementation cannot safely and correctly start because of an unresolved required user decision, contradictory goal/scope/interface, unsafe or unauthorized action, impossible dependency order, missing first executable step, or absent/non-executable acceptance contract. Code style, optional refactors/docs, speculative performance, exhaustive implementation edge cases, exact internal symbol choices, and defects best established by running the implementation are `non_blocking_gap` with rejection/defer reason `defer_to_implementation_verification`. A complete simple plan may return `pass`; there is no finding quota and no instruction to improve until perfect.
-
-### Completion review
-
-For `request.phase === "completion"`, the read-only reviewer classifies only defects observable in the sealed plan, committed diff, and acceptance inventory: goal/scope/public-contract/safety contradictions, unreviewable diff coverage, or an acceptance criterion missing from the inventory. It does not receive or infer command results. Missing or failed required acceptance evidence and observed runtime regressions remain manager-owned through the existing hash-bound `primary` completion evidence and verdict derivation. Speculative concerns remain `non_blocking_gap`; the reviewer never runs tests or CI.
-
-### Current-plan evidence provenance
-
-Reviewer evidence is limited to the exact committed plan blob at the exact plan
-path and `HEAD`, the committed blobs sealed into the immutable bundle, and the
-managed reviewer-workspace identity already bound by schema 6. Uncommitted,
-ignored, or generated bytes outside that sealed input are not reviewer evidence
-and cannot become findings or repair targets.
-
-A plan-path/`HEAD` or managed-workspace mismatch is pre-review provenance drift.
-Return one turn-terminal corrective action; never begin, prepare, dispatch, or repair. Attribute another session only when lease/session identity proves it.
-
-Leases, session branches, integration checkout, resource allocation, cleanup, and race testing require a separate architecture plan.
-That plan must first audit Docks, OMP, and Session Relay lease ownership. No `docks session` CLI is promised before that audit.
-
-A review series is one full round plus at most one changed-input repair. Main creates one new `plan-reviewer` per round using the request-bound current runtime model.
-It never resumes a reviewer/session or uses Session Relay for review. A terminal output/failure returns once; no provider/model fallback follows.
-Retryable availability, timeout, or unparseable evidence settles attempt 1 as `stopped`. One exact current-user same-input authorization may start attempt 2 with a new reviewer at the same runtime identity.
-A repeated failure or any nonretryable failure is `stuck` with no further retry. Otherwise, unchanged canonical input is never reviewed again.
-
-The no-progress key is
-`(plan_path,phase,intent_group,current_input_sha256)`. Timestamps,
-lifecycle-only frontmatter, review records/receipts, and the orchestration
-record are excluded, so metadata-only edits cannot reset the counter; only
-genuinely changed canonical input starts a new series at attempt 1. No
-automatic reprepare, attempt 3, round 3, or continuation batch is valid.
-
-### Verification scopes
-
-`plan-structure` verification consists of frontmatter, parser, hash, plan-only commit, and read-back checks for authoring, review, repair, receipt, and lifecycle-only edits. It runs no implementation acceptance command, build, lint, typecheck, test suite, or CI.
-
-`targeted implementation` verification applies only after code changes. Run the smallest acceptance reproduction or smoke check plus directly affected tests.
-
-`expanded implementation` verification also applies only after code changes. Add dependent or representative consumer checks only for shared harness, configuration, generated, public-contract, security, or release surfaces, or when a concrete targeted failure requires them.
-
-`final repository gate` verification runs once only when repository policy explicitly requires it for the final implementation tree. Plan-only and lifecycle commits reuse prior green implementation evidence while implementation bytes are unchanged.
-
-The plan acceptance table selects future implementation checks. Plan authors, reviewers, and repairers validate that selection but do not execute it. Completion review consumes only the sealed plan, committed diff, and acceptance inventory; the manager consumes observed implementation and CI evidence once and requests only missing contract proof, never duplicate full CI.
-
-Implementation evidence remains bound to the implementation tree and `affected_paths`. The bound identity is SHA-256 of compact JCS over sorted entries, each recording the exact repo-relative path, Git kind and mode, and blob SHA-256, or an explicit tombstone for absence. Exclude the plan or orchestration path unless it is itself an affected implementation path. Recompute before reuse and require exact digest equality; any affected-path byte, mode, kind, or presence change invalidates reuse and requires fresh verification at the applicable implementation scope. This contract does not change closed review-policy schemas.
-
-Evidence reuse never collapses authorization commits. Active-state, prepared-request, and dispatch-commitment commits remain separate because each later artifact is derived only after committed read-back of its predecessor.
-
-If an active plan changes the canonical review controller, `plan-manager`, or
-`plan-reviewer` mechanism it would use for its own completion, same-checkout
-self-dispatch is forbidden. Return `NeedsUserAction` and require an independent
-trusted released or pinned bootstrap reviewer path, or a later fresh session
-using a trustworthy controller. Never repair, reseal, or replace the
-orchestration in place to bypass this boundary. Any `stopped` or `stuck`
-result, including an attempt-2 failure, returns `NeedsUserAction` without
-automatic reprepare or retry.
-
-Current schema-6 orchestration may persist these exact unfenced records:
-
-```text
-Review-orchestration-state: <compact JCS ReviewOrchestrationStateV1|V2>
-Review-orchestration-prepared-request: <compact JCS ReviewPreparedRequestV1>
-Review-orchestration-dispatch-commitment: <compact JCS ReviewDispatchCommitmentV1>
-Review-orchestration-controller-abort: <compact JCS ReviewControllerConfigAbortV1>
-Review-orchestration-abandonment: <compact JCS ReviewOrchestrationAbandonmentV1>
-```
-
-Main-context `plan-manager` writes the active state and exact deep-copied
-prepared request in a plan-only commit and reads the committed plan blob back
-before constructing controller configuration. Before a Codex commitment, it
-verifies the sealed bundle's absolute safe path and request-bound digest, then
-calls `prepareReviewerWorkspace` for a safe schema-6 workspace. It validates
-managed root/path containment, owner/mode, non-symlink status, and request/leg
-sentinel identity. Claude requires `reviewer_workspace:null`.
-
-`buildReviewerArgv` derives argv only; it never authorizes a process. The sole
-candidate commitment binds the sealed bundle path/digest, derived argv and
-`orchestrator_tool/600`, plus a deep copy of the complete non-secret workspace
-record and its JCS hash. The manager writes it in a separate plan-only commit
-and reads it back.
-Every schema-6 commitment persists the recursively validated
-`prior_attempts:[]` and
-`prior_attempts_sha256 = sha256(JCS([]))`; `candidate_index` is exactly `0`.
-Any nonempty `prior_attempts` or other candidate index is invalid because
-schema 6 has no candidate fallback.
-
-`dispatchCommittedReviewer({repo,planPath,committedPlanCommit,
-expectedPreparedRequestSha256,expectedDispatchCommitmentSha256,
-proposedControllerConfig,controllerAdapter})` is the sole consuming process
-boundary. It requires the commitment commit to equal current `HEAD`, be
-single-parent and plan-only, reads that exact Git plan blob, and revalidates the
-expected request/commitment hashes, candidate position, exact prior-attempt
-sequence/hash, sealed bundle path/content digest, and committed workspace
-record/hash. For Codex it independently revalidates workspace root/path,
-owner/mode, non-symlink status, and sentinel before rederiving argv with the
-committed workspace and prior attempts; Claude requires a null workspace. It
-verifies argv/hash separately.
-
-Bundle/workspace identity is independently verified and never caller-supplied
-controller configuration. Exact JCS comparison of `ProposedControllerConfigV1`
-covers only candidate index, argv/hash, and fixed `orchestrator_tool/600`
-timeout fields. Only then may the gate call trusted
-`controllerAdapter.dispatch` exactly once with committed values. Any stale,
-substituted, non-plan-only, multi-parent, or hash/argv/config mismatch calls the
-adapter zero times; neither derived argv nor a commitment is reusable launch
-authorization.
-
-Before dispatch it also requires current worktree bytes at `planPath` to equal
-`git show <committedPlanCommit>:<planPath>` byte-for-byte (or enforces
-equivalent plan-path cleanliness); uncommitted post-commit plan drift calls the
-adapter zero times. The gate requires `candidate_index:0` and
-`prior_attempts:[]`; any earlier-candidate evidence or fallback proposal calls
-the adapter zero times.
-
-Repair advancement is one source-plan-bound compare-and-swap: it atomically
-removes the round-one prepared request and commitment while writing only the
-active round-two state. The manager commits and reads back that record-free
-transition before a separate commit/read-back of the distinct round-two
-prepared request; only the consuming dispatch gate may use a later exact-600 commitment.
-
-A controller configuration abort is allowed only from the exact committed
-active source family with its prepared request and with no commitment or
-process evidence. Authorized abandonment is a separate request-free
-administrative transition available only to main-context `plan-manager` from
-explicit current-user authorization for that exact plan/state. It persists
-canonical base64 of the exact current-user UTF-8 bytes plus their digest and
-never fabricates a request, run, series, receipt, verdict, retry, repair, or
-apply authority.
-
-`canonicalPlanView(bytes)` remains structural. Before committing any reducer
-terminal output, the manager calls
-`validateReviewTerminalFamily({currentPlanBytes,parentPlanBytes})` against the
-exact source-plan bytes. After the plan-only commit, it reads the committed
-child plan blob and its single parent plan blob from Git and reruns the same
-validator. Parent-hash drift, a missing or extra parent, or any child/parent
-mismatch rejects the transition.
-
-Terminal `ReviewOrchestrationStateV2` embeds a deep copy of the exact active
-source StateV1/V2 and binds its self-hash. Controller-abort and abandonment
-families are disjoint from each other and from series/receipts, use distinct
-StateV2-only stuck reasons, and are nonretryable and apply-ineligible. Only
-materially changed canonical input may replace a complete terminal family
-through `replaceReviewTerminalFamily`; same-input reset or partial removal is
-invalid.
-
-Terminal non-executing work returns:
-
-```text
-NeedsUserAction {
-  plan_path,
-  phase,
-  lifecycle_intent,
-  current_input_sha256,
-  orchestration_attempt,
-  stop_reason,
-  state_sha256,
-  allowed_next
-}
-```
-
-It returns normally without a prompt loop, sleep, hidden retry, or automatic
-reprepare. Only the schema-6 policy implementation may derive stop reasons from
-validated collector evidence; callers never supply a result string.
-
-## Reviewer and repairer boundaries
-
-`plan-reviewer` receives one sealed immutable bundle and exact current request.
-It reads no moving source worktree and returns recursively closed typed evidence
-for the eight checklist criteria. It never edits, reconciles, writes a receipt,
-changes lifecycle, applies an intent, creates a follow-up, or dispatches an
-agent.
-
-`plan-repairer` receives only the manager-accepted, independently reproduced
-blocking set and its bound prior/current input identities. It applies one
-minimal section-level patch or returns `cannot_repair`. It never expands scope,
-repairs advisory findings, reviews its own patch, dispatches, writes receipts,
-or changes lifecycle.
-Neither role may create, commit, abort, abandon, replace, or validate an
-orchestration family. `plan-reviewer` remains evidence-only and
-`plan-repairer` remains patch-only.
-
-Main-context `plan-manager` is the sole dispatcher and reconciler. It launches
-one new reviewer per round through the committed gate; Session Relay is never a
-review transport or evidence source, and a prior reviewer handle or session is
-never resumed.
-
-## Canonical input and receipts
-
-Canonical plan input excludes only the lifecycle/frontmatter and exact machine
-records recognized by the installed schema-6 policy implementation. Ordinary
-plan prose, including Self-review and Review prose, remains input. Never
-re-create the exclusion list in a caller.
-
-Current requests, bundles, outputs, attempt ledgers, orchestration states,
-waivers, and receipts are closed and hash-bound. Draft evidence binds the exact
-plan input and immutable commit/head. Completion additionally binds the exact
-planned/start identities, canonical diff, and nonempty ordered acceptance
-inventory with one-to-one evidence. Every write is atomic, read back, and
-committed plan-only.
-
-Schema 5 alone retains availability-only fallback and its exact ordered
-three-candidate policy:
-`openai/codex/gpt-5.6-sol/high` with `service_tier:"default"`, then
-`anthropic/claude/fable/high`, then `anthropic/claude/opus/xhigh`.
-
-Historical schemas 1–5 may be validated only by their historical branches.
-Their fixed schemas, manifests, fixtures, receipts, names, and canonicalization
-results remain byte-compatible and never become current aliases.
-
-## On-demand views
-
-A status view reads every active plan, computes age/progress without writing,
-and labels status with tokens such as `2d in flight`, `blocked 47d`, or
-`shipped 4d ago`. Rendered HTML belongs under ignored disposable paths. The plan
-Markdown and frontmatter remain the source of truth.
+An unrelated fresh local goal may create a new `PlanRunV1`; dangling legacy
+records provide no authority. External recovery always requires new live
+`ExternalAuthorityV1`. Never edit a historical finished plan during migration,
+audit, list, show, or current orchestration.
 
 ## Audit checks
 
-Before claiming a plan operation succeeded, verify the exact path, closed
-frontmatter, required body sections, plan-only commit path set, and relevant
-hash/parent identities. Never claim a wrapper ran merely because its file
-exists, never claim review passed from preparation, and never translate invalid
-evidence into a lifecycle mutation.
+Before claiming success, verify the exact path, closed frontmatter, one valid
+Plan-run line, repository/path/run identity, status tuple, plan/source hashes,
+transaction read-back, owned commit path set, review permit count, and observed
+acceptance bindings. Never claim a wrapper ran merely because its file exists,
+claim review passed from reservation, translate stale output into state, or
+translate persisted intent into external authority.

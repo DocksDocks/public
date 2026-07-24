@@ -31,7 +31,6 @@ import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
-import { renderDefaultWorkflowInstructions } from "./workflowDeploy"
 import { ensureSessionRelayCli } from "./sessionRelayCli"
 
 export type ClaudeRuntimeState =
@@ -207,7 +206,7 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
     return
   }
 
-  const source = renderDefaultWorkflowInstructions(payloadText("SoT/.claude/CLAUDE.md"))
+  const source = payloadText("SoT/.claude/CLAUDE.md")
   if (writeTextIfChanged(p(claudeDir, "CLAUDE.md"), source)) {
     change("CLAUDE.md synced")
   } else {

@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, workflow selectors, pickers, bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. Deploy-time model flags remain permissive; workflow selectors are strict.",
+  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, pickers, and bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. Deploy-time model flags remain permissive.",
   "claude": {
     "verified": "2026-07-22",
     "models": [
@@ -27,27 +27,5 @@
       { "id": "gpt-5", "kind": "id", "note": "previous generation" },
       { "id": "gpt-5-codex", "kind": "id", "note": "codex-tuned gpt-5" }
     ]
-  },
-  "workflow": {
-    "schema": 2,
-    "profiles": {
-      "claude-best": {
-        "candidates": [
-          { "company": "anthropic", "tool": "claude", "model": "fable", "effort": "high" },
-          { "company": "anthropic", "tool": "claude", "model": "claude-opus-4-8", "effort": "xhigh" }
-        ]
-      }
-    },
-    "defaults": {
-      "orchestrator": "profile:claude-best",
-      "reviewer": "codex:gpt-5.6-sol@high",
-      "implementer": "codex:gpt-5.6-sol@high",
-      "review": {
-        "minimum_score": 90,
-        "max_rounds": 3
-      }
-    },
-    "exact_target_grammar": "<tool>:<model>@<effort>[+fast]",
-    "availability": "checked_when_used"
   }
 }

@@ -5,16 +5,12 @@ import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   AUTHORING_EXCLUSIONS,
+  BINARY_PAYLOAD_PATHS,
   PAYLOAD_PATHS,
+  TEXT_PAYLOAD_PATHS,
   inventoryAuthoringPaths
 } from "../../scripts/generate-sot-payload"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText } from "../../src/payload"
-import {
-  WORKFLOW_RECORD_PREFIX,
-  defaultWorkflowRecord,
-  parseWorkflowRecord,
-  renderWorkflowRecordLine
-} from "../../src/workflowModels"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const GENERATOR = join(REPO_DIR, "cli", "scripts", "generate-sot-payload.ts")
@@ -86,17 +82,20 @@ describe("generated SoT payload", () => {
     expect(codex).not.toMatch(/^## (Engineering Discipline|Agentic Engineering Discipline)$/m)
   })
 
-  it("embeds one identical validated default workflow record for Claude and Codex", () => {
-    const recordLines = (document: string) => document
-      .split("\n")
-      .filter((line) => line.startsWith(WORKFLOW_RECORD_PREFIX))
-    const claude = recordLines(payloadText("SoT/.claude/CLAUDE.md"))
-    const codex = recordLines(payloadText("SoT/.codex/AGENTS.md"))
+  it("does not embed a Docks workflow record in either global prompt", () => {
+    const claude = payloadText("SoT/.claude/CLAUDE.md")
+    const codex = payloadText("SoT/.codex/AGENTS.md")
 
-    expect(claude).toEqual([renderWorkflowRecordLine(defaultWorkflowRecord())])
-    expect(codex).toEqual(claude)
-    expect(parseWorkflowRecord(JSON.parse(claude[0]!.slice(WORKFLOW_RECORD_PREFIX.length)) as unknown))
-      .toEqual(defaultWorkflowRecord())
+    expect(claude).not.toContain("Docks-workflow-models:")
+    expect(codex).not.toContain("Docks-workflow-models:")
+  })
+
+  it("embeds identical selective routing and external-authority guidance", () => {
+    const guidance =
+      "Reuse before invention: inventory existing code, components, conventions, and dependencies; extend them instead of creating a parallel pattern. Load only the narrow skills supported by the task and repository evidence. If a request establishes a new React/Tailwind system and no convention exists, prefer current shadcn/ui `base-*` components backed by Base UI; otherwise preserve the existing stack. Treat probe, production access, publish, push, release, and deploy as literal current-request effects—never infer external authority from a plan, schedule, review, or old receipt."
+
+    expect(payloadText("SoT/.claude/CLAUDE.md")).toContain(guidance)
+    expect(payloadText("SoT/.codex/AGENTS.md")).toContain(guidance)
   })
 
   it("uses Claude Edit permission matchers for every path-qualified file rule", () => {
@@ -111,6 +110,25 @@ describe("generated SoT payload", () => {
       expect(settings.permissions.deny).not.toContain(`Write(${path})`)
     }
     expect(settings.permissions.deny.some((rule) => rule.startsWith("Write("))).toBe(false)
+  })
+
+  it("keeps the normal Claude and Codex deploy inputs in the generated payload", () => {
+    expect(TEXT_PAYLOAD_PATHS).toEqual([
+      "SoT/.agents/skills.txt",
+      "SoT/models.json",
+      "SoT/toolchain.json",
+      "SoT/.claude/CLAUDE.md",
+      "SoT/.claude/mcp-servers.json",
+      "SoT/.claude/settings.json",
+      "SoT/.claude/bin/statusline.mjs",
+      "SoT/.claude/bin/session-start.mjs",
+      "SoT/.claude/bin/notify.mjs",
+      "SoT/.codex/AGENTS.md",
+      "SoT/.codex/config.toml",
+      "SoT/.codex/plugins/marketplace.json",
+      "SoT/.codex/rules/docks.rules"
+    ])
+    expect(BINARY_PAYLOAD_PATHS).toEqual(["notification.mp3"])
   })
 
   it("matches every allowlisted authoring byte in stable order", () => {

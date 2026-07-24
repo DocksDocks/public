@@ -15,8 +15,7 @@ import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { ExitError, parseArgs, parseWorkflowArgs, printWorkflowUsage, validateModifierFlags } from "./parseArgs"
-import { deployWorkflowOverrides } from "./workflowDeploy"
+import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs"
 
 export type ModifierFlag =
   | "--claude-model"
@@ -127,18 +126,6 @@ function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
   return 0
 }
 
-function engineWorkflow(ctx: Ctx, args: ReadonlyArray<string>): number {
-  try {
-    const overrides = parseWorkflowArgs(ctx, args)
-    deployWorkflowOverrides(ctx, overrides)
-    return 0
-  } catch (error) {
-    if (error instanceof ExitError) throw error
-    printWorkflowUsage(ctx)
-    ctx.services.logger.err(error instanceof Error ? error.message : String(error))
-    throw new ExitError(2)
-  }
-}
 
 export function runEngineNative(argv: ReadonlyArray<string>, services?: EngineServices): number {
   let ctx!: Ctx
@@ -165,8 +152,6 @@ export function runEngineNative(argv: ReadonlyArray<string>, services?: EngineSe
         return modeModel(ctx, argv.slice(1))
       case "toolchain":
         return modeToolchain(ctx, argv.slice(1))
-      case "workflow":
-        return engineWorkflow(ctx, argv.slice(1))
       case "sync":
         return engineSync(ctx, argv.slice(1))
       default:

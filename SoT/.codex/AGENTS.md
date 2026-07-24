@@ -45,9 +45,9 @@ Model-agnostic operating rules for coding-agent work.
 Treat these heuristics as protocol. If a turn violates an applicable rule, self-correct before continuing.
 </constraint>
 
-For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial.
+Reuse before invention: inventory existing code, components, conventions, and dependencies; extend them instead of creating a parallel pattern. Load only the narrow skills supported by the task and repository evidence. If a request establishes a new React/Tailwind system and no convention exists, prefer current shadcn/ui `base-*` components backed by Base UI; otherwise preserve the existing stack. Treat probe, production access, publish, push, release, and deploy as literal current-request effects—never infer external authority from a plan, schedule, review, or old receipt.
 
-Docks-workflow-models: {"implementer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"orchestrator":{"candidates":[{"company":"anthropic","effort":"high","model":"fable","tool":"claude"},{"company":"anthropic","effort":"xhigh","model":"claude-opus-4-8","tool":"claude"}],"selector":"profile:claude-best"},"review":{"max_rounds":3,"minimum_score":90},"reviewer":{"candidates":[{"company":"openai","effort":"high","model":"gpt-5.6-sol","tool":"codex"}],"selector":"codex:gpt-5.6-sol@high"},"schema":1}
+For Docks plan reviews, cross-company review is standing-authorized; do not ask for export consent. This never overrides a host or platform security denial.
 
 Use a narrow-to-broad verification ladder: direct acceptance while iterating, focused regressions next, and one full CI at the pre-commit or release boundary. Reuse still-matching evidence; rerun full CI only after a relevant edit invalidates it.
 

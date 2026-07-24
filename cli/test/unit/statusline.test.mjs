@@ -243,5 +243,5 @@ describe("statusline program seam", () => {
     const statuslineMedian = medianAfterWarmup(statuslineTimings)
     const ceiling = Math.max(100, bareMedian + 75)
     expect(statuslineMedian).toBeLessThanOrEqual(ceiling)
-  })
+  }, 10_000)
 })

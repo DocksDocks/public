@@ -83,13 +83,13 @@ describe("checkout launcher binary selection", () => {
     const platform = { system: "Linux", machine: "x86_64" }
 
     const version = runLauncher(fixture, platform, ["--version"])
-    const workflow = runLauncher(fixture, platform, ["models", "workflow", "--json"])
+    const catalog = runLauncher(fixture, platform, ["models", "claude", "--json"])
 
     expect(version.status).toBe(0)
     expect(version.stdout.trim()).toBe(CURRENT_VERSION)
-    expect(workflow.status).toBe(0)
-    expect(workflow.stdout.trim()).toBe("source:models workflow --json")
-    expect(workflow.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 0.4.0; checkout is")
+    expect(catalog.status).toBe(0)
+    expect(catalog.stdout.trim()).toBe("source:models claude --json")
+    expect(catalog.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 0.4.0; checkout is")
   })
 
   it.each([
