@@ -1,11 +1,11 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
-goal: Publish docks-kit 0.10.2 from the retained four-file implementation and one reviewed four-artifact expectation commit, prove the single immutable release, and preserve the Session Relay authority chain.
+goal: Verify the immutable docks-kit 0.10.2 release against the published five-asset Linux/macOS contract, preserve its receipt/tag/run, and archive without changing release bytes.
 status: blocked
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T03:26:56-03:00"
+updated: "2026-07-24T09:55:45-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
-blocked_reason: "P1 passed for immutable `cli-v0.10.2` at `ac5f17e949022b56bb97a81155662bda916820a3`: the sole workflow run `30072118556` succeeded. P2 failed before download or checksum verification because the stable Release has exactly five assets—`SHA256SUMS` plus `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, `docks-kit-linux-x64`, and `docks-kit-linux-arm64`—and lacks the planned `docks-kit-windows-x64.exe`; frozen `.github/workflows/release-cli.yml:3,38-46` explicitly declares and builds only those four Linux/macOS targets and has no Windows job. Required current-user decision: (a) accept the repository-documented four-target/five-asset stable contract, amend both plans plus P2/A18, and fresh-review the changed input without altering tag or Release bytes; or (b) stop promotion/finalization as an incident. No force, retag, second run, manual asset upload, workflow edit, or branch push is authorized."
+blocked_reason: "The current user accepted the published five-asset stable contract—`SHA256SUMS` plus `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, `docks-kit-linux-x64`, and `docks-kit-linux-arm64`—and explicitly confirmed that Windows is unsupported. P1 remains passed for immutable `cli-v0.10.2` at `ac5f17e949022b56bb97a81155662bda916820a3`; sole workflow run `30072118556` succeeded. This plan-only post-completion contract amendment preserves the exact completion receipt, tag, run, implementation identities, and Release bytes. Await direct plan-manager unblock, then rerun P2 under the accepted contract followed by P3 and P4 read-only. No review renewal, retag, second run, asset upload/deletion, workflow edit, or branch push is authorized."
 blocked_since: "2026-07-24T03:26:56-03:00"
 assignee: null
 review_author_company: openai
@@ -36,7 +36,7 @@ execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
 
 ## Goal
 
-Retain the reviewed four-file implementation commit `f562ffde3b12c98072b02166c92c85ffbc6d90f9`, add one separately reviewed commit containing only two deterministic unit expectation updates and the two canonical recorder outputs, then tag the passed completion-reviewed head as `cli-v0.10.2`, prove the sole workflow run, stable six-asset Release, npm publication, and preserved authority chain, and finally archive this plan in a distinct plan-only descendant.
+Retain the reviewed implementation and deterministic expectation commits, the passed schema-6 completion receipt, immutable lightweight tag `cli-v0.10.2` at `ac5f17e949022b56bb97a81155662bda916820a3`, and sole successful workflow run `30072118556`; prove the stable Release's exact five-asset Linux/macOS matrix, npm publication, and preserved Session Relay authority chain; record that Windows is unsupported; then archive this plan in a distinct plan-only descendant without changing release bytes.
 
 ## Context & rationale
 
@@ -55,6 +55,8 @@ After fresh changed-input review and explicit unblock, update only the two stale
 
 Release identity is deliberately three-stage. `PUBLIC_IMPLEMENTATION_COMMIT` is the retained exact four-file commit above. `PUBLIC_TEST_ARTIFACT_COMMIT` is the one future commit whose own diff contains exactly the two unit expectation files and two recorder-owned golden files. `PUBLIC_RELEASE_COMMIT` is the later exact `reviewed_head` from the passed reusable schema-6 `Completion-review-receipt:`; it contains both artifact commits and the exact eight affected-path closure. Only after that receipt exists may the executor prove absence, create lightweight `cli-v0.10.2` at that exact commit, and push that tag once. `PUBLIC_PLAN_COMMIT` is the later plan-manager ship/archive commit; it must be a strict descendant of `PUBLIC_RELEASE_COMMIT` and preserve the exact completion receipt. The parent session, not this child plan, may push public `main` after the finished-plan read-back.
 
+The current user accepted the published stable contract exactly as released: five assets total—`SHA256SUMS` plus `docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-x64`, and `docks-kit-darwin-arm64`—with exactly four checksum rows validating those four binaries. `docks-kit-windows-x64.exe` is explicitly absent because Windows is unsupported; this is not a temporary omission, missing artifact, or future-release promise. This is a post-completion production-contract correction only. Preserve the passed completion receipt byte-for-byte and do not open a new draft or completion review family: its `reviewed_head` is the immutable already-pushed tag target, so renewal would invalidate P1/S1 or require forbidden retagging. P1 remains passed; after direct manager unblock, rerun P2 read-only under this accepted matrix, then P3 and P4.
+
 ## Environment & how-to-run
 
 - Repository: `/home/vagrant/projects/public`, repository id `DocksDocks/public`; remain on the assigned branch and do not create or switch branches.
@@ -64,14 +66,14 @@ Release identity is deliberately three-stage. `PUBLIC_IMPLEMENTATION_COMMIT` is 
 - Generator write/check: the retained implementation already ran `bun cli/scripts/generate-sot-payload.ts`; revalidate with `bun cli/scripts/generate-sot-payload.ts --check`.
 - Golden recorder writes, after the two unit expectations change: `bun cli/test/golden-dryrun.ts --update-goldens`, then `bun cli/test/golden-mutation.ts --update-goldens`. These are the only authorized golden writers.
 - Focused tests after the exact four-artifact commit: `bun run test:unit -- cli/test/unit/sessionRelayCli.test.ts cli/test/unit/pluginRefresh.test.ts cli/test/unit/toolchain.test.ts cli/test/unit/engine-di.test.ts`.
-- Lifecycle ownership: current schema-6 `plan-manager` alone performs the fresh changed-input draft review while status remains `blocked`, consumes the current user's explicit unblock intent only after a pass, persists completion review/receipt evidence, closes post-production rows, and ships/archives. Current `plan-reviewer` is read-only and current `plan-repairer` may return only one exact accepted-blocker patch to the manager. The implementation worker never writes receipt or lifecycle state directly.
-- Exact completion invocation after `PUBLIC_TEST_ARTIFACT_COMMIT` and the fresh A1–A8 pass: `plan-manager complete docs/plans/active/session-relay-cli-0.13.0-production-release.md`. Require `review_status: passed`, one reusable schema-6 `Completion-review-receipt:`, and `PUBLIC_RELEASE_COMMIT=receipt.reviewed_head`.
-- Exact ship invocation after P1–P4 pass and manager-owned Step 4/5 row closure: `plan-manager ship docs/plans/active/session-relay-cli-0.13.0-production-release.md`. Require `docs/plans/finished/2026-07-24-session-relay-cli-0.13.0-production-release.md` with `status: finished`.
+- Lifecycle ownership: current schema-6 `plan-manager` alone applies the current user's direct unblock, preserves the passed completion receipt, closes the remaining production rows, and ships/archives. Do not open a new draft or completion review family for this post-completion contract correction. The implementation worker never writes receipt or lifecycle state directly.
+- Completion already passed at immutable `PUBLIC_RELEASE_COMMIT=ac5f17e949022b56bb97a81155662bda916820a3`; do not rerun `plan-manager complete`. Preserve the sole schema-6 `Completion-review-receipt:` line byte-for-byte.
+- Exact ship invocation after preserved P1 and fresh read-only P2–P4 pass with manager-owned Step 4/5 row closure: `plan-manager ship docs/plans/active/session-relay-cli-0.13.0-production-release.md`. Require `docs/plans/finished/2026-07-24-session-relay-cli-0.13.0-production-release.md` with `status: finished`.
 - Every npm read creates a new directory using `mktemp -d /tmp/docks-npm-read.XXXXXX`, applies `chmod 700`, asserts mode `700`, uses it only through `NPM_CONFIG_CACHE`, and removes it. Never use the default cache or reuse a prior temporary cache.
 
-### Completion-receipt identity and tag-only push
+### Completed completion-receipt/tag-only mutation record — do not rerun
 
-After completion passes, run this exact block. It parses the sole schema-6 receipt, performs the complete absence preflight before any mutation, creates one lightweight tag, pushes only its exact refspec once, and reconciles a nonzero push without retry:
+The following exact block records the already completed absence fence, lightweight tag creation, one exact refspec push, and nonzero reconciliation contract. It is historical evidence only and must not be rerun now that `cli-v0.10.2` exists:
 
 ```bash
 set -euo pipefail
@@ -120,7 +122,7 @@ if test "$PUSH_STATUS" -ne 0; then
 fi
 ```
 
-After the one tag push, discover exactly one workflow run and watch it once:
+The same completed operation then discovered exactly one workflow run and watched it once; retain this block as historical evidence and do not rerun it:
 
 ```bash
 set -euo pipefail
@@ -223,7 +225,7 @@ The last four are the exact pre-expectation artifact blobs. They may change only
 
 ### Public release artifacts
 
-The sole `release-cli.yml` run for `cli-v0.10.2` must have `head_sha == PUBLIC_RELEASE_COMMIT` and conclude `success`. The stable GitHub Release inventory is exactly six assets: `SHA256SUMS`, `docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, and `docks-kit-windows-x64.exe`. `SHA256SUMS` must name exactly the five binaries once each, and `sha256sum -c SHA256SUMS` must validate all five. npm must return exact `docks-kit@0.10.2` version `0.10.2` through a fresh mode-`0700` cache.
+The sole `release-cli.yml` run for `cli-v0.10.2` has `head_sha == PUBLIC_RELEASE_COMMIT`, run id `30072118556`, and conclusion `success`. The stable GitHub Release contract is exactly five assets total: `SHA256SUMS`, `docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-x64`, and `docks-kit-darwin-arm64`. `SHA256SUMS` must contain exactly four rows naming those four binaries once each, and `sha256sum -c SHA256SUMS` must validate all four. `docks-kit-windows-x64.exe` is explicitly absent because Windows is unsupported; do not describe it as temporary, missing, or future work. npm must return exact `docks-kit@0.10.2` version `0.10.2` through a fresh mode-`0700` cache.
 
 ## Steps
 
@@ -232,12 +234,12 @@ The sole `release-cli.yml` run for `cli-v0.10.2` must have `head_sha == PUBLIC_R
 | 1 | Preserve the reviewed implementation commit and record the first A8 outcome without treating it as acceptance credit. | `package.json`; `SoT/toolchain.json`; `cli/src/generated/sotPayload.ts`; `cli/test/lib/harness.ts`; this plan for evidence only | — | done | `PUBLIC_IMPLEMENTATION_COMMIT=f562ffde3b12c98072b02166c92c85ffbc6d90f9`; its own diff is exactly four files; generator check/typecheck passed there; full A8 stopped at exactly two stale unit expectations before later stages. |
 | 2 | Obtain the fresh changed-input schema-6 draft review while the plan remains blocked; only after it passes, have plan-manager consume the current user's explicit unblock intent, then rerun A1–A3 before any artifact edit. | This plan only for manager-owned review/unblock commits; authority files and retained implementation are read-only | 1 | done | The plan returns to `ongoing` with its existing execution base retained only after the exact amended input passes review; A1–A3 pass; STOP on any hash, identity, ancestry, protected blob, review, or unblock mismatch. |
 | 3 | Replace only the stale `0.12.0` expected version/tag fragments with `0.13.0` in the two authorized unit files, regenerate both JSON goldens only through their existing recorders, and commit exactly those four artifacts once. Then run A4–A8 on the clean committed tree before invoking completion. | `cli/test/unit/toolchain.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan for manager-owned rows/receipt/status | 2 | done | `PUBLIC_TEST_ARTIFACT_COMMIT` is the sole post-implementation commit touching any artifact and its own diff is exactly four files; A4 proves exact unit replacements and recorder idempotence; A6, A7, and fresh A8 pass; completion yields one passed reusable schema-6 receipt whose reviewed head contains exact eight-path closure. |
-| 4 | Derive `PUBLIC_RELEASE_COMMIT` only from the receipt, run the complete absence preflight, create lightweight `cli-v0.10.2` at that exact commit, push only the tag once with nonzero reconciliation, and wait for exactly one workflow run. | Git tag, GitHub Actions, GitHub Release, and npm read surfaces only; no worktree product file | 3 | planned | All five absence surfaces pass before mutation; local/remote tag targets equal `PUBLIC_RELEASE_COMMIT`; exactly one matching run exists and succeeds at that head. STOP rather than retag, retry, or create another run. |
-| 5 | Run P1–P4, have plan-manager mark Steps 4–5 done, ship/archive the plan, and run S1 against the exact finished path. | This plan for manager-owned lifecycle/archive; GitHub/npm/source Release read-only evidence | 4 | planned | Production identities, run, six assets/checksums, npm, and Session Relay chain all pass; the finished plan retains the receipt and `PUBLIC_PLAN_COMMIT` is a strict plan-only descendant of `PUBLIC_RELEASE_COMMIT`. |
+| 4 | Preserve `PUBLIC_RELEASE_COMMIT`, lightweight `cli-v0.10.2`, and the sole workflow run as immutable completed production identities; retain the absence/tag/wait blocks as historical evidence only. | Git tag, GitHub Actions, GitHub Release, and npm read surfaces only; no worktree product file | 3 | done | P1 passed: local/remote tag targets equal exact `ac5f17e949022b56bb97a81155662bda916820a3`; sole run `30072118556` succeeded at that head. No retag, retry, second run, or release-byte mutation is authorized. |
+| 5 | Preserve P1, rerun P2 read-only against the accepted five-total/four-binary Linux/macOS matrix, then run P3 and P4; have plan-manager mark the remaining production row done, ship/archive the plan, and run S1 against the exact finished path. | This plan for manager-owned lifecycle/archive; GitHub/npm/source Release read-only evidence | 4 | planned | P2 proves `SHA256SUMS` plus exactly four Linux/macOS binaries and explicitly no Windows asset because Windows is unsupported; P3/P4 prove npm and the separate same-platform Session Relay chain; the finished plan retains the receipt and `PUBLIC_PLAN_COMMIT` is a strict plan-only descendant of `PUBLIC_RELEASE_COMMIT`. |
 
 ## Acceptance criteria
 
-After fresh review passes and plan-manager consumes the explicit unblock intent, run A1–A3 on the retained tree, make and commit exactly the four deterministic test artifacts, then run A4–A7 and one fresh A8 in order on the clean committed tree before completion review. The failed A8 at `PUBLIC_IMPLEMENTATION_COMMIT` is superseded evidence only. The fresh A8 is required because implementation/test-artifact bytes changed. Production P1–P4 runs only after the exact absence/tag/wait blocks above; S1 runs only after plan-manager ship.
+A1–A8 and completion review already passed on the immutable implementation tree; the exact completion receipt remains authoritative for `PUBLIC_RELEASE_COMMIT`. P1 also passed for the immutable pushed tag and sole successful run. After the current user's direct unblock, rerun only P2 under the accepted five-total/four-binary public contract, then P3 and P4 read-only; do not rerun implementation acceptance, completion, tag creation, tag push, or workflow execution. S1 runs only after plan-manager ship.
 
 | ID | Command | Expected |
 |---|---|---|
@@ -378,12 +380,12 @@ printf '%s\n' "$mutation_out" | grep -q 'prove-red OK: golden-mutation'
 
 ## Production verification
 
-The absence assertions are part of the completion-receipt identity/tag-only block and must pass before the tag is created. After the tag-only push and exact single-run wait, run P1–P4 once in order.
+The historical absence/tag/wait sequence and P1 have already passed: `cli-v0.10.2` targets `ac5f17e949022b56bb97a81155662bda916820a3`, and sole run `30072118556` succeeded. Preserve that evidence without rerunning mutation steps. Rerun P2 read-only under the accepted five-asset contract, then P3 and P4; P1 may only be reopened read-only if identity revalidation is needed.
 
 | ID | Command | Expected |
 |---|---|---|
 | P1 | Run the exact `P1` block below. | Local/remote tag, sole workflow run, workflow file, head SHA, event, and successful conclusion all bind to `PUBLIC_RELEASE_COMMIT`. |
-| P2 | Run the exact `P2` block below. | Stable Release has exactly six named assets; `SHA256SUMS` names and validates exactly five binaries. |
+| P2 | Run the exact `P2` block below. | Stable Release has exactly five named assets total; `SHA256SUMS` names and validates exactly four Linux/macOS binaries; `docks-kit-windows-x64.exe` is absent because Windows is unsupported. |
 | P3 | Run the exact `P3` block below. | A fresh mode-`0700` cache returns exact npm version `0.10.2` within the bounded visibility window. |
 | P4 | Run the exact `P4` block below. | Live Session Relay source Release, publication receipt, request map, and downloaded four-binary checksums agree exactly. |
 
@@ -401,7 +403,7 @@ gh api --paginate --slurp 'repos/DocksDocks/public/actions/workflows/release-cli
 RUNS_FILE="$RUNS_FILE" PUBLIC_RELEASE_COMMIT="$PUBLIC_RELEASE_COMMIT" node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const pages=JSON.parse(fs.readFileSync(process.env.RUNS_FILE,"utf8")); const runs=pages.flatMap((page)=>page.workflow_runs).filter((run)=>run.event==="push"&&run.head_branch==="cli-v0.10.2"); assert.equal(runs.length,1); const run=runs[0]; assert.equal(run.path,".github/workflows/release-cli.yml"); assert.equal(run.event,"push"); assert.equal(run.head_sha,process.env.PUBLIC_RELEASE_COMMIT); assert.equal(run.status,"completed"); assert.equal(run.conclusion,"success");'
 ```
 
-### P2 — stable six-asset Release
+### P2 — stable five-asset Linux/macOS Release; Windows unsupported
 
 ```bash
 set -euo pipefail
@@ -410,9 +412,9 @@ RELEASE_DIR="$(mktemp -d /tmp/docks-cli-release.XXXXXX)"
 META_FILE="$(mktemp /tmp/docks-cli-release-meta.XXXXXX)"
 trap 'rm -rf -- "$RELEASE_DIR"; rm -f -- "$META_FILE"' EXIT
 gh release view cli-v0.10.2 --repo DocksDocks/public --json tagName,isDraft,isPrerelease,assets,targetCommitish,url >"$META_FILE"
-node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const meta=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); assert.equal(meta.tagName,"cli-v0.10.2"); assert.equal(meta.isDraft,false); assert.equal(meta.isPrerelease,false); assert.deepEqual(meta.assets.map((asset)=>asset.name).sort(),["SHA256SUMS","docks-kit-darwin-arm64","docks-kit-darwin-x64","docks-kit-linux-arm64","docks-kit-linux-x64","docks-kit-windows-x64.exe"].sort());' "$META_FILE"
+node --input-type=module -e 'import fs from "node:fs"; import assert from "node:assert/strict"; const meta=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); assert.equal(meta.tagName,"cli-v0.10.2"); assert.equal(meta.isDraft,false); assert.equal(meta.isPrerelease,false); const names=meta.assets.map((asset)=>asset.name).sort(); assert.deepEqual(names,["SHA256SUMS","docks-kit-darwin-arm64","docks-kit-darwin-x64","docks-kit-linux-arm64","docks-kit-linux-x64"].sort()); assert.ok(!names.includes("docks-kit-windows-x64.exe"));' "$META_FILE"
 gh release download cli-v0.10.2 --repo DocksDocks/public --dir "$RELEASE_DIR"
-RELEASE_DIR="$RELEASE_DIR" node --input-type=module -e 'import fs from "node:fs"; import path from "node:path"; import assert from "node:assert/strict"; const expected=["docks-kit-darwin-arm64","docks-kit-darwin-x64","docks-kit-linux-arm64","docks-kit-linux-x64","docks-kit-windows-x64.exe"].sort(); const rows=fs.readFileSync(path.join(process.env.RELEASE_DIR,"SHA256SUMS"),"utf8").trim().split(/\r?\n/); assert.equal(rows.length,5); const names=rows.map((row)=>{const match=row.match(/^[0-9a-f]{64} [ *](.+)$/); assert.ok(match); return match[1];}).sort(); assert.deepEqual(names,expected);'
+RELEASE_DIR="$RELEASE_DIR" node --input-type=module -e 'import fs from "node:fs"; import path from "node:path"; import assert from "node:assert/strict"; const expected=["docks-kit-darwin-arm64","docks-kit-darwin-x64","docks-kit-linux-arm64","docks-kit-linux-x64"].sort(); const rows=fs.readFileSync(path.join(process.env.RELEASE_DIR,"SHA256SUMS"),"utf8").trim().split(/\r?\n/); assert.equal(rows.length,4); const names=rows.map((row)=>{const match=row.match(/^[0-9a-f]{64} [ *](.+)$/); assert.ok(match); return match[1];}).sort(); assert.deepEqual(names,expected); assert.ok(!names.includes("docks-kit-windows-x64.exe"));'
 (cd "$RELEASE_DIR" && sha256sum -c SHA256SUMS)
 ```
 
@@ -485,8 +487,9 @@ node --input-type=module -e 'import fs from "node:fs"; import assert from "node:
 - Do not edit, supersede, finish, unblock, or otherwise mutate `docs/plans/active/session-relay-cli-0.13.0-release-preparation.md`; its immutable companion role and historical blocked evidence remain truthful.
 - Do not change any field of `package.json` except top-level `version`; do not change any `SoT/toolchain.json` content outside the complete Session Relay entry; do not hand-edit the generated payload.
 - Do not create, amend, retarget, delete, force-update, or reuse an existing `cli-v0.10.2` tag or Release. Do not dispatch a workflow manually or create a second run.
-- Do not push the branch or public `main` from this child. The sole authorized remote mutation is the one exact tag push after a passed completion receipt. The parent session may push public `main` only after the finished plan and S1 read-back if required.
-- Do not mutate the Docks repository, Session Relay tag/Release, npm package metadata, or external production systems. They are evidence sources except for the canonical public tag-triggered workflow.
+- Do not upload, synthesize, delete, or promise `docks-kit-windows-x64.exe`; Windows is unsupported, and the published five-asset Release is the complete stable contract.
+- Do not push the branch or public `main` from this child. No remote mutation remains authorized: the exact tag push and sole workflow run already occurred and must not be retried.
+- Do not mutate the Docks repository, either GitHub Release, npm package metadata, or any external production system. All remaining P2–P4 operations are read-only evidence collection.
 - Do not review, start, complete, mark production steps, or ship outside current schema-6 plan-manager ownership.
 
 ## Known gotchas
@@ -499,7 +502,7 @@ node --input-type=module -e 'import fs from "node:fs"; import assert from "node:
 - A tag push may reach the remote even when the client exits nonzero. Reconcile the exact remote ref once; continue only when it equals `PUBLIC_RELEASE_COMMIT`, otherwise STOP. Never retry the push.
 - `gh release create ... || true` can reuse an old Release. The pre-existing tag/Release/run/npm absence fence prevents reuse from being accepted.
 - Plan-only start, receipt, step-row, and ship commits make ambient `HEAD` differ from `PUBLIC_RELEASE_COMMIT`; derive the tag target only from the receipt's `reviewed_head`.
-- The Session Relay Release contains `SHA256SUMS` plus four source binaries; the public docks-kit stable Release contract contains `SHA256SUMS` plus five binaries. Never conflate the inventories or their checksum rows.
+- The Session Relay source Release and the public docks-kit stable Release each contain `SHA256SUMS` plus the same four supported target binaries: Linux x64/arm64 and macOS x64/arm64. Their names and digests are separate contracts; never conflate their inventories or checksum rows. Neither contract supports Windows.
 - `Completion-review-receipt:` is one compact machine-record line. Preserve the entire line byte-for-byte through ship; the payload hash and whole-line hash are different values.
 - npm attempts cache writes even for `npm view`; every read requires its own writable mode-`0700` cache.
 
@@ -511,31 +514,31 @@ node --input-type=module -e 'import fs from "node:fs"; import assert from "node:
 - Exact companion/refresh ancestry: `6c07f9bc02ef7a0a26b8ffb539c16c42a87a3172` → `e875475a7ddc91d3ed3301789f4e1933f46d60c1` → this plan's add-only creation commit.
 - The authorized mutation set is exactly `package.json`, `SoT/toolchain.json`, `cli/src/generated/sotPayload.ts`, `cli/test/lib/harness.ts`, `cli/test/unit/toolchain.test.ts`, `cli/test/unit/engine-di.test.ts`, `cli/test/goldens/dryrun.json`, and `cli/test/goldens/mutation.json`; this plan is the only additional changed path since `planned_at_commit`.
 - `PUBLIC_IMPLEMENTATION_COMMIT` remains exact and immutable; `PUBLIC_TEST_ARTIFACT_COMMIT` is one later commit with exactly the last four paths. `cli/test/unit/sessionRelayCli.test.ts`, `cli/test/unit/pluginRefresh.test.ts`, `.github/workflows/release-cli.yml`, and `bun.lock` retain the exact blobs recorded above. No waiver or open question is authorized.
-- Manager complete must produce a passed reusable schema-6 completion receipt before any tag or release mutation.
-- Tag exactly `PUBLIC_RELEASE_COMMIT`, push only the tag once, wait for exactly one `release-cli.yml` run, and require success at that exact commit.
-- No branch push, force operation, destructive tag operation, workflow dispatch, second run, or remote retry is authorized.
+- The preserved passed schema-6 completion receipt binds exact `PUBLIC_RELEASE_COMMIT=ac5f17e949022b56bb97a81155662bda916820a3`; do not rerun completion or alter that receipt.
+- Lightweight tag `cli-v0.10.2` already targets exact `PUBLIC_RELEASE_COMMIT`, and sole `release-cli.yml` run `30072118556` already succeeded at that head. Do not retag, repush, dispatch, or create a second run.
+- The stable public asset contract is exactly five total: `SHA256SUMS` plus `docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-x64`, and `docks-kit-darwin-arm64`. The checksum file has exactly four rows and validates those four binaries. `docks-kit-windows-x64.exe` is absent because Windows is unsupported.
 - Every failure stops and is reported; no final identity or evidence may be fabricated.
 
 ## STOP conditions
 
-- STOP if the target tag, remote tag, GitHub Release, npm version, or any matching historical `release-cli.yml` run already exists before tag creation.
-- STOP if request, publication receipt, source proof, source tag, assets, repository ids, versions, commits, or any exact hash differs from this plan.
+- STOP if any action attempts to reuse the historical absence fence as authority to mutate the existing tag, Release, npm publication, or workflow; those production identities already exist and are immutable.
+- STOP if request, publication receipt, source proof, source tag, supported four-target asset maps, repository ids, versions, commits, or any exact hash differs from this plan.
 - STOP if `PLAN_BASE` is not the direct child of `COMPANION_BASE`, the creation commit is not an add-only direct child of `PLAN_BASE`, or any required ancestry fails.
 - STOP if the baseline package/toolchain/generated/harness values or blob ids differ, if `PUBLIC_IMPLEMENTATION_COMMIT` is not exact `f562ffde3b12c98072b02166c92c85ffbc6d90f9` with the recorded parent/four-path diff, or if a protected blob drifts.
 - STOP if any path beyond the exact eight changes, any required plan path besides this plan changes, any first-four affected path changes after `PUBLIC_IMPLEMENTATION_COMMIT`, or `PUBLIC_TEST_ARTIFACT_COMMIT` is absent, non-unique, or not exactly the four authorized test artifacts.
 - STOP if either unit edit changes anything except the two expected `0.12.0` version/tag fragments to `0.13.0`, if either golden is hand-edited or differs after recorder regeneration, or if any behavior/assertion/setup/normalization is weakened.
 - STOP if generator, focused tests, recorder idempotence, direct acceptance, the fresh full gate, completion review, receipt validation, or lifecycle operation fails or becomes stale after a later edit. The superseded first A8 never authorizes completion.
 - STOP if completion does not yield exactly one passed reusable schema-6 receipt or if `reviewed_head` does not contain both exact artifact commits, the exact eight affected paths, and ancestry to current `HEAD`.
-- STOP if the one tag push cannot be reconciled to the exact remote ref, if more than one matching run exists, if the sole run targets another head or fails, or if any action would require retry/retag/force/manual dispatch.
-- STOP if stable six-asset inventory/checksums, npm exact version, source four-asset checksums, or the preserved receipt chain disagrees.
+- STOP if the immutable local/remote tag differs from `PUBLIC_RELEASE_COMMIT`, if the matching workflow inventory differs from sole successful run `30072118556`, or if any action would require retry, retag, force, manual dispatch, or external mutation.
+- STOP if the stable five-total/four-binary Linux/macOS inventory or checksum validation fails, if a Windows asset is present or expected, if npm exact version fails, if the separate source four-binary checksums fail, or if the preserved receipt chain disagrees.
 - STOP if post-ship `PUBLIC_PLAN_COMMIT` is not a strict descendant of `PUBLIC_RELEASE_COMMIT`, contains a post-review product diff, or does not retain the exact receipt line.
 
 ## Cold-handoff checklist
 
 - [x] File manifest: the exact retained four implementation paths, exact four deterministic test artifacts, one lifecycle plan, protected surfaces, external tag, Release, workflow, and npm surfaces are named.
 - [x] Environment and commands: repository, Bun/tool versions, generator check, two canonical recorder writes, four focused unit files, fresh full gate, manager invocations, absence fence, tag push, sole-run wait, production checks, and fresh npm caches are exact.
-- [x] Interface and data contracts: closed request, receipt/source-proof chain, complete toolchain object, exact retained implementation identity/blobs, exact unit replacements, recorder-only goldens, three commit identities, four source assets, and stable six-asset inventory are explicit.
-- [x] Executable acceptance: fresh review/unblock and A1–A3 precede artifact edits; A4–A7 and one fresh A8 follow the exact four-artifact commit; P1–P4 and S1 remain ordered with concrete exit-status and identity expectations.
+- [x] Interface and data contracts: closed request, receipt/source-proof chain, complete toolchain object, exact retained implementation identity/blobs, exact unit replacements, recorder-only goldens, immutable commit/tag/run identities, separate four-binary source inventory, and exact five-total public inventory with Windows unsupported are explicit.
+- [x] Executable acceptance: A1–A8, completion, and P1 remain preserved passed evidence; P2 reruns read-only against exactly four checksum rows and no Windows asset, followed by P3/P4 and then S1 with concrete exit-status and identity expectations.
 - [x] Out of scope: protected tests/workflow/lockfile, first-four post-implementation edits, manual goldens, installer/runtime/other SoT, companion plan, branch push, force/retag, manual workflow, and external-source mutation are prohibited.
 - [x] Decision rationale: superseded first-gate evidence justifies the deterministic four-artifact closure without behavioral weakening; receipt-derived tag identity, completion/production order, and strict post-ship identity separation remain explicit.
 - [x] Known gotchas: generated payload, dynamic fixture version, recorder-owned broad outputs, npm warning downgrade, eventual consistency, nonzero push reconciliation, Release reuse, receipt identity, and inventory distinction are recorded.
@@ -544,21 +547,23 @@ node --input-type=module -e 'import fs from "node:fs"; import assert from "node:
 
 ## Self-review
 
-- `standalone_executability`: pass — a cold executor can preserve and revalidate the exact four-file implementation, obtain fresh review/unblock, make the exact two unit expectation changes, regenerate only the two recorder outputs, and execute the release without conversation context.
+- `standalone_executability`: pass — a cold executor can preserve the exact implementation/completion/tag/run identities, rerun P2 read-only against the exact five-total/four-binary Linux/macOS contract, confirm Windows is unsupported, run P3/P4, and ship without changing release bytes.
 - `actionability`: pass — each step names exact paths, immutable commit/blob identities, recorder commands, dependencies, done conditions, and failure action.
-- `dependency_order`: pass — retained implementation and superseded failure are recorded first; changed-input review/unblock precedes the exact four-artifact commit; A4–A7 and one fresh A8 precede completion; production proof follows the completion receipt.
+- `dependency_order`: pass — retained implementation and completion evidence remain immutable; P1 remains passed; direct unblock precedes read-only P2, then P3/P4, manager-owned row closure, ship, and S1.
 - `evidence_reverification`: pass — request, publication receipt, source proof, remote tag, implementation commit/blobs, pre-expectation artifacts, protected blobs, exact unit transforms, recorder idempotence, focused/full tests, workflow head, Release checksums, npm, and finished receipt are independently reopened.
-- `goal_coverage`: pass — package version, complete Session Relay pin, generated payload, dynamic harness fixture, deterministic unit/golden expectations, exact eight-path scope, single release, six assets/checksums, npm, source chain, and post-ship identity are all proven.
+- `goal_coverage`: pass — package version, complete Session Relay pin, generated payload, deterministic expectation closure, exact eight-path scope, immutable release/tag/run, five total public assets, four supported Linux/macOS binaries/checksums, explicit Windows non-support, npm, source chain, and post-ship identity are all proven.
 - `executable_acceptance`: pass — A3 binds the retained commit, A4 proves exact test transforms and recorder bytes, A6 exercises frozen and corrected tests, A7 proves exact eight-plus-plan scope and one artifact commit, and A8 is the mandatory fresh full gate.
 - `failure_modes`: pass — the first A8 is explicitly superseded rather than waived; post-implementation drift, manual goldens, broader unit changes, duplicate artifact commits, behavioral weakening, nonzero tag push, and eventual consistency all have explicit STOP handling.
-- `open_questions`: pass — the current user selected the exact eight-path closure and current-review/unblock order; there are no waivers or unresolved decisions.
+- `open_questions`: pass — the current user accepted the exact published five-asset contract and explicitly decided that Windows is unsupported; no waiver or unresolved decision remains.
 
 ## Open questions
 
-None — the current user's exact eight-path scope, retained implementation identity, deterministic unit/golden closure, signed-off request, publication receipt chain, immutable protected blobs, lifecycle order, and release contract close every execution decision.
+None — the current user's accepted five-total/four-binary Linux/macOS stable contract, explicit Windows non-support decision, exact eight-path implementation identity, deterministic expectation closure, signed-off request, publication receipt chain, immutable completion/tag/run identities, and remaining read-only P2–P4 order close every execution decision.
 
 ## Notes
 
+- Current-user post-completion decision: accept the published stable matrix exactly as five assets total—`SHA256SUMS` plus four Linux/macOS x64/arm64 binaries—and record that Windows is unsupported. This plan-only correction does not alter Release bytes or renew completion review.
+- P1 remains passed: lightweight `cli-v0.10.2` resolves to exact `ac5f17e949022b56bb97a81155662bda916820a3`, and sole workflow run `30072118556` completed successfully at that head. Rerun P2 under the corrected read-only contract, then P3/P4.
 - Manager-owned execution evidence recorded without rerunning implementation commands: `PUBLIC_TEST_ARTIFACT_COMMIT=3ccb503445184a8beb79d0a7bf616ade3203ca21`, with direct parent `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; its own diff contains exactly `cli/test/unit/toolchain.test.ts`, `cli/test/unit/engine-di.test.ts`, `cli/test/goldens/dryrun.json`, and `cli/test/goldens/mutation.json`.
 - Step 2 evidence: changed-input schema-6 draft review for input `edc8187de77daa487abc9691aa4a0ef3922b3309a5e7f1b5bfb8cc0878e6de1e` passed and settled in plan-only commit `053b1bc09df0e4b89e20e3cb903b54ccee02019c`; plan-manager consumed the explicit unblock intent in plan-only commit `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; A1–A3 then passed before the four-artifact edit.
 - A1 passed: the exact authority request, publication receipt, source proof, asset digests, repository ids, versions, tags, and commits matched the closed authority chain.
