@@ -40,7 +40,7 @@ describe("public toolchain ensure", () => {
       expect(run.stderr).toBe("")
       expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("")
       expect(run.stdout).toMatch(
-        /^\[dry-run\] ensure Session Relay CLI 0\.12\.0 from DocksDocks\/docks@session-relay--v0\.12\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
+        /^\[dry-run\] ensure Session Relay CLI 0\.13\.0 from DocksDocks\/docks@session-relay--v0\.13\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
       )
       expect(run.stdout.match(/\n/g)).toHaveLength(1)
     } finally {
