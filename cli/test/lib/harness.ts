@@ -29,6 +29,12 @@ import { fileURLToPath } from "node:url"
 export const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
 export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 
+const SESSION_RELAY_VERSION = (
+  JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8")) as {
+    tools: { "session-relay": { verified: string } }
+  }
+).tools["session-relay"].verified
+
 function bunRuntime(): string {
   if (process.versions["bun"] !== undefined) return process.execPath
   for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
@@ -235,7 +241,7 @@ function materializeHome(kind: string, fixture: string, reuseHome?: string): str
   cpSync(src, home, { recursive: true })
   const sessionRelay = join(home, ".local", "bin", "session-relay")
   mkdirSync(dirname(sessionRelay), { recursive: true })
-  writeFileSync(sessionRelay, "#!/bin/sh\nprintf 'session-relay 0.12.0\\n'\n")
+  writeFileSync(sessionRelay, `#!/bin/sh\nprintf 'session-relay ${SESSION_RELAY_VERSION}\\n'\n`)
   chmodSync(sessionRelay, 0o755)
   return home
 }
