@@ -3,7 +3,7 @@ title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from the retained four-file implementation and one reviewed four-artifact expectation commit, prove the single immutable release, and preserve the Session Relay authority chain.
 status: ongoing
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T02:44:19-03:00"
+updated: "2026-07-24T06:01:08.000Z"
 started_at: "2026-07-24T04:30:00.000Z"
 assignee: null
 review_author_company: openai
@@ -228,8 +228,8 @@ The sole `release-cli.yml` run for `cli-v0.10.2` must have `head_sha == PUBLIC_R
 | # | Task | Files | Depends | Status | Done when / failure action |
 |---|---|---|---|---|---|
 | 1 | Preserve the reviewed implementation commit and record the first A8 outcome without treating it as acceptance credit. | `package.json`; `SoT/toolchain.json`; `cli/src/generated/sotPayload.ts`; `cli/test/lib/harness.ts`; this plan for evidence only | — | done | `PUBLIC_IMPLEMENTATION_COMMIT=f562ffde3b12c98072b02166c92c85ffbc6d90f9`; its own diff is exactly four files; generator check/typecheck passed there; full A8 stopped at exactly two stale unit expectations before later stages. |
-| 2 | Obtain the fresh changed-input schema-6 draft review while the plan remains blocked; only after it passes, have plan-manager consume the current user's explicit unblock intent, then rerun A1–A3 before any artifact edit. | This plan only for manager-owned review/unblock commits; authority files and retained implementation are read-only | 1 | blocked | The plan returns to `ongoing` with its existing execution base retained only after the exact amended input passes review; A1–A3 pass; STOP on any hash, identity, ancestry, protected blob, review, or unblock mismatch. |
-| 3 | Replace only the stale `0.12.0` expected version/tag fragments with `0.13.0` in the two authorized unit files, regenerate both JSON goldens only through their existing recorders, and commit exactly those four artifacts once. Then run A4–A8 on the clean committed tree before invoking completion. | `cli/test/unit/toolchain.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan for manager-owned rows/receipt/status | 2 | planned | `PUBLIC_TEST_ARTIFACT_COMMIT` is the sole post-implementation commit touching any artifact and its own diff is exactly four files; A4 proves exact unit replacements and recorder idempotence; A6, A7, and fresh A8 pass; completion yields one passed reusable schema-6 receipt whose reviewed head contains exact eight-path closure. |
+| 2 | Obtain the fresh changed-input schema-6 draft review while the plan remains blocked; only after it passes, have plan-manager consume the current user's explicit unblock intent, then rerun A1–A3 before any artifact edit. | This plan only for manager-owned review/unblock commits; authority files and retained implementation are read-only | 1 | done | The plan returns to `ongoing` with its existing execution base retained only after the exact amended input passes review; A1–A3 pass; STOP on any hash, identity, ancestry, protected blob, review, or unblock mismatch. |
+| 3 | Replace only the stale `0.12.0` expected version/tag fragments with `0.13.0` in the two authorized unit files, regenerate both JSON goldens only through their existing recorders, and commit exactly those four artifacts once. Then run A4–A8 on the clean committed tree before invoking completion. | `cli/test/unit/toolchain.test.ts`; `cli/test/unit/engine-di.test.ts`; `cli/test/goldens/dryrun.json`; `cli/test/goldens/mutation.json`; this plan for manager-owned rows/receipt/status | 2 | done | `PUBLIC_TEST_ARTIFACT_COMMIT` is the sole post-implementation commit touching any artifact and its own diff is exactly four files; A4 proves exact unit replacements and recorder idempotence; A6, A7, and fresh A8 pass; completion yields one passed reusable schema-6 receipt whose reviewed head contains exact eight-path closure. |
 | 4 | Derive `PUBLIC_RELEASE_COMMIT` only from the receipt, run the complete absence preflight, create lightweight `cli-v0.10.2` at that exact commit, push only the tag once with nonzero reconciliation, and wait for exactly one workflow run. | Git tag, GitHub Actions, GitHub Release, and npm read surfaces only; no worktree product file | 3 | planned | All five absence surfaces pass before mutation; local/remote tag targets equal `PUBLIC_RELEASE_COMMIT`; exactly one matching run exists and succeeds at that head. STOP rather than retag, retry, or create another run. |
 | 5 | Run P1–P4, have plan-manager mark Steps 4–5 done, ship/archive the plan, and run S1 against the exact finished path. | This plan for manager-owned lifecycle/archive; GitHub/npm/source Release read-only evidence | 4 | planned | Production identities, run, six assets/checksums, npm, and Session Relay chain all pass; the finished plan retains the receipt and `PUBLIC_PLAN_COMMIT` is a strict plan-only descendant of `PUBLIC_RELEASE_COMMIT`. |
 
@@ -554,6 +554,21 @@ node --input-type=module -e 'import fs from "node:fs"; import assert from "node:
 ## Open questions
 
 None — the current user's exact eight-path scope, retained implementation identity, deterministic unit/golden closure, signed-off request, publication receipt chain, immutable protected blobs, lifecycle order, and release contract close every execution decision.
+
+## Notes
+
+- Manager-owned execution evidence recorded without rerunning implementation commands: `PUBLIC_TEST_ARTIFACT_COMMIT=3ccb503445184a8beb79d0a7bf616ade3203ca21`, with direct parent `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; its own diff contains exactly `cli/test/unit/toolchain.test.ts`, `cli/test/unit/engine-di.test.ts`, `cli/test/goldens/dryrun.json`, and `cli/test/goldens/mutation.json`.
+- Step 2 evidence: changed-input schema-6 draft review for input `edc8187de77daa487abc9691aa4a0ef3922b3309a5e7f1b5bfb8cc0878e6de1e` passed and settled in plan-only commit `053b1bc09df0e4b89e20e3cb903b54ccee02019c`; plan-manager consumed the explicit unblock intent in plan-only commit `77d3c923b80630802e9a5d98c4c6a5a0ce3f24f8`; A1–A3 then passed before the four-artifact edit.
+- A1 passed: the exact authority request, publication receipt, source proof, asset digests, repository ids, versions, tags, and commits matched the closed authority chain.
+- A2 passed: source tag `session-relay--v0.13.0` resolved exactly to `3fb9211f3309977f24853a10714d4b7a82b38c8f`.
+- A3 passed: required ancestry, baselines, `PUBLIC_IMPLEMENTATION_COMMIT=f562ffde3b12c98072b02166c92c85ffbc6d90f9`, retained implementation/pre-expectation blobs, and protected blobs were exact.
+- A4 passed at `PUBLIC_TEST_ARTIFACT_COMMIT`: the first four affected paths remained byte-identical to `PUBLIC_IMPLEMENTATION_COMMIT`; the two unit expectation transforms were exact; both canonical recorder idempotence checks passed.
+- A5 passed: `bun cli/scripts/generate-sot-payload.ts --check` exited 0.
+- A6 passed: the exact four focused unit files completed with 55 passing tests.
+- A7 passed: the changed set was exactly the eight affected paths plus this plan; `3ccb503445184a8beb79d0a7bf616ade3203ca21` was the sole test-artifact commit; protected blobs, clean-worktree, and diff checks passed.
+- Fresh A8 passed once after A7 on `PUBLIC_TEST_ARTIFACT_COMMIT`: generator check; typecheck; all unit tests (23 files, 190 tests); POSIX statusline smoke; normal dry-run golden (29 cases); dry-run prove-red; normal mutation golden (76 cases); and mutation prove-red all passed. The worktree remained clean.
+- The first A8 at `f562ffde3b12c98072b02166c92c85ffbc6d90f9` remains superseded evidence only and contributes no acceptance credit. The fresh post-A7 A8 above is the sole completion-credit full-gate result.
+- These observations are manager-owned primary evidence for completion settlement. The completion reviewer remains evidence-only and must classify the sealed plan/diff/inventory rather than accept these command results as reviewer evidence.
 
 ## Sources
 
