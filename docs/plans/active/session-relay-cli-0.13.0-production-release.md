@@ -1,11 +1,12 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from the retained four-file implementation and one reviewed four-artifact expectation commit, prove the single immutable release, and preserve the Session Relay authority chain.
-status: in_review
+status: blocked
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T06:22:12.228Z"
+updated: "2026-07-24T03:26:56-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
-in_review_since: "2026-07-24T06:07:34.531Z"
+blocked_reason: "P1 passed for immutable `cli-v0.10.2` at `ac5f17e949022b56bb97a81155662bda916820a3`: the sole workflow run `30072118556` succeeded. P2 failed before download or checksum verification because the stable Release has exactly five assets—`SHA256SUMS` plus `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, `docks-kit-linux-x64`, and `docks-kit-linux-arm64`—and lacks the planned `docks-kit-windows-x64.exe`; frozen `.github/workflows/release-cli.yml:3,38-46` explicitly declares and builds only those four Linux/macOS targets and has no Windows job. Required current-user decision: (a) accept the repository-documented four-target/five-asset stable contract, amend both plans plus P2/A18, and fresh-review the changed input without altering tag or Release bytes; or (b) stop promotion/finalization as an incident. No force, retag, second run, manual asset upload, workflow edit, or branch push is authorized."
+blocked_since: "2026-07-24T03:26:56-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
