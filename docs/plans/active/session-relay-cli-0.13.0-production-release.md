@@ -493,3 +493,4 @@ None — the signed-off request, publication receipt chain, immutable companion 
 ## Review
 
 (filled by main-context plan-manager after completion evidence)
+Review-orchestration-state: {"apply_state":"none","current_input_sha256":"50c5a5125a177df55d011d1aced1a9363d2f9bd6f6ef93cd6231359cfb64520c","initial_input_sha256":"50c5a5125a177df55d011d1aced1a9363d2f9bd6f6ef93cd6231359cfb64520c","lifecycle_intent":"start","orchestration_attempt":1,"phase":"draft","plan_path":"docs/plans/active/session-relay-cli-0.13.0-production-release.md","request_ids":["f0668bf5-dbfd-40d9-a6cf-c496665389e4"],"retry_authorization":null,"round_index":1,"schema":2,"series_id":"7a7dc73c-7ead-47bd-85e8-a9b267a114e8","series_sha256":null,"state_sha256":"8307970c57980c0498970ee18e6684f8c5c814648504fcfe3df69fea7c419c28","status":"active","stop_reason":null,"terminal_evidence_sha256":null,"terminated_from_state":null,"terminated_from_state_sha256":null,"transitioned_from_state_sha256":null}
