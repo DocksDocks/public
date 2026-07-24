@@ -1,12 +1,10 @@
 ---
 title: Release docks-kit 0.10.2 with Session Relay 0.13.0
 goal: Publish docks-kit 0.10.2 from a reviewed four-file pin and fixture update, prove the single immutable release, and preserve the Session Relay authority chain.
-status: blocked
+status: ongoing
 created: "2026-07-24T00:24:06-03:00"
-updated: "2026-07-24T02:01:12-03:00"
+updated: "2026-07-24T02:14:58-03:00"
 started_at: "2026-07-24T04:30:00.000Z"
-blocked_reason: "A4 fails before Node because its outer shell single-quoted `node -e` carrier contains literal single quotes inside JavaScript strings and exposes `${SESSION_RELAY_VERSION}` to shell expansion under `set -u`. The product implementation remains restored and unchanged. This plan-only amendment replaces only the command carrier with a single-quoted heredoc, preserves every A4 assertion and the authorized four-file scope, and is not a waiver. The plan remains blocked until the fresh changed-input schema-6 review passes and plan-manager consumes the current user's unblock intent."
-blocked_since: "2026-07-24T02:01:12-03:00"
 assignee: null
 review_author_company: openai
 review_author_tool: codex
@@ -23,7 +21,7 @@ related_plans:
   - docs/plans/active/session-relay-cli-0.13.0-release-preparation.md
   - docs/plans/finished/2026-07-18-session-relay-cli-production-release.md
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-linux-workspace-release.md
-review_status: null
+review_status: passed
 planned_at_commit: e875475a7ddc91d3ed3301789f4e1933f46d60c1
 execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
 ---
