@@ -22,7 +22,7 @@ related_plans:
   - /home/vagrant/projects/docks/docs/plans/active/session-relay-linux-workspace-release.md
 review_status: passed
 planned_at_commit: e875475a7ddc91d3ed3301789f4e1933f46d60c1
-execution_base_commit: null
+execution_base_commit: d94c10544e98b027d80ebde02a451605dca108f4
 ---
 
 # Release docks-kit 0.10.2 with Session Relay 0.13.0
