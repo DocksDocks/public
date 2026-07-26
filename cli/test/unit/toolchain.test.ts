@@ -40,12 +40,35 @@ describe("public toolchain ensure", () => {
       expect(run.stderr).toBe("")
       expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("")
       expect(run.stdout).toMatch(
-        /^\[dry-run\] ensure Session Relay CLI 0\.13\.0 from DocksDocks\/docks@session-relay--v0\.13\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
+        /^\[dry-run\] ensure Session Relay CLI 0\.14\.0 from DocksDocks\/docks@session-relay--v0\.14\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
       )
       expect(run.stdout.match(/\n/g)).toHaveLength(1)
     } finally {
       rmSync(run.home, { recursive: true, force: true })
     }
+  })
+
+  it("pins the independently verified Relay release and package version", () => {
+    const manifest = JSON.parse(readFileSync(join(process.cwd(), "SoT", "toolchain.json"), "utf8"))
+    const packageManifest = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"))
+
+    expect(packageManifest.version).toBe("0.12.0")
+    expect(manifest.tools["session-relay"]).toEqual({
+      kind: "managed-release",
+      policy: "exact",
+      verified: "0.14.0",
+      repository: "DocksDocks/docks",
+      tag: "session-relay--v0.14.0",
+      plugin_id: "session-relay@docks",
+      plugin_version: "0.14.0",
+      install_path: "~/.local/bin/session-relay",
+      assets: {
+        "x86_64-unknown-linux-musl": "140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3",
+        "aarch64-unknown-linux-musl": "726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30",
+        "x86_64-apple-darwin": "5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0",
+        "aarch64-apple-darwin": "9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87"
+      }
+    })
   })
 
   it("rejects unknown managed tools at the public boundary", () => {
