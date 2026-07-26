@@ -21,12 +21,12 @@
                 "note": "Effect docs CLI (bun global) — track keeps it self-upgrading, gated by the verified pin" },
     "agent-browser":    { "kind": "managed", "policy": "track", "verified": "0.32.0", "pinnable": true,
                 "note": "browser-automation CLI (npm global), gated by the verified pin; first install also downloads Chrome for Testing" },
-    "session-relay": { "kind": "managed-release", "policy": "exact", "verified": "0.13.0", "repository": "DocksDocks/docks", "tag": "session-relay--v0.13.0", "plugin_id": "session-relay@docks", "plugin_version": "0.13.0", "install_path": "~/.local/bin/session-relay",
+    "session-relay": { "kind": "managed-release", "policy": "exact", "verified": "0.14.0", "repository": "DocksDocks/docks", "tag": "session-relay--v0.14.0", "plugin_id": "session-relay@docks", "plugin_version": "0.14.0", "install_path": "~/.local/bin/session-relay",
                 "assets": {
-                  "x86_64-unknown-linux-musl": "f8c6374c2c704f48135cd646028fbd9e53fd43f9800b4a255fa36a0818744b7b",
-                  "aarch64-unknown-linux-musl": "6ebc6d9a38a8c3d1f191647d3ab679d56b69cffba36c3bc3c8eb99b0e163852e",
-                  "x86_64-apple-darwin": "06c046182922c6897e81278fecd7280008fa8040a489910993283017101f1be3",
-                  "aarch64-apple-darwin": "0686e68e3a88dd0dee647fc18211e941dd0d8012818d0bcfb79fac142b5baf21"
+                  "x86_64-unknown-linux-musl": "140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3",
+                  "aarch64-unknown-linux-musl": "726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30",
+                  "x86_64-apple-darwin": "5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0",
+                  "aarch64-apple-darwin": "9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87"
                 } },
     "skills-cli": { "kind": "pin", "verified": "1.5.15",
                 "note": "the `skills` npm package the kit runs via `npx skills@<verified>` on every agents sync (universal-skill install/remove) — pinned, never @latest" }

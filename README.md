@@ -92,8 +92,12 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   Session Relay plugin reconciliation. Linux/macOS x64/arm64 assets must match
   both the committed digest and their release `SHA256SUMS`, then pass an exact
   staged version smoke before atomic replacement; failures preserve any prior
-  command. The four production digests are pinned for the stable
-  `session-relay--v0.12.0` assets and match the same-release `SHA256SUMS`.
+  command. The four production digests are pinned for the tagged
+  `session-relay--v0.14.0` assets and match the same-release `SHA256SUMS`:
+  `x86_64-unknown-linux-musl` — `140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3`
+  `aarch64-unknown-linux-musl` — `726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30`
+  `x86_64-apple-darwin` — `5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0`
+  `aarch64-apple-darwin` — `9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87`
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
@@ -135,8 +139,8 @@ Details: `docks-kit docs platforms`.
 Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
 x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
 publish runs when the `NPM_TOKEN` secret is configured.
-Package bundles the CLI + generated payload, so npm releases are
-versioned config snapshots without shipping the authoring `SoT/` tree.
+Package `docks-kit` 0.12.0 bundles the CLI + generated payload, so npm releases
+are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs
 
