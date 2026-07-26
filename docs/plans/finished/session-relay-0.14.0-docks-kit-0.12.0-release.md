@@ -1,11 +1,11 @@
 ---
 title: Release docks-kit 0.12.0 with Relay 0.14.0
 goal: Pin independently verified Session Relay 0.14.0 assets, release docks-kit 0.12.0, and archive evidence for the related Docks child.
-status: ongoing
+status: finished
 created: "2026-07-25T12:54:02.572Z"
-updated: "2026-07-25T13:30:30.017Z"
+updated: "2026-07-26T01:36:05.859Z"
 started_at: "2026-07-25T13:30:30.017Z"
-finished_at: null
+finished_at: "2026-07-26T01:36:05.859Z"
 assignee: null
 tags: [session-relay, docks-kit, supply-chain, release]
 affected_paths:
@@ -32,7 +32,7 @@ related_plans:
 
 # Release docks-kit 0.12.0 with Relay 0.14.0
 
-Plan-run: {"acceptance":null,"blocker":null,"completion_review":{"input_sha256":null,"invocations":0,"result_sha256":null,"state":"not_started"},"draft_review":{"input_sha256":"87944f070d9d218217ddf8aef348d14797f6a2314f20160516486e63bc2083c8","invocations":2,"result_sha256":"52710388a2408c0d27cb3bcb732f7f4ef2985f3a5e252d011ca7710f3657fb20","state":"passed"},"execution_parent":"c36c8ae33722607fb705a46743da38e8b1644ef8","goal_id":"8b89aabf-7336-4352-bc11-225bab67f9aa","implementation_commit":null,"plan_path":"docs/plans/active/session-relay-0.14.0-docks-kit-0.12.0-release.md","plan_sha256":"340dfe9c67ce347ef9b94807c89409198e0bd7588864b30549c5baee5329afce","repository_id":"DocksDocks/public","requested_effects":["local","probe","push","release"],"risk":"external","run_id":"1f801952-705e-4c7e-a533-91026c013383","schema":1,"source_base":"c36c8ae33722607fb705a46743da38e8b1644ef8","source_sha256":"55839090880fd113a215e48ca766de2479ea4fc105bf49956d297a6f3d44909d"}
+Plan-run: {"acceptance":{"source_sha256":"dc7197d41cbe999b02c3a986265889e057f432a3e67651dd284d480413b3ee3e","verification_sha256":"d362924976d06cfb8c787cf8e52771937b1b7303a63c40ba8d67719b6c0b27df"},"blocker":null,"completion_review":{"input_sha256":"be55e2171e6eb9f65fc3fac0e655720276e432b4c46c6cc6008b159a65a4bc48","invocations":2,"result_sha256":"8034b252d665e71271e932384318585e14cdc0f3ed9452e911a6136aff5739cb","state":"passed"},"draft_review":{"input_sha256":"87944f070d9d218217ddf8aef348d14797f6a2314f20160516486e63bc2083c8","invocations":2,"result_sha256":"52710388a2408c0d27cb3bcb732f7f4ef2985f3a5e252d011ca7710f3657fb20","state":"passed"},"execution_parent":"c36c8ae33722607fb705a46743da38e8b1644ef8","goal_id":"8b89aabf-7336-4352-bc11-225bab67f9aa","implementation_commit":"88ab1911490edad83b387514bb8e899f02338d69","plan_path":"docs/plans/active/session-relay-0.14.0-docks-kit-0.12.0-release.md","plan_sha256":"340dfe9c67ce347ef9b94807c89409198e0bd7588864b30549c5baee5329afce","repository_id":"DocksDocks/public","requested_effects":["local","probe","push","release"],"risk":"external","run_id":"1f801952-705e-4c7e-a533-91026c013383","schema":1,"source_base":"c36c8ae33722607fb705a46743da38e8b1644ef8","source_sha256":"55839090880fd113a215e48ca766de2479ea4fc105bf49956d297a6f3d44909d"}
 
 ## Goal
 
@@ -118,4 +118,18 @@ Review-result: {"findings":[],"invocation":2,"plan_sha256":"340dfe9c67ce347ef9b9
 
 ## Verification Results
 
-Not run. Manager will record exact red proof, commands, exits, hashes, commits, assets, workflow, npm, and archive identities here.
+Implementation evidence captured before completion review:
+
+- TDD red at commit `424ee50f389215537e0dc09f490d1e4cf7c27276`: `bun run test:unit -- cli/test/unit/sessionRelayCli.test.ts cli/test/unit/pluginRefresh.test.ts cli/test/unit/toolchain.test.ts cli/test/unit/engine-di.test.ts` exited 1 with exactly three intended assertions: package 0.11.0 instead of 0.12.0 and Relay version/tag 0.13.0 instead of 0.14.0 in toolchain and engine output. Frozen test SHA-256 values are `d0a45c5eff566c28c73e55a64ec01ab09f9062063b497976980ffd23ed51c5ac` for `toolchain.test.ts` and `6772c685a13b26515e82cbd9213ef1b9a911bc69920e757bd8b29868ffe7f1cc` for `engine-di.test.ts`; both remained byte-identical after implementation.
+- The independently downloaded `session-relay--v0.14.0` assets matched `SHA256SUMS`: Linux x64 `140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3`, Linux arm64 `726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30`, macOS x64 `5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0`, and macOS arm64 `9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87`; `SHA256SUMS` itself hashed to `92b4f823278853ed4b33dd2adc416ebef6ab1431e8cfe40623641dd5912bddd8`.
+- Implementation commit `88ab1911490edad83b387514bb8e899f02338d69` pins package 0.12.0 and Relay 0.14.0, regenerates the embedded payload, updates only recorder-owned goldens, and updates current documentation.
+- Payload freshness exited 0. The focused four-file run passed 53 tests. `bun run typecheck` exited 0. The full unit suite passed 184 tests in 24 files. The POSIX statusline smoke passed exact bytes and latency ceilings. Normal dry-run and mutation goldens passed 25 and 71 cases.
+- Both planted mismatch modes intentionally exited 1 with exact markers: `prove-red OK: golden-dryrun detected 25 planted mismatch(es)` and `prove-red OK: golden-mutation detected 68 planted mismatch(es)`.
+- Direct `./docks-kit sync claude codex --dry-run --skip-rtk` and `./docks-kit sync agents --dry-run --skip-rtk` exited 0; the Claude/Codex path reported exact Relay 0.14.0/tag pins and neither command mutated user state.
+- The downloaded Linux x64 Relay printed `session-relay 0.14.0`; an isolated schema-2 request from `11111111-1111-4111-8111-111111111111` to `22222222-2222-4222-8222-222222222222` produced correlation `17a6e6ab-959c-45f0-860e-3c872446426c`, and the requester drained the matching `terminal_reply` with status `completed`.
+- The quarantined legacy plan remains SHA-256 `e0b1d183122def14a3f4bd6f05605c6aa7de3fb2dccf4330e8956acc3e0db9ff`.
+- Completion review invocation 1 ended in pre-model transport failure `cb35df3daeaa424a7cdfce31ddccb5988969434060d8b7e839b301110a6ff9a1`; invocation 2 passed the exact implementation/diff with CompletionReviewV1 SHA-256 `8034b252d665e71271e932384318585e14cdc0f3ed9452e911a6136aff5739cb`.
+- Public remote `main` and tag `cli-v0.12.0` both resolve to reviewed implementation `88ab1911490edad83b387514bb8e899f02338d69`. GitHub Actions release run `30183062456` completed successfully. Stable GitHub release database id `359900427` contains exactly four native binaries plus `SHA256SUMS` and no Windows asset.
+- Independently downloaded release digests equal both GitHub asset metadata and checksum rows: Linux x64 `36ad0aa22143e60250dacb8fb93e0deb65588d2f6d613242d6ffc9c935701ea6`, Linux arm64 `95c962f850f9079b4abaab92a7a3b9dea2458f419e357fd72e88f8a7bd22a1b8`, macOS x64 `45e49bd53145dec422265123151566fe64032307d6a9c677b2f9074d7695ebd2`, macOS arm64 `7ad016621f6454bf9b4fb983088ff1d31a1b5bcd6228ade3c5abaf30f6ad33ea`; `SHA256SUMS` is `d040a0920120caebf53ec743f14c7665c3241ee5c8fc7828a951dd329cde8b21`.
+- A downloaded Linux x64 binary printed `0.12.0` and its packaged `toolchain ensure session-relay` dry run reported exact Relay 0.14.0/tag pins. Fresh-cache `npm view docks-kit@0.12.0` returned version `0.12.0`, integrity `sha512-nbdTmhmhFfYYQtmuZdv8ZT3wspEsMcSeB1Q2i8uLjaWl5fph0oaohxVyjicTagB5LQjXSK4zRv4OfAEnOlTxoQ==`, and the expected registry tarball.
+- All P1-P10 observations are now complete; this finished child is ready for archive commit and remote read-back before Docks consumes it.
