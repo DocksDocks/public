@@ -8,15 +8,16 @@ import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenRe
 
 const EXPECTED_CATALOGS = {
   claude: {
-    verified: "2026-07-22",
+    verified: "2026-07-27",
     models: [
       { id: "best", kind: "alias", note: "Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)" },
-      { id: "opus", kind: "alias", note: "latest Opus (currently Opus 4.8)" },
-      { id: "fable", kind: "alias", note: "Fable 5 — the kit SoT default; needs org access + Claude Code >=2.1.170" },
+      { id: "opus", kind: "alias", note: "latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)" },
+      { id: "fable", kind: "alias", note: "Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170" },
       { id: "sonnet", kind: "alias", note: "latest Sonnet (currently Sonnet 5)" },
       { id: "haiku", kind: "alias", note: "latest Haiku (currently Haiku 4.5)" },
       { id: "default", kind: "alias", note: "engine pseudo-value: deletes the deployed model key so the account default applies" },
       { id: "claude-fable-5", kind: "id", note: "Fable 5" },
+      { id: "claude-opus-5", kind: "id", note: "Opus 5 — needs Claude Code >=2.1.219" },
       { id: "claude-opus-4-8", kind: "id", note: "Opus 4.8" },
       { id: "claude-sonnet-5", kind: "id", note: "Sonnet 5" },
       { id: "claude-haiku-4-5-20251001", kind: "id", note: "Haiku 4.5" }
@@ -99,7 +100,7 @@ describe.sequential("retained model and sync behavior", () => {
         env: Record<string, string>
         permissions: { allow: Array<string> }
       }
-      expect(claude.model).toBe("fable")
+      expect(claude.model).toBe("opus")
       expect(claude.effortLevel).toBe("high")
       expect(claude.env["MY_CUSTOM_VAR"]).toBe("1")
       expect(claude.permissions.allow).toContain("Bash(my-tool *)")
