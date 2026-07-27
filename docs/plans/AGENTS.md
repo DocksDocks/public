@@ -167,7 +167,8 @@ bound. `source_base` plus `source_sha256` binds a canonical sorted existence,
 kind, mode, and content manifest for every affected path at review time,
 including dirty/untracked bytes and tombstones. `acceptance.source_sha256` binds
 the final affected-path manifest; `verification_sha256` binds canonical
-Verification Results bytes.
+Verification Results bytes. Never list the plan record in `affected_paths`;
+acceptance writes to it and breaks that bind.
 
 ## Closed phase table and transitions
 
