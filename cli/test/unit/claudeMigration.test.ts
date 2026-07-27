@@ -3,16 +3,14 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
+import { cleanup, readArgvLog, runEngine } from "../lib/goldenExecution"
 import {
   FIXTURES_DIR,
-  cleanup,
   cleanupTemporaryDirs,
   makeStubDir,
-  materializeVariant,
-  readArgvLog,
-  runEngine,
-  stableStringify
-} from "../lib/harness"
+  materializeVariant
+} from "../lib/goldenResources"
+import { stableStringify } from "../lib/goldenSnapshot"
 
 afterAll(cleanupTemporaryDirs)
 

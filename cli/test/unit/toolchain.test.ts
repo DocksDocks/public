@@ -2,7 +2,8 @@ import { readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 import { promptLine } from "../../src/engine-native/toolchain"
-import { cleanupTemporaryDirs, makeStubDir, runPublicCli } from "../lib/harness"
+import { runPublicCli } from "../lib/goldenExecution"
+import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
 
 afterAll(cleanupTemporaryDirs)
 

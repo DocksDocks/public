@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { cleanup, makeStubDir, runEngine, runPublicCli } from "../lib/harness"
+import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { makeStubDir } from "../lib/goldenResources"
 
 const readyCodex = `case "$1" in
   --version) echo "codex-cli 0.144.4";;

@@ -21,16 +21,34 @@ done
 
 bun "$REPO_DIR/cli/scripts/generate-sot-payload.ts" --check
 mkdir -p "$DIST"
+STAGING="$(mktemp -d "$DIST/.build-XXXXXX")"
+trap 'rm -rf "$STAGING"' EXIT
 
 ARTIFACTS=()
 for target in "${TARGETS[@]}"; do
   name="docks-kit-$target"
-  out="$DIST/$name"
+  out="$STAGING/$name"
   ARTIFACTS+=("$name")
-  echo "building $out (bun-$target)..."
+  echo "building $DIST/$name (bun-$target)..."
   bun build --compile --minify "--target=bun-$target" \
     "$REPO_DIR/cli/src/main.ts" --outfile "$out"
 done
 
-(cd "$DIST" && sha256sum "${ARTIFACTS[@]}" > SHA256SUMS 2>/dev/null || shasum -a 256 "${ARTIFACTS[@]}" > SHA256SUMS)
+sorted_artifacts="$(printf '%s\n' "${ARTIFACTS[@]}" | LC_ALL=C sort)"
+SORTED_ARTIFACTS=()
+while IFS= read -r name; do
+  SORTED_ARTIFACTS+=("$name")
+done <<< "$sorted_artifacts"
+
+(
+  cd "$STAGING"
+  sha256sum "${SORTED_ARTIFACTS[@]}" > SHA256SUMS 2>/dev/null ||
+    shasum -a 256 "${SORTED_ARTIFACTS[@]}" > SHA256SUMS
+)
+
+rm -f "$DIST/SHA256SUMS"
+for name in "${ARTIFACTS[@]}"; do
+  mv "$STAGING/$name" "$DIST/$name"
+done
+mv "$STAGING/SHA256SUMS" "$DIST/SHA256SUMS"
 echo "done — ${ARTIFACTS[*]} SHA256SUMS"

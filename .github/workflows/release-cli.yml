@@ -1,66 +1,178 @@
 name: release-cli
 
-# Builds the four docks-kit standalone binaries + SHA256SUMS and attaches them
-# to the GitHub release for the pushed cli-v* tag, then publishes to npm when
-# NPM_TOKEN is configured (optional — the publish step is skipped without it).
-#
-# Cut a release:
-#   git tag cli-v0.1.0 && git push origin cli-v0.1.0
+# Build and verify the docks-kit release payload, attach binaries to the tagged
+# GitHub release, then publish the exact package tarball through npm OIDC.
 
 on:
   push:
     tags:
       - "cli-v*"
 
-permissions:
-  contents: write
-  id-token: write # npm OIDC trusted publishing (tokenless)
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    # Actions are pinned to full commit SHAs (tag comments alongside) and tool
-    # versions are exact — mutable tags + @latest installs are the npm-worm
-    # (Shai-Hulud-style) attack surface. Bump SHAs deliberately, never floating.
+  build:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.3.14 # keep in step with SoT/toolchain.json tools.bun.verified
+      - uses: ./.github/actions/setup-bun-cache
 
       - name: Install dependencies
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun install --frozen-lockfile
 
+      - name: Validate release version
+        id: release_version
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: |
+          release_version="${GITHUB_REF_NAME#cli-v}"
+          if [[ -z "$release_version" ]]; then
+            echo "::error::release version must be non-empty"
+            exit 1
+          fi
+          package_version="$(bun -p 'require("./package.json").version')"
+          if [[ "$release_version" != "$package_version" ]]; then
+            echo "::error::tag version '$release_version' does not match package.json version '$package_version'"
+            exit 1
+          fi
+          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+
       - name: Typecheck
-        run: bunx tsc --noEmit -p cli
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run typecheck
 
       - name: Build binaries (all four targets)
-        run: bash cli/build-binaries.sh
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run build:binaries
 
-      - name: Attach binaries to the release
+      - name: Pack npm tarball
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun pm pack --destination cli/dist
+
+      - name: Verify exact npm tarball
+        env:
+          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
+        run: |
+          expected="cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
+          shopt -s nullglob
+          tarballs=(cli/dist/*.tgz)
+          if [[ "${#tarballs[@]}" -ne 1 || "${tarballs[0]}" != "$expected" ]]; then
+            echo "::error::expected exactly one tarball at '$expected'"
+            exit 1
+          fi
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-cli-${{ github.ref_name }}
+          if-no-files-found: error
+          path: |
+            cli/dist/docks-kit-linux-x64
+            cli/dist/docks-kit-linux-arm64
+            cli/dist/docks-kit-darwin-x64
+            cli/dist/docks-kit-darwin-arm64
+            cli/dist/SHA256SUMS
+            cli/dist/docks-kit-${{ steps.release_version.outputs.release_version }}.tgz
+
+  github-release:
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-cli-${{ github.ref_name }}
+          path: release-dist
+
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" --generate-notes || true
-          gh release upload "${GITHUB_REF_NAME}" cli/dist/docks-kit-* cli/dist/SHA256SUMS --clobber
+          gh release view "$GITHUB_REF_NAME" || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          gh release upload "$GITHUB_REF_NAME" \
+            release-dist/docks-kit-linux-x64 \
+            release-dist/docks-kit-linux-arm64 \
+            release-dist/docks-kit-darwin-x64 \
+            release-dist/docks-kit-darwin-arm64 \
+            release-dist/SHA256SUMS \
+            --clobber
 
-      # Tokenless npm publish via OIDC trusted publishing — no NPM_TOKEN secret.
-      # One-time setup (in order):
-      #   1. First-ever publish must be manual (npm can't attach a trusted
-      #      publisher to a package that doesn't exist): npm login && npm publish
-      #   2. npmjs.com -> docks-kit -> Settings -> Trusted Publisher: GitHub
-      #      Actions, repo DocksDocks/public, workflow release-cli.yml
-      # Until step 2 is done, publish fails here and is downgraded to a warning
-      # so binaries-only releases stay green. npm CLI >= 11.5.1 required for
-      # OIDC (bun publish doesn't do OIDC), hence setup-node + npm upgrade.
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+  npm-publish:
+    needs: [build, github-release]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-cli-${{ github.ref_name }}
+          path: release-dist
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: 24
-      - name: Publish to npm (OIDC trusted publishing)
+
+      - name: Install pinned npm
+        run: npm install --global npm@11.18.0
+
+      - name: Publish exact version when absent
         run: |
-          npm install -g npm@11.18.0 # >= 11.5.1 needed for OIDC; exact pin
-          npm publish --provenance --access public || {
-            echo "::warning::npm publish failed — if the trusted publisher isn't configured yet, see the setup comment in this workflow"
+          release_version="${GITHUB_REF_NAME#cli-v}"
+          if [[ -z "$release_version" ]]; then
+            echo "::error::release version must be non-empty"
+            exit 1
+          fi
+
+          expected_tgz="release-dist/docks-kit-${release_version}.tgz"
+          shopt -s nullglob
+          tarballs=(release-dist/*.tgz)
+          if [[ "${#tarballs[@]}" -ne 1 || "${tarballs[0]}" != "$expected_tgz" ]]; then
+            echo "::error::expected exactly one downloaded tarball at '$expected_tgz'"
+            exit 1
+          fi
+          tgz="${tarballs[0]}"
+
+          view_error="$(mktemp)"
+          trap 'rm -f "$view_error"' EXIT
+          set +e
+          published_version="$(npm view "docks-kit@${release_version}" version 2>"$view_error")"
+          view_status=$?
+          set -e
+
+          if [[ "$view_status" -eq 0 ]]; then
+            cat "$view_error" >&2
+            if [[ "$published_version" != "$release_version" ]]; then
+              echo "::error::npm returned version '$published_version', expected '$release_version'"
+              exit 1
+            fi
+            echo "docks-kit@${release_version} is already published"
             exit 0
-          }
+          fi
+
+          cat "$view_error" >&2
+          if grep -qE '(^|[[:space:]])E404([[:space:]]|$)' "$view_error"; then
+            npm publish "$tgz" --provenance --access public
+            exit 0
+          fi
+
+          exit "$view_status"

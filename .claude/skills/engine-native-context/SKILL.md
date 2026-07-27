@@ -1,6 +1,6 @@
 ---
 name: engine-native-context
-description: "Use when modifying cli/src/engine-native, cli/src/engine.ts, cli/src/main.ts native-raw harness path, cli/test/golden-dryrun.ts, cli/test/golden-mutation.ts, cli/test/lib/harness.ts, or cli/test/goldens; covers the golden-regression contract, the removed-engine failure for DOCKS_KIT_ENGINE value bash, p() slash-join rule, ExitError aborts, jq/TOML compatibility helpers, prove-red, GOLDEN_FILTER, and supported-host rejection before engine execution."
+description: "Use when modifying cli/src/engine-native, cli/src/engine.ts, cli/src/main.ts native-raw harness path, cli/test/golden-dryrun.ts, cli/test/golden-mutation.ts, cli/test/lib/golden*.ts, or cli/test/goldens; covers the golden-regression contract, the removed-engine failure for DOCKS_KIT_ENGINE value bash, p() slash-join rule, ExitError aborts, jq/TOML compatibility helpers, prove-red, GOLDEN_FILTER, and supported-host rejection before engine execution."
 user-invocable: false
 metadata:
   source_files:
@@ -14,9 +14,17 @@ metadata:
       lines: "1-220"
     - path: cli/test/golden-mutation.ts
       lines: "1-360"
-    - path: cli/test/lib/harness.ts
-      lines: "1-350"
-  updated: "2026-07-21"
+    - path: cli/test/lib/goldenResources.ts
+      lines: "1-400"
+    - path: cli/test/lib/goldenExecution.ts
+      lines: "1-400"
+    - path: cli/test/lib/goldenSnapshot.ts
+      lines: "1-400"
+    - path: cli/test/lib/goldenCli.ts
+      lines: "1-400"
+    - path: cli/test/lib/goldenMutationCatalog.ts
+      lines: "1-400"
+  updated: "2026-07-27"
 ---
 
 # EngineNative Golden Contract

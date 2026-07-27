@@ -3,14 +3,8 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { modelCatalog } from "../../src/manifests"
-import {
-  cleanup,
-  cleanupTemporaryDirs,
-  FIXTURES_DIR,
-  makeStubDir,
-  runEngine,
-  runPublicCli
-} from "../lib/harness"
+import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
 
 const EXPECTED_CATALOGS = {
   claude: {

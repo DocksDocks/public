@@ -13,25 +13,17 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
+import { cleanup, readArgvLog, runEngine, runEngineSplit, runPublicCli } from "./lib/goldenExecution"
 import {
-  FIXTURES_DIR,
-  REPO_DIR,
-  banner,
-  cleanup,
-  diffText,
-  diffTrees,
-  labelSelected,
-  makeStubDir,
-  materializeVariant,
-  parseArgs,
-  readArgvLog,
-  runEngine,
-  runEngineSplit,
-  runPublicCli,
-  snapshotTree,
-  stableStringify,
-  type TreeSnapshot
-} from "./lib/harness"
+  LEGACY_CLAUDE_FILES,
+  MATRIX,
+  REPLAYS,
+  TOML_DIR,
+  TOML_SHAPES
+} from "./lib/goldenMutationCatalog"
+import { FIXTURES_DIR, REPO_DIR, makeStubDir, materializeVariant } from "./lib/goldenResources"
+import { diffText, diffTrees, snapshotTree, stableStringify, type TreeSnapshot } from "./lib/goldenSnapshot"
 
 interface MutationGolden {
   readonly version: 1
@@ -46,141 +38,9 @@ interface MutationCaseGolden {
   readonly output: string
 }
 
-// Stub-body variants for toolchain gate/install/upgrade/failure branches.
-const RTK_INIT_FAILS = `case "$1" in --version) echo "rtk 0.43.0";; init) exit 1;; esac`
-const AGENT_BROWSER_STALE = `case "$1" in --version) echo "agent-browser 0.30.0";; esac`
-const NPM_INSTALL_FAILS = `case "$1" in
-  view) case "$2" in agent-browser) echo "0.32.0";; esac;;
-  install) exit 1;;
-esac`
-const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
-  view) case "$2" in agent-browser) echo "0.99.0";; esac;;
-esac`
-const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
-const LEGACY_CLAUDE_SETTINGS = stableStringify({
-  hooks: {
-    SessionStart: [{ hooks: [{ type: "command", command: "legacy-session", timeout: 5 }] }],
-    Notification: [{ hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] }],
-    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }]
-  },
-  statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
-  userOnly: "preserved"
-})
-const LEGACY_CLAUDE_FILES = {
-  ".claude/settings.json": LEGACY_CLAUDE_SETTINGS,
-  ".claude/statusline.sh": "legacy-statusline-marker\n",
-  ".claude/fetch-usage.sh": "legacy-fetch-marker\n",
-  ".claude/hooks/notify.sh": "legacy-notify-marker\n"
-}
-
-// `variant` disambiguates rows whose fixture+cmd+stub-keys are identical but
-// whose stub BODIES differ — without it their labels collide and the later
-// row silently overwrites the earlier one's golden.
-const MATRIX: Array<{ fixture: string; cmd: Array<string>; stubs?: Record<string, string | null>; variant?: string }> = [
-  { fixture: "home-fresh", cmd: ["sync", "claude"] },
-  { fixture: "home-fresh", cmd: ["sync", "codex"] },
-  { fixture: "home-fresh", cmd: ["sync", "agents"] },
-  { fixture: "home-drift", cmd: ["sync", "claude"] },
-  { fixture: "home-drift", cmd: ["sync", "codex"] },
-  { fixture: "home-drift", cmd: ["sync", "agents"] },
-  { fixture: "home-drift", cmd: ["sync", "--reconcile"] },
-  { fixture: "home-drift", cmd: ["sync", "--prune"] },
-  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-effort=default"] },
-  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-advisor=on"] },
-  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=ultra"] },
-  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-effort=default"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort="] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-effort=max"] },
-  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort"] },
-  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort="] },
-  { fixture: "home-fresh", cmd: ["sync", "codex", "--codex-effort=future"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor="] },
-  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor=maybe"] },
-  {
-    fixture: "home-fresh",
-    cmd: ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"]
-  },
-  { fixture: "home-drift", cmd: ["sync", "claude", "--claude-plugin=supabase,n8n"] },
-  {
-    fixture: "home-drift",
-    cmd: [
-      "sync",
-      "claude",
-      "--claude-model=opus",
-      "--claude-effort=low",
-      "--claude-advisor=on",
-      "--claude-compact-window=680k",
-      "--claude-permissive"
-    ]
-  },
-  { fixture: "home-drift", cmd: ["model", "claude", "opus"] },
-  { fixture: "home-drift", cmd: ["model", "claude", "default"] },
-  { fixture: "home-drift", cmd: ["model", "codex", "gpt-5.5"] },
-  { fixture: "home-invalid-json", cmd: ["sync", "claude"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--verbose"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "session-relay"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "check"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
-  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { jq: null }, variant: "jq-absent-bun-hooks" },
-  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { jq: null }, variant: "jq-absent-native-sync" },
-  {
-    fixture: "home-fresh",
-    cmd: ["sync", "claude"],
-    stubs: { curl: null, rtk: null },
-    variant: "curl-absent-rtk-bootstrap"
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "rtk"],
-    stubs: { curl: null, rtk: null },
-    variant: "curl-absent-direct-rtk"
-  },
-  // Missing-git trio: uniform hint-bearing warn from the dependency registry;
-  // the combined run must emit exactly ONE deduplicated git warn.
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
-  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { git: null } },
-  { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": AGENT_BROWSER_STALE } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED }, variant: "npm-latest-above-verified" },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--yes"], stubs: { npm: NPM_LATEST_ABOVE_VERIFIED } },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"], stubs: { npm: NPM_OFFLINE }, variant: "npm-offline" }
-]
-
-/**
- * Sequential same-HOME replay rows — run the command twice against ONE home
- * and golden the SECOND run, so repeat-run output (the "already in sync"
- * surface) is pinned explicitly.
- */
-const REPLAYS: Array<{ fixture: string; cmd: Array<string>; cmd2?: Array<string>; variant?: string }> = [
-  { fixture: "home-fresh", cmd: ["sync"] },
-  { fixture: "home-drift", cmd: ["sync"] },
-  // Verbose replay: the demoted no-op confirmations must come back.
-  { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
-  // Model modifier as the ONLY second-run mutation: the restart advice must
-  // print from the model trigger alone (everything else is already in sync).
-  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] },
-]
-
-const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
-const TOML_SHAPES = [
-  "01-top-level-comments.toml",
-  "02-first-table-insert.toml",
-  "03-features-only-landlock.toml",
-  "04-features-extra-keys.toml",
-  "05-user-tables.toml",
-  "06-sot-table-replace.toml",
-  "07-dotted-quoted-headers.toml"
-]
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "mutation.json")
-const { proveRed, updateGoldens } = parseArgs(process.argv)
+const options = parseArgs(process.argv)
 const defaultStubs = makeStubDir()
 
 function matrixLabel(
@@ -201,71 +61,90 @@ function runCase(
   maskTools: ReadonlyArray<string> = []
 ): MutationCaseGolden {
   const run = runEngine("native", command, fixture, stubDir, { maskTools })
-  const golden = {
-    command: [...command],
-    exitCode: run.exitCode,
-    tree: snapshotTree(run.home),
-    argvLog: readArgvLog(run),
-    output: run.output
+  try {
+    return {
+      command: [...command],
+      exitCode: run.exitCode,
+      tree: snapshotTree(run.home),
+      argvLog: readArgvLog(run),
+      output: run.output
+    }
+  } finally {
+    cleanup([run])
   }
-  cleanup([run])
-  return golden
 }
 
-function runReplayCase(fixture: string, cmd: ReadonlyArray<string>, cmd2?: ReadonlyArray<string>): MutationCaseGolden {
+function runReplayCase(
+  fixture: string,
+  cmd: ReadonlyArray<string>,
+  cmd2?: ReadonlyArray<string>
+): MutationCaseGolden {
   const first = runEngine("native", cmd, fixture, defaultStubs)
-  const secondCmd = cmd2 ?? cmd
-  const second = runEngine("native", secondCmd, fixture, defaultStubs, { reuseHome: first.home })
-  const golden = {
-    command: [...secondCmd],
-    exitCode: second.exitCode,
-    tree: snapshotTree(second.home),
-    argvLog: readArgvLog(second),
-    output: second.output
+  try {
+    const secondCmd = cmd2 ?? cmd
+    const second = runEngine("native", secondCmd, fixture, defaultStubs, { reuseHome: first.home })
+    return {
+      command: [...secondCmd],
+      exitCode: second.exitCode,
+      tree: snapshotTree(second.home),
+      argvLog: readArgvLog(second),
+      output: second.output
+    }
+  } finally {
+    cleanup([first])
   }
-  cleanup([second]) // first.home === second.home
-  return golden
 }
 
 function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Array<string> } {
   const fixture = materializeVariant("home-fresh", LEGACY_CLAUDE_FILES)
-  const run = runEngine("native", ["sync", "claude"], fixture, defaultStubs)
-  const problems: Array<string> = []
-  for (const relative of [".claude/statusline.sh", ".claude/fetch-usage.sh", ".claude/hooks/notify.sh"]) {
-    if (existsSync(join(run.home, relative))) problems.push(`  migration: legacy file survived: ${relative}`)
+  try {
+    const run = runEngine("native", ["sync", "claude"], fixture, defaultStubs)
+    try {
+      const problems: Array<string> = []
+      for (const relative of [".claude/statusline.sh", ".claude/fetch-usage.sh", ".claude/hooks/notify.sh"]) {
+        if (existsSync(join(run.home, relative))) problems.push(`  migration: legacy file survived: ${relative}`)
+      }
+      for (const relative of [
+        ".claude/bin/statusline.mjs",
+        ".claude/bin/session-start.mjs",
+        ".claude/bin/notify.mjs",
+        ".claude/notification.mp3"
+      ]) {
+        if (!existsSync(join(run.home, relative))) problems.push(`  migration: runtime file missing: ${relative}`)
+      }
+      const settingsText = readFileSync(join(run.home, ".claude", "settings.json"), "utf8")
+      const settings = JSON.parse(settingsText) as Record<string, unknown>
+      const hooks = settings["hooks"] as Record<string, unknown> | undefined
+      if (hooks?.["Stop"] !== undefined) problems.push("  migration: hooks.Stop survived ready cutover")
+      if (settingsText.includes("__DOCKS_KIT_")) problems.push("  migration: deployed settings contain a sentinel")
+      if (
+        !run.output.includes(
+          "Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)"
+        )
+      ) {
+        problems.push("  migration: aggregate readiness-gated prune line missing")
+      }
+      return {
+        command: ["sync", "claude"],
+        exitCode: run.exitCode,
+        tree: snapshotTree(run.home),
+        argvLog: readArgvLog(run),
+        output: run.output,
+        problems
+      }
+    } finally {
+      cleanup([run])
+    }
+  } finally {
+    rmSync(fixture, { recursive: true, force: true })
   }
-  for (const relative of [
-    ".claude/bin/statusline.mjs",
-    ".claude/bin/session-start.mjs",
-    ".claude/bin/notify.mjs",
-    ".claude/notification.mp3"
-  ]) {
-    if (!existsSync(join(run.home, relative))) problems.push(`  migration: runtime file missing: ${relative}`)
-  }
-  const settingsText = readFileSync(join(run.home, ".claude", "settings.json"), "utf8")
-  const settings = JSON.parse(settingsText) as Record<string, unknown>
-  const hooks = settings["hooks"] as Record<string, unknown> | undefined
-  if (hooks?.["Stop"] !== undefined) problems.push("  migration: hooks.Stop survived ready cutover")
-  if (settingsText.includes("__DOCKS_KIT_")) problems.push("  migration: deployed settings contain a sentinel")
-  if (!run.output.includes("Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)")) {
-    problems.push("  migration: aggregate readiness-gated prune line missing")
-  }
-  const golden = {
-    command: ["sync", "claude"],
-    exitCode: run.exitCode,
-    tree: snapshotTree(run.home),
-    argvLog: readArgvLog(run),
-    output: run.output,
-    problems
-  }
-  cleanup([run])
-  rmSync(fixture, { recursive: true, force: true })
-  return golden
 }
 
 type AdvisorMigrationState = "flagless" | "on" | "off" | "default"
 
-function runAdvisorMigrationCase(state: AdvisorMigrationState): MutationCaseGolden & { readonly problems: Array<string> } {
+function runAdvisorMigrationCase(
+  state: AdvisorMigrationState
+): MutationCaseGolden & { readonly problems: Array<string> } {
   const sourceSettings = JSON.parse(
     readFileSync(join(FIXTURES_DIR, "home-drift", ".claude", "settings.json"), "utf8")
   ) as Record<string, unknown>
@@ -273,49 +152,57 @@ function runAdvisorMigrationCase(state: AdvisorMigrationState): MutationCaseGold
   const fixture = materializeVariant("home-drift", {
     ".claude/settings.json": stableStringify(sourceSettings)
   })
-  const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]
-  const first = runEngine("native", command, fixture, defaultStubs)
-  const second = runEngine("native", command, fixture, defaultStubs, { reuseHome: first.home })
-  const problems: Array<string> = []
-  const firstChangedByRemoval = first.output.includes("Pruned stale artifacts")
-  const firstChangedByModifier = first.output.includes("Advisor: deployed settings advisorModel")
-  if (state === "flagless" && !firstChangedByRemoval) {
-    problems.push("  advisor migration: flag-less run did not delete advisorModel through removals")
-  }
-  if (state !== "flagless" && firstChangedByRemoval) {
-    problems.push(`  advisor migration: explicit ${state} run let removals own advisorModel`)
-  }
-  if ((state === "off" || state === "default") && !firstChangedByModifier) {
-    problems.push(`  advisor migration: explicit ${state} run did not delete advisorModel through the modifier`)
-  }
+  try {
+    const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]
+    const first = runEngine("native", command, fixture, defaultStubs)
+    try {
+      const second = runEngine("native", command, fixture, defaultStubs, { reuseHome: first.home })
+      const problems: Array<string> = []
+      const firstChangedByRemoval = first.output.includes("Pruned stale artifacts")
+      const firstChangedByModifier = first.output.includes("Advisor: deployed settings advisorModel")
+      if (state === "flagless" && !firstChangedByRemoval) {
+        problems.push("  advisor migration: flag-less run did not delete advisorModel through removals")
+      }
+      if (state !== "flagless" && firstChangedByRemoval) {
+        problems.push(`  advisor migration: explicit ${state} run let removals own advisorModel`)
+      }
+      if ((state === "off" || state === "default") && !firstChangedByModifier) {
+        problems.push(`  advisor migration: explicit ${state} run did not delete advisorModel through the modifier`)
+      }
 
-  const settings = JSON.parse(
-    readFileSync(join(second.home, ".claude", "settings.json"), "utf8")
-  ) as Record<string, unknown>
-  if (state === "on" && settings["advisorModel"] !== "fable") {
-    problems.push("  advisor migration: explicit on did not preserve advisorModel=fable")
-  }
-  if (state !== "on" && Object.prototype.hasOwnProperty.call(settings, "advisorModel")) {
-    problems.push(`  advisor migration: ${state} left advisorModel deployed`)
-  }
-  if (second.output.includes("Pruned stale artifacts") || second.output.includes("Advisor: deployed settings advisorModel")) {
-    problems.push(`  advisor migration: repeated ${state} state was not a true no-op`)
-  }
-  if (second.output.includes("Restart Claude Code for hook/env-var changes to take effect.")) {
-    problems.push(`  advisor migration: repeated ${state} state retriggered Claude restart advice`)
-  }
+      const settings = JSON.parse(
+        readFileSync(join(second.home, ".claude", "settings.json"), "utf8")
+      ) as Record<string, unknown>
+      if (state === "on" && settings["advisorModel"] !== "fable") {
+        problems.push("  advisor migration: explicit on did not preserve advisorModel=fable")
+      }
+      if (state !== "on" && Object.prototype.hasOwnProperty.call(settings, "advisorModel")) {
+        problems.push(`  advisor migration: ${state} left advisorModel deployed`)
+      }
+      if (
+        second.output.includes("Pruned stale artifacts") ||
+        second.output.includes("Advisor: deployed settings advisorModel")
+      ) {
+        problems.push(`  advisor migration: repeated ${state} state was not a true no-op`)
+      }
+      if (second.output.includes("Restart Claude Code for hook/env-var changes to take effect.")) {
+        problems.push(`  advisor migration: repeated ${state} state retriggered Claude restart advice`)
+      }
 
-  const golden = {
-    command,
-    exitCode: second.exitCode,
-    tree: snapshotTree(second.home),
-    argvLog: readArgvLog(second),
-    output: second.output,
-    problems
+      return {
+        command,
+        exitCode: second.exitCode,
+        tree: snapshotTree(second.home),
+        argvLog: readArgvLog(second),
+        output: second.output,
+        problems
+      }
+    } finally {
+      cleanup([first])
+    }
+  } finally {
+    rmSync(fixture, { recursive: true, force: true })
   }
-  cleanup([second]) // first.home === second.home
-  rmSync(fixture, { recursive: true, force: true })
-  return golden
 }
 
 /**
@@ -513,7 +400,28 @@ function readGoldens(): MutationGolden {
     console.error(`${GOLDEN_PATH} does not exist; run with --update-goldens first`)
     process.exit(1)
   }
-  return JSON.parse(readFileSync(GOLDEN_PATH, "utf8")) as MutationGolden
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(GOLDEN_PATH, "utf8"))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`${GOLDEN_PATH}: malformed golden JSON: ${message}`)
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    Array.isArray(parsed) ||
+    !("version" in parsed) ||
+    parsed.version !== 1 ||
+    !("cases" in parsed) ||
+    typeof parsed.cases !== "object" ||
+    parsed.cases === null ||
+    Array.isArray(parsed.cases)
+  ) {
+    throw new Error(`${GOLDEN_PATH}: expected a version-1 object with object-valued cases`)
+  }
+  return parsed as MutationGolden
 }
 
 function mismatchedGolden(label: string, goldens: MutationGolden): MutationCaseGolden {
@@ -554,35 +462,55 @@ function tomlInvariantProblems(shape: string, fixtureHome: string): Array<string
   return problems
 }
 
-function runTomlCase(shape: string, command: ReadonlyArray<string>, assertInvariants: boolean): MutationCaseGolden & { problems: Array<string> } {
+function runTomlCase(
+  shape: string,
+  command: ReadonlyArray<string>,
+  assertInvariants: boolean
+): MutationCaseGolden & { problems: Array<string> } {
   const variant = materializeVariant("home-fresh", {
     ".codex/config.toml": readFileSync(join(TOML_DIR, shape), "utf8")
   })
-  const run = runEngine("native", command, variant, defaultStubs)
-  const problems = assertInvariants ? tomlInvariantProblems(shape, run.home) : []
-  const golden = {
-    command: [...command],
-    exitCode: run.exitCode,
-    tree: snapshotTree(run.home),
-    argvLog: readArgvLog(run),
-    output: run.output,
-    problems
+  try {
+    const run = runEngine("native", command, variant, defaultStubs)
+    try {
+      const problems = assertInvariants ? tomlInvariantProblems(shape, run.home) : []
+      return {
+        command: [...command],
+        exitCode: run.exitCode,
+        tree: snapshotTree(run.home),
+        argvLog: readArgvLog(run),
+        output: run.output,
+        problems
+      }
+    } finally {
+      cleanup([run])
+    }
+  } finally {
+    rmSync(variant, { recursive: true, force: true })
   }
-  cleanup([run])
-  rmSync(variant, { recursive: true, force: true })
-  return golden
 }
 
-function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantFailures: number } {
+function collectCases(): {
+  cases: Record<string, MutationCaseGolden>
+  invariantFailures: number
+  selectedChecks: number
+} {
   const cases: Record<string, MutationCaseGolden> = {}
   let invariantFailures = 0
+  let selectedChecks = 0
 
   for (const { fixture, cmd, stubs, variant } of MATRIX) {
     const label = matrixLabel(fixture, cmd, stubs, variant)
     if (label in cases) throw new Error(`duplicate matrix label ${label} — add a variant to disambiguate`)
-    if (!labelSelected(label)) continue
+    if (!labelSelected(label, options.filter)) continue
+    selectedChecks++
     const stubDir = stubs !== undefined ? makeStubDir(stubs) : defaultStubs
-    const maskTools = stubs !== undefined ? Object.entries(stubs).filter(([, body]) => body === null).map(([name]) => name) : []
+    const maskTools =
+      stubs !== undefined
+        ? Object.entries(stubs)
+            .filter(([, body]) => body === null)
+            .map(([name]) => name)
+        : []
     cases[label] = runCase(cmd, fixture, stubDir, maskTools)
   }
 
@@ -590,12 +518,14 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     const variantPart = variant === undefined ? "" : ` variant=${variant}`
     const label = `fixture=${fixture} cmd=${(cmd2 ?? cmd).join(" ")} replay=2nd${variantPart}`
     if (label in cases) throw new Error(`duplicate replay label ${label}`)
-    if (!labelSelected(label)) continue
+    if (!labelSelected(label, options.filter)) continue
+    selectedChecks++
     cases[label] = runReplayCase(fixture, cmd, cmd2)
   }
 
   const migrationLabel = "migration=legacy-claude-hook-scripts"
-  if (labelSelected(migrationLabel)) {
+  if (labelSelected(migrationLabel, options.filter)) {
+    selectedChecks++
     const { problems, ...golden } = runLegacyMigrationCase()
     cases[migrationLabel] = golden
     if (problems.length > 0) {
@@ -607,7 +537,8 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
 
   for (const state of ["flagless", "on", "off", "default"] as const) {
     const advisorLabel = `advisor-migration=prior-kit-settings state=${state}`
-    if (!labelSelected(advisorLabel)) continue
+    if (!labelSelected(advisorLabel, options.filter)) continue
+    selectedChecks++
     const { problems, ...golden } = runAdvisorMigrationCase(state)
     cases[advisorLabel] = golden
     if (problems.length > 0) {
@@ -617,7 +548,8 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     }
   }
 
-  if (labelSelected("channel-invariants")) {
+  if (labelSelected("channel-invariants", options.filter)) {
+    selectedChecks++
     const problems = channelInvariantProblems()
     if (problems.length > 0) {
       invariantFailures++
@@ -628,7 +560,8 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
 
   for (const shape of TOML_SHAPES) {
     const syncLabel = `toml=${shape}`
-    if (labelSelected(syncLabel)) {
+    if (labelSelected(syncLabel, options.filter)) {
+      selectedChecks++
       const { problems, ...golden } = runTomlCase(shape, ["sync", "codex"], true)
       cases[syncLabel] = golden
       if (problems.length > 0) {
@@ -639,34 +572,56 @@ function collectCases(): { cases: Record<string, MutationCaseGolden>; invariantF
     }
 
     const modelLabel = `toml=${shape} model codex`
-    if (labelSelected(modelLabel)) {
+    if (labelSelected(modelLabel, options.filter)) {
+      selectedChecks++
       const { problems: _, ...golden } = runTomlCase(shape, ["model", "codex", "gpt-5.5"], false)
       cases[modelLabel] = golden
     }
   }
 
-  return { cases, invariantFailures }
+  return { cases, invariantFailures, selectedChecks }
 }
 
-if (updateGoldens) {
-  const { cases, invariantFailures } = collectCases()
+if (options.updateGoldens) {
+  const {
+    cases: selectedCases,
+    invariantFailures,
+    selectedChecks
+  } = collectCases()
+  if (options.filter !== undefined && selectedChecks === 0) {
+    console.error("GOLDEN_FILTER matched no cases")
+    process.exit(2)
+  }
+  if (options.filter !== undefined && Object.keys(selectedCases).length === 0) {
+    console.error("GOLDEN_FILTER selected no snapshot cases")
+    process.exit(2)
+  }
   if (invariantFailures > 0) {
-    console.error(`\ngolden-mutation: ${invariantFailures} TOML invariant failure(s); goldens not updated`)
+    console.error(`\ngolden-mutation: ${invariantFailures} invariant failure(s); goldens not updated`)
     process.exit(1)
   }
+
+  const cases =
+    options.filter === undefined
+      ? selectedCases
+      : { ...readGoldens().cases, ...selectedCases }
   mkdirSync(dirname(GOLDEN_PATH), { recursive: true })
   writeFileSync(GOLDEN_PATH, stableStringify({ version: 1, cases } satisfies MutationGolden))
-  console.log(`golden-mutation: updated ${Object.keys(cases).length} case(s) at ${GOLDEN_PATH}`)
+  console.log(`golden-mutation: updated ${Object.keys(selectedCases).length} case(s) at ${GOLDEN_PATH}`)
   process.exit(0)
 }
 
 const goldens = readGoldens()
-const { cases: actualCases, invariantFailures } = collectCases()
+const { cases: actualCases, invariantFailures, selectedChecks } = collectCases()
+if (options.filter !== undefined && selectedChecks === 0) {
+  console.error("GOLDEN_FILTER matched no cases")
+  process.exit(2)
+}
 let failures = invariantFailures
 let checked = 0
 
 for (const [label, actual] of Object.entries(actualCases)) {
-  const expected = proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
+  const expected = options.proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
   if (expected === undefined) {
     failures++
     banner(`MISSING GOLDEN ${label}`)
@@ -682,7 +637,7 @@ for (const [label, actual] of Object.entries(actualCases)) {
   }
 }
 
-if (proveRed) {
+if (options.proveRed) {
   if (failures === 0) {
     console.error("prove-red FAILED: golden-mutation did not detect the planted mismatch")
     process.exit(1)

@@ -1,16 +1,13 @@
 import { readFileSync, rmSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
+import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
 import {
-  cleanup,
   cleanupTemporaryDirs,
   makeStubDir,
-  materializeVariant,
-  readArgvLog,
-  runEngine,
-  runPublicCli,
-  stableStringify
-} from "../lib/harness"
+  materializeVariant
+} from "../lib/goldenResources"
+import { stableStringify } from "../lib/goldenSnapshot"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 
