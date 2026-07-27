@@ -1,10 +1,10 @@
 ---
 title: Harden CI, golden execution, and rerunnable releases
 goal: Make CI deterministic and bounded, harden golden-process cleanup and filtered updates, publish binaries atomically, and make the tag release workflow rerunnable without suppressing real failures.
-status: planned
+status: ongoing
 created: "2026-07-27T00:23:11.880+00:00"
-updated: "2026-07-27T00:44:51.656+00:00"
-started_at: null
+updated: "2026-07-27T01:09:25.249+00:00"
+started_at: "2026-07-27T01:09:25.249+00:00"
 finished_at: null
 assignee: null
 tags:
@@ -39,7 +39,7 @@ related_plans:
   - docs/plans/active/ci-golden-test-modernization.md
 ---
 
-Plan-run: {"acceptance":null,"blocker":null,"completion_review":{"input_sha256":null,"invocations":0,"result_sha256":null,"state":"not_started"},"draft_review":{"input_sha256":"0c8cf7f93976a18b7d1bada1262665ae95246173c258a6d6bab83c8727d88394","invocations":1,"result_sha256":"97215587ef8286c2c8dd11a75314dfb1ed876e757b523ea29784f2e9c69f8e9e","state":"passed"},"execution_parent":null,"goal_id":"b8c91622-819a-44d9-ba0e-6ced02b86ba5","implementation_commit":null,"plan_path":"docs/plans/active/ci-golden-test-and-release-hardening.md","plan_sha256":"2628851a03dcf0293674b18d5997d706d422c537d17d7127033e07b9e18de645","repository_id":"DocksDocks/public","requested_effects":["local","probe"],"risk":"external","run_id":"d2ffdc34-f9b4-418e-98c7-da9474aba0b2","schema":1,"source_base":"5688b561224b89abd138a79ff4673c0977bc590d","source_sha256":"b81d3c30a2a7a306c0959d9487ed6e07084435db4f751682914a5f9bd834aa9f"}
+Plan-run: {"acceptance":null,"blocker":null,"completion_review":{"input_sha256":null,"invocations":0,"result_sha256":null,"state":"not_started"},"draft_review":{"input_sha256":"0c8cf7f93976a18b7d1bada1262665ae95246173c258a6d6bab83c8727d88394","invocations":1,"result_sha256":"97215587ef8286c2c8dd11a75314dfb1ed876e757b523ea29784f2e9c69f8e9e","state":"passed"},"execution_parent":"432748e5e24abbfbe35d39a8620a510628bdf6c6","goal_id":"b8c91622-819a-44d9-ba0e-6ced02b86ba5","implementation_commit":null,"plan_path":"docs/plans/active/ci-golden-test-and-release-hardening.md","plan_sha256":"2628851a03dcf0293674b18d5997d706d422c537d17d7127033e07b9e18de645","repository_id":"DocksDocks/public","requested_effects":["local","probe"],"risk":"external","run_id":"d2ffdc34-f9b4-418e-98c7-da9474aba0b2","schema":1,"source_base":"5688b561224b89abd138a79ff4673c0977bc590d","source_sha256":"b81d3c30a2a7a306c0959d9487ed6e07084435db4f751682914a5f9bd834aa9f"}
 
 ## Goal
 
