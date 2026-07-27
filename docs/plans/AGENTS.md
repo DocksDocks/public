@@ -22,12 +22,13 @@ Claude/Codex wrappers; main invokes `plan-manager` directly.
 </constraint>
 
 <constraint>
-Current plans contain exactly one unfenced `Plan-run: <compact JCS PlanRunV1>`
-line. Schemas 1–6 are historical validation/quarantine formats only: preserve
-their bytes and validation behavior, but never emit one as current authority.
-Malformed, crossed, active, prepared, committed, cancelled, or otherwise
-unsettled legacy evidence never blocks an unrelated goal and never authorizes a
-current dispatch or external effect.
+Current plans contain exactly one unfenced current
+`Plan-run: <compact JCS PlanRunV1>` line. Prior terminal runs may appear only as
+validated append-only `Plan-attempt-history: <compact JCS PlanAttemptHistoryV1>`
+records inside `## Review`; history is never current authority. Schemas 1–6 are
+historical validation/quarantine formats only: preserve their bytes and behavior,
+but never emit one as current authority. Unsettled legacy evidence never blocks
+an unrelated goal or authorizes dispatch or an external effect.
 </constraint>
 
 ## Skill routing
@@ -124,6 +125,22 @@ PlanRunV1 = {
   acceptance: null|{source_sha256:64hex,verification_sha256:64hex},
   blocker: null|{kind:"user_decision"|"missing_authority"|"concurrent_change"|"user_cancelled"|"verification_failed"|"review_failed"|"legacy_invalid",evidence_sha256:64hex}
 }
+
+PlanAttemptHistoryV1 = {
+  schema: 1,
+  authorization_source_sha256: 64hex,
+  plan_bytes_sha256: 64hex,
+  replacement_run_id: uuid,
+  successor_run_sha256: 64hex,
+  run: PlanRunV1,
+  status: "blocked"
+}
+
+PlanRunReplacementAuthorityV1 = {
+  schema: 1, goal_id: uuid, repository_id: string,
+  plan_path: normalized-relative-path, run_id: predecessor-uuid,
+  source_sha256: 64hex, successor_run_sha256: 64hex
+}
 ```
 
 Compact JCS is byte-authoritative. `repository_id + plan_path + run_id` is the
@@ -131,6 +148,17 @@ run identity. Cross-repository goals use one child run per repository joined by
 `goal_id`; never record an unqualified commit as cross-repository identity.
 `requested_effects` is unique and canonical-ordered, always beginning with
 `local`. It records intended scope, never authority.
+
+A terminal `blocked` run is immutable. Exact current-user authorization may
+replace it only for the same `goal_id + repository_id + plan_path`; it binds the
+predecessor identity and digest of the exact successor PlanRun. The transaction
+appends the predecessor record and bytes/authorization digests, then installs
+the fresh `run_id` and review baselines in the same file. History is append-only;
+ordinary transitions cannot alter it. A finished plan file never reopens.
+
+`successor_run_sha256` is the exact install-time successor digest checked by the
+replacement transaction and retained as audit evidence; normal later lifecycle
+transitions neither recompute nor rewrite it.
 
 `plan_sha256` covers the canonical plan after excluding only lifecycle status and
 timestamps, the `Plan-run` line, `## Review`, and `## Verification Results`.
@@ -140,9 +168,6 @@ kind, mode, and content manifest for every affected path at review time,
 including dirty/untracked bytes and tombstones. `acceptance.source_sha256` binds
 the final affected-path manifest; `verification_sha256` binds canonical
 Verification Results bytes.
-`source_base` is null only before draft review starts and is required thereafter.
-`execution_parent` is null before start and is required, immutable, and exclusive
-to `ongoing`, post-start `blocked`, and `finished` tuples.
 
 ## Closed phase table and transitions
 
@@ -173,6 +198,19 @@ An arriving result may mutate only the matching phase while it remains
 discarded. Cold entry into `reserved` changes it to `blocked` with dangling-launch
 evidence and never redispatches.
 
+Before reserving, preflight the exact reviewer route and a private file that will
+receive complete stdout. Each invocation has a newly sealed bundle whose closed
+binding contains that invocation number. After reservation read-back, derive the
+prompt only from that bundle and capture directly to the file. Never consume
+console rendering, clipped lines, transcript fragments, or reconstructed JSON;
+do not request compact/single-line reviewer output. Parse the file, validate the
+closed object, then hash canonical JCS.
+
+A transport retry preserves canonical plan/source and any completion
+implementation/acceptance bindings, but seals an invocation-2 bundle and
+therefore reserves a different bundle/input digest. Reusing the invocation-1
+bundle or prompt is stale and cannot consume the final permit.
+
 ## Closed lifecycle and tuple matrix
 
 Lifecycle transitions are only absent → `drafting`; `drafting` → `planned |
@@ -185,7 +223,7 @@ scheduled | ongoing | blocked`; `planned` ↔ `scheduled`; `planned | scheduled`
 | `planned` / `scheduled` | `passed`, or local-only `degraded` | risk baseline | both null | null |
 | `ongoing` local | `passed | degraded` | `not_required` | implementation null; acceptance null | null |
 | `ongoing` sensitive/external before completion | `passed` | `not_started` | both null | null |
-| `ongoing` sensitive/external during/after completion | `passed` | `reserved | retryable | repairing | passed` | implementation required; acceptance required except that replacement clears stale acceptance while `repairing`, then the next reservation rebinds it | null |
+| `ongoing` sensitive/external during/after completion | `passed` | `reserved | retryable | repairing | passed` | implementation and acceptance required | null |
 | `blocked` before start | baseline or terminal draft | risk baseline | both null | required |
 | `blocked` local before acceptance | `passed | degraded` | `not_required` | both null | required |
 | `blocked` local after acceptance | `passed | degraded` | `not_required` | implementation null; acceptance required | `concurrent_change` only |
@@ -197,31 +235,39 @@ scheduled | ongoing | blocked`; `planned` ↔ `scheduled`; `planned | scheduled`
 
 Draft baseline is `not_started`. Completion baseline is local `not_required` or
 sensitive/external `not_started`. A pre-dispatch `user_decision` or
-`missing_authority` blocker whose phases remain baseline may return to
-`drafting` or `ongoing` when new current-user input answers it; consumed permits
-never reset. Every other blocked or cancelled run is terminal. Continuation uses
-a new `run_id` and treats old output as non-authoritative.
+`missing_authority` blocker may reopen its existing run when new user input
+answers it; consumed permits never reset. Every other blocked/cancelled run is
+terminal and immutable. For the same domain goal, explicit current-user
+`PlanRunReplacementAuthorityV1` may append that terminal run to history and
+start fresh review budgets under a new `run_id` at the same `plan_path`.
+Replacement is never automatic and never reuses predecessor permits, bundles,
+prompts, output, or hashes. Unrelated goals use new files; never mint `v2`/`vN`
+paths to bypass a terminal run or permit budget.
 
 ## Main-context orchestration
 
-1. Classify the goal. Direct local work stays untracked. Otherwise create one
-   canonical `drafting` plan and current record in the working tree.
-2. Research repository facts, bind the plan/source manifests, reserve draft
-   invocation 1, and launch one fresh `plan-reviewer` over a private immutable
-   bundle. The prompt carries only bundle path plus run/invocation/hash bindings.
+1. Classify the goal. Direct local work stays untracked. Otherwise resolve one
+   stable canonical path: create it only if absent; for an explicitly continued
+   same-domain terminal goal, use the guarded same-file replacement transaction.
+2. Research repository facts and bind plan/source manifests. Preflight reviewer
+   availability and private full-output capture. Seal the invocation-1 bundle,
+   reserve its digest, read back, derive the prompt from that exact bundle, then
+   launch one fresh reviewer and capture its complete stdout to the file.
 3. On `pass`, continue. On a repository-grounded `repair`, patch only the exact
-   accepted blocking set, recompute both hashes, reserve invocation 2, and use a
-   fresh reviewer. On a real missing decision/authority, block with evidence.
-   A first transport failure may spend invocation 2 as a retry instead of repair.
-   Two transport failures may degrade only reversible local draft work; sensitive,
-   destructive, public-contract, security, or external work blocks.
+   accepted blocking set, seal an invocation-2 changed-input bundle, reserve its
+   new digest, read back, and use a fresh prompt/reviewer. On a real missing
+   decision/authority, block with evidence. A first transport failure may spend
+   invocation 2 using unchanged canonical plan/source and completion bindings,
+   but a fresh invocation-2 bundle and different digest. Never reuse a bundle or
+   prompt. Two transport failures may degrade only reversible local draft work;
+   sensitive, destructive, public-contract, security, or external work blocks.
 4. A plan-only request writes `planned` or `scheduled` and makes one owned-path
    checkpoint commit/read-back. A canonical implementation writes `ongoing`,
    captures `execution_parent`, and makes one reviewed start checkpoint.
 5. Implement or delegate local steps, run their requested smoke/acceptance paths,
    and write canonical Verification Results. Diagnose ordinary verification
    failures inside the implementation loop; repeated same-signature failure with
-   no relevant-byte progress blocks and never reopens draft review.
+   no relevant-byte progress blocks this run and never reopens its draft review.
 6. Ordinary local work records acceptance, writes `finished`, moves once to a
    unique archive path, and commits implementation plus finished plan as one final
    checkpoint. It has no completion reviewer.
@@ -245,6 +291,10 @@ releases. A checkpoint additionally acquires the repository lock, verifies
 expected HEAD, index, and owned-path preimage, commits only owned paths, and
 reads the commit back before release. Any mismatch fails before write, dispatch,
 or external action and records `concurrent_change` when the tuple permits.
+
+Ordinary lifecycle writes use `transactPlanRun`. Terminal same-path rollover
+uses only `replacePlanRunInPlace`, locking on the predecessor identity/preimage
+and validating exact authority, successor, and append-only history before write.
 
 A same-host dead-owner lock may be reclaimed only after matching owner PID,
 `run_id`, and unchanged preimages. A live, foreign, ambiguous, or changed stale
@@ -290,10 +340,10 @@ never mutates state.
 `ReviewInvalidInputV1` is a closed failure result, never a review verdict.
 Classify it before generic transport, parse/output, or verdict handling. The
 manager consumes it only through `review_invalid_input` against the exact
-reserved `run_id`, invocation, and `input_sha256`; it hashes the closed result
-and immediately records the review phase and plan status as terminal `blocked`
-with blocker `review_failed`. It never retries, degrades, repairs, changes any
-other lifecycle state, or infers authority from this result.
+reserved `run_id`, invocation, and `input_sha256`; it hashes the result and
+terminal-blocks the current run as `review_failed`. It never retries or resets
+that run. Later same-file replacement still requires exact current-user
+authority and fresh bindings.
 
 ## Effects and live authority
 
@@ -348,16 +398,18 @@ prepared, commitment, cancellation, crossed, malformed, or otherwise unsettled
 evidence is `legacy-quarantined`: render it, but never dispatch, resume, abandon,
 repair, consume, or rewrite it.
 
-An unrelated fresh local goal may create a new `PlanRunV1`; dangling legacy
-records provide no authority. External recovery always requires new live
-`ExternalAuthorityV1`. Never edit a historical finished plan during migration,
-audit, list, show, or current orchestration.
+An unrelated fresh local goal may create a new plan file. An explicitly
+continued same-domain terminal goal replaces only the current run at its stable
+path and preserves append-only attempt history. Legacy records provide no
+authority; external recovery requires live `ExternalAuthorityV1`. Never edit a
+historical finished plan.
 
 ## Audit checks
 
 Before claiming success, verify the exact path, closed frontmatter, one valid
-Plan-run line, repository/path/run identity, status tuple, plan/source hashes,
-transaction read-back, owned commit path set, review permit count, and observed
-acceptance bindings. Never claim a wrapper ran merely because its file exists,
+current Plan-run line, append-only attempt history, repository/path/run identity,
+status tuple, plan/source hashes, transaction read-back, owned commit path set,
+review permit count, and observed acceptance bindings. Never claim a wrapper ran
+merely because its file exists,
 claim review passed from reservation, translate stale output into state, or
 translate persisted intent into external authority.

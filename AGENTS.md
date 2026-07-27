@@ -91,9 +91,9 @@ When a kit-mechanic skill, its `references/`, or a wrapper agent (`.claude/agent
 
 ## Plans
 
-Canonical plans live in `docs/plans/active/`; status is frontmatter and `docs/plans/finished/` is terminal. Exactly three skills are live: `plan-workspace` maintains the workspace; main-context `plan-manager` classifies, drafts, reviews, repairs once, executes, verifies, and archives; internal `plan-reviewer` returns read-only `PlanReviewV1` evidence from one immutable bundle. Only the reviewer has Claude/Codex wrappers.
+Use direct implementation for one clear reversible low-risk local diff with one bounded acceptance path; it creates no plan, reviewer, or automatic commit. Canonical plans live in `docs/plans/active/`; lifecycle is frontmatter, and `docs/plans/finished/` is terminal. Exactly three skills own the workflow: `plan-workspace` maintains the workspace, main-context `plan-manager` owns classify → draft/review/one repair → start → implement/delegate → observed acceptance → finish/archive, and internal `plan-reviewer` returns read-only `PlanReviewV1` evidence from one immutable bundle. Only the reviewer has wrappers.
 
-Current plans carry one compact-JCS `Plan-run: PlanRunV1` record. Schemas 1–6 are historical validation/quarantine only and never authorize current dispatch or external effects. Persisted requested effects are intent, not authority; any probe, production access, publish, push, release, or deploy requires matching live authority from the exact current-user request. The full contract lives in `docs/plans/AGENTS.md`.
+The current record is one compact-JCS `Plan-run: PlanRunV1` line. Schemas 1–6 are historical validation/quarantine only. Every Steps row has `Effect: local|probe|production_access|publish|push|release|deploy`; a persisted requested effect is never live authority. The complete transaction, review-budget, checkpoint, legacy-quarantine, and external-authority contract lives in `docs/plans/AGENTS.md`; `docs/plans/CLAUDE.md` contains only `@AGENTS.md`.
 
 Distinct from per-tool **Open Concerns** sections (wait-on-upstream
 blockers tied to a vendor shipping a fix — these live inside the per-tool
