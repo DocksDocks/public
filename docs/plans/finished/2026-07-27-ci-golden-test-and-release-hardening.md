@@ -1,11 +1,11 @@
 ---
 title: Harden CI, golden execution, and rerunnable releases
 goal: Make CI deterministic and bounded, harden golden-process cleanup and filtered updates, publish binaries atomically, and make the tag release workflow rerunnable without suppressing real failures.
-status: ongoing
+status: finished
 created: "2026-07-27T00:23:11.880+00:00"
-updated: "2026-07-27T01:09:25.249+00:00"
+updated: "2026-07-27T02:27:38.779+00:00"
 started_at: "2026-07-27T01:09:25.249+00:00"
-finished_at: null
+finished_at: "2026-07-27T02:27:38.779+00:00"
 assignee: null
 tags:
   - ci
@@ -39,7 +39,7 @@ related_plans:
   - docs/plans/active/ci-golden-test-modernization.md
 ---
 
-Plan-run: {"acceptance":null,"blocker":null,"completion_review":{"input_sha256":null,"invocations":0,"result_sha256":null,"state":"not_started"},"draft_review":{"input_sha256":"0c8cf7f93976a18b7d1bada1262665ae95246173c258a6d6bab83c8727d88394","invocations":1,"result_sha256":"97215587ef8286c2c8dd11a75314dfb1ed876e757b523ea29784f2e9c69f8e9e","state":"passed"},"execution_parent":"432748e5e24abbfbe35d39a8620a510628bdf6c6","goal_id":"b8c91622-819a-44d9-ba0e-6ced02b86ba5","implementation_commit":null,"plan_path":"docs/plans/active/ci-golden-test-and-release-hardening.md","plan_sha256":"2628851a03dcf0293674b18d5997d706d422c537d17d7127033e07b9e18de645","repository_id":"DocksDocks/public","requested_effects":["local","probe"],"risk":"external","run_id":"d2ffdc34-f9b4-418e-98c7-da9474aba0b2","schema":1,"source_base":"5688b561224b89abd138a79ff4673c0977bc590d","source_sha256":"b81d3c30a2a7a306c0959d9487ed6e07084435db4f751682914a5f9bd834aa9f"}
+Plan-run: {"acceptance":{"source_sha256":"6e281b733d93c99546bd58f3b3cfc453ec162d987d57e821885299ba6e05a257","verification_sha256":"5dcc47430cf280f3cd08ae4bf821ae856d2da21ba7b9e3319fcdf25936e0bc92"},"blocker":null,"completion_review":{"input_sha256":"29a52783ee8242e7e8ebf761cc714a99dff9e7324d05bf484019ee4725ceab15","invocations":1,"result_sha256":"a2b9e3061902208a3869fc483d6df999fef0dbf119204c76670cec6c1a65e6e2","state":"passed"},"draft_review":{"input_sha256":"0c8cf7f93976a18b7d1bada1262665ae95246173c258a6d6bab83c8727d88394","invocations":1,"result_sha256":"97215587ef8286c2c8dd11a75314dfb1ed876e757b523ea29784f2e9c69f8e9e","state":"passed"},"execution_parent":"432748e5e24abbfbe35d39a8620a510628bdf6c6","goal_id":"b8c91622-819a-44d9-ba0e-6ced02b86ba5","implementation_commit":"c25da271dbe327b699ce3ae8b913f27f877a7211","plan_path":"docs/plans/active/ci-golden-test-and-release-hardening.md","plan_sha256":"2628851a03dcf0293674b18d5997d706d422c537d17d7127033e07b9e18de645","repository_id":"DocksDocks/public","requested_effects":["local","probe"],"risk":"external","run_id":"d2ffdc34-f9b4-418e-98c7-da9474aba0b2","schema":1,"source_base":"5688b561224b89abd138a79ff4673c0977bc590d","source_sha256":"b81d3c30a2a7a306c0959d9487ed6e07084435db4f751682914a5f9bd834aa9f"}
 
 ## Goal
 
@@ -612,10 +612,109 @@ Plan-attempt-history: {"authorization_source_sha256":"a4bf9785d7f0f9098f99193c9c
 - Draft review invocation 1 — bound `PlanReviewV1`, verdict `pass`, zero findings. Input SHA-256 `0c8cf7f93976a18b7d1bada1262665ae95246173c258a6d6bab83c8727d88394`; result SHA-256 `97215587ef8286c2c8dd11a75314dfb1ed876e757b523ea29784f2e9c69f8e9e`.
 - One invocation was consumed; no repair, retry, or second invocation was needed. The sealed bundle was verified and then destroyed.
 - Plan promoted to `planned` at 2026-07-27T00:44:51.656+00:00. Implementation, acceptance execution, and `## Verification Results` require a separate user request.
+- Completion review invocation 1 — bound `CompletionReviewV1`, verdict `pass`, zero findings.
+  Implementation commit `c25da271dbe327b699ce3ae8b913f27f877a7211`; diff SHA-256 `bf31b8ce909be5203e9ce2ad29712fbadbca932f7f5da38a90d16d09b6b89d21`;
+  input SHA-256 `29a52783ee8242e7e8ebf761cc714a99dff9e7324d05bf484019ee4725ceab15`; result SHA-256 `a2b9e3061902208a3869fc483d6df999fef0dbf119204c76670cec6c1a65e6e2`.
+- One invocation was consumed; no repair or second invocation was needed. The sealed bundle was verified and destroyed.
+- Plan finished at 2026-07-27T02:27:38.779+00:00 and archived to `docs/plans/finished/2026-07-27-ci-golden-test-and-release-hardening.md`.
 
 
 ## Verification Results
 
-Not yet run. This plan is a reviewed plan-only deliverable at `status: planned`;
-implementation, acceptance execution, and these results require a separate user
-request.
+Observed from `/home/vagrant/projects/public` at implementation commit
+`c25da271dbe327b699ce3ae8b913f27f877a7211` (parent `1d865a49fd8335da364996207ec98a4822c6b61f`,
+`execution_parent` `432748e5e24abbfbe35d39a8620a510628bdf6c6`). The ordered
+inventory below was run end to end against the final tree after the last source
+edit; no row's result is carried over from an earlier partial run.
+
+### Ordered acceptance inventory
+
+| ID | Result | Observation |
+|---|---|---|
+| A1 | pass | Exit 0. `harness.ts` absent; all five modules present; no `lib/harness` or `from …harness` reference in `cli/test` or the skill file; none of the seven former consumers mentions `harness`; both focused unit files pass (9 tests); four Bun-enabled jobs use the local action; both pins occur only in `action.yml`; action YAML and skill `source_files` parse with live paths. |
+| A2 | pass | Exit 0. Invalid `GOLDEN_FILTER` reports `invalid GOLDEN_FILTER '[': …` and exits 2 in both suites; a non-matching filter reports `GOLDEN_FILTER matched no cases`; filtered updates rewrote exactly one case each and left every unselected key byte-identical; malformed golden JSON is rejected naming the offending path; the trap restored both goldens. |
+| A3 | pass | Exit 0. Both suites exit non-zero under `--prove-red` and each reports exactly one planted mismatch. |
+| A4 | pass | Exit 0. Filtered dry-run left its `TMPDIR` root empty; under a `bash` stub that self-`SIGTERM`s the run exits non-zero, reports `terminated by signal SIGTERM`, and still leaves the temporary root empty. |
+| A5 | pass | Exit 0. Unknown target exits 2; a real `linux-x64` build produces a verifying `SHA256SUMS` listing exactly `docks-kit-linux-x64`; a planted compile failure leaves the published binary and manifest byte-identical with no staging left behind; a planted publication failure exits 12 leaving no manifest and no staging; a full build then restores a valid complete four-target set. |
+| A6 | pass | actionlint exits 0 for both workflows. Executed via the verified-local-binary route (see below), not the network fetch. |
+| A7 | pass | Exit 0. `bun install --frozen-lockfile` reports no changes; `bun run test:ci` passes end to end once — 26 test files / 192 tests, runtime smoke p95 45.04 ms (ceiling 100 ms) and median 46.60 ms (ceiling 250 ms), dry-run golden 25 cases, mutation golden 71 cases. |
+
+Both golden files are byte-identical to their pre-implementation state:
+`cli/test/goldens/dryrun.json` `e94182e264887013151344880ea2612884102f9ed211dc65f8fc3138591ece7b`,
+`cli/test/goldens/mutation.json` `c288e0a9ca4c6f61ac475f84d011b6caae038f944f8491ad48671323e0908aff`.
+
+### Step 4 red-first evidence
+
+The two new unit files were first run against the placeholder
+`checkedSpawnExitCode` and the pre-hardening `parseArgs`, failing 5 of 9. The
+implementation then turned them green. One post-red correction was made to
+`goldenCli.test.ts`: the invalid-regex assertion had hard-coded Bun's
+`RegExp` message while Vitest executes on V8, so the test now derives the active
+runtime's error text. Because those corrected bytes had not themselves been
+observed red, the final test bytes were re-run against a restored
+pre-implementation `goldenCli.ts` and `goldenExecution.ts`; they failed the same
+5 of 9, and both modules were restored to digests
+`c1a76677f8a5ca17437170cf98e27096775042775e1cdfb0005792bae0ea9c97` and
+`5394798000afb3b60583ecd744b3dc9906058e64c4c0063ffb7c81039c0a330d` before the
+inventory was run.
+
+### Step 8 execution route
+
+Step 8 declares `Effect: probe` for the pinned-archive fetch. No live
+`ExternalAuthorityV1` was present, so the step took the alternative its own
+completion criterion allows: an already-present binary whose v1.7.12 identity was
+verified first. `~/.local/bin/actionlint` reports `1.7.12` and has digest
+`c872d6db8c6bf83a8eaa704fc93999f027d55dffbc63b8a6abdccb47df5f4cd4`. No network
+read was performed for this run and no probe authority was consumed or claimed.
+
+### Step 7 implementation derivation
+
+Step 7's completion criterion — "A1's pin and local-action assertions hold and
+both workflows parse" — holds. Its step body additionally describes
+`BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache` as job-level.
+
+That placement is not representable in GitHub Actions. The published context
+table allows `github, needs, strategy, matrix, vars, secrets, inputs` at
+`jobs.<job_id>.env` and excludes `runner`; `runner` is allowed at
+`jobs.<job_id>.steps.env`. A nonexistent property evaluates to the empty string,
+so the job-level form yields the literal path `/bun-install-cache` at the
+filesystem root, and actionlint v1.7.12 rejects it — four findings, which would
+fail A6's required exit 0.
+
+The implementation therefore binds the variable at step level on every
+bun-invoking step. Placement was verified mechanically rather than by
+inspection, since a missed step degrades the cache silently: per job, the count
+of steps whose `run` invokes `bun` equals the count of steps carrying
+`BUN_INSTALL_CACHE_DIR` — quality 5/5, golden-dryrun 3/3, golden-mutation 3/3,
+release `build` 5/5, `github-release` 0/0, `npm-publish` 0/0 — and no job retains
+a job-level `BUN_INSTALL_CACHE_DIR`. The composite action still caches
+`${{ runner.temp }}/bun-install-cache`, which is legal in a composite step, so
+the cache path and the consumer path remain the same string. `GOLDEN_FILTER`
+stays job-level in both golden jobs; it is a literal with no context expression.
+A1 asserts nothing about env placement.
+
+### Module export sets
+
+`goldenMutationCatalog.ts` exports exactly seven names: the five values
+`LEGACY_CLAUDE_FILES`, `MATRIX`, `REPLAYS`, `TOML_DIR`, `TOML_SHAPES`, plus the
+two row types `MutationMatrixCase` and `MutationReplayCase`. Both types are
+inside the permitted set: step 2 lists the five values "and the two row types
+below", and the plan's own `## Interfaces & data shapes` section declares each
+as `export interface`. The five stub-body constants and
+`LEGACY_CLAUDE_SETTINGS` are private, as required. `engineCommand`, `RunOpts`,
+shell quoting, PATH masking, and home/environment construction are private to
+`goldenExecution.ts`.
+
+### Environment prerequisites not declared in this plan
+
+Two host tools are required to run this inventory and are not covered by the
+plan's affected paths or its `local`/`probe` effects. A clean machine needs both
+before A1 and A6 can run:
+
+- `actionlint` v1.7.12 at `~/.local/bin/actionlint`, installed from the plan's
+  own pinned archive and SHA-256 `8aca8db9…`, used by A6.
+- `ruby` (Debian package set `ruby`, `ruby3.3`, `rubygems-integration` and their
+  dependencies), installed with `sudo apt-get install ruby`, used by A1's two
+  `ruby -ryaml` assertions. This was a host-level package installation performed
+  during implementation; it mutates the machine outside the repository and is
+  recorded here because A1 cannot run without it.
