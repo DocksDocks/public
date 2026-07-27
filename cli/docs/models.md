@@ -18,10 +18,14 @@ the entry and date when a model ships or retires.
 ## The `best` alias and `default` pseudo-value
 
 - `best` resolves to Fable 5 where the org has access, latest Opus otherwise.
-  Needs Claude Code >= 2.1.170. The kit SoT pins the `opus` alias directly
-  rather than `best` or a full id, so the deployed model is unambiguous and
-  still tracks new Opus releases (Opus 5 on the Anthropic API from 2.1.219)
-  without raising the SoT `minimumVersion` of 2.1.170.
+  It needs Claude Code >= 2.1.170. The kit SoT pins the `opus` alias directly
+  rather than `best` or a full id, so the deployed model is unambiguous. Its
+  `minimumVersion` of 2.1.219 ensures Claude Code can resolve that alias to the
+  newest Opus its provider offers: Opus 5 on the Anthropic API or Opus 4.6 on
+  Microsoft Foundry. The former 2.1.170 floor silently capped Anthropic API
+  users at Opus 4.8. Keeping the alias provides provider portability and tracks
+  future Opus releases; the literal `claude-opus-5` is unavailable on Foundry.
+  The floor also subsumes `best`/Fable 5's older 2.1.170 requirement.
 - `default` is an engine pseudo-value: it DELETES the deployed `model` key so
   the account default applies. It never reaches the settings file as a value.
 

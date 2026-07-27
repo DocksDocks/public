@@ -6,7 +6,7 @@
     "git":    { "kind": "check", "note": "plugin marketplaces (claude/codex clone them) + kit checkout updates" },
     "node":   { "kind": "check", "note": "hosts npm globals (agent-browser, LSP servers)" },
     "npm":    { "kind": "check", "note": "npm-global installer" },
-    "claude": { "kind": "check", "floor": "2.1.170", "note": "kit floor — `best` alias + Fable 5 need >=2.1.170 (mirrors settings minimumVersion)" },
+    "claude": { "kind": "check", "floor": "2.1.219", "note": "kit floor — lets the `opus` alias select the newest Opus its provider offers (Anthropic API: 5; Foundry: 4.6) and subsumes Fable 5's >=2.1.170 requirement (mirrors settings minimumVersion)" },
     "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
     "ffplay": { "kind": "check", "note": "Notification hook sound (previously unchecked)" },
     "bwrap":  { "kind": "check", "os": "linux", "note": "Codex Linux sandbox runtime" },
