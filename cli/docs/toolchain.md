@@ -40,17 +40,17 @@ now kit-approved" act.
   `docks-kit toolchain ensure session-relay` select exactly one of four targets
   (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`,
   `x86_64-apple-darwin`, `aarch64-apple-darwin`). The installer downloads the
-  pinned `session-relay--v0.14.0` asset and same-release `SHA256SUMS`, requires
+  pinned `session-relay--v0.15.0` asset and same-release `SHA256SUMS`, requires
   source pin = selected row = downloaded bytes, chmods/smoke-tests only the
   sibling stage, then renames it over `~/.local/bin/session-relay`. Offline,
   unsupported-host, checksum, chmod, version, download, or rename failures
   preserve an existing command byte-for-byte. The four pinned production
-  digests correspond to the tagged `session-relay--v0.14.0` assets and match
+  digests correspond to the tagged `session-relay--v0.15.0` assets and match
   its `SHA256SUMS`:
-  `x86_64-unknown-linux-musl` — `140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3`
-  `aarch64-unknown-linux-musl` — `726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30`
-  `x86_64-apple-darwin` — `5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0`
-  `aarch64-apple-darwin` — `9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87`
+  `x86_64-unknown-linux-musl` — `875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab`
+  `aarch64-unknown-linux-musl` — `ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06`
+  `x86_64-apple-darwin` — `8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39`
+  `aarch64-apple-darwin` — `24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7`
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
 normal sync. curl is checked only at a requested Linux/macOS RTK/Bun installer

@@ -651,7 +651,7 @@ describe.sequential("EngineNative full service injection", () => {
         },
         {
           level: "echo",
-          message: "[dry-run] ensure Session Relay CLI 0.14.0 from DocksDocks/docks@session-relay--v0.14.0 (x86_64-unknown-linux-musl) -> ~/.local/bin/session-relay"
+          message: "[dry-run] ensure Session Relay CLI 0.15.0 from DocksDocks/docks@session-relay--v0.15.0 (x86_64-unknown-linux-musl) -> ~/.local/bin/session-relay"
         },
         { level: "echo", message: "[dry-run] add enabled Codex plugins from SoT" },
         { level: "echo", message: "" },

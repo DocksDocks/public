@@ -41,7 +41,7 @@ describe("public toolchain ensure", () => {
       expect(run.stderr).toBe("")
       expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("")
       expect(run.stdout).toMatch(
-        /^\[dry-run\] ensure Session Relay CLI 0\.14\.0 from DocksDocks\/docks@session-relay--v0\.14\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
+        /^\[dry-run\] ensure Session Relay CLI 0\.15\.0 from DocksDocks\/docks@session-relay--v0\.15\.0 \((?:x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-apple-darwin|aarch64-apple-darwin)\) -> ~\/\.local\/bin\/session-relay\n$/
       )
       expect(run.stdout.match(/\n/g)).toHaveLength(1)
     } finally {
@@ -53,21 +53,21 @@ describe("public toolchain ensure", () => {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), "SoT", "toolchain.json"), "utf8"))
     const packageManifest = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"))
 
-    expect(packageManifest.version).toBe("0.12.0")
+    expect(packageManifest.version).toBe("0.13.0")
     expect(manifest.tools["session-relay"]).toEqual({
       kind: "managed-release",
       policy: "exact",
-      verified: "0.14.0",
+      verified: "0.15.0",
       repository: "DocksDocks/docks",
-      tag: "session-relay--v0.14.0",
+      tag: "session-relay--v0.15.0",
       plugin_id: "session-relay@docks",
-      plugin_version: "0.14.0",
+      plugin_version: "0.15.0",
       install_path: "~/.local/bin/session-relay",
       assets: {
-        "x86_64-unknown-linux-musl": "140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3",
-        "aarch64-unknown-linux-musl": "726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30",
-        "x86_64-apple-darwin": "5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0",
-        "aarch64-apple-darwin": "9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87"
+        "x86_64-unknown-linux-musl": "875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab",
+        "aarch64-unknown-linux-musl": "ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06",
+        "x86_64-apple-darwin": "8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39",
+        "aarch64-apple-darwin": "24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7"
       }
     })
   })

@@ -93,11 +93,11 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   both the committed digest and their release `SHA256SUMS`, then pass an exact
   staged version smoke before atomic replacement; failures preserve any prior
   command. The four production digests are pinned for the tagged
-  `session-relay--v0.14.0` assets and match the same-release `SHA256SUMS`:
-  `x86_64-unknown-linux-musl` — `140ea11b700b307c07219616ca6e9b3c4fe552916871af54c3bb15712efd4ee3`
-  `aarch64-unknown-linux-musl` — `726aa5e4f112310a360ab0291600947404d885055844b2041d4f76b5fbeedd30`
-  `x86_64-apple-darwin` — `5cc8c7d77c5d93f2873841497171efd6ed3c981466625b0370817e094194e4f0`
-  `aarch64-apple-darwin` — `9256e96d0757f1ffbb2c7ee8aafa1b8bf5de7ee782ab85c30377a5d836ccee87`
+  `session-relay--v0.15.0` assets and match the same-release `SHA256SUMS`:
+  `x86_64-unknown-linux-musl` — `875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab`
+  `aarch64-unknown-linux-musl` — `ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06`
+  `x86_64-apple-darwin` — `8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39`
+  `aarch64-apple-darwin` — `24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7`
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
@@ -138,8 +138,8 @@ Details: `docks-kit docs platforms`.
 
 Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
 x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
-publish runs when the `NPM_TOKEN` secret is configured.
-Package `docks-kit` 0.12.0 bundles the CLI + generated payload, so npm releases
+publishes the exact package tarball through trusted publishing with OIDC provenance.
+Package `docks-kit` 0.13.0 bundles the CLI + generated payload, so npm releases
 are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs

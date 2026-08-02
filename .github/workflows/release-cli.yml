@@ -47,10 +47,10 @@ jobs:
           fi
           printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
 
-      - name: Typecheck
+      - name: Full test gate
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
-        run: bun run typecheck
+        run: bun run test:ci
 
       - name: Build binaries (all four targets)
         env:
