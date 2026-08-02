@@ -2,25 +2,77 @@ name: release-cli
 
 # Build and verify the docks-kit release payload, attach binaries to the tagged
 # GitHub release, then publish the exact package tarball through npm OIDC.
+#
+# The release identity is resolved exactly once, in `resolve`, and every later
+# job consumes that output. A tag push supplies it through `github.ref_name`; a
+# manual dispatch supplies it through `inputs.tag`.
+#
+# Both paths check out the ref that triggered the run, never an override. That
+# is deliberate: `npm publish --provenance` builds its attestation from
+# GITHUB_REF and GITHUB_SHA, not from what the build checked out, so a checkout
+# override would mint an attestation naming a ref that did not produce the
+# bytes. The dispatch path instead proves that every packaged file is
+# byte-identical to the tag's tree, which makes the attested ref and the
+# published content agree.
+#
+# The dispatch path exists because a tag is burned on first push: it can never
+# be recreated, and re-running a failed run replays the workflow bytes from the
+# tag commit. Without a dispatch, one failure after the tag push strands the
+# release permanently.
 
 on:
   push:
     tags:
-      - "cli-v*"
+      # Kept in step with the `resolve` job's exact pattern, so a tag that
+      # triggers this workflow is never rejected later as unparseable.
+      - "cli-v[0-9]*.[0-9]*.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing cli-v<version> tag to build and publish"
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    permissions: {}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
+      release_version: ${{ steps.identity.outputs.release_version }}
+    steps:
+      - name: Resolve release identity
+        id: identity
+        env:
+          REQUESTED_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          tag="$REQUESTED_TAG"
+          if [[ ! "$tag" =~ ^cli-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::release tag '$tag' must be cli-v<major>.<minor>.<patch>"
+            exit 1
+          fi
+          release_version="${tag#cli-v}"
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: resolve
     permissions:
       contents: read
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      # No `ref:` override. An empty `ref` makes actions/checkout pin the
+      # event's commit and assert it, which is exactly the guarantee a release
+      # build needs; supplying a ref name would disable that assertion and
+      # would resolve a same-named branch ahead of the tag.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - uses: ./.github/actions/setup-bun-cache
@@ -31,21 +83,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Validate release version
-        id: release_version
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+          RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
         run: |
-          release_version="${GITHUB_REF_NAME#cli-v}"
-          if [[ -z "$release_version" ]]; then
-            echo "::error::release version must be non-empty"
-            exit 1
-          fi
           package_version="$(bun -p 'require("./package.json").version')"
-          if [[ "$release_version" != "$package_version" ]]; then
-            echo "::error::tag version '$release_version' does not match package.json version '$package_version'"
+          if [[ "$RELEASE_VERSION" != "$package_version" ]]; then
+            echo "::error::tag version '$RELEASE_VERSION' does not match package.json version '$package_version'"
             exit 1
           fi
-          printf 'release_version=%s\n' "$release_version" >> "$GITHUB_OUTPUT"
 
       - name: Full test gate
         env:
@@ -64,7 +110,7 @@ jobs:
 
       - name: Verify exact npm tarball
         env:
-          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
+          RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
         run: |
           expected="cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
           shopt -s nullglob
@@ -74,10 +120,55 @@ jobs:
             exit 1
           fi
 
+      - name: Prove the dispatched commit packs the tag's content
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          # A dispatch runs from a branch, so `npm publish --provenance` will
+          # attest that branch and its commit. Publishing is only honest if the
+          # packaged bytes are the tag's bytes, so prove exactly that.
+          #
+          # The compared roots come from package.json `files` plus the manifest
+          # itself, which is what decides tarball membership, so this cannot
+          # drift when `files` changes. `git diff` over those roots reports
+          # additions, deletions, renames and edits alike.
+          git fetch --no-tags --depth=1 origin "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+
+          mapfile -t roots < <(bun -p '["package.json", ...require("./package.json").files].join("\n")')
+          if [[ "${#roots[@]}" -lt 2 ]]; then
+            echo "::error::package.json declares no files array to compare"
+            exit 1
+          fi
+
+          # The tarball is packed from the WORKING TREE, not from HEAD, so a
+          # tree comparison only proves anything while the tree is pristine.
+          if [[ -n "$(git status --porcelain -- "${roots[@]}")" ]]; then
+            echo "::error::working tree differs from HEAD across packaged roots"
+            git status --porcelain -- "${roots[@]}"
+            exit 1
+          fi
+
+          set +e
+          git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"
+          diff_status=$?
+          set -e
+          if [[ "$diff_status" -eq 1 ]]; then
+            echo "::error::packaged content differs from ${RELEASE_TAG}"
+            git diff --name-status "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"
+            exit 1
+          fi
+          if [[ "$diff_status" -ne 0 ]]; then
+            echo "::error::could not compare packaged content against ${RELEASE_TAG}"
+            exit "$diff_status"
+          fi
+          printf 'packaged roots identical to %s: %s\n' \
+            "$RELEASE_TAG" "${roots[*]}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload release artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: release-cli-${{ github.ref_name }}
+          name: release-cli-${{ needs.resolve.outputs.tag }}
           if-no-files-found: error
           path: |
             cli/dist/docks-kit-linux-x64
@@ -85,10 +176,10 @@ jobs:
             cli/dist/docks-kit-darwin-x64
             cli/dist/docks-kit-darwin-arm64
             cli/dist/SHA256SUMS
-            cli/dist/docks-kit-${{ steps.release_version.outputs.release_version }}.tgz
+            cli/dist/docks-kit-${{ needs.resolve.outputs.release_version }}.tgz
 
   github-release:
-    needs: build
+    needs: [resolve, build]
     permissions:
       contents: write
     runs-on: ubuntu-24.04
@@ -97,27 +188,40 @@ jobs:
       - name: Download release artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-cli-${{ github.ref_name }}
+          name: release-cli-${{ needs.resolve.outputs.tag }}
           path: release-dist
 
-      - name: Create or update GitHub release
+      - name: Create release and upload only missing assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
         run: |
-          gh release view "$GITHUB_REF_NAME" || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
-          gh release upload "$GITHUB_REF_NAME" \
-            release-dist/docks-kit-linux-x64 \
-            release-dist/docks-kit-linux-arm64 \
-            release-dist/docks-kit-darwin-x64 \
-            release-dist/docks-kit-darwin-arm64 \
-            release-dist/SHA256SUMS \
-            --clobber
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
+            || gh release create "$RELEASE_TAG" --verify-tag --generate-notes
+
+          # Never replace a published asset: a release asset is immutable
+          # evidence that the Docks parent release lane pins. Upload only what
+          # is absent, so a re-driven run is idempotent instead of destructive.
+          # The listing's exit status is checked explicitly, because reading it
+          # through a process substitution would turn a transient API failure
+          # into a silently empty "nothing is published yet".
+          present="$(mktemp)"
+          if ! gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > "$present"; then
+            echo "::error::could not list existing assets for $RELEASE_TAG"
+            exit 1
+          fi
+          for asset in docks-kit-linux-x64 docks-kit-linux-arm64 docks-kit-darwin-x64 docks-kit-darwin-arm64 SHA256SUMS; do
+            if grep -Fxq "$asset" "$present"; then
+              echo "asset already published, leaving untouched: $asset"
+              continue
+            fi
+            gh release upload "$RELEASE_TAG" "release-dist/$asset"
+          done
 
   npm-publish:
-    needs: [build, github-release]
+    needs: [resolve, build, github-release]
     permissions:
-      contents: read
       id-token: write
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -125,7 +229,7 @@ jobs:
       - name: Download release artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: release-cli-${{ github.ref_name }}
+          name: release-cli-${{ needs.resolve.outputs.tag }}
           path: release-dist
 
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -136,36 +240,36 @@ jobs:
         run: npm install --global npm@11.18.0
 
       - name: Publish exact version when absent
+        env:
+          RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
         run: |
-          release_version="${GITHUB_REF_NAME#cli-v}"
-          if [[ -z "$release_version" ]]; then
-            echo "::error::release version must be non-empty"
-            exit 1
-          fi
-
-          expected_tgz="release-dist/docks-kit-${release_version}.tgz"
+          expected_tgz="release-dist/docks-kit-${RELEASE_VERSION}.tgz"
           shopt -s nullglob
           tarballs=(release-dist/*.tgz)
           if [[ "${#tarballs[@]}" -ne 1 || "${tarballs[0]}" != "$expected_tgz" ]]; then
             echo "::error::expected exactly one downloaded tarball at '$expected_tgz'"
             exit 1
           fi
-          tgz="${tarballs[0]}"
+          # npm-package-arg only treats an argument as a local tarball when it
+          # starts with ./, ../, / or file:. A bare `dir/name.tgz` is parsed as
+          # the GitHub shorthand <owner>/<repo>, so npm resolves it over SSH and
+          # the publish fails with "Permission denied (publickey)". Keep the ./.
+          tgz="./${tarballs[0]}"
 
           view_error="$(mktemp)"
           trap 'rm -f "$view_error"' EXIT
           set +e
-          published_version="$(npm view "docks-kit@${release_version}" version 2>"$view_error")"
+          published_version="$(npm view "docks-kit@${RELEASE_VERSION}" version 2>"$view_error")"
           view_status=$?
           set -e
 
           if [[ "$view_status" -eq 0 ]]; then
             cat "$view_error" >&2
-            if [[ "$published_version" != "$release_version" ]]; then
-              echo "::error::npm returned version '$published_version', expected '$release_version'"
+            if [[ "$published_version" != "$RELEASE_VERSION" ]]; then
+              echo "::error::npm returned version '$published_version', expected '$RELEASE_VERSION'"
               exit 1
             fi
-            echo "docks-kit@${release_version} is already published"
+            echo "docks-kit@${RELEASE_VERSION} is already published"
             exit 0
           fi
 
