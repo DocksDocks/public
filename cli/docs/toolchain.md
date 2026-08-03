@@ -37,20 +37,21 @@ now kit-approved" act.
 - **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
   toward npm latest, gated by their `verified` pins.
 - **session-relay** — policy `exact`: Claude/Codex sync and
-  `docks-kit toolchain ensure session-relay` select exactly one of four targets
+  `docks-kit toolchain ensure session-relay` select exactly one of three targets
   (`x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`,
-  `x86_64-apple-darwin`, `aarch64-apple-darwin`). The installer downloads the
-  pinned `session-relay--v0.15.0` asset and same-release `SHA256SUMS`, requires
+  `aarch64-apple-darwin`). `x86_64-apple-darwin` is no longer published as of
+  Session Relay 0.16.0; macOS support is `aarch64-apple-darwin`, and Intel
+  macOS hosts fail closed before any download. The installer downloads the
+  pinned `session-relay--v0.16.0` asset and same-release `SHA256SUMS`, requires
   source pin = selected row = downloaded bytes, chmods/smoke-tests only the
   sibling stage, then renames it over `~/.local/bin/session-relay`. Offline,
   unsupported-host, checksum, chmod, version, download, or rename failures
-  preserve an existing command byte-for-byte. The four pinned production
-  digests correspond to the tagged `session-relay--v0.15.0` assets and match
+  preserve an existing command byte-for-byte. The three pinned production
+  digests correspond to the tagged `session-relay--v0.16.0` assets and match
   its `SHA256SUMS`:
-  `x86_64-unknown-linux-musl` — `875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab`
-  `aarch64-unknown-linux-musl` — `ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06`
-  `x86_64-apple-darwin` — `8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39`
-  `aarch64-apple-darwin` — `24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7`
+  `x86_64-unknown-linux-musl` — `b3ca082dc5ea51e8322be407cdb4bbcaaa05d80bd62c3553f82ab98c1a95498a`
+  `aarch64-unknown-linux-musl` — `816b6b8bd2d2c2518ea359a5a21502213347b387a1cc576a0fb9cf541e5646ed`
+  `aarch64-apple-darwin` — `da8b114216c3f2301ad582df8e59b49e91953abcc1112b510466b31637fda825`
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
 normal sync. curl is checked only at a requested Linux/macOS RTK/Bun installer

@@ -19,10 +19,12 @@ import { payloadText } from "../payload"
 const REPOSITORY = "DocksDocks/docks"
 const PLUGIN_ID = "session-relay@docks"
 const INSTALL_PATH = "~/.local/bin/session-relay"
+// Intel macOS was retired as of Session Relay 0.16.0: the parent release
+// publishes exactly three native binaries, so darwin/x64 hosts fail closed in
+// sessionRelayTarget before any manifest parse or download.
 const TARGETS = [
   "x86_64-unknown-linux-musl",
   "aarch64-unknown-linux-musl",
-  "x86_64-apple-darwin",
   "aarch64-apple-darwin"
 ] as const
 
@@ -123,9 +125,8 @@ function manifestEntry(): string {
 export function sessionRelayTarget(platform: string, arch: string): SessionRelayTarget {
   if (platform === "linux" && arch === "x64") return "x86_64-unknown-linux-musl"
   if (platform === "linux" && arch === "arm64") return "aarch64-unknown-linux-musl"
-  if (platform === "darwin" && arch === "x64") return "x86_64-apple-darwin"
   if (platform === "darwin" && arch === "arm64") return "aarch64-apple-darwin"
-  throw new Error(`Unsupported host for Session Relay CLI: ${platform}/${arch}; supported: linux|darwin x64|arm64`)
+  throw new Error(`Unsupported host for Session Relay CLI: ${platform}/${arch}; supported: linux x64|arm64, darwin arm64`)
 }
 
 function trimOneLineEnding(text: string): string {

@@ -27,7 +27,6 @@ const ASSET_DIGEST = createHash("sha256").update(ASSET_BYTES).digest("hex")
 const TARGETS = [
   "x86_64-unknown-linux-musl",
   "aarch64-unknown-linux-musl",
-  "x86_64-apple-darwin",
   "aarch64-apple-darwin"
 ] as const
 
@@ -123,20 +122,19 @@ describe("sessionRelayTarget", () => {
   it.each([
     ["linux", "x64", "x86_64-unknown-linux-musl"],
     ["linux", "arm64", "aarch64-unknown-linux-musl"],
-    ["darwin", "x64", "x86_64-apple-darwin"],
     ["darwin", "arm64", "aarch64-apple-darwin"]
   ] as const)("maps %s/%s deterministically", (platform, arch, target) => {
     expect(sessionRelayTarget(platform, arch)).toBe(target)
   })
 
-  it.each([["win32", "x64"], ["linux", "ia32"], ["freebsd", "arm64"]] as const)(
+  it.each([["darwin", "x64"], ["win32", "x64"], ["linux", "ia32"], ["freebsd", "arm64"]] as const)(
     "rejects unsupported %s/%s",
     (platform, arch) => expect(() => sessionRelayTarget(platform, arch)).toThrow(/unsupported.*session relay/i)
   )
 })
 
 describe("parseSessionRelayManifest", () => {
-  it("accepts the closed source-pinned four-target contract with one canonical version", () => {
+  it("accepts the closed source-pinned three-target contract with one canonical version", () => {
     const parsed = parseSessionRelayManifest(manifest())
 
     expect(parsed.verified).toBe(VERSION)

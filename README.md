@@ -89,15 +89,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   when possible). `docks-kit toolchain check` shows the full table.
 - **Session Relay CLI** — Claude/Codex syncs ensure the source-pinned
   precompiled `session-relay` command in `~/.local/bin` immediately before
-  Session Relay plugin reconciliation. Linux/macOS x64/arm64 assets must match
-  both the committed digest and their release `SHA256SUMS`, then pass an exact
-  staged version smoke before atomic replacement; failures preserve any prior
-  command. The four production digests are pinned for the tagged
-  `session-relay--v0.15.0` assets and match the same-release `SHA256SUMS`:
-  `x86_64-unknown-linux-musl` — `875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab`
-  `aarch64-unknown-linux-musl` — `ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06`
-  `x86_64-apple-darwin` — `8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39`
-  `aarch64-apple-darwin` — `24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7`
+  Session Relay plugin reconciliation. Linux x64/arm64 and macOS arm64 assets
+  must match both the committed digest and their release `SHA256SUMS`, then
+  pass an exact staged version smoke before atomic replacement; failures
+  preserve any prior command. `x86_64-apple-darwin` is no longer published as
+  of Session Relay 0.16.0; macOS support is `aarch64-apple-darwin`. The three
+  production digests are pinned for the tagged `session-relay--v0.16.0` assets
+  and match the same-release `SHA256SUMS`:
+  `x86_64-unknown-linux-musl` — `b3ca082dc5ea51e8322be407cdb4bbcaaa05d80bd62c3553f82ab98c1a95498a`
+  `aarch64-unknown-linux-musl` — `816b6b8bd2d2c2518ea359a5a21502213347b387a1cc576a0fb9cf541e5646ed`
+  `aarch64-apple-darwin` — `da8b114216c3f2301ad582df8e59b49e91953abcc1112b510466b31637fda825`
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`

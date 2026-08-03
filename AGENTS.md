@@ -11,9 +11,12 @@ Tool-specific instructions live alongside this file:
 - Codex uses this `AGENTS.md` file plus the Codex SoT under `SoT/.codex/`; no separate root `CODEX.md` is needed.
 
 
-docks-kit runtime, standalone binary, and Session Relay prebuilt support is
-exactly Linux x64/arm64 and macOS x64/arm64. Unsupported hosts fail before the
-launcher can fall back to Bun source.
+docks-kit runtime and standalone binary support is exactly Linux x64/arm64 and
+macOS x64/arm64. Session Relay prebuilt support is Linux x64/arm64 and macOS
+arm64 only: x86_64-apple-darwin is no longer published as of Session Relay
+0.16.0; macOS support is aarch64-apple-darwin. Unsupported hosts fail before
+the launcher can fall back to Bun source, and Intel macOS hosts fail closed at
+the Session Relay install boundary.
 
 ## Repository layout (cross-cutting)
 
@@ -41,7 +44,7 @@ Codex SoT notes:
 - `SoT/.codex/rules/*.rules` deploys to `~/.codex/rules/` as kit-managed Codex command policy. This is Codex's equivalent of permission allow/prompt/block rules; user-learned approvals in `~/.codex/rules/default.rules` are preserved.
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - `docks-kit status` verifies Session Relay only through the supported `codex plugin list --json` inventory. `ready` means installed and enabled for a newly started Codex session; it is not evidence about an old process, lifecycle state, receive-path health, or worker quiescence. The global prompt SoTs carry the owner's standing authorization for Docks cross-company plan review, which never overrides host or platform denial.
-- Claude and Codex sync call `sessionRelayCli.ts ensureSessionRelayCli` immediately before their plugin passes. It installs the exact source-pinned precompiled command at `~/.local/bin/session-relay` for Linux/macOS x64/arm64 only, requires committed digest = same-release `SHA256SUMS` row = downloaded bytes, smoke-tests the staged version, and atomically replaces the stable path. `agents`-only sync never enters this boundary. The four pinned production digests correspond to the stable `session-relay--v0.15.0` assets and its `SHA256SUMS`.
+- Claude and Codex sync call `sessionRelayCli.ts ensureSessionRelayCli` immediately before their plugin passes. It installs the exact source-pinned precompiled command at `~/.local/bin/session-relay` for Linux x64/arm64 and macOS arm64 only, requires committed digest = same-release `SHA256SUMS` row = downloaded bytes, smoke-tests the staged version, and atomically replaces the stable path. `agents`-only sync never enters this boundary. The three pinned production digests correspond to the `session-relay--v0.16.0` assets and its `SHA256SUMS`; x86_64-apple-darwin is no longer published as of Session Relay 0.16.0.
 - The `codex` CLI binary is upstream-owned, not kit-owned. The official standalone installer keeps package metadata under `$CODEX_HOME/packages/standalone` and places the `codex` symlink in `~/.local/bin` by default; sync only warns with a download-then-run installer command when the CLI is missing. Existing installs can self-update with `codex update`; npm and Homebrew remain upstream alternatives.
 - Neither global prompt SoT imports `@RTK.md`; Claude uses the hook-backed RTK integration, while Codex has no kit-managed RTK integration.
 - Claude runtime settings are an authoring template with sentinels. `claudeRuntime.ts` materializes absolute Bun/script paths only after the shared `bun.ts` bootstrap is ready; `claudeSync.ts` writes all runtime assets before atomically committing settings, then prunes the legacy shell scripts and Stop hook. Native `rate_limits` is the sole quota source, so jq/curl/OAuth caches are not runtime dependencies. A missing Bun defers only this cutover and preserves legacy pointers/files.

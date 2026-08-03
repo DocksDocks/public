@@ -21,12 +21,11 @@
                 "note": "Effect docs CLI (bun global) — track keeps it self-upgrading, gated by the verified pin" },
     "agent-browser":    { "kind": "managed", "policy": "track", "verified": "0.32.0", "pinnable": true,
                 "note": "browser-automation CLI (npm global), gated by the verified pin; first install also downloads Chrome for Testing" },
-    "session-relay": { "kind": "managed-release", "policy": "exact", "verified": "0.15.0", "repository": "DocksDocks/docks", "tag": "session-relay--v0.15.0", "plugin_id": "session-relay@docks", "plugin_version": "0.15.0", "install_path": "~/.local/bin/session-relay",
+    "session-relay": { "kind": "managed-release", "policy": "exact", "verified": "0.16.0", "repository": "DocksDocks/docks", "tag": "session-relay--v0.16.0", "plugin_id": "session-relay@docks", "plugin_version": "0.16.0", "install_path": "~/.local/bin/session-relay",
                 "assets": {
-                  "x86_64-unknown-linux-musl": "875ca460a21d4f205833db5629bcf249413da77e444f4927107a44e63b71acab",
-                  "aarch64-unknown-linux-musl": "ee52d7757a22febe3fcb4e00dbb81ec1fb1a1d5769c5eeda903f11a765029a06",
-                  "x86_64-apple-darwin": "8f4b11be831d5fc232965264c354f202c67c2260f383fba3e8c811eb6ea8ca39",
-                  "aarch64-apple-darwin": "24ef2cc98a4034391fef60bc3c13a672511b024f0d6493395bb61562936ac5c7"
+                  "x86_64-unknown-linux-musl": "b3ca082dc5ea51e8322be407cdb4bbcaaa05d80bd62c3553f82ab98c1a95498a",
+                  "aarch64-unknown-linux-musl": "816b6b8bd2d2c2518ea359a5a21502213347b387a1cc576a0fb9cf541e5646ed",
+                  "aarch64-apple-darwin": "da8b114216c3f2301ad582df8e59b49e91953abcc1112b510466b31637fda825"
                 } },
     "skills-cli": { "kind": "pin", "verified": "1.5.15",
                 "note": "the `skills` npm package the kit runs via `npx skills@<verified>` on every agents sync (universal-skill install/remove) — pinned, never @latest" }
