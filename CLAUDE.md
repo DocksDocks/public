@@ -21,11 +21,12 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 |----------------|--------|---------|
 | `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands, portable skills, and tiered subagents. |
 | `session-relay` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Cross-session, cross-project, cross-tool agent message bus for Claude Code and Codex. |
+| `plan-lifecycle` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Shared plan lifecycle for cross-tool planning workflows; required by `effect-kit@docks`. |
 | `effect-kit` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Cross-tool Effect skills. Installed as `effect-kit@docks`; the optional `effect-solutions` CLI remains independently managed. |
 | `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
 | `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 
-Context7, Frontend Design, Chrome DevTools, Supabase, n8n, and universal `agent-browser` discovery are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
+Context7, Frontend Design, Chrome DevTools, Supabase, n8n, and universal `agent-browser` discovery are non-default. Install only where their project needs them; the default global inventory stays limited to the six entries above.
 
 #### Per-project plugin scoping
 

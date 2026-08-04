@@ -41,5 +41,8 @@ enabled = true
 [plugins."session-relay@docks"]
 enabled = true
 
+[plugins."plan-lifecycle@docks"]
+enabled = true
+
 [plugins."effect-kit@docks"]
 enabled = true

@@ -193,6 +193,7 @@
   "enabledPlugins": {
     "docks@docks": true,
     "session-relay@docks": true,
+    "plan-lifecycle@docks": true,
     "effect-kit@docks": true,
     "php-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true

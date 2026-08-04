@@ -53,10 +53,19 @@ describe("generated SoT payload", () => {
     expect(claude.split(security)).toHaveLength(2)
   })
 
-  it("embeds the lean global Claude inventory", () => {
+  it("embeds the lean global Claude and Codex inventory", () => {
     const settings = JSON.parse(payloadText("SoT/.claude/settings.json")) as {
       enabledPlugins: Record<string, boolean>
     }
+    const config = payloadText("SoT/.codex/config.toml")
+    const codexPluginIds = Array.from(
+      config.matchAll(/^\[plugins\."([^"]+)"\]\nenabled = true$/gm),
+      (match) => match[1]
+    ).sort()
+    const marketplace = JSON.parse(payloadText("SoT/.codex/plugins/marketplace.json")) as {
+      plugins: Array<{ name: string }>
+    }
+    const marketplacePluginIds = marketplace.plugins.map((plugin) => `${plugin.name}@docks`).sort()
     const mcp = JSON.parse(payloadText("SoT/.claude/mcp-servers.json")) as {
       mcpServers: Record<string, unknown>
     }
@@ -71,10 +80,18 @@ describe("generated SoT payload", () => {
       "docks@docks",
       "effect-kit@docks",
       "php-lsp@claude-plugins-official",
+      "plan-lifecycle@docks",
       "session-relay@docks",
       "typescript-lsp@claude-plugins-official"
     ])
-    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true, true])
+    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true, true, true])
+    expect(codexPluginIds).toEqual([
+      "docks@docks",
+      "effect-kit@docks",
+      "plan-lifecycle@docks",
+      "session-relay@docks"
+    ])
+    expect(marketplacePluginIds).toEqual(codexPluginIds)
     expect(mcp.mcpServers).toEqual({})
     expect(slugs).toEqual([])
     expect(claude).not.toContain("@RTK.md")

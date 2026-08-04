@@ -82,7 +82,7 @@ describe.sequential("refresh-only plugin skip", () => {
   })
 
   it("still installs missing Claude and Codex plugins", () => {
-    const codexMissingEffect = `case "$1" in
+    const codexMissingPlugins = `case "$1" in
   --version) echo "codex-cli 0.144.4";;
   plugin) case "$2" in
     list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"session-relay@docks","version":"0.11.0","installed":true,"enabled":true}],"available":[]}' ;;
@@ -93,14 +93,17 @@ esac`
       "native",
       ["sync", "claude", "codex", "--skip-plugin-refresh"],
       "home-drift",
-      makeStubDir({ codex: codexMissingEffect })
+      makeStubDir({ codex: codexMissingPlugins })
     )
     try {
       expect(run.exitCode).toBe(0)
       const argv = readArgvLog(run)
       expect(argv).toContain("claude\tplugin install docks@docks")
       expect(argv.match(/^claude\tplugin update /gm)).toBeNull()
-      expect(argv.match(/^codex\tplugin add .+$/gm)).toEqual(["codex\tplugin add effect-kit@docks"])
+      expect(argv.match(/^codex\tplugin add .+$/gm)).toEqual([
+        "codex\tplugin add plan-lifecycle@docks",
+        "codex\tplugin add effect-kit@docks"
+      ])
     } finally {
       cleanup([run])
     }
