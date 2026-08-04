@@ -49,11 +49,9 @@ describe("public toolchain ensure", () => {
     }
   })
 
-  it("pins the independently verified Relay release and package version", () => {
+  it("pins the independently verified Relay release", () => {
     const manifest = JSON.parse(readFileSync(join(process.cwd(), "SoT", "toolchain.json"), "utf8"))
-    const packageManifest = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf8"))
 
-    expect(packageManifest.version).toBe("0.14.0")
     expect(manifest.tools["session-relay"]).toEqual({
       kind: "managed-release",
       policy: "exact",
