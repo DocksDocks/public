@@ -12,7 +12,7 @@ metadata:
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-07-17"
+  updated: "2026-08-07"
 ---
 
 # Plugin Bootstrap
@@ -109,9 +109,7 @@ when it points at the same Git source. `enabledPluginIds` parses enabled plugin
 tables from `SoT/.codex/config.toml`; ordinary `syncPlugins` runs `codex plugin add`
 for each enabled id so installed plugin caches refresh. With `ctx.skipPluginRefresh`,
 the supported `codex plugin list --json` inventory filters the operation to missing
-ids; an invalid inventory falls back to the full refresh path. Session Relay is ready only when exactly
-one `session-relay@docks` row is installed and enabled with a version; this is
-new-session installation readiness, not lifecycle or receive-path health.
+ids; an invalid inventory falls back to the full refresh path.
 
 ## Key Decisions
 

@@ -104,7 +104,7 @@ const STUB_BODIES: Record<string, string> = {
   codex: `case "$1" in
   --version) echo "codex-cli 0.144.4";;
   plugin) case "$2" in
-    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true},{"pluginId":"session-relay@docks","version":"0.11.0","installed":true,"enabled":true}],"available":[]}' ;;
+    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true}],"available":[]}' ;;
     add) exit 0;;
   esac;;
 esac`,
@@ -158,12 +158,20 @@ exit 0
   return dir
 }
 
-/** Write a fixture home variant on the fly (used by the TOML suite). */
-export function materializeVariant(base: string, files: Record<string, string>): string {
+/**
+ * Write a fixture home variant on the fly (used by the TOML suite).
+ * A `null` value deletes the path instead of writing it, so a case can opt out
+ * of fixture artifacts that are noise for the invariant it asserts.
+ */
+export function materializeVariant(base: string, files: Record<string, string | null>): string {
   const dir = temporaryDir("golden-fixture-")
   rmSync(dir, { recursive: true })
   cpSync(join(FIXTURES_DIR, base), dir, { recursive: true })
   for (const [relative, content] of Object.entries(files)) {
+    if (content === null) {
+      rmSync(join(dir, relative), { force: true })
+      continue
+    }
     mkdirSync(dirname(join(dir, relative)), { recursive: true })
     writeFileSync(join(dir, relative), content)
   }

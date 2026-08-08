@@ -1,0 +1,2 @@
+#!/bin/sh
+printf 'session-relay 0.16.0\n'

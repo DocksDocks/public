@@ -10,9 +10,7 @@ import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from ".
 import { p } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
-import { sessionRelayReadiness } from "./sessionRelayReadiness"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
-import { ensureSessionRelayCli } from "./sessionRelayCli"
 
 export function codexSync(ctx: Ctx): void {
   const codexDir = p(ctx.home, ".codex")
@@ -28,7 +26,6 @@ export function codexSync(ctx: Ctx): void {
   syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"))
   syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
   removeLegacyDocksMarketplace(ctx, userConfig)
-  ensureSessionRelayCli(ctx)
   syncPlugins(ctx, sotConfig)
 }
 
@@ -124,6 +121,7 @@ function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
   writeFileSync(staging, before)
 
   scrubDeprecatedFeatures(ctx, staging)
+  removeRetiredPluginTables(ctx, staging)
   mergeTopLevelSettings(sotConfigText, staging)
   mergeTableSettings(sotConfigText, staging)
 
@@ -182,6 +180,49 @@ function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
   writeFileSync(`${userConfig}.tmp`, scrubDeprecatedFeaturesText(content))
   renameSync(`${userConfig}.tmp`, userConfig)
   change("Codex: scrubbed deprecated [features].use_legacy_landlock")
+}
+
+const PLUGIN_TABLE_HEADER = /^\[plugins\."([^"]+)"\][ \t]*$/
+/** Plugin ids the kit retired; their deployed tables are stripped on every sync. */
+const RETIRED_PLUGIN_IDS: Readonly<Record<string, true>> = { "session-relay@docks": true }
+
+/** codex::remove_retired_plugin_tables — drop [plugins."<id>"] blocks for retired ids. */
+export function removeRetiredPluginTablesText(content: string): string {
+  const lines = content.split("\n")
+  if (lines[lines.length - 1] === "") lines.pop()
+  let out = ""
+  let skipping = false
+  for (const line of lines) {
+    const header = PLUGIN_TABLE_HEADER.exec(line)
+    if (header !== null) {
+      skipping = RETIRED_PLUGIN_IDS[header[1]!] === true
+      if (skipping) continue
+    } else if (skipping) {
+      if (!line.startsWith("[")) continue
+      skipping = false
+    }
+    out += `${line}\n`
+  }
+  return out
+}
+
+function retiredPluginTables(content: string): Array<string> {
+  return content
+    .split("\n")
+    .map((line) => PLUGIN_TABLE_HEADER.exec(line)?.[1])
+    .filter((id): id is string => id !== undefined && RETIRED_PLUGIN_IDS[id] === true)
+}
+
+function removeRetiredPluginTables(ctx: Ctx, userConfig: string): void {
+  const { change } = ctx.services.logger
+  if (!existsSync(userConfig)) return
+  const content = readFileSync(userConfig, "utf8")
+  const present = retiredPluginTables(content)
+  if (present.length === 0) return
+
+  writeFileSync(`${userConfig}.tmp`, removeRetiredPluginTablesText(content))
+  renameSync(`${userConfig}.tmp`, userConfig)
+  for (const id of present) change(`Codex: removed retired plugin table [plugins."${id}"]`)
 }
 
 function mergeTopLevelSettings(sotConfigText: string, userConfig: string): void {
@@ -407,7 +448,7 @@ export function enabledPluginIdsFromText(configText: string): Array<string> {
     if (plugin !== "" && enabled) ids.push(plugin)
   }
   for (const line of configText.split("\n")) {
-    const m = /^\[plugins\."([^"]+)"\][ \t]*$/.exec(line)
+    const m = PLUGIN_TABLE_HEADER.exec(line)
     if (m !== null) {
       flush()
       plugin = m[1]!
@@ -510,10 +551,6 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   if (refreshed > 0) {
     change(`Codex plugins synced (plugins: ~${refreshed})`)
     ctx.nextStepTriggers.codexRestart = true
-    const readiness = sessionRelayReadiness()
-    if (readiness.state !== "ready") {
-      warn(`Session Relay readiness unavailable after refresh: ${readiness.reason}`)
-    }
   }
   if (ctx.skipPluginRefresh && pluginIds.length === 0) verbose("Codex plugins already installed; refresh-only updates skipped")
   if (failed > 0) warn(`${failed} Codex plugin operation(s) failed — re-run sync or install manually`)

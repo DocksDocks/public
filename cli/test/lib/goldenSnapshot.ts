@@ -64,10 +64,6 @@ function snapshotTreeWithTemporaryDirs(
     const path = join(dir, entry.name)
     const relative = path.slice(root.length + 1)
     if (relative === ".golden-argv.log") continue
-    // Every materialized HOME gets the exact current Session Relay command so
-    // unrelated sync cases stay offline. It is harness state, not an engine
-    // mutation; direct installer tests cover its bytes and mode separately.
-    if (relative === ".local/bin/session-relay") continue
     // `.bun/install` is a runtime artifact of the native side's bun
     // interpreter (module cache keyed off $HOME) — the engine never writes
     // there. `.bun` itself is still recursed (engine bootstraps can create

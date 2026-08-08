@@ -57,8 +57,6 @@ export function installedVersion(ctx: Ctx, tool: ToolId): string {
     case "codex":
     case "agent-browser":
       return firstLineField(version(), -1)
-    case "session-relay":
-      return firstLineField(version(), 1)
     case "git":
       return firstLineField(version(), 2)
     case "node":

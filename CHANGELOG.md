@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Removed every Session Relay feature surface: the managed-release installer,
+  the status readiness probe, the `session-relay` toolchain entry, and the
+  `session-relay@docks` enablement in all three SoT configs. Sync now withdraws
+  the kit's enablement on already-synced machines — the curated Claude removed
+  manifest prunes the settings key and the stale `~/.local/bin/session-relay`
+  command, and the Codex config merge strips retired kit-owned
+  `[plugins."<id>"]` tables. Plugin packages are left to `--prune`.
+
 - Removed the Docks workflow model registry, prompt records, root override flags,
   and `models workflow` selector. Plan orchestration now owns reviewer selection
   at invocation time while ordinary Claude/Codex model and sync behavior remains

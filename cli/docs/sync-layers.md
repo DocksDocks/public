@@ -19,22 +19,19 @@ Order matters — runtime readiness and settings form one transaction:
 4. **settings.json merge semantics** — additive: SoT keys win, permissions arrays are
    unioned, user-only keys survive. `--reconcile` replaces permissions arrays
    wholesale instead.
-5. **Removed-artifact pruning** — prune old shell assets, the Stop hook, and
-   stale kit-owned settings. A flag-less sync removes `advisorModel`; an
-   explicit advisor state excludes only that key so the modifier owns it.
+5. **Removed-artifact pruning** — prune old shell assets, the Stop hook, stale
+   kit-owned settings, retired kit-owned plugin enablement, and the stale
+   `~/.local/bin/session-relay` command. A flag-less sync removes
+   `advisorModel`; an explicit advisor state excludes only that key so the
+   modifier owns it.
 6. **Deploy-time modifiers** (`--claude-compact-window`, `--claude-permissive`,
    `--claude-model`, `--claude-effort`, `--claude-advisor`) — deployed file only.
 7. ~/.claude.json (showTurnDuration, user-scoped MCP servers) and connector env
    export.
-8. **Session Relay CLI** — ensure the exact source-pinned precompiled command
-   in `~/.local/bin` for the supported host. A staged asset must match both the
-   source digest and same-release `SHA256SUMS`, then report exact version before
-   atomic replacement. Failure stops before Session Relay plugin work and
-   preserves any prior command.
-9. **Plugins** — seven idempotent passes via the `claude plugin` CLI
+8. **Plugins** — seven idempotent passes via the `claude plugin` CLI
    (marketplaces → install → update → [--prune: uninstall/remove] → re-assert
    SoT enabled-state). Optional opt-ins via `--claude-plugin=<name>`.
-10. LSP server binaries (npm globals).
+9. LSP server binaries (npm globals).
 
 The statusline reads Claude's native `rate_limits`. There is no OAuth request,
 usage cache, jq/curl runtime dependency, or Stop fetch hook.
@@ -42,18 +39,16 @@ usage cache, jq/curl runtime dependency, or Stop fetch hook.
 ## codex (→ ~/.codex, ~/.agents/plugins)
 
 bubblewrap check (Linux), config.toml merge (top-level keys replaced
-per-key, [table] blocks replaced wholesale, user-only keys/tables preserved),
-`--codex-model` then `--codex-effort` modifiers, rules, AGENTS.md, personal
-marketplace file, `codex plugin add` refresh.
-Immediately before `codex plugin add`, the same Session Relay CLI ensure runs;
-an ensure failure prevents the plugin pass.
+per-key, [table] blocks replaced wholesale, user-only keys/tables preserved,
+and retired kit-owned `[plugins."<id>"]` tables stripped), `--codex-model`
+then `--codex-effort` modifiers, rules, AGENTS.md, personal marketplace file,
+and `codex plugin add` refresh.
 
 ## agents (→ ~/.agents/skills, ~/.claude/skills symlinks)
 
 `npx skills add` per missing manifest slug, Claude symlink healing,
 CLI binaries (agent-browser, effect-solutions — toolchain-gated), and the
 kit-managed snapshot that `--prune` reconciles against.
-This target never ensures or downloads Session Relay.
 
 ## Reconcile flags
 

@@ -87,18 +87,6 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   versions above the kit-verified pin prompt before installing
   (`--yes` accepts; non-TTY falls back to the pinned verified version
   when possible). `docks-kit toolchain check` shows the full table.
-- **Session Relay CLI** — Claude/Codex syncs ensure the source-pinned
-  precompiled `session-relay` command in `~/.local/bin` immediately before
-  Session Relay plugin reconciliation. Linux x64/arm64 and macOS arm64 assets
-  must match both the committed digest and their release `SHA256SUMS`, then
-  pass an exact staged version smoke before atomic replacement; failures
-  preserve any prior command. `x86_64-apple-darwin` is no longer published as
-  of Session Relay 0.16.0; macOS support is `aarch64-apple-darwin`. The three
-  production digests are pinned for the tagged `session-relay--v0.16.0` assets
-  and match the same-release `SHA256SUMS`:
-  `x86_64-unknown-linux-musl` — `b3ca082dc5ea51e8322be407cdb4bbcaaa05d80bd62c3553f82ab98c1a95498a`
-  `aarch64-unknown-linux-musl` — `816b6b8bd2d2c2518ea359a5a21502213347b387a1cc576a0fb9cf541e5646ed`
-  `aarch64-apple-darwin` — `da8b114216c3f2301ad582df8e59b49e91953abcc1112b510466b31637fda825`
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
@@ -126,12 +114,12 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 
 ## Platform support
 
-| Platform | Architecture | docks-kit binary | Session Relay prebuilt | Sync engine |
-|----------|--------------|------------------|------------------------|-------------|
-| Linux | x64 | ✅ | ✅ | ✅ native |
-| Linux | arm64 | ✅ | ✅ | ✅ native |
-| macOS | x64 | ✅ | ✅ | ✅ native |
-| macOS | arm64 | ✅ | ✅ | ✅ native |
+| Platform | Architecture | docks-kit binary | Sync engine |
+|----------|--------------|------------------|-------------|
+| Linux | x64 | ✅ | ✅ native |
+| Linux | arm64 | ✅ | ✅ native |
+| macOS | x64 | ✅ | ✅ native |
+| macOS | arm64 | ✅ | ✅ native |
 
 Details: `docks-kit docs platforms`.
 
@@ -140,7 +128,7 @@ Details: `docks-kit docs platforms`.
 Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
 x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
 publishes the exact package tarball through trusted publishing with OIDC provenance.
-Package `docks-kit` 0.13.0 bundles the CLI + generated payload, so npm releases
+Package `docks-kit` 0.14.1 bundles the CLI + generated payload, so npm releases
 are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs

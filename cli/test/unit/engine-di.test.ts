@@ -649,10 +649,6 @@ describe.sequential("EngineNative full service injection", () => {
           level: "echo",
           message: "[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed"
         },
-        {
-          level: "echo",
-          message: "[dry-run] ensure Session Relay CLI 0.16.0 from DocksDocks/docks@session-relay--v0.16.0 (x86_64-unknown-linux-musl) -> ~/.local/bin/session-relay"
-        },
         { level: "echo", message: "[dry-run] add enabled Codex plugins from SoT" },
         { level: "echo", message: "" },
         { level: "echo", message: "--- Sync complete ---" },

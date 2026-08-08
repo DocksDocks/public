@@ -38,9 +38,6 @@ status_line = [
 [plugins."docks@docks"]
 enabled = true
 
-[plugins."session-relay@docks"]
-enabled = true
-
 [plugins."plan-lifecycle@docks"]
 enabled = true
 

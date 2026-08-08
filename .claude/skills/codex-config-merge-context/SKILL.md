@@ -1,6 +1,6 @@
 ---
 name: codex-config-merge-context
-description: "Use when modifying cli/src/engine-native/codexSync.ts syncConfig, scrubDeprecatedFeatures, mergeTopLevelSettings, mergeTableSettings, ensureBubblewrap, syncRules, or cli/src/engine-native/codexToml.ts replaceTopLevelSetting/syncCodexModel; covers line-based TOML merge semantics, deprecated features scrub, Codex rules deployment, and bubblewrap checks."
+description: "Use when modifying cli/src/engine-native/codexSync.ts syncConfig, scrubDeprecatedFeatures, removeRetiredPluginTables, mergeTopLevelSettings, mergeTableSettings, ensureBubblewrap, syncRules, or cli/src/engine-native/codexToml.ts replaceTopLevelSetting/syncCodexModel; covers line-based TOML merge semantics, deprecated features scrub, Codex rules deployment, and bubblewrap checks."
 user-invocable: false
 metadata:
   source_files:
@@ -12,7 +12,7 @@ metadata:
       lines: "1-90"
     - path: SoT/.codex/rules/docks.rules
       lines: "1-140"
-  updated: "2026-07-09"
+  updated: "2026-08-07"
 ---
 
 # Codex Config Merge
@@ -41,22 +41,40 @@ are blocked.
 
 - Adding a top-level key or table to `SoT/.codex/config.toml`.
 - Changing the deprecated `[features].use_legacy_landlock` scrubber.
+- Changing the retired kit-owned plugin-table cleanup.
 - Changing `--codex-model` deployment behavior.
 - Adding or changing `SoT/.codex/rules/*.rules`.
 - Changing bubblewrap detection or install guidance.
 
 ## Sync Sequence
 
-`syncConfig(ctx, sotConfig, userConfig)`:
+`codexSync.ts syncConfig, config staging pipeline`:
 
 1. First install copies SoT config when no deployed file exists.
-2. Existing deployed config is backed up.
-3. `scrubDeprecatedFeatures` removes `use_legacy_landlock` and an empty
-   `[features]` table.
-4. `mergeTopLevelSettings` replaces or inserts SoT top-level `key = value` lines
-   before the first table.
-5. `mergeTableSettings` deletes each SoT-declared table from the user file and
-   appends the SoT block.
+2. Existing deployed config is copied to a staging file; no backup is written yet.
+3. `codexSync.ts scrubDeprecatedFeatures, staging scrub pass` removes
+   `use_legacy_landlock` and an empty `[features]` table.
+4. `codexSync.ts removeRetiredPluginTables, staging retirement pass` strips
+   retired kit-owned plugin tables.
+5. `codexSync.ts mergeTopLevelSettings, staging top-level merge` replaces or
+   inserts SoT top-level `key = value` lines before the first table.
+6. `codexSync.ts mergeTableSettings, staging table merge` deletes each
+   SoT-declared table from the staging file and appends the SoT block.
+7. A changed staging file backs up and replaces the deployed config; a byte-identical
+   staging file is discarded without writing `config.toml.bak`.
+
+`codexSync.ts removeRetiredPluginTablesText, retired-plugin line transform`
+shares `codexSync.ts PLUGIN_TABLE_HEADER, plugin-table grammar` with
+`codexSync.ts enabledPluginIdsFromText, enabled-table scan` and checks ids
+against `codexSync.ts RETIRED_PLUGIN_IDS, curated retirement record`. A retired
+plugin header starts skipping and is dropped; skipping ends at the next line
+starting with `[`, while a surviving plugin header both matches the regex and
+clears skipping.
+
+`codexSync.ts removeRetiredPluginTables, staging presence guard` returns before
+writing when no retired table is present, preserving a clean config byte for
+byte. `codexSync.ts syncConfig, dry-run branch` returns before the staging
+pipeline, so this cleanup prints nothing under `--dry-run`.
 
 `syncCodexModel(ctx, model)` reuses `replaceTopLevelSetting` to update only the
 deployed top-level `model = "<value>"` line. It never mutates the SoT.

@@ -12,7 +12,7 @@ metadata:
       lines: "1-260"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-07-15"
+  updated: "2026-08-07"
 ---
 
 # Settings Merge
@@ -56,8 +56,9 @@ left untouched and reported; never merge into a parse failure.
 | Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
 | `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
-User-only top-level keys survive both merge modes. Only keys and exact permission
-array members explicitly covered by the curated removed manifest are force-pruned.
+User-only top-level keys survive both merge modes. `claudeSync.ts syncRemovals,
+curated removed-manifest pass` force-prunes only manifest-listed settings keys,
+exact permission-array members, and stale files.
 
 ## File Ownership
 
@@ -90,10 +91,17 @@ SoT values, except user-only keys that the SoT does not declare.
 - Permission union is sorted/deduped to match the legacy jq `unique` behavior.
 - `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
   Claude Code's project state and user keys.
-- `syncRemovals` is the narrow exception to additive-by-default and must remain
-  backed by the curated removed manifest. Exact permission-rule entries remove
-  only the listed strings and preserve all other user rules. Its legacy statusline/Notification/
-  Stop subset is gated on the same ready-and-committed runtime state; baseline
+- `claudeSync.ts syncRemovals, curated removed-manifest pass` is the narrow
+  exception to additive-by-default. Its `settingsKeys` include
+  `enabledPlugins.session-relay@docks`; `claudeSync.ts pruneJsonKeys, dotted-path
+  removal` splits each manifest key on `.` and walks the resulting path.
+- The manifest's `homeFiles` are home-relative artifacts the kit installed
+  outside `~/.claude`, currently `.local/bin/session-relay`. `claudeSync.ts
+  syncRemovals, unconditional home-file loop` deletes them outside the
+  `runtimeReady` branch and increments the shared `filesRemoved` counter.
+- Exact permission-rule entries remove only the listed strings and preserve all
+  other user rules. `claudeSync.ts syncRemovals, runtime-ready manifest
+  expansion` gates only the legacy statusline/Notification/Stop subset; baseline
   stale entries remain unconditional.
 - The authoring `SoT/.claude/settings.json` contains named sentinels. Only
   `claudeRuntime.ts materializeClaudeSettings, exact sentinel locations` may

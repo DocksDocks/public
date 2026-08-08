@@ -31,7 +31,6 @@ import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { ensure, field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
-import { ensureSessionRelayCli } from "./sessionRelayCli"
 
 export type ClaudeRuntimeState =
   | { readonly kind: "ready"; readonly paths: ClaudeRuntimePaths }
@@ -81,7 +80,6 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
   syncClaudeAdvisor(ctx, ctx.claudeAdvisor)
   syncClaudeJson(ctx)
   syncConnectorEnv(ctx)
-  ensureSessionRelayCli(ctx)
   syncPlugins(ctx, claudeDir)
   syncOptionalPlugins(ctx, claudeDir)
   syncLspServers(ctx)
@@ -449,13 +447,16 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
     "env.CLAUDE_CODE_DISABLE_1M_CONTEXT",
     "env.CLAUDE_CODE_FORK_SUBAGENT",
-    "env.CLAUDE_CODE_EFFORT_LEVEL"
+    "env.CLAUDE_CODE_EFFORT_LEVEL",
+    "enabledPlugins.session-relay@docks"
   ],
   permissionRules: {
     allow: ["Write(./)"],
     deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)"]
   },
   claudeJsonKeys: [] as Array<string>,
+  /** Home-relative artifacts the kit installed outside ~/.claude. */
+  homeFiles: [".local/bin/session-relay"],
   runtimeReady: {
     hooks: ["notify.sh"],
     files: ["statusline.sh", "fetch-usage.sh"],
@@ -557,6 +558,17 @@ function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState):
 
   for (const rel of files) {
     const path = p(claudeDir, rel)
+    if (!existsSync(path)) continue
+    if (ctx.dryRun) {
+      echo(`[dry-run] rm ${path}`)
+    } else {
+      rmSync(path, { force: true })
+      filesRemoved++
+    }
+  }
+
+  for (const rel of REMOVED_MANIFEST.homeFiles) {
+    const path = p(ctx.home, rel)
     if (!existsSync(path)) continue
     if (ctx.dryRun) {
       echo(`[dry-run] rm ${path}`)

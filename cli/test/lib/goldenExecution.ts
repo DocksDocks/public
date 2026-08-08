@@ -5,25 +5,18 @@ import { spawnSync, type SpawnSyncReturns } from "node:child_process"
 import {
   copyFileSync,
   cpSync,
-  chmodSync,
   existsSync,
-  mkdirSync,
   readFileSync,
   readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync
 } from "node:fs"
-import { delimiter, dirname, isAbsolute, join, resolve } from "node:path"
+import { delimiter, isAbsolute, join, resolve } from "node:path"
 
 import { FIXTURES_DIR, REPO_DIR, temporaryDir } from "./goldenResources"
 import { normalizeOutput } from "./goldenSnapshot"
 
-// The committed SoT owns this shape; golden execution only reads its verified pin.
-const TOOLCHAIN = JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8")) as {
-  tools: { "session-relay": { verified: string } }
-}
-const SESSION_RELAY_VERSION = TOOLCHAIN.tools["session-relay"].verified
 
 function bunRuntime(): string {
   if (process.versions["bun"] !== undefined) return resolve(process.execPath)
@@ -123,10 +116,6 @@ function materializeHome(kind: string, fixture: string, reuseHome?: string): str
   rmSync(home, { recursive: true })
   const source = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
   cpSync(source, home, { recursive: true })
-  const sessionRelay = join(home, ".local", "bin", "session-relay")
-  mkdirSync(dirname(sessionRelay), { recursive: true })
-  writeFileSync(sessionRelay, `#!/bin/sh\nprintf 'session-relay ${SESSION_RELAY_VERSION}\\n'\n`)
-  chmodSync(sessionRelay, 0o755)
   return home
 }
 

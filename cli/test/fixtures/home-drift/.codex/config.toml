@@ -5,6 +5,9 @@ custom_user_key = "keepme"
 [features]
 use_legacy_landlock = false
 
+[plugins."session-relay@docks"]
+enabled = true
+
 [user_only.table]
 keep = true
 

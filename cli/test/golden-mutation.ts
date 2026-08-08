@@ -149,8 +149,16 @@ function runAdvisorMigrationCase(
     readFileSync(join(FIXTURES_DIR, "home-drift", ".claude", "settings.json"), "utf8")
   ) as Record<string, unknown>
   sourceSettings["advisorModel"] = "fable"
+  // Retirement cleanups (the stale relay command, its enablement key) fire on
+  // every state and would mask which mechanism owns advisorModel, so this case
+  // drops them from its variant.
+  const enabledPlugins = sourceSettings["enabledPlugins"]
+  if (enabledPlugins !== null && typeof enabledPlugins === "object") {
+    delete (enabledPlugins as Record<string, unknown>)["session-relay@docks"]
+  }
   const fixture = materializeVariant("home-drift", {
-    ".claude/settings.json": stableStringify(sourceSettings)
+    ".claude/settings.json": stableStringify(sourceSettings),
+    ".local/bin/session-relay": null
   })
   try {
     const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]

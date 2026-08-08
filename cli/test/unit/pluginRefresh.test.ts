@@ -24,35 +24,8 @@ function claudeInstalledPlugins(): string {
   })
 }
 
-function sessionRelayEnsureMarker(): string {
-  const toolchain = JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8")) as {
-    tools: { "session-relay": { verified: string } }
-  }
-  return `[dry-run] ensure Session Relay CLI ${toolchain.tools["session-relay"].verified}`
-}
 
 describe.sequential("refresh-only plugin skip", () => {
-  it("ensures Session Relay before Claude and Codex plugin work, but never for agents-only", () => {
-    const stubs = makeStubDir()
-    const tools = runEngine("native", ["sync", "claude", "codex", "--dry-run", "--skip-rtk"], "home-drift", stubs)
-    const agents = runEngine("native", ["sync", "agents", "--dry-run", "--skip-rtk"], "home-drift", stubs)
-    try {
-      expect(tools.exitCode).toBe(0)
-      const ensureMarker = sessionRelayEnsureMarker()
-      const firstEnsure = tools.stdout.indexOf(ensureMarker)
-      const claudePlugins = tools.stdout.indexOf("[dry-run] bootstrap + update plugin marketplaces + plugins from SoT")
-      const secondEnsure = tools.stdout.indexOf(ensureMarker, firstEnsure + 1)
-      const codexPlugins = tools.stdout.indexOf("[dry-run] add enabled Codex plugins from SoT")
-      expect(firstEnsure).toBeGreaterThanOrEqual(0)
-      expect(firstEnsure).toBeLessThan(claudePlugins)
-      expect(secondEnsure).toBeGreaterThan(claudePlugins)
-      expect(secondEnsure).toBeLessThan(codexPlugins)
-      expect(agents.exitCode).toBe(0)
-      expect(agents.stdout).not.toContain("Session Relay CLI")
-    } finally {
-      cleanup([tools, agents])
-    }
-  })
 
   it("avoids warmed Claude and Codex refresh calls through both parser layers", () => {
     const variant = materializeVariant("home-drift", {
@@ -85,7 +58,7 @@ describe.sequential("refresh-only plugin skip", () => {
     const codexMissingPlugins = `case "$1" in
   --version) echo "codex-cli 0.144.4";;
   plugin) case "$2" in
-    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"session-relay@docks","version":"0.11.0","installed":true,"enabled":true}],"available":[]}' ;;
+    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true}],"available":[]}' ;;
     add) exit 0;;
   esac;;
 esac`
