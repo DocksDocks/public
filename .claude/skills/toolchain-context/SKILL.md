@@ -18,7 +18,7 @@ metadata:
       lines: "1-150"
     - path: SoT/toolchain.json
       lines: "1-80"
-  updated: "2026-08-07"
+  updated: "2026-08-10"
 ---
 
 # Toolchain Verified-Version Floors
@@ -31,12 +31,6 @@ stay with the owning sync module.
 Version probes must be best-effort. A missing command, parse miss, npm outage,
 or registry error must return an empty/unknown version and let `ensure` decide;
 it must not abort unrelated sync work.
-</constraint>
-
-<constraint>
-RTK must remain the first Claude sync step. `rtk init --global` can rewrite
-settings, so it has to run before `prepareClaudeSettings` normalizes the file
-and before deploy-time modifiers land.
 </constraint>
 
 <constraint>
@@ -87,8 +81,6 @@ nothing. Do not treat unknown latest as permission to install a floating latest.
 
 | Tool | Callback owner | Notes |
 |------|----------------|-------|
-| `rtk` | `claudeSync.ts rtkInstall, curl download boundary` | Checks curl at the shared sync/direct-toolchain boundary, downloads a pinned installer, then runs `rtk init --global` when needed. |
-| `agent-browser` | `agentBrowserInstall` in `skillsSync.ts` | npm global package; first install also downloads browser deps. |
 | `effect-solutions` | `skillsSync.ts effectSolutionsInstall, Bun dependency` | Calls shared Bun bootstrap, then links Bun and CLI into `~/.local/bin`. |
 | `bun` | `bun.ts bunBootstrap, per-run memo` | Resolves or download-then-runs the pinned installer once per EngineNative invocation; shared by Claude runtime, effect-solutions, and direct ensure. |
 
@@ -98,6 +90,6 @@ nothing. Do not treat unknown latest as permission to install a floating latest.
 - Locally newer prereleases should not be downgraded by a lower latest probe.
 - `modeToolchain` must stay in sync with CLI command options when adding a
   standalone managed tool.
-- RTK, hooks, and npm global packages are supply-chain sensitive. Bump
-  `verified` only after testing the release.
+- Installer downloads, plugin marketplaces, and npm global packages are
+  supply-chain sensitive. Bump `verified` only after testing the release.
 - The public CLI reaches Bun bootstrap only after the supported Linux/macOS host gate; bunBootstrap checks curl only when Bun is actually missing.

@@ -27,12 +27,12 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
 - **Prove-red stays red.** The golden suites compare live native output to a
   mismatched golden under `--prove-red` and must exit non-zero after printing
   `prove-red OK`.
-- **Step ordering is load-bearing.** The Claude pipeline runs RTK, resolves Bun,
-  prepares materialized settings, writes runtime assets, commits settings, then
-  performs readiness-gated legacy cleanup. Modifiers run after the base commit,
-  removals before plugins, and LSP checks after plugin state.
-- **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `rtk`,
-  `bun`, `curl`, and platform package managers are spawned with argv arrays,
+- **Step ordering is load-bearing.** The Claude pipeline resolves Bun, prepares
+  materialized settings, writes runtime assets, commits settings, then performs
+  readiness-gated legacy cleanup. Modifiers run after the base commit, removals
+  before plugins, and LSP checks after plugin state.
+- **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `bun`,
+  `curl`, and platform package managers are spawned with argv arrays,
   not shell command strings except where the external installer contract is a
   shell script.
 - **Backups precede mutation.** Deployed settings/config files write `.bak`
@@ -55,6 +55,7 @@ warnings, and the summary. Status-quo confirmations exist but are opt-in.
 | `warn(msg)` | stderr | shown | shown | `[warn]` yellow (`\x1b[1;33m`) |
 | `change(msg)` | stderr | shown | shown | `[ok]` green (`\x1b[1;32m`) — ONLY after an operation actually mutated |
 | `verbose(msg)` | stderr | hidden | shown | `[ok]` green — no-op confirmations ("already …", "present", "up to date", "left as-is"), skips |
+| `progress(msg)` | stderr | interactive only | interactive only | dim, transient single-line status with no newline |
 | `data(line)` | stdout | shown | shown | bare — dry-run report lines, `status --json`, summary block, usage text |
 
 - stdout is data, stderr is logs — the logger NEVER writes to stdout
@@ -63,6 +64,15 @@ warnings, and the summary. Status-quo confirmations exist but are opt-in.
   printed unfiltered at every verbosity.
 - Prefixes and ANSI codes are stable golden surface; the level controls
   visibility, not the prefix.
+- `logger.ts` `makeLogger`, at progress sink selection, enables transient
+  progress when `LoggerSinks.progress` exists. It also enables progress when no
+  stderr sink exists and `process.stderr.isTTY` is `true`. It disables progress
+  in every other case. Injected golden sinks therefore keep their existing
+  bytes unless the harness supplies a progress sink.
+- Each progress write replaces one terminal line. `clearProgress()` erases a
+  pending line and does nothing when no line is pending. Every durable
+  `change`, `verbose`, `warn`, `err`, or `echo` write erases the pending line
+  before it writes durable output.
 
 ### Change detection
 
@@ -76,9 +86,9 @@ each such skip is an intentional behavior change named in its golden diff.
 Exactly one deduplicated warn per requested missing tool per run, uniform shape:
 `[warn] <tool> not installed — <platform-correct install command>`, sourced
 from the dependency registry (`deps.ts`). jq and curl are optional report rows:
-jq has no runtime consumer, while curl warns only at a requested POSIX RTK/Bun
-download boundary. A missing Bun defers Claude runtime migration without
-deleting working legacy hooks or statusline files.
+jq has no runtime consumer, while curl warns only when a requested POSIX Bun
+bootstrap needs an installer download. A missing Bun defers Claude runtime
+migration without deleting working legacy hooks or statusline files.
 
 ### Summary and next steps
 
@@ -89,10 +99,9 @@ it. The schema below applies to `sync` only.
 
 The `--- Sync complete ---` block (stdout, `data`) prints on every run,
 including dry-run, with the per-target inventory lines (`Claude:`/`Hooks:`/
-`RTK:`/`Plugins:`/`Codex:`/`Skills:`). Next-step advice lines print only when
-their trigger changed this run (plugins changed → `/reload-plugins` line;
-hooks/env changed → restart line; skills changed → discovery line) or under
-`--verbose`.
+`Plugins:`/`Codex:`/`Skills:`). Next-step advice lines print only when their
+trigger changed this run (plugins changed → `/reload-plugins` line; hooks/env
+changed → restart line; skills changed → discovery line) or under `--verbose`.
 
 ### Platform seam
 
@@ -118,14 +127,14 @@ active logger binding.
 | `parseArgs.ts` | engine usage, target selection, flag parsing, legacy rename hints, model flag validation |
 | `index.ts` | sync orchestration, target dispatch, run summary and next-step blocks |
 | `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
-| `claudeSync.ts` | Claude pipeline: RTK, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
+| `claudeSync.ts` | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
 | `bun.ts` | per-run memoized Bun resolution/bootstrap shared by Claude runtime, effect-solutions, and direct toolchain ensure |
 | `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX statusline commands |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
 | `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, agent-browser/effect-solutions callbacks, managed-skill snapshot |
+| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, effect-solutions callback, managed-skill snapshot |
 | `toolchain.ts` | tool presence/version probes, verified-version gate, managed install/upgrade orchestration, report table |
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |

@@ -1,6 +1,6 @@
 ---
 name: skills-bootstrap-agent
-description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncAgentBrowserCli`, `agentBrowserInstall`, `syncEffectSolutionsCli`, `effectSolutionsInstall`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain gate logic, or plugin reconcile.
+description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncEffectSolutionsCli`, `effectSolutionsInstall`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain gate logic, or plugin reconcile.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -8,7 +8,7 @@ model: sonnet
 # Skills Bootstrap Agent
 
 Owns universal skill manifest install, Claude symlink healing, prune snapshot,
-and agent-browser/effect-solutions install callbacks.
+and the effect-solutions install callback.
 
 <constraint>
 The skills CLI slug must precede `-a`: `skills add <slug> -g -y -a claude-code
@@ -44,7 +44,6 @@ Always install for both `claude-code` and `codex` so the canonical
 | Claude symlink repair | `healClaudeSymlink`, `linkOrCopy` |
 | Prune removals | `reconcileRemovals` |
 | Snapshot | `updateSnapshot` |
-| agent-browser | `syncAgentBrowserCli`, `agentBrowserInstall` |
 | effect-solutions | `syncEffectSolutionsCli`, `effectSolutionsInstall` |
 | Bun dependency | `bun.ts bunBootstrap` (toolchain owner; call, do not duplicate) |
 

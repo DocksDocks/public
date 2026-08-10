@@ -83,6 +83,47 @@ esac`
   })
 })
 
+describe.sequential("kit-scoped plugin refresh", () => {
+  it("refreshes only SoT marketplaces and SoT user-scope plugins", () => {
+    const installed = JSON.parse(claudeInstalledPlugins()) as {
+      plugins: Record<string, Array<Record<string, string>>>
+    }
+    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
+    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
+      scope: "project",
+      projectPath: "/home/docks/projects/n8n-workflows",
+      version: "test"
+    }]
+    const variant = materializeVariant("home-drift", {
+      ".claude/plugins/installed_plugins.json": stableStringify(installed),
+      ".claude/plugins/known_marketplaces.json": stableStringify({
+        docks: { source: "DocksDocks/docks" },
+        userplace: { source: "user/userplace" },
+        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
+      })
+    })
+    const run = runEngine("native", ["sync", "claude"], variant, makeStubDir())
+    try {
+      expect(run.exitCode).toBe(0)
+      const argv = readArgvLog(run)
+      expect(argv.match(/^claude\tplugin marketplace update.*$/gm)).toEqual([
+        "claude\tplugin marketplace update claude-plugins-official",
+        "claude\tplugin marketplace update docks"
+      ])
+      expect(argv.match(/^claude\tplugin update .+$/gm)).toEqual([
+        "claude\tplugin update docks@docks --scope user",
+        "claude\tplugin update effect-kit@docks --scope user",
+        "claude\tplugin update php-lsp@claude-plugins-official --scope user",
+        "claude\tplugin update plan-lifecycle@docks --scope user",
+        "claude\tplugin update typescript-lsp@claude-plugins-official --scope user"
+      ])
+    } finally {
+      cleanup([run])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
+})
+
 describe.sequential("project-scoped plugin preservation", () => {
   it("keeps marketplaces used by project-scoped plugins during prune", () => {
     const installed = JSON.parse(claudeInstalledPlugins()) as {

@@ -36,6 +36,8 @@ interface StubOptions {
 function stubServices(records: Array<LogRecord>, options: StubOptions = {}): EngineServices {
   const logger: Logger = {
     change: (message) => void records.push({ level: "change", message }),
+    progress: () => {},
+    clearProgress: () => {},
     verbose: (message) => void records.push({ level: "verbose", message }),
     warn: (message) => void records.push({ level: "warn", message }),
     err: (message) => void records.push({ level: "err", message }),
@@ -44,15 +46,12 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
   const platform = makePlatform("linux")
   const missing = new Set(options.missing ?? [])
   const versions: Partial<Record<ToolId, string>> = {
-    "agent-browser": "0.32.0",
     "effect-solutions": "0.5.3",
     bun: "1.3.14",
     ...options.versions
   }
   const latest: Partial<Record<ToolId, string>> = {
-    "agent-browser": "0.32.0",
     "effect-solutions": "0.5.3",
-    rtk: "0.43.0",
     ...options.latest
   }
   const warned = new Set<ToolId>()
@@ -86,6 +85,10 @@ class RecordingLogger implements Logger {
     this.records.push({ level: "change", message })
   }
 
+  progress(): void {}
+
+  clearProgress(): void {}
+
   verbose(message: string): void {
     this.records.push({ level: "verbose", message })
   }
@@ -110,7 +113,7 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     agentsDir: join(home, ".agents"),
     dryRun,
     verbose: true,
-    skipRtk: false,
+    skipBubblewrap: false,
     reconcile: false,
     prune: false,
     assumeYes: false,
@@ -461,7 +464,7 @@ describe.sequential("EngineNative full service injection", () => {
         for (const args of [[`${flag}=`], [flag, ""]]) {
           const records: Array<LogRecord> = []
           expect(
-            runEngineNative(["sync", target, "--dry-run", "--skip-rtk", ...args], stubServices(records))
+            runEngineNative(["sync", target, "--dry-run", "--skip-bubblewrap", ...args], stubServices(records))
           ).toBe(2)
           expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
           expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
@@ -562,10 +565,10 @@ describe.sequential("EngineNative full service injection", () => {
     })
     const services = { ...factory, deps: stubServices([]).deps }
 
-    expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
-    expect(runEngineNative(["toolchain", "ensure", "agent-browser", "--verbose"], services)).toBe(0)
-    expect(runEngineNative(["toolchain", "ensure", "agent-browser"], services)).toBe(0)
-    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m agent-browser up to date (0.32.0)\n"])
+    expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
+    expect(runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], services)).toBe(0)
+    expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
+    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m effect-solutions up to date (0.5.3)\n"])
     expect(stdout).toEqual([])
   })
 
@@ -587,7 +590,7 @@ describe.sequential("EngineNative full service injection", () => {
       "PATH",
       "DRY_RUN",
       "DOCKS_KIT_VERBOSE",
-      "SKIP_RTK",
+      "SKIP_BUBBLEWRAP",
       "RECONCILE",
       "PRUNE",
       "ASSUME_YES",
@@ -712,15 +715,15 @@ describe.sequential("EngineNative full service injection", () => {
       useHome("gate-decline")
       const gateRecords: Array<LogRecord> = []
       const gateServices = stubServices(gateRecords, {
-        versions: { "agent-browser": "0.30.0" },
-        latest: { "agent-browser": "0.99.0" }
+        versions: { "effect-solutions": "0.5.0" },
+        latest: { "effect-solutions": "0.99.0" }
       })
-      expect(runEngineNative(["toolchain", "ensure", "agent-browser"], gateServices)).toBe(0)
+      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], gateServices)).toBe(0)
       expect(gateRecords).toEqual([
         {
           level: "warn",
           message:
-            "skipping agent-browser upgrade (latest 0.99.0 is above kit-verified 0.32.0; pass --yes to accept, or update SoT/toolchain.json after testing)"
+            "skipping effect-solutions upgrade (latest 0.99.0 is above kit-verified 0.5.3; pass --yes to accept, or update SoT/toolchain.json after testing)"
         }
       ])
       noBypass()
@@ -739,10 +742,10 @@ describe.sequential("EngineNative full service injection", () => {
       useHome("verbosity")
       const verboseRecords: Array<LogRecord> = []
       const verboseServices = stubServices(verboseRecords)
-      expect(runEngineNative(["toolchain", "ensure", "agent-browser"], verboseServices)).toBe(0)
-      expect(runEngineNative(["toolchain", "ensure", "agent-browser", "--verbose"], verboseServices)).toBe(0)
-      expect(runEngineNative(["toolchain", "ensure", "agent-browser"], verboseServices)).toBe(0)
-      expect(verboseRecords).toEqual([{ level: "verbose", message: "agent-browser up to date (0.32.0)" }])
+      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
+      expect(runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], verboseServices)).toBe(0)
+      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
+      expect(verboseRecords).toEqual([{ level: "verbose", message: "effect-solutions up to date (0.5.3)" }])
       noBypass()
     } finally {
       stdout.mockRestore()

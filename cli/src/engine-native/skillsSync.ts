@@ -1,8 +1,8 @@
 /**
  * EngineNative `sync agents` pipeline: universal-skill bootstrap
  * (`npx skills@<pin> add`), Claude symlink healing, --prune reconcile against
- * the kit-managed snapshot, agent-browser/effect-solutions toolchain callbacks,
- * and the snapshot write.
+ * the kit-managed snapshot, the effect-solutions toolchain callback, and the
+ * snapshot write.
  */
 import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
@@ -28,7 +28,6 @@ export function skillsSync(ctx: Ctx): SkillsState {
 
   syncUniversal(ctx, state, skillsDir, manifest)
   if (ctx.prune) reconcileRemovals(ctx, manifest, snapshot)
-  syncAgentBrowserCli(ctx, manifest)
   syncEffectSolutionsCli(ctx)
   updateSnapshot(ctx, manifest, snapshot)
   return state
@@ -57,7 +56,7 @@ function readSlugs(file: string): Array<string> {
 }
 
 function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
-  const { change, echo, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   if (ctx.services.deps.probe("npx").state === "missing") {
     ctx.services.deps.warnMissing("npx", ctx.services.logger, "skipping universal skills bootstrap")
     return
@@ -87,9 +86,11 @@ function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest
       continue
     }
 
+    progress(`Installing universal skill ${slug}...`)
     const res = spawnSync("npx", ["--yes", skillsCli(ctx), "add", slug, "-g", "-y", "-a", "claude-code", "codex"], {
       stdio: "ignore"
     })
+    clearProgress()
     if (res.error === undefined && res.status === 0) {
       added++
     } else {
@@ -217,55 +218,12 @@ function linkOrCopyWithWarnings(target: string, link: string, services: EngineSe
 
 // ------------------------------------------------- toolchain callbacks ----
 
-/** skills::_agent_browser_install. */
-export function agentBrowserInstall(mode: "install" | "upgrade", version: string, services: EngineServices): number {
-  const { change, verbose, warn } = services.logger
-  const verb = mode === "upgrade" ? "Upgrading" : "Installing"
-  const pkg = version !== "" ? `agent-browser@${version}` : "agent-browser"
-  const installFlags = services.platform.isLinux() ? ["--with-deps"] : []
-
-  verbose(`${verb} agent-browser CLI via npm${version !== "" ? ` (pinned ${version})` : ""}...`)
-  if (spawnSync("npm", ["install", "-g", pkg], { stdio: "ignore" }).status !== 0) {
-    warn(`npm install -g ${pkg} failed. Try manually: npm install -g ${pkg}`)
-    return 1
-  }
-
-  if (mode === "install") {
-    warn("Downloading Chrome for Testing (~175 MB; sudo may be requested for system libs on Linux)...")
-    if (spawnSync("agent-browser", ["install", ...installFlags], { stdio: "inherit" }).status !== 0) {
-      warn(`agent-browser install failed. Re-run manually: agent-browser install ${installFlags.join(" ")}`)
-      return 1
-    }
-  }
-  const out = services.deps.version("agent-browser")
-  const fields = (out.split("\n")[0] ?? "").trim().split(/[ \t]+/)
-  const version2 = out !== "" ? fields[fields.length - 1] ?? "version unknown" : "version unknown"
-  change(`agent-browser CLI ready (${version2})`)
-  return 0
-}
-
-function syncAgentBrowserCli(ctx: Ctx, manifest: string): void {
-  const { warn } = ctx.services.logger
-  if (!manifest.split("\n").includes("vercel-labs/agent-browser")) return
-
-  if (ctx.services.deps.probe("npm").state === "missing") {
-    if (!ctx.dryRun) {
-      ctx.services.deps.warnMissing("npm", ctx.services.logger, "cannot auto-install agent-browser CLI; re-run sync after installing")
-    }
-    return
-  }
-
-  if (ensure(ctx, "agent-browser", agentBrowserInstall) !== 0) {
-    warn("agent-browser bootstrap failed — continuing sync")
-  }
-}
-
 /** skills::_effect_solutions_install. */
 export function effectSolutionsInstall(
   ctx: Ctx
 ): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
   return (mode, version, services) => {
-    const { change, verbose, warn } = services.logger
+    const { change, clearProgress, progress, verbose, warn } = services.logger
     const verb = mode === "upgrade" ? "Upgrading" : "Installing"
     const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
 
@@ -274,7 +232,10 @@ export function effectSolutionsInstall(
     const bun = bunState.executable
 
     verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
-    if (spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" }).status !== 0) {
+    progress(`${verb} effect-solutions CLI...`)
+    const installResult = spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" })
+    clearProgress()
+    if (installResult.status !== 0) {
       warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
       return 1
     }
@@ -294,10 +255,13 @@ export function effectSolutionsInstall(
 }
 
 function syncEffectSolutionsCli(ctx: Ctx): void {
-  const { warn } = ctx.services.logger
+  const { clearProgress, progress, warn } = ctx.services.logger
   if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(payloadText("SoT/.claude/settings.json"))) return
 
-  if (ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx)) !== 0) {
+  progress("Checking effect-solutions CLI...")
+  const result = ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
+  clearProgress()
+  if (result !== 0) {
     warn("effect-solutions bootstrap failed — continuing sync")
   }
 }
@@ -305,7 +269,7 @@ function syncEffectSolutionsCli(ctx: Ctx): void {
 // ----------------------------------------------------- prune + snapshot ----
 
 function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
-  const { change, echo, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, warn } = ctx.services.logger
   if (!existsSync(snapshot)) {
     if (ctx.dryRun) {
       echo(
@@ -325,9 +289,11 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
       echo(`[dry-run] kit-managed skill no longer in SoT — would remove: ${base}`)
       continue
     }
+    progress(`Removing universal skill ${base}...`)
     const res = spawnSync("npx", ["--yes", skillsCli(ctx), "remove", "--global", base, "-y"], {
       stdio: "ignore"
     })
+    clearProgress()
     if (res.error === undefined && res.status === 0) {
       removed++
     } else {

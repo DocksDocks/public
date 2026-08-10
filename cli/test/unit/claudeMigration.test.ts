@@ -110,7 +110,6 @@ describe.sequential("Claude runtime migration transaction", () => {
       expect(run.exitCode).toBe(0)
       const settings = settingsObject(run.home)
       const hooks = hooksObject(settings)
-      expect(hooks["PreToolUse"]).toBeDefined()
       expect(hooks["PostToolUseFailure"]).toBeDefined()
       expect(hooks["SubagentStop"]).toBeDefined()
       expect(hooks["SessionStart"]).toBeUndefined()
@@ -222,49 +221,6 @@ describe.sequential("contextual dependency degradation", () => {
       } finally {
         cleanup([run])
       }
-    }
-  })
-
-  it("continues Claude sync with the contextual RTK curl warning and no curl child", () => {
-    const run = runEngine(
-      "native",
-      ["sync", "claude"],
-      "home-fresh",
-      makeStubDir({ curl: null, rtk: null }),
-      { maskTools: ["curl", "rtk"] }
-    )
-    try {
-      expect(run.exitCode).toBe(0)
-      expect(run.output.match(/curl not installed/g)).toHaveLength(1)
-      expect(run.output).toContain(
-        "curl not installed — sudo apt install -y curl (cannot download RTK installer; continuing sync without RTK)"
-      )
-      expect(run.output).not.toContain("latest version unknown")
-      expect(run.output).not.toContain("RTK bootstrap failed")
-      expect(readArgvLog(run)).not.toMatch(/^curl\t/m)
-    } finally {
-      cleanup([run])
-    }
-  })
-
-  it("fails direct RTK ensure with its contextual curl warning and no curl child", () => {
-    const run = runEngine(
-      "native",
-      ["toolchain", "ensure", "rtk"],
-      "home-fresh",
-      makeStubDir({ curl: null, rtk: null }),
-      { maskTools: ["curl", "rtk"] }
-    )
-    try {
-      expect(run.exitCode).toBe(1)
-      expect(run.output.match(/curl not installed/g)).toHaveLength(1)
-      expect(run.output).toContain(
-        "curl not installed — sudo apt install -y curl (cannot download RTK installer; toolchain ensure rtk aborted)"
-      )
-      expect(run.output).not.toContain("latest version unknown")
-      expect(readArgvLog(run)).not.toMatch(/^curl\t/m)
-    } finally {
-      cleanup([run])
     }
   })
 })

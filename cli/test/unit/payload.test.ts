@@ -92,7 +92,6 @@ describe("generated SoT payload", () => {
     expect(marketplacePluginIds).toEqual(codexPluginIds)
     expect(mcp.mcpServers).toEqual({})
     expect(slugs).toEqual([])
-    expect(claude).not.toContain("@RTK.md")
     expect(claude).not.toMatch(/^## (Project Skills|Project Agents|Picking the right models for workflows and subagents|Agentic Engineering Discipline)$/m)
     expect(codex).not.toMatch(/^## (Engineering Discipline|Agentic Engineering Discipline)$/m)
   })

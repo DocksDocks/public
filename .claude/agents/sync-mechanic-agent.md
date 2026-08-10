@@ -55,7 +55,7 @@ behavior for removed flag names.
 - `bun run test:unit`.
 - `bun x tsc --noEmit -p cli`.
 - Focused public smoke for changed flags or targets, for example
-  `./docks-kit sync --dry-run` or `./docks-kit sync claude --dry-run --skip-rtk`.
+  `./docks-kit sync --dry-run` or `./docks-kit sync codex --dry-run --skip-bubblewrap`.
 
 ## Gotchas
 

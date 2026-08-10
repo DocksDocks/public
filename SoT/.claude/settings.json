@@ -46,7 +46,6 @@
       "Bash(node *)",
       "Bash(docker *)",
       "Bash(docker-compose *)",
-      "Bash(rtk *)",
       "Bash(ls *)",
       "Bash(cat *)",
       "Bash(find *)",
@@ -146,17 +145,6 @@
             "args": ["__DOCKS_KIT_NOTIFY__"],
             "timeout": 10,
             "async": true
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
           }
         ]
       }

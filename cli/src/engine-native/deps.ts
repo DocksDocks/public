@@ -9,7 +9,6 @@
  */
 import { homedir } from "node:os"
 import { isAbsolute } from "node:path"
-import { existsSync, readdirSync } from "node:fs"
 
 import { capture, commandExists, p, which } from "./exec"
 import { isObject, parseJson } from "./jq"
@@ -24,12 +23,9 @@ export type ToolId =
   | "npx"
   | "claude"
   | "codex"
-  | "rtk"
   | "bun"
   | "bwrap"
-  | "agent-browser"
   | "effect-solutions"
-  | "chrome-for-testing"
   | "ffplay"
   | "intelephense"
   | "typescript-language-server"
@@ -166,35 +162,26 @@ const locateEffectSolutions = (exec: ProbeExecutor): DependencyLocation => {
   return { path: resolved, binDir: globalBin }
 }
 
-const resolveChrome = (exec: ProbeExecutor, platform: NodeJS.Platform): ProbeResult => {
-  const root = p(home(), ".agent-browser", "browsers")
-  const relative =
-    platform === "darwin"
-      ? "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
-      : "chrome"
-  if (existsSync(root)) {
-    for (const directory of readdirSync(root).filter((name) => name.startsWith("chrome-")).sort().reverse()) {
-      const path = exec.which(p(root, directory, relative))
-      if (path !== "") return { state: "present", path }
+const npmGlobalCache = new WeakMap<ProbeExecutor, { [k: string]: string }>()
+
+const npmGlobalVersions = (exec: ProbeExecutor): { [k: string]: string } => {
+  const hit = npmGlobalCache.get(exec)
+  if (hit !== undefined) return hit
+  const out: { [k: string]: string } = {}
+  if (exec.commandExists("npm")) {
+    const doc = parseJson(exec.capture("npm", ["ls", "-g", "--depth=0", "--json"]))
+    const deps = doc !== undefined && isObject(doc) && isObject(doc["dependencies"]) ? doc["dependencies"] : {}
+    for (const [name, value] of Object.entries(deps)) {
+      if (isObject(value) && typeof value["version"] === "string") out[name] = value["version"]
     }
   }
-  for (const command of ["chrome-for-testing", "google-chrome-for-testing", "google-chrome", "chromium", "chromium-browser", "brave-browser", "brave"]) {
-    const path = exec.which(command)
-    if (path !== "") return { state: "present", path }
-  }
-  return { state: "missing" }
+  npmGlobalCache.set(exec, out)
+  return out
 }
 
-const latestRtk = (exec: ProbeExecutor): string => {
-  if (!exec.commandExists("curl")) return ""
-  const doc = parseJson(
-    exec.capture("curl", ["-fsSL", "--max-time", "5", "https://api.github.com/repos/rtk-ai/rtk/releases/latest"])
-  )
-  const tag = doc !== undefined && isObject(doc) && typeof doc["tag_name"] === "string" ? doc["tag_name"] : ""
-  return tag.replace(/^v/, "")
-}
+const versionNpmGlobal = (pkg: string) => (exec: ProbeExecutor): string => npmGlobalVersions(exec)[pkg] ?? ""
 
-const latestNpm = (id: "agent-browser" | "effect-solutions") => (exec: ProbeExecutor): string =>
+const latestNpm = (id: "effect-solutions") => (exec: ProbeExecutor): string =>
   exec.commandExists("npm") ? exec.capture("npm", ["view", id, "version"]) : ""
 
 export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, which }
@@ -236,10 +223,6 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     () => 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
     { version: versionProbe("codex") }
   ),
-  rtk: spec("rtk", "optional", () => "see https://github.com/rtk-ai/rtk (kit auto-install is Linux/macOS-only)", {
-    version: versionProbe("rtk"),
-    latest: latestRtk
-  }),
   bun: spec(
     "bun",
     "optional",
@@ -250,10 +233,8 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
       locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
     }
   ),
-  bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),
-  "agent-browser": spec("agent-browser", "optional", () => "npm install -g agent-browser", {
-    version: versionProbe("agent-browser"),
-    latest: latestNpm("agent-browser")
+  bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)", {
+    version: versionProbe("bwrap")
   }),
   "effect-solutions": spec("effect-solutions", "optional", () => "bun add -g effect-solutions", {
     resolve: resolveEffectSolutions,
@@ -261,27 +242,22 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     locate: locateEffectSolutions,
     latest: latestNpm("effect-solutions")
   }),
-  "chrome-for-testing": spec(
-    "chrome-for-testing",
-    "optional",
-    (pf = rawPlatform()) => (pf === "linux" ? "agent-browser install --with-deps" : "agent-browser install"),
-    { resolve: resolveChrome }
-  ),
   ffplay: spec(
     "ffplay",
     "optional",
     (pf = rawPlatform()) =>
       pf === "darwin" ? "brew install ffmpeg" : "sudo apt install -y ffmpeg",
-    { versionArgs: ["-version"], resolve: pathProbe("ffplay") }
+    { versionArgs: ["-version"], version: versionProbe("ffplay", ["-version"]), resolve: pathProbe("ffplay") }
   ),
   intelephense: spec("intelephense", "optional", () => "npm install -g intelephense", {
-    resolve: pathProbe("intelephense")
+    resolve: pathProbe("intelephense"),
+    version: versionNpmGlobal("intelephense")
   }),
   "typescript-language-server": spec(
     "typescript-language-server",
     "optional",
     () => "npm install -g typescript-language-server typescript",
-    { resolve: pathProbe("typescript-language-server") }
+    { resolve: pathProbe("typescript-language-server"), version: versionProbe("typescript-language-server") }
   ),
   tsc: spec("tsc", "optional", () => "npm install -g typescript", {
     resolve: pathProbe("tsc"),

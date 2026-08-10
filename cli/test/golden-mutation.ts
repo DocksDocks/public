@@ -386,9 +386,9 @@ function channelInvariantProblems(): Array<string> {
     if (NOOP_RE.test(replay.stdout)) {
       problems.push(`  verbosity: no-op confirmations leaked to stdout (public 'sync ${flag}')`)
     }
-    const tc = runPublicCli(["toolchain", "ensure", "rtk", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
+    const tc = runPublicCli(["toolchain", "ensure", "effect-solutions", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
     if (!/\bpresent \(|up to date/.test(tc.stderr)) {
-      problems.push(`  verbosity: public 'toolchain ensure rtk ${flag}' shows no verbose no-op line`)
+      problems.push(`  verbosity: public 'toolchain ensure effect-solutions ${flag}' shows no verbose no-op line`)
     }
   }
 

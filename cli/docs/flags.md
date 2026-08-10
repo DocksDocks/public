@@ -18,7 +18,7 @@ docks-kit sync claude agents        # two
 | `--dry-run` | Preview without applying |
 | `--reconcile` | Settings layer reconciled toward SoT (SoT keys win; user-only keys preserved; permissions arrays replaced) |
 | `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, universal skills |
-| `--skip-rtk` | Skip optional tool bootstrap (RTK, bubblewrap) |
+| `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
 | `--skip-plugin-refresh` | Install missing Claude/Codex plugins but skip refresh-only updates; `docks-kit update` uses this automatically |
 | `--yes` | Auto-accept toolchain above-verified prompts (containers/CI) |
 | `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
@@ -52,4 +52,3 @@ Old flags exit with a rename hint — there is no compat behavior.
 | `--680k` | `--claude-compact-window=680k` |
 | `--permissive` | `--claude-permissive` |
 | `--supabase` / `--n8n` | `--claude-plugin=supabase` / `--claude-plugin=n8n` |
-| `--no-rtk` | `--skip-rtk` |

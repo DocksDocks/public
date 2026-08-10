@@ -18,6 +18,44 @@
   Base UI-backed shadcn defaults, and literal external authority; aligned the
   project plan contract and wrappers with the three-skill `PlanRunV1` workflow.
 
+- Removed RTK end to end, including its managed toolchain entry, Claude sync
+  install and initialization, `Bash(rtk *)` permission, and the whole
+  `hooks.PreToolUse` family. Added both Claude artifacts to the curated removed
+  manifest, so the next sync prunes them from already-synced machines. This
+  removed sync's only unconditional GitHub API call, an unauthenticated probe
+  capped at 60 requests per hour per address.
+- Renamed `--skip-rtk` to `--skip-bubblewrap` and `SKIP_RTK` to
+  `SKIP_BUBBLEWRAP`. Rejected the old flag with exit status 2 and a rename hint,
+  dropped the older `--no-rtk` hint, and left the Codex bubblewrap bootstrap as
+  the only remaining reader.
+- Removed agent-browser and its chrome-for-testing companion, and narrowed
+  `toolchain ensure` to `bun` and `effect-solutions`. This eliminated the
+  roughly 175 MB Chrome for Testing download on first install. Existing
+  behavior remained unchanged because the install required a line that the
+  universal skill manifest never carried.
+- Scoped the Claude plugin refresh to kit-owned plugins and marketplaces. Kept
+  automatic refresh enabled by default and left `--skip-plugin-refresh`
+  unchanged, while refreshing each declared marketplace by name and only
+  declared plugins at user scope instead of every installed plugin, including
+  project-scope plugins the kit never installed.
+- Added version probes for `bwrap`, `ffplay`, and
+  `typescript-language-server`, and read `intelephense` from one memoized
+  `npm ls -g --depth=0 --json` listing because its own `--version` prints
+  minified source. Those four tools had previously reported no version.
+- Added an evaluable floor to every tool that sync installs, removed the retired
+  manifest entries, and updated the pinned skills CLI to 1.5.22. This let
+  `docks-kit toolchain check` report a real `below-floor` status instead of an
+  unevaluable blank.
+- Added a transient sync progress line so long plugin and marketplace work
+  reports motion instead of showing nothing for about 13 seconds and then
+  printing every line at once. Limited the line to interactive terminals, so
+  logs and captured output remain unchanged.
+- Made `docks-kit update` report `Already at the latest version` for a global
+  package install that is already current and skip the chained sync, matching
+  the git checkout path.
+- Reduced steady-state sync on the reference host from 18.1 seconds to
+  13.2 seconds.
+
 ## 2026-07-22 — exact latest Opus workflow fallback (0.10.1 source)
 
 - Pinned the `claude-best` workflow fallback to Anthropic's current

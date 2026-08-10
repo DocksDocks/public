@@ -94,8 +94,8 @@ sync/config reads.
 ## Prerequisites
 
 - Bun for source/global installs; release binaries embed the runtime
-- Node/npm for npm-global tools (agent-browser, LSP servers)
+- Node/npm for npm-global LSP servers
 - jq is optional doctor/test tooling; sync has no jq runtime dependency
-- curl is required only when a requested Linux/macOS RTK/Bun bootstrap must download
+- curl is required only when a requested Linux/macOS Bun bootstrap must download
   an installer; an already-present Bun does not require it
 - See `docks-kit toolchain check` for the full picture on this machine

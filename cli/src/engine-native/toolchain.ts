@@ -50,12 +50,9 @@ function firstLineField(out: string, index: number): string {
 export function installedVersion(ctx: Ctx, tool: ToolId): string {
   const version = (): string => ctx.services.deps.version(tool)
   switch (tool) {
-    case "rtk":
-      return firstLineField(version(), 1)
     case "claude":
       return firstLineField(version(), 0)
     case "codex":
-    case "agent-browser":
       return firstLineField(version(), -1)
     case "git":
       return firstLineField(version(), 2)
@@ -70,6 +67,13 @@ export function installedVersion(ctx: Ctx, tool: ToolId): string {
     case "effect-solutions":
     case "npm":
       return version()
+    case "bwrap":
+      return firstLineField(version(), 1)
+    case "ffplay":
+      return firstLineField(version(), 2).replace(/-.*$/, "")
+    case "intelephense":
+    case "typescript-language-server":
+      return version().trim()
     default:
       return ""
   }

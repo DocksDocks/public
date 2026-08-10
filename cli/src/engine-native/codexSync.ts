@@ -42,9 +42,9 @@ function ensureBubblewrap(ctx: Ctx): void {
 
   if (ctx.services.deps.probe("bwrap").state === "present") return
 
-  if (ctx.skipRtk) {
+  if (ctx.skipBubblewrap) {
     warn(
-      "bubblewrap not installed (--skip-rtk skips auto-install). Codex may use its bundled helper if user namespaces work; recommended install: sudo apt install -y bubblewrap"
+      "bubblewrap not installed (--skip-bubblewrap skips auto-install). Codex may use its bundled helper if user namespaces work; recommended install: sudo apt install -y bubblewrap"
     )
     return
   }
@@ -491,7 +491,7 @@ function installedPluginIdsFromCli(): Set<string> | undefined {
 }
 
 function syncPlugins(ctx: Ctx, sotConfigText: string): void {
-  const { change, echo, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo(
       ctx.skipPluginRefresh
@@ -519,7 +519,9 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   const desiredPluginIds = enabledPluginIdsFromText(sotConfigText)
   let pluginIds = desiredPluginIds
   if (ctx.skipPluginRefresh) {
+    progress("Checking installed Codex plugins...")
     const installedPluginIds = installedPluginIdsFromCli()
+    clearProgress()
     if (installedPluginIds === undefined) {
       warn("Codex plugin inventory unavailable — falling back to the full refresh path")
     } else {
@@ -530,7 +532,9 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   let refreshed = 0
   let failed = 0
   for (const pluginId of pluginIds) {
+    progress(`Updating Codex plugin ${pluginId}...`)
     const res = spawnSync("codex", ["plugin", "add", pluginId], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+    clearProgress()
     const addOut = `${res.stdout ?? ""}${res.stderr ?? ""}`
     if (res.error === undefined && res.status === 0) {
       refreshed++

@@ -8,7 +8,7 @@
 | `policy` | `track` (upgrade toward latest, gated by `verified`) / `present` (install when missing, never upgrade) |
 | `floor` | Minimum acceptable version (below → upgrade automatically) |
 | `verified` | Last kit-tested version — the gate line |
-| `pinnable` | Whether an exact version can be installed (rtk: `RTK_VERSION=vX.Y.Z`) |
+| `pinnable` | Whether an exact version can be installed |
 
 ## The gate
 
@@ -26,20 +26,16 @@ now kit-approved" act.
 
 ## Managed tools
 
-- **rtk** — PreToolUse hook (supply-chain sensitive: review releases before
-  bumping `verified`). Runs FIRST in the claude sync so `rtk init`'s
-  settings rewrite is normalized by the merge that follows. Pinned installs
-  fetch the installer script from the version tag, not mutable master.
 - **bun** — policy `present`: bootstrap only (pinned to `verified` via the
   installer's version argument), never auto-upgraded. `bun.ts` owns one
   per-engine-run memo shared by Claude runtime, effect-solutions, and direct
   toolchain ensure on supported Linux/macOS hosts.
-- **effect-solutions**, **agent-browser** — policy `track`: self-upgrade
-  toward npm latest, gated by their `verified` pins.
+- **effect-solutions** — policy `track`: self-upgrades toward npm latest,
+  gated by its `verified` pin.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
-normal sync. curl is checked only at a requested Linux/macOS RTK/Bun installer
-download boundary.
+normal sync. curl is checked only when a requested Linux/macOS Bun bootstrap
+must download an installer.
 
 ## Supply-chain stance
 
@@ -52,8 +48,9 @@ probe falls back to the pinned `verified`, never to an ungated latest.
 
 ## Commands
 
-```
-docks-kit toolchain check            # doctor table (also inside docks-kit status)
-docks-kit toolchain ensure rtk       # install/upgrade one tool per policy
-docks-kit sync --yes                 # unattended: auto-accept gates
+```text
+docks-kit toolchain check                    # doctor table (also inside docks-kit status)
+docks-kit toolchain ensure bun               # ensure one supported managed tool
+docks-kit toolchain ensure effect-solutions  # ensure the other supported managed tool
+docks-kit sync --yes                         # unattended: auto-accept gates
 ```

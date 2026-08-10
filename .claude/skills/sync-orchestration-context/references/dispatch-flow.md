@@ -38,8 +38,7 @@ runEngineNative(argv)
     |   |-- parseArgs(ctx, args)
     |   |-- validateModelFlags(ctx)
     |   |-- claudeSync(ctx) when target selected and SoT/.claude exists
-    |   |   |-- syncRtk(ctx) first
-    |   |   |-- bunBootstrap(ctx), memoized for this engine run
+    |   |   |-- bunBootstrap(ctx) first, memoized for this engine run
     |   |   |-- materialize + prepareClaudeSettings(ctx), no mutation
     |   |   |-- syncClaudeRuntime(ctx) when Bun is ready
     |   |   |-- syncClaudeMd(ctx)
@@ -66,7 +65,6 @@ runEngineNative(argv)
     |   |-- skillsSync(ctx) when target selected and SoT/.agents exists
     |   |   |-- syncUniversal(ctx)
     |   |   |-- reconcileRemovals(ctx) when prune
-    |   |   |-- syncAgentBrowserCli(ctx)
     |   |   |-- syncEffectSolutionsCli(ctx)
     |   |   `-- updateSnapshot(ctx)
     |   `-- summaries and next steps
@@ -84,7 +82,7 @@ runEngineNative(argv)
 | `model codex gpt-5.5` | `modeModel` set path | Validates then calls `syncCodexModel`. |
 | `models claude` | `printModels` | Prints catalog from `SoT/models.json`. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the doctor table. |
-| `toolchain ensure <tool>` | `modeToolchain` -> managed ensure | Calls the owning callback for the tool. |
+| `toolchain ensure bun\|effect-solutions` | `modeToolchain` -> managed ensure | Calls the owning callback for the selected supported tool. |
 
 ## Idempotency Invariants
 
@@ -94,7 +92,6 @@ runEngineNative(argv)
 | Claude marketplace add | Marketplace name absent from known marketplaces. |
 | Claude plugin install | Missing user-scope install record. |
 | Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent. |
-| RTK init | `~/.claude/RTK.md` absent. |
 | Codex rules copy | Backup before overwrite; user-learned `default.rules` is outside SoT. |
 
 ## New Target Checklist

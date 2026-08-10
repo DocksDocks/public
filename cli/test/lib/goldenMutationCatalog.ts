@@ -18,14 +18,8 @@ export interface MutationReplayCase {
 }
 
 // Stub-body variants for toolchain gate/install/upgrade/failure branches.
-const RTK_INIT_FAILS = `case "$1" in --version) echo "rtk 0.43.0";; init) exit 1;; esac`
-const AGENT_BROWSER_STALE = `case "$1" in --version) echo "agent-browser 0.30.0";; esac`
-const NPM_INSTALL_FAILS = `case "$1" in
-  view) case "$2" in agent-browser) echo "0.32.0";; esac;;
-  install) exit 1;;
-esac`
 const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
-  view) case "$2" in agent-browser) echo "0.99.0";; esac;;
+  view) case "$2" in effect-solutions) echo "0.99.0";; esac;;
 esac`
 const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
 const LEGACY_CLAUDE_SETTINGS = stableStringify({
@@ -91,27 +85,14 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
   { fixture: "home-drift", cmd: ["model", "codex", "gpt-5.5"] },
   { fixture: "home-invalid-json", cmd: ["sync", "claude"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "agent-browser", "--verbose"] },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions"] },
+  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--verbose"] },
   { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { rtk: RTK_INIT_FAILS } },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { jq: null }, variant: "jq-absent-bun-hooks" },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { jq: null }, variant: "jq-absent-native-sync" },
-  {
-    fixture: "home-fresh",
-    cmd: ["sync", "claude"],
-    stubs: { curl: null, rtk: null },
-    variant: "curl-absent-rtk-bootstrap"
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "rtk"],
-    stubs: { curl: null, rtk: null },
-    variant: "curl-absent-direct-rtk"
-  },
   // Missing-git trio: uniform hint-bearing warn from the dependency registry;
   // the combined run must emit exactly ONE deduplicated git warn.
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
@@ -119,28 +100,13 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
   {
     fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "agent-browser"],
-    stubs: { "agent-browser": AGENT_BROWSER_STALE }
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "agent-browser"],
-    stubs: { "agent-browser": null, npm: NPM_INSTALL_FAILS }
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "agent-browser"],
+    cmd: ["toolchain", "ensure", "effect-solutions"],
     stubs: { npm: NPM_LATEST_ABOVE_VERIFIED },
     variant: "npm-latest-above-verified"
   },
   {
     fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "agent-browser", "--yes"],
-    stubs: { npm: NPM_LATEST_ABOVE_VERIFIED }
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "agent-browser"],
+    cmd: ["toolchain", "ensure", "effect-solutions"],
     stubs: { npm: NPM_OFFLINE },
     variant: "npm-offline"
   }

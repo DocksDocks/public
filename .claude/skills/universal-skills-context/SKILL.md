@@ -1,6 +1,6 @@
 ---
 name: universal-skills-context
-description: "Use when modifying cli/src/engine-native/skillsSync.ts skillsSync, syncUniversal, healClaudeSymlink, reconcileRemovals, updateSnapshot, normalizeManifest, syncAgentBrowserCli, agentBrowserInstall, syncEffectSolutionsCli, effectSolutionsInstall, or SoT/.agents/skills.txt; covers source-first skills CLI args, universal storage, symlink healing, prune snapshot, and CLI callbacks. Bun bootstrap ownership lives in bun.ts/toolchain-context."
+description: "Use when modifying cli/src/engine-native/skillsSync.ts skillsSync, syncUniversal, healClaudeSymlink, reconcileRemovals, updateSnapshot, normalizeManifest, syncEffectSolutionsCli, effectSolutionsInstall, or SoT/.agents/skills.txt; covers source-first skills CLI args, universal storage, symlink healing, prune snapshot, and explicit CLI callbacks. Bun bootstrap ownership lives in bun.ts/toolchain-context."
 user-invocable: false
 metadata:
   source_files:
@@ -8,7 +8,7 @@ metadata:
       lines: "1-380"
     - path: SoT/.agents/skills.txt
       lines: "1-40"
-  updated: "2026-07-17"
+  updated: "2026-08-10"
 ---
 
 # Universal Skills Bootstrap
@@ -16,6 +16,9 @@ metadata:
 Universal skills are declared in `SoT/.agents/skills.txt` and installed into
 `~/.agents/skills/` so Codex can read them natively and Claude Code can follow a
 symlink from `~/.claude/skills/`.
+
+`SoT/.agents/skills.txt` is empty by default. When a declared skill needs a
+separate CLI, keep its bootstrap as an explicit helper in `skillsSync.ts`.
 
 <constraint>
 The slug must precede `-a` in `npx skills add`: `skills add <slug> -g -y -a
@@ -39,7 +42,7 @@ snapshot should still represent the prior known-good manifest.
 - Adding or removing a slug in `SoT/.agents/skills.txt`.
 - Changing `syncUniversal`, manifest parsing, or symlink healing.
 - Changing `--prune` removal of kit-managed skills.
-- Changing agent-browser or effect-solutions CLI bootstrap callbacks. For Bun
+- Changing the effect-solutions CLI bootstrap callback. For Bun
   resolution/install behavior, use `toolchain-context` and `bun.ts`.
 
 ## Storage Model
@@ -77,15 +80,14 @@ snapshot against the current manifest and removes slugs that were kit-managed
 but are no longer declared. User-installed skills that never appeared in the
 snapshot are preserved.
 
-## CLI Bootstrap Callbacks
+## CLI Bootstrap Callback
 
 | Tool | Gate | Install behavior |
 |------|------|------------------|
-| `agent-browser` | Declared skill slug and npm available | `agentBrowserInstall` installs/upgrades the npm package; first install also runs `agent-browser install`, with `--with-deps` on Linux. |
 | `effect-solutions` | `effect-kit@docks` enabled in SoT | `effectSolutionsInstall` calls shared `bun.ts bunBootstrap`, installs/upgrades the CLI with Bun, and symlinks both `bun` and the CLI into `~/.local/bin`. |
 
-Version comparison and verified-pin gating live in `toolchain.ts`; these
-callbacks perform the actual install once `ensure` has approved it.
+Version comparison and verified-pin gating live in `toolchain.ts`; the callback
+performs the install only after `ensure` approves it.
 Shared Bun resolution/bootstrap lives in `bun.ts`, not `skillsSync.ts`.
 
 ## Gotchas

@@ -1,7 +1,7 @@
 import { Command, Options } from "@effect/cli"
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
@@ -32,6 +32,27 @@ export const updateSyncArgs = (home: string): Array<string> => [
   "--skip-plugin-refresh"
 ]
 
+const readPackageVersion = (home: string): string => {
+  try {
+    const doc: unknown = JSON.parse(readFileSync(join(home, "package.json"), "utf8"))
+    if (doc === null || typeof doc !== "object" || !("version" in doc)) return ""
+    return typeof doc.version === "string" ? doc.version : ""
+  } catch {
+    return ""
+  }
+}
+
+export const packageUpdateResult = (
+  before: string,
+  after: string
+): { alreadyCurrent: boolean; message: string } => {
+  if (before === "" || after === "") return { alreadyCurrent: false, message: "" }
+  if (before === after) {
+    return { alreadyCurrent: true, message: `Already at the latest version (${after}).` }
+  }
+  return { alreadyCurrent: false, message: `Updated ${before} -> ${after}.` }
+}
+
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     if (spawnSync("git", ["--version"], { stdio: "ignore" }).status !== 0) {
@@ -52,7 +73,7 @@ const updateCheckout = (home: string, skipSync: boolean) =>
     const after = git(home, ["rev-parse", "HEAD"]).out
 
     if (before === after) {
-      return yield* Console.log(`Already up to date (${after.slice(0, 7)}, upstream ${upstream.out}).`)
+      return yield* Console.log(`Already at the latest version (${after.slice(0, 7)}, upstream ${upstream.out}).`)
     }
 
     const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out
@@ -89,12 +110,17 @@ const updatePackage = (home: string, skipSync: boolean) =>
       home.includes("\\.bun\\") ||
       underEnvDir("BUN_INSTALL_GLOBAL_DIR") ||
       underEnvDir("BUN_INSTALL")
+    const beforeVersion = readPackageVersion(home)
     const res = viaBun
       ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
       : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(`global package update failed (${viaBun ? "bun add -g" : "npm install -g"} docks-kit@latest)`, 1)
     }
+
+    const result = packageUpdateResult(beforeVersion, readPackageVersion(home))
+    if (result.message !== "") yield* Console.log(result.message)
+    if (result.alreadyCurrent) return
     if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
     yield* Console.log("Kit updated - running sync with the new version...")
     // Chain through the package dir just updated (global installs update in

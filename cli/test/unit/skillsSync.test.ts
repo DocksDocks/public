@@ -13,7 +13,7 @@ vi.mock("node:fs", async () => {
 })
 
 import type { Ctx } from "../../src/engine-native"
-import { agentBrowserInstall, effectSolutionsInstall, linkOrCopy } from "../../src/engine-native/skillsSync"
+import { effectSolutionsInstall, linkOrCopy } from "../../src/engine-native/skillsSync"
 import { makeDependencyManager, makeEngineServices, makePlatform } from "../../src/engine-native/services"
 
 function servicesFor(platform: NodeJS.Platform) {
@@ -29,27 +29,16 @@ describe("skills platform behavior", () => {
   beforeEach(() => {
     mocks.lstatSync.mockReset().mockReturnValue({ isSymbolicLink: () => true })
     mocks.symlinkSync.mockReset()
-    mocks.spawnSync.mockReset().mockImplementation((cmd: string, args: Array<string>) => ({
+    mocks.spawnSync.mockReset().mockImplementation(() => ({
       error: undefined,
       status: 0,
-      stdout: cmd === "agent-browser" && args[0] === "--version" ? "agent-browser 0.32.0\n" : ""
+      stdout: ""
     }))
   })
 
   it("uses a portable directory symlink", () => {
     expect(linkOrCopy("target", "link")).toBe(true)
     expect(mocks.symlinkSync).toHaveBeenCalledWith("target", "link")
-  })
-
-  it("adds --with-deps only for an injected Linux platform", () => {
-    const installArgv = (platform: NodeJS.Platform): Array<string> | undefined => {
-      mocks.spawnSync.mockClear()
-      expect(agentBrowserInstall("install", "0.32.0", servicesFor(platform))).toBe(0)
-      return mocks.spawnSync.mock.calls.find(([cmd, args]) => cmd === "agent-browser" && args[0] === "install")?.[1]
-    }
-
-    expect(installArgv("linux")).toEqual(["install", "--with-deps"])
-    expect(installArgv("darwin")).toEqual(["install"])
   })
 
   it("retains the known Bun bin directory when effect-solutions has no executable", () => {

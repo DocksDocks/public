@@ -1,7 +1,8 @@
 /**
- * EngineNative `sync claude` pipeline. Step order is load-bearing: rtk BEFORE
- * the settings merge, modifiers after it, removals before plugins. Message
- * strings, guard order, JSON semantics, and spawned argv are golden-tested.
+ * EngineNative `sync claude` pipeline. Step order is load-bearing: the Bun
+ * bootstrap BEFORE the settings merge, modifiers after it, removals before
+ * plugins. Message strings, guard order, JSON semantics, and spawned argv are
+ * golden-tested.
  */
 import { spawnSync } from "node:child_process"
 import {
@@ -15,7 +16,6 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs"
-import { tmpdir } from "node:os"
 import { bunBootstrap } from "./bun"
 import {
   syncClaudeAdvisor,
@@ -26,10 +26,9 @@ import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths 
 import { p, writeBytesIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
-import type { EngineServices } from "./services"
 import { ExitError } from "./parseArgs"
 import { mergeSettings, reconcileSettings } from "./settings"
-import { ensure, field } from "./toolchain"
+import { field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
 
 export type ClaudeRuntimeState =
@@ -48,7 +47,6 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
     )
   }
 
-  syncRtk(ctx, claudeDir)
   const bun = bunBootstrap(ctx, ctx.services)
   const runtime: ClaudeRuntimeState = bun.kind === "ready"
     ? { kind: "ready", paths: claudeRuntimePaths(claudeDir, bun.executable) }
@@ -84,86 +82,6 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
   syncOptionalPlugins(ctx, claudeDir)
   syncLspServers(ctx)
   return runtime
-}
-
-// ------------------------------------------------------------------ rtk ----
-
-type RtkInstaller = ((mode: "install" | "upgrade", version: string, services: EngineServices) => number) & {
-  readonly prerequisite: (services: EngineServices) => number | undefined
-}
-
-/** RTK toolchain install callback with the shared contextual curl boundary. */
-export function rtkInstall(ctx: Ctx, missingCurlContext: string, missingCurlExit: number): RtkInstaller {
-  const prerequisite = (services: EngineServices): number | undefined => {
-    if (services.deps.probe("curl").state === "present") return undefined
-    services.deps.warnMissing("curl", services.logger, missingCurlContext)
-    return missingCurlExit
-  }
-  const install = (mode: "install" | "upgrade", version: string, services: EngineServices): number => {
-    const blocked = prerequisite(services)
-    if (blocked !== undefined) return blocked
-    const { change, err, verbose, warn } = services.logger
-    const installerRef = version !== "" ? `refs/tags/v${version}` : "refs/heads/master"
-
-    if (mode === "upgrade") verbose(`Upgrading RTK${version !== "" ? ` to ${version}` : ""}...`)
-    else warn(`RTK not found. Installing${version !== "" ? ` ${version}` : ""}...`)
-    const installer = p(tmpdir(), `rtk-install-${process.pid}.sh`)
-    const dl = spawnSync("curl", ["-fsSL", `https://raw.githubusercontent.com/rtk-ai/rtk/${installerRef}/install.sh`, "-o", installer], {
-      stdio: "inherit"
-    })
-    if (dl.error === undefined && dl.status === 0) {
-      spawnSync("bash", [installer], {
-        stdio: "inherit",
-        env: { ...process.env, RTK_VERSION: version !== "" ? `v${version}` : "" }
-      })
-    }
-    rmSync(installer, { force: true })
-    process.env["PATH"] = `${ctx.home}/.local/bin:${ctx.home}/.cargo/bin:${process.env["PATH"] ?? ""}`
-    const installed = services.deps.version("rtk")
-    if (services.deps.probe("rtk").state === "present") {
-      change(`RTK ready (${installed !== "" ? installed : "version unknown"})`)
-      return 0
-    }
-    err("RTK install failed. Install manually: https://github.com/rtk-ai/rtk")
-    return 1
-  }
-  return Object.assign(install, { prerequisite })
-}
-
-export function ensureRtk(ctx: Ctx, missingCurlContext: string, missingCurlExit: number): number {
-  const installer = rtkInstall(ctx, missingCurlContext, missingCurlExit)
-  if (ctx.services.deps.probe("rtk").state === "missing") {
-    const blocked = installer.prerequisite(ctx.services)
-    if (blocked !== undefined) return blocked
-  }
-  return ensure(ctx, "rtk", installer)
-}
-
-function syncRtk(ctx: Ctx, claudeDir: string): void {
-  const { change, echo, verbose, warn } = ctx.services.logger
-  if (ctx.skipRtk) {
-    warn("Skipping RTK (--skip-rtk)")
-    return
-  }
-
-  if (ensureRtk(ctx, "cannot download RTK installer; continuing sync without RTK", 0) !== 0) {
-    warn("RTK bootstrap failed — continuing sync without it")
-  }
-
-  if (ctx.services.deps.probe("rtk").state === "missing") return
-  if (!existsSync(p(claudeDir, "RTK.md"))) {
-    if (ctx.dryRun) {
-      echo("[dry-run] rtk init --global (RTK.md missing; runs before the settings merge, which normalizes rtk's settings rewrite)")
-      return
-    }
-    // Plain command under bash set -e: a nonzero `rtk init` aborts the whole
-    // sync before the success log and before any settings/plugin mutation.
-    const res = spawnSync("rtk", ["init", "--global"], { stdio: "inherit" })
-    if (res.error !== undefined || res.status !== 0) throw new ExitError(res.status ?? 1)
-    change("RTK initialized (RTK.md generated; the following settings merge re-asserts the SoT hooks)")
-  } else if (!ctx.dryRun) {
-    verbose("RTK already initialized")
-  }
 }
 
 // ----------------------------------------------------------- runtime ----
@@ -448,10 +366,11 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_CODE_DISABLE_1M_CONTEXT",
     "env.CLAUDE_CODE_FORK_SUBAGENT",
     "env.CLAUDE_CODE_EFFORT_LEVEL",
-    "enabledPlugins.session-relay@docks"
+    "enabledPlugins.session-relay@docks",
+    "hooks.PreToolUse"
   ],
   permissionRules: {
-    allow: ["Write(./)"],
+    allow: ["Write(./)", "Bash(rtk *)"],
     deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)"]
   },
   claudeJsonKeys: [] as Array<string>,
@@ -646,7 +565,7 @@ function nonUserScopeMarketplaces(installedDoc: Json | undefined): Set<string> {
 }
 
 function syncPlugins(ctx: Ctx, claudeDir: string): void {
-  const { change, echo, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
 
@@ -687,7 +606,10 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     const known = readJsonFile(knownMarketplaces)
     if (known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false) continue
     const repo = isObject(mpValue) && isObject(mpValue["source"]) ? String((mpValue["source"] as { [k: string]: Json })["repo"] ?? "") : ""
-    if (cli(["plugin", "marketplace", "add", repo]).ok) {
+    progress(`Adding marketplace ${mpName}...`)
+    const marketplaceResult = cli(["plugin", "marketplace", "add", repo])
+    clearProgress()
+    if (marketplaceResult.ok) {
       addedMp++
     } else {
       warn(`Failed to add marketplace: ${mpName} (${repo})`)
@@ -695,17 +617,25 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     }
   }
 
-  // Pass 2 — install SoT-enabled plugins missing at user scope (jq keys[] sorts).
+  // Pass 2 — install SoT-enabled plugins missing at user scope (jq keys[] sorts),
+  // refreshing each source marketplace once so the install resolves a current snapshot.
   let addedPl = 0
   let f2 = 0
-  let refreshed = false
+  const refreshedMarketplaces = new Set<string>()
   for (const pluginId of sortedKeys(sotPlugins)) {
     if (pluginUserScopeInstalled(installedPlugins, pluginId)) continue
-    if (!refreshed) {
-      cli(["plugin", "marketplace", "update"])
-      refreshed = true
+    const separator = pluginId.lastIndexOf("@")
+    const mpName = separator > 0 ? pluginId.slice(separator + 1) : ""
+    if (mpName !== "" && !refreshedMarketplaces.has(mpName)) {
+      progress(`Refreshing marketplace ${mpName}...`)
+      cli(["plugin", "marketplace", "update", mpName])
+      clearProgress()
+      refreshedMarketplaces.add(mpName)
     }
-    if (cli(["plugin", "install", pluginId]).ok) {
+    progress(`Installing plugin ${pluginId}...`)
+    const installResult = cli(["plugin", "install", pluginId])
+    clearProgress()
+    if (installResult.ok) {
       addedPl++
     } else {
       warn(`Failed to install plugin: ${pluginId}`)
@@ -717,12 +647,32 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   const installedDoc = readJsonFile(installedPlugins)
   const installedKeys = installedDoc !== undefined && isObject(installedDoc) ? sortedKeys(installedDoc["plugins"]) : []
   const nonUserMarketplaces = nonUserScopeMarketplaces(installedDoc)
-  // Pass 3 — refresh every installed plugin unless the update command
-  // selected its install-missing-only fast path.
+  // Kit-owned plugin IDs: SoT-declared plus this run's --claude-plugin opt-ins.
+  const kitPluginIds = new Set<string>(Object.keys(sotPlugins))
+  if (ctx.claudePlugins.includes("supabase")) kitPluginIds.add("supabase@claude-plugins-official")
+  if (ctx.claudePlugins.includes("n8n")) kitPluginIds.add("n8n-mcp-skills@n8n-mcp-skills")
+
+  // Kit-owned marketplaces: SoT-declared plus every marketplace those plugins come from.
+  const kitMarketplaces = new Set<string>(Object.keys(sotMarketplaces))
+  for (const pluginId of kitPluginIds) {
+    const separator = pluginId.lastIndexOf("@")
+    if (separator > 0) kitMarketplaces.add(pluginId.slice(separator + 1))
+  }
+
+  // Pass 3 — refresh the kit-owned marketplaces and plugins unless the update
+  // command selected its install-missing-only fast path.
   if (!ctx.skipPluginRefresh) {
-    cli(["plugin", "marketplace", "update"])
-    for (const pluginId of installedKeys) {
-      if (cli(["plugin", "update", pluginId]).out.includes("Successfully updated")) updatedPl++
+    for (const mpName of [...kitMarketplaces].sort(compareCodepoints)) {
+      progress(`Refreshing marketplace ${mpName}...`)
+      cli(["plugin", "marketplace", "update", mpName])
+      clearProgress()
+    }
+    for (const pluginId of [...kitPluginIds].sort(compareCodepoints)) {
+      if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
+      progress(`Updating plugin ${pluginId}...`)
+      const updateResult = cli(["plugin", "update", pluginId, "--scope", "user"])
+      clearProgress()
+      if (updateResult.out.includes("Successfully updated")) updatedPl++
     }
   }
 
@@ -735,7 +685,10 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     for (const pluginId of installedKeys) {
       if (isObject(sotPlugins) && Object.prototype.hasOwnProperty.call(sotPlugins, pluginId)) continue
       if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
-      if (cli(["plugin", "uninstall", "-y", "--scope", "user", pluginId]).ok) {
+      progress(`Uninstalling plugin ${pluginId}...`)
+      const uninstallResult = cli(["plugin", "uninstall", "-y", "--scope", "user", pluginId])
+      clearProgress()
+      if (uninstallResult.ok) {
         removedPl++
       } else {
         warn(`Failed to uninstall plugin: ${pluginId}`)
@@ -748,7 +701,10 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
       if (nonUserMarketplaces.has(mpName)) continue
       const declared = isObject(sotMarketplaces) ? sotMarketplaces[mpName] : undefined
       if (declared !== undefined && declared !== null && declared !== false) continue
-      if (cli(["plugin", "marketplace", "remove", mpName]).ok) {
+      progress(`Removing marketplace ${mpName}...`)
+      const removeResult = cli(["plugin", "marketplace", "remove", mpName])
+      clearProgress()
+      if (removeResult.ok) {
         removedMp++
       } else {
         warn(`Failed to remove marketplace: ${mpName}`)
@@ -810,7 +766,7 @@ function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSett
 // ------------------------------------------------------ optional plugins ----
 
 function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, marketplaceRepo: string): boolean {
-  const { change, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, progress, verbose, warn } = ctx.services.logger
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const mpName = pluginId.slice(pluginId.lastIndexOf("@") + 1)
@@ -830,7 +786,10 @@ function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, mar
 
   const wasInstalled = pluginUserScopeInstalled(installedPlugins, pluginId)
   if (!wasInstalled) {
-    if (!cli(["plugin", "install", pluginId]).ok) {
+    progress(`Installing plugin ${pluginId}...`)
+    const installResult = cli(["plugin", "install", pluginId])
+    clearProgress()
+    if (!installResult.ok) {
       if (marketplaceAdded) change(`Optional plugin ${pluginId}: marketplace added (install failed — will retry next sync)`)
       warn(`Failed to install optional plugin ${pluginId}`)
       return marketplaceAdded
@@ -889,7 +848,7 @@ function lspPkg(ctx: Ctx, tool: string, pkg: string): string {
 }
 
 function syncLspServers(ctx: Ctx): void {
-  const { change, echo, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const sot = parseJson(payloadText("SoT/.claude/settings.json"))
   const enabled = sot !== undefined && isObject(sot) && isObject(sot["enabledPlugins"]) ? sot["enabledPlugins"] : undefined
   if (enabled === undefined) return
@@ -929,7 +888,10 @@ function syncLspServers(ctx: Ctx): void {
   }
 
   verbose(`Installing LSP servers via npm: ${specs}...`)
-  if (spawnSync("npm", ["install", "-g", ...missing], { stdio: "ignore" }).status === 0) {
+  progress(`Installing LSP servers via npm: ${specs}...`)
+  const installResult = spawnSync("npm", ["install", "-g", ...missing], { stdio: "ignore" })
+  clearProgress()
+  if (installResult.status === 0) {
     change(`LSP servers installed (${specs})`)
     ctx.nextStepTriggers.claudeRestart = true
   } else {
@@ -948,12 +910,6 @@ export function claudeSummary(ctx: Ctx, runtime: ClaudeRuntimeState): void {
       echo("Hooks:    Bun (statusline, session-start, notify)")
     } else {
       echo("Hooks:    migration deferred (Bun unavailable; existing hook/statusline settings preserved)")
-    }
-    if (ctx.services.deps.probe("rtk").state === "present") {
-      const version = ctx.services.deps.version("rtk")
-      echo(`RTK:      ${version !== "" ? version : "installed"}`)
-    } else {
-      echo("RTK:      not installed")
     }
     if (ctx.services.deps.probe("claude").state === "present") {
       const installed = readJsonFile(p(claudeDir, "plugins", "installed_plugins.json"))

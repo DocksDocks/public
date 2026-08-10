@@ -49,7 +49,7 @@ const LEGACY_HINTS: Record<string, string> = {
   "--permissive": "--permissive was renamed to --claude-permissive",
   "--supabase": "--supabase was renamed to --claude-plugin=supabase",
   "--n8n": "--n8n was renamed to --claude-plugin=n8n",
-  "--no-rtk": "--no-rtk was renamed to --skip-rtk",
+  "--skip-rtk": "--skip-rtk was renamed to --skip-bubblewrap",
   "--claude": "--claude was renamed: pass the target as a word, e.g. 'sync claude'",
   "--codex": "--codex was renamed: pass the target as a word, e.g. 'sync codex'",
   "--agents": "--agents was renamed: pass the target as a word, e.g. 'sync agents'"
@@ -77,8 +77,8 @@ const reconcile = Options.boolean("reconcile").pipe(
 const prune = Options.boolean("prune").pipe(
   Options.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)")
 )
-const skipRtk = Options.boolean("skip-rtk").pipe(
-  Options.withDescription("Skip optional tool bootstrap (RTK, bubblewrap)")
+const skipBubblewrap = Options.boolean("skip-bubblewrap").pipe(
+  Options.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)")
 )
 const skipPluginRefresh = Options.boolean("skip-plugin-refresh").pipe(
   Options.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
@@ -131,7 +131,7 @@ export const syncCommand = Command.make(
     dryRun,
     reconcile,
     prune,
-    skipRtk,
+    skipBubblewrap,
     skipPluginRefresh,
     yes,
     verbose,
@@ -175,7 +175,7 @@ export const syncCommand = Command.make(
       if (config.dryRun) args.push("--dry-run")
       if (config.reconcile) args.push("--reconcile")
       if (config.prune) args.push("--prune")
-      if (config.skipRtk) args.push("--skip-rtk")
+      if (config.skipBubblewrap) args.push("--skip-bubblewrap")
       if (config.skipPluginRefresh) args.push("--skip-plugin-refresh")
       if (config.yes) args.push("--yes")
       if (config.verbose) args.push("--verbose")

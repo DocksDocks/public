@@ -12,7 +12,7 @@ metadata:
       lines: "1-90"
     - path: SoT/.codex/rules/docks.rules
       lines: "1-140"
-  updated: "2026-08-07"
+  updated: "2026-08-10"
 ---
 
 # Codex Config Merge
@@ -32,9 +32,9 @@ inside a SoT-declared TOML table.
 
 <constraint>
 `ensureBubblewrap` is the only kit path that may suggest a sudo package-manager
-install. It is Linux-only, skipped by `--skip-rtk`, and must continue to warn
-rather than fail when system bubblewrap cannot be installed or user namespaces
-are blocked.
+install. It is Linux-only, skipped by `--skip-bubblewrap`, and must continue to
+warn rather than fail when system bubblewrap cannot be installed or user
+namespaces are blocked.
 </constraint>
 
 ## When To Use

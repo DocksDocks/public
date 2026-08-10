@@ -11,9 +11,8 @@ import { syncCodexModel } from "./codexToml"
 import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
-import { ensureRtk } from "./claudeSync"
 import { bunBootstrap } from "./bun"
-import { agentBrowserInstall, effectSolutionsInstall } from "./skillsSync"
+import { effectSolutionsInstall } from "./skillsSync"
 import { ensure, report } from "./toolchain"
 
 export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
@@ -134,16 +133,12 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
     return 2
   }
   switch (tool) {
-    case "rtk":
-      return ensureRtk(ctx, "cannot download RTK installer; toolchain ensure rtk aborted", 1)
     case "bun":
       return bunBootstrap(ctx, ctx.services).kind === "ready" ? 0 : 1
     case "effect-solutions":
       return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
-    case "agent-browser":
-      return ensure(ctx, "agent-browser", agentBrowserInstall)
     default:
-      err("toolchain ensure supports managed tools only (rtk, bun, effect-solutions, agent-browser)")
+      err("toolchain ensure supports managed tools only (bun, effect-solutions)")
       return 2
   }
 }

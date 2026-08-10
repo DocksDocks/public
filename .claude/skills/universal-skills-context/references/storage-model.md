@@ -10,14 +10,14 @@ canonical universal path and the Claude Code symlink.
 ```text
 ~/.agents/
 |-- skills/
-|   `-- agent-browser/
+|   `-- <basename>/
 |       |-- SKILL.md
 |       `-- references/
 `-- .kit-managed-skills
 
 ~/.claude/
 `-- skills/
-    `-- agent-browser -> ../../.agents/skills/agent-browser
+    `-- <basename> -> ../../.agents/skills/<basename>
 ```
 
 Codex reads `~/.agents/skills/` natively. Claude Code discovers the symlinked

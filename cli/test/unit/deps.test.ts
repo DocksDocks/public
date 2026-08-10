@@ -18,9 +18,9 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.npm.requirement).toBe("optional")
   })
 
-  it("registers Chrome-for-Testing, LSP binaries, and ffplay", () => {
+  it("registers the LSP binaries and ffplay", () => {
     expect(Object.keys(DEPENDENCIES)).toEqual(
-      expect.arrayContaining(["chrome-for-testing", "intelephense", "typescript-language-server", "tsc", "ffplay"])
+      expect.arrayContaining(["intelephense", "typescript-language-server", "tsc", "ffplay"])
     )
   })
 
@@ -44,17 +44,32 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.claude.requirement).toBe("optional")
   })
 
-  it("does not invoke the RTK curl latest probe when curl is absent", () => {
+  it("reads the intelephense version from one memoized npm global listing", () => {
     const captures: Array<[string, ReadonlyArray<string>]> = []
     const manager = makeDependencyManager(makePlatform("linux"), {
-      commandExists: (name) => name !== "curl",
+      commandExists: () => true,
+      capture: (cmd, args) => {
+        captures.push([cmd, args])
+        return '{"dependencies":{"intelephense":{"version":"1.18.4"}}}'
+      },
+      which: (name) => `/stub/${name}`
+    })
+    expect(manager.version("intelephense")).toBe("1.18.4")
+    expect(manager.version("intelephense")).toBe("1.18.4")
+    expect(captures).toEqual([["npm", ["ls", "-g", "--depth=0", "--json"]]])
+  })
+
+  it("reports no intelephense version when npm is absent", () => {
+    const captures: Array<[string, ReadonlyArray<string>]> = []
+    const manager = makeDependencyManager(makePlatform("linux"), {
+      commandExists: (name) => name !== "npm",
       capture: (cmd, args) => {
         captures.push([cmd, args])
         return ""
       },
-      which: (name) => name !== "curl" ? `/stub/${name}` : ""
+      which: (name) => (name !== "npm" ? `/stub/${name}` : "")
     })
-    expect(manager.latest("rtk")).toBe("")
+    expect(manager.version("intelephense")).toBe("")
     expect(captures).toEqual([])
   })
 
@@ -125,34 +140,6 @@ describe("DependencyManager registry", () => {
     }
   })
 
-
-  it("finds agent-browser managed Chrome without invoking a command", () => {
-    const root = mkdtempSync(join(tmpdir(), "deps-chrome-"))
-    const previousHome = process.env["HOME"]
-    const executable = join(root, ".agent-browser", "browsers", "chrome-148.0.0.0", "chrome")
-    const captures: Array<[string, ReadonlyArray<string>]> = []
-    try {
-      mkdirSync(join(executable, ".."), { recursive: true })
-      writeFileSync(executable, "#!/bin/sh\n")
-      chmodSync(executable, 0o755)
-      process.env["HOME"] = root
-      const manager = makeDependencyManager(makePlatform("linux"), {
-        commandExists: () => false,
-        capture: (cmd, args) => {
-          captures.push([cmd, args])
-          return ""
-        },
-        which: (name) => (name === executable ? name : "")
-      })
-
-      expect(manager.probe("chrome-for-testing")).toEqual({ state: "present", path: executable })
-      expect(captures).toEqual([])
-    } finally {
-      if (previousHome === undefined) delete process.env["HOME"]
-      else process.env["HOME"] = previousHome
-      rmSync(root, { recursive: true, force: true })
-    }
-  })
 
   it("keeps presence results focused on presence and path", () => {
     const manager = makeDependencyManager(makePlatform("linux"), {

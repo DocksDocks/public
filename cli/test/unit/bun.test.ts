@@ -82,7 +82,7 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     agentsDir: `${home}/.agents`,
     dryRun,
     verbose: false,
-    skipRtk: false,
+    skipBubblewrap: false,
     reconcile: false,
     prune: false,
     assumeYes: false,

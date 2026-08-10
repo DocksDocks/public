@@ -11,9 +11,9 @@ import { homedir } from "node:os"
 import { kitHome } from "../kitHome"
 import { makeEngineServices, type EngineServices, type Logger } from "./services"
 import type { BunRuntimeState } from "./bun"
-import { claudeNextSteps, claudeSummary, claudeSync } from "./claudeSync"
+import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
-import { skillsNextSteps, skillsSummary, skillsSync } from "./skillsSync"
+import { skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs"
 
@@ -30,7 +30,7 @@ export interface Ctx {
   readonly agentsDir: string
   dryRun: boolean
   verbose: boolean
-  skipRtk: boolean
+  skipBubblewrap: boolean
   skipPluginRefresh?: boolean
   reconcile: boolean
   prune: boolean
@@ -71,7 +71,7 @@ function makeCtx(services: EngineServices): Ctx {
     agentsDir: env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== "" ? env["AGENTS_DIR"] : p(home, ".agents"),
     dryRun: env["DRY_RUN"] === "1",
     verbose: env["DOCKS_KIT_VERBOSE"] === "1",
-    skipRtk: env["SKIP_RTK"] === "1",
+    skipBubblewrap: env["SKIP_BUBBLEWRAP"] === "1",
     skipPluginRefresh: false,
     reconcile: env["RECONCILE"] === "1",
     prune: env["PRUNE"] === "1",
@@ -95,17 +95,40 @@ function makeCtx(services: EngineServices): Ctx {
 }
 
 function engineSync(ctx: Ctx, args: ReadonlyArray<string>): number {
-  const { echo } = ctx.services.logger
+  const { clearProgress, echo, progress } = ctx.services.logger
   parseArgs(ctx, args)
   validateModifierFlags(ctx)
 
   const claudeRan = ctx.syncClaude
-  const claudeRuntime = claudeRan ? claudeSync(ctx) : undefined
+  let claudeRuntime: ClaudeRuntimeState | undefined
+  if (claudeRan) {
+    progress("Syncing Claude...")
+    try {
+      claudeRuntime = claudeSync(ctx)
+    } finally {
+      clearProgress()
+    }
+  }
 
   const codexRan = ctx.syncCodex
-  if (codexRan) codexSync(ctx)
+  if (codexRan) {
+    progress("Syncing Codex...")
+    try {
+      codexSync(ctx)
+    } finally {
+      clearProgress()
+    }
+  }
 
-  const skillsState = ctx.syncAgents ? skillsSync(ctx) : undefined
+  let skillsState: SkillsState | undefined
+  if (ctx.syncAgents) {
+    progress("Syncing skills...")
+    try {
+      skillsState = skillsSync(ctx)
+    } finally {
+      clearProgress()
+    }
+  }
 
   echo("")
   echo("--- Sync complete ---")
@@ -133,6 +156,8 @@ export function runEngineNative(argv: ReadonlyArray<string>, services?: EngineSe
   const baseLogger = baseServices.logger
   const logger: Logger = {
     change: (msg) => baseLogger.change(msg),
+    progress: (msg) => baseLogger.progress(msg),
+    clearProgress: () => baseLogger.clearProgress(),
     verbose: (msg) => {
       if (ctx.verbose) baseLogger.verbose(msg)
     },

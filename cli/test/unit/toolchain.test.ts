@@ -12,7 +12,7 @@ describe("toolchain prompt", () => {
     const chunks: Array<string> = []
     let offset = 0
     const answer = promptLine(
-      "Install agent-browser 0.99.0 anyway? [y/N] ",
+      "Install effect-solutions 0.99.0 anyway? [y/N] ",
       (chunk) => chunks.push(chunk),
       (buffer) => {
         if (offset >= input.length) return 0
@@ -23,7 +23,7 @@ describe("toolchain prompt", () => {
 
     expect({ answer, prompt: chunks.join("") }).toEqual({
       answer: "n",
-      prompt: "Install agent-browser 0.99.0 anyway? [y/N] "
+      prompt: "Install effect-solutions 0.99.0 anyway? [y/N] "
     })
   })
 })
@@ -38,7 +38,7 @@ describe("public toolchain ensure", () => {
       expect(run.exitCode).toBe(2)
       expect(run.stdout).toBe("")
       expect(run.stderr).toBe(
-        "toolchain ensure needs a managed tool: rtk, bun, effect-solutions, agent-browser\n"
+        "toolchain ensure needs a managed tool: bun, effect-solutions\n"
       )
     } finally {
       rmSync(run.home, { recursive: true, force: true })

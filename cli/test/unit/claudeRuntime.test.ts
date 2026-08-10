@@ -18,7 +18,7 @@ function template() {
     hooks: {
       SessionStart: [{ hooks: [{ type: "command", command: BUN_SENTINEL, args: [SESSION_SENTINEL], timeout: 5 }] }],
       Notification: [{ hooks: [{ type: "command", command: BUN_SENTINEL, args: [NOTIFY_SENTINEL], timeout: 10, async: true }] }],
-      PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }]
+      PostToolUseFailure: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo failure-context", timeout: 5 }] }]
     },
     statusLine: { type: "command", command: STATUS_SENTINEL, refreshInterval: 5 },
     model: "opus"
@@ -77,7 +77,7 @@ describe("Claude settings materialization", () => {
       hooks: {
         SessionStart: [{ hooks: [{ type: "command", command: POSIX_RUNTIME.bun, args: [POSIX_RUNTIME.sessionStart], timeout: 5 }] }],
         Notification: [{ hooks: [{ type: "command", command: POSIX_RUNTIME.bun, args: [POSIX_RUNTIME.notify], timeout: 10, async: true }] }],
-        PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }]
+        PostToolUseFailure: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo failure-context", timeout: 5 }] }]
       },
       statusLine: {
         type: "command",
@@ -93,7 +93,7 @@ describe("Claude settings materialization", () => {
   it("strips only Bun-owned pointers when runtime is deferred", () => {
     expect(materializeClaudeSettings(template(), undefined)).toEqual({
       hooks: {
-        PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] }]
+        PostToolUseFailure: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo failure-context", timeout: 5 }] }]
       },
       model: "opus"
     })

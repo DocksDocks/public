@@ -25,7 +25,7 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
 | `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 
-Context7, Frontend Design, Chrome DevTools, Supabase, n8n, and universal `agent-browser` discovery are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
+Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
 #### Per-project plugin scoping
 
@@ -89,43 +89,6 @@ MCP server *definitions* cannot live in `settings.json` — the schema rejects a
 
 Chrome DevTools and Context7 are non-default. Add Chrome DevTools at project or user scope only for performance, network, console, or heap debugging that the project's own browser tooling cannot cover. Frontend Design is likewise an optional official plugin rather than a global default.
 
-### RTK (Rust Token Killer)
-
-Token-optimized CLI proxy that reduces LLM token consumption by 60-90%. A PreToolUse hook transparently rewrites Bash commands (e.g., `git status` → `rtk git status`) so output is compressed before it reaches the context window.
-
-*Verified working: **rtk 0.43.0** ([release notes](https://github.com/rtk-ai/rtk/releases/tag/v0.43.0), 2026-07-02). Upgrade rationale and supply-chain notes live in commit messages; only the current verified version is recorded here.* RTK versions are now gated by `SoT/toolchain.json` (verified pin 0.43.0) — upgrades above the pin prompt; bump `verified` after testing a release.
-
-`rtk init -g` may generate `~/.claude/RTK.md`, but neither global prompt imports it. The kit uses only the PreToolUse hook from `SoT/.claude/settings.json` (`rtk hook claude`) so command rewriting remains transparent without loading RTK help prose into every session.
-
-<constraint>
-**RTK upgrade gotcha** — `rtk init -g` rewrites `~/.claude/settings.json` and **clears `hooks.PreToolUse` to `[]` even when its "Patch existing settings.json? [y/N]" prompt defaults to N** (observed RTK 0.38.0, 2026-05-05). It prints a "MANUAL STEP: add this hook" message after destroying the existing one. Never run `rtk init -g` blindly during an upgrade — either snapshot `~/.claude/settings.json` first and restore the `PreToolUse` block after, or just re-run `./docks-kit sync claude --reconcile` to redeploy the SoT entry. The kit's engine skips `rtk init -g` when `~/.claude/RTK.md` already exists, so it won't trip on routine syncs — only manual invocations.
-</constraint>
-
-#### Supported commands
-
-git, gh, cargo, cat, grep/rg, ls, tree, find, diff, head, vitest, tsc, eslint, prettier, playwright, prisma, docker, kubectl, curl, wget, pytest, ruff, pip, mypy, go test/build/vet, aws, psql, and more.
-
-#### Install RTK (Linux)
-
-```bash
-# 1. Install the rtk binary (download-then-run; see note)
-curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh
-bash /tmp/rtk-install.sh
-rm /tmp/rtk-install.sh
-# NB: avoid `curl … | bash` — the pipe can truncate mid-stream (observed on the 0.38 → 0.39 upgrade, 2026-05-06; "unexpected EOF while looking for matching `}'" with no other diagnostics). The upstream installer also has bashisms, so `curl … | sh` would fail on Debian/Ubuntu where /bin/sh is dash.
-
-# 2. Initialize RTK globally (generates hook + configures Claude Code)
-rtk init --global
-
-# 3. Add "Bash(rtk:*)" to permissions.allow in ~/.claude/settings.json
-
-# 4. Verify
-rtk --version        # Should print version
-rtk ls .             # Should show compressed output
-rtk gain             # Should show tracking is active
-
-# 5. Restart Claude Code for the hook to take effect
-```
 
 ### Status Line
 
@@ -184,7 +147,6 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 - **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
 - **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
 - **Notification**: Direct Bun exec of `~/.claude/bin/notify.mjs`; plays `notification.mp3` via the first available native player when a task completes
-- **PreToolUse (Bash)**: RTK hook rewrites commands for token-compressed output
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
 
 ### Environment Variables
@@ -256,9 +218,9 @@ Effort is pinned via the top-level `effortLevel` key — never `CLAUDE_CODE_EFFO
 # Clone and sync the kit
 git clone <this-repo> ~/projects/public
 cd ~/projects/public
-./docks-kit sync                     # full sync + RTK bootstrap + plugin bootstrap (additive)
+./docks-kit sync                     # full sync + Bun/runtime + plugin bootstrap (additive)
 ./docks-kit sync --dry-run           # preview before applying
-./docks-kit sync --skip-rtk          # skip RTK install; prompt deployment is unchanged
+./docks-kit sync --skip-bubblewrap   # skip optional bubblewrap bootstrap (Codex Linux sandbox)
 ./docks-kit sync --yes               # auto-accept toolchain install/upgrade prompts
 ./docks-kit sync --reconcile         # replace ~/.claude/settings.json wholesale (settings layer only)
 ./docks-kit sync --prune             # uninstall plugins/marketplaces not in SoT (plugin layer only)
@@ -274,7 +236,7 @@ cd ~/projects/public
 
 In an active Claude Code session, run `/reload-plugins` after `./docks-kit sync` to activate any newly installed plugins without restarting.
 
-The sync auto-detects the repo location, merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, copies the status line scripts and hook scripts, and installs/upgrades RTK via EngineNative's verified-version gate over `SoT/toolchain.json`. RTK runs first in the Claude sync pipeline, so the settings merge normalizes `rtk init`'s settings rewrite — deploy-time modifiers can no longer be clobbered.
+The sync auto-detects the repo location, starts the Claude pipeline with the Bun bootstrap, materializes and merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, and copies the status line and hook scripts before atomically committing settings. Deploy-time modifiers run only after that base settings commit.
 
 For plugins, `./docks-kit sync` runs seven idempotent passes via the `claude plugin` CLI:
 
@@ -360,13 +322,11 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 
 ### Troubleshooting
 
-- **RTK hook not firing in a project** — project-level PreToolUse hooks completely replace global ones. If a project has its own `.claude/settings.json` with PreToolUse hooks, the global RTK hook is silently disabled for that project. Fix: add the RTK hook entry to the project's settings (and ensure the hook command uses an absolute path, not `~/`).
 - **Status line missing 5h/7d usage** — Claude omits native `rate_limits` for API-key/unsupported-plan sessions and before the first API response; the statusline intentionally omits only that segment. There is no OAuth fallback or cache to clear. If the whole statusline is absent, re-run `./docks-kit sync claude` to restore Bun/runtime assets and inspect the migration warning.
 - **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=468000` (compaction at ~95% → ~445K). To delay (containers only), pass `./docks-kit sync claude --claude-compact-window=680k` or raise the value; to fire earlier, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **in `settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
 - **Schema validation warnings on settings.json** — `showTurnDuration` belongs in `~/.claude.json`, not `settings.json`. `./docks-kit sync` writes it to the right file, and the `removed` manifest prunes any stale `showTurnDuration` from `settings.json` on every sync.
 - **Subagent rejected by SubagentStop hook** — the hook expects file:line references. Verifiers returning "no issues found" / mode-selection responses are whitelisted. If a legitimate reply is still being rejected, extend the exception pattern in the hook command.
 - **Fable session silently running on Opus** — Fable 5's safety classifiers flagged a message and auto-switched the session to Opus 4.8 (`switchModelsOnFlag`). Check the status line model name; `/model fable` to return. `claude --safe-mode` isolates whether kit customizations trip the first-request flag.
-- **RTK hook missing** — neither global prompt imports `RTK.md`; verify `hooks.PreToolUse` in `~/.claude/settings.json`, then run `./docks-kit sync claude --reconcile` to restore the hook.
 - **`/plugin marketplace add DocksDocks/docks` fails with "marketplace.json not found"** — clear the partial cache: `/plugin marketplace remove DocksDocks-docks` then re-add.
 - **Plugin commands not appearing after install** — run `/reload-plugins`. Commands are namespaced as `/docks:<name>` (e.g., `/docks:security`).
 

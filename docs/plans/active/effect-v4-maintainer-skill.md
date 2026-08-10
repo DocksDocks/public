@@ -299,18 +299,16 @@ specific plan.
   `cli/src/services.ts:1-120`, and `cli/src/commands/*.ts` — all existing Effect
   boundaries; EngineNative modules outside these imports are not migration
   targets.
-- `SoT/.agents/skills.txt:1-14` — current line-oriented universal manifest has
-  only `vercel-labs/agent-browser`.
-- `cli/src/engine-native/skillsSync.ts:18-120,321-375` — current basename
-  idempotence, pinned CLI argv, prune snapshot, and source-agnostic ownership
-  behavior.
+- `SoT/.agents/skills.txt` — the line-oriented universal manifest is empty by
+  default.
+- `skillsSync.ts` `syncUniversal`, `reconcileRemovals`, and `updateSnapshot` —
+  basename idempotence, pinned CLI arguments, prune snapshots, and
+  source-agnostic ownership behavior.
 - `https://github.com/kitlangton/skills/tree/30dee8607214c893dd89f6eee65c669ef3dce8c9/skills/effect`
   — reviewed v4 skill source; `SKILL.md` blob
   `48f467431b823c37bf35c57c7ceca2c16313532f`, references tree
   `d3372ec9e26b31acd259585bd4071c2aa3f5ba61`.
 - `https://github.com/kitlangton/skills/blob/main/LICENSE` — MIT license.
-- `https://github.com/vercel-labs/skills/blob/main/README.md` — official CLI
-  supports `--skill <name>` and direct repository paths.
 - `https://github.com/Effect-TS/effect-smol/tree/main/migration` — upstream v4
   migration notes; current coverage is incomplete, so installed types remain
   authoritative.

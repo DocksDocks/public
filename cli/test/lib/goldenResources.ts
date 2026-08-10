@@ -108,32 +108,25 @@ const STUB_BODIES: Record<string, string> = {
     add) exit 0;;
   esac;;
 esac`,
-  rtk: `case "$1" in --version) echo "rtk 0.43.0";; esac`,
   npx: `exit 0`,
   npm: `case "$1" in
   view) case "$2" in
-    agent-browser) echo "0.32.0";;
     effect-solutions) echo "0.5.3";;
     *) echo "0.0.1";;
   esac;;
+  ls) echo '{"dependencies":{"intelephense":{"version":"1.18.5"}}}';;
 esac`,
   bun: `case "$1" in
   --version) echo "1.3.14";;
   pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${GOLDEN_STUB_DIR}"; };;
 esac`,
-  curl: `for a in "$@"; do
-  case "$a" in
-    *api.github.com*) echo '{"tag_name":"v0.43.0"}'; exit 0;;
-  esac
-done
-exit 0`,
-  "agent-browser": `case "$1" in --version) echo "agent-browser 0.32.0";; esac`,
+  curl: `exit 0`,
   "effect-solutions": `exit 0`,
   bwrap: `case "$1" in --version) echo "bubblewrap 0.11.0";; esac`,
   intelephense: `exit 0`,
   "typescript-language-server": `case "$1" in --version) echo "5.3.0";; esac`,
   tsc: `case "$1" in --version) echo "Version 6.0.3";; esac`,
-  ffplay: `exit 0`,
+  ffplay: `case "$1" in -version) echo "ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers";; esac`,
   unshare: `exit 0`
 }
 

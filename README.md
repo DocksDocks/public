@@ -34,8 +34,8 @@ The executable carries the generated sync payload; no checkout or adjacent
 `SoT/` directory is required.
 
 Prerequisites for source/global installs: Bun; Node/npm for npm-global tools.
-`jq` is optional doctor/test tooling. `curl` is used only at requested Linux/macOS
-RTK/Bun download boundaries, not as a global sync prerequisite.
+`jq` is optional doctor/test tooling. `curl` is used only when a requested
+Linux/macOS Bun bootstrap must download an installer.
 
 ## CLI
 
@@ -68,7 +68,7 @@ golden-regression coverage for dry-run output, mutation snapshots, and argv logs
 | `--claude-permissive` | Deploy-time modifier: empty ask/deny (sandboxes only) |
 | `--claude-plugin=<name>` | Sticky opt-in plugin (supabase, n8n) |
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
-| `--skip-rtk` | Skip optional tool bootstrap |
+| `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
 | `--skip-plugin-refresh` | Install missing plugins but skip refresh-only updates (used automatically by `docks-kit update`) |
 | `--yes` | Auto-accept toolchain prompts (CI/containers) |
 
@@ -82,7 +82,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   survive a plain sync. Reconciliation toward the SoT is explicit
   (`--reconcile` / `--prune`).
 - **Idempotent** — every step is safe to re-run; no-change syncs are no-ops.
-- **Toolchain floors** — external tools (RTK, bun, agent-browser,
+- **Toolchain floors** — external tools (bun, bwrap,
   effect-solutions, …) install/upgrade against `SoT/toolchain.json`:
   versions above the kit-verified pin prompt before installing
   (`--yes` accepts; non-TTY falls back to the pinned verified version

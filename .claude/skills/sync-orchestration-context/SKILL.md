@@ -14,7 +14,7 @@ metadata:
       lines: "1-130"
     - path: cli/src/engine-native/models.ts
       lines: "1-90"
-  updated: "2026-07-15"
+  updated: "2026-08-10"
 ---
 
 # Sync Engine Orchestration
@@ -88,7 +88,7 @@ target selector and set `ctx.targetFilterSet`; when it remains false,
 | `--dry-run` | `ctx.dryRun` | Preview only. |
 | `--reconcile` | `ctx.reconcile` | Settings layer only. |
 | `--prune` | `ctx.prune` | Plugin, marketplace, and kit-managed skills removals. |
-| `--skip-rtk` | `ctx.skipRtk` | Skips optional RTK and bubblewrap installs. |
+| `--skip-bubblewrap` | `ctx.skipBubblewrap` | Skips optional bubblewrap bootstrap for the Codex Linux sandbox. |
 | `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; update chains this flag. |
 | `--yes` | `ctx.assumeYes` | Auto-accepts verified-pin prompts. |
 | `--claude-model=<m>` | `ctx.claudeModel` | Validated before sync mutations. |
@@ -137,8 +137,8 @@ Codex values must match the safe quoted-TOML charset; catalog misses warn only.
   reverted by a later flag-less sync.
 - Optional Claude plugin opt-ins are sticky because the plugin keys are absent
   from the SoT; only `--prune` removes them.
-- RTK still runs first in `claudeSync`: first install can rewrite settings, and
-  the later settings merge must normalize that output.
+- `claudeSync` starts with the memoized Bun bootstrap before materializing,
+  preparing, and committing Claude settings.
 
 ## Gotchas
 
