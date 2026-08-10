@@ -62,3 +62,31 @@ describe("unsupported host boundary", () => {
     expect(mocks.spawnSync).not.toHaveBeenCalled()
   })
 })
+
+describe("EngineNative Effect seam", () => {
+  beforeEach(() => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("linux")
+    vi.spyOn(process, "arch", "get").mockReturnValue("x64")
+  })
+
+  it("completes successfully when EngineNative resolves zero", async () => {
+    mocks.runEngineNative.mockResolvedValue(0)
+
+    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).resolves.toBeUndefined()
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it("exits with the EngineNative non-zero code", async () => {
+    mocks.runEngineNative.mockResolvedValue(3)
+
+    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toThrow("exit 3")
+  })
+
+  it("surfaces a rejected EngineNative Promise", async () => {
+    mocks.runEngineNative.mockRejectedValue(new Error("native engine failed"))
+
+    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toThrow(
+      "native engine failed"
+    )
+  })
+})

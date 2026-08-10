@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Ran the Claude, Codex, and skills sync pipelines concurrently instead of one
+  after another. Every EngineNative subprocess moved from a blocking
+  `spawnSync` to an awaited `spawn`, and a bounded coordinator runs the three
+  pipelines with a default cap of 3. Order inside each pipeline is unchanged and
+  stays serial, because a tool's plugin commands re-read their own installed
+  state between passes. Warm sync on the reference host fell from a 13.35 s
+  median to 8.93 s, a 4.42 s (33.1%) reduction. Set
+  `DOCKS_KIT_SYNC_CONCURRENCY=1` to force the previous serial order; the golden
+  suites pin it so recorded command order stays deterministic.
+- Added one run-scoped terminal lease so a concurrent pipeline can no longer
+  overprint the bubblewrap installer's sudo password prompt or steal input from
+  a toolchain upgrade prompt. Durable output is buffered while the terminal is
+  held and flushed afterward, and errors still print immediately.
+
 - Removed every Session Relay feature surface: the managed-release installer,
   the status readiness probe, the `session-relay` toolchain entry, and the
   `session-relay@docks` enablement in all three SoT configs. Sync now withdraws

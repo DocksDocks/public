@@ -3,21 +3,20 @@
  * avoid a TOML library because reformatting user configs would be a behavior
  * change. Guard order, message strings, and backup behavior are golden-tested.
  */
-import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
 import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
-import { p } from "./exec"
+import { p, spawnProcess } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
 
-export function codexSync(ctx: Ctx): void {
+export async function codexSync(ctx: Ctx): Promise<void> {
   const codexDir = p(ctx.home, ".codex")
   const sotConfig = payloadText("SoT/.codex/config.toml")
   const userConfig = p(codexDir, "config.toml")
 
-  ensureBubblewrap(ctx)
+  await ensureBubblewrap(ctx)
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true })
   syncConfig(ctx, sotConfig, userConfig)
   syncCodexModel(ctx, ctx.codexModel)
@@ -25,13 +24,13 @@ export function codexSync(ctx: Ctx): void {
   syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"))
   syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"))
   syncMarketplace(ctx, payloadText("SoT/.codex/plugins/marketplace.json"), p(ctx.agentsDir, "plugins", "marketplace.json"))
-  removeLegacyDocksMarketplace(ctx, userConfig)
-  syncPlugins(ctx, sotConfig)
+  await removeLegacyDocksMarketplace(ctx, userConfig)
+  await syncPlugins(ctx, sotConfig)
 }
 
 // ---------------------------------------------------------- bubblewrap ----
 
-function ensureBubblewrap(ctx: Ctx): void {
+async function ensureBubblewrap(ctx: Ctx): Promise<void> {
   const { change, echo, warn } = ctx.services.logger
   if (!bwrapSupportedOs(ctx)) return
 
@@ -58,8 +57,10 @@ function ensureBubblewrap(ctx: Ctx): void {
   }
 
   warn(`bubblewrap not installed - recommended for Codex Linux sandbox. Running: ${pmInstall} (sudo prompt may appear)`)
-  const res = spawnSync("bash", ["-c", pmInstall], { stdio: ["inherit", "inherit", "inherit"] })
-  if (res.status !== 0) {
+  const runInstaller = () =>
+    spawnProcess("bash", ["-c", pmInstall], { stdio: ["inherit", "inherit", "inherit"] })
+  const res = await (ctx.terminalLease?.withExclusive(runInstaller) ?? runInstaller())
+  if (res.exitCode !== 0) {
     warn(`Failed to auto-install bubblewrap. Install manually: ${pmInstall}`)
     return
   }
@@ -69,8 +70,8 @@ function ensureBubblewrap(ctx: Ctx): void {
     return
   }
 
-  if (spawnSync("unshare", ["-Ur", "true"], { stdio: "ignore" }).status === 0) {
-    change(`bubblewrap installed and functional (${ctx.services.deps.version("bwrap")})`)
+  if ((await spawnProcess("unshare", ["-Ur", "true"], { stdio: "ignore" })).exitCode === 0) {
+    change(`bubblewrap installed and functional (${await ctx.services.deps.version("bwrap")})`)
   } else {
     warn(
       "bubblewrap installed but unprivileged user namespaces appear blocked. On Ubuntu 24.04+, prefer loading the AppArmor bwrap-userns-restrict profile; fallback: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0"
@@ -411,7 +412,7 @@ export function marketplaceSource(marketplace: string, configFile: string): stri
   return ""
 }
 
-function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
+async function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): Promise<void> {
   const { change, echo, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed")
@@ -422,8 +423,8 @@ function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): void {
 
   const source = marketplaceSource("docks", userConfig)
   if (source !== "https://github.com/DocksDocks/docks.git" && source !== "DocksDocks/docks") return
-  const res = spawnSync("codex", ["plugin", "marketplace", "remove", "docks"], { stdio: "ignore" })
-  if (res.error === undefined && res.status === 0) {
+  const res = await spawnProcess("codex", ["plugin", "marketplace", "remove", "docks"], { stdio: "ignore" })
+  if (res.error === undefined && res.exitCode === 0) {
     change("Removed legacy configured Codex Docks marketplace; using personal marketplace file")
     ctx.nextStepTriggers.codexRestart = true
   } else {
@@ -474,13 +475,12 @@ function manualPluginRefreshCommand(sotConfigText: string): string {
   return first !== undefined ? `codex plugin add ${first}` : "codex plugin add <plugin@marketplace>"
 }
 
-function installedPluginIdsFromCli(): Set<string> | undefined {
-  const result = spawnSync("codex", ["plugin", "list", "--json"], {
-    encoding: "utf8",
+async function installedPluginIdsFromCli(): Promise<Set<string> | undefined> {
+  const result = await spawnProcess("codex", ["plugin", "list", "--json"], {
     stdio: ["ignore", "pipe", "ignore"]
   })
-  if (result.error !== undefined || result.status !== 0) return undefined
-  const value = parseJson(result.stdout ?? "")
+  if (result.error !== undefined || result.exitCode !== 0) return undefined
+  const value = parseJson(result.stdout)
   if (value === undefined || !isObject(value) || !Array.isArray(value["installed"])) return undefined
   const ids = new Set<string>()
   for (const row of value["installed"]) {
@@ -490,7 +490,7 @@ function installedPluginIdsFromCli(): Set<string> | undefined {
   return ids
 }
 
-function syncPlugins(ctx: Ctx, sotConfigText: string): void {
+async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   if (ctx.dryRun) {
     echo(
@@ -520,7 +520,7 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   let pluginIds = desiredPluginIds
   if (ctx.skipPluginRefresh) {
     progress("Checking installed Codex plugins...")
-    const installedPluginIds = installedPluginIdsFromCli()
+    const installedPluginIds = await installedPluginIdsFromCli()
     clearProgress()
     if (installedPluginIds === undefined) {
       warn("Codex plugin inventory unavailable — falling back to the full refresh path")
@@ -533,10 +533,10 @@ function syncPlugins(ctx: Ctx, sotConfigText: string): void {
   let failed = 0
   for (const pluginId of pluginIds) {
     progress(`Updating Codex plugin ${pluginId}...`)
-    const res = spawnSync("codex", ["plugin", "add", pluginId], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+    const res = await spawnProcess("codex", ["plugin", "add", pluginId], { stdio: ["ignore", "pipe", "pipe"] })
     clearProgress()
-    const addOut = `${res.stdout ?? ""}${res.stderr ?? ""}`
-    if (res.error === undefined && res.status === 0) {
+    const addOut = `${res.stdout}${res.stderr}`
+    if (res.error === undefined && res.exitCode === 0) {
       refreshed++
     } else if (addOut.includes("could not find a Codex CLI binary")) {
       warn(

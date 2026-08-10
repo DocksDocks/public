@@ -37,7 +37,7 @@ export const engine = (args: ReadonlyArray<string>) =>
     const logger = yield* LoggerService
     const deps = yield* DependencyManagerService
     const platform = yield* PlatformService
-    const code = yield* Effect.sync(() => runEngineNative(args, { logger, deps, platform }))
+    const code = yield* Effect.promise(() => runEngineNative(args, { logger, deps, platform }))
     if (code !== 0) {
       yield* Effect.sync(() => process.exit(code))
     }

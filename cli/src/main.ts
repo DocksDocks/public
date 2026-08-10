@@ -57,7 +57,7 @@ const root = Command.make("docks-kit", {}, () =>
 // parsed/normalized pickers, --flag value forms, and non-engine commands.
 if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
   const { runEngineNative } = await import("./engine-native")
-  process.exit(runEngineNative(process.argv.slice(2)))
+  process.exit(await runEngineNative(process.argv.slice(2)))
 }
 
 const cli = Command.run(root, {

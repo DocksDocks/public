@@ -108,7 +108,7 @@ function tomlModelText(text: string): string {
   return ""
 }
 
-export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
+export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { err } = ctx.services.logger
   const words = args.filter((a) => !a.startsWith("--"))
   const op = words[0] ?? args[0] ?? "check"
@@ -121,7 +121,7 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
   }
 
   if (op === "check") {
-    report(ctx)
+    await report(ctx)
     return 0
   }
   if (op !== "ensure") {
@@ -134,9 +134,9 @@ export function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): number {
   }
   switch (tool) {
     case "bun":
-      return bunBootstrap(ctx, ctx.services).kind === "ready" ? 0 : 1
+      return (await bunBootstrap(ctx, ctx.services)).kind === "ready" ? 0 : 1
     case "effect-solutions":
-      return ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
+      return await ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
     default:
       err("toolchain ensure supports managed tools only (bun, effect-solutions)")
       return 2

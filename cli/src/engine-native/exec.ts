@@ -3,7 +3,7 @@
  * the intended binary with deterministic argv, and capture() mirrors command
  * substitution: stdout with trailing newlines stripped, empty on failure.
  */
-import { spawnSync } from "node:child_process"
+import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { accessSync, chmodSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, isAbsolute, join } from "node:path"
 
@@ -12,10 +12,66 @@ export function p(...parts: Array<string>): string {
   return parts.join("/")
 }
 
-export function capture(cmd: string, args: ReadonlyArray<string>): string {
-  const res = spawnSync(cmd, args as Array<string>, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
-  if (res.error !== undefined || res.status !== 0) return ""
-  return (res.stdout ?? "").replace(/[\r\n]+$/, "")
+export interface AsyncProcessResult {
+  readonly exitCode: number | null
+  readonly stdout: string
+  readonly stderr: string
+  readonly error?: Error
+}
+
+export interface AsyncProcessOptions {
+  readonly stdio?: SpawnOptions["stdio"]
+}
+
+export function spawnProcess(
+  cmd: string,
+  args: ReadonlyArray<string>,
+  options: AsyncProcessOptions = {}
+): Promise<AsyncProcessResult> {
+  const { promise, resolve } = Promise.withResolvers<AsyncProcessResult>()
+  let child: ChildProcess
+  try {
+    child = spawn(cmd, [...args], { stdio: options.stdio ?? ["ignore", "pipe", "ignore"] })
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error(String(cause))
+    resolve({ exitCode: null, stdout: "", stderr: "", error })
+    return promise
+  }
+  let stdout = ""
+  let stderr = ""
+  let error: Error | undefined
+
+  if (child.stdout !== null) {
+    child.stdout.setEncoding("utf8")
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk
+    })
+    child.stdout.on("error", (cause) => {
+      error ??= cause
+    })
+  }
+  if (child.stderr !== null) {
+    child.stderr.setEncoding("utf8")
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk
+    })
+    child.stderr.on("error", (cause) => {
+      error ??= cause
+    })
+  }
+  child.once("error", (cause) => {
+    error ??= cause
+  })
+  child.once("close", (exitCode) => {
+    resolve({ exitCode, stdout, stderr, ...(error !== undefined ? { error } : {}) })
+  })
+  return promise
+}
+
+export async function capture(cmd: string, args: ReadonlyArray<string>): Promise<string> {
+  const res = await spawnProcess(cmd, args, { stdio: ["ignore", "pipe", "ignore"] })
+  if (res.error !== undefined || res.exitCode !== 0) return ""
+  return res.stdout.replace(/[\r\n]+$/, "")
 }
 
 /** `command -v` — resolve an executable name on PATH. */

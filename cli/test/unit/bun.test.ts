@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type * as ExecModule from "../../src/engine-native/exec"
 
 const mocks = vi.hoisted(() => ({
   rmSync: vi.fn(),
-  spawnSync: vi.fn(),
+  spawnProcess: vi.fn(),
   tmpdir: vi.fn(() => "/tmp")
 }))
 
-vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }))
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec")
+  return { ...actual, spawnProcess: mocks.spawnProcess }
+})
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs")
   return { ...actual, rmSync: mocks.rmSync }
@@ -46,7 +50,7 @@ function executor(state: ProbeState, home: string): ProbeExecutor {
     : `${customRoot}/bin/bun`
   return {
     commandExists: (name) => name === "curl" ? state.curl : false,
-    capture: (cmd, args) => {
+    capture: async (cmd, args) => {
       if ((cmd === custom || cmd === fallback || cmd === "bun") && args.join(" ") === "--version") {
         return state.bunVersion ?? "1.3.14"
       }
@@ -94,6 +98,7 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     claudeAdvisor: "",
     codexModel: "",
     codexEffort: "",
+    syncConcurrency: 3,
     services,
     targetFilterSet: false,
     syncClaude: true,
@@ -113,7 +118,7 @@ function expectReady(state: BunRuntimeState): string {
 
 beforeEach(() => {
   mocks.rmSync.mockReset()
-  mocks.spawnSync.mockReset().mockReturnValue({ error: undefined, status: 0 })
+  mocks.spawnProcess.mockReset().mockResolvedValue({ error: undefined, exitCode: 0, stdout: "", stderr: "" })
   mocks.tmpdir.mockReset().mockReturnValue("/tmp")
   delete process.env["BUN_INSTALL"]
 })
@@ -126,57 +131,62 @@ afterEach(() => {
 })
 
 describe("per-run Bun bootstrap", () => {
-  it("returns and memoizes an existing resolved executable", () => {
+  it("returns and memoizes an existing resolved executable", async () => {
     const test = rig("linux", { curl: true, installed: false, pathBun: "/usr/local/bin/bun" })
-    expect(expectReady(bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun")
-    expect(expectReady(bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun")
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun")
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun")
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
   })
 
-  it("memoizes a deferred result without duplicate warnings or attempts", () => {
+  it("shares one in-flight deferred result without duplicate warnings or attempts", async () => {
     const test = rig("linux", { curl: false, installed: false })
-    expect(bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
-    expect(bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
+    const first = bunBootstrap(test.ctx, test.services)
+    const second = bunBootstrap(test.ctx, test.services)
+    expect(first).toBe(second)
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { kind: "deferred", reason: "missing-curl" },
+      { kind: "deferred", reason: "missing-curl" }
+    ])
     expect(test.lines.join("")).toContain("curl not installed")
     expect(test.lines.join("").match(/curl not installed/g)).toHaveLength(1)
     expect(test.lines.join("")).toContain("cannot bootstrap Bun; install Bun manually, then re-run sync")
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
   })
 
-  it("predicts the pinned POSIX path in dry-run without spawning or removing", () => {
+  it("predicts the pinned POSIX path in dry-run without spawning or removing", async () => {
     process.env["BUN_INSTALL"] = "/custom bun"
     const test = rig("linux", { curl: true, installed: false }, true)
-    expect(expectReady(bunBootstrap(test.ctx, test.services))).toBe("/custom bun/bin/bun")
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/custom bun/bin/bun")
     expect(test.lines.join("")).toContain("[dry-run] install Bun 1.3.14 (kit-verified) -> /custom bun/bin/bun")
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
-  it("defers a POSIX dry-run when curl cannot satisfy the planned bootstrap", () => {
+  it("defers a POSIX dry-run when curl cannot satisfy the planned bootstrap", async () => {
     const test = rig("linux", { curl: false, installed: false }, true)
-    expect(bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
+    expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
     expect(test.lines.join("")).toContain("cannot bootstrap Bun; install Bun manually, then re-run sync")
     expect(test.lines.join("")).not.toContain("[dry-run] install Bun")
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
-  it("downloads then runs the pinned POSIX installer and always removes it", () => {
+  it("downloads then runs the pinned POSIX installer and always removes it", async () => {
     const test = rig("linux", { curl: true, installed: false })
-    mocks.spawnSync.mockImplementation((cmd: string) => {
+    mocks.spawnProcess.mockImplementation(async (cmd: string) => {
       if (cmd === "bash") test.state.installed = true
-      return { error: undefined, status: 0 }
+      return { error: undefined, exitCode: 0, stdout: "", stderr: "" }
     })
-    expect(expectReady(bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
-    expect(mocks.spawnSync).toHaveBeenNthCalledWith(1, "curl", ["-fsSL", "https://bun.sh/install", "-o", expect.stringMatching(/bun-install-\d+\.sh$/)], { stdio: "ignore" })
-    expect(mocks.spawnSync).toHaveBeenNthCalledWith(2, "bash", [expect.stringMatching(/bun-install-\d+\.sh$/), "bun-v1.3.14"], { stdio: "ignore" })
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
+    expect(mocks.spawnProcess).toHaveBeenNthCalledWith(1, "curl", ["-fsSL", "https://bun.sh/install", "-o", expect.stringMatching(/bun-install-\d+\.sh$/)], { stdio: "ignore" })
+    expect(mocks.spawnProcess).toHaveBeenNthCalledWith(2, "bash", [expect.stringMatching(/bun-install-\d+\.sh$/), "bun-v1.3.14"], { stdio: "ignore" })
     expect(mocks.rmSync).toHaveBeenCalledWith(expect.stringMatching(/bun-install-\d+\.sh$/), { force: true })
   })
 
 
-  it("returns install-failed after a successful download that produces no Bun", () => {
+  it("returns install-failed after a successful download that produces no Bun", async () => {
     const test = rig("linux", { curl: true, installed: false })
-    expect(bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "install-failed" })
+    expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "install-failed" })
     expect(mocks.rmSync).toHaveBeenCalledTimes(1)
     expect(test.lines.join("")).toContain("Bun install failed")
   })

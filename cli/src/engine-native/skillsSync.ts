@@ -4,9 +4,8 @@
  * the kit-managed snapshot, the effect-solutions toolchain callback, and the
  * snapshot write.
  */
-import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
-import { p, writeFileIfChanged } from "./exec"
+import { p, spawnProcess, writeFileIfChanged } from "./exec"
 import { bunBootstrap } from "./bun"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
@@ -18,7 +17,7 @@ export interface SkillsState {
   present: number
 }
 
-export function skillsSync(ctx: Ctx): SkillsState {
+export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
   const state: SkillsState = { present: 0 }
   const skillsDir = p(ctx.agentsDir, "skills")
   const manifest = payloadText("SoT/.agents/skills.txt")
@@ -26,9 +25,9 @@ export function skillsSync(ctx: Ctx): SkillsState {
 
   if (!ctx.dryRun) mkdirSync(skillsDir, { recursive: true })
 
-  syncUniversal(ctx, state, skillsDir, manifest)
-  if (ctx.prune) reconcileRemovals(ctx, manifest, snapshot)
-  syncEffectSolutionsCli(ctx)
+  await syncUniversal(ctx, state, skillsDir, manifest)
+  if (ctx.prune) await reconcileRemovals(ctx, manifest, snapshot)
+  await syncEffectSolutionsCli(ctx)
   updateSnapshot(ctx, manifest, snapshot)
   return state
 }
@@ -55,7 +54,7 @@ function readSlugs(file: string): Array<string> {
   return existsSync(file) ? normalizeManifest(readFileSync(file, "utf8")) : []
 }
 
-function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): void {
+async function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest: string): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   if (ctx.services.deps.probe("npx").state === "missing") {
     ctx.services.deps.warnMissing("npx", ctx.services.logger, "skipping universal skills bootstrap")
@@ -87,11 +86,11 @@ function syncUniversal(ctx: Ctx, state: SkillsState, skillsDir: string, manifest
     }
 
     progress(`Installing universal skill ${slug}...`)
-    const res = spawnSync("npx", ["--yes", skillsCli(ctx), "add", slug, "-g", "-y", "-a", "claude-code", "codex"], {
+    const res = await spawnProcess("npx", ["--yes", skillsCli(ctx), "add", slug, "-g", "-y", "-a", "claude-code", "codex"], {
       stdio: "ignore"
     })
     clearProgress()
-    if (res.error === undefined && res.status === 0) {
+    if (res.error === undefined && res.exitCode === 0) {
       added++
     } else {
       warn(`Failed to install universal skill: ${slug}`)
@@ -221,26 +220,26 @@ function linkOrCopyWithWarnings(target: string, link: string, services: EngineSe
 /** skills::_effect_solutions_install. */
 export function effectSolutionsInstall(
   ctx: Ctx
-): (mode: "install" | "upgrade", version: string, services: EngineServices) => number {
-  return (mode, version, services) => {
+): (mode: "install" | "upgrade", version: string, services: EngineServices) => Promise<number> {
+  return async (mode, version, services) => {
     const { change, clearProgress, progress, verbose, warn } = services.logger
     const verb = mode === "upgrade" ? "Upgrading" : "Installing"
     const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
 
-    const bunState = bunBootstrap(ctx, services)
+    const bunState = await bunBootstrap(ctx, services)
     if (bunState.kind === "deferred") return 1
     const bun = bunState.executable
 
     verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
     progress(`${verb} effect-solutions CLI...`)
-    const installResult = spawnSync(bun, ["add", "-g", pkg], { stdio: "ignore" })
+    const installResult = await spawnProcess(bun, ["add", "-g", pkg], { stdio: "ignore" })
     clearProgress()
-    if (installResult.status !== 0) {
+    if (installResult.exitCode !== 0) {
       warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
       return 1
     }
 
-    const location = services.deps.location("effect-solutions")
+    const location = await services.deps.location("effect-solutions")
     const gbin = location.binDir
     if (location.path !== "") {
       mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
@@ -254,12 +253,12 @@ export function effectSolutionsInstall(
   }
 }
 
-function syncEffectSolutionsCli(ctx: Ctx): void {
+async function syncEffectSolutionsCli(ctx: Ctx): Promise<void> {
   const { clearProgress, progress, warn } = ctx.services.logger
   if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(payloadText("SoT/.claude/settings.json"))) return
 
   progress("Checking effect-solutions CLI...")
-  const result = ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
+  const result = await ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
   clearProgress()
   if (result !== 0) {
     warn("effect-solutions bootstrap failed — continuing sync")
@@ -268,7 +267,7 @@ function syncEffectSolutionsCli(ctx: Ctx): void {
 
 // ----------------------------------------------------- prune + snapshot ----
 
-function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
+async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): Promise<void> {
   const { change, clearProgress, echo, progress, warn } = ctx.services.logger
   if (!existsSync(snapshot)) {
     if (ctx.dryRun) {
@@ -290,11 +289,11 @@ function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): void {
       continue
     }
     progress(`Removing universal skill ${base}...`)
-    const res = spawnSync("npx", ["--yes", skillsCli(ctx), "remove", "--global", base, "-y"], {
+    const res = await spawnProcess("npx", ["--yes", skillsCli(ctx), "remove", "--global", base, "-y"], {
       stdio: "ignore"
     })
     clearProgress()
-    if (res.error === undefined && res.status === 0) {
+    if (res.error === undefined && res.exitCode === 0) {
       removed++
     } else {
       warn(`Failed to remove kit-managed skill: ${base}`)

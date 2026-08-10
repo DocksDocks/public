@@ -4,7 +4,6 @@
  * plugins. Message strings, guard order, JSON semantics, and spawned argv are
  * golden-tested.
  */
-import { spawnSync } from "node:child_process"
 import {
   appendFileSync,
   copyFileSync,
@@ -23,7 +22,7 @@ import {
   syncClaudeModel
 } from "./claudeSettingsModifiers"
 import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths } from "./claudeRuntime"
-import { p, writeBytesIfChanged, writeTextIfChanged } from "./exec"
+import { p, spawnProcess, writeBytesIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { ExitError } from "./parseArgs"
@@ -35,7 +34,7 @@ export type ClaudeRuntimeState =
   | { readonly kind: "ready"; readonly paths: ClaudeRuntimePaths }
   | { readonly kind: "deferred"; readonly reason: "bun-unavailable" }
 
-export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
+export async function claudeSync(ctx: Ctx): Promise<ClaudeRuntimeState> {
   const { err, warn } = ctx.services.logger
   const claudeDir = p(ctx.home, ".claude")
 
@@ -47,7 +46,7 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
     )
   }
 
-  const bun = bunBootstrap(ctx, ctx.services)
+  const bun = await bunBootstrap(ctx, ctx.services)
   const runtime: ClaudeRuntimeState = bun.kind === "ready"
     ? { kind: "ready", paths: claudeRuntimePaths(claudeDir, bun.executable) }
     : { kind: "deferred", reason: "bun-unavailable" }
@@ -78,9 +77,9 @@ export function claudeSync(ctx: Ctx): ClaudeRuntimeState {
   syncClaudeAdvisor(ctx, ctx.claudeAdvisor)
   syncClaudeJson(ctx)
   syncConnectorEnv(ctx)
-  syncPlugins(ctx, claudeDir)
-  syncOptionalPlugins(ctx, claudeDir)
-  syncLspServers(ctx)
+  await syncPlugins(ctx, claudeDir)
+  await syncOptionalPlugins(ctx, claudeDir)
+  await syncLspServers(ctx)
   return runtime
 }
 
@@ -523,9 +522,9 @@ function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState):
 
 // -------------------------------------------------------------- plugins ----
 
-function cli(args: Array<string>): { ok: boolean; out: string } {
-  const res = spawnSync("claude", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
-  return { ok: res.error === undefined && res.status === 0, out: `${res.stdout ?? ""}${res.stderr ?? ""}` }
+async function cli(args: Array<string>): Promise<{ ok: boolean; out: string }> {
+  const res = await spawnProcess("claude", args, { stdio: ["ignore", "pipe", "pipe"] })
+  return { ok: res.error === undefined && res.exitCode === 0, out: `${res.stdout}${res.stderr}` }
 }
 
 function readJsonFile(file: string): Json | undefined {
@@ -564,7 +563,7 @@ function nonUserScopeMarketplaces(installedDoc: Json | undefined): Set<string> {
   return marketplaces
 }
 
-function syncPlugins(ctx: Ctx, claudeDir: string): void {
+async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
@@ -607,7 +606,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     if (known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false) continue
     const repo = isObject(mpValue) && isObject(mpValue["source"]) ? String((mpValue["source"] as { [k: string]: Json })["repo"] ?? "") : ""
     progress(`Adding marketplace ${mpName}...`)
-    const marketplaceResult = cli(["plugin", "marketplace", "add", repo])
+    const marketplaceResult = await cli(["plugin", "marketplace", "add", repo])
     clearProgress()
     if (marketplaceResult.ok) {
       addedMp++
@@ -628,12 +627,12 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
     const mpName = separator > 0 ? pluginId.slice(separator + 1) : ""
     if (mpName !== "" && !refreshedMarketplaces.has(mpName)) {
       progress(`Refreshing marketplace ${mpName}...`)
-      cli(["plugin", "marketplace", "update", mpName])
+      await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
       refreshedMarketplaces.add(mpName)
     }
     progress(`Installing plugin ${pluginId}...`)
-    const installResult = cli(["plugin", "install", pluginId])
+    const installResult = await cli(["plugin", "install", pluginId])
     clearProgress()
     if (installResult.ok) {
       addedPl++
@@ -664,13 +663,13 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   if (!ctx.skipPluginRefresh) {
     for (const mpName of [...kitMarketplaces].sort(compareCodepoints)) {
       progress(`Refreshing marketplace ${mpName}...`)
-      cli(["plugin", "marketplace", "update", mpName])
+      await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
     }
     for (const pluginId of [...kitPluginIds].sort(compareCodepoints)) {
       if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
       progress(`Updating plugin ${pluginId}...`)
-      const updateResult = cli(["plugin", "update", pluginId, "--scope", "user"])
+      const updateResult = await cli(["plugin", "update", pluginId, "--scope", "user"])
       clearProgress()
       if (updateResult.out.includes("Successfully updated")) updatedPl++
     }
@@ -686,7 +685,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
       if (isObject(sotPlugins) && Object.prototype.hasOwnProperty.call(sotPlugins, pluginId)) continue
       if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
       progress(`Uninstalling plugin ${pluginId}...`)
-      const uninstallResult = cli(["plugin", "uninstall", "-y", "--scope", "user", pluginId])
+      const uninstallResult = await cli(["plugin", "uninstall", "-y", "--scope", "user", pluginId])
       clearProgress()
       if (uninstallResult.ok) {
         removedPl++
@@ -702,7 +701,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
       const declared = isObject(sotMarketplaces) ? sotMarketplaces[mpName] : undefined
       if (declared !== undefined && declared !== null && declared !== false) continue
       progress(`Removing marketplace ${mpName}...`)
-      const removeResult = cli(["plugin", "marketplace", "remove", mpName])
+      const removeResult = await cli(["plugin", "marketplace", "remove", mpName])
       clearProgress()
       if (removeResult.ok) {
         removedMp++
@@ -714,7 +713,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   // Pass 6 — re-assert SoT enabled-state in the user settings.
-  if (reassertEnabledState(ctx, repoObj, p(claudeDir, "settings.json"))) {
+  if (await reassertEnabledState(ctx, repoObj, p(claudeDir, "settings.json"))) {
     change("Plugin enable-state re-asserted from SoT in settings.json")
     ctx.nextStepTriggers.claudePlugins = true
   }
@@ -731,7 +730,7 @@ function syncPlugins(ctx: Ctx, claudeDir: string): void {
   }
 }
 
-function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSettingsFile: string): boolean {
+async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSettingsFile: string): Promise<boolean> {
   const { warn } = ctx.services.logger
   if (!existsSync(userSettingsFile)) return false
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
@@ -742,7 +741,7 @@ function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSett
     const user = readJsonFile(userSettingsFile)
     const enabled = user !== undefined && isObject(user) && isObject(user["enabledPlugins"]) ? (user["enabledPlugins"] as { [k: string]: Json })[pluginId] : undefined
     if (enabled !== true) continue
-    if (cli(["plugin", "disable", pluginId]).ok) {
+    if ((await cli(["plugin", "disable", pluginId])).ok) {
       cliDisabled = true
     } else {
       warn(`Failed to disable SoT-false plugin: ${pluginId} (will retry next sync)`)
@@ -765,7 +764,7 @@ function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSett
 
 // ------------------------------------------------------ optional plugins ----
 
-function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, marketplaceRepo: string): boolean {
+async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, marketplaceRepo: string): Promise<boolean> {
   const { change, clearProgress, progress, verbose, warn } = ctx.services.logger
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
@@ -776,7 +775,7 @@ function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, mar
     const known = readJsonFile(knownMarketplaces)
     const has = known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false
     if (!has) {
-      if (!cli(["plugin", "marketplace", "add", marketplaceRepo]).ok) {
+      if (!(await cli(["plugin", "marketplace", "add", marketplaceRepo])).ok) {
         warn(`Failed to add marketplace ${marketplaceRepo} for ${pluginId}`)
         return false
       }
@@ -787,7 +786,7 @@ function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, mar
   const wasInstalled = pluginUserScopeInstalled(installedPlugins, pluginId)
   if (!wasInstalled) {
     progress(`Installing plugin ${pluginId}...`)
-    const installResult = cli(["plugin", "install", pluginId])
+    const installResult = await cli(["plugin", "install", pluginId])
     clearProgress()
     if (!installResult.ok) {
       if (marketplaceAdded) change(`Optional plugin ${pluginId}: marketplace added (install failed — will retry next sync)`)
@@ -802,7 +801,7 @@ function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, mar
       ? (settingsDoc["enabledPlugins"] as { [k: string]: Json })[pluginId] === true
       : false
 
-  if (!cli(["plugin", "enable", pluginId]).ok) {
+  if (!(await cli(["plugin", "enable", pluginId])).ok) {
     if (marketplaceAdded || !wasInstalled) change(`Optional plugin ${pluginId}: installed (enable failed — will retry next sync)`)
     warn(`Failed to enable optional plugin ${pluginId}`)
     return marketplaceAdded || !wasInstalled
@@ -813,7 +812,7 @@ function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, mar
   return changed
 }
 
-function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
+async function syncOptionalPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   const { echo, warn } = ctx.services.logger
   if (ctx.claudePlugins.length === 0) return
 
@@ -833,10 +832,10 @@ function syncOptionalPlugins(ctx: Ctx, claudeDir: string): void {
   }
 
   if (ctx.claudePlugins.includes("supabase")) {
-    if (enableOptionalPlugin(ctx, claudeDir, "supabase@claude-plugins-official", "")) ctx.nextStepTriggers.claudePlugins = true
+    if (await enableOptionalPlugin(ctx, claudeDir, "supabase@claude-plugins-official", "")) ctx.nextStepTriggers.claudePlugins = true
   }
   if (ctx.claudePlugins.includes("n8n")) {
-    if (enableOptionalPlugin(ctx, claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")) ctx.nextStepTriggers.claudePlugins = true
+    if (await enableOptionalPlugin(ctx, claudeDir, "n8n-mcp-skills@n8n-mcp-skills", "czlonkowski/n8n-skills")) ctx.nextStepTriggers.claudePlugins = true
   }
 }
 
@@ -847,7 +846,7 @@ function lspPkg(ctx: Ctx, tool: string, pkg: string): string {
   return v !== "" ? `${pkg}@${v}` : pkg
 }
 
-function syncLspServers(ctx: Ctx): void {
+async function syncLspServers(ctx: Ctx): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const sot = parseJson(payloadText("SoT/.claude/settings.json"))
   const enabled = sot !== undefined && isObject(sot) && isObject(sot["enabledPlugins"]) ? sot["enabledPlugins"] : undefined
@@ -889,9 +888,9 @@ function syncLspServers(ctx: Ctx): void {
 
   verbose(`Installing LSP servers via npm: ${specs}...`)
   progress(`Installing LSP servers via npm: ${specs}...`)
-  const installResult = spawnSync("npm", ["install", "-g", ...missing], { stdio: "ignore" })
+  const installResult = await spawnProcess("npm", ["install", "-g", ...missing], { stdio: "ignore" })
   clearProgress()
-  if (installResult.status === 0) {
+  if (installResult.exitCode === 0) {
     change(`LSP servers installed (${specs})`)
     ctx.nextStepTriggers.claudeRestart = true
   } else {

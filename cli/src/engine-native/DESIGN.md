@@ -31,6 +31,11 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
   materialized settings, writes runtime assets, commits settings, then performs
   readiness-gated legacy cleanup. Modifiers run after the base commit, removals
   before plugins, and LSP checks after plugin state.
+- **Pipeline concurrency is bounded.** Selected Claude, Codex, and skills
+  pipelines overlap through one input-ordered pool. The production default is
+  3; `DOCKS_KIT_SYNC_CONCURRENCY=1` restores serial execution for golden tests
+  and debugging (`2` allows two-way overlap). Each individual pipeline remains
+  serial, and summaries retain canonical Claude, Codex, skills order.
 - **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `bun`,
   `curl`, and platform package managers are spawned with argv arrays,
   not shell command strings except where the external installer contract is a
@@ -69,10 +74,16 @@ warnings, and the summary. Status-quo confirmations exist but are opt-in.
   stderr sink exists and `process.stderr.isTTY` is `true`. It disables progress
   in every other case. Injected golden sinks therefore keep their existing
   bytes unless the harness supplies a progress sink.
-- Each progress write replaces one terminal line. `clearProgress()` erases a
-  pending line and does nothing when no line is pending. Every durable
-  `change`, `verbose`, `warn`, `err`, or `echo` write erases the pending line
-  before it writes durable output.
+- Each progress write replaces one terminal line. Every durable `change`,
+  `verbose`, `warn`, `err`, or `echo` write erases a visible transient before
+  its own write.
+- During sync, the coordinator holds one run-scoped terminal lease and owns
+  the transient line. Terminal-exclusive sections serialize input ownership
+  by acquisition order and suspend progress redraw while an inherited-stdio
+  installer or blocking prompt holds the lease.
+- Automated tests cannot exercise real input contention: golden children use
+  ignored stdin, so `process.stdin.isTTY` is false. The simultaneous-prompt
+  path requires hand verification in a real TTY.
 
 ### Change detection
 

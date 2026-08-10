@@ -54,7 +54,7 @@ describe("engine service layers", () => {
   it("DependencyManager trusts the injected probe executor over the host PATH", () => {
     const manager = makeDependencyManager(makePlatform("linux"), {
       commandExists: () => false,
-      capture: () => "host output must be ignored",
+      capture: async () => "host output must be ignored",
       which: () => "/host/tool"
     })
     expect(manager.probe("git")).toEqual({ state: "missing" })
@@ -63,7 +63,7 @@ describe("engine service layers", () => {
   it("DependencyManager deduplicates missing warnings per manager graph", () => {
     const lines: Array<string> = []
     const logger = makeEngineServices({ sinks: { stderr: (chunk) => void lines.push(chunk) } }).logger
-    const missing = { commandExists: () => false, capture: () => "", which: () => "" }
+    const missing = { commandExists: () => false, capture: async () => "", which: () => "" }
     const first = makeDependencyManager(makePlatform("linux"), missing)
     const second = makeDependencyManager(makePlatform("linux"), missing)
     first.warnMissing("git", logger)
@@ -77,10 +77,10 @@ describe("engine service layers", () => {
     const stub: DependencyManager = {
       spec: (id) => ({ id, requirement: "optional", versionArgs: ["--version"], installHint: () => `install ${id}` }),
       probe: () => ({ state: "missing" }),
-      version: () => "",
-      path: () => "",
-      location: () => ({ path: "", binDir: "" }),
-      latest: () => "",
+      version: async () => "",
+      path: async () => "",
+      location: async () => ({ path: "", binDir: "" }),
+      latest: async () => "",
       warnMissing: (id) => void warned.push(id)
     }
     const program = Effect.gen(function* () {

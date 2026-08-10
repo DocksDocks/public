@@ -23,6 +23,12 @@ docks-kit sync claude agents        # two
 | `--yes` | Auto-accept toolchain above-verified prompts (containers/CI) |
 | `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
 
+## Environment overrides
+
+| Variable | Effect |
+|----------|--------|
+| `DOCKS_KIT_SYNC_CONCURRENCY=1\|2\|3` | Maximum selected sync pipelines running at once. Default `3`; use `1` for serial golden/debug execution. Invalid values fail `sync` with exit 2 but do not affect `model` or `toolchain`. |
+
 ## Per-tool flags
 
 | Flag | Effect |

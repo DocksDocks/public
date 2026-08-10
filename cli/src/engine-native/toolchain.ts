@@ -10,7 +10,11 @@ import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
 import type { EngineServices } from "./services"
 import { payloadText } from "../payload"
 
-type InstallFn = (mode: "install" | "upgrade", version: string, services: EngineServices) => number
+type InstallFn = (
+  mode: "install" | "upgrade",
+  version: string,
+  services: EngineServices
+) => number | Promise<number>
 
 function manifest(): { [k: string]: Json } {
   const doc = parseJson(payloadText("SoT/toolchain.json"))
@@ -47,40 +51,40 @@ function firstLineField(out: string, index: number): string {
   return fields[index === -1 ? fields.length - 1 : index] ?? ""
 }
 
-export function installedVersion(ctx: Ctx, tool: ToolId): string {
-  const version = (): string => ctx.services.deps.version(tool)
+export async function installedVersion(ctx: Ctx, tool: ToolId): Promise<string> {
+  const version = () => ctx.services.deps.version(tool)
   switch (tool) {
     case "claude":
-      return firstLineField(version(), 0)
+      return firstLineField(await version(), 0)
     case "codex":
-      return firstLineField(version(), -1)
+      return firstLineField(await version(), -1)
     case "git":
-      return firstLineField(version(), 2)
+      return firstLineField(await version(), 2)
     case "node":
-      return version().replace(/^v/, "")
+      return (await version()).replace(/^v/, "")
     case "jq":
-      return version().replace(/^jq-/, "")
+      return (await version()).replace(/^jq-/, "")
     case "curl":
     case "tsc":
-      return firstLineField(version(), 1)
+      return firstLineField(await version(), 1)
     case "bun":
     case "effect-solutions":
     case "npm":
-      return version()
+      return await version()
     case "bwrap":
-      return firstLineField(version(), 1)
+      return firstLineField(await version(), 1)
     case "ffplay":
-      return firstLineField(version(), 2).replace(/-.*$/, "")
+      return firstLineField(await version(), 2).replace(/-.*$/, "")
     case "intelephense":
     case "typescript-language-server":
-      return version().trim()
+      return (await version()).trim()
     default:
       return ""
   }
 }
 
-export function latestVersion(ctx: Ctx, tool: ToolId): string {
-  return ctx.services.deps.latest(tool)
+export async function latestVersion(ctx: Ctx, tool: ToolId): Promise<string> {
+  return await ctx.services.deps.latest(tool)
 }
 
 /** Blocking TTY prompt matching bash `read -r -p` (prompt on stderr). */
@@ -108,7 +112,12 @@ export function promptLine(
 }
 
 /** toolchain::_gate — { proceed, target } ("" target = latest). */
-function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: string): { proceed: boolean; target: string } {
+async function gate(
+  ctx: Ctx,
+  tool: string,
+  mode: "install" | "upgrade",
+  latest: string
+): Promise<{ proceed: boolean; target: string }> {
   const { warn } = ctx.services.logger
   const verified = field(ctx, tool, "verified")
   const pinnable = field(ctx, tool, "pinnable")
@@ -122,7 +131,11 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
 
   if (process.stdin.isTTY === true) {
     ctx.services.logger.warn(`${tool} ${latest} is not kit-verified (verified: ${verified}).`)
-    const answer = promptLine(`Install ${tool} ${latest} anyway? [y/N] `)
+    const question = `Install ${tool} ${latest} anyway? [y/N] `
+    const answer =
+      ctx.terminalLease === undefined
+        ? promptLine(question)
+        : await ctx.terminalLease.withExclusive(() => promptLine(question))
     if (/^[yY]/.test(answer)) return { proceed: true, target: "" }
   }
 
@@ -136,12 +149,12 @@ function gate(ctx: Ctx, tool: string, mode: "install" | "upgrade", latest: strin
   return { proceed: false, target: "" }
 }
 
-export function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): number {
+export async function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): Promise<number> {
   const { echo, verbose, warn } = ctx.services.logger
   const policy = field(ctx, tool, "policy")
 
   if (!present(ctx, tool)) {
-    const latest = latestVersion(ctx, tool)
+    const latest = await latestVersion(ctx, tool)
     if (ctx.dryRun) {
       echo(`[dry-run] would install ${tool} (${latest !== "" ? latest : "latest"}, gated by toolchain.json verified pin)`)
       return 0
@@ -156,14 +169,14 @@ export function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): number {
         warn(`${tool} latest version unknown (offline?) and not pinnable — installing latest unverified`)
       }
     } else {
-      const g = gate(ctx, tool, "install", latest)
+      const g = await gate(ctx, tool, "install", latest)
       if (!g.proceed) return 0
       target = g.target
     }
-    return installFn("install", target !== "" ? target : latest, ctx.services)
+    return await installFn("install", target !== "" ? target : latest, ctx.services)
   }
 
-  const installed = installedVersion(ctx, tool)
+  const installed = await installedVersion(ctx, tool)
   const installedLabel = installed !== "" ? installed : "version unknown"
 
   if (policy !== "track") {
@@ -175,7 +188,7 @@ export function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): number {
     return 0
   }
 
-  const latest = latestVersion(ctx, tool)
+  const latest = await latestVersion(ctx, tool)
   if (latest === "") {
     if (ctx.dryRun) {
       echo(`[dry-run] ${tool} present (${installedLabel}); latest unknown (offline?) — no action`)
@@ -190,9 +203,9 @@ export function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): number {
       echo(`[dry-run] would upgrade ${tool} (${installed !== "" ? installed : "unknown"} -> ${latest}, gated by toolchain.json verified pin)`)
       return 0
     }
-    const g = gate(ctx, tool, "upgrade", latest)
+    const g = await gate(ctx, tool, "upgrade", latest)
     if (!g.proceed) return 0
-    return installFn("upgrade", g.target !== "" ? g.target : latest, ctx.services)
+    return await installFn("upgrade", g.target !== "" ? g.target : latest, ctx.services)
   }
 
   if (ctx.dryRun) {
@@ -208,7 +221,7 @@ function row(cells: [string, string, string, string, string, string]): string {
   return cells.map((c, i) => (i < widths.length ? c.padEnd(widths[i]!) : c)).join(" ")
 }
 
-export function report(ctx: Ctx): void {
+export async function report(ctx: Ctx): Promise<void> {
   const { echo } = ctx.services.logger
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
   const pn = ctx.services.platform.name()
@@ -228,7 +241,7 @@ export function report(ctx: Ctx): void {
     let status: string
     const toolId = tool as ToolId
     if (present(ctx, toolId)) {
-      installed = installedVersion(ctx, toolId)
+      installed = await installedVersion(ctx, toolId)
       status = "ok"
       if (floor !== "" && installed !== "" && isNewer(floor, installed)) {
         status = "below-floor"

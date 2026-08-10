@@ -26,10 +26,10 @@ export type { Logger } from "./logger"
 export interface DependencyManager {
   readonly spec: (id: ToolId) => DependencySpec
   readonly probe: (id: ToolId) => ProbeResult
-  readonly version: (id: ToolId) => string
-  readonly path: (id: ToolId) => string
-  readonly location: (id: ToolId) => DependencyLocation
-  readonly latest: (id: ToolId) => string
+  readonly version: (id: ToolId) => Promise<string>
+  readonly path: (id: ToolId) => Promise<string>
+  readonly location: (id: ToolId) => Promise<DependencyLocation>
+  readonly latest: (id: ToolId) => Promise<string>
   readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void
 }
 
@@ -73,7 +73,7 @@ export const makeDependencyManager = (
     version: (id) => resolveVersion(DEPENDENCIES[id], exec),
     path: (id) => resolvePath(DEPENDENCIES[id], exec, platform.raw()),
     location: (id) => resolveLocation(DEPENDENCIES[id], exec, platform.raw()),
-    latest: (id) => DEPENDENCIES[id].latest?.(exec) ?? "",
+    latest: (id) => DEPENDENCIES[id].latest?.(exec) ?? Promise.resolve(""),
     warnMissing: (id, logger, context) => {
       if (warned.has(id)) return
       warned.add(id)

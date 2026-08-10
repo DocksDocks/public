@@ -49,7 +49,7 @@ export interface DependencyLocation {
 
 export interface ProbeExecutor {
   readonly commandExists: (name: string) => boolean
-  readonly capture: (cmd: string, args: ReadonlyArray<string>) => string
+  readonly capture: (cmd: string, args: ReadonlyArray<string>) => Promise<string>
   readonly which: (name: string) => string
 }
 
@@ -60,17 +60,17 @@ export interface DependencySpec {
   /** Platform-correct one-line install command (param injectable for tests). */
   readonly installHint: (platform?: NodeJS.Platform) => string
   readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
-  readonly version?: (exec: ProbeExecutor) => string
-  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => DependencyLocation
-  readonly latest?: (exec: ProbeExecutor) => string
+  readonly version?: (exec: ProbeExecutor) => Promise<string>
+  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => Promise<DependencyLocation>
+  readonly latest?: (exec: ProbeExecutor) => Promise<string>
 }
 
 interface SpecOptions {
   readonly versionArgs?: ReadonlyArray<string>
   readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
-  readonly version?: (exec: ProbeExecutor) => string
-  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => DependencyLocation
-  readonly latest?: (exec: ProbeExecutor) => string
+  readonly version?: (exec: ProbeExecutor) => Promise<string>
+  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => Promise<DependencyLocation>
+  readonly latest?: (exec: ProbeExecutor) => Promise<string>
 }
 
 const spec = (
@@ -99,8 +99,8 @@ const versionProbe = (
   id: string,
   versionArgs: ReadonlyArray<string> = ["--version"],
   parse: (out: string) => string = (out) => out
-): ((exec: ProbeExecutor) => string) =>
-  (exec) => parse(exec.capture(id, versionArgs))
+): ((exec: ProbeExecutor) => Promise<string>) =>
+  async (exec) => parse(await exec.capture(id, versionArgs))
 
 const home = (): string => {
   const envHome = process.env["HOME"]
@@ -144,45 +144,49 @@ const resolveEffectSolutions = (exec: ProbeExecutor): ProbeResult => {
 const versionBunCommand = (exec: ProbeExecutor): string =>
   exec.commandExists("bun") ? "bun" : p(home(), ".bun", "bin", "bun")
 
-const versionEffectSolutions = (exec: ProbeExecutor): string => {
+const versionEffectSolutions = async (exec: ProbeExecutor): Promise<string> => {
   const bun = versionBunCommand(exec)
   if (bun !== "bun" && exec.which(bun) === "") return ""
-  const match = /effect-solutions@([0-9][0-9.]*)/.exec(exec.capture(bun, ["pm", "-g", "ls"]))
+  const match = /effect-solutions@([0-9][0-9.]*)/.exec(await exec.capture(bun, ["pm", "-g", "ls"]))
   return match?.[1] ?? ""
 }
 
-const locateEffectSolutions = (exec: ProbeExecutor): DependencyLocation => {
+const locateEffectSolutions = async (exec: ProbeExecutor): Promise<DependencyLocation> => {
   const strictBun = findBun(exec)
   const pathBun = exec.which("bun")
   const bun = strictBun ?? (pathBun !== "" ? { command: "bun", path: pathBun } : undefined)
   if (bun === undefined) return { path: "", binDir: "" }
-  const globalBin = exec.capture(bun.command, ["pm", "-g", "bin"])
+  const globalBin = await exec.capture(bun.command, ["pm", "-g", "bin"])
   const path = globalBin !== "" ? p(globalBin, "effect-solutions") : ""
   const resolved = path !== "" && exec.which(path) !== "" ? path : ""
   return { path: resolved, binDir: globalBin }
 }
 
-const npmGlobalCache = new WeakMap<ProbeExecutor, { [k: string]: string }>()
+const npmGlobalCache = new WeakMap<ProbeExecutor, Promise<{ [k: string]: string }>>()
 
-const npmGlobalVersions = (exec: ProbeExecutor): { [k: string]: string } => {
+const npmGlobalVersions = (exec: ProbeExecutor): Promise<{ [k: string]: string }> => {
   const hit = npmGlobalCache.get(exec)
   if (hit !== undefined) return hit
-  const out: { [k: string]: string } = {}
-  if (exec.commandExists("npm")) {
-    const doc = parseJson(exec.capture("npm", ["ls", "-g", "--depth=0", "--json"]))
-    const deps = doc !== undefined && isObject(doc) && isObject(doc["dependencies"]) ? doc["dependencies"] : {}
-    for (const [name, value] of Object.entries(deps)) {
-      if (isObject(value) && typeof value["version"] === "string") out[name] = value["version"]
+  const pending = (async (): Promise<{ [k: string]: string }> => {
+    const out: { [k: string]: string } = {}
+    if (exec.commandExists("npm")) {
+      const doc = parseJson(await exec.capture("npm", ["ls", "-g", "--depth=0", "--json"]))
+      const deps = doc !== undefined && isObject(doc) && isObject(doc["dependencies"]) ? doc["dependencies"] : {}
+      for (const [name, value] of Object.entries(deps)) {
+        if (isObject(value) && typeof value["version"] === "string") out[name] = value["version"]
+      }
     }
-  }
-  npmGlobalCache.set(exec, out)
-  return out
+    return out
+  })()
+  npmGlobalCache.set(exec, pending)
+  return pending
 }
 
-const versionNpmGlobal = (pkg: string) => (exec: ProbeExecutor): string => npmGlobalVersions(exec)[pkg] ?? ""
+const versionNpmGlobal = (pkg: string) => async (exec: ProbeExecutor): Promise<string> =>
+  (await npmGlobalVersions(exec))[pkg] ?? ""
 
-const latestNpm = (id: "effect-solutions") => (exec: ProbeExecutor): string =>
-  exec.commandExists("npm") ? exec.capture("npm", ["view", id, "version"]) : ""
+const latestNpm = (id: "effect-solutions") => async (exec: ProbeExecutor): Promise<string> =>
+  exec.commandExists("npm") ? await exec.capture("npm", ["view", id, "version"]) : ""
 
 export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, which }
 
@@ -230,7 +234,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     {
       resolve: resolveBun,
       version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
-      locate: (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
+      locate: async (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)", {
@@ -277,21 +281,25 @@ export function resolveDependency(
   return (specification.resolve ?? pathProbe(specification.id))(exec, platform)
 }
 
-export function resolveVersion(specification: DependencySpec, exec: ProbeExecutor): string {
+export async function resolveVersion(specification: DependencySpec, exec: ProbeExecutor): Promise<string> {
   if (resolveDependency(specification, exec).state !== "present") return ""
-  return (specification.version ?? versionProbe(specification.id, specification.versionArgs))(exec)
+  return await (specification.version ?? versionProbe(specification.id, specification.versionArgs))(exec)
 }
 
-export function resolveLocation(
+export async function resolveLocation(
   specification: DependencySpec,
   exec: ProbeExecutor,
   platform: NodeJS.Platform = rawPlatform()
-): DependencyLocation {
-  if (specification.locate !== undefined) return specification.locate(exec, platform)
+): Promise<DependencyLocation> {
+  if (specification.locate !== undefined) return await specification.locate(exec, platform)
   const result = resolveDependency(specification, exec, platform)
   return { path: result.state === "present" ? (result.path ?? exec.which(specification.id)) : "", binDir: "" }
 }
 
-export function resolvePath(specification: DependencySpec, exec: ProbeExecutor, platform?: NodeJS.Platform): string {
-  return resolveLocation(specification, exec, platform).path
+export async function resolvePath(
+  specification: DependencySpec,
+  exec: ProbeExecutor,
+  platform?: NodeJS.Platform
+): Promise<string> {
+  return (await resolveLocation(specification, exec, platform)).path
 }

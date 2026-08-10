@@ -133,7 +133,8 @@ function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): 
     // env is constructed from scratch (no process.env spread), so engine
     // globals like DRY_RUN can never leak in from the invoking shell.
     AGENTS_DIR: join(home, ".agents"),
-    ...(opts.env ?? {})
+    ...(opts.env ?? {}),
+    DOCKS_KIT_SYNC_CONCURRENCY: "1"
   }
 }
 

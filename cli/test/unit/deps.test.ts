@@ -3,9 +3,27 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
+import { capture } from "../../src/engine-native/exec"
 import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
 
 describe("DependencyManager registry", () => {
+  it("captures successful stdout and strips only trailing newlines", async () => {
+    await expect(capture(process.execPath, ["-e", 'process.stdout.write(" kept  \\r\\n\\n")'])).resolves.toBe(" kept  ")
+  })
+
+  it("returns empty output for a non-zero exit", async () => {
+    await expect(
+      capture(process.execPath, ["-e", 'process.stdout.write("discarded"); process.exitCode = 7'])
+    ).resolves.toBe("")
+  })
+
+  it("returns empty output for a spawn error", async () => {
+    await expect(capture("docks-kit-command-that-does-not-exist", [])).resolves.toBe("")
+  })
+
+  it("returns empty output when spawn rejects invalid arguments synchronously", async () => {
+    await expect(capture("\0", [])).resolves.toBe("")
+  })
 
   it("gives executable Linux and macOS git hints", () => {
     expect(DEPENDENCIES.git.installHint("darwin")).toBe("brew install git")
@@ -44,48 +62,55 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.claude.requirement).toBe("optional")
   })
 
-  it("reads the intelephense version from one memoized npm global listing", () => {
+  it("shares one in-flight npm global listing across concurrent version probes", async () => {
     const captures: Array<[string, ReadonlyArray<string>]> = []
+    const listing = Promise.withResolvers<string>()
     const manager = makeDependencyManager(makePlatform("linux"), {
       commandExists: () => true,
-      capture: (cmd, args) => {
+      capture: async (cmd, args) => {
         captures.push([cmd, args])
-        return '{"dependencies":{"intelephense":{"version":"1.18.4"}}}'
+        return await listing.promise
       },
       which: (name) => `/stub/${name}`
     })
-    expect(manager.version("intelephense")).toBe("1.18.4")
-    expect(manager.version("intelephense")).toBe("1.18.4")
+
+    const first = manager.version("intelephense")
+    const second = manager.version("intelephense")
+    expect(captures).toEqual([["npm", ["ls", "-g", "--depth=0", "--json"]]])
+
+    listing.resolve('{"dependencies":{"intelephense":{"version":"1.18.4"}}}')
+    await expect(Promise.all([first, second])).resolves.toEqual(["1.18.4", "1.18.4"])
+    await expect(manager.version("intelephense")).resolves.toBe("1.18.4")
     expect(captures).toEqual([["npm", ["ls", "-g", "--depth=0", "--json"]]])
   })
 
-  it("reports no intelephense version when npm is absent", () => {
+  it("reports no intelephense version when npm is absent", async () => {
     const captures: Array<[string, ReadonlyArray<string>]> = []
     const manager = makeDependencyManager(makePlatform("linux"), {
       commandExists: (name) => name !== "npm",
-      capture: (cmd, args) => {
+      capture: async (cmd, args) => {
         captures.push([cmd, args])
         return ""
       },
       which: (name) => (name !== "npm" ? `/stub/${name}` : "")
     })
-    expect(manager.version("intelephense")).toBe("")
+    await expect(manager.version("intelephense")).resolves.toBe("")
     expect(captures).toEqual([])
   })
 
-  it("locates the supported effect-solutions executable", () => {
+  it("locates the supported effect-solutions executable", async () => {
     const globalBin = "/bun/global/bin"
     const executor = (files: ReadonlyArray<string>): ProbeExecutor => ({
       commandExists: (name) => name === "effect-solutions",
-      capture: (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
+      capture: async (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
       which: (name) => (name === "bun" || files.includes(name) ? name : "")
     })
 
     const resolved = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions`]))
-    expect(resolved.path("effect-solutions")).toBe(`${globalBin}/effect-solutions`)
+    await expect(resolved.path("effect-solutions")).resolves.toBe(`${globalBin}/effect-solutions`)
   })
 
-  it("preserves the original fixed-home Bun version fallbacks", () => {
+  it("preserves the original fixed-home Bun version fallbacks", async () => {
     const previousHome = process.env["HOME"]
     const previousBunInstall = process.env["BUN_INSTALL"]
     const calls: Array<[string, ReadonlyArray<string>]> = []
@@ -94,15 +119,15 @@ describe("DependencyManager registry", () => {
       process.env["BUN_INSTALL"] = "/custom-bun"
       const manager = makeDependencyManager(makePlatform("linux"), {
         commandExists: (name) => name === "effect-solutions",
-        capture: (cmd, args) => {
+        capture: async (cmd, args) => {
           calls.push([cmd, args])
           return cmd === "/custom-bun/bin/bun" ? "effect-solutions@0.5.3" : ""
         },
         which: (name) => (name === "/custom-bun/bin/bun" ? name : "")
       })
 
-      expect(manager.version("bun")).toBe("")
-      expect(manager.version("effect-solutions")).toBe("")
+      await expect(manager.version("bun")).resolves.toBe("")
+      await expect(manager.version("effect-solutions")).resolves.toBe("")
       expect(calls).toEqual([["/fixture-home/.bun/bin/bun", ["--version"]]])
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]
@@ -121,14 +146,14 @@ describe("DependencyManager registry", () => {
       const fallback = "/fixture-home/.bun/bin/bun"
       const withFallback = makeDependencyManager(makePlatform("linux"), {
         commandExists: () => true,
-        capture: () => "",
+        capture: async () => "",
         which: (name) => (name === "bun" ? "relative/bin/bun" : name === "relative-bun/bin/bun" || name === fallback ? name : "")
       })
       expect(withFallback.probe("bun")).toEqual({ state: "present", path: fallback })
 
       const onlyRelative = makeDependencyManager(makePlatform("linux"), {
         commandExists: () => true,
-        capture: () => "",
+        capture: async () => "",
         which: (name) => (name === "bun" ? "relative/bin/bun" : "")
       })
       expect(onlyRelative.probe("bun")).toEqual({ state: "missing" })
@@ -144,7 +169,7 @@ describe("DependencyManager registry", () => {
   it("keeps presence results focused on presence and path", () => {
     const manager = makeDependencyManager(makePlatform("linux"), {
       commandExists: () => true,
-      capture: () => "9.9.9",
+      capture: async () => "9.9.9",
       which: (name) => `/stub/${name}`
     })
     expect(manager.probe("git")).toEqual({ state: "present", path: "/stub/git" })

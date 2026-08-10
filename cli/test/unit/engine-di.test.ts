@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { runEngineNative } from "../../src/engine-native"
+import { runBounded, runEngineNative, syncConcurrencyForManifest } from "../../src/engine-native"
 import {
   syncClaudeAdvisor,
   syncClaudeEffort
@@ -41,7 +41,12 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
     verbose: (message) => void records.push({ level: "verbose", message }),
     warn: (message) => void records.push({ level: "warn", message }),
     err: (message) => void records.push({ level: "err", message }),
-    echo: (message) => void records.push({ level: "echo", message })
+    echo: (message) => void records.push({ level: "echo", message }),
+    acquireTerminal: () => ({
+      update: () => {},
+      withExclusive: async (action) => await action(),
+      release: () => {}
+    })
   }
   const platform = makePlatform("linux")
   const missing = new Set(options.missing ?? [])
@@ -64,10 +69,10 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
       missing.has(id)
         ? { state: "missing" }
         : { state: "present", path: `/stub-bin/${id}` },
-    version: (id) => versions[id] ?? "",
-    path: (id) => (missing.has(id) ? "" : `/stub-bin/${id}`),
-    location: (id) => ({ path: missing.has(id) ? "" : `/stub-bin/${id}`, binDir: "" }),
-    latest: (id) => latest[id] ?? "",
+    version: async (id) => versions[id] ?? "",
+    path: async (id) => (missing.has(id) ? "" : `/stub-bin/${id}`),
+    location: async (id) => ({ path: missing.has(id) ? "" : `/stub-bin/${id}`, binDir: "" }),
+    latest: async (id) => latest[id] ?? "",
     warnMissing: (id, currentLogger, context) => {
       if (warned.has(id)) return
       warned.add(id)
@@ -88,6 +93,14 @@ class RecordingLogger implements Logger {
   progress(): void {}
 
   clearProgress(): void {}
+  acquireTerminal() {
+    return {
+      update: () => {},
+      withExclusive: async <T>(action: () => T | Promise<T>) => await action(),
+      release: () => {}
+    }
+  }
+
 
   verbose(message: string): void {
     this.records.push({ level: "verbose", message })
@@ -125,6 +138,7 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     claudeAdvisor: "",
     codexModel: "",
     codexEffort: "",
+    syncConcurrency: 3,
     services: stubServices(records),
     targetFilterSet: true,
     syncClaude: true,
@@ -138,6 +152,146 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     }
   }
 }
+
+describe("sync pipeline coordinator", () => {
+  it("serializes Claude and skills only when the normalized manifest is populated", () => {
+    expect(syncConcurrencyForManifest(3, "# comments and blank lines stay empty\n\n", true, true)).toBe(3)
+    expect(syncConcurrencyForManifest(3, "DocksDocks/example-skill # managed\n", true, true)).toBe(1)
+  })
+
+  it("runs selected sync pipelines with a bounded cap", async () => {
+    interface Deferred<T> {
+      readonly promise: Promise<T>
+      readonly resolve: (value: T) => void
+      readonly reject: (error: unknown) => void
+    }
+    const deferred = <T>(): Deferred<T> => {
+      let resolve!: (value: T) => void
+      let reject!: (error: unknown) => void
+      const promise = new Promise<T>((onResolve, onReject) => {
+        resolve = onResolve
+        reject = onReject
+      })
+      return { promise, resolve, reject }
+    }
+    const names = ["Claude", "Codex", "skills"] as const
+
+    const cap3Records: Array<string> = []
+    const cap3Controls = names.map(() => deferred<string>())
+    const cap3Run = runBounded(
+      names.map(
+        (name, index) => async () => {
+          cap3Records.push(`start:${name}`)
+          const result = await cap3Controls[index]!.promise
+          cap3Records.push(`finish:${name}`)
+          return result
+        }
+      ),
+      3
+    )
+    expect(cap3Records).toEqual(["start:Claude", "start:Codex", "start:skills"])
+    cap3Controls[2]!.resolve("skills-result")
+    cap3Controls[0]!.resolve("claude-result")
+    cap3Controls[1]!.resolve("codex-result")
+    await expect(cap3Run).resolves.toEqual(["claude-result", "codex-result", "skills-result"])
+    expect(cap3Records.slice(3)).toEqual(["finish:skills", "finish:Claude", "finish:Codex"])
+
+    const cap2Records: Array<string> = []
+    const cap2Controls = names.map(() => deferred<string>())
+    const cap2Started = names.map(() => deferred<void>())
+    let active = 0
+    let maxActive = 0
+    const cap2Run = runBounded(
+      names.map(
+        (name, index) => async () => {
+          active += 1
+          maxActive = Math.max(maxActive, active)
+          cap2Records.push(`start:${name}`)
+          cap2Started[index]!.resolve()
+          const result = await cap2Controls[index]!.promise
+          active -= 1
+          cap2Records.push(`finish:${name}`)
+          return result
+        }
+      ),
+      2
+    )
+    expect(cap2Records).toEqual(["start:Claude", "start:Codex"])
+    cap2Controls[1]!.resolve("codex-result")
+    await cap2Started[2]!.promise
+    expect(maxActive).toBe(2)
+    expect(active).toBe(2)
+    cap2Controls[0]!.resolve("claude-result")
+    cap2Controls[2]!.resolve("skills-result")
+    await expect(cap2Run).resolves.toEqual(["claude-result", "codex-result", "skills-result"])
+    expect(maxActive).toBe(2)
+
+    const cap1Records: Array<string> = []
+    const cap1Controls = names.map(() => deferred<string>())
+    const cap1Started = names.map(() => deferred<void>())
+    const cap1Run = runBounded(
+      names.map(
+        (name, index) => async () => {
+          cap1Records.push(`start:${name}`)
+          cap1Started[index]!.resolve()
+          const result = await cap1Controls[index]!.promise
+          cap1Records.push(`finish:${name}`)
+          return result
+        }
+      ),
+      1
+    )
+    expect(cap1Records).toEqual(["start:Claude"])
+    cap1Controls[0]!.resolve("claude-result")
+    await cap1Started[1]!.promise
+    expect(cap1Records).toEqual(["start:Claude", "finish:Claude", "start:Codex"])
+    cap1Controls[1]!.resolve("codex-result")
+    await cap1Started[2]!.promise
+    expect(cap1Records).toEqual([
+      "start:Claude",
+      "finish:Claude",
+      "start:Codex",
+      "finish:Codex",
+      "start:skills"
+    ])
+    cap1Controls[2]!.resolve("skills-result")
+    await expect(cap1Run).resolves.toEqual(["claude-result", "codex-result", "skills-result"])
+
+    const failureRecords: Array<string> = []
+    const failureControls = names.map(() => deferred<string>())
+    const failureFinished = names.map(() => deferred<void>())
+    const claudeFailure = new Error("claude failed")
+    const codexFailure = new Error("codex failed")
+    const failureRun = runBounded(
+      names.map(
+        (name, index) => async () => {
+          failureRecords.push(`start:${name}`)
+          try {
+            return await failureControls[index]!.promise
+          } finally {
+            failureRecords.push(`finish:${name}`)
+            failureFinished[index]!.resolve()
+          }
+        }
+      ),
+      2
+    )
+    let failureSettled = false
+    const observedFailure = failureRun.finally(() => {
+      failureSettled = true
+      failureRecords.push("pool:settled")
+    })
+    expect(failureRecords).toEqual(["start:Claude", "start:Codex"])
+    failureControls[1]!.reject(codexFailure)
+    await failureFinished[1]!.promise
+    expect(failureSettled).toBe(false)
+    failureControls[0]!.reject(claudeFailure)
+    await failureFinished[0]!.promise
+    await expect(observedFailure).rejects.toBe(claudeFailure)
+    expect(failureRecords).not.toContain("start:skills")
+    expect(failureRecords.slice(-3)).toEqual(["finish:Codex", "finish:Claude", "pool:settled"])
+  })
+})
 
 describe("Claude settings modifiers", () => {
   it("sets effort, resolves default from the embedded SoT, and is idempotent", () => {
@@ -396,9 +550,9 @@ describe("Codex effort modifier", () => {
 
 describe.sequential("EngineNative full service injection", () => {
 
-  it("keeps raw help and bare errors in parity with the effort/advisor catalogs", () => {
+  it("keeps raw help and bare errors in parity with the effort/advisor catalogs", async () => {
     const records: Array<LogRecord> = []
-    expect(runEngineNative(["sync", "--help"], stubServices(records))).toBe(0)
+    expect(await runEngineNative(["sync", "--help"], stubServices(records))).toBe(0)
     const help = records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")
     expect(help).toContain("--claude-effort=<low|medium|high|xhigh|default>")
     expect(help).toContain("--codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>")
@@ -410,7 +564,7 @@ describe.sequential("EngineNative full service injection", () => {
       ["claude", "--claude-advisor", "--claude-advisor=<on|off|default>"]
     ] as const) {
       const bareRecords: Array<LogRecord> = []
-      expect(runEngineNative(["sync", target, flag], stubServices(bareRecords))).toBe(2)
+      expect(await runEngineNative(["sync", target, flag], stubServices(bareRecords))).toBe(2)
       expect(bareRecords).toContainEqual({
         level: "err",
         message: `${flag} requires a value: ${grammar}`
@@ -418,7 +572,7 @@ describe.sequential("EngineNative full service injection", () => {
     }
   })
 
-  it("validates raw effort and advisor modifiers before any sync mutation", () => {
+  it("validates raw effort and advisor modifiers before any sync mutation", async () => {
     const bareCases = [
       ["claude", "--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
       ["codex", "--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
@@ -426,7 +580,7 @@ describe.sequential("EngineNative full service injection", () => {
     ] as const
     for (const [target, flag, catalog, error] of bareCases) {
       const records: Array<LogRecord> = []
-      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(await runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
       expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
       expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
       expect(records.every(({ level }) => level === "echo" || level === "err")).toBe(true)
@@ -439,13 +593,13 @@ describe.sequential("EngineNative full service injection", () => {
     ] as const
     for (const [target, flag, catalog, error] of invalidCases) {
       const records: Array<LogRecord> = []
-      expect(runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
+      expect(await runEngineNative(["sync", target, flag], stubServices(records))).toBe(2)
       expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
       expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
     }
   })
 
-  it("rejects both explicit-empty spellings through shared raw modifier validation", () => {
+  it("rejects both explicit-empty spellings through shared raw modifier validation", async () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-empty-modifier-"))
     const previousHome = process.env["HOME"]
     const previousAgents = process.env["AGENTS_DIR"]
@@ -464,7 +618,7 @@ describe.sequential("EngineNative full service injection", () => {
         for (const args of [[`${flag}=`], [flag, ""]]) {
           const records: Array<LogRecord> = []
           expect(
-            runEngineNative(["sync", target, "--dry-run", "--skip-bubblewrap", ...args], stubServices(records))
+            await runEngineNative(["sync", target, "--dry-run", "--skip-bubblewrap", ...args], stubServices(records))
           ).toBe(2)
           expect(records.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")).toContain(catalog)
           expect(records).toContainEqual({ level: "err", message: expect.stringContaining(error) })
@@ -480,7 +634,7 @@ describe.sequential("EngineNative full service injection", () => {
     }
   })
 
-  it("warns and clears effort and advisor modifiers for unselected targets", () => {
+  it("warns and clears effort and advisor modifiers for unselected targets", async () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-modifier-ignore-"))
     const previousHome = process.env["HOME"]
     const previousAgents = process.env["AGENTS_DIR"]
@@ -489,17 +643,15 @@ describe.sequential("EngineNative full service injection", () => {
       process.env["AGENTS_DIR"] = join(root, ".agents")
       const records: Array<LogRecord> = []
       expect(
-        runEngineNative(
-          [
-            "sync",
-            "agents",
-            "--dry-run",
-            "--claude-effort=low",
-            "--claude-advisor=on",
-            "--codex-effort=max"
-          ],
-          stubServices(records)
-        )
+        await runEngineNative([
+          "sync",
+          "agents",
+          "--dry-run",
+          "--claude-effort=low",
+          "--claude-advisor=on",
+          "--codex-effort=max"
+        ],
+        stubServices(records))
       ).toBe(0)
       expect(records.filter(({ level }) => level === "warn")).toEqual([
         { level: "warn", message: "--claude-effort ignored: claude target not selected" },
@@ -516,7 +668,7 @@ describe.sequential("EngineNative full service injection", () => {
     }
   })
 
-  it("routes manager warnings through the current run logger", () => {
+  it("routes manager warnings through the current run logger", async () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-mixed-"))
     const previous = new Map(
       ["HOME", "AGENTS_DIR", "PATH", "DRY_RUN", "DOCKS_KIT_VERBOSE"].map((key) => [key, process.env[key]])
@@ -538,7 +690,7 @@ describe.sequential("EngineNative full service injection", () => {
       })
       const services = { ...constructed, logger: new RecordingLogger(runRecords) }
 
-      expect(runEngineNative(["sync", "agents", "--dry-run"], services)).toBe(0)
+      expect(await runEngineNative(["sync", "agents", "--dry-run"], services)).toBe(0)
       expect(constructionWrites).toEqual([])
       expect(runRecords).toContainEqual({
         level: "warn",
@@ -554,7 +706,7 @@ describe.sequential("EngineNative full service injection", () => {
     }
   })
 
-  it("uses the run wrapper as the sole verbosity gate for factory loggers", () => {
+  it("uses the run wrapper as the sole verbosity gate for factory loggers", async () => {
     const stderr: Array<string> = []
     const stdout: Array<string> = []
     const factory = makeEngineServices({
@@ -565,22 +717,22 @@ describe.sequential("EngineNative full service injection", () => {
     })
     const services = { ...factory, deps: stubServices([]).deps }
 
-    expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
-    expect(runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], services)).toBe(0)
-    expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
+    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
+    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], services)).toBe(0)
+    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
     expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m effect-solutions up to date (0.5.3)\n"])
     expect(stdout).toEqual([])
   })
 
-  it("preserves class-based logger methods and receivers", () => {
+  it("preserves class-based logger methods and receivers", async () => {
     const records: Array<LogRecord> = []
     const services = { ...stubServices([]), logger: new RecordingLogger(records) }
 
-    expect(runEngineNative(["sync", "--unknown"], services)).toBe(2)
+    expect(await runEngineNative(["sync", "--unknown"], services)).toBe(2)
     expect(records).toEqual([{ level: "err", message: "Unknown arg: --unknown" }])
   })
 
-  it("captures every in-process branch without real stream writes", () => {
+  it("captures every in-process branch without real stream writes", async () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-"))
     const stubPath = join(root, "stub-bin")
     mkdirSync(stubPath)
@@ -629,7 +781,7 @@ describe.sequential("EngineNative full service injection", () => {
       // custom logger while the real process streams remain untouched.
       const codexHome = useHome("canonical-codex")
       const codexRecords: Array<LogRecord> = []
-      expect(runEngineNative(["sync", "codex", "--dry-run"], stubServices(codexRecords))).toBe(0)
+      expect(await runEngineNative(["sync", "codex", "--dry-run"], stubServices(codexRecords))).toBe(0)
       expect(codexRecords).toEqual([
         { level: "echo", message: "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)" },
         {
@@ -662,13 +814,13 @@ describe.sequential("EngineNative full service injection", () => {
 
       useHome("parse-error")
       const parseRecords: Array<LogRecord> = []
-      expect(runEngineNative(["sync", "--unknown"], stubServices(parseRecords))).toBe(2)
+      expect(await runEngineNative(["sync", "--unknown"], stubServices(parseRecords))).toBe(2)
       expect(parseRecords).toEqual([{ level: "err", message: "Unknown arg: --unknown" }])
       noBypass()
 
       useHome("dry-run")
       const dryRecords: Array<LogRecord> = []
-      expect(runEngineNative(["sync", "agents", "--dry-run"], stubServices(dryRecords))).toBe(0)
+      expect(await runEngineNative(["sync", "agents", "--dry-run"], stubServices(dryRecords))).toBe(0)
       expect(dryRecords).toEqual([
         { level: "echo", message: "[dry-run] effect-solutions up to date (0.5.3)" },
         { level: "echo", message: "" },
@@ -680,7 +832,7 @@ describe.sequential("EngineNative full service injection", () => {
 
       useHome("missing-dep")
       const missingRecords: Array<LogRecord> = []
-      expect(runEngineNative(["sync", "agents"], stubServices(missingRecords, { missing: ["npx"] }))).toBe(0)
+      expect(await runEngineNative(["sync", "agents"], stubServices(missingRecords, { missing: ["npx"] }))).toBe(0)
       expect(missingRecords).toEqual([
         {
           level: "warn",
@@ -699,7 +851,7 @@ describe.sequential("EngineNative full service injection", () => {
       mkdirSync(join(modelHome, ".claude"), { recursive: true })
       writeFileSync(join(modelHome, ".claude", "settings.json"), '{"model":"sonnet"}\n')
       const modelRecords: Array<LogRecord> = []
-      expect(runEngineNative(["model", "claude"], stubServices(modelRecords))).toBe(0)
+      expect(await runEngineNative(["model", "claude"], stubServices(modelRecords))).toBe(0)
       expect(modelRecords.slice(0, 3)).toEqual([
         { level: "echo", message: "deployed: sonnet" },
         { level: "echo", message: "SoT:      opus" },
@@ -718,7 +870,7 @@ describe.sequential("EngineNative full service injection", () => {
         versions: { "effect-solutions": "0.5.0" },
         latest: { "effect-solutions": "0.99.0" }
       })
-      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], gateServices)).toBe(0)
+      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], gateServices)).toBe(0)
       expect(gateRecords).toEqual([
         {
           level: "warn",
@@ -732,7 +884,7 @@ describe.sequential("EngineNative full service injection", () => {
       for (const run of ["dedup-1", "dedup-2"]) {
         useHome(run)
         const runRecords: Array<LogRecord> = []
-        expect(runEngineNative(["sync", "agents"], stubServices(runRecords, { missing: ["npx"] }))).toBe(0)
+        expect(await runEngineNative(["sync", "agents"], stubServices(runRecords, { missing: ["npx"] }))).toBe(0)
         expect(runRecords.filter(({ level }) => level === "warn")).toHaveLength(1)
         dedupWarns.push(...runRecords.filter(({ level }) => level === "warn"))
         noBypass()
@@ -742,9 +894,9 @@ describe.sequential("EngineNative full service injection", () => {
       useHome("verbosity")
       const verboseRecords: Array<LogRecord> = []
       const verboseServices = stubServices(verboseRecords)
-      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
-      expect(runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], verboseServices)).toBe(0)
-      expect(runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
+      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
+      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], verboseServices)).toBe(0)
+      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
       expect(verboseRecords).toEqual([{ level: "verbose", message: "effect-solutions up to date (0.5.3)" }])
       noBypass()
     } finally {

@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type * as ExecModule from "../../src/engine-native/exec"
 
 const mocks = vi.hoisted(() => ({
   lstatSync: vi.fn(),
-  spawnSync: vi.fn(),
+  spawnProcess: vi.fn(),
   symlinkSync: vi.fn()
 }))
 
-vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }))
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec")
+  return { ...actual, spawnProcess: mocks.spawnProcess }
+})
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs")
   return { ...actual, lstatSync: mocks.lstatSync, symlinkSync: mocks.symlinkSync }
@@ -29,11 +33,12 @@ describe("skills platform behavior", () => {
   beforeEach(() => {
     mocks.lstatSync.mockReset().mockReturnValue({ isSymbolicLink: () => true })
     mocks.symlinkSync.mockReset()
-    mocks.spawnSync.mockReset().mockImplementation(() => ({
+    mocks.spawnProcess.mockReset().mockResolvedValue({
       error: undefined,
-      status: 0,
-      stdout: ""
-    }))
+      exitCode: 0,
+      stdout: "",
+      stderr: ""
+    })
   })
 
   it("uses a portable directory symlink", () => {
@@ -41,13 +46,13 @@ describe("skills platform behavior", () => {
     expect(mocks.symlinkSync).toHaveBeenCalledWith("target", "link")
   })
 
-  it("retains the known Bun bin directory when effect-solutions has no executable", () => {
+  it("retains the known Bun bin directory when effect-solutions has no executable", async () => {
     const globalBin = "/bun/global/bin"
     const lines: Array<string> = []
     const platform = makePlatform("linux")
     const deps = makeDependencyManager(platform, {
       commandExists: () => false,
-      capture: (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
+      capture: async (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
       which: (name) => (name === "bun" ? "/usr/bin/bun" : "")
     })
     const services = {
@@ -57,7 +62,7 @@ describe("skills platform behavior", () => {
     }
     const ctx = { home: "/fixture-home", services } as Ctx
 
-    expect(effectSolutionsInstall(ctx)("install", "0.5.3", services)).toBe(0)
+    expect(await effectSolutionsInstall(ctx)("install", "0.5.3", services)).toBe(0)
     expect(lines).toEqual([
       `\x1b[1;32m[ok]\x1b[0m Installing effect-solutions CLI via bun (pinned 0.5.3)...\n`,
       `\x1b[1;33m[warn]\x1b[0m effect-solutions installed but binary not found under '${globalBin}' — link it onto PATH manually\n`
