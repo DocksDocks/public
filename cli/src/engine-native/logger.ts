@@ -28,13 +28,39 @@ export interface LoggerSinks {
   readonly stdout?: (chunk: string) => void
 }
 
+interface WritableStreamLike {
+  write: (chunk: string) => unknown
+  on?: (event: "error", listener: (error: unknown) => void) => unknown
+}
+
+const epipeGuarded = new WeakSet<WritableStreamLike>()
+
+/**
+ * A downstream reader may close the pipe early (`docks-kit toolchain check |
+ * head`). That is a normal end of consumption, not a CLI failure, so both the
+ * synchronous throw and the asynchronous error event are ignored for EPIPE.
+ */
+export function writeIgnoringEpipe(stream: WritableStreamLike, chunk: string): void {
+  if (!epipeGuarded.has(stream)) {
+    epipeGuarded.add(stream)
+    stream.on?.("error", (error) => {
+      if ((error as NodeJS.ErrnoException | null)?.code !== "EPIPE") throw error
+    })
+  }
+  try {
+    stream.write(chunk)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException | null)?.code !== "EPIPE") throw error
+  }
+}
+
 export function makeLogger(sinks: LoggerSinks): Logger {
-  const errWrite = sinks.stderr ?? ((chunk: string) => void process.stderr.write(chunk))
-  const outWrite = sinks.stdout ?? ((chunk: string) => void process.stdout.write(chunk))
+  const errWrite = sinks.stderr ?? ((chunk: string) => writeIgnoringEpipe(process.stderr, chunk))
+  const outWrite = sinks.stdout ?? ((chunk: string) => writeIgnoringEpipe(process.stdout, chunk))
   const progressWrite =
     sinks.progress ??
     (sinks.stderr === undefined && process.stderr.isTTY === true
-      ? (chunk: string) => void process.stderr.write(chunk)
+      ? (chunk: string) => writeIgnoringEpipe(process.stderr, chunk)
       : undefined)
   let progressPending = false
 

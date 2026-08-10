@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { makeLogger } from "../../src/engine-native/logger"
+import { makeLogger, writeIgnoringEpipe } from "../../src/engine-native/logger"
 
 describe("logger progress channel", () => {
   it("writes a transient status to an injected progress sink", () => {
@@ -45,5 +45,52 @@ describe("logger progress channel", () => {
     logger.progress("Refreshing plugins...")
 
     expect(chunks).toEqual([])
+  })
+})
+
+describe("closed downstream reader", () => {
+  const epipe = (): NodeJS.ErrnoException => Object.assign(new Error("broken pipe"), { code: "EPIPE" })
+
+  it("ignores a synchronous EPIPE from the stream", () => {
+    const stream = {
+      write: () => {
+        throw epipe()
+      }
+    }
+
+    expect(() => writeIgnoringEpipe(stream, "row\n")).not.toThrow()
+  })
+
+  it("ignores an asynchronous EPIPE emitted by the stream", () => {
+    const listeners: Array<(error: unknown) => void> = []
+    const stream = {
+      write: () => true,
+      on: (_event: "error", listener: (error: unknown) => void) => void listeners.push(listener)
+    }
+
+    writeIgnoringEpipe(stream, "row\n")
+
+    expect(listeners).toHaveLength(1)
+    expect(() => listeners[0]?.(epipe())).not.toThrow()
+  })
+
+  it("re-throws a write failure that is not EPIPE", () => {
+    const stream = {
+      write: () => {
+        throw new Error("disk full")
+      }
+    }
+
+    expect(() => writeIgnoringEpipe(stream, "row\n")).toThrow("disk full")
+  })
+
+  it("registers the error listener only once per stream", () => {
+    let registrations = 0
+    const stream = { write: () => true, on: () => void registrations++ }
+
+    writeIgnoringEpipe(stream, "a\n")
+    writeIgnoringEpipe(stream, "b\n")
+
+    expect(registrations).toBe(1)
   })
 })
