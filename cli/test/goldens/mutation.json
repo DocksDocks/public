@@ -12,7 +12,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -43,7 +42,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -75,7 +73,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -107,7 +104,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -139,7 +135,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -166,7 +161,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -193,7 +187,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -319,7 +312,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -351,7 +343,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -383,7 +374,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -419,7 +409,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -451,7 +440,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
         ".claude/": "dir",
@@ -483,7 +471,6 @@
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -511,7 +498,6 @@
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
         ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -544,7 +530,6 @@
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
         ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
@@ -577,7 +562,6 @@
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
         ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
-        ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
