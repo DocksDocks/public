@@ -7,3 +7,4 @@ node_modules/
 settings.json.bak
 cli/dist/
 SoT/.claude/settings.local.json
+.pi/
