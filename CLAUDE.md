@@ -25,6 +25,8 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
 | `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 
+For Effect work in this checkout, Claude must route to `effect-v4` from the enabled `effect-kit@docks` plugin; the sibling `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only.
+
 Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
 #### Per-project plugin scoping

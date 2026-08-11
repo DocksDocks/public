@@ -52,9 +52,15 @@ docks-kit docs [topic]                     self-documentation (9 topics)
 --help --version --wizard --completions    built-in
 ```
 
-The CLI is a typed front-end ([Effect-TS](https://effect.website) on Bun);
-all mutation runs through EngineNative in `cli/src/engine-native/`, with
-golden-regression coverage for dry-run output, mutation snapshots, and argv logs.
+The CLI is a typed Effect 4 beta front-end on Bun; all mutation runs through
+EngineNative in `cli/src/engine-native/`, with golden-regression coverage for
+dry-run output, mutation snapshots, and argv logs. Its dependency graph is
+`effect@4.0.0-beta.107` (including `effect/unstable/cli`),
+`@effect/platform-bun@4.0.0-beta.107` (`BunServices.layer` and
+`BunRuntime.runMain`), `@effect/vitest@4.0.0-beta.107`, and `vitest@4.1.10`
+(required by the `@effect/vitest` peer range). `@effect/cli` and
+`@effect/platform` are removed: neither has a 4.x release, the CLI API moved
+into core, and the standalone platform package was unused here.
 
 ### Key flags (`docks-kit sync`)
 
@@ -106,7 +112,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/toolchain.json` | Verified-version floors |
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |
-| `cli/` | docks-kit CLI (Effect-TS on Bun) + bundled docs topics |
+| `cli/` | docks-kit CLI (Effect 4 beta on Bun) + bundled docs topics |
 | `docks-kit` | Launcher (binary → bun-from-source) |
 | `install.sh` | Global installer (Bun bootstrap + `bun add -g`) |
 | `docs/plans/` | Multi-commit work-item plans |
