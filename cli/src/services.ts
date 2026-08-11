@@ -8,14 +8,14 @@ import { Context, Layer } from "effect"
 import { makeLogger, type Logger, type LoggerSinks } from "./engine-native/logger"
 import { makeEngineServices, makePlatform, type DependencyManager, type Platform } from "./engine-native/services"
 
-export class LoggerService extends Context.Tag("docks-kit/Logger")<LoggerService, Logger>() {}
+export class LoggerService extends Context.Service<LoggerService, Logger>()("docks-kit/Logger") {}
 
-export class DependencyManagerService extends Context.Tag("docks-kit/DependencyManager")<
+export class DependencyManagerService extends Context.Service<
   DependencyManagerService,
   DependencyManager
->() {}
+>()("docks-kit/DependencyManager") {}
 
-export class PlatformService extends Context.Tag("docks-kit/Platform")<PlatformService, Platform>() {}
+export class PlatformService extends Context.Service<PlatformService, Platform>()("docks-kit/Platform") {}
 
 const live = makeEngineServices()
 

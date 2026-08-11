@@ -1,18 +1,11 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Effect, Option } from "effect"
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { bail, engine } from "../engine"
 import type { Logger } from "../engine-native/logger"
-import {
-  advisorCatalog,
-  advisorFlagGrammar,
-  effortCatalog,
-  effortFlagGrammar
-} from "../efforts"
 import { kitHome } from "../kitHome"
-import { modelCatalog, type Tool } from "../manifests"
 import { LoggerService } from "../services"
 
 /** Best-effort update autodetection: nudge (never block, never fail) when
@@ -38,90 +31,66 @@ const updateNudge = (logger: Logger): void => {
 
 const VALID_TARGETS = ["claude", "codex", "agents"]
 
-// Renamed pre-CLI flags: @effect/cli routes unknown flags into the excess
-// positional args, so the rename hints are mirrored here before EngineNative
-// sees the normalized argv.
-const LEGACY_HINTS: Record<string, string> = {
-  "--force": "--force was renamed to --reconcile",
-  "--remove-plugins":
-    "--remove-plugins was renamed to --prune (it also removes marketplaces + kit-managed skills)",
-  "--680k": "--680k was renamed to --claude-compact-window=680k",
-  "--permissive": "--permissive was renamed to --claude-permissive",
-  "--supabase": "--supabase was renamed to --claude-plugin=supabase",
-  "--n8n": "--n8n was renamed to --claude-plugin=n8n",
-  "--skip-rtk": "--skip-rtk was renamed to --skip-bubblewrap",
-  "--claude": "--claude was renamed: pass the target as a word, e.g. 'sync claude'",
-  "--codex": "--codex was renamed: pass the target as a word, e.g. 'sync codex'",
-  "--agents": "--agents was renamed: pass the target as a word, e.g. 'sync agents'"
-}
-
-const modelCatalogHint = (t: Tool): string => {
-  const c = modelCatalog(t)
-  const list = c.models
-    .map((m) => `  ${m.id}${m.note !== undefined ? `  — ${m.note}` : ""}`)
-    .join("\n")
-  return `Available ${t} models (kit-verified ${c.verified} — SoT/models.json):\n${list}`
-}
-
-const targets = Args.text({ name: "target" }).pipe(
-  Args.withDescription("Sync targets: claude, codex, agents (default: all three)"),
-  Args.repeated
+const targets = Argument.variadic(
+  Argument.string("target").pipe(
+    Argument.withDescription("Sync targets: claude, codex, agents (default: all three)")
+  )
 )
 
-const dryRun = Options.boolean("dry-run").pipe(
-  Options.withDescription("Preview without applying")
+const dryRun = Flag.boolean("dry-run").pipe(
+  Flag.withDescription("Preview without applying")
 )
-const reconcile = Options.boolean("reconcile").pipe(
-  Options.withDescription("Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)")
+const reconcile = Flag.boolean("reconcile").pipe(
+  Flag.withDescription("Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)")
 )
-const prune = Options.boolean("prune").pipe(
-  Options.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)")
+const prune = Flag.boolean("prune").pipe(
+  Flag.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)")
 )
-const skipBubblewrap = Options.boolean("skip-bubblewrap").pipe(
-  Options.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)")
+const skipBubblewrap = Flag.boolean("skip-bubblewrap").pipe(
+  Flag.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)")
 )
-const skipPluginRefresh = Options.boolean("skip-plugin-refresh").pipe(
-  Options.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
+const skipPluginRefresh = Flag.boolean("skip-plugin-refresh").pipe(
+  Flag.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
 )
-const yes = Options.boolean("yes").pipe(
-  Options.withDescription("Auto-accept toolchain prompts (containers/CI)")
+const yes = Flag.boolean("yes").pipe(
+  Flag.withDescription("Auto-accept toolchain prompts (containers/CI)")
 )
-const verbose = Options.boolean("verbose").pipe(
-  Options.withAlias("v"),
-  Options.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)")
+const verbose = Flag.boolean("verbose").pipe(
+  Flag.withAlias("v"),
+  Flag.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)")
 )
-const claudeModel = Options.text("claude-model").pipe(
-  Options.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
-  Options.optional
+const claudeModel = Flag.string("claude-model").pipe(
+  Flag.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
+  Flag.optional
 )
-const claudeEffort = Options.text("claude-effort").pipe(
-  Options.withDescription("Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)"),
-  Options.optional
+const claudeEffort = Flag.string("claude-effort").pipe(
+  Flag.withDescription("Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)"),
+  Flag.optional
 )
-const claudeAdvisor = Options.text("claude-advisor").pipe(
-  Options.withDescription("Deploy-time modifier: set Claude advisor on/off/default"),
-  Options.optional
+const claudeAdvisor = Flag.string("claude-advisor").pipe(
+  Flag.withDescription("Deploy-time modifier: set Claude advisor on/off/default"),
+  Flag.optional
 )
-const claudeCompactWindow = Options.text("claude-compact-window").pipe(
-  Options.withDescription("Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)"),
-  Options.optional
+const claudeCompactWindow = Flag.string("claude-compact-window").pipe(
+  Flag.withDescription("Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)"),
+  Flag.optional
 )
-const claudePermissive = Options.boolean("claude-permissive").pipe(
-  Options.withDescription("Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)")
+const claudePermissive = Flag.boolean("claude-permissive").pipe(
+  Flag.withDescription("Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)")
 )
-const claudePlugin = Options.text("claude-plugin").pipe(
-  Options.withDescription(
+const claudePlugin = Flag.string("claude-plugin").pipe(
+  Flag.withDescription(
     "Sticky opt-in plugin(s); repeatable and/or comma-separated (known: supabase, n8n)"
   ),
-  Options.repeated
+  Flag.atLeast(0)
 )
-const codexModel = Options.text("codex-model").pipe(
-  Options.withDescription("Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)"),
-  Options.optional
+const codexModel = Flag.string("codex-model").pipe(
+  Flag.withDescription("Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)"),
+  Flag.optional
 )
-const codexEffort = Options.text("codex-effort").pipe(
-  Options.withDescription("Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)"),
-  Options.optional
+const codexEffort = Flag.string("codex-effort").pipe(
+  Flag.withDescription("Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)"),
+  Flag.optional
 )
 
 export const syncCommand = Command.make(
@@ -146,24 +115,6 @@ export const syncCommand = Command.make(
   },
   (config) =>
     Effect.gen(function* () {
-      for (const t of config.targets) {
-        if (VALID_TARGETS.includes(t)) continue
-        if (t === "--claude-model" || t === "--codex-model") {
-          const tool: Tool = t === "--claude-model" ? "claude" : "codex"
-          return yield* bail(`${modelCatalogHint(tool)}\n${t} requires a value: ${t}=<model>`)
-        }
-        if (t === "--claude-effort" || t === "--codex-effort") {
-          const tool: Tool = t === "--claude-effort" ? "claude" : "codex"
-          return yield* bail(`${effortCatalog(tool)}\n${t} requires a value: ${effortFlagGrammar(tool)}`)
-        }
-        if (t === "--claude-advisor") {
-          return yield* bail(`${advisorCatalog()}\n${t} requires a value: ${advisorFlagGrammar()}`)
-        }
-        const hint = LEGACY_HINTS[t]
-        if (hint !== undefined) {
-          return yield* bail(hint)
-        }
-      }
       const bad = config.targets.filter((t) => !VALID_TARGETS.includes(t))
       if (bad.length > 0) {
         return yield* bail(

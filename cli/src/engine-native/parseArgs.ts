@@ -23,7 +23,7 @@ export class ExitError extends Error {
   }
 }
 
-const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
+export const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
 const MODIFIER_FLAGS = new Set<ModifierFlag>([
   "--claude-model",
   "--claude-effort",

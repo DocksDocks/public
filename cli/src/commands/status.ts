@@ -1,4 +1,4 @@
-import { Command, Options } from "@effect/cli"
+import { Command, Flag } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import { engineCapture } from "../engine"
 import {
@@ -11,8 +11,8 @@ import {
 } from "../manifests"
 import { kitHome } from "../kitHome"
 
-const json = Options.boolean("json").pipe(
-  Options.withDescription("Machine-readable output")
+const json = Flag.boolean("json").pipe(
+  Flag.withDescription("Machine-readable output")
 )
 
 interface Drift {

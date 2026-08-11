@@ -1,23 +1,23 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Effect, Option } from "effect"
 import { bail, engine } from "../engine"
 
 const MANAGED = ["bun", "effect-solutions"]
 
-const op = Args.text({ name: "op" }).pipe(
-  Args.withDescription("check (default) | ensure <tool>"),
-  Args.optional
+const op = Argument.string("op").pipe(
+  Argument.withDescription("check (default) | ensure <tool>"),
+  Argument.optional
 )
-const tool = Args.text({ name: "tool" }).pipe(
-  Args.withDescription(`Managed tool for ensure: ${MANAGED.join(", ")}`),
-  Args.optional
+const tool = Argument.string("tool").pipe(
+  Argument.withDescription(`Managed tool for ensure: ${MANAGED.join(", ")}`),
+  Argument.optional
 )
-const yes = Options.boolean("yes").pipe(
-  Options.withDescription("Auto-accept above-verified installs")
+const yes = Flag.boolean("yes").pipe(
+  Flag.withDescription("Auto-accept above-verified installs")
 )
-const verbose = Options.boolean("verbose").pipe(
-  Options.withAlias("v"),
-  Options.withDescription("Also print no-op confirmations (present, up to date)")
+const verbose = Flag.boolean("verbose").pipe(
+  Flag.withAlias("v"),
+  Flag.withDescription("Also print no-op confirmations (present, up to date)")
 )
 
 export const toolchainCommand = Command.make("toolchain", { op, tool, yes, verbose }, (config) =>

@@ -7,7 +7,7 @@ import { DependencyManagerService, LoggerService, PlatformService } from "./serv
 
 /**
  * The single seam between the typed CLI and EngineNative. Engine execution
- * stays in-process after @effect/cli has parsed pickers and flag spellings.
+ * stays in-process after effect/unstable/cli has parsed pickers and flag spellings.
  */
 const bashRemovedMessage = "bash engine removed — recover at tag bash-engine-final"
 const bashEngineRequested = (): boolean => process.env["DOCKS_KIT_ENGINE"] === "bash"

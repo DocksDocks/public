@@ -69,7 +69,7 @@ fi
 
 # Sentinel is a real dependency dir, not bare node_modules/ — a failed or
 # partial install leaves node_modules/ present and would suppress the repair.
-if [[ ! -d "$REPO_DIR/node_modules/@effect/cli" ]]; then
+if [[ ! -d "$REPO_DIR/node_modules/effect" ]]; then
   echo "[docks-kit] Installing CLI dependencies (bun install --frozen-lockfile)..." >&2
   (cd "$REPO_DIR" && "$BUN" install --frozen-lockfile >/dev/null)
 fi

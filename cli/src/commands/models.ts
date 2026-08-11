@@ -1,14 +1,14 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Console, Effect, Option } from "effect"
 import { bail } from "../engine"
 import { modelCatalog, type Tool } from "../manifests"
 
-const tool = Args.text({ name: "tool" }).pipe(
-  Args.withDescription("claude | codex (omit for both tool catalogs)"),
-  Args.optional
+const tool = Argument.string("tool").pipe(
+  Argument.withDescription("claude | codex (omit for both tool catalogs)"),
+  Argument.optional
 )
-const json = Options.boolean("json").pipe(
-  Options.withDescription("Machine-readable output")
+const json = Flag.boolean("json").pipe(
+  Flag.withDescription("Machine-readable output")
 )
 
 const renderTool = (t: Tool) =>

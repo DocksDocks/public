@@ -14,7 +14,7 @@ function launcherFixture(binaryName: string, binaryVersion: string): { root: str
   const binDir = join(root, "test-bin")
   mkdirSync(join(root, "cli", "dist"), { recursive: true })
   mkdirSync(join(root, "cli", "src"), { recursive: true })
-  mkdirSync(join(root, "node_modules", "@effect", "cli"), { recursive: true })
+  mkdirSync(join(root, "node_modules", "effect"), { recursive: true })
   mkdirSync(binDir, { recursive: true })
   cpSync(join(REPO_DIR, "docks-kit"), join(root, "docks-kit"))
   cpSync(join(REPO_DIR, "package.json"), join(root, "package.json"))

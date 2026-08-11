@@ -1,4 +1,4 @@
-import { Command, Options } from "@effect/cli"
+import { Command, Flag } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
@@ -6,8 +6,8 @@ import { join } from "node:path"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
 
-const noSync = Options.boolean("no-sync").pipe(
-  Options.withDescription("Update the kit only; skip the chained flag-less sync")
+const noSync = Flag.boolean("no-sync").pipe(
+  Flag.withDescription("Update the kit only; skip the chained flag-less sync")
 )
 
 const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {

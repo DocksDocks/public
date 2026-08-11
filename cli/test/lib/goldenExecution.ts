@@ -56,7 +56,7 @@ function shellQuote(value: string): string {
 function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
   const quotedArgs = args.map(shellQuote).join(" ")
   void kind
-  // Raw harness channel (bypasses @effect/cli so tests drive the engine's
+  // Raw harness channel (bypasses effect/unstable/cli so tests drive the engine's
   // internal argv directly); absolute bun path so the PATH stub `bun` never
   // shadows the runtime.
   const command =
@@ -199,7 +199,7 @@ export function runEngineSplit(
 }
 
 /**
- * Run the PUBLIC CLI (@effect/cli path — no DOCKS_KIT_ENGINE bypass) with
+ * Run the PUBLIC CLI (effect/unstable/cli path — no DOCKS_KIT_ENGINE bypass) with
  * split channels. Exercises real flag parsing and command wiring.
  */
 export function runPublicCli(

@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
-import { Command } from "@effect/cli"
-import { BunContext, BunRuntime } from "@effect/platform-bun"
+import { Command, CliOutput } from "effect/unstable/cli"
+import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
-import { engine } from "./engine"
 import { EngineServicesLive } from "./services"
 import { docsCommand } from "./commands/docs"
 import { modelCommand } from "./commands/model"
@@ -14,6 +13,7 @@ import { syncCommand } from "./commands/sync"
 import { toolchainCommand } from "./commands/toolchain"
 import { updateCommand } from "./commands/update"
 import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload"
+import { prepareArgv } from "./argv"
 
 
 const root = Command.make("docks-kit", {}, () =>
@@ -50,8 +50,16 @@ const root = Command.make("docks-kit", {}, () =>
   ])
 )
 
+// v4's default formatter renders `name vversion`, but the `docks-kit` launcher
+// compares `--version` against the bare `package.json` version. The trailing
+// newline reproduces the characterized byte-for-byte output of the v3 CLI.
+const bareVersionFormatter: CliOutput.Formatter = {
+  ...CliOutput.defaultFormatter(),
+  formatVersion: (_name, version) => `${version}\n`
+}
+
 // Harness-private raw channel:
-// `DOCKS_KIT_ENGINE=native-raw` bypasses @effect/cli and hands the raw engine
+// `DOCKS_KIT_ENGINE=native-raw` bypasses effect/unstable/cli and hands the raw engine
 // argv to EngineNative so golden tests drive the internal vocabulary directly.
 // PUBLIC engine execution lives at the engine.ts seam after the CLI has
 // parsed/normalized pickers, --flag value forms, and non-engine commands.
@@ -60,27 +68,18 @@ if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
   process.exit(await runEngineNative(process.argv.slice(2)))
 }
 
-const cli = Command.run(root, {
-  name: "docks-kit",
-  version: GENERATED_PACKAGE_VERSION
-})
+// Validate and normalize before parsing because the kit refuses to guess at unrecognized
+// or duplicated flags, and Effect 4 would otherwise negate `--no-<flag>` into a real
+// mutating run. This seam owns argument normalization.
+const prepared = prepareArgv(process.argv.slice(2))
+if (prepared.kind === "reject") {
+  process.stderr.write(`${prepared.message}\n`)
+  process.exit(prepared.exitCode)
+}
 
-// Normalize the repeatable plugin's documented equals form and exact empty
-// text-option assignments that @effect/cli otherwise routes into positional
-// targets. EngineNative owns the resulting shared empty-value validation.
-const emptyTextOptions = new Set([
-  "--claude-model=",
-  "--claude-effort=",
-  "--claude-advisor=",
-  "--codex-model=",
-  "--codex-effort=",
-])
-const argv = process.argv.flatMap((a, index, all) => {
-  if (a.startsWith("--claude-plugin=")) {
-    return ["--claude-plugin", a.slice("--claude-plugin=".length)]
-  }
-  if (emptyTextOptions.has(a)) return [a.slice(0, -1), ""]
-  return [a]
-})
-
-cli(argv).pipe(Effect.provide(Layer.mergeAll(BunContext.layer, EngineServicesLive)), BunRuntime.runMain)
+Command.runWith(root, { version: GENERATED_PACKAGE_VERSION })(prepared.args).pipe(
+  Effect.provide(
+    Layer.mergeAll(BunServices.layer, EngineServicesLive, CliOutput.layer(bareVersionFormatter))
+  ),
+  BunRuntime.runMain
+)

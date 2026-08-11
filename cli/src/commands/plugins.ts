@@ -1,14 +1,14 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Console, Effect, Option } from "effect"
 import { bail } from "../engine"
 import { pluginsView } from "../manifests"
 
-const action = Args.text({ name: "action" }).pipe(
-  Args.withDescription("list (default)"),
-  Args.optional
+const action = Argument.string("action").pipe(
+  Argument.withDescription("list (default)"),
+  Argument.optional
 )
-const json = Options.boolean("json").pipe(
-  Options.withDescription("Machine-readable output")
+const json = Flag.boolean("json").pipe(
+  Flag.withDescription("Machine-readable output")
 )
 
 export const pluginsCommand = Command.make("plugins", { action, json }, (config) =>

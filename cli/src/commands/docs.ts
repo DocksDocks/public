@@ -1,4 +1,4 @@
-import { Args, Command, Options } from "@effect/cli"
+import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Console, Effect, Option } from "effect"
 import { bail } from "../engine"
 import overview from "../../docs/overview.md" with { type: "text" }
@@ -23,12 +23,12 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "platforms": { summary: "Platform support: Linux/macOS x64 and arm64", body: platforms }
 }
 
-const topic = Args.text({ name: "topic" }).pipe(
-  Args.withDescription(`One of: ${Object.keys(TOPICS).join(", ")}`),
-  Args.optional
+const topic = Argument.string("topic").pipe(
+  Argument.withDescription(`One of: ${Object.keys(TOPICS).join(", ")}`),
+  Argument.optional
 )
-const json = Options.boolean("json").pipe(
-  Options.withDescription("List topics as JSON")
+const json = Flag.boolean("json").pipe(
+  Flag.withDescription("List topics as JSON")
 )
 
 export const docsCommand = Command.make("docs", { topic, json }, (config) =>

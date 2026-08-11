@@ -1,21 +1,21 @@
-import { Args, Command, Options, Prompt } from "@effect/cli"
+import { Argument, Command, Flag, Prompt } from "effect/unstable/cli"
 import { Effect, Option } from "effect"
 import { bail, engine } from "../engine"
 import { modelCatalog, type Tool } from "../manifests"
 
-const tool = Args.text({ name: "tool" }).pipe(
-  Args.withDescription("Which tool: claude | codex")
+const tool = Argument.string("tool").pipe(
+  Argument.withDescription("Which tool: claude | codex")
 )
-const value = Args.text({ name: "value" }).pipe(
-  Args.withDescription("Model to set (omit to view current + pick interactively on a TTY)"),
-  Args.optional
+const value = Argument.string("value").pipe(
+  Argument.withDescription("Model to set (omit to view current + pick interactively on a TTY)"),
+  Argument.optional
 )
-const dryRun = Options.boolean("dry-run").pipe(
-  Options.withDescription("Preview without applying")
+const dryRun = Flag.boolean("dry-run").pipe(
+  Flag.withDescription("Preview without applying")
 )
-const verbose = Options.boolean("verbose").pipe(
-  Options.withAlias("v"),
-  Options.withDescription("Also print no-op confirmations (already in sync, up to date)")
+const verbose = Flag.boolean("verbose").pipe(
+  Flag.withAlias("v"),
+  Flag.withDescription("Also print no-op confirmations (already in sync, up to date)")
 )
 
 const KEEP = "__keep__"
