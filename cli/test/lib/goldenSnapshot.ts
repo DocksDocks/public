@@ -10,6 +10,25 @@ import { registeredTemporaryDirs } from "./goldenResources"
 
 const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
 
+function packageVersion(): string {
+  const manifest: unknown = JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8"))
+  if (typeof manifest !== "object" || manifest === null || !("version" in manifest)) {
+    throw new Error("package.json declares no version")
+  }
+  const version = manifest.version
+  if (typeof version !== "string" || version === "") {
+    throw new Error(`package.json version is not a non-empty string: ${String(version)}`)
+  }
+  return version
+}
+
+/**
+ * Only the CURRENT package version is replaced, never an arbitrary version
+ * shape. A release bump therefore leaves the recorded `--version` case valid,
+ * while a CLI that prints a stale or wrong version still fails to match.
+ */
+const PACKAGE_VERSION = packageVersion()
+
 /**
  * Replace per-run temp paths so two runs' outputs are comparable. Each root is
  * scrubbed in its native and forward-slash spelling. The temp roots also get
@@ -20,6 +39,7 @@ export function normalizeOutput(out: string, home: string, stubDir: string): str
   for (const form of pathForms(home)) normalized = normalized.replaceAll(form, "<HOME>")
   for (const form of pathForms(stubDir)) normalized = normalized.replaceAll(form, "<STUBS>")
   for (const form of pathForms(REPO_DIR)) normalized = normalized.replaceAll(form, "<REPO>")
+  normalized = normalized.replace(new RegExp(`\\b${escapeRegExp(PACKAGE_VERSION)}\\b`, "g"), "<VERSION>")
   return normalized
     .replace(new RegExp(`[^\\s'"]*${escapeRegExp(basename(home))}`, "g"), "<HOME>")
     .replace(new RegExp(`[^\\s'"]*${escapeRegExp(basename(stubDir))}`, "g"), "<STUBS>")

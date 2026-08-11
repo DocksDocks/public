@@ -116,7 +116,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "0.14.4\n\n"
+      "output": "<VERSION>\n\n"
     },
     "fixture=home-fresh cmd=docs": {
       "command": [
