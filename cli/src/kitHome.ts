@@ -10,26 +10,52 @@ const isKitHome = (dir: string): boolean => {
   }
 }
 
-/**
- * Resolve the optional checkout/package home used for display and updates:
- * DOCKS_KIT_HOME env → nearest ancestor of cwd (repo-checkout usage) →
- * the package's own root (bunx / bun add -g usage) → standalone executable
- * directory. Payload availability is independent of this location.
- */
-export const kitHome = (): string => {
-  const env = process.env["DOCKS_KIT_HOME"]
-  if (env !== undefined && env !== "") {
-    if (isKitHome(env)) return resolve(env)
-    throw new Error(`DOCKS_KIT_HOME=${env} is not a docks-kit package root (package.json name must be "docks-kit")`)
-  }
-  let dir = process.cwd()
+const findKitHome = (start: string | undefined): string | undefined => {
+  if (start === undefined || start === "") return undefined
+  let dir = resolve(start)
   for (;;) {
     if (isKitHome(dir)) return dir
     const parent = dirname(dir)
-    if (parent === dir) break
+    if (parent === dir) return undefined
     dir = parent
   }
-  const packageRoot = resolve(import.meta.dir, "..", "..")
-  if (isKitHome(packageRoot)) return packageRoot
-  return dirname(process.execPath)
 }
+
+export interface KitHomeSources {
+  readonly env: string | undefined
+  /** `import.meta.dir` is a Bun extension, so a non-Bun loader leaves it undefined. */
+  readonly moduleDir: string | undefined
+  readonly execPath: string
+  readonly cwd: string
+}
+
+/**
+ * Resolve DOCKS_KIT_HOME, then the nearest kit ancestor of the module,
+ * executable, or working directory, then the executable directory. Running
+ * installation sources take priority so an unrelated checkout cannot replace
+ * the installation that is executing.
+ */
+export const resolveKitHome = (sources: KitHomeSources): string => {
+  if (sources.env !== undefined && sources.env !== "") {
+    const envHome = resolve(sources.env)
+    if (isKitHome(envHome)) return envHome
+    throw new Error(
+      `DOCKS_KIT_HOME=${sources.env} is not a docks-kit package root (package.json name must be "docks-kit")`
+    )
+  }
+
+  return (
+    findKitHome(sources.moduleDir) ??
+    findKitHome(dirname(sources.execPath)) ??
+    findKitHome(sources.cwd) ??
+    dirname(sources.execPath)
+  )
+}
+
+export const kitHome = (): string =>
+  resolveKitHome({
+    env: process.env["DOCKS_KIT_HOME"],
+    moduleDir: import.meta.dir,
+    execPath: process.execPath,
+    cwd: process.cwd()
+  })

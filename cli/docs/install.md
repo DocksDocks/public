@@ -74,6 +74,24 @@ docks-kit update            # autodetect + update + install-missing-only sync
 docks-kit update --no-sync  # update only
 ```
 
+`docks-kit update` resolves the kit home in this order:
+
+1. The explicit `DOCKS_KIT_HOME` value comes first when set. It must name a
+   directory whose `package.json` has the name `docks-kit`. An invalid value
+   causes an error instead of a fallback.
+2. The CLI uses the nearest kit root at or above its own module directory.
+3. Next, the CLI uses the nearest kit root at or above the directory that holds
+   the executable. A standalone binary inside `<checkout>/cli/dist` therefore
+   resolves to the checkout.
+4. Next, the CLI uses the nearest kit root at or above the current working
+   directory, but only as a fallback.
+5. Otherwise, the CLI uses the directory that holds the executable.
+
+Sources 2 and 3 identify the installation that is running. A globally installed
+`docks-kit` updates the global package even when you run it from inside a
+docks-kit checkout. `DOCKS_KIT_HOME` lets you target a specific checkout on
+purpose.
+
 Autodetection: a kit home with `.git` is a checkout (requires a clean
 worktree and an upstream; `git pull --ff-only`, re-runs
 `bun install --frozen-lockfile` when the lockfile changed); a kit home
