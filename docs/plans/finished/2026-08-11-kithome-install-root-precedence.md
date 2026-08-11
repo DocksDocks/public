@@ -1,11 +1,11 @@
 ---
 title: Resolve kit home from the running install, not the cwd
 goal: docks-kit update targets the installation that is running, from any working directory, shipped as 0.15.1
-status: ongoing
+status: finished
 created: "2026-08-11T18:09:08-03:00"
-updated: "2026-08-11T18:24:06-03:00"
+updated: "2026-08-11T18:43:47-03:00"
 started_at: "2026-08-11T18:24:06-03:00"
-finished_at: null
+finished_at: "2026-08-11T18:43:47-03:00"
 assignee: null
 tags: []
 affected_paths:
@@ -169,7 +169,12 @@ further confirmation was requested.
 
 ## Review
 
-Plan-run: {"acceptance":null,"blocker":null,"completion_review":{"input_sha256":null,"invocations":0,"result_sha256":null,"state":"not_started"},"draft_review":{"input_sha256":"6c3e73ab6ff4bed9a236062ca123cec831d0ee1703ed3a6c3a8ab1364ab509f1","invocations":2,"result_sha256":"d1039e3811787da31bb66a5bb6c00a4fdbe934f61c27c7029dd5f72f7b642354","state":"passed"},"execution_parent":"b3a285c7c15902ccca40f2cd715076f6bdf60748","goal_id":"76673ad0-81ad-48eb-9e91-458fefbd6795","implementation_commit":null,"plan_path":"docs/plans/active/kithome-install-root-precedence.md","plan_sha256":"3bd0e72c23bc1c6054897921f54595c17a630e9c749546f8dd42607de7172a95","repository_id":"github.com/DocksDocks/public","requested_effects":["local","release"],"risk":"external","run_id":"f76e1056-4f46-47e5-8226-d4f7b18e3d24","schema":1,"source_base":"b3a285c7c15902ccca40f2cd715076f6bdf60748","source_sha256":"86d9d0f7cc04a191d7ecb999e82551bc53149033cf6b6eb9ce85c9fe8483090b"}
+Plan-run: {"acceptance":{"source_sha256":"e8eeebcdbdb0afeea27f336763c55395f08fca7a2d822a57e25b7f91ad1b8ce0","verification_sha256":"703b778159db6839d5f1396083f8a6a5bfa00d65de10d811bc40582aab256752"},"blocker":null,"completion_review":{"input_sha256":"c1d0a31ea2e2938b735026168168fe0b04791b62dac68f6ac3de18abcb248525","invocations":2,"result_sha256":"d62b49824871df967fd83f6460b8b44e919fd043e81e3d4aa4efb82e70a519eb","state":"passed"},"draft_review":{"input_sha256":"6c3e73ab6ff4bed9a236062ca123cec831d0ee1703ed3a6c3a8ab1364ab509f1","invocations":2,"result_sha256":"d1039e3811787da31bb66a5bb6c00a4fdbe934f61c27c7029dd5f72f7b642354","state":"passed"},"execution_parent":"b3a285c7c15902ccca40f2cd715076f6bdf60748","goal_id":"76673ad0-81ad-48eb-9e91-458fefbd6795","implementation_commit":"adda42107a25c769389bc04b3143d87596f3ab62","plan_path":"docs/plans/active/kithome-install-root-precedence.md","plan_sha256":"3bd0e72c23bc1c6054897921f54595c17a630e9c749546f8dd42607de7172a95","repository_id":"github.com/DocksDocks/public","requested_effects":["local","release"],"risk":"external","run_id":"f76e1056-4f46-47e5-8226-d4f7b18e3d24","schema":1,"source_base":"b3a285c7c15902ccca40f2cd715076f6bdf60748","source_sha256":"86d9d0f7cc04a191d7ecb999e82551bc53149033cf6b6eb9ce85c9fe8483090b"}
+
+
+
+
+
 
 
 Draft review invocation 1 — verdict `repair`, five findings, all accepted and repaired:
@@ -188,8 +193,115 @@ with Environment, Out of scope, or STOP conditions.
 
 Plan-review-result: {"findings":[],"invocation":2,"plan_sha256":"3bd0e72c23bc1c6054897921f54595c17a630e9c749546f8dd42607de7172a95","run_id":"f76e1056-4f46-47e5-8226-d4f7b18e3d24","schema":1,"source_sha256":"86d9d0f7cc04a191d7ecb999e82551bc53149033cf6b6eb9ce85c9fe8483090b","verdict":"pass"}
 
+Code review round 1 — verdict `repair`, one MEDIUM finding. No `resolveKitHome` case
+pinned the exec-path source ahead of the cwd source, so swapping those two operands
+left the suite green. The case was rewritten to make the two sources compete, and the
+swap was re-run to prove exactly one failure before the fix was amended in.
+
+Completion-review-result: {"diff_sha256":"7b175ad700b250cf6c064bb3a70dc1797e91bd5ba61f92d3b95acc1051e80055","findings":[{"defect":"MEDIUM. The seven `resolveKitHome` cases never pin source 3 (nearest kit root at or above `dirname(execPath)`) ahead of source 4 (nearest kit root at or above `cwd`), so a wrong precedence order still passes the whole suite. Reproduce by swapping the two middle operands in `cli/src/kitHome.ts resolveKitHome` to `findKitHome(sources.moduleDir) ?? findKitHome(sources.cwd) ?? findKitHome(dirname(sources.execPath)) ?? dirname(sources.execPath)` and running `bun run test:unit`: every case still passes, because no case supplies a kit root above BOTH the exec path and the cwd. Case-by-case: :39 has no automatic source reachable (env short-circuits); :64 exec is `dir/bin/docks-kit` with no kit ancestor; :85 cwd is `dir/outside` with no kit ancestor; :104 exec is `dir/bin/docks-kit` with no kit ancestor; :123 cwd is `dir/outside` with no kit ancestor; :142 no kit root exists at all; :160 exec and cwd both have no kit ancestor. The unguarded pair is exactly the plan Goal sentence \"A compiled standalone binary inside `<checkout>/cli/dist` resolves that checkout from any working directory\" — inverting it makes a `cli/dist` binary adopt whatever checkout the user happens to stand in, and `cli/src/commands/update.ts updateCommand` then routes that foreign checkout into `updateCheckout`, which runs `git pull --ff-only` against it. The shipped 0.15.1 behavior is correct; only the regression guard is missing, which is why this is MEDIUM and not HIGH.","fix":"In `cli/test/unit/kitHome.test.ts:85`, make the cwd a competing kit root so the case discriminates source 3 from source 4: add `const cwdRoot = join(dir, \"outside\")` plus `createKitRoot(cwdRoot, \"work/tree\")` next to the existing `createKitRoot(root, \"cli/dist\")`, pass `cwd: join(cwdRoot, \"work\", \"tree\")`, and keep `.toBe(root)`. That single edit fails under the swapped order while remaining true under the implemented order. Do not weaken :104, which must keep both running sources outside a kit root so the cwd fallback stays covered.","id":"F1","kind":"Maintainability","locator":"cli/test/unit/kitHome.test.ts:85-102 it(\"resolves a compiled binary from the exec path ancestor\") — `cwd: join(dir, \"outside\")`"}],"implementation_commit":"3ddb41e8f196f5f1124ba3fa752381df49048cd4","invocation":1,"run_id":"f76e1056-4f46-47e5-8226-d4f7b18e3d24","schema":1,"verdict":"repair"}
+
+Code review round 2 — verdict `pass`, no findings, on the amended commit `adda421`.
+
+Completion-review-result: {"diff_sha256":"c1d0a31ea2e2938b735026168168fe0b04791b62dac68f6ac3de18abcb248525","findings":[],"implementation_commit":"adda42107a25c769389bc04b3143d87596f3ab62","invocation":2,"run_id":"f76e1056-4f46-47e5-8226-d4f7b18e3d24","schema":1,"verdict":"pass"}
+
 
 
 
 
 ## Verification Results
+
+### How this section is bound
+
+`verification_sha256` is sha256 over the bytes of this section, from the line after
+the `## Verification Results` heading to the end of file, with trailing whitespace
+removed. The `## Steps` Status column stays `planned` on purpose: `plan_sha256`
+binds the steps table, and the reviewer passed that exact digest, so mutating a
+Status cell after review would break a binding that two review invocations already
+validated. Step outcomes are recorded here instead, which is the section the
+contract reserves for observed execution evidence.
+
+### Steps, observed
+
+| Step | Outcome |
+|---|---|
+| 1 | Done. `cli/src/kitHome.ts` exports `KitHomeSources`, `resolveKitHome` and a thin `kitHome`. `resolveKitHome` reads nothing from `process`. The `DOCKS_KIT_HOME` throw text is unchanged. |
+| 2 | Done. Seven `resolveKitHome` cases in `cli/test/unit/kitHome.test.ts`, plus the pre-existing `kitHome` case, all deterministic over temp directories. |
+| 3 | Done. `cli/docs/install.md` lists all five sources in implementation order and states the consequence for a global install run inside a checkout. |
+| 4 | Done. `package.json`, `README.md` and `GENERATED_PACKAGE_VERSION` all read 0.15.1; `generate-sot-payload.ts --check` exits 0. |
+| 5 | Done. `cli/dist/docks-kit-linux-x64 --version` prints 0.15.1 after the bump. |
+| 6 | Done. `bun run test:ci` exit 0 on the tree that was tagged. |
+| 7 | Done. `main` advanced b3a285c..adda421 and tag `cli-v0.15.1` resolves to adda42107a25c769389bc04b3143d87596f3ab62. Workflow run 31538877805 succeeded in all four jobs. |
+| 8 | Done. Global install upgraded to 0.15.1, prior launcher copied to `~/.local/bin/docks-kit.bak`, and `~/.local/bin/docks-kit` now symlinks to `~/.bun/bin/docks-kit`. |
+
+### The gate caught a real defect
+
+The first `bun run test:ci` run failed with 14 failures in
+`cli/test/unit/engine-di.test.ts`:
+
+```text
+TypeError: The "paths[0]" argument must be of type string. Received undefined
+ at findKitHome cli/src/kitHome.ts
+ at resolveKitHome cli/src/kitHome.ts
+ at kitHome cli/src/kitHome.ts
+ at makeCtx cli/src/engine-native/index.ts
+```
+
+`import.meta.dir` is a Bun extension, and the Vitest loader leaves it undefined.
+The old code never evaluated its module probe under Vitest because the cwd walk
+matched first, so the defect only appeared once the module source moved to the
+front. The fix is at the source rather than at the call site: `moduleDir` is typed
+`string | undefined` and `findKitHome` returns `undefined` for an absent or empty
+start directory. A dedicated case covers it.
+
+### Prove-red on the precedence guard
+
+Completion review round 1 found that no test pinned the exec-path source ahead of
+the cwd source, so a swapped order stayed green. After the repair, swapping those
+two operands in `resolveKitHome` was re-run:
+
+```text
+Test Files  1 failed | 25 passed (26)
+     Tests  1 failed | 242 passed (243)
+```
+
+Exactly one case failed, and `cli/src/kitHome.ts` was restored byte-identical
+before the amend.
+
+### Acceptance, observed
+
+| ID | Observed |
+|---|---|
+| A1 | Exit 0. 26 files, 243 tests passed; runtime smoke p95 39.24 ms; `golden-dryrun: OK (36 case(s))`; `golden-mutation: OK (64 case(s))`. |
+| A2 | `/home/docks/projects/public` |
+| A3 | `/home/docks/projects/public` — previously `/home/docks/projects/public/cli/dist`, which is the defect this release fixes. |
+| A4 | `/home/docks/.bun/install/global/node_modules/docks-kit` while the working directory was the checkout. |
+| A5 | `0.15.1` |
+| A6 | `docks-kit-darwin-arm64`, `docks-kit-darwin-x64`, `docks-kit-linux-arm64`, `docks-kit-linux-x64`, `SHA256SUMS` |
+| A7 | `Already at the latest version (0.15.1).` Exit 0. The checkout stayed at `adda421` with no `git pull`. |
+
+### The reported symptom, before and after
+
+The user reported this from the home directory:
+
+```text
+kit home /home/docks/projects/public/cli/dist is neither a git checkout nor a
+global package install
+```
+
+The same binary, same working directory, after the fix:
+
+```text
+kit checkout /home/docks/projects/public has local changes - commit or stash
+them, then re-run docks-kit update
+```
+
+The compiled binary now identifies its own checkout. The second message is the
+correct response to a dirty worktree, not a resolution failure.
+
+### Review history
+
+Draft review used both invocations: invocation 1 returned `repair` with five
+findings, all accepted and repaired; invocation 2 returned `pass`. Completion
+review used both invocations: round 1 returned `repair` with one MEDIUM finding
+about the missing precedence guard, which was fixed and proven red; round 2
+returned `pass` on the amended commit adda421.
