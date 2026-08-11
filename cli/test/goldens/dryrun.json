@@ -96,6 +96,82 @@
       "fixture": "home-drift",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
+    "fixture=home-fresh cmd=": {
+      "command": [],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "docks-kit — portable AI coding agent config kit\n\n  docks-kit sync [claude] [codex] [agents]   deploy the SoT to this machine\n  docks-kit update [--no-sync]              self-update the kit, then sync\n  docks-kit model <claude|codex> [value]     get/set the deployed model\n  docks-kit models [tool]                    kit-verified model catalog\n  docks-kit toolchain [check|ensure <tool>]  verified-version floors\n  docks-kit status                           deployed-vs-SoT doctor view\n  docks-kit plugins list                     plugin tri-state\n  docks-kit skills list                      universal skills\n  docks-kit docs [topic]                     self-documentation\n\nRun 'docks-kit --help' for full option listings (also: --wizard, --completions).\nNo-Bun recovery path: use a platform release binary.\n"
+    },
+    "fixture=home-fresh cmd=--help": {
+      "command": [
+        "--help"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "DESCRIPTION\n  Portable AI coding agent config kit — SoT sync engine + helpers for Claude Code, Codex, and universal agent skills.\n\nUSAGE\n  docks-kit <subcommand> [flags]\n\nGLOBAL FLAGS\n  --help, -h                                                          Show help information\n  --version, -v                                                       Show version information\n  --wizard                                                            Start wizard mode for a command\n  --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)\n  --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)\n\nSUBCOMMANDS\n  sync         Deploy the SoT to this machine with EngineNative. Deploy-time modifiers touch deployed config only; a later flag-less sync reverts them to SoT.\n  update       Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest) and chains an install-missing-only sync with the new version (--no-sync to skip).\n  model        Get or set the DEPLOYED model for one tool without a full sync (deploy-time modifier semantics: SoT untouched; flag-less sync reverts).\n  models       List kit-verified Claude and Codex models (SoT/models.json).\n  toolchain    Verified-version floors for external tools (SoT/toolchain.json): check prints the doctor table; ensure installs/upgrades one managed tool per policy (above-verified versions prompt; --yes accepts).\n  status       Doctor view: deployed-vs-SoT drift, toolchain, and plugin/skill counts.\n  plugins      Installed plugins vs SoT enabledPlugins tri-state (read-only).\n  skills       Universal agent skills: SoT/.agents/skills.txt vs ~/.agents/skills + the ~/.claude/skills symlink health (read-only).\n  docs         Self-documentation: the kit's concepts as readable topics, bundled with the CLI — a fresh agent can learn the kit from here alone.\n"
+    },
+    "fixture=home-fresh cmd=--version": {
+      "command": [
+        "--version"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "0.14.4\n\n"
+    },
+    "fixture=home-fresh cmd=docs": {
+      "command": [
+        "docs"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "docks-kit documentation topics (docks-kit docs <topic>):\n\n  overview       What docks-kit is and how the pieces fit\n  sync-layers    The three sync layers and additive-by-default semantics\n  flags          Full flag reference incl. the old→new rename table\n  modifiers      Deploy-time modifiers and the flag-less-sync-reverts contract\n  models         Model catalog, validation rules, model get/set\n  toolchain      Verified-version floors, gate policy, --yes semantics\n  plugins        enabledPlugins tri-state + optional plugin opt-ins\n  install        Install paths: repo checkout, bun add -g, curl installer\n  platforms      Platform support: Linux/macOS x64 and arm64\n"
+    },
+    "fixture=home-fresh cmd=models": {
+      "command": [
+        "models"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "claude models (kit-verified 2026-07-27):\n  best                         alias  Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus                         alias  latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)\n  fable                        alias  Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170\n  sonnet                       alias  latest Sonnet (currently Sonnet 5)\n  haiku                        alias  latest Haiku (currently Haiku 4.5)\n  default                      alias  engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5               id     Fable 5\n  claude-opus-5                id     Opus 5 — needs Claude Code >=2.1.219\n  claude-opus-4-8              id     Opus 4.8\n  claude-sonnet-5              id     Sonnet 5\n  claude-haiku-4-5-20251001    id     Haiku 4.5\n\ncodex models (kit-verified 2026-07-16):\n  gpt-5.6-sol                  id     GPT-5.6 Sol — frontier, recommended default; the kit SoT pin\n  gpt-5.6-terra                id     GPT-5.6 Terra — balanced tier\n  gpt-5.6-luna                 id     GPT-5.6 Luna — fast/light tier\n  gpt-5.5                      id     previous generation\n  gpt-5.5-codex                id     codex-tuned gpt-5.5\n  gpt-5.1                      id     previous generation\n  gpt-5                        id     previous generation\n  gpt-5-codex                  id     codex-tuned gpt-5\n\nCatalog: SoT/models.json (research-verified). Well-formed IDs outside it apply with a warning.\n"
+    },
+    "fixture=home-fresh cmd=plugins list": {
+      "command": [
+        "plugins",
+        "list"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "SoT tri-state: true = enabled everywhere, false = installed-but-disabled (per-project enable), absent = not kit-managed\n\nPLUGIN                                       SOT     INSTALLED\ndocks@docks                                  true    no\neffect-kit@docks                             true    no\nphp-lsp@claude-plugins-official              true    no\nplan-lifecycle@docks                         true    no\ntypescript-lsp@claude-plugins-official       true    no\n"
+    },
+    "fixture=home-fresh cmd=skills list": {
+      "command": [
+        "skills",
+        "list"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "SKILL                        DECLARED  INSTALLED  CLAUDE-SYMLINK\n"
+    },
+    "fixture=home-fresh cmd=status --no-json": {
+      "command": [
+        "status",
+        "--no-json"
+      ],
+      "exitCode": 2,
+      "fixture": "home-fresh",
+      "output": "unknown flag --no-json for 'status'\n"
+    },
+    "fixture=home-fresh cmd=sync --bogus --claude-model opus": {
+      "command": [
+        "sync",
+        "--bogus",
+        "--claude-model",
+        "opus"
+      ],
+      "exitCode": 2,
+      "fixture": "home-fresh",
+      "output": "unknown flag --bogus for 'sync'\n"
+    },
     "fixture=home-fresh cmd=sync --dry-run": {
       "command": [
         "sync",
@@ -182,6 +258,24 @@
       "exitCode": 0,
       "fixture": "home-fresh",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge <REPO>/SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp <REPO>/SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp <REPO>/SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp <REPO>/SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "fixture=home-fresh cmd=update --help": {
+      "command": [
+        "update",
+        "--help"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "DESCRIPTION\n  Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest) and chains an install-missing-only sync with the new version (--no-sync to skip).\n\nUSAGE\n  docks-kit update [flags]\n\nFLAGS\n  --no-sync    Update the kit only; skip the chained flag-less sync\n\nGLOBAL FLAGS\n  --help, -h                                                          Show help information\n  --version, -v                                                       Show version information\n  --wizard                                                            Start wizard mode for a command\n  --completions <bash|zsh|fish|sh>                                    Print shell completion script (choices: bash, zsh, fish, sh)\n  --log-level <all|trace|debug|info|warn|warning|error|fatal|none>    Sets the minimum log level (choices: all, trace, debug, info, warn, warning, error, fatal, none)\n"
+    },
+    "fixture=home-fresh cmd=update --no-no-sync": {
+      "command": [
+        "update",
+        "--no-no-sync"
+      ],
+      "exitCode": 2,
+      "fixture": "home-fresh",
+      "output": "unknown flag --no-no-sync for 'update'\n"
     },
     "fixture=home-invalid-json cmd=sync --dry-run": {
       "command": [

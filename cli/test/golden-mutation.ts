@@ -298,6 +298,66 @@ function channelInvariantProblems(): Array<string> {
     rmSync(bare.home, { recursive: true, force: true })
   }
 
+  for (const [flag, hint] of [
+    ["--force", "--force was renamed to --reconcile"],
+    ["--supabase", "--supabase was renamed to --claude-plugin=supabase"],
+    ["--680k", "--680k was renamed to --claude-compact-window=680k"],
+    ["--claude", "--claude was renamed: pass the target as a word, e.g. 'sync claude'"]
+  ] as const) {
+    const bare = runPublicCli(["sync", flag], "home-fresh", defaultStubs)
+    if (bare.exitCode !== 2 || !bare.stderr.includes(hint)) {
+      problems.push(`  modifiers: public legacy ${flag} lost rename-hint/exit-2 behavior`)
+    }
+    if (bare.stdout !== "") problems.push(`  modifiers: public legacy ${flag} wrote rename hint to stdout`)
+    rmSync(bare.home, { recursive: true, force: true })
+  }
+
+  for (const [args, error, label] of [
+    [["toolchain", "--no-yes"], "unknown flag --no-yes for 'toolchain'", "negated toolchain option --no-yes"],
+    [["sync", "-x"], "unknown flag -x for 'sync'", "single-dash unknown flag -x"],
+    [
+      ["sync", "--bogus", "--claude-model", "opus"],
+      "unknown flag --bogus for 'sync'",
+      "head-position unknown before value flag"
+    ],
+    [
+      ["sync", "--claude-compact-window", "-1"],
+      "--claude-compact-window expects a token count",
+      "dash-leading compact-window value"
+    ],
+    [["sync", "--yes", "--yes"], "flag --yes was given more than once", "duplicate non-repeatable flag --yes"]
+  ] as const) {
+    const bare = runPublicCli(args, "home-fresh", defaultStubs)
+    if (bare.exitCode !== 2 || !bare.stderr.includes(error)) {
+      problems.push(`  modifiers: public ${label} lost error/exit-2 behavior`)
+    }
+    if (bare.stdout !== "") problems.push(`  modifiers: public ${label} wrote error data to stdout`)
+    rmSync(bare.home, { recursive: true, force: true })
+  }
+
+  // Before this guard, an invocation that read as a dry run performed a real mutating sync.
+  const booleanWithValue = runPublicCli(["sync", "--dry-run=false"], "home-fresh", defaultStubs)
+  if (
+    booleanWithValue.exitCode !== 2 ||
+    !booleanWithValue.stderr.includes("flag --dry-run does not take a value")
+  ) {
+    problems.push("  modifiers: public --dry-run=false lost error/exit-2 behavior")
+  }
+  if (booleanWithValue.stdout !== "") {
+    problems.push("  modifiers: public --dry-run=false wrote error data to stdout")
+  }
+  rmSync(booleanWithValue.home, { recursive: true, force: true })
+
+  // The kit refuses these flags outright so Effect 4 cannot negate a declared boolean into a real mutating sync.
+  for (const flag of ["--no-dry-run", "--no-prune"] as const) {
+    const bare = runPublicCli(["sync", flag], "home-fresh", defaultStubs)
+    if (bare.exitCode !== 2 || bare.stderr !== `unknown flag ${flag} for 'sync'\n`) {
+      problems.push(`  modifiers: public negated ${flag} lost unknown-flag/exit-2 behavior`)
+    }
+    if (bare.stdout !== "") problems.push(`  modifiers: public negated ${flag} wrote error data to stdout`)
+    rmSync(bare.home, { recursive: true, force: true })
+  }
+
   for (const [target, flag, catalog, error] of [
     ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
     ["codex", "--codex-effort", "Available codex effort levels", "Invalid Codex effort ''"],

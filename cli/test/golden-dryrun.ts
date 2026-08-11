@@ -48,6 +48,26 @@ const COMMANDS: Array<Array<string>> = [
   ],
   ["sync", "claude", "--dry-run", "--claude-plugin=supabase"]
 ]
+
+/**
+ * Public-CLI characterization. These rows run the real effect/unstable/cli parser and
+ * pin root, help, version, and the read-only listing commands so the Effect v4
+ * migration can prove it changed nothing outside the accepted help rendering.
+ */
+const PUBLIC_COMMANDS: Array<Array<string>> = [
+  [],
+  ["--help"],
+  ["--version"],
+  ["docs"],
+  ["models"],
+  ["plugins", "list"],
+  ["skills", "list"],
+  ["update", "--help"],
+  // These rows pin the kit's argument-rejection diagnostics so they cannot drift.
+  ["status", "--no-json"],
+  ["update", "--no-no-sync"],
+  ["sync", "--bogus", "--claude-model", "opus"]
+]
 interface DryRunMatrixRow {
   readonly fixture: string
   readonly cmd: Array<string>
@@ -58,6 +78,7 @@ interface DryRunMatrixRow {
 const MATRIX: Array<DryRunMatrixRow> = [
   ...FIXTURES.flatMap((fixture) => COMMANDS.map((cmd) => ({ fixture, cmd }))),
   { fixture: "home-drift", cmd: ["model", "claude"] },
+  ...PUBLIC_COMMANDS.map((cmd) => ({ fixture: "home-fresh", cmd, public: true }))
 ]
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
