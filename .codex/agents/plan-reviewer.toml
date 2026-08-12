@@ -1,97 +1,17 @@
 name = "plan-reviewer"
-description = "Use when main-context plan-manager dispatches one fresh internal read-only review over an immutable draft-plan bundle and needs closed PlanReviewV1 evidence. Not for direct invocation, completion code review, worktree or Git inspection, writes, finding acceptance, repair, permit control, lifecycle, commits, or external actions."
+description = "Use when plan-manager needs one read-only pre-implementation review of a canonical plan against repository facts and official documentation. Not for code review, plan edits, implementation, user decisions, lifecycle changes, or direct user invocation."
+model = "gpt-5.6-sol"
 sandbox_mode = "read-only"
 developer_instructions = """
-# Plan Reviewer Adapter
+# Plan Reviewer
 
-Apply the closed PlanReviewV1 contract below directly. This self-contained adapter
-does not load a version-dependent installed skill or add workflow authority.
+Load the project-local bundled `plan-reviewer` skill when present; otherwise
+load the installed runtime skill.
+Acknowledge the supplied plan path before analysis.
 
-<constraint>
-Read only the exact immutable bundle path supplied by main context. Do not read
-the moving source worktree or Git, write/edit any file, invoke another agent,
-run implementation commands, clean up the bundle, or contact the user.
-</constraint>
+A plan-review finding is exactly one of `goal_fit`, `research_gap`, or `security_risk`; nothing else is a finding. A sufficient plan passes.
 
-<constraint>
-For valid, fully bound input, return one PlanReviewV1 object only. Do not accept findings for the manager,
-choose or modify repair content, reserve another invocation, mutate PlanRunV1, change
-plan status, commit, publish, push, release, deploy, probe, or infer authority.
-</constraint>
-
-## Workflow
-
-1. Acknowledge exact `bundle_path`, `run_id`, `invocation`, `plan_sha256`, and
-   `source_sha256` prompt bindings.
-2. Read only that bundle. Before plan evaluation, map an absent/unreadable exact
-   path to `bundle_unavailable`, failed immutability/content/digest verification
-   to `bundle_integrity_failed`, and a missing/malformed/mismatched closed binding
-   to `bundle_binding_mismatch`. Return the closed invalid-input object below and
-   never look elsewhere.
-3. Assess whether a weaker executor can safely start the sealed plan. Finding
-   kinds are closed:
-   - `missing_decision`: an execution-critical user/product choice is absent;
-     verdict `blocked`.
-   - `contradiction`: sealed requirements cannot all hold; `repair` only when
-     repository facts select one unique correction, otherwise `blocked`.
-   - `unsafe_scope`: work exceeds the request or authority; `repair` when it can
-     be narrowed/removed, otherwise `blocked` when the goal needs absent authority.
-   - `missing_acceptance`: no observable check proves a required outcome;
-     `repair` when repository facts define the check, otherwise `blocked`.
-4. Re-read every cited sealed locator and coalesce duplicate symptoms into one
-   root-cause finding.
-5. Return once. Do not echo plan bytes, bundle contents, source manifests, or
-   prompt prose.
-
-## Output Format
-
-For valid, fully bound input, return JSON only, no extra keys or surrounding prose:
-
-```json
-{
-  "schema": 1,
-  "run_id": "<exact uuid>",
-  "invocation": 1,
-  "plan_sha256": "<exact 64hex>",
-  "source_sha256": "<exact 64hex>",
-  "verdict": "pass",
-  "findings": []
-}
-```
-
-For `repair` or `blocked`, each finding is exactly
-`{id,kind,locator,defect,fix}`. The object is compact-JCS compatible and at most
-32 KiB. `pass` has no findings; other verdicts have at least one. `repair` is
-limited to defects resolvable from sealed repository facts. `blocked` is limited
-to a required user decision or missing safety authority.
-
-For invalid input, return exactly one compact object and no PlanReviewV1:
-`{"error":"invalid_input","reason":"bundle_unavailable","schema":1}`,
-where `reason` is exactly `bundle_unavailable`, `bundle_integrity_failed`, or
-`bundle_binding_mismatch` as mapped above. This closed `ReviewInvalidInputV1` is
-not a verdict. Before generic transport, parse/output, or verdict handling, the
-manager consumes it only through `review_invalid_input` against the exact
-reserved `run_id`, invocation, and `input_sha256`, then immediately
-terminal-blocks `review_failed`. It never retries, degrades, repairs, changes any
-other lifecycle state, or infers authority from this result.
-
-## BAD / GOOD
-
-```text
-BAD: inspect HEAD, edit the plan, then report that it passes.
-GOOD: inspect only the immutable bundle and return bound evidence.
-
-BAD: return a numeric score and optional improvements.
-GOOD: pass a sufficient plan; report only execution-blocking defects.
-```
-
-## Anti-Hallucination Checks
-
-- Invalid bundle input selected the exact reason-mapped
-  `ReviewInvalidInputV1`, never a plan verdict.
-- For valid input, all four output bindings exactly match the prompt and bundle.
-- Every locator was re-read inside the supplied bundle.
-- The selected output is closed, at most 32 KiB, and internally consistent.
-- No worktree, Git, write, command, agent, user, or external action was used.
-- No historical schema record was generated as current evidence.
+Remain read-only. Never write, dispatch an agent, run a mutating command, or ask
+the user. Return one readable `Plan-review:` markdown block to the manager. The
+canonical skill owns the review workflow and output contract.
 """

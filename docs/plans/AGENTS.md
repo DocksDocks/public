@@ -1,416 +1,169 @@
 # AGENTS.md — docs/plans/
 
-Canonical plans are complete cold handoffs for work that benefits from durable
-coordination. The Markdown plan is the only tracked artifact; rendered views are
-disposable. `active/` is multi-occupancy and `finished/` is the terminal archive.
+The markdown plan is the only tracked artifact. `active/` is multi-occupancy, `finished/` is the terminal archive, and rendered views are disposable.
 
 Use direct implementation for one clear, reversible, low-risk local diff with one
-bounded acceptance path. Direct work creates no plan, reviewer invocation, or
-automatic commit. Use a canonical plan for an explicit planning request,
-multi-commit or cross-repository work, scheduling, cold handoff, an unresolved
-decision, a cross-subsystem or public-contract change, security-sensitive or
-destructive work, or any requested external effect. Never create a placeholder
-plan merely to unlock review.
-
-<constraint>
-There are exactly three live owners. `plan-workspace` maintains this workspace.
-Main-context `plan-manager` owns goal classification, drafting, bounded review,
-one accepted repair, lifecycle, implementation/delegation, observed acceptance,
-archive, and guarded GitHub issue publication. Internal `plan-reviewer` reads one
-immutable bundle and returns `PlanReviewV1` evidence only. Only the reviewer has
-Claude/Codex wrappers; main invokes `plan-manager` directly.
-</constraint>
-
-<constraint>
-Current plans contain exactly one unfenced current
-`Plan-run: <compact JCS PlanRunV1>` line. Prior terminal runs may appear only as
-validated append-only `Plan-attempt-history: <compact JCS PlanAttemptHistoryV1>`
-records inside `## Review`; history is never current authority. Schemas 1–6 are
-historical validation/quarantine formats only: preserve their bytes and behavior,
-but never emit one as current authority. Unsettled legacy evidence never blocks
-an unrelated goal or authorizes dispatch or an external effect.
-</constraint>
+bounded acceptance path; it creates no tracked plan, reviewer, or automatic
+commit. Use a canonical plan for explicit planning, multi-commit or
+cross-repository work, cold handoff, an unresolved decision, a cross-subsystem or
+public-contract change, security-sensitive or destructive work, or any
+non-`local` effect.
 
 ## Skill routing
 
 | Request | Owner |
 |---|---|
-| Bootstrap, migrate, audit, or explicitly refresh `docs/plans/` | `plan-workspace` |
-| Decide direct work versus a canonical plan; create, review, repair, execute, verify, block, schedule, finish, archive, list, show, or publish a plan | main-context `plan-manager` |
-| Inspect one immutable draft-review bundle and return typed findings | internal `plan-reviewer` |
+| Maintain, bootstrap, migrate, audit, or explicitly refresh the workspace | `plan-workspace` |
+| Run the six phases and archive the plan | main-context `plan-manager` |
+| Return a readable pre-implementation verdict | internal `plan-reviewer` |
 
-No creator, repairer, improver, or manager wrapper is live. A missing reviewer
-wrapper does not create another role: dispatch a fresh read-only task with the
-same `PlanReviewV1` contract.
+The two read-only wrappers are `plan-reviewer` and `code-reviewer`. Main context invokes `plan-manager` directly. A missing wrapper never creates another role. Dispatch one fresh read-only subagent with the same three-kind contract.
 
 ## Directory and frontmatter
 
 ```text
 docs/plans/
 ├── AGENTS.md
-├── CLAUDE.md      # exactly @AGENTS.md
-├── active/        # every nonterminal plan; status is frontmatter
-└── finished/      # terminal archive, unique date-prefixed filename
+├── CLAUDE.md
+├── active/
+├── finished/
+└── QUEUE.md (optional)
 ```
 
-Every current plan starts with a closed frontmatter map. Project-specific fields
-may extend this shape only when the nested contract names them.
+A v2 plan uses exactly this closed frontmatter map. Key order is not significant:
 
 ```yaml
 ---
-title: Short imperative title, ≤70 chars
-goal: One observable sentence, ≤200 chars
-status: drafting | planned | scheduled | ongoing | blocked | finished
-created: "2026-07-24T12:00:00+00:00"
-updated: "2026-07-24T12:00:00+00:00"
-started_at: null
-finished_at: null
+plan_contract: v2
+title: Short imperative title, at most 70 characters
+goal: One observable sentence, at most 200 characters
+status: drafting | planned | ongoing | blocked | finished
+created: "2026-08-08T12:00:00+00:00"
+updated: "2026-08-08T12:00:00+00:00"
 assignee: null
-tags: []
-affected_paths: []
-related_plans: []
 ---
 ```
 
-`blocked` adds `blocked_reason` and `blocked_since`. `scheduled` adds
-`trigger: date | manual-approval`, and a date trigger adds `scheduled_date` plus
-`auto_execute`. Set `started_at` once on first `ongoing`; set `finished_at` only
-when archiving. All timestamps are quoted ISO 8601 with an offset.
+`status: blocked` adds exactly one key, `blocked_reason: <non-empty text>`. No other status carries it.
 
-## Cold-handoff body
+`created` and `updated` are double-quoted ISO timestamps that carry an explicit offset. `updated` never precedes `created`.
 
-Every canonical plan contains `## Goal`, `## Context & rationale`,
-`## Environment & how-to-run`, `## Steps`, `## Acceptance criteria`,
-`## Out of scope / do-NOT-touch`, `## STOP conditions`, `## Open questions`,
-`## Review`, and manager-written `## Verification Results`. Use a specific
-`N/A — <reason>` only when a section truly does not apply.
+The CLI reports `check 1: frontmatter keys and plan_contract must match the closed v2 map` when this closed-map contract fails.
 
-The Steps table is exact:
+Every v2 plan declares `plan_contract: v2` in a closed frontmatter map and carries exactly these eight `##` sections, in this order, each present once: `## Goal`, `## Research`, `## Steps`, `## Acceptance`, `## Do not touch`, `## Open questions`, `## Review`, `## Verification Results`.
 
-| # | Task | Files | Depends | Effect | Status | Done when / failure action |
-|---:|---|---|---|---|---|---|
-| 1 | concrete action | exact paths | — | `local` | `planned` | observable proof or STOP |
+`## Goal` contains exactly one `Mode: plan-and-implement` or `Mode: plan-only` line.
 
-`Effect` is exactly `local | probe | production_access | publish | push |
-release | deploy`. Status is exactly `planned | in-flight | done | blocked |
-skipped`. Every row names exact paths and an observable done condition.
-Acceptance uses ordered unique ids in an `ID | Command | Expected` table. Plans
-must not contain `TBD`, `TODO`, vague follow-ups, or undefined forward references.
+Once the plan leaves `drafting`, `## Research` must no longer carry the template placeholder `_Not researched yet._`.
 
-## Current record
+The CLI reports `check 11: Research must be filled once the plan leaves drafting` when this research rule fails.
+
+The body contains no absolute machine path. A plan is a cold handoff, and a path from one machine is not portable.
+
+## Plan tables
+
+The Steps table uses this exact header:
 
 ```text
-ReviewPhaseV1 = {
-  state: "not_required"|"not_started"|"reserved"|"retryable"|"repairing"|"passed"|"degraded"|"blocked"|"cancelled",
-  invocations: 0|1|2,
-  input_sha256: null|64hex,
-  result_sha256: null|64hex
-}
-
-PlanRunV1 = {
-  schema: 1,
-  goal_id: uuid,
-  run_id: uuid,
-  repository_id: string,
-  plan_path: normalized-relative-path,
-  requested_effects: ["local", ...("probe"|"production_access"|"publish"|"push"|"release"|"deploy")],
-  risk: "local"|"sensitive"|"external",
-  plan_sha256: 64hex,
-  source_base: null|40hex,
-  source_sha256: 64hex,
-  draft_review: ReviewPhaseV1,
-  execution_parent: null|40hex,
-  implementation_commit: null|40hex,
-  completion_review: ReviewPhaseV1,
-  acceptance: null|{source_sha256:64hex,verification_sha256:64hex},
-  blocker: null|{kind:"user_decision"|"missing_authority"|"concurrent_change"|"user_cancelled"|"verification_failed"|"review_failed"|"legacy_invalid",evidence_sha256:64hex}
-}
-
-PlanAttemptHistoryV1 = {
-  schema: 1,
-  authorization_source_sha256: 64hex,
-  plan_bytes_sha256: 64hex,
-  replacement_run_id: uuid,
-  successor_run_sha256: 64hex,
-  run: PlanRunV1,
-  status: "blocked"
-}
-
-PlanRunReplacementAuthorityV1 = {
-  schema: 1, goal_id: uuid, repository_id: string,
-  plan_path: normalized-relative-path, run_id: predecessor-uuid,
-  source_sha256: 64hex, successor_run_sha256: 64hex
-}
+| # | Id | Task | Files | Depends | Effect | Status | Done when |
+|---:|---|---|---|---|---|---|---|
 ```
 
-Compact JCS is byte-authoritative. `repository_id + plan_path + run_id` is the
-run identity. Cross-repository goals use one child run per repository joined by
-`goal_id`; never record an unqualified commit as cross-repository identity.
-`requested_effects` is unique and canonical-ordered, always beginning with
-`local`. It records intended scope, never authority.
+`#` is the positive display number. `Id` matches `[a-z][a-z0-9_]{0,63}` and is unique. `Task`, `Files`, and `Done when` are non-empty. `Depends` is `—` or a comma-separated list of lower display numbers from the same table. `Effect` is exactly one of `local`, `probe`, `production_access`, `publish`, `push`, `release`, or `deploy`. `Status` is exactly one of `planned`, `in-flight`, `done`, `blocked`, or `skipped`; `done` and `skipped` are terminal. `Done when` names one observable proof and carries no "or STOP" clause. Step citations use `step:<id>` and resolve to a declared id.
 
-A terminal `blocked` run is immutable. Exact current-user authorization may
-replace it only for the same `goal_id + repository_id + plan_path`; it binds the
-predecessor identity and digest of the exact successor PlanRun. The transaction
-appends the predecessor record and bytes/authorization digests, then installs
-the fresh `run_id` and review baselines in the same file. History is append-only;
-ordinary transitions cannot alter it. A finished plan file never reopens.
+No Steps `Files` cell names the plan's own path. Writing lifecycle state into the record is the CLI's job, not an implementation step.
 
-`successor_run_sha256` is the exact install-time successor digest checked by the
-replacement transaction and retained as audit evidence; normal later lifecycle
-transitions neither recompute nor rewrite it.
+When a step cannot complete, first run `plan.mjs step <slug> <step-id> blocked`, then record the reason with `plan.mjs status <slug> blocked --reason <text>`.
 
-`plan_sha256` covers the canonical plan after excluding only lifecycle status and
-timestamps, the `Plan-run` line, `## Review`, and `## Verification Results`.
-Goal, scope, paths, steps, effects, safety, acceptance, and open decisions remain
-bound. `source_base` plus `source_sha256` binds a canonical sorted existence,
-kind, mode, and content manifest for every affected path at review time,
-including dirty/untracked bytes and tombstones. `acceptance.source_sha256` binds
-the final affected-path manifest; `verification_sha256` binds canonical
-Verification Results bytes. Never list the plan record in `affected_paths`;
-acceptance writes to it and breaks that bind.
-
-## Closed phase table and transitions
-
-| Phase state | Invocations | Input | Result | Extra rule |
-|---|---:|---|---|---|
-| `not_required` | 0 | null | null | completion only, local risk |
-| `not_started` | 0 | null | null | draft, or sensitive/external completion |
-| `reserved` | 1–2 | hash | null | one live launch only |
-| `retryable` | 1 | hash | failure hash | transport failure only |
-| `repairing` | 1 | hash | reviewer-result hash | accepted repair verdict only |
-| `passed` | 1–2 | hash | reviewer-result hash | validated matching output |
-| `degraded` | 2 | hash | failure-set hash | draft only, local risk only |
-| `blocked` | 1–2 | hash | evidence/result hash | terminal for this run |
-| `cancelled` | 1–2 | hash | cancellation hash | terminal for this run |
-
-Legal phase transitions are only `not_started → reserved`; `reserved → passed |
-repairing | blocked | cancelled | retryable | degraded`; `retryable → reserved |
-blocked | cancelled`; and `repairing → reserved | blocked | cancelled`.
-`reserved → retryable` is invocation 1 only. `reserved → degraded` is invocation
-2, draft/local transport failure only. The second `reserved` consumes the final
-permit. `not_required`, `passed`, `degraded`, `blocked`, and `cancelled` are
-terminal.
-
-Before spawning, transactionally increment the invocation count and persist
-`reserved` with the exact input digest. A lost result still consumes that permit.
-An arriving result may mutate only the matching phase while it remains
-`reserved` with the same run id, invocation, and input hash; stale results are
-discarded. Cold entry into `reserved` changes it to `blocked` with dangling-launch
-evidence and never redispatches.
-
-Before reserving, preflight the exact reviewer route and a private file that will
-receive complete stdout. Each invocation has a newly sealed bundle whose closed
-binding contains that invocation number. After reservation read-back, derive the
-prompt only from that bundle and capture directly to the file. Never consume
-console rendering, clipped lines, transcript fragments, or reconstructed JSON;
-do not request compact/single-line reviewer output. Parse the file, validate the
-closed object, then hash canonical JCS.
-
-A transport retry preserves canonical plan/source and any completion
-implementation/acceptance bindings, but seals an invocation-2 bundle and
-therefore reserves a different bundle/input digest. Reusing the invocation-1
-bundle or prompt is stale and cannot consume the final permit.
-
-## Closed lifecycle and tuple matrix
-
-Lifecycle transitions are only absent → `drafting`; `drafting` → `planned |
-scheduled | ongoing | blocked`; `planned` ↔ `scheduled`; `planned | scheduled` →
-`ongoing | blocked`; and `ongoing` → `finished | blocked`. `finished` is terminal.
-
-| Frontmatter status | Draft phase | Completion phase | Implementation / acceptance | Blocker |
-|---|---|---|---|---|
-| `drafting` | active states through `passed`, plus local-only `degraded` | risk baseline | both null | null |
-| `planned` / `scheduled` | `passed`, or local-only `degraded` | risk baseline | both null | null |
-| `ongoing` local | `passed | degraded` | `not_required` | implementation null; acceptance null | null |
-| `ongoing` sensitive/external before completion | `passed` | `not_started` | both null | null |
-| `ongoing` sensitive/external during/after completion | `passed` | `reserved | retryable | repairing | passed` | implementation and acceptance required | null |
-| `blocked` before start | baseline or terminal draft | risk baseline | both null | required |
-| `blocked` local before acceptance | `passed | degraded` | `not_required` | both null | required |
-| `blocked` local after acceptance | `passed | degraded` | `not_required` | implementation null; acceptance required | `concurrent_change` only |
-| `blocked` sensitive/external before completion | `passed` | `not_started` | both null | required |
-| `blocked` sensitive/external during completion | `passed` | `blocked | cancelled` | implementation and acceptance required | required |
-| `blocked` sensitive/external after completion | `passed` | `passed` | implementation and acceptance required | `missing_authority | concurrent_change` only |
-| `finished` local | `passed | degraded` | `not_required` | implementation null; acceptance required | null |
-| `finished` sensitive/external | `passed` | `passed` | implementation and acceptance required | null |
-
-Draft baseline is `not_started`. Completion baseline is local `not_required` or
-sensitive/external `not_started`. A pre-dispatch `user_decision` or
-`missing_authority` blocker may reopen its existing run when new user input
-answers it; consumed permits never reset. Every other blocked/cancelled run is
-terminal and immutable. For the same domain goal, explicit current-user
-`PlanRunReplacementAuthorityV1` may append that terminal run to history and
-start fresh review budgets under a new `run_id` at the same `plan_path`.
-Replacement is never automatic and never reuses predecessor permits, bundles,
-prompts, output, or hashes. Unrelated goals use new files; never mint `v2`/`vN`
-paths to bypass a terminal run or permit budget.
-
-## Main-context orchestration
-
-1. Classify the goal. Direct local work stays untracked. Otherwise resolve one
-   stable canonical path: create it only if absent; for an explicitly continued
-   same-domain terminal goal, use the guarded same-file replacement transaction.
-2. Research repository facts and bind plan/source manifests. Preflight reviewer
-   availability and private full-output capture. Seal the invocation-1 bundle,
-   reserve its digest, read back, derive the prompt from that exact bundle, then
-   launch one fresh reviewer and capture its complete stdout to the file.
-3. On `pass`, continue. On a repository-grounded `repair`, patch only the exact
-   accepted blocking set, seal an invocation-2 changed-input bundle, reserve its
-   new digest, read back, and use a fresh prompt/reviewer. On a real missing
-   decision/authority, block with evidence. A first transport failure may spend
-   invocation 2 using unchanged canonical plan/source and completion bindings,
-   but a fresh invocation-2 bundle and different digest. Never reuse a bundle or
-   prompt. Two transport failures may degrade only reversible local draft work;
-   sensitive, destructive, public-contract, security, or external work blocks.
-4. A plan-only request writes `planned` or `scheduled` and makes one owned-path
-   checkpoint commit/read-back. A canonical implementation writes `ongoing`,
-   captures `execution_parent`, and makes one reviewed start checkpoint.
-5. Implement or delegate local steps, run their requested smoke/acceptance paths,
-   and write canonical Verification Results. Diagnose ordinary verification
-   failures inside the implementation loop; repeated same-signature failure with
-   no relevant-byte progress blocks this run and never reopens its draft review.
-6. Ordinary local work records acceptance, writes `finished`, moves once to a
-   unique archive path, and commits implementation plus finished plan as one final
-   checkpoint. It has no completion reviewer.
-7. Sensitive, destructive, public-contract, security, or external work first
-   commits the implementation checkpoint, binds its exact diff, and runs a fresh
-   code-review agent returning `CompletionReviewV1`. One accepted blocker fix
-   replaces/amends the unpublished checkpoint, reruns invalidated checks, and
-   consumes invocation 2 on the replacement SHA. Only a matching pass may create
-   the archive checkpoint.
-
-No numeric score, finding quota, fallback provider/model, resumed reviewer,
-third invocation, completion-plan recursion, automatic push, or per-round
-state/request/receipt commit exists.
-
-## Transactions and checkpoint commits
-
-Every plan mutation acquires an atomic exclusive lock keyed by repository and
-normalized plan path; verifies exact bytes and run preimage; reduces one closed
-transition; writes and fsyncs a sibling; atomically renames; reads back; then
-releases. A checkpoint additionally acquires the repository lock, verifies
-expected HEAD, index, and owned-path preimage, commits only owned paths, and
-reads the commit back before release. Any mismatch fails before write, dispatch,
-or external action and records `concurrent_change` when the tuple permits.
-
-Ordinary lifecycle writes use `transactPlanRun`. Terminal same-path rollover
-uses only `replacePlanRunInPlace`, locking on the predecessor identity/preimage
-and validating exact authority, successor, and append-only history before write.
-
-A same-host dead-owner lock may be reclaimed only after matching owner PID,
-`run_id`, and unchanged preimages. A live, foreign, ambiguous, or changed stale
-lock blocks. Never weaken a lock, reset the index, include unrelated changes, or
-infer that another session owns a change.
-
-Checkpoint ceilings: direct local work 0 automatic commits; reviewed plan-only 1;
-ordinary canonical implementation 2 (start, final); sensitive/external work 3
-(start, implementation, archive). A real terminal blocker may add one cold-handoff
-blocker commit. No automatic push follows any checkpoint.
-
-## Reviewer records
+The Acceptance table uses this exact header:
 
 ```text
-PlanReviewV1 = {
-  schema:1, run_id:uuid, invocation:1|2,
-  plan_sha256:64hex, source_sha256:64hex,
-  verdict:"pass"|"repair"|"blocked",
-  findings:[{id,kind:"missing_decision"|"contradiction"|"unsafe_scope"|"missing_acceptance",locator,defect,fix}]
-}
-
-CompletionReviewV1 = {
-  schema:1, run_id:uuid, invocation:1|2,
-  implementation_commit:40hex, diff_sha256:64hex,
-  verdict:"pass"|"repair"|"blocked",
-  findings:[{id,kind,locator,defect,fix}]
-}
-
-ReviewInvalidInputV1 = {
-  schema:1,
-  error:"invalid_input",
-  reason:"bundle_unavailable"|"bundle_integrity_failed"|"bundle_binding_mismatch"
-}
+| ID | Command | Expected |
+|---|---|---|
 ```
 
-The two verdict records are closed compact JCS objects capped at 32 KiB. `pass`
-has no findings; other verdicts have at least one. Draft `repair` contains only
-defects resolvable from already-grounded repository facts. Draft `blocked`
-contains only a required user decision or missing safety authority. The manager
-validates every binding and accepts only reproducible findings; reviewer prose
-never mutates state.
+Acceptance IDs are unique. `Command` and `Expected` are non-empty.
 
-`ReviewInvalidInputV1` is a closed failure result, never a review verdict.
-Classify it before generic transport, parse/output, or verdict handling. The
-manager consumes it only through `review_invalid_input` against the exact
-reserved `run_id`, invocation, and `input_sha256`; it hashes the result and
-terminal-blocks the current run as `review_failed`. It never retries or resets
-that run. Later same-file replacement still requires exact current-user
-authority and fresh bindings.
+## Lifecycle transitions
 
-## Effects and live authority
-
-Local planning, edits, verification, and lifecycle may continue without external
-authority. Every non-local row requires a live value derived from the exact
-current-user message still present in main context:
+The legal plan status transitions are:
 
 ```text
-ExternalAuthorityV1 = {
-  scopes: ["probe"|"production_access"|"publish"|"push"|"release"|"deploy", ...],
-  mode: "read"|"mutate",
-  targets: [exact-target, ...],
-  source_sha256: sha256(exact-current-user-message-bytes)
-}
+drafting  -> planned | ongoing | blocked
+planned   -> drafting | ongoing | blocked
+ongoing   -> finished | blocked
+blocked   -> drafting | planned | ongoing
+finished  -> (terminal, no transition)
 ```
 
-Scopes are unique and canonical-ordered. `probe` must be the sole scope and
-`mode:"read"`; every other scope requires `mode:"mutate"`. Scope, mode, target,
-and live source digest must match at the instant of action. Persisted plan intent,
-an old prompt digest, a schedule, a passed review/test, or a receipt grants
-nothing. Cold recovery requires a new explicit current-user instruction.
+The `planned -> drafting` transition returns a plan to drafting after substantive review repair.
 
-A named `release` authorizes only that repository's documented atomic release
-recipe, including its necessary tag/push/artifact publication; it grants no
-deployment or production access. Standalone `push`, `publish`, `deploy`, or
-production mutation needs its own literal scope and target. A probe never grants
-mutation. Without authority, skip and report the external row while continuing
-safe local rows; block only when the missing effect is acceptance-critical.
+An absent plan begins at `drafting`. A finished plan lives in `docs/plans/finished/`.
 
-## GitHub issue publication
+The single exemption is `plan.mjs retire`: it sets `finished` from any non-`finished` status, writes a final `## Retirement` section with the reason, and is the only path to `finished` without a passed code review.
 
-`--issues` or `publish <slug> as an issue` is a `publish` effect. Require an
-existing canonical plan plus exact live publish authority for the repository.
-Before creating anything, require successful `gh auth status`, a GitHub remote,
-and `gh repo view --json visibility`. For a public repository, warn that the
-issue is public and require explicit confirmation when the plan names a
-vulnerability, credential location, or other sensitive finding. A failed check,
-missing authority, or declined confirmation creates no issue and writes nothing.
+## Lifecycle commands
 
-Create the issue with the canonical title/body, record the returned URL in
-`## Notes` through the plan transaction, and read it back. Publication never
-changes lifecycle status, dispatches review, or makes the issue authoritative.
-Report success only after the owned Notes checkpoint succeeds.
+`plan.mjs` is plugin payload, not project payload. It ships inside the installed `plan-lifecycle` plugin at `skills/productivity/plan-manager/scripts/plan.mjs`. A project never vendors, copies, or re-creates it, and an unresolvable tool means the plugin is not installed. Never report it as a file missing from the repository. Resolve it from the loaded `plan-manager` skill directory, or from the runtime plugin cache. Run it with the repository root as the working directory, because it resolves `docs/plans/` relative to the current directory.
 
-## Legacy quarantine and views
+| Command | Semantics |
+|---|---|
+| `plan.mjs new <slug> --title <t> --goal <g> [--mode plan-and-implement\|plan-only]` | Create `docs/plans/active/<slug>.md` from the v2 template with `status: drafting`. |
+| `plan.mjs check <slug-or-path>` | Run the 13 byte-level validations and print `plan check passed: <path>` on success. |
+| `plan.mjs status <slug> <status> [--reason <text>]` | Validate and apply one lifecycle transition. |
+| `plan.mjs step <slug> <step-id> <status>` | Rewrite one Steps `Status` cell after checking the plan state and dependencies. |
+| `plan.mjs list [--status <s>]` | Print `<status>\t<slug>\t<title>` for active plans, then finished plans. The filter accepts `drafting`, `planned`, `ongoing`, `blocked`, `finished`, `v1`, or `unreadable`. |
+| `plan.mjs next` | Print startable plans, using the queue when it is present and valid. |
+| `plan.mjs archive <slug>` | Require an ongoing plan, terminal steps, and a passed code review; set `finished` and move the file to `docs/plans/finished/<YYYY-MM-DD>-<slug>.md`. |
+| `plan.mjs retire <slug> --reason <text>` | Record abandonment in `## Retirement`, set `finished`, and move the file to `docs/plans/finished/<YYYY-MM-DD>-<slug>.md`. |
 
-List, show, and workspace audit scan frontmatter first; they do not validate every
-active plan as a prerequisite. Classify legacy evidence only for the requested
-target. A record-free plan or complete settled terminal schema-1–6 family may be
-migrated target-locally during an explicitly requested local start. Active,
-prepared, commitment, cancellation, crossed, malformed, or otherwise unsettled
-evidence is `legacy-quarantined`: render it, but never dispatch, resume, abandon,
-repair, consume, or rewrite it.
+Legal step transitions are `planned → in-flight | done | blocked | skipped`, `in-flight → done | blocked | skipped`, and `blocked → in-flight | done | skipped`.
 
-An unrelated fresh local goal may create a new plan file. An explicitly
-continued same-domain terminal goal replaces only the current run at its stable
-path and preserves append-only attempt history. Legacy records provide no
-authority; external recovery requires live `ExternalAuthorityV1`. Never edit a
-historical finished plan.
+A file whose frontmatter does not declare `plan_contract: v2` is a v1 plan. `list` reports it as `v1` and no command parses it further, so archived history stays visible without a migration path. `unreadable` is reserved for a plan that declares v2 and then fails to parse. A dependency counts as finished when its slug is present in `docs/plans/finished/`, because that directory is the terminal archive.
 
-## Audit checks
+## Review records
 
-Before claiming success, verify the exact path, closed frontmatter, one valid
-current Plan-run line, append-only attempt history, repository/path/run identity,
-status tuple, plan/source hashes, transaction read-back, owned commit path set,
-review permit count, and observed acceptance bindings. Never claim a wrapper ran
-merely because its file exists,
-claim review passed from reservation, translate stale output into state, or
-translate persisted intent into external authority.
+Append review records in these readable shapes:
+
+```markdown
+### Plan review — <date>
+Plan-review: pass|repair|blocked
+- [goal_fit] `## Steps` row 4 — the step removes the validator without replacing it — add the replacement before removal
+
+### Code review round <n> — <date>
+Code-review: pass|fixes-required|blocked
+- HIGH · Security · plugins/x/y.mjs:41 — user input reaches a shell command unquoted — pass an argument array
+```
+
+A `pass` record has no finding lines. Every other verdict has at least one finding line.
+
+A plan-review finding is exactly one of `goal_fit`, `research_gap`, or `security_risk`; nothing else is a finding. A sufficient plan passes.
+
+## Phases
+
+1. **Decide.** Phase 1 asks exactly one question with exactly three options, in this order and wording: `Plan and implement now`, `Plan only, stop at planned`, `Implement directly` — and skips the question only when the request already settles the mode.
+2. **Draft.** Create the plan, write the goal and research hypothesis, and keep provisional Steps and Acceptance tables while status remains `drafting`.
+3. **Research.** Verify repository facts and external claims, record their sources, choose the durable fix, bind the exact files, complete Acceptance, pass `plan.mjs check`, and set the plan `planned`.
+4. **Plan review.** Dispatch exactly one pre-implementation review. Append its verdict and findings. Fix reproduced findings before implementation. A user-only decision goes in `## Open questions`. A plan-only run stops at `planned` after this review.
+5. **Implement.** Set the plan `ongoing`, move each step through its legal states, and record real Acceptance output in `## Verification Results`.
+6. **Code review.** Review the declared change, fix every critical and high finding, and review again only after such a fix. Archive only after a passed code review.
+
+Build the review diff from what actually changed: `git status --porcelain` names the paths and the diff covers exactly those. Name every changed path that no Steps `Files` cell mentions in the review request, so the reviewer judges undeclared scope instead of the manager blocking on bookkeeping.
+
+If a code-review round returns the same finding-id set as the previous round and no file changed between the two rounds, stop, append `Code-review: blocked` naming that set, and set the plan `blocked`.
+
+A step whose `Effect` is not `local` requires an in-session `ask` confirmation immediately before it runs; when `ask` is unavailable the step is set `blocked` with `blocked_reason` naming the unconfirmed effect.
+
+This lifecycle creates zero commits and never pushes.
+
+## Portability
+
+Cite repository-relative paths only; acceptance rows run from the repository root and carry no `cd <absolute path>` prefix. A cross-repository reference names the other repository by its portable identifier, such as `DocksDocks/docks`, never a local checkout path. Never rewrite a path already captured inside an archived record.
+
+## Legacy plans
+
+A plan carrying a `Plan-run:` line is a v1 plan. Render it, but never parse or migrate it. Finish it by hand by moving the file byte-unchanged to `docs/plans/finished/<YYYY-MM-DD>-<slug>.md` and appending a `## Retirement` section. `plan.mjs` refuses to parse it, and there is no migration path in either direction.
+
+## Queue
+
+`docs/plans/QUEUE.md` is optional and classification-neutral. Its table is `| Stage | Plan | Depends on | Why |`, with `Plan` holding the slug. A row is eligible only when its full direct and transitive dependency closure is finished. Stages give deterministic priority. The queue is a discovery and prioritization view only and grants no lifecycle, review, mutation, or external-effect authority. A workspace without it stays valid.

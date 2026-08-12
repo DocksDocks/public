@@ -91,9 +91,43 @@ When a kit-mechanic skill, its `references/`, or a wrapper agent (`.claude/agent
 
 ## Plans
 
-Use direct implementation for one clear reversible low-risk local diff with one bounded acceptance path; it creates no plan, reviewer, or automatic commit. Canonical plans live in `docs/plans/active/`; lifecycle is frontmatter, and `docs/plans/finished/` is terminal. Exactly three skills own the workflow: `plan-workspace` maintains the workspace, main-context `plan-manager` owns classify → draft/review/one repair → start → implement/delegate → observed acceptance → finish/archive, and internal `plan-reviewer` returns read-only `PlanReviewV1` evidence from one immutable bundle. Only the reviewer has wrappers.
+Use direct implementation for one clear, reversible, low-risk local diff with one
+bounded acceptance path; it creates no tracked plan, reviewer, or automatic
+commit. Use a canonical plan for explicit planning, multi-commit or
+cross-repository work, cold handoff, an unresolved decision, a cross-subsystem or
+public-contract change, security-sensitive or destructive work, or any
+non-`local` effect.
 
-The current record is one compact-JCS `Plan-run: PlanRunV1` line. Schemas 1–6 are historical validation/quarantine only. Every Steps row has `Effect: local|probe|production_access|publish|push|release|deploy`; a persisted requested effect is never live authority. The complete transaction, review-budget, checkpoint, legacy-quarantine, and external-authority contract lives in `docs/plans/AGENTS.md`; `docs/plans/CLAUDE.md` contains only `@AGENTS.md`.
+<constraint>
+Canonical plans live in `docs/plans/active/`; status is frontmatter and
+`docs/plans/finished/` is terminal. Exactly three skills own the workflow:
+`plan-workspace` maintains the workspace; main-context `plan-manager` runs six
+phases — decide, draft, research, one plan review, implement, code review — and
+archives; internal `plan-reviewer` returns a readable pre-implementation verdict.
+Two read-only reviewer wrappers ship, `plan-reviewer` and `code-reviewer`, and
+nothing else in the lifecycle has a wrapper.
+</constraint>
+
+The record is markdown only: `plan_contract: v2` frontmatter plus eight `##`
+sections — `## Goal`, `## Research`, `## Steps`, `## Acceptance`,
+`## Do not touch`, `## Open questions`, `## Review`, `## Verification Results`.
+There are no hashes, permits, run identities, locks, bundles, or `v2`/`vN` plan
+files, and the `plan.mjs` shipped inside the installed `plan-lifecycle` plugin
+is the only lifecycle tool. This lifecycle creates zero commits and never
+pushes; commit when the user asks, under `docks:commit-discipline`.
+
+Every Steps row carries an `Effect` of exactly
+`local|probe|production_access|publish|push|release|deploy`. A step whose
+`Effect` is not `local` requires an in-session `ask` confirmation immediately
+before it runs; when `ask` is unavailable the step is set `blocked` with
+`blocked_reason` naming the unconfirmed effect. Persisted effects record intent
+only.
+
+A plan carrying a `Plan-run:` line is a v1 plan: render it, never parse or
+migrate it, and finish it by hand by moving the file byte-unchanged to
+`docs/plans/finished/<YYYY-MM-DD>-<slug>.md` with a `## Retirement` section
+appended. The complete contract lives in `docs/plans/AGENTS.md`;
+`docs/plans/CLAUDE.md` contains only `@AGENTS.md`.
 
 Distinct from per-tool **Open Concerns** sections (wait-on-upstream
 blockers tied to a vendor shipping a fix — these live inside the per-tool
