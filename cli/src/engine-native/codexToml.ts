@@ -5,7 +5,7 @@
  * historical record-oriented behavior.
  */
 import { p } from "./exec"
-import { readFileSync, renameSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import { resolveEffort } from "../efforts"
 import type { Ctx } from "./index"
@@ -61,17 +61,22 @@ function syncCodexSetting(ctx: Ctx, edit: CodexSettingEdit): void {
   const { change, echo, verbose, warn } = ctx.services.logger
   const userCodexSettings = p(ctx.home, ".codex", "config.toml")
 
+  if (!existsSync(userCodexSettings)) {
+    // A dry-run sync already previewed installing the file, so the edit is not skipped.
+    // The `docks-kit model codex <m>` command creates no file, so the skip stands.
+    if (ctx.dryRun && ctx.syncCodex) {
+      echo(`[dry-run] (${edit.tag}) set ${edit.key} = "${edit.value}" in ${userCodexSettings}`)
+      return
+    }
+    warn(`(${edit.tag}) ${userCodexSettings} missing — skipped`)
+    return
+  }
+
   if (ctx.dryRun) {
     echo(`[dry-run] (${edit.tag}) set ${edit.key} = "${edit.value}" in ${userCodexSettings}`)
     return
   }
 
-  try {
-    readFileSync(userCodexSettings)
-  } catch {
-    warn(`(${edit.tag}) ${userCodexSettings} missing — skipped`)
-    return
-  }
   if (replaceTopLevelSettingInFile(userCodexSettings, edit.key, `${edit.key} = "${edit.value}"`)) {
     change(edit.changed)
     ctx.nextStepTriggers.codexRestart = true

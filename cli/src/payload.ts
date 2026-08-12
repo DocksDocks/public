@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs"
-import { join } from "node:path"
 import {
   GENERATED_PAYLOAD_BASE64,
   GENERATED_PAYLOAD_PATHS,
@@ -22,7 +20,6 @@ export function payloadPaths(prefix: string): ReadonlyArray<PayloadPath> {
   return GENERATED_PAYLOAD_PATHS.filter((path) => path.startsWith(prefix))
 }
 
-export function payloadDisplayPath(path: PayloadPath, kitHome?: string): string {
-  if (kitHome === undefined || !existsSync(join(kitHome, "package.json"))) return `embedded:${path}`
-  return `${kitHome.replace(/[\\/]+$/, "")}/${path}`
+export function payloadDisplayPath(path: PayloadPath): string {
+  return `embedded:${path}`
 }

@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }))
 vi.mock("../../src/engine-native", () => ({ runEngineNative: mocks.runEngineNative }))
 
-import { engine, engineCapture } from "../../src/engine"
+import { EngineCaptureError, engine, engineCapture } from "../../src/engine"
 import { EngineServicesLive } from "../../src/services"
 
 beforeEach(() => {
@@ -21,6 +21,7 @@ beforeEach(() => {
     throw new Error(`exit ${String(code)}`)
   })
   vi.spyOn(console, "error").mockImplementation(() => undefined)
+  vi.spyOn(process.stderr, "write").mockImplementation(() => true)
 })
 
 afterEach(() => {
@@ -82,11 +83,66 @@ describe("EngineNative Effect seam", () => {
     await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toThrow("exit 3")
   })
 
-  it("surfaces a rejected EngineNative Promise", async () => {
+  it("maps a rejected EngineNative Promise to a user-facing CLI failure", async () => {
     mocks.runEngineNative.mockRejectedValue(new Error("native engine failed"))
 
-    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toThrow(
-      "native engine failed"
-    )
+    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toMatchObject({
+      _tag: "UserError",
+      message: "engine operation 'status' failed: native engine failed"
+    })
+  })
+
+  it("fails capture with the child status instead of returning plausible stdout", async () => {
+    const diagnostic = "engine capture failed for 'toolchain check --json': exit 7"
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, "{\"toolchain\":[]}\n", null],
+      pid: 123,
+      signal: null,
+      status: 7,
+      stderr: null,
+      stdout: "{\"toolchain\":[]}\n"
+    })
+
+    await expect(Effect.runPromise(engineCapture(["toolchain", "check", "--json"]))).rejects.toMatchObject({
+      name: "EngineCaptureError",
+      code: 7,
+      diagnostic
+    } satisfies Partial<EngineCaptureError>)
+    expect(process.stderr.write).toHaveBeenCalledWith(expect.stringContaining(diagnostic))
+  })
+
+  it("includes the spawn error message in capture diagnostics", async () => {
+    mocks.spawnSync.mockReturnValue({
+      error: new Error("spawn docks-kit ENOENT"),
+      output: [null, "", null],
+      pid: 0,
+      signal: null,
+      status: null,
+      stderr: null,
+      stdout: ""
+    })
+
+    await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toMatchObject({
+      code: 1,
+      diagnostic: expect.stringContaining("spawn error: spawn docks-kit ENOENT")
+    })
+  })
+
+  it("includes the terminating signal in capture diagnostics", async () => {
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, "", null],
+      pid: 123,
+      signal: "SIGTERM",
+      status: null,
+      stderr: null,
+      stdout: ""
+    })
+
+    await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toMatchObject({
+      code: 1,
+      diagnostic: expect.stringContaining("signal SIGTERM")
+    })
   })
 })

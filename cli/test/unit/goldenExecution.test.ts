@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest"
 
-import { checkedSpawnExitCode } from "../lib/goldenExecution"
+import { checkedSpawnExitCode, readArgvLog } from "../lib/goldenExecution"
 
 describe("checkedSpawnExitCode", () => {
   it("returns a numeric spawn status", () => {
     expect(checkedSpawnExitCode("bash", { status: 7, signal: null })).toBe(7)
   })
 
-  it("retains an ETIMEDOUT spawn error", () => {
+  it("classifies an ETIMEDOUT spawn error before a numeric status", () => {
     const error = Object.assign(new Error("spawnSync bash ETIMEDOUT"), { code: "ETIMEDOUT" })
 
-    expect(() => checkedSpawnExitCode("bash", { status: null, signal: null, error })).toThrow(
-      "bash failed to spawn: Error: spawnSync bash ETIMEDOUT"
+    expect(() => checkedSpawnExitCode("bash", { status: 130, signal: "SIGTERM", error })).toThrow(
+      "bash timed out: Error: spawnSync bash ETIMEDOUT"
     )
     expect(error.code).toBe("ETIMEDOUT")
   })
@@ -26,5 +26,19 @@ describe("checkedSpawnExitCode", () => {
     expect(() => checkedSpawnExitCode("bash", { status: null, signal: null })).toThrow(
       "bash completed without status or signal"
     )
+  })
+})
+
+describe("readArgvLog", () => {
+  it("fails when command instrumentation is missing", () => {
+    const run = {
+      exitCode: 0,
+      output: "",
+      stdout: "",
+      home: "/missing-home",
+      argvLog: "/missing-home/.golden-argv.log"
+    }
+
+    expect(() => readArgvLog(run)).toThrow()
   })
 })

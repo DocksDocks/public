@@ -20,6 +20,7 @@ function copyGeneratorRoot(): string {
   cpSync(join(REPO_DIR, "SoT"), join(root, "SoT"), { recursive: true })
   cpSync(join(REPO_DIR, "notification.mp3"), join(root, "notification.mp3"))
   cpSync(join(REPO_DIR, "docks-kit"), join(root, "docks-kit"))
+  cpSync(join(REPO_DIR, "install.sh"), join(root, "install.sh"))
   cpSync(join(REPO_DIR, "package.json"), join(root, "package.json"))
   mkdirSync(join(root, "cli", "src"), { recursive: true })
   cpSync(join(REPO_DIR, "cli", "src", "generated"), join(root, "cli", "src", "generated"), { recursive: true })
@@ -163,10 +164,8 @@ describe("generated SoT payload", () => {
     expect(inventoryAuthoringPaths(REPO_DIR)).toEqual(expected)
   })
 
-  it("keeps display paths separate from embedded reads", () => {
+  it("labels generated payload sources as embedded", () => {
     expect(payloadDisplayPath("SoT/models.json")).toBe("embedded:SoT/models.json")
-    expect(payloadDisplayPath("SoT/models.json", REPO_DIR)).toBe(join(REPO_DIR, "SoT", "models.json"))
-    expect(payloadDisplayPath("SoT/models.json", "/kit")).toBe("embedded:SoT/models.json")
   })
 
   it("fails --check when notification.mp3 changes", () => {
@@ -191,6 +190,20 @@ describe("generated SoT payload", () => {
       const result = check(root)
       expect(result.status).toBe(1)
       expect(result.stderr).toContain("generated payload is stale: docks-kit")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("fails --check when the installer Bun pin changes", () => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, "install.sh")
+      const installer = readFileSync(path, "utf8")
+      writeFileSync(path, installer.replace(/BUN_PIN="[^"]+"/, 'BUN_PIN="0.0.0"'))
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("generated payload is stale: install.sh")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

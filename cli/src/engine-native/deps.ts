@@ -107,11 +107,11 @@ const home = (): string => {
   return envHome !== undefined && envHome !== "" ? envHome : homedir()
 }
 
-
-// The resolved path gets persisted into global direct-exec hooks, so a
-// relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
-// break outside the sync working directory.
-
+/**
+ * The resolved path gets persisted into global direct-exec hooks, so a
+ * relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
+ * break outside the sync working directory.
+ */
 const findBun = (exec: ProbeExecutor): { command: string; path: string } | undefined => {
   const onPath = exec.which("bun")
   if (onPath !== "" && isAbsolute(onPath)) {
@@ -141,22 +141,20 @@ const resolveEffectSolutions = (exec: ProbeExecutor): ProbeResult => {
     : { state: "missing" }
 }
 
-const versionBunCommand = (exec: ProbeExecutor): string =>
-  exec.commandExists("bun") ? "bun" : p(home(), ".bun", "bin", "bun")
-
 const versionEffectSolutions = async (exec: ProbeExecutor): Promise<string> => {
-  const bun = versionBunCommand(exec)
-  if (bun !== "bun" && exec.which(bun) === "") return ""
-  const match = /effect-solutions@([0-9][0-9.]*)/.exec(await exec.capture(bun, ["pm", "-g", "ls"]))
+  const bun = findBun(exec)
+  if (bun === undefined) return ""
+  const match = /effect-solutions@([0-9][0-9.]*)/.exec(await exec.capture(bun.command, ["pm", "-g", "ls"]))
   return match?.[1] ?? ""
 }
 
 const locateEffectSolutions = async (exec: ProbeExecutor): Promise<DependencyLocation> => {
   const strictBun = findBun(exec)
   const pathBun = exec.which("bun")
-  const bun = strictBun ?? (pathBun !== "" ? { command: "bun", path: pathBun } : undefined)
-  if (bun === undefined) return { path: "", binDir: "" }
-  const globalBin = await exec.capture(bun.command, ["pm", "-g", "bin"])
+  // This site may accept a relative hit because it does not persist the Bun path.
+  const bunForGlobalBin = strictBun?.command ?? (pathBun !== "" ? "bun" : undefined)
+  if (bunForGlobalBin === undefined) return { path: "", binDir: "" }
+  const globalBin = await exec.capture(bunForGlobalBin, ["pm", "-g", "bin"])
   const path = globalBin !== "" ? p(globalBin, "effect-solutions") : ""
   const resolved = path !== "" && exec.which(path) !== "" ? path : ""
   return { path: resolved, binDir: globalBin }
@@ -233,7 +231,11 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     () => "curl -fsSL https://bun.sh/install | bash",
     {
       resolve: resolveBun,
-      version: (exec) => exec.capture(versionBunCommand(exec), ["--version"]),
+      version: async (exec) => {
+        const bun = findBun(exec)
+        if (bun === undefined) return ""
+        return await exec.capture(bun.command, ["--version"])
+      },
       locate: async (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
     }
   ),

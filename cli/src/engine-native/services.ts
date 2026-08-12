@@ -36,8 +36,6 @@ export interface DependencyManager {
 export interface Platform {
   readonly raw: () => NodeJS.Platform
   readonly name: () => PlatformName
-  readonly isLinux: () => boolean
-  readonly shellRcApplicable: () => boolean
 }
 
 export interface EngineServices {
@@ -53,9 +51,7 @@ export interface EngineServiceOptions {
 /** Platform view over an injectable platform id. */
 export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => ({
   raw: () => pf,
-  name: () => platformName(pf),
-  isLinux: () => pf === "linux",
-  shellRcApplicable: () => pf === "linux" || pf === "darwin"
+  name: () => platformName(pf)
 })
 
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */

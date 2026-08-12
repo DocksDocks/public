@@ -32,6 +32,9 @@ export const modelCommand = Command.make(
       const dry = [...(config.dryRun ? ["--dry-run"] : []), ...(config.verbose ? ["--verbose"] : [])]
 
       if (Option.isSome(config.value)) {
+        if (config.value.value.trim() === "") {
+          return yield* bail("Model value must not be empty or blank")
+        }
         return yield* engine(["model", t, config.value.value, ...dry])
       }
 

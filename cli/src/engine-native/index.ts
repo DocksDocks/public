@@ -17,12 +17,15 @@ import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } f
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
 import { normalizeManifest, skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
-import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs"
+import { ExitError, parseArgs, parseClaudePlugin, parseCompactWindow, validateModifierFlags } from "./parseArgs"
 
 export type ModifierFlag =
   | "--claude-model"
   | "--claude-effort"
   | "--claude-advisor"
+  | "--claude-compact-window"
+  | "--claude-permissive"
+  | "--claude-plugin"
   | "--codex-model"
   | "--codex-effort"
 
@@ -117,6 +120,16 @@ export interface Ctx {
 function makeCtx(services: EngineServices): Ctx {
   const env = process.env
   const home = env["HOME"] !== undefined && env["HOME"] !== "" ? env["HOME"] : homedir()
+  const compactWindowSource = env["CLAUDE_COMPACT_WINDOW"] ?? ""
+  const claudeCompactWindow = compactWindowSource === "" ? "" : parseCompactWindow(compactWindowSource)
+  if (claudeCompactWindow === undefined) {
+    services.logger.err("CLAUDE_COMPACT_WINDOW expects a token count (e.g. 680000 or 680k)")
+    throw new ExitError(2)
+  }
+  const claudePlugins = (env["CLAUDE_PLUGINS"] ?? "")
+    .split(" ")
+    .filter((plugin) => plugin !== "")
+    .map((plugin) => parseClaudePlugin(plugin, services.logger.err))
   return {
     repoDir: kitHome(),
     home,
@@ -128,9 +141,9 @@ function makeCtx(services: EngineServices): Ctx {
     reconcile: env["RECONCILE"] === "1",
     prune: env["PRUNE"] === "1",
     assumeYes: env["ASSUME_YES"] === "1",
-    claudeCompactWindow: env["CLAUDE_COMPACT_WINDOW"] ?? "",
+    claudeCompactWindow,
     claudePermissive: env["CLAUDE_PERMISSIVE"] === "1",
-    claudePlugins: (env["CLAUDE_PLUGINS"] ?? "").split(" ").filter((s) => s !== ""),
+    claudePlugins,
     claudeModel: env["CLAUDE_MODEL"] ?? "",
     claudeEffort: "",
     claudeAdvisor: "",
@@ -278,8 +291,8 @@ export async function runEngineNative(argv: ReadonlyArray<string>, services?: En
     deps: baseServices.deps,
     platform: baseServices.platform
   }
-  ctx = makeCtx(runServices)
   try {
+    ctx = makeCtx(runServices)
     switch (argv[0]) {
       case "model":
         return modeModel(ctx, argv.slice(1))

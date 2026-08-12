@@ -14,7 +14,6 @@ export interface MutationReplayCase {
   fixture: string
   cmd: Array<string>
   cmd2?: Array<string>
-  variant?: string
 }
 
 // Stub-body variants for toolchain gate/install/upgrade/failure branches.

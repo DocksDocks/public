@@ -59,14 +59,13 @@ export async function claudeSync(ctx: Ctx): Promise<ClaudeRuntimeState> {
     template,
     runtime.kind === "ready" ? runtime.paths : undefined
   )
-  const prepared = ctx.dryRun ? undefined : prepareClaudeSettings(ctx, claudeDir, materialized)
+  const prepared = prepareClaudeSettings(ctx, claudeDir, materialized)
 
   syncClaudeRuntime(ctx, runtime)
   syncClaudeMd(ctx, claudeDir)
   if (ctx.dryRun) {
     describeSettingsSync(ctx, claudeDir)
   } else {
-    if (prepared === undefined) throw new Error("Claude settings were not prepared")
     commitClaudeSettings(ctx, prepared)
   }
   syncRemovals(ctx, claudeDir, runtime)
@@ -153,8 +152,9 @@ export function prepareClaudeSettings(ctx: Ctx, claudeDir: string, repo: Json): 
 
   const previousBytes = readFileSync(path, "utf8")
   const user = parseJson(previousBytes)
-  if (user === undefined) {
-    ctx.services.logger.err(`Skipping settings sync: ${path} is not valid JSON. Fix it manually or delete it to reinstall.`)
+  if (user === undefined || !isObject(user)) {
+    const reason = user === undefined ? "is not valid JSON" : "must contain a JSON object"
+    ctx.services.logger.err(`Aborting sync: ${path} ${reason}. Fix it manually or delete it to reinstall.`)
     throw new ExitError(1)
   }
   const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user)
@@ -186,7 +186,7 @@ export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings)
 
 function describeSettingsSync(ctx: Ctx, claudeDir: string): void {
   const { echo } = ctx.services.logger
-  const repoSettings = payloadDisplayPath("SoT/.claude/settings.json", ctx.repoDir)
+  const repoSettings = payloadDisplayPath("SoT/.claude/settings.json")
   const userSettings = p(claudeDir, "settings.json")
 
   if (!existsSync(userSettings)) {
@@ -292,11 +292,12 @@ function syncClaudeJson(ctx: Ctx): void {
   if (existsSync(claudeJson)) {
     const before = readFileSync(claudeJson, "utf8")
     const doc = parseJson(before)
-    if (doc === undefined) {
-      err("Skipping ~/.claude.json edit: not valid JSON. Fix or delete it.")
+    if (doc === undefined || !isObject(doc)) {
+      const reason = doc === undefined ? "not valid JSON" : "root must be a JSON object"
+      err(`Skipping ~/.claude.json edit: ${reason}. Fix or delete it.`)
       return
     }
-    const obj = isObject(doc) ? doc : {}
+    const obj = doc
     applyFilter(obj)
     const out = jqStringify(obj)
     if (out === before) {
@@ -536,7 +537,7 @@ function sortedKeys(obj: Json | undefined): Array<string> {
 }
 
 /** claude::_plugin_user_scope_installed. */
-function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): boolean {
+export function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): boolean {
   const doc = readJsonFile(installedPlugins)
   if (doc === undefined || !isObject(doc) || !isObject(doc["plugins"])) return false
   const rec = (doc["plugins"] as { [k: string]: Json })[pluginId]
@@ -658,14 +659,15 @@ async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (separator > 0) kitMarketplaces.add(pluginId.slice(separator + 1))
   }
 
-  // Pass 3 — refresh the kit-owned marketplaces and plugins unless the update
-  // command selected its install-missing-only fast path.
+  // Pass 3 — refresh the kit-owned marketplaces unless the update command
+  // selected its install-missing-only fast path.
   if (!ctx.skipPluginRefresh) {
     for (const mpName of [...kitMarketplaces].sort(compareCodepoints)) {
       progress(`Refreshing marketplace ${mpName}...`)
       await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
     }
+    // Pass 4 — update the kit-owned installed plugins.
     for (const pluginId of [...kitPluginIds].sort(compareCodepoints)) {
       if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
       progress(`Updating plugin ${pluginId}...`)
@@ -675,14 +677,14 @@ async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     }
   }
 
-  // Passes 4 + 5 — prune-gated uninstall + marketplace removal.
+  // Pass 5 — prune-gated user-scope plugin uninstall.
   let removedPl = 0
   let removedMp = 0
-  let f4 = 0
   let f5 = 0
+  let f6 = 0
   if (ctx.prune) {
     for (const pluginId of installedKeys) {
-      if (isObject(sotPlugins) && Object.prototype.hasOwnProperty.call(sotPlugins, pluginId)) continue
+      if (kitPluginIds.has(pluginId)) continue
       if (!pluginUserScopeInstalled(installedPlugins, pluginId)) continue
       progress(`Uninstalling plugin ${pluginId}...`)
       const uninstallResult = await cli(["plugin", "uninstall", "-y", "--scope", "user", pluginId])
@@ -691,15 +693,15 @@ async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
         removedPl++
       } else {
         warn(`Failed to uninstall plugin: ${pluginId}`)
-        f4++
+        f5++
       }
     }
+    // Pass 6 — prune-gated marketplace removal.
     const known = readJsonFile(knownMarketplaces)
     for (const mpName of sortedKeys(known)) {
       if (mpName === "claude-plugins-official") continue
       if (nonUserMarketplaces.has(mpName)) continue
-      const declared = isObject(sotMarketplaces) ? sotMarketplaces[mpName] : undefined
-      if (declared !== undefined && declared !== null && declared !== false) continue
+      if (kitMarketplaces.has(mpName)) continue
       progress(`Removing marketplace ${mpName}...`)
       const removeResult = await cli(["plugin", "marketplace", "remove", mpName])
       clearProgress()
@@ -707,18 +709,18 @@ async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
         removedMp++
       } else {
         warn(`Failed to remove marketplace: ${mpName}`)
-        f5++
+        f6++
       }
     }
   }
 
-  // Pass 6 — re-assert SoT enabled-state in the user settings.
+  // Pass 7 — re-assert SoT enabled-state in the user settings.
   if (await reassertEnabledState(ctx, repoObj, p(claudeDir, "settings.json"))) {
     change("Plugin enable-state re-asserted from SoT in settings.json")
     ctx.nextStepTriggers.claudePlugins = true
   }
 
-  const failed = f1 + f2 + f4 + f5
+  const failed = f1 + f2 + f5 + f6
   if (addedMp > 0 || addedPl > 0 || updatedPl > 0 || removedPl > 0 || removedMp > 0) {
     change(`Plugins synced (marketplaces: +${addedMp} -${removedMp}, plugins: +${addedPl} ~${updatedPl} -${removedPl})`)
     ctx.nextStepTriggers.claudePlugins = true
@@ -841,9 +843,11 @@ async function syncOptionalPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
 
 // ---------------------------------------------------------- LSP servers ----
 
-function lspPkg(ctx: Ctx, tool: string, pkg: string): string {
-  const v = field(ctx, tool, "verified")
-  return v !== "" ? `${pkg}@${v}` : pkg
+function lspPkg(ctx: Ctx, tool: string, pkg: string): string | undefined {
+  const version = field(ctx, tool, "verified")
+  if (version !== "") return `${pkg}@${version}`
+  ctx.services.logger.warn(`Skipping ${pkg} install: ${tool} has no verified version in SoT/toolchain.json`)
+  return undefined
 }
 
 async function syncLspServers(ctx: Ctx): Promise<void> {
@@ -855,14 +859,17 @@ async function syncLspServers(ctx: Ctx): Promise<void> {
   const hasTs = Object.prototype.hasOwnProperty.call(enabled, "typescript-lsp@claude-plugins-official")
   if (!hasPhp && !hasTs) return
 
-  const missing: Array<string> = []
-  if (hasPhp && ctx.services.deps.probe("intelephense").state === "missing") missing.push(lspPkg(ctx, "intelephense", "intelephense"))
-  if (hasTs) {
-    if (ctx.services.deps.probe("typescript-language-server").state === "missing") missing.push(lspPkg(ctx, "typescript-language-server", "typescript-language-server"))
-    if (ctx.services.deps.probe("tsc").state === "missing") missing.push(lspPkg(ctx, "tsc", "typescript"))
-  }
+  const phpMissing = hasPhp && ctx.services.deps.probe("intelephense").state === "missing"
+  const tsServerMissing = hasTs && ctx.services.deps.probe("typescript-language-server").state === "missing"
+  const tscMissing = hasTs && ctx.services.deps.probe("tsc").state === "missing"
+  const missingToolCount = Number(phpMissing) + Number(tsServerMissing) + Number(tscMissing)
+  const missing = [
+    phpMissing ? lspPkg(ctx, "intelephense", "intelephense") : undefined,
+    tsServerMissing ? lspPkg(ctx, "typescript-language-server", "typescript-language-server") : undefined,
+    tscMissing ? lspPkg(ctx, "tsc", "typescript") : undefined
+  ].filter((spec): spec is string => spec !== undefined)
 
-  if (missing.length === 0) {
+  if (missingToolCount === 0) {
     if (ctx.dryRun) {
       echo("[dry-run] LSP server binaries present")
     } else {
@@ -870,6 +877,7 @@ async function syncLspServers(ctx: Ctx): Promise<void> {
     }
     return
   }
+  if (missing.length === 0) return
 
   const specs = missing.join(" ")
   if (ctx.dryRun) {

@@ -1,4 +1,4 @@
-import { sotClaudeSettings, type Tool } from "./manifests"
+import { sotClaudeSettings, topLevelTomlString, type Tool } from "./manifests"
 import { payloadText } from "./payload"
 
 export const CLAUDE_EFFORT_LEVELS = ["low", "medium", "high", "xhigh"] as const
@@ -53,12 +53,12 @@ export function validateEffortDefault(tool: Tool, value: unknown): string {
   return value
 }
 
-function codexSotEffort(): string | undefined {
-  return payloadText("SoT/.codex/config.toml").match(/^model_reasoning_effort\s*=\s*"([^"]+)"/m)?.[1]
-}
 
 export function sotEffort(tool: Tool): string {
-  const value = tool === "claude" ? sotClaudeSettings().effortLevel : codexSotEffort()
+  const value =
+    tool === "claude"
+      ? sotClaudeSettings().effortLevel
+      : topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model_reasoning_effort")
   return validateEffortDefault(tool, value)
 }
 

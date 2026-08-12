@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, readlinkSync, existsSync } from "node:fs"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
+import { pluginUserScopeInstalled } from "./engine-native/claudeSync"
 import { payloadText } from "./payload"
 
 export { homedir }
@@ -36,18 +37,22 @@ export const deployedClaudeSettings = (): any | undefined => {
   return existsSync(p) ? readJson(p) : undefined
 }
 
-const tomlModelText = (text: string): string | undefined => {
-  const m = text.match(/^model\s*=\s*"([^"]+)"/m)
-  return m?.[1]
+export function topLevelTomlString(text: string, setting: string): string | undefined {
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\s*\[/.test(line)) return undefined
+    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"/)
+    if (assignment?.[1] === setting) return assignment[2]
+  }
+  return undefined
 }
 
 const tomlModel = (path: string): string | undefined => {
   if (!existsSync(path)) return undefined
-  return tomlModelText(readFileSync(path, "utf8"))
+  return topLevelTomlString(readFileSync(path, "utf8"), "model")
 }
 
 export const sotCodexModel = (): string | undefined =>
-  tomlModelText(payloadText("SoT/.codex/config.toml"))
+  topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model")
 
 export const deployedCodexModel = (): string | undefined =>
   tomlModel(join(homedir(), ".codex", "config.toml"))
@@ -67,7 +72,7 @@ export const pluginsView = (): Array<{
   return [...names].sort().map((plugin) => ({
     plugin,
     sot: plugin in sot ? (sot[plugin] ? "true" : "false") : "absent",
-    installed: plugin in installed
+    installed: pluginUserScopeInstalled(installedPath, plugin)
   }))
 }
 
@@ -83,7 +88,8 @@ export const skillsView = (): Array<{
     .map((l) => l.replace(/#.*$/, "").trim())
     .filter((l) => l.length > 0)
     .map((slug) => slug.split("/").pop() as string)
-  const skillsDir = join(homedir(), ".agents", "skills")
+  const home = homedir()
+  const skillsDir = join(home, ".agents", "skills")
   const installed = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })
         .filter((e) => e.isDirectory())
@@ -91,10 +97,11 @@ export const skillsView = (): Array<{
     : []
   const names = new Set([...declared, ...installed])
   return [...names].sort().map((skill) => {
-    const link = join(homedir(), ".claude", "skills", skill)
+    const link = join(home, ".claude", "skills", skill)
     let claudeSymlink = false
     try {
-      claudeSymlink = readlinkSync(link).includes(".agents/skills")
+      const target = resolve(dirname(link), readlinkSync(link))
+      claudeSymlink = target === resolve(skillsDir, skill) && existsSync(target)
     } catch {
       /* not a symlink or missing */
     }

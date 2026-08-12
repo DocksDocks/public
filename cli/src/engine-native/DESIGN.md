@@ -153,7 +153,7 @@ active logger binding.
 | `exec.ts` | slash-stable path helpers, POSIX command probes, capture/spawn wrappers, and change-detecting write/copy helpers |
 | `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
 | `deps.ts` | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
-| `os.ts` | platform capability seam — the single `process.platform` reader (`platformName`, `isLinux`, shell-rc applicability) |
+| `os.ts` | platform capability seam — host reader and injected platform normalization (`rawPlatform`, `platformName`) |
 | `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
 
 ## Platform Support

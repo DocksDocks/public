@@ -1,6 +1,8 @@
+import { CliError } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { runEngineNative } from "./engine-native"
+import { ExitError } from "./engine-native/parseArgs"
 import { makeEngineServices } from "./engine-native/services"
 import { kitHome } from "./kitHome"
 import { DependencyManagerService, LoggerService, PlatformService } from "./services"
@@ -28,6 +30,19 @@ const requireSupportedHost = () => {
 export const compiled =
   process.argv[1] !== undefined && process.argv[1].startsWith("/$bunfs/")
 
+export class EngineCaptureError extends ExitError {
+  constructor(readonly diagnostic: string, code: number) {
+    super(code)
+    this.name = "EngineCaptureError"
+    this.message = diagnostic
+  }
+}
+
+const failureMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message !== "") return error.message
+  return typeof error === "string" && error !== "" ? error : "unknown error"
+}
+
 export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     yield* requireSupportedHost()
@@ -37,7 +52,13 @@ export const engine = (args: ReadonlyArray<string>) =>
     const logger = yield* LoggerService
     const deps = yield* DependencyManagerService
     const platform = yield* PlatformService
-    const code = yield* Effect.promise(() => runEngineNative(args, { logger, deps, platform }))
+    const code = yield* Effect.tryPromise({
+      try: () => runEngineNative(args, { logger, deps, platform }),
+      catch: (error) => new CliError.UserError({
+        cause: error,
+        userMessage: `engine operation '${args.join(" ") || "default"}' failed: ${failureMessage(error)}`
+      })
+    })
     if (code !== 0) {
       yield* Effect.sync(() => process.exit(code))
     }
@@ -50,19 +71,27 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
     if (bashEngineRequested()) {
       return yield* bail(bashRemovedMessage, 2)
     }
-    return yield* Effect.sync(() => {
+    const res = yield* Effect.sync(() =>
       // Child process (raw channel): runEngineNative writes straight to
-      // process.stdout, so in-process capture isn't possible.
-      const res = spawnSync(process.execPath, compiled ? [...args] : [`${kitHome()}/cli/src/main.ts`, ...args], {
+      // process.stdout, so in-process capture is not possible.
+      spawnSync(process.execPath, compiled ? [...args] : [`${kitHome()}/cli/src/main.ts`, ...args], {
         env: { ...process.env, DOCKS_KIT_ENGINE: "native-raw" },
         encoding: "utf8",
         stdio: ["ignore", "pipe", "inherit"]
       })
-      if (res.error !== undefined || res.status !== 0) {
-        makeEngineServices().logger.warn(`engine capture failed (${args.join(" ")} exited ${res.status ?? "spawn-error"})`)
-      }
-      return res.stdout ?? ""
-    })
+    )
+    if (res.error !== undefined || res.status !== 0) {
+      const reasons = new Array<string>()
+      if (typeof res.status === "number") reasons.push(`exit ${res.status}`)
+      if (res.signal !== null) reasons.push(`signal ${res.signal}`)
+      if (res.error !== undefined) reasons.push(`spawn error: ${res.error.message}`)
+      if (reasons.length === 0) reasons.push("no child status")
+      const diagnostic = `engine capture failed for '${args.join(" ") || "default"}': ${reasons.join("; ")}`
+      makeEngineServices().logger.err(diagnostic)
+      const code = typeof res.status === "number" && res.status !== 0 ? res.status : 1
+      return yield* Effect.fail(new EngineCaptureError(diagnostic, code))
+    }
+    return res.stdout ?? ""
   })
 
 /** Print a message to stderr and exit — for CLI-side validation failures. */

@@ -90,7 +90,7 @@ describe.sequential("retained model and sync behavior", () => {
   })
 
   it("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
-    const run = runEngine("native", ["sync"], "home-drift", makeStubDir())
+    const run = runEngine(["sync"], "home-drift", makeStubDir())
     try {
       expect(run.exitCode).toBe(0)
 

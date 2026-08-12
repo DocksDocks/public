@@ -9,12 +9,13 @@
  *   bun cli/test/golden-dryrun.ts
  *   bun cli/test/golden-dryrun.ts --prove-red
  */
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
 import { cleanup, runEngine, runPublicCli } from "./lib/goldenExecution"
 import { REPO_DIR, makeStubDir } from "./lib/goldenResources"
 import { diffText, stableStringify } from "./lib/goldenSnapshot"
+import { readGolden, selectProveRedMismatch } from "./lib/goldenProveRed"
 
 interface DryRunGolden {
   readonly version: 1
@@ -71,7 +72,6 @@ const PUBLIC_COMMANDS: Array<Array<string>> = [
 interface DryRunMatrixRow {
   readonly fixture: string
   readonly cmd: Array<string>
-  readonly label?: string
   readonly public?: boolean
 }
 
@@ -83,11 +83,10 @@ const MATRIX: Array<DryRunMatrixRow> = [
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
 const options = parseArgs(process.argv)
-const stubs = makeStubDir()
 
-function labelFor(fixture: string, cmd: ReadonlyArray<string>, label?: string): string {
-  const prefix = label === undefined ? "" : `case=${label} `
-  return `${prefix}fixture=${fixture} cmd=${cmd.join(" ")}`
+function labelFor(fixture: string, cmd: ReadonlyArray<string>, usePublic: boolean): string {
+  const channel = usePublic ? "public" : "engine"
+  return `cli=${channel} fixture=${fixture} cmd=${cmd.join(" ")}`
 }
 
 function runCase(fixture: string, cmd: ReadonlyArray<string>, usePublic = false): DryRunCaseGolden {
@@ -105,7 +104,7 @@ function runCase(fixture: string, cmd: ReadonlyArray<string>, usePublic = false)
     }
   }
 
-  const run = runEngine("native", cmd, fixture, stubs)
+  const run = runEngine(cmd, fixture, stubs)
   try {
     return { fixture, command: [...cmd], exitCode: run.exitCode, output: run.output }
   } finally {
@@ -113,46 +112,19 @@ function runCase(fixture: string, cmd: ReadonlyArray<string>, usePublic = false)
   }
 }
 
-function readGoldens(): DryRunGolden {
-  if (!existsSync(GOLDEN_PATH)) {
-    console.error(`${GOLDEN_PATH} does not exist; run with --update-goldens first`)
-    process.exit(1)
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(readFileSync(GOLDEN_PATH, "utf8"))
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`${GOLDEN_PATH}: malformed golden JSON: ${message}`)
-  }
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    Array.isArray(parsed) ||
-    !("version" in parsed) ||
-    parsed.version !== 1 ||
-    !("cases" in parsed) ||
-    typeof parsed.cases !== "object" ||
-    parsed.cases === null ||
-    Array.isArray(parsed.cases)
-  ) {
-    throw new Error(`${GOLDEN_PATH}: expected a version-1 object with object-valued cases`)
-  }
-  return parsed as DryRunGolden
+const matrixLabels = new Set<string>()
+for (const { fixture, cmd, public: usePublic = false } of MATRIX) {
+  const label = labelFor(fixture, cmd, usePublic)
+  if (matrixLabels.has(label)) throw new Error(`duplicate dry-run matrix label ${label}`)
+  matrixLabels.add(label)
 }
-
-function mismatchedGolden(label: string, goldens: DryRunGolden): DryRunCaseGolden {
-  const other = Object.keys(goldens.cases).find((candidate) => candidate !== label)
-  if (other === undefined) throw new Error("prove-red needs at least two golden cases")
-  return goldens.cases[other]!
-}
+const stubs = makeStubDir()
 
 if (options.updateGoldens) {
   const selectedCases: Record<string, DryRunCaseGolden> = {}
   let selectedChecks = 0
-  for (const { fixture, cmd, label: caseLabel, public: usePublic } of MATRIX) {
-    const label = labelFor(fixture, cmd, caseLabel)
+  for (const { fixture, cmd, public: usePublic = false } of MATRIX) {
+    const label = labelFor(fixture, cmd, usePublic)
     if (!labelSelected(label, options.filter)) continue
     selectedChecks++
     selectedCases[label] = runCase(fixture, cmd, usePublic)
@@ -165,23 +137,24 @@ if (options.updateGoldens) {
   const cases =
     options.filter === undefined
       ? selectedCases
-      : { ...readGoldens().cases, ...selectedCases }
+      : { ...readGolden<DryRunCaseGolden>(GOLDEN_PATH).cases, ...selectedCases }
   mkdirSync(dirname(GOLDEN_PATH), { recursive: true })
   writeFileSync(GOLDEN_PATH, stableStringify({ version: 1, cases } satisfies DryRunGolden))
   console.log(`golden-dryrun: updated ${Object.keys(selectedCases).length} case(s) at ${GOLDEN_PATH}`)
   process.exit(0)
 }
 
-const goldens = readGoldens()
+const goldens = readGolden<DryRunCaseGolden>(GOLDEN_PATH)
 let failures = 0
 let checked = 0
 let selectedChecks = 0
+const proveRed = options.proveRed ? selectProveRedMismatch(goldens.cases) : undefined
 
-for (const { fixture, cmd, label: caseLabel, public: usePublic } of MATRIX) {
-  const label = labelFor(fixture, cmd, caseLabel)
+for (const { fixture, cmd, public: usePublic = false } of MATRIX) {
+  const label = labelFor(fixture, cmd, usePublic)
   if (!labelSelected(label, options.filter)) continue
   selectedChecks++
-  const expected = options.proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
+  const expected = proveRed?.expectedFor(label) ?? goldens.cases[label]
   if (expected === undefined) {
     failures++
     banner(`MISSING GOLDEN ${label}`)
@@ -196,6 +169,7 @@ for (const { fixture, cmd, label: caseLabel, public: usePublic } of MATRIX) {
       : [`  exit codes differ: actual=${actual.exitCode} expected=${expected.exitCode}`]),
     ...diffText("dry-run output", actual.output, expected.output)
   ]
+  proveRed?.recordComparison(problems.length > 0)
   if (problems.length > 0) {
     failures++
     banner(`GOLDEN MISMATCH ${label}`)
@@ -208,12 +182,17 @@ if (options.filter !== undefined && selectedChecks === 0) {
   process.exit(2)
 }
 
-if (options.proveRed) {
-  if (failures === 0) {
-    console.error("prove-red FAILED: golden-dryrun did not detect the planted mismatch")
+if (proveRed !== undefined) {
+  const result = proveRed.result()
+  if (!result.succeeded) {
+    console.error(
+      `prove-red FAILED: golden-dryrun compared ${result.comparedCases} case(s) and detected ${result.comparatorMismatches} comparator mismatch(es)`
+    )
     process.exit(1)
   }
-  console.error(`prove-red OK: golden-dryrun detected ${failures} planted mismatch(es); intentionally exiting 1`)
+  console.error(
+    `prove-red OK: golden-dryrun compared ${result.comparedCases} case(s) and detected ${result.comparatorMismatches} planted comparator mismatch(es); intentionally exiting 1`
+  )
   process.exit(1)
 }
 

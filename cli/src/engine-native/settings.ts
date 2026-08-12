@@ -16,8 +16,9 @@ export function reconcileSettings(repo: Json, user: Json): Json {
  * `unique` — i.e. codepoint-sorted and deduplicated, matching jq).
  */
 export function mergeSettings(repo: Json, user: Json): Json {
-  const merged = deepMerge(user, repo)
-  if (!isObject(merged)) return merged
+  const candidate = deepMerge(user, repo)
+  if (!isObject(candidate)) return candidate
+  const merged = { ...candidate }
   const permissions = isObject(merged["permissions"]) ? merged["permissions"] : {}
   merged["permissions"] = {
     ...permissions,

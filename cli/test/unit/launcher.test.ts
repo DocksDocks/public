@@ -8,7 +8,7 @@ const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CURRENT_VERSION = (JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }).version
 const roots: Array<string> = []
 
-function launcherFixture(binaryName: string, binaryVersion: string): { root: string; binDir: string } {
+function launcherFixture(binaryName: string, binaryVersion: string | null): { root: string; binDir: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-launcher-"))
   roots.push(root)
   const binDir = join(root, "test-bin")
@@ -22,9 +22,10 @@ function launcherFixture(binaryName: string, binaryVersion: string): { root: str
   writeFileSync(join(root, "cli", "src", "main.ts"), "// launcher test fixture\n")
 
   const binary = join(root, "cli", "dist", binaryName)
+  const versionProbe = binaryVersion === null ? ":" : `printf '%s\\n' '${binaryVersion}'`
   writeFileSync(binary, `#!/bin/bash
 if [[ "\${1:-}" == "--version" ]]; then
-  printf '%s\\n' '${binaryVersion}'
+  ${versionProbe}
 else
   printf 'compiled:%s\\n' "$*"
 fi
@@ -90,6 +91,29 @@ describe("checkout launcher binary selection", () => {
     expect(catalog.status).toBe(0)
     expect(catalog.stdout.trim()).toBe("source:models claude --json")
     expect(catalog.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 0.4.0; checkout is")
+  })
+
+  it("falls through to source when the compiled binary prints no version", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", null)
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe("source:probe")
+    expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 <unknown>")
+  })
+
+  it("fails closed when the checkout version cannot be parsed", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", CURRENT_VERSION)
+    const packagePath = join(fixture.root, "package.json")
+    const manifest = JSON.parse(readFileSync(packagePath, "utf8")) as Record<string, unknown>
+    manifest["version"] = 7
+    writeFileSync(packagePath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe("source:probe")
+    expect(result.stderr).toContain("checkout is <unknown>")
   })
 
   it.each([

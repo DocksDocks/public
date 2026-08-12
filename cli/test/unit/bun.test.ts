@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type * as FsModule from "node:fs"
+import type * as OsModule from "node:os"
 import type * as ExecModule from "../../src/engine-native/exec"
 
 const mocks = vi.hoisted(() => ({
+  mkdtempSync: vi.fn((_prefix: string) => "/tmp/docks-kit-bun-private"),
   rmSync: vi.fn(),
   spawnProcess: vi.fn(),
   tmpdir: vi.fn(() => "/tmp")
@@ -12,11 +15,11 @@ vi.mock("../../src/engine-native/exec", async () => {
   return { ...actual, spawnProcess: mocks.spawnProcess }
 })
 vi.mock("node:fs", async () => {
-  const actual = await vi.importActual<typeof import("node:fs")>("node:fs")
-  return { ...actual, rmSync: mocks.rmSync }
+  const actual = await vi.importActual<typeof FsModule>("node:fs")
+  return { ...actual, mkdtempSync: mocks.mkdtempSync, rmSync: mocks.rmSync }
 })
 vi.mock("node:os", async () => {
-  const actual = await vi.importActual<typeof import("node:os")>("node:os")
+  const actual = await vi.importActual<typeof OsModule>("node:os")
   return { ...actual, tmpdir: mocks.tmpdir }
 })
 
@@ -117,6 +120,7 @@ function expectReady(state: BunRuntimeState): string {
 }
 
 beforeEach(() => {
+  mocks.mkdtempSync.mockReset().mockReturnValue("/tmp/docks-kit-bun-private")
   mocks.rmSync.mockReset()
   mocks.spawnProcess.mockReset().mockResolvedValue({ error: undefined, exitCode: 0, stdout: "", stderr: "" })
   mocks.tmpdir.mockReset().mockReturnValue("/tmp")
@@ -171,16 +175,77 @@ describe("per-run Bun bootstrap", () => {
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
-  it("downloads then runs the pinned POSIX installer and always removes it", async () => {
+  it("uses a fresh private directory and never follows the predictable shared-temp symlink", async () => {
+    const fs = await vi.importActual<typeof FsModule>("node:fs")
+    const testRoot = fs.mkdtempSync("/tmp/docks-kit-bun-security-")
+    const sentinel = `${testRoot}/sentinel`
+    const predictableSymlink = `${testRoot}/bun-install-${process.pid}.sh`
+    fs.writeFileSync(sentinel, "unchanged")
+    fs.symlinkSync(sentinel, predictableSymlink)
+    mocks.tmpdir.mockReturnValue(testRoot)
+    mocks.mkdtempSync.mockImplementation((prefix: string) => fs.mkdtempSync(prefix))
     const test = rig("linux", { curl: true, installed: false })
-    mocks.spawnProcess.mockImplementation(async (cmd: string) => {
-      if (cmd === "bash") test.state.installed = true
+    let downloadedTo = ""
+    let executed = ""
+    mocks.spawnProcess.mockImplementation(async (cmd: string, args: ReadonlyArray<string>) => {
+      if (cmd === "curl") {
+        const flag = args.indexOf("-o")
+        const target = flag === -1 ? undefined : args[flag + 1]
+        // Never write outside this test's own temporary root. Reading the
+        // operand positionally let an argument change send the write to the
+        // relative path "undefined", which created a junk file in the
+        // repository root.
+        if (target === undefined || !target.startsWith(`${testRoot}/`)) {
+          throw new Error(`curl stub expected an -o target under ${testRoot}, received ${String(target)}`)
+        }
+        downloadedTo = target
+        fs.writeFileSync(downloadedTo, "installer")
+      }
+      if (cmd === "bash") {
+        executed = String(args[0])
+        test.state.installed = true
+      }
       return { error: undefined, exitCode: 0, stdout: "", stderr: "" }
     })
-    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
-    expect(mocks.spawnProcess).toHaveBeenNthCalledWith(1, "curl", ["-fsSL", "https://bun.sh/install", "-o", expect.stringMatching(/bun-install-\d+\.sh$/)], { stdio: "ignore" })
-    expect(mocks.spawnProcess).toHaveBeenNthCalledWith(2, "bash", [expect.stringMatching(/bun-install-\d+\.sh$/), "bun-v1.3.14"], { stdio: "ignore" })
-    expect(mocks.rmSync).toHaveBeenCalledWith(expect.stringMatching(/bun-install-\d+\.sh$/), { force: true })
+
+    try {
+      expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
+      expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
+      expect(downloadedTo).toMatch(new RegExp(`^${testRoot}/docks-kit-bun-[^/]+/install\\.sh$`))
+      expect(executed).toBe(downloadedTo)
+      expect(downloadedTo).not.toBe(predictableSymlink)
+      expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged")
+      expect(mocks.rmSync).toHaveBeenCalledWith(downloadedTo.replace(/\/install\.sh$/, ""), {
+        recursive: true,
+        force: true
+      })
+    } finally {
+      fs.rmSync(testRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("reports transport diagnostics when the Bun installer download fails", async () => {
+    const test = rig("linux", { curl: true, installed: false })
+    mocks.spawnProcess.mockResolvedValueOnce({
+      error: undefined,
+      exitCode: 22,
+      stdout: "",
+      stderr: "curl: (22) server returned 503"
+    })
+
+    expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "download-failed" })
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1)
+    expect(test.lines.join("")).toContain("Bun installer download failed (curl: (22) server returned 503)")
+  })
+
+  it("reports installer diagnostics when Bash rejects the downloaded installer", async () => {
+    const test = rig("linux", { curl: true, installed: false })
+    mocks.spawnProcess
+      .mockResolvedValueOnce({ error: undefined, exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce({ error: undefined, exitCode: 2, stdout: "", stderr: "install: unsupported platform" })
+
+    expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "installer-failed" })
+    expect(test.lines.join("")).toContain("Bun installer failed (install: unsupported platform)")
   })
 
 

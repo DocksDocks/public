@@ -70,7 +70,10 @@ async function ensureBubblewrap(ctx: Ctx): Promise<void> {
     return
   }
 
-  if ((await spawnProcess("unshare", ["-Ur", "true"], { stdio: "ignore" })).exitCode === 0) {
+  const namespaceProbe = await spawnProcess("unshare", ["-Ur", "true"], { stdio: "ignore" })
+  if (namespaceProbe.error !== undefined) {
+    warn(`Could not run unshare to check user namespaces: ${namespaceProbe.error.message}`)
+  } else if (namespaceProbe.exitCode === 0) {
     change(`bubblewrap installed and functional (${await ctx.services.deps.version("bwrap")})`)
   } else {
     warn(
@@ -100,10 +103,14 @@ function bwrapDetectPmInstallCmd(ctx: Ctx): string {
 
 function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  const sotConfig = payloadDisplayPath("SoT/.codex/config.toml", ctx.repoDir)
+  const sotConfig = payloadDisplayPath("SoT/.codex/config.toml")
 
   if (ctx.dryRun) {
-    echo(`[dry-run] merge ${sotConfig} -> ${userConfig}`)
+    if (existsSync(userConfig)) {
+      echo(`[dry-run] merge ${sotConfig} -> ${userConfig}`)
+    } else {
+      echo(`[dry-run] install ${sotConfig} -> ${userConfig}`)
+    }
     return
   }
 
@@ -119,7 +126,8 @@ function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
   // overwrite the recovery copy with already-merged content.
   const before = readFileSync(userConfig, "utf8")
   const staging = `${userConfig}.merge.tmp`
-  writeFileSync(staging, before)
+  // Normalize once before record transforms because CR bytes change table-header identity.
+  writeFileSync(staging, before.replace(/\r\n/g, "\n"))
 
   scrubDeprecatedFeatures(ctx, staging)
   removeRetiredPluginTables(ctx, staging)
@@ -146,15 +154,20 @@ export function scrubDeprecatedFeaturesText(content: string): string {
   let header = ""
   let body = ""
   let keep = false
+  let changed = false
   for (const line of lines) {
     if (inFeatures) {
       if (line.startsWith("[")) {
         inFeatures = false
         if (keep) out += `${header}\n${body}`
+        else changed = true
         out += `${line}\n`
         continue
       }
-      if (/^use_legacy_landlock[ \t]*=/.test(line)) continue
+      if (/^use_legacy_landlock[ \t]*=/.test(line)) {
+        changed = true
+        continue
+      }
       body += `${line}\n`
       if (/[^ \t\f\v\r]/.test(line)) keep = true
       continue
@@ -168,17 +181,21 @@ export function scrubDeprecatedFeaturesText(content: string): string {
     }
     out += `${line}\n`
   }
-  if (inFeatures && keep) out += `${header}\n${body}`
-  return out
+  if (inFeatures) {
+    if (keep) out += `${header}\n${body}`
+    else changed = true
+  }
+  return changed ? out : content
 }
 
 function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
   const { change } = ctx.services.logger
   if (!existsSync(userConfig)) return
   const content = readFileSync(userConfig, "utf8")
-  if (!content.split("\n").some((l) => /^use_legacy_landlock[ \t]*=/.test(l))) return
+  const next = scrubDeprecatedFeaturesText(content)
+  if (next === content) return
 
-  writeFileSync(`${userConfig}.tmp`, scrubDeprecatedFeaturesText(content))
+  writeFileSync(`${userConfig}.tmp`, next)
   renameSync(`${userConfig}.tmp`, userConfig)
   change("Codex: scrubbed deprecated [features].use_legacy_landlock")
 }
@@ -236,38 +253,134 @@ function mergeTopLevelSettings(sotConfigText: string, userConfig: string): void 
   }
 }
 
-function mergeTableSettings(sotConfigText: string, userConfig: string): void {
+interface TomlTableHeader {
+  readonly path: string
+}
+
+const TOML_BASIC_ESCAPES: Readonly<Record<string, string>> = {
+  b: "\b",
+  t: "\t",
+  n: "\n",
+  f: "\f",
+  r: "\r",
+  '"': '"',
+  "\\": "\\"
+}
+
+function tomlBasicEscape(line: string, offset: number): { readonly next: number; readonly value: string } | undefined {
+  const escaped = line[offset]
+  const simple = escaped === undefined ? undefined : TOML_BASIC_ESCAPES[escaped]
+  if (simple !== undefined) return { next: offset + 1, value: simple }
+  const digits = escaped === "u" ? 4 : escaped === "U" ? 8 : 0
+  if (digits === 0) return undefined
+  const hex = line.slice(offset + 1, offset + 1 + digits)
+  if (hex.length !== digits || !/^[0-9A-Fa-f]+$/.test(hex)) return undefined
+  const codePoint = Number.parseInt(hex, 16)
+  if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) return undefined
+  return { next: offset + 1 + digits, value: String.fromCodePoint(codePoint) }
+}
+
+/** Decode a table header to the TOML path that determines managed ownership. */
+function tomlTableHeader(line: string): TomlTableHeader | undefined {
+  let offset = 0
+  const skipWhitespace = (): void => {
+    while (line[offset] === " " || line[offset] === "\t") offset++
+  }
+
+  skipWhitespace()
+  if (line[offset] !== "[") return undefined
+  offset++
+  const array = line[offset] === "["
+  if (array) offset++
+
+  const keys: Array<string> = []
+  while (true) {
+    skipWhitespace()
+    const quote = line[offset]
+    let key = ""
+    if (quote === '"' || quote === "'") {
+      offset++
+      let closed = false
+      while (offset < line.length) {
+        const char = line[offset]!
+        if (char === quote) {
+          offset++
+          closed = true
+          break
+        }
+        if (quote === '"' && char === "\\") {
+          const escape = tomlBasicEscape(line, offset + 1)
+          if (escape === undefined) return undefined
+          key += escape.value
+          offset = escape.next
+          continue
+        }
+        if (char === "\n" || char === "\r") return undefined
+        key += char
+        offset++
+      }
+      if (!closed) return undefined
+    } else {
+      const start = offset
+      while (offset < line.length && /[A-Za-z0-9_-]/.test(line[offset]!)) offset++
+      if (offset === start) return undefined
+      key = line.slice(start, offset)
+    }
+    keys.push(key)
+
+    skipWhitespace()
+    if (line[offset] === ".") {
+      offset++
+      continue
+    }
+    if (line[offset] !== "]") return undefined
+    offset++
+    if (array) {
+      if (line[offset] !== "]") return undefined
+      offset++
+    }
+    skipWhitespace()
+    if (offset < line.length && line[offset] !== "#") return undefined
+    return { path: JSON.stringify(keys) }
+  }
+}
+
+function mergeTableSettingsText(sotConfigText: string, userConfigText: string): string {
   const sotLines = sotConfigText.split("\n")
-  for (const tableHeader of sotLines.filter((l) => /^\[[^\]]+\]/.test(l))) {
-    // Extract the SoT block: from the exact header line to (excluding) the
-    // next table header; `$(...)` strips trailing newlines.
-    let printing = false
+  let merged = userConfigText
+  for (let tableOffset = 0; tableOffset < sotLines.length; tableOffset++) {
+    const managedHeader = tomlTableHeader(sotLines[tableOffset]!)
+    if (managedHeader === undefined) continue
+
     const block: Array<string> = []
-    for (const line of sotLines) {
-      if (line === tableHeader) printing = true
-      else if (printing && line.startsWith("[")) break
-      if (printing) block.push(line)
+    for (let blockOffset = tableOffset; blockOffset < sotLines.length; blockOffset++) {
+      const line = sotLines[blockOffset]!
+      if (blockOffset !== tableOffset && tomlTableHeader(line) !== undefined) break
+      block.push(line)
     }
     const tableBlock = block.join("\n").replace(/\n+$/, "")
 
-    // Remove the existing block from the user config…
-    const userLines = readFileSync(userConfig, "utf8").split("\n")
+    const userLines = merged.split("\n")
     if (userLines[userLines.length - 1] === "") userLines.pop()
     let skip = false
     const kept: Array<string> = []
     for (const line of userLines) {
-      if (line === tableHeader) {
-        skip = true
-        continue
+      const header = tomlTableHeader(line)
+      if (header !== undefined) {
+        skip = header.path === managedHeader.path
+        if (skip) continue
       }
-      if (skip && line.startsWith("[")) skip = false
       if (!skip) kept.push(line)
     }
-    // …and append the SoT block (printf '\n'; printf '%s\n' "$block").
-    const next = `${kept.join("\n")}\n\n${tableBlock}\n`
-    writeFileSync(`${userConfig}.tmp`, next)
-    renameSync(`${userConfig}.tmp`, userConfig)
+    merged = `${kept.join("\n")}\n\n${tableBlock}\n`
   }
+  return merged
+}
+
+function mergeTableSettings(sotConfigText: string, userConfig: string): void {
+  const next = mergeTableSettingsText(sotConfigText, readFileSync(userConfig, "utf8"))
+  writeFileSync(`${userConfig}.tmp`, next)
+  renameSync(`${userConfig}.tmp`, userConfig)
 }
 
 // ------------------------------------------------------- rules + agents ----
@@ -276,7 +389,7 @@ function syncRules(ctx: Ctx, sotRules: ReadonlyArray<PayloadPath>, userRulesDir:
   const { change, echo, verbose } = ctx.services.logger
   const firstRule = sotRules[0]
   if (firstRule === undefined) return
-  const firstDisplay = payloadDisplayPath(firstRule, ctx.repoDir)
+  const firstDisplay = payloadDisplayPath(firstRule)
   const sotRulesDir = firstDisplay.slice(0, firstDisplay.lastIndexOf("/"))
 
   if (ctx.dryRun) {
@@ -306,7 +419,7 @@ function syncRules(ctx: Ctx, sotRules: ReadonlyArray<PayloadPath>, userRulesDir:
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  const sotAgentsMd = payloadDisplayPath("SoT/.codex/AGENTS.md", ctx.repoDir)
+  const sotAgentsMd = payloadDisplayPath("SoT/.codex/AGENTS.md")
 
   if (ctx.dryRun) {
     echo(`[dry-run] cp ${sotAgentsMd} -> ${userAgentsMd}`)
@@ -326,26 +439,32 @@ function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): 
 // ---------------------------------------------------------- marketplace ----
 
 function syncMarketplace(ctx: Ctx, sotMarketplaceText: string, userMarketplace: string): void {
-  const { change, echo, err, verbose } = ctx.services.logger
-  const sotMarketplace = payloadDisplayPath("SoT/.codex/plugins/marketplace.json", ctx.repoDir)
+  const { change, echo, verbose } = ctx.services.logger
+  const sotMarketplace = payloadDisplayPath("SoT/.codex/plugins/marketplace.json")
+  const repo = parseJson(sotMarketplaceText)
+  if (repo === undefined) throw new Error(`invalid SoT marketplace JSON: ${sotMarketplace}`)
+
+  const userText = existsSync(userMarketplace) ? readFileSync(userMarketplace, "utf8") : undefined
+  const user = userText === undefined ? undefined : parseJson(userText)
+  if (userText !== undefined && user === undefined) {
+    throw new Error(`invalid deployed Codex marketplace JSON: ${userMarketplace}. Fix or delete it.`)
+  }
+  const out = user === undefined ? undefined : jqStringify(mergeMarketplace(repo, user))
 
   if (ctx.dryRun) {
-    echo(`[dry-run] cp ${sotMarketplace} -> ${userMarketplace}`)
+    if (userText === undefined) {
+      echo(`[dry-run] cp ${sotMarketplace} -> ${userMarketplace}`)
+    } else if (out === userText) {
+      verbose("Codex marketplace already in sync")
+    } else {
+      echo(`[dry-run] merge ${sotMarketplace} -> ${userMarketplace} (backup at ${userMarketplace}.bak)`)
+    }
     return
   }
 
   mkdirSync(p(ctx.agentsDir, "plugins"), { recursive: true })
-  const repo = parseJson(sotMarketplaceText)
-  if (repo === undefined) throw new Error(`invalid SoT marketplace JSON: ${sotMarketplace}`)
-
-  if (existsSync(userMarketplace)) {
-    const user = parseJson(readFileSync(userMarketplace, "utf8"))
-    if (user === undefined) {
-      err(`Skipping marketplace sync: ${userMarketplace} is not valid JSON. Fix or delete it.`)
-      return
-    }
-    const out = jqStringify(mergeMarketplace(repo, user))
-    if (out === readFileSync(userMarketplace, "utf8")) {
+  if (userText !== undefined && out !== undefined) {
+    if (out === userText) {
       verbose("Codex marketplace already in sync")
       return
     }

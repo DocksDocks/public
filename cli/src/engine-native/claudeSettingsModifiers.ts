@@ -4,6 +4,7 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import { resolveEffort } from "../efforts"
 import type { Ctx } from "./index"
+import { ExitError } from "./parseArgs"
 import { isObject, jqStringify, parseJson } from "./jq"
 
 interface ClaudeSettingEdit {
@@ -19,27 +20,44 @@ function syncClaudeSetting(ctx: Ctx, edit: ClaudeSettingEdit): void {
   const { change, echo, err, verbose, warn } = ctx.services.logger
   const userSettings = p(ctx.home, ".claude", "settings.json")
 
-  if (ctx.dryRun) {
-    echo(`[dry-run] (${edit.tag}) ${edit.dryRun} in ${userSettings}`)
-    return
-  }
-
   let text: string
   try {
     text = readFileSync(userSettings, "utf8")
-  } catch {
-    warn(`(${edit.tag}) ${userSettings} missing — skipped`)
-    return
+  } catch (error) {
+    if (error !== null && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      // A dry-run sync writes nothing, so an absent file here does not mean the
+      // edit is skipped: the same run already previewed installing the file,
+      // and the real run applies the edit to it. Outside a sync, such as
+      // `docks-kit model claude <m>`, nothing creates the file and the skip
+      // stands.
+      if (ctx.dryRun && ctx.syncClaude) {
+        echo(`[dry-run] (${edit.tag}) ${edit.dryRun} in ${userSettings}`)
+        return
+      }
+      warn(`(${edit.tag}) ${userSettings} missing — skipped`)
+      return
+    }
+    const cause = error instanceof Error ? error.message : String(error)
+    err(`(${edit.tag}) could not read ${userSettings}: ${cause}`)
+    throw new ExitError(1)
   }
   const doc = parseJson(text)
   if (doc === undefined) {
     err(`(${edit.tag}) ${userSettings} is not valid JSON — skipped`)
     return
   }
-  if (isObject(doc)) {
-    if (edit.value === undefined) delete doc[edit.key]
-    else doc[edit.key] = edit.value
+  if (!isObject(doc)) {
+    err(`(${edit.tag}) ${userSettings} must contain a JSON object — aborting`)
+    throw new ExitError(1)
   }
+
+  if (ctx.dryRun) {
+    echo(`[dry-run] (${edit.tag}) ${edit.dryRun} in ${userSettings}`)
+    return
+  }
+
+  if (edit.value === undefined) delete doc[edit.key]
+  else doc[edit.key] = edit.value
   const out = jqStringify(doc)
   if (out === text) {
     verbose(edit.unchanged)

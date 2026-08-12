@@ -155,25 +155,29 @@ export async function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): Prom
 
   if (!present(ctx, tool)) {
     const latest = await latestVersion(ctx, tool)
-    if (ctx.dryRun) {
-      echo(`[dry-run] would install ${tool} (${latest !== "" ? latest : "latest"}, gated by toolchain.json verified pin)`)
-      return 0
-    }
     let target: string
     if (latest === "") {
-      target = field(ctx, tool, "verified")
-      if (target !== "" && field(ctx, tool, "pinnable") === "true") {
-        warn(`${tool} latest version unknown (offline?) — installing kit-verified ${target} instead`)
-      } else {
-        target = ""
-        warn(`${tool} latest version unknown (offline?) and not pinnable — installing latest unverified`)
+      const verified = field(ctx, tool, "verified")
+      if (verified === "" || field(ctx, tool, "pinnable") !== "true") {
+        warn(`${tool} install skipped — latest version is unknown and no kit-verified pinnable version is available`)
+        return 0
       }
+      target = verified
+      if (ctx.dryRun) {
+        echo(`[dry-run] would install ${tool} (${target}, kit-verified fallback because latest is unknown)`)
+        return 0
+      }
+      warn(`${tool} latest version unknown (offline?) — installing kit-verified ${target} instead`)
     } else {
+      if (ctx.dryRun) {
+        echo(`[dry-run] would install ${tool} (${latest}, gated by toolchain.json verified pin)`)
+        return 0
+      }
       const g = await gate(ctx, tool, "install", latest)
       if (!g.proceed) return 0
-      target = g.target
+      target = g.target !== "" ? g.target : latest
     }
-    return await installFn("install", target !== "" ? target : latest, ctx.services)
+    return await installFn("install", target, ctx.services)
   }
 
   const installed = await installedVersion(ctx, tool)
@@ -242,7 +246,7 @@ export async function report(ctx: Ctx): Promise<void> {
     const toolId = tool as ToolId
     if (present(ctx, toolId)) {
       installed = await installedVersion(ctx, toolId)
-      status = "ok"
+      status = installed === "" ? "unknown" : "ok"
       if (floor !== "" && installed !== "" && isNewer(floor, installed)) {
         status = "below-floor"
       } else if (verified !== "" && installed !== "" && isNewer(installed, verified)) {

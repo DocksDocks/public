@@ -47,15 +47,13 @@ export interface SplitRun {
   readonly home: string
 }
 
-export type EngineKind = "native"
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
-function engineCommand(kind: EngineKind, args: ReadonlyArray<string>): string {
+function engineCommand(args: ReadonlyArray<string>): string {
   const quotedArgs = args.map(shellQuote).join(" ")
-  void kind
   // Raw harness channel (bypasses effect/unstable/cli so tests drive the engine's
   // internal argv directly); absolute bun path so the PATH stub `bun` never
   // shadows the runtime.
@@ -102,7 +100,6 @@ function shadowDir(dir: string, names: ReadonlyArray<string>): string {
 }
 
 interface RunOpts {
-  readonly stdinTty?: boolean
   readonly maskTools?: ReadonlyArray<string>
   /** Run against an existing HOME (sequential replay) instead of materializing the fixture. */
   readonly reuseHome?: string
@@ -139,21 +136,20 @@ function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): 
 }
 
 export function runEngine(
-  kind: EngineKind,
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
   opts: RunOpts = {}
 ): EngineRun {
-  const home = materializeHome(kind, fixture, opts.reuseHome)
+  const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
-  const command = `exec 2>&1; ${engineCommand(kind, args)}`
+  const command = `exec 2>&1; ${engineCommand(args)}`
   const result = spawnSync("bash", ["-c", command], {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
-    stdio: [opts.stdinTty ? "inherit" : "ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
     timeout: 120_000
   })
@@ -173,16 +169,15 @@ export function runEngine(
  * guaranteed here — use for channel-purity invariants, not ordered goldens.
  */
 export function runEngineSplit(
-  kind: EngineKind,
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
   opts: RunOpts = {}
 ): SplitRun {
-  const home = materializeHome(kind, fixture, opts.reuseHome)
+  const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
-  const command = engineCommand(kind, args)
+  const command = engineCommand(args)
   const result = spawnSync("bash", ["-c", command], {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
@@ -231,7 +226,7 @@ export function runPublicCli(
 }
 
 export function readArgvLog(run: EngineRun): string {
-  return existsSync(run.argvLog) ? readFileSync(run.argvLog, "utf8") : ""
+  return readFileSync(run.argvLog, "utf8")
 }
 
 export function cleanup(runs: Array<EngineRun>): void {
@@ -242,8 +237,12 @@ export function checkedSpawnExitCode(
   command: string,
   result: Pick<SpawnSyncReturns<string>, "status" | "signal" | "error">
 ): number {
+  if (result.error !== undefined) {
+    const code = "code" in result.error ? result.error.code : undefined
+    if (code === "ETIMEDOUT") throw new Error(`${command} timed out: ${String(result.error)}`)
+    throw new Error(`${command} failed to spawn: ${String(result.error)}`)
+  }
   if (typeof result.status === "number") return result.status
-  if (result.error !== undefined) throw new Error(`${command} failed to spawn: ${String(result.error)}`)
   if (result.signal !== null) throw new Error(`${command} terminated by signal ${result.signal}`)
   throw new Error(`${command} completed without status or signal`)
 }

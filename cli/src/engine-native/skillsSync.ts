@@ -4,14 +4,16 @@
  * the kit-managed snapshot, the effect-solutions toolchain callback, and the
  * snapshot write.
  */
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
+import { dirname, relative, resolve } from "node:path"
 import { p, spawnProcess, writeFileIfChanged } from "./exec"
 import { bunBootstrap } from "./bun"
 import type { Ctx } from "./index"
-import { compareCodepoints } from "./jq"
+import { compareCodepoints, isObject, parseJson } from "./jq"
 import type { EngineServices } from "./services"
 import { ensure, field } from "./toolchain"
 import { payloadText } from "../payload"
+import { ExitError } from "./parseArgs"
 
 export interface SkillsState {
   present: number
@@ -26,16 +28,18 @@ export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
   if (!ctx.dryRun) mkdirSync(skillsDir, { recursive: true })
 
   await syncUniversal(ctx, state, skillsDir, manifest)
-  if (ctx.prune) await reconcileRemovals(ctx, manifest, snapshot)
+  const failedRemovals = ctx.prune ? await reconcileRemovals(ctx, manifest, snapshot) : []
   await syncEffectSolutionsCli(ctx)
-  updateSnapshot(ctx, manifest, snapshot)
+  updateSnapshot(ctx, manifest, snapshot, failedRemovals)
   return state
 }
 
 /** skills::_skills_cli — the pinned npx package spec. */
 function skillsCli(ctx: Ctx): string {
-  const v = field(ctx, "skills-cli", "verified")
-  return v !== "" ? `skills@${v}` : "skills"
+  const version = field(ctx, "skills-cli", "verified")
+  if (version !== "") return `skills@${version}`
+  ctx.services.logger.err("Universal skills sync aborted because SoT/toolchain.json has no verified skills-cli pin")
+  throw new ExitError(1)
 }
 
 /** skills::_normalize_manifest — cleaned slugs, one per line. */
@@ -131,7 +135,7 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
   const canonical = p(skillsDir, base)
   const claudeSkillsDir = p(ctx.home, ".claude", "skills")
   const claudeLink = p(claudeSkillsDir, base)
-  const relTarget = `../../.agents/skills/${base}`
+  const relTarget = relative(dirname(claudeLink), canonical)
 
   if (!isDir(canonical)) return false
 
@@ -186,31 +190,23 @@ function removeLink(path: string): boolean {
   }
 }
 
-/** skills::_link_or_copy — real symlink preferred, copy fallback. */
+/** skills::_link_or_copy — create a symlink without replacing its source. */
 export function linkOrCopy(target: string, link: string): boolean {
+  const resolvedLink = resolve(link)
+  if (resolve(dirname(resolvedLink), target) === resolvedLink) return true
   removeLink(link)
   try {
     symlinkSync(target, link)
   } catch {
-    // fall through to the copy fallback below
+    return false
   }
-  if (lstat(link)?.isSymbolicLink() === true) return true
-  try {
-    // Resolve a relative target against the link's parent, like ln does.
-    const resolved = target.startsWith("/") ? target : p(link.slice(0, link.lastIndexOf("/")), target)
-    cpSync(resolved, link, { recursive: true })
-  } catch {
-    // fall through to the existence check below
-  }
-  return existsSync(link)
+  return lstat(link)?.isSymbolicLink() === true
 }
 
 function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): boolean {
   const linked = linkOrCopy(target, link)
   if (!linked) {
-    services.logger.warn(`could not create ${link} (symlink and copy both failed)`)
-  } else if (lstat(link)?.isSymbolicLink() !== true) {
-    services.logger.warn(`symlinks unsupported here — ${link} is a copy refreshed on sync`)
+    services.logger.warn(`could not create symlink ${link}`)
   }
   return linked
 }
@@ -255,7 +251,10 @@ export function effectSolutionsInstall(
 
 async function syncEffectSolutionsCli(ctx: Ctx): Promise<void> {
   const { clearProgress, progress, warn } = ctx.services.logger
-  if (!/"effect-kit@docks"[ \t]*:[ \t]*true/.test(payloadText("SoT/.claude/settings.json"))) return
+  const settings = parseJson(payloadText("SoT/.claude/settings.json"))
+  if (settings === undefined || !isObject(settings)) return
+  const enabledPlugins = settings["enabledPlugins"]
+  if (enabledPlugins === undefined || !isObject(enabledPlugins) || enabledPlugins["effect-kit@docks"] !== true) return
 
   progress("Checking effect-solutions CLI...")
   const result = await ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
@@ -267,7 +266,7 @@ async function syncEffectSolutionsCli(ctx: Ctx): Promise<void> {
 
 // ----------------------------------------------------- prune + snapshot ----
 
-async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): Promise<void> {
+async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): Promise<Array<string>> {
   const { change, clearProgress, echo, progress, warn } = ctx.services.logger
   if (!existsSync(snapshot)) {
     if (ctx.dryRun) {
@@ -275,15 +274,18 @@ async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): 
         `[dry-run] (--prune) no kit-managed-skills snapshot yet; first real sync writes ${snapshot}, then future --prune runs reconcile against it`
       )
     }
-    return
+    return []
   }
 
   const current = normalizeManifest(manifest)
+  const currentBases = new Set(current.map((slug) => slug.slice(slug.lastIndexOf("/") + 1)))
   let removed = 0
   let failed = 0
+  const failedSlugs: Array<string> = []
   for (const slug of readSlugs(snapshot)) {
     if (current.includes(slug)) continue
     const base = slug.slice(slug.lastIndexOf("/") + 1)
+    if (currentBases.has(base)) continue
     if (ctx.dryRun) {
       echo(`[dry-run] kit-managed skill no longer in SoT — would remove: ${base}`)
       continue
@@ -298,6 +300,7 @@ async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): 
     } else {
       warn(`Failed to remove kit-managed skill: ${base}`)
       failed++
+      failedSlugs.push(slug)
     }
   }
 
@@ -306,13 +309,14 @@ async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): 
     ctx.nextStepTriggers.skillsRestart = true
   }
   if (failed > 0) warn(`${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove --global <name> -y`)
+  return failedSlugs
 }
 
-function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string): void {
+function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string, failedRemovals: ReadonlyArray<string>): void {
   if (ctx.dryRun) return
 
   mkdirSync(ctx.agentsDir, { recursive: true })
-  const sorted = [...new Set(normalizeManifest(manifest))].sort(compareCodepoints)
+  const sorted = [...new Set([...normalizeManifest(manifest), ...failedRemovals])].sort(compareCodepoints)
   writeFileIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
 }
 

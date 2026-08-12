@@ -24,13 +24,96 @@ export class ExitError extends Error {
 }
 
 export const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"]
-const MODIFIER_FLAGS = new Set<ModifierFlag>([
-  "--claude-model",
-  "--claude-effort",
-  "--claude-advisor",
-  "--codex-model",
-  "--codex-effort"
-])
+
+interface ModifierMetadata {
+  readonly target: "claude" | "codex"
+  readonly ignoredWarning: string
+  readonly hasValue: (ctx: Ctx) => boolean
+  readonly clear: (ctx: Ctx) => void
+}
+
+const MODIFIER_METADATA = {
+  "--claude-model": {
+    target: "claude",
+    ignoredWarning: "--claude-model ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudeModel !== "",
+    clear: (ctx) => {
+      ctx.claudeModel = ""
+    }
+  },
+  "--claude-effort": {
+    target: "claude",
+    ignoredWarning: "--claude-effort ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudeEffort !== "",
+    clear: (ctx) => {
+      ctx.claudeEffort = ""
+    }
+  },
+  "--claude-advisor": {
+    target: "claude",
+    ignoredWarning: "--claude-advisor ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudeAdvisor !== "",
+    clear: (ctx) => {
+      ctx.claudeAdvisor = ""
+    }
+  },
+  "--claude-compact-window": {
+    target: "claude",
+    ignoredWarning: "--claude-compact-window ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudeCompactWindow !== "",
+    clear: (ctx) => {
+      ctx.claudeCompactWindow = ""
+    }
+  },
+  "--claude-permissive": {
+    target: "claude",
+    ignoredWarning: "--claude-permissive ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudePermissive,
+    clear: (ctx) => {
+      ctx.claudePermissive = false
+    }
+  },
+  "--claude-plugin": {
+    target: "claude",
+    ignoredWarning: "--claude-plugin ignored: claude target not selected",
+    hasValue: (ctx) => ctx.claudePlugins.length > 0,
+    clear: (ctx) => {
+      ctx.claudePlugins = []
+    }
+  },
+  "--codex-model": {
+    target: "codex",
+    ignoredWarning: "--codex-model ignored: codex target not selected",
+    hasValue: (ctx) => ctx.codexModel !== "",
+    clear: (ctx) => {
+      ctx.codexModel = ""
+    }
+  },
+  "--codex-effort": {
+    target: "codex",
+    ignoredWarning: "--codex-effort ignored: codex target not selected",
+    hasValue: (ctx) => ctx.codexEffort !== "",
+    clear: (ctx) => {
+      ctx.codexEffort = ""
+    }
+  }
+} satisfies Record<ModifierFlag, ModifierMetadata>
+
+type ScalarModifierFlag =
+  | "--claude-model"
+  | "--claude-effort"
+  | "--claude-advisor"
+  | "--codex-model"
+  | "--codex-effort"
+
+const SCALAR_MODIFIER_FLAGS: Record<ScalarModifierFlag, true> = {
+  "--claude-model": true,
+  "--claude-effort": true,
+  "--claude-advisor": true,
+  "--codex-model": true,
+  "--codex-effort": true
+}
+
 
 function usage(ctx: Ctx): void {
   const { echo } = ctx.services.logger
@@ -86,13 +169,33 @@ export function parseCompactWindow(v: string): string | undefined {
   return /^[0-9]+$/.test(v) ? v : undefined
 }
 
-function addClaudePlugin(ctx: Ctx, name: string): void {
-  const { err } = ctx.services.logger
+export function parseClaudePlugin(name: string, err: (message: string) => void): string {
   if (!KNOWN_CLAUDE_OPTIN_PLUGINS.includes(name)) {
     err(`Unknown opt-in plugin '${name}'. Known: ${KNOWN_CLAUDE_OPTIN_PLUGINS.join(", ")}`)
     throw new ExitError(2)
   }
-  ctx.claudePlugins.push(name)
+  return name
+}
+
+function markModifier(ctx: Ctx, flag: ModifierFlag): void {
+  const flags = ctx.modifierFlags ?? new Set<ModifierFlag>()
+  flags.add(flag)
+  ctx.modifierFlags = flags
+}
+
+function addClaudePlugin(ctx: Ctx, name: string): void {
+  if (name === "") {
+    printCatalog(
+      ctx,
+      `Available Claude optional plugins:\n${KNOWN_CLAUDE_OPTIN_PLUGINS.map((plugin) => `  ${plugin}`).join("\n")}`
+    )
+    ctx.services.logger.err(
+      `Invalid Claude plugin '' — valid: ${KNOWN_CLAUDE_OPTIN_PLUGINS.join("|")}`
+    )
+    throw new ExitError(2)
+  }
+  ctx.claudePlugins.push(parseClaudePlugin(name, ctx.services.logger.err))
+  markModifier(ctx, "--claude-plugin")
 }
 
 function selectTarget(ctx: Ctx, target: string): void {
@@ -102,7 +205,7 @@ function selectTarget(ctx: Ctx, target: string): void {
   ctx.targetFilterSet = true
 }
 
-function setModifier(ctx: Ctx, flag: ModifierFlag, value: string): void {
+function setModifier(ctx: Ctx, flag: ScalarModifierFlag, value: string): void {
   switch (flag) {
     case "--claude-model":
       ctx.claudeModel = value
@@ -120,20 +223,19 @@ function setModifier(ctx: Ctx, flag: ModifierFlag, value: string): void {
       ctx.codexEffort = value
       break
   }
-  const flags = ctx.modifierFlags ?? new Set<ModifierFlag>()
-  flags.add(flag)
-  ctx.modifierFlags = flags
+  markModifier(ctx, flag)
 }
 
-function isModifierFlag(value: string): value is ModifierFlag {
-  return MODIFIER_FLAGS.has(value as ModifierFlag)
+function isScalarModifierFlag(value: string): value is ScalarModifierFlag {
+  return SCALAR_MODIFIER_FLAGS[value as ScalarModifierFlag] === true
 }
+
 
 export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
   const { err } = ctx.services.logger
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index] ?? ""
-    if (isModifierFlag(arg) && args[index + 1] === "") {
+    if (isScalarModifierFlag(arg) && args[index + 1] === "") {
       setModifier(ctx, arg, "")
       index += 1
       continue
@@ -190,6 +292,7 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         throw new ExitError(2)
       case "--claude-permissive":
         ctx.claudePermissive = true
+        markModifier(ctx, "--claude-permissive")
         continue
       case "--claude-plugin":
         err(`--claude-plugin requires a value: --claude-plugin=<${KNOWN_CLAUDE_OPTIN_PLUGINS.join("|")}>`)
@@ -244,8 +347,12 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         throw new ExitError(2)
       }
       ctx.claudeCompactWindow = parsed
+      markModifier(ctx, "--claude-compact-window")
     } else if (arg.startsWith("--claude-plugin=")) {
       addClaudePlugin(ctx, arg.slice("--claude-plugin=".length))
+    } else if (arg.startsWith("--claude-permissive=")) {
+      err("--claude-permissive does not take a value")
+      throw new ExitError(2)
     } else {
       err(`Unknown arg: ${arg}`)
       throw new ExitError(2)
@@ -266,53 +373,49 @@ function printCatalog(ctx: Ctx, catalog: string): void {
 
 export function validateModifierFlags(ctx: Ctx): void {
   const { err, warn } = ctx.services.logger
-  const supplied = (flag: ModifierFlag, value: string): boolean =>
-    value !== "" || ctx.modifierFlags?.has(flag) === true
-  if (supplied("--claude-model", ctx.claudeModel)) {
-    if (!ctx.syncClaude) {
-      warn("--claude-model ignored: claude target not selected")
-      ctx.claudeModel = ""
-    } else if (!validateClaudeModel(ctx, ctx.claudeModel)) {
+  const supplied = (flag: ModifierFlag): boolean =>
+    MODIFIER_METADATA[flag].hasValue(ctx) || ctx.modifierFlags?.has(flag) === true
+
+  for (const flag of Object.keys(MODIFIER_METADATA) as Array<ModifierFlag>) {
+    const metadata = MODIFIER_METADATA[flag]
+    const targetSelected = metadata.target === "claude" ? ctx.syncClaude : ctx.syncCodex
+    if (!targetSelected && supplied(flag)) {
+      warn(metadata.ignoredWarning)
+      metadata.clear(ctx)
+      ctx.modifierFlags?.delete(flag)
+    }
+  }
+
+  if (supplied("--claude-model")) {
+    if (!validateClaudeModel(ctx, ctx.claudeModel)) {
       printModels(ctx, "claude")
       err(`Invalid Claude model '${ctx.claudeModel}' — use an alias above or a full claude-* ID`)
       throw new ExitError(2)
     }
   }
-  if (supplied("--claude-effort", ctx.claudeEffort)) {
-    if (!ctx.syncClaude) {
-      warn("--claude-effort ignored: claude target not selected")
-      ctx.claudeEffort = ""
-    } else if (!isEffortModifierValue("claude", ctx.claudeEffort)) {
+  if (supplied("--claude-effort")) {
+    if (!isEffortModifierValue("claude", ctx.claudeEffort)) {
       printCatalog(ctx, effortCatalog("claude"))
       err(`Invalid Claude effort '${ctx.claudeEffort}' — valid: ${effortValueGrammar("claude")}`)
       throw new ExitError(2)
     }
   }
-  if (supplied("--claude-advisor", ctx.claudeAdvisor)) {
-    if (!ctx.syncClaude) {
-      warn("--claude-advisor ignored: claude target not selected")
-      ctx.claudeAdvisor = ""
-    } else if (!CLAUDE_ADVISOR_STATES.some((state) => state === ctx.claudeAdvisor)) {
+  if (supplied("--claude-advisor")) {
+    if (!CLAUDE_ADVISOR_STATES.some((state) => state === ctx.claudeAdvisor)) {
       printCatalog(ctx, advisorCatalog())
       err(`Invalid Claude advisor state '${ctx.claudeAdvisor}' — valid: ${advisorValueGrammar()}`)
       throw new ExitError(2)
     }
   }
-  if (supplied("--codex-model", ctx.codexModel)) {
-    if (!ctx.syncCodex) {
-      warn("--codex-model ignored: codex target not selected")
-      ctx.codexModel = ""
-    } else if (!validateCodexModel(ctx, ctx.codexModel)) {
+  if (supplied("--codex-model")) {
+    if (!validateCodexModel(ctx, ctx.codexModel)) {
       printModels(ctx, "codex")
       err(`Invalid Codex model '${ctx.codexModel}' — must match ^[A-Za-z0-9._-]+$`)
       throw new ExitError(2)
     }
   }
-  if (supplied("--codex-effort", ctx.codexEffort)) {
-    if (!ctx.syncCodex) {
-      warn("--codex-effort ignored: codex target not selected")
-      ctx.codexEffort = ""
-    } else if (!isEffortModifierValue("codex", ctx.codexEffort)) {
+  if (supplied("--codex-effort")) {
+    if (!isEffortModifierValue("codex", ctx.codexEffort)) {
       printCatalog(ctx, effortCatalog("codex"))
       err(`Invalid Codex effort '${ctx.codexEffort}' — valid: ${effortValueGrammar("codex")}`)
       throw new ExitError(2)

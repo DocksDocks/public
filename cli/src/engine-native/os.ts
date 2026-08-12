@@ -14,11 +14,3 @@ export function platformName(pf: NodeJS.Platform = rawPlatform()): PlatformName 
   return pf === "linux" ? "linux" : pf === "darwin" ? "darwin" : "unknown"
 }
 
-export function isLinux(): boolean {
-  return rawPlatform() === "linux"
-}
-
-/** Shell-rc exports apply only on supported hosts. */
-export function shellRcApplicable(): boolean {
-  return platformName() !== "unknown"
-}

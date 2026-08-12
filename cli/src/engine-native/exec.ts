@@ -4,7 +4,7 @@
  * substitution: stdout with trailing newlines stripped, empty on failure.
  */
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
-import { accessSync, chmodSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { accessSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, isAbsolute, join } from "node:path"
 
 /** Keep engine paths slash-separated so rendered output is host-stable. */
@@ -101,23 +101,10 @@ export function isExecutable(p: string): boolean {
   }
 }
 
-export function fileExists(p: string): boolean {
-  return existsSync(p)
-}
-
 // Change-detection primitives (Output Policy in DESIGN.md): operations report
 // changed:boolean so unchanged repeat runs log at verbose instead of [ok].
 
 /** Write only when the content differs; returns whether a write happened. */
-/** Add missing +x bits; returns whether a repair actually happened. */
-export function ensureExecutable(path: string): boolean {
-  const mode = statSync(path).mode
-  const want = mode | 0o111
-  if (mode === want) return false
-  chmodSync(path, want)
-  return true
-}
-
 export function writeTextIfChanged(path: string, content: string): boolean {
   if (existsSync(path) && readFileSync(path, "utf8") === content) return false
   writeFileSync(path, content)

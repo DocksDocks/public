@@ -634,6 +634,49 @@ describe.sequential("EngineNative full service injection", () => {
     }
   })
 
+  it("keeps distinct diagnostics for explicit-empty non-scalar modifiers", async () => {
+    const pluginRecords: Array<LogRecord> = []
+    expect(
+      await runEngineNative(
+        ["sync", "claude", "--dry-run", "--claude-plugin="],
+        stubServices(pluginRecords)
+      )
+    ).toBe(2)
+    expect(
+      pluginRecords.filter(({ level }) => level === "echo").map(({ message }) => message).join("\n")
+    ).toContain("Available Claude optional plugins")
+    expect(pluginRecords).toContainEqual({
+      level: "err",
+      message: "Invalid Claude plugin '' — valid: supabase|n8n"
+    })
+
+    for (const [flag, error] of [
+      [
+        "--claude-compact-window=",
+        "--claude-compact-window expects a token count (e.g. 680000 or 680k)"
+      ],
+      ["--claude-permissive=", "--claude-permissive does not take a value"]
+    ] as const) {
+      const records: Array<LogRecord> = []
+      expect(
+        await runEngineNative(["sync", "claude", "--dry-run", flag], stubServices(records))
+      ).toBe(2)
+      expect(records).toContainEqual({ level: "err", message: error })
+    }
+
+    const missingPluginRecords: Array<LogRecord> = []
+    expect(
+      await runEngineNative(
+        ["sync", "claude", "--dry-run", "--claude-plugin"],
+        stubServices(missingPluginRecords)
+      )
+    ).toBe(2)
+    expect(missingPluginRecords).toContainEqual({
+      level: "err",
+      message: "--claude-plugin requires a value: --claude-plugin=<supabase|n8n>"
+    })
+  })
+
   it("warns and clears effort and advisor modifiers for unselected targets", async () => {
     const root = mkdtempSync(join(tmpdir(), "engine-di-modifier-ignore-"))
     const previousHome = process.env["HOME"]
@@ -786,19 +829,19 @@ describe.sequential("EngineNative full service injection", () => {
         { level: "echo", message: "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)" },
         {
           level: "echo",
-          message: `[dry-run] merge ${kitHome()}/SoT/.codex/config.toml -> ${codexHome}/.codex/config.toml`
+          message: `[dry-run] install embedded:SoT/.codex/config.toml -> ${codexHome}/.codex/config.toml`
         },
         {
           level: "echo",
-          message: `[dry-run] cp ${kitHome()}/SoT/.codex/rules/*.rules -> ${codexHome}/.codex/rules/`
+          message: `[dry-run] cp embedded:SoT/.codex/rules/*.rules -> ${codexHome}/.codex/rules/`
         },
         {
           level: "echo",
-          message: `[dry-run] cp ${kitHome()}/SoT/.codex/AGENTS.md -> ${codexHome}/.codex/AGENTS.md`
+          message: `[dry-run] cp embedded:SoT/.codex/AGENTS.md -> ${codexHome}/.codex/AGENTS.md`
         },
         {
           level: "echo",
-          message: `[dry-run] cp ${kitHome()}/SoT/.codex/plugins/marketplace.json -> ${codexHome}/.agents/plugins/marketplace.json`
+          message: `[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> ${codexHome}/.agents/plugins/marketplace.json`
         },
         {
           level: "echo",
@@ -810,6 +853,23 @@ describe.sequential("EngineNative full service injection", () => {
         { level: "echo", message: `Repo:     ${kitHome()}` },
         { level: "echo", message: `Codex:    ${codexHome}/.codex` }
       ])
+      noBypass()
+
+      const existingCodexHome = useHome("canonical-codex-existing")
+      mkdirSync(join(existingCodexHome, ".codex"), { recursive: true })
+      writeFileSync(join(existingCodexHome, ".codex", "config.toml"), 'model = "user-choice"\n')
+      const existingCodexRecords: Array<LogRecord> = []
+      expect(
+        await runEngineNative(["sync", "codex", "--dry-run"], stubServices(existingCodexRecords))
+      ).toBe(0)
+      expect(existingCodexRecords).toContainEqual({
+        level: "echo",
+        message: `[dry-run] merge embedded:SoT/.codex/config.toml -> ${existingCodexHome}/.codex/config.toml`
+      })
+      expect(existingCodexRecords).not.toContainEqual({
+        level: "echo",
+        message: `[dry-run] install embedded:SoT/.codex/config.toml -> ${existingCodexHome}/.codex/config.toml`
+      })
       noBypass()
 
       useHome("parse-error")

@@ -14,6 +14,7 @@ import { toolchainCommand } from "./commands/toolchain"
 import { updateCommand } from "./commands/update"
 import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload"
 import { prepareArgv } from "./argv"
+import { runEngineNative } from "./engine-native"
 
 
 const root = Command.make("docks-kit", {}, () =>
@@ -64,8 +65,17 @@ const bareVersionFormatter: CliOutput.Formatter = {
 // PUBLIC engine execution lives at the engine.ts seam after the CLI has
 // parsed/normalized pickers, --flag value forms, and non-engine commands.
 if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
-  const { runEngineNative } = await import("./engine-native")
-  process.exit(await runEngineNative(process.argv.slice(2)))
+  const rawArgs = process.argv.slice(2)
+  const rawOperation = rawArgs.join(" ") || "default"
+  try {
+    process.exit(await runEngineNative(rawArgs))
+  } catch (error) {
+    let detail = "unknown error"
+    if (error instanceof Error && error.message !== "") detail = error.message
+    else if (typeof error === "string" && error !== "") detail = error
+    process.stderr.write(`docks-kit raw operation '${rawOperation}' failed: ${detail}\n`)
+    process.exit(1)
+  }
 }
 
 // Validate and normalize before parsing because the kit refuses to guess at unrecognized

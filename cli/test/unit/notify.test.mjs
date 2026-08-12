@@ -50,7 +50,7 @@ describe("Notification program seam", () => {
     })
   })
 
-  it("returns a selected player failure without falling through", async () => {
+  it("treats a failed player as a silent no-op without trying a second player", async () => {
     const spawnSync = vi.fn(() => ({ exitCode: 7 }))
     expect(await main({
       platform: "linux",
@@ -58,7 +58,7 @@ describe("Notification program seam", () => {
       fileExists: async () => true,
       which: whichFrom(["ffplay", "paplay"]),
       spawnSync
-    })).toBe(7)
+    })).toBe(0)
     expect(spawnSync).toHaveBeenCalledTimes(1)
   })
 

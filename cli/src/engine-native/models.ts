@@ -6,16 +6,9 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { payloadDisplayPath, payloadText } from "../payload"
 
-function catalog(): Json | undefined {
-  try {
-    return parseJson(payloadText("SoT/models.json"))
-  } catch {
-    return undefined
-  }
-}
 
 function toolEntry(tool: string): { [k: string]: Json } | undefined {
-  const doc = catalog()
+  const doc = parseJson(payloadText("SoT/models.json"))
   if (doc === undefined || !isObject(doc)) return undefined
   const entry = doc[tool]
   return entry !== undefined && isObject(entry) ? entry : undefined
@@ -37,7 +30,7 @@ export function printModels(ctx: Ctx, tool: string): void {
   const { echo, warn } = ctx.services.logger
   const entry = toolEntry(tool)
   if (entry === undefined) {
-    warn(`Model catalog unavailable (${payloadDisplayPath("SoT/models.json", ctx.repoDir)})`)
+    warn(`Model catalog unavailable (${payloadDisplayPath("SoT/models.json")})`)
     return
   }
   const verified = typeof entry["verified"] === "string" ? entry["verified"] : "?"

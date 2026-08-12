@@ -21,6 +21,7 @@ const createKitRoot = (dir: string, ...nestedDirs: string[]): void => {
 describe("kitHome", () => {
   it("describes the package-root requirement for invalid DOCKS_KIT_HOME", () => {
     const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"))
+    writeFileSync(join(dir, "package.json"), '{"name":"another-package"}')
     const previous = process.env["DOCKS_KIT_HOME"]
     process.env["DOCKS_KIT_HOME"] = dir
     try {
@@ -30,6 +31,39 @@ describe("kitHome", () => {
     } finally {
       if (previous === undefined) delete process.env["DOCKS_KIT_HOME"]
       else process.env["DOCKS_KIT_HOME"] = previous
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("reports a missing explicit-home manifest instead of a package-name mismatch", () => {
+    const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"))
+    try {
+      expect(() =>
+        resolveKitHome({
+          env: dir,
+          moduleDir: undefined,
+          execPath: join(dir, "bin", "docks-kit"),
+          cwd: dir
+        })
+      ).toThrow(`DOCKS_KIT_HOME=${dir} does not contain package.json`)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("reports invalid JSON in an explicit-home manifest", () => {
+    const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"))
+    writeFileSync(join(dir, "package.json"), "{")
+    try {
+      expect(() =>
+        resolveKitHome({
+          env: dir,
+          moduleDir: undefined,
+          execPath: join(dir, "bin", "docks-kit"),
+          cwd: dir
+        })
+      ).toThrow(`DOCKS_KIT_HOME=${dir} package.json contains invalid JSON`)
+    } finally {
       rmSync(dir, { recursive: true, force: true })
     }
   })

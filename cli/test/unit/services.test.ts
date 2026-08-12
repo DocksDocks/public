@@ -35,13 +35,13 @@ describe("engine service layers", () => {
     ])
   })
 
-  it("PlatformTest exposes the supported Linux and macOS capabilities", () => {
+  it("PlatformTest exposes the raw platform and normalized name", () => {
     const program = Effect.gen(function* () {
       const platform = yield* PlatformService
-      return [platform.name(), platform.isLinux(), platform.shellRcApplicable()]
+      return [platform.raw(), platform.name()]
     })
-    expect(Effect.runSync(Effect.provide(program, PlatformTest("linux")))).toEqual(["linux", true, true])
-    expect(Effect.runSync(Effect.provide(program, PlatformTest("darwin")))).toEqual(["darwin", false, true])
+    expect(Effect.runSync(Effect.provide(program, PlatformTest("linux")))).toEqual(["linux", "linux"])
+    expect(Effect.runSync(Effect.provide(program, PlatformTest("darwin")))).toEqual(["darwin", "darwin"])
   })
 
   it("combined graph: an injected platform drives the manager's install hints", () => {

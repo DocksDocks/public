@@ -34,21 +34,27 @@ for target in "${TARGETS[@]}"; do
     "$REPO_DIR/cli/src/main.ts" --outfile "$out"
 done
 
-sorted_artifacts="$(printf '%s\n' "${ARTIFACTS[@]}" | LC_ALL=C sort)"
+for name in "${ARTIFACTS[@]}"; do
+  mv "$STAGING/$name" "$DIST/$name"
+done
+
+ALL_ARTIFACTS=()
+for path in "$DIST"/docks-kit-*; do
+  [[ -f "$path" ]] || continue
+  ALL_ARTIFACTS+=("${path##*/}")
+done
+sorted_artifacts="$(printf '%s\n' "${ALL_ARTIFACTS[@]}" | LC_ALL=C sort)"
 SORTED_ARTIFACTS=()
 while IFS= read -r name; do
   SORTED_ARTIFACTS+=("$name")
 done <<< "$sorted_artifacts"
 
 (
-  cd "$STAGING"
-  sha256sum "${SORTED_ARTIFACTS[@]}" > SHA256SUMS 2>/dev/null ||
-    shasum -a 256 "${SORTED_ARTIFACTS[@]}" > SHA256SUMS
+  cd "$DIST"
+  sha256sum "${SORTED_ARTIFACTS[@]}" > "$STAGING/SHA256SUMS" 2>/dev/null ||
+    shasum -a 256 "${SORTED_ARTIFACTS[@]}" > "$STAGING/SHA256SUMS"
 )
 
 rm -f "$DIST/SHA256SUMS"
-for name in "${ARTIFACTS[@]}"; do
-  mv "$STAGING/$name" "$DIST/$name"
-done
 mv "$STAGING/SHA256SUMS" "$DIST/SHA256SUMS"
 echo "done — ${ARTIFACTS[*]} SHA256SUMS"

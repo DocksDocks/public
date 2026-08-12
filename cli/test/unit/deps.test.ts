@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
 import { capture } from "../../src/engine-native/exec"
 import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
@@ -110,7 +110,45 @@ describe("DependencyManager registry", () => {
     await expect(resolved.path("effect-solutions")).resolves.toBe(`${globalBin}/effect-solutions`)
   })
 
-  it("preserves the original fixed-home Bun version fallbacks", async () => {
+  it("does not capture a Bun version when Bun is absent", async () => {
+    const capture = vi.fn(async () => "")
+    const exec: ProbeExecutor = {
+      commandExists: () => false,
+      capture,
+      which: () => ""
+    }
+    const version = DEPENDENCIES.bun.version
+    if (version === undefined) throw new Error("Bun version probe is not registered")
+
+    await expect(version(exec)).resolves.toBe("")
+    expect(capture).not.toHaveBeenCalled()
+  })
+
+  it("reads the effect-solutions version only when Bun is present", async () => {
+    const version = DEPENDENCIES["effect-solutions"].version
+    if (version === undefined) throw new Error("effect-solutions version probe is not registered")
+
+    const absentCapture = vi.fn(async () => "")
+    const absentExec: ProbeExecutor = {
+      commandExists: () => false,
+      capture: absentCapture,
+      which: () => ""
+    }
+    await expect(version(absentExec)).resolves.toBe("")
+    expect(absentCapture).not.toHaveBeenCalled()
+
+    const presentCapture = vi.fn(async () => "effect-solutions@1.2.3")
+    const presentExec: ProbeExecutor = {
+      commandExists: () => true,
+      capture: presentCapture,
+      which: (name) => (name === "bun" ? "/opt/bun/bin/bun" : "")
+    }
+    await expect(version(presentExec)).resolves.toBe("1.2.3")
+    expect(presentCapture).toHaveBeenCalledOnce()
+    expect(presentCapture).toHaveBeenCalledWith("bun", ["pm", "-g", "ls"])
+  })
+
+  it("uses the resolved BUN_INSTALL executable for Bun-backed version probes", async () => {
     const previousHome = process.env["HOME"]
     const previousBunInstall = process.env["BUN_INSTALL"]
     const calls: Array<[string, ReadonlyArray<string>]> = []
@@ -121,14 +159,17 @@ describe("DependencyManager registry", () => {
         commandExists: (name) => name === "effect-solutions",
         capture: async (cmd, args) => {
           calls.push([cmd, args])
-          return cmd === "/custom-bun/bin/bun" ? "effect-solutions@0.5.3" : ""
+          return args[0] === "--version" ? "1.3.14" : "effect-solutions@0.5.3"
         },
         which: (name) => (name === "/custom-bun/bin/bun" ? name : "")
       })
 
-      await expect(manager.version("bun")).resolves.toBe("")
-      await expect(manager.version("effect-solutions")).resolves.toBe("")
-      expect(calls).toEqual([["/fixture-home/.bun/bin/bun", ["--version"]]])
+      await expect(manager.version("bun")).resolves.toBe("1.3.14")
+      await expect(manager.version("effect-solutions")).resolves.toBe("0.5.3")
+      expect(calls).toEqual([
+        ["/custom-bun/bin/bun", ["--version"]],
+        ["/custom-bun/bin/bun", ["pm", "-g", "ls"]]
+      ])
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]
       else process.env["HOME"] = previousHome

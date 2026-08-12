@@ -138,6 +138,10 @@ export const syncCommand = Command.make(
       Option.map(config.codexModel, (m) => args.push(`--codex-model=${m}`))
       Option.map(config.codexEffort, (level) => args.push(`--codex-effort=${level}`))
       for (const occurrence of config.claudePlugin) {
+        if (occurrence.trim() === "") {
+          args.push("--claude-plugin=")
+          continue
+        }
         occurrence
           .split(",")
           .map((p) => p.trim())

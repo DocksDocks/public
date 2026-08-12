@@ -55,6 +55,35 @@ function escapeRegExp(value: string): string {
 }
 
 export type TreeSnapshot = Record<string, string>
+const TEXT_ARTIFACT_SUFFIXES = [
+  ".js",
+  ".json",
+  ".json.bak",
+  ".md",
+  ".md.bak",
+  ".mjs",
+  ".rules",
+  ".sh",
+  ".toml",
+  ".toml.bak",
+  ".ts",
+  ".txt",
+  ".yaml",
+  ".yml"
+] as const
+const TEXT_ARTIFACT_NAMES: Record<string, true> = {
+  ".bashrc": true,
+  ".gitkeep": true,
+  ".kit-managed-skills": true,
+  "session-relay": true
+}
+
+function isTextArtifact(relative: string): boolean {
+  return (
+    Object.hasOwn(TEXT_ARTIFACT_NAMES, basename(relative)) ||
+    TEXT_ARTIFACT_SUFFIXES.some((suffix) => relative.endsWith(suffix))
+  )
+}
 
 function normalizeTreeBody(
   body: string,
@@ -92,15 +121,16 @@ function snapshotTreeWithTemporaryDirs(
     if (relative === ".bun/install") continue
     const stat = lstatSync(path)
     if (stat.isSymbolicLink()) {
-      acc[relative] = `link:${readlinkSync(path)}`
+      acc[relative] = `link:${normalizeTreeBody(readlinkSync(path), root, temporaryDirs)}`
     } else if (stat.isDirectory()) {
       if (relative !== ".bun" && relative !== ".local" && relative !== ".local/bin") acc[`${relative}/`] = "dir"
       snapshotTreeWithTemporaryDirs(root, path, acc, temporaryDirs)
     } else {
-      // Hash with CRLF and materialized runtime paths canonicalized so line
-      // endings and per-run HOME/stub roots are not regressions.
-      const body = normalizeTreeBody(readFileSync(path).toString("binary"), root, temporaryDirs)
-      acc[relative] = `sha256:${createHash("sha256").update(Buffer.from(body, "binary")).digest("hex")}`
+      const bytes = readFileSync(path)
+      const snapshotBytes = isTextArtifact(relative)
+        ? Buffer.from(normalizeTreeBody(bytes.toString("utf8"), root, temporaryDirs))
+        : bytes
+      acc[relative] = `sha256:${createHash("sha256").update(snapshotBytes).digest("hex")}`
     }
   }
   return acc

@@ -42,11 +42,99 @@ const readPackageVersion = (home: string): string => {
   }
 }
 
+export type PackageManager = "bun" | "npm"
+
+interface PackageRootCapture {
+  readonly status: number | null
+  readonly stdout: string
+  readonly error?: Error
+}
+
+type CapturePackageRoot = (
+  command: string,
+  args: ReadonlyArray<string>
+) => PackageRootCapture
+
+const capturePackageRoot: CapturePackageRoot = (command, args) => {
+  const res = spawnSync(command, [...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  })
+  return {
+    status: res.status,
+    stdout: res.stdout ?? "",
+    ...(res.error === undefined ? {} : { error: res.error })
+  }
+}
+
+export const packageManagerForHome = (
+  home: string,
+  environment: NodeJS.ProcessEnv = process.env
+): PackageManager => {
+  const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
+    const root = environment[name]?.trim()
+    return root !== undefined && root !== "" && (home === root || home.startsWith(`${root}/`))
+  }
+  return home.includes("/.bun/") ||
+    underEnvironmentRoot("BUN_INSTALL_GLOBAL_DIR") ||
+    underEnvironmentRoot("BUN_INSTALL")
+    ? "bun"
+    : "npm"
+}
+
+export type GlobalPackageHome =
+  | { readonly ok: true; readonly home: string }
+  | { readonly ok: false; readonly diagnostic: string }
+
+export const resolveGlobalPackageHome = (
+  manager: PackageManager,
+  capture: CapturePackageRoot = capturePackageRoot
+): GlobalPackageHome => {
+  const commandArgs = manager === "bun" ? ["pm", "-g", "ls"] : ["root", "-g"]
+  const result = capture(manager, commandArgs)
+  if (result.error !== undefined || result.status !== 0) {
+    const detail =
+      result.error !== undefined
+        ? result.error.message
+        : `exit ${result.status ?? "without status"}`
+    return {
+      ok: false,
+      diagnostic: `${manager} ${commandArgs.join(" ")} failed: ${detail}`
+    }
+  }
+
+  if (manager === "npm") {
+    const root = result.stdout.trim()
+    return root === ""
+      ? { ok: false, diagnostic: "npm root -g failed: empty output" }
+      : { ok: true, home: join(root, "docks-kit") }
+  }
+
+  const globalHeader = result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => / node_modules(?: \(\d+\))?$/.test(line))
+  const globalDir =
+    globalHeader === undefined
+      ? undefined
+      : /^(.*) node_modules(?: \(\d+\))?$/.exec(globalHeader)?.[1]
+  return globalDir === undefined || globalDir === ""
+    ? { ok: false, diagnostic: "bun pm -g ls did not report its global package root" }
+    : { ok: true, home: join(globalDir, "node_modules", "docks-kit") }
+}
+
 export const packageUpdateResult = (
   before: string,
-  after: string
+  after: string,
+  samePackageRoot = true
 ): { alreadyCurrent: boolean; message: string } => {
   if (before === "" || after === "") return { alreadyCurrent: false, message: "" }
+  if (!samePackageRoot) {
+    return {
+      alreadyCurrent: false,
+      message: `Installed ${after} in the selected global package root.`
+    }
+  }
   if (before === after) {
     return { alreadyCurrent: true, message: `Already at the latest version (${after}).` }
   }
@@ -99,33 +187,39 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
 const updatePackage = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    // Bun's global dir is configurable (BUN_INSTALL_GLOBAL_DIR / BUN_INSTALL),
-    // so the ~/.bun path shape alone under-detects Bun installs.
-    const underEnvDir = (v: string): boolean => {
-      const dir = process.env[v]
-      return dir !== undefined && dir !== "" && home.startsWith(dir)
-    }
-    const viaBun =
-      home.includes("/.bun/") ||
-      home.includes("\\.bun\\") ||
-      underEnvDir("BUN_INSTALL_GLOBAL_DIR") ||
-      underEnvDir("BUN_INSTALL")
+    const manager = packageManagerForHome(home)
     const beforeVersion = readPackageVersion(home)
-    const res = viaBun
-      ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
-      : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
+    const res =
+      manager === "bun"
+        ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
+        : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) {
-      return yield* bail(`global package update failed (${viaBun ? "bun add -g" : "npm install -g"} docks-kit@latest)`, 1)
+      return yield* bail(
+        `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,
+        1
+      )
     }
 
-    const result = packageUpdateResult(beforeVersion, readPackageVersion(home))
+    const updated = resolveGlobalPackageHome(manager)
+    if (!updated.ok) {
+      return yield* bail(
+        `global package update completed, but the updated package root could not be resolved: ${updated.diagnostic}`,
+        1
+      )
+    }
+    const afterVersion = readPackageVersion(updated.home)
+    if (afterVersion === "") {
+      return yield* bail(
+        `global package update completed, but ${join(updated.home, "package.json")} has no readable version`,
+        1
+      )
+    }
+    const result = packageUpdateResult(beforeVersion, afterVersion, home === updated.home)
     if (result.message !== "") yield* Console.log(result.message)
     if (result.alreadyCurrent) return
     if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
     yield* Console.log("Kit updated - running sync with the new version...")
-    // Chain through the package dir just updated (global installs update in
-    // place) — a bare `docks-kit` PATH lookup could hit a different shim.
-    return yield* chainSync(process.execPath, updateSyncArgs(home))
+    return yield* chainSync(process.execPath, updateSyncArgs(updated.home))
   })
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>

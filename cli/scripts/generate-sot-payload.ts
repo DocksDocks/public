@@ -28,6 +28,7 @@ export const AUTHORING_EXCLUSIONS = [
 
 const GENERATED_MODULE = "cli/src/generated/sotPayload.ts"
 const LAUNCHER = "docks-kit"
+const INSTALLER = "install.sh"
 const BUN_PIN_START = "# BEGIN GENERATED BUN PIN"
 const BUN_PIN_END = "# END GENERATED BUN PIN"
 
@@ -85,16 +86,16 @@ function verifiedBunVersion(root: string): string {
   return verified
 }
 
-function generatedLauncher(root: string): string {
-  const path = repoPath(root, LAUNCHER)
-  const launcher = readFileSync(path, "utf8")
-  const start = launcher.indexOf(BUN_PIN_START)
-  const end = launcher.indexOf(BUN_PIN_END)
+function generatedLauncher(root: string, relativePath: string = LAUNCHER): string {
+  const path = repoPath(root, relativePath)
+  const source = readFileSync(path, "utf8")
+  const start = source.indexOf(BUN_PIN_START)
+  const end = source.indexOf(BUN_PIN_END)
   if (start === -1 || end === -1 || end < start) {
-    throw new Error(`docks-kit is missing the ${BUN_PIN_START}/${BUN_PIN_END} markers`)
+    throw new Error(`${relativePath} is missing the ${BUN_PIN_START}/${BUN_PIN_END} markers`)
   }
   const replacement = `${BUN_PIN_START}\nBUN_PIN=${JSON.stringify(verifiedBunVersion(root))}\n${BUN_PIN_END}`
-  return launcher.slice(0, start) + replacement + launcher.slice(end + BUN_PIN_END.length)
+  return source.slice(0, start) + replacement + source.slice(end + BUN_PIN_END.length)
 }
 
 function walkFiles(root: string, dir: string, output: Array<string>): void {
@@ -114,12 +115,14 @@ export function inventoryAuthoringPaths(root: string): ReadonlyArray<string> {
 export interface GeneratedState {
   readonly module: string
   readonly launcher: string
+  readonly installer: string
 }
 
 export function expectedGeneratedState(root: string): GeneratedState {
   return {
     module: generatedModule(root),
-    launcher: generatedLauncher(root)
+    launcher: generatedLauncher(root),
+    installer: generatedLauncher(root, INSTALLER)
   }
 }
 
@@ -127,9 +130,11 @@ export function staleGeneratedPaths(root: string): ReadonlyArray<string> {
   const expected = expectedGeneratedState(root)
   const modulePath = repoPath(root, GENERATED_MODULE)
   const launcherPath = repoPath(root, LAUNCHER)
+  const installerPath = repoPath(root, INSTALLER)
   const stale: Array<string> = []
   if (!existsSync(modulePath) || readFileSync(modulePath, "utf8") !== expected.module) stale.push(GENERATED_MODULE)
   if (readFileSync(launcherPath, "utf8") !== expected.launcher) stale.push(LAUNCHER)
+  if (readFileSync(installerPath, "utf8") !== expected.installer) stale.push(INSTALLER)
   return stale
 }
 
@@ -139,6 +144,7 @@ function writeGenerated(root: string): void {
   mkdirSync(dirname(modulePath), { recursive: true })
   writeFileSync(modulePath, expected.module)
   writeFileSync(repoPath(root, LAUNCHER), expected.launcher)
+  writeFileSync(repoPath(root, INSTALLER), expected.installer)
 }
 
 interface CliOptions {

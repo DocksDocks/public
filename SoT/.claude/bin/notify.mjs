@@ -26,8 +26,8 @@ export async function main(options = {}) {
   const command = selectPlayer({ ...options, sound })
   if (command === undefined) return 0
   const spawnSync = options.spawnSync ?? ((argv, spawnOptions) => Bun.spawnSync(argv, spawnOptions))
-  const result = spawnSync(command, { stdin: "ignore", stdout: "ignore", stderr: "ignore" })
-  return typeof result.exitCode === "number" ? result.exitCode : 1
+  spawnSync(command, { stdin: "ignore", stdout: "ignore", stderr: "ignore" })
+  return 0
 }
 
 if (import.meta.main) process.exit(await main())

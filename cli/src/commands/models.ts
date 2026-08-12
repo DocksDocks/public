@@ -18,6 +18,11 @@ const renderTool = (t: Tool) =>
     for (const m of catalog.models) {
       yield* Console.log(`  ${m.id.padEnd(28)} ${m.kind.padEnd(6)} ${m.note ?? ""}`)
     }
+    yield* Console.log(
+      t === "claude"
+        ? "  (full claude-* model IDs outside the catalog are accepted with a warning)"
+        : "  (well-formed IDs outside the catalog are accepted with a warning)"
+    )
     yield* Console.log("")
   })
 
@@ -37,9 +42,6 @@ export const modelsCommand = Command.make("models", { tool, json }, (config) =>
     for (const t of tools) {
       yield* renderTool(t)
     }
-    yield* Console.log(
-      "Catalog: SoT/models.json (research-verified). Well-formed IDs outside it apply with a warning."
-    )
   })
 ).pipe(
   Command.withDescription("List kit-verified Claude and Codex models (SoT/models.json).")

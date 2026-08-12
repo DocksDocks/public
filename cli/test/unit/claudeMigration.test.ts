@@ -84,7 +84,7 @@ describe.sequential("Claude runtime migration transaction", () => {
   it("shares one deferred Bun result across an all-target legacy run", () => {
     const variant = legacyVariant()
     const stubs = makeStubDir({ bun: null, curl: null, "effect-solutions": null })
-    const run = runEngine("native", ["sync"], variant, stubs, {
+    const run = runEngine(["sync"], variant, stubs, {
       maskTools: ["bun", "curl", "effect-solutions"]
     })
     try {
@@ -105,7 +105,7 @@ describe.sequential("Claude runtime migration transaction", () => {
 
   it("installs only safe unrelated hooks on a fresh home when Bun is unavailable", () => {
     const stubs = makeStubDir({ bun: null, curl: null })
-    const run = runEngine("native", ["sync", "claude"], "home-fresh", stubs, { maskTools: ["bun", "curl"] })
+    const run = runEngine(["sync", "claude"], "home-fresh", stubs, { maskTools: ["bun", "curl"] })
     try {
       expect(run.exitCode).toBe(0)
       const settings = settingsObject(run.home)
@@ -125,7 +125,7 @@ describe.sequential("Claude runtime migration transaction", () => {
 
   it("rejects invalid deployed settings before runtime or legacy fallback mutation", () => {
     const variant = legacyVariant("not-json")
-    const run = runEngine("native", ["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
       expect(run.exitCode).toBe(1)
       expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe("not-json")
@@ -142,7 +142,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     const original = stableStringify(LEGACY_SETTINGS)
     const variant = legacyVariant(original)
     mkdirSync(join(variant, ".claude", "settings.json.tmp"))
-    const run = runEngine("native", ["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
       expect(run.exitCode).toBe(1)
       expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe(original)
@@ -160,7 +160,7 @@ describe.sequential("Claude runtime migration transaction", () => {
   it("prunes a null-valued hooks.Stop key on a ready migration", () => {
     const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } })
     const variant = legacyVariant(nullStop)
-    const run = runEngine("native", ["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
       expect(run.exitCode).toBe(0)
       const hooks = hooksObject(settingsObject(run.home))
@@ -182,10 +182,10 @@ describe.sequential("Claude runtime migration transaction", () => {
       ".claude/settings.json": stableStringify(drift)
     })
     const stubs = makeStubDir()
-    const dryRun = runEngine("native", ["sync", "claude", "--dry-run"], variant, stubs)
+    const dryRun = runEngine(["sync", "claude", "--dry-run"], variant, stubs)
     const dryRunAllow = permissionRules(settingsObject(dryRun.home), "allow")
-    const applied = runEngine("native", ["sync", "claude"], variant, stubs, { reuseHome: dryRun.home })
-    const replay = runEngine("native", ["sync", "claude"], variant, stubs, { reuseHome: applied.home })
+    const applied = runEngine(["sync", "claude"], variant, stubs, { reuseHome: dryRun.home })
+    const replay = runEngine(["sync", "claude"], variant, stubs, { reuseHome: applied.home })
     try {
       expect(dryRunAllow).toContain("Write(./)")
       expect(dryRun.output).toContain("[dry-run] del 4 stale permission rule(s)")
@@ -213,7 +213,7 @@ describe.sequential("Claude runtime migration transaction", () => {
 describe.sequential("contextual dependency degradation", () => {
   it("syncs Claude and Codex without jq or a jq warning", () => {
     for (const target of ["claude", "codex"] as const) {
-      const run = runEngine("native", ["sync", target], "home-fresh", makeStubDir({ jq: null }), { maskTools: ["jq"] })
+      const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }), { maskTools: ["jq"] })
       try {
         expect(run.exitCode).toBe(0)
         expect(run.output).not.toContain("jq not installed")

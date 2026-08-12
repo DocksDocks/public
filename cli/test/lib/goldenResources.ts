@@ -7,6 +7,7 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync
@@ -26,31 +27,115 @@ const HARNESS_TEMP_PREFIXES = [
   "golden-fixture-"
 ] as const
 const STALE_TEMP_DIR_AGE_MS = 60 * 60 * 1000
+const OWNER_PID_SUFFIX = ".owner-pid"
 const TEMP_DIRS = new Set<string>()
 
-function isMissingPath(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT"
-}
-
-/** Heal externally-killed runs without touching young/concurrent or unrelated temp dirs. */
+/**
+ * Heal externally killed runs by using recorded owner liveness.
+ *
+ * Current harness directories have a sibling marker that records the owner
+ * process. We remove a directory only when `kill(pid, 0)` reports ESRCH.
+ *
+ * Older harness versions have no marker.
+ * When marker data is unreadable or invalid, the sweep uses directory age.
+ * This fallback heals old orphans while sparing young runs.
+ *
+ * A sibling marker survives fixture replacement and stays outside snapshots.
+ * The sweep removes dead or old orphan markers after their directory disappears.
+ */
 export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
+  const ownerUid = process.getuid?.()
+  if (ownerUid === undefined) return
   const root = tmpdir()
   for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
+    if (!entry.isDirectory()) {
+      sweepOrphanOwnerMarker(root, entry.name, ownerUid, nowMs)
+      continue
+    }
     if (!HARNESS_TEMP_PREFIXES.some((prefix) => entry.name.startsWith(prefix))) continue
     const path = join(root, entry.name)
     try {
-      if (nowMs - lstatSync(path).mtimeMs < STALE_TEMP_DIR_AGE_MS) continue
-      rmSync(path, { recursive: true, force: true })
-    } catch (error) {
-      if (!isMissingPath(error)) throw error
+      const stat = lstatSync(path)
+      if (stat.uid !== ownerUid) continue
+      if (TEMP_DIRS.has(path)) continue
+
+      const ownerPath = `${path}${OWNER_PID_SUFFIX}`
+      const ownerPid = readOwnerPid(ownerPath, ownerUid)
+      if (ownerPid !== undefined) {
+        if (ownerPid === process.pid || processIsAlive(ownerPid)) continue
+      } else if (nowMs - stat.mtimeMs < STALE_TEMP_DIR_AGE_MS) {
+        continue
+      }
+
+      try {
+        rmSync(path, { recursive: true, force: true })
+        rmSync(ownerPath, { force: true })
+      } catch {
+        // A protected directory must not stop the remaining stale sweep.
+      }
+    } catch {
+      // An unreadable entry must not stop the remaining stale sweep.
     }
+  }
+}
+
+function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: number, nowMs: number): void {
+  if (!entryName.endsWith(OWNER_PID_SUFFIX)) return
+  const directoryName = entryName.slice(0, -OWNER_PID_SUFFIX.length)
+  if (!HARNESS_TEMP_PREFIXES.some((prefix) => directoryName.startsWith(prefix))) return
+
+  const directoryPath = join(root, directoryName)
+  try {
+    lstatSync(directoryPath)
+    return
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") return
+  }
+
+  const ownerPath = join(root, entryName)
+  try {
+    const stat = lstatSync(ownerPath)
+    if (stat.uid !== ownerUid) return
+    const ownerPid = readOwnerPid(ownerPath, ownerUid)
+    if (ownerPid !== undefined) {
+      if (ownerPid === process.pid || processIsAlive(ownerPid)) return
+    } else if (nowMs - stat.mtimeMs < STALE_TEMP_DIR_AGE_MS) {
+      return
+    }
+
+    try {
+      rmSync(ownerPath, { force: true })
+    } catch {
+      // A protected marker must not stop the remaining stale sweep.
+    }
+  } catch {
+    // An unreadable marker must not stop the remaining stale sweep.
+  }
+}
+
+function readOwnerPid(ownerPath: string, ownerUid: number): number | undefined {
+  try {
+    if (lstatSync(ownerPath).uid !== ownerUid) return undefined
+    const ownerPid = Number(readFileSync(ownerPath, "utf8").trim())
+    return Number.isSafeInteger(ownerPid) && ownerPid > 0 ? ownerPid : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH"
   }
 }
 
 export function temporaryDir(prefix: string): string {
   const dir = mkdtempSync(join(tmpdir(), prefix))
   TEMP_DIRS.add(dir)
+  writeFileSync(`${dir}${OWNER_PID_SUFFIX}`, `${process.pid}\n`)
   return dir
 }
 
@@ -58,9 +143,15 @@ export function registeredTemporaryDirs(): ReadonlyArray<string> {
   return [...TEMP_DIRS]
 }
 
-/** Keep TEMP_DIRS path strings after deletion: snapshot normalization still needs them. */
+/**
+ * Keep TEMP_DIRS path strings after deletion for snapshot normalization.
+ * Cleanup removes each sibling owner marker after its directory.
+ */
 export function cleanupTemporaryDirs(): void {
-  for (const dir of TEMP_DIRS) rmSync(dir, { recursive: true, force: true })
+  for (const dir of TEMP_DIRS) {
+    rmSync(dir, { recursive: true, force: true })
+    rmSync(`${dir}${OWNER_PID_SUFFIX}`, { force: true })
+  }
 }
 
 function handleSigint(): void {
@@ -135,6 +226,10 @@ esac`,
  * gate/failure branches); `null` omits the stub entirely (tool missing).
  */
 export function makeStubDir(overrides: Record<string, string | null> = {}): string {
+  const unknownNames = Object.keys(overrides).filter((name) => !Object.hasOwn(STUB_BODIES, name)).sort()
+  if (unknownNames.length > 0) {
+    throw new Error(`Unknown golden stub override(s): ${unknownNames.join(", ")}`)
+  }
   const dir = temporaryDir("golden-stubs-")
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody

@@ -37,19 +37,29 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
   if (value === "") {
     if (tool === "claude") {
       const deployed = p(ctx.home, ".claude", "settings.json")
-      if (!fileReadable(deployed)) {
+      const result = readConfig(deployed)
+      if (result.kind === "missing") {
         warn("~/.claude/settings.json missing")
         return 0
       }
-      echo(`deployed: ${jsonModelField(deployed)}`)
+      if (result.kind === "read-error") {
+        err(`Failed to read ~/.claude/settings.json: ${String(result.error)}`)
+        return 1
+      }
+      echo(`deployed: ${jsonModelText(result.data)}`)
       echo(`SoT:      ${jsonModelText(payloadText("SoT/.claude/settings.json"))}`)
     } else {
       const deployed = p(ctx.home, ".codex", "config.toml")
-      if (!fileReadable(deployed)) {
+      const result = readConfig(deployed)
+      if (result.kind === "missing") {
         warn("~/.codex/config.toml missing")
         return 0
       }
-      echo(`deployed: ${tomlModelField(deployed)}`)
+      if (result.kind === "read-error") {
+        err(`Failed to read ~/.codex/config.toml: ${String(result.error)}`)
+        return 1
+      }
+      echo(`deployed: ${tomlModelText(result.data)}`)
       echo(`SoT:      ${tomlModelText(payloadText("SoT/.codex/config.toml"))}`)
     }
     printModels(ctx, tool)
@@ -74,18 +84,21 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
   return 0
 }
 
-function fileReadable(p: string): boolean {
-  try {
-    readFileSync(p)
-    return true
-  } catch {
-    return false
-  }
-}
+type ConfigReadResult =
+  | { readonly kind: "missing" }
+  | { readonly kind: "read-error"; readonly error: unknown }
+  | { readonly kind: "data"; readonly data: string }
 
-/** `jq -r '.model // "default (unset)"'` — empty on unparseable input. */
-function jsonModelField(file: string): string {
-  return jsonModelText(readFileSync(file, "utf8"))
+function readConfig(file: string): ConfigReadResult {
+  try {
+    return { kind: "data", data: readFileSync(file, "utf8") }
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
+        ? error.code
+        : undefined
+    return code === "ENOENT" ? { kind: "missing" } : { kind: "read-error", error }
+  }
 }
 
 function jsonModelText(text: string): string {
@@ -97,9 +110,6 @@ function jsonModelText(text: string): string {
 }
 
 /** `awk -F'"' '/^model[[:space:]]*=/{print $2; exit}'`. */
-function tomlModelField(file: string): string {
-  return tomlModelText(readFileSync(file, "utf8"))
-}
 
 function tomlModelText(text: string): string {
   for (const line of text.split("\n")) {
@@ -110,9 +120,9 @@ function tomlModelText(text: string): string {
 
 export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { err } = ctx.services.logger
-  const words = args.filter((a) => !a.startsWith("--"))
-  const op = words[0] ?? args[0] ?? "check"
-  const tool = words[1] ?? args[1] ?? ""
+  const words = args.filter((arg) => !arg.startsWith("--"))
+  const op = words[0] ?? "check"
+  const tool = words[1] ?? ""
   for (const arg of args) {
     if (arg === "--yes") ctx.assumeYes = true
     else if (arg === "--verbose") {
@@ -128,7 +138,7 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
     err("Usage: toolchain [check|ensure <tool>] [--yes]")
     return 2
   }
-  if (tool === "" || tool === "--yes") {
+  if (tool === "") {
     err("Usage: toolchain ensure <tool> [--yes]")
     return 2
   }

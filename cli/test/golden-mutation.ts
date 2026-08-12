@@ -24,6 +24,7 @@ import {
 } from "./lib/goldenMutationCatalog"
 import { FIXTURES_DIR, REPO_DIR, makeStubDir, materializeVariant } from "./lib/goldenResources"
 import { diffText, diffTrees, snapshotTree, stableStringify, type TreeSnapshot } from "./lib/goldenSnapshot"
+import { readGolden, selectProveRedMismatch } from "./lib/goldenProveRed"
 
 interface MutationGolden {
   readonly version: 1
@@ -60,7 +61,7 @@ function runCase(
   stubDir: string,
   maskTools: ReadonlyArray<string> = []
 ): MutationCaseGolden {
-  const run = runEngine("native", command, fixture, stubDir, { maskTools })
+  const run = runEngine(command, fixture, stubDir, { maskTools })
   try {
     return {
       command: [...command],
@@ -79,10 +80,16 @@ function runReplayCase(
   cmd: ReadonlyArray<string>,
   cmd2?: ReadonlyArray<string>
 ): MutationCaseGolden {
-  const first = runEngine("native", cmd, fixture, defaultStubs)
+  const first = runEngine(cmd, fixture, defaultStubs)
   try {
+    if (first.exitCode !== 0) {
+      throw new Error(`first replay failed for '${cmd.join(" ")}' with exit code ${first.exitCode}`)
+    }
+    if (!first.output.includes("--- Sync complete ---")) {
+      throw new Error(`first replay for '${cmd.join(" ")}' produced no sync completion summary`)
+    }
     const secondCmd = cmd2 ?? cmd
-    const second = runEngine("native", secondCmd, fixture, defaultStubs, { reuseHome: first.home })
+    const second = runEngine(secondCmd, fixture, defaultStubs, { reuseHome: first.home })
     return {
       command: [...secondCmd],
       exitCode: second.exitCode,
@@ -98,7 +105,7 @@ function runReplayCase(
 function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Array<string> } {
   const fixture = materializeVariant("home-fresh", LEGACY_CLAUDE_FILES)
   try {
-    const run = runEngine("native", ["sync", "claude"], fixture, defaultStubs)
+    const run = runEngine(["sync", "claude"], fixture, defaultStubs)
     try {
       const problems: Array<string> = []
       for (const relative of [".claude/statusline.sh", ".claude/fetch-usage.sh", ".claude/hooks/notify.sh"]) {
@@ -162,9 +169,9 @@ function runAdvisorMigrationCase(
   })
   try {
     const command = ["sync", "claude", ...(state === "flagless" ? [] : [`--claude-advisor=${state}`])]
-    const first = runEngine("native", command, fixture, defaultStubs)
+    const first = runEngine(command, fixture, defaultStubs)
     try {
-      const second = runEngine("native", command, fixture, defaultStubs, { reuseHome: first.home })
+      const second = runEngine(command, fixture, defaultStubs, { reuseHome: first.home })
       const problems: Array<string> = []
       const firstChangedByRemoval = first.output.includes("Pruned stale artifacts")
       const firstChangedByModifier = first.output.includes("Advisor: deployed settings advisorModel")
@@ -223,7 +230,13 @@ function channelInvariantProblems(): Array<string> {
   const problems: Array<string> = []
   const logPrefixes = ["[ok]", "[warn]", "[err]"]
 
-  const syncSplit = runEngineSplit("native", ["sync", "claude"], "home-fresh", defaultStubs)
+  const syncSplit = runEngineSplit(["sync", "claude"], "home-fresh", defaultStubs)
+  if (syncSplit.exitCode !== 0) {
+    problems.push(`  channel: sync claude exited ${syncSplit.exitCode}; expected 0`)
+  }
+  if (!syncSplit.stdout.includes("--- Sync complete ---")) {
+    problems.push("  channel: summary block missing from stdout (sync claude)")
+  }
   for (const prefix of logPrefixes) {
     if (syncSplit.stdout.includes(prefix)) {
       problems.push(`  channel: '${prefix}' log prefix leaked to stdout (sync claude)`)
@@ -235,7 +248,7 @@ function channelInvariantProblems(): Array<string> {
 
   // Dry-run under verbose env: the report must stay a complete stdout
   // inspection artifact and no log prefix may ride along on stdout.
-  const drySplit = runEngineSplit("native", ["sync", "--dry-run"], "home-drift", defaultStubs, {
+  const drySplit = runEngineSplit(["sync", "--dry-run"], "home-drift", defaultStubs, {
     env: { DOCKS_KIT_VERBOSE: "1" }
   })
   if (!drySplit.stdout.includes("[dry-run]")) {
@@ -253,7 +266,7 @@ function channelInvariantProblems(): Array<string> {
   // A warn-emitting run (masked git): warns must land on stderr, never stdout.
   // The fully-stubbed cases above emit no warns, so without this leg a
   // stdout-routed warn would pass every channel check.
-  const warnSplit = runEngineSplit("native", ["sync", "claude"], "home-fresh", makeStubDir({ git: null }), {
+  const warnSplit = runEngineSplit(["sync", "claude"], "home-fresh", makeStubDir({ git: null }), {
     maskTools: ["git"]
   })
   if (warnSplit.stdout.includes("[warn]")) {
@@ -265,7 +278,7 @@ function channelInvariantProblems(): Array<string> {
 
   // Model catalog rows are stdout data, not logs. Pin this separately from
   // merged goldens, which cannot distinguish the two channels.
-  const modelSplit = runEngineSplit("native", ["model", "claude"], "home-drift", defaultStubs)
+  const modelSplit = runEngineSplit(["model", "claude"], "home-drift", defaultStubs)
   if (!modelSplit.stdout.includes("Available claude models")) {
     problems.push("  channel: model catalog missing from stdout (model claude)")
   }
@@ -410,12 +423,12 @@ function channelInvariantProblems(): Array<string> {
   // may legitimately embed count phrasing like "(+1 new, 0 already present)".
   const NOOP_RE =
     /already in sync|already initialized|already set|already opted in|already empty|up to date|\bpresent \(|LSP server binaries present|model already |left as-is/
-  const first = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs)
-  const second = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs, { reuseHome: first.home })
+  const first = runEngineSplit(["sync"], "home-fresh", defaultStubs)
+  const second = runEngineSplit(["sync"], "home-fresh", defaultStubs, { reuseHome: first.home })
   if (NOOP_RE.test(second.stderr)) {
     problems.push("  verbosity: no-op confirmation leaked into default second-run stderr")
   }
-  const secondVerbose = runEngineSplit("native", ["sync"], "home-fresh", defaultStubs, {
+  const secondVerbose = runEngineSplit(["sync"], "home-fresh", defaultStubs, {
     reuseHome: first.home,
     env: { DOCKS_KIT_VERBOSE: "1" }
   })
@@ -463,40 +476,6 @@ function channelInvariantProblems(): Array<string> {
   return problems
 }
 
-function readGoldens(): MutationGolden {
-  if (!existsSync(GOLDEN_PATH)) {
-    console.error(`${GOLDEN_PATH} does not exist; run with --update-goldens first`)
-    process.exit(1)
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(readFileSync(GOLDEN_PATH, "utf8"))
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`${GOLDEN_PATH}: malformed golden JSON: ${message}`)
-  }
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    Array.isArray(parsed) ||
-    !("version" in parsed) ||
-    parsed.version !== 1 ||
-    !("cases" in parsed) ||
-    typeof parsed.cases !== "object" ||
-    parsed.cases === null ||
-    Array.isArray(parsed.cases)
-  ) {
-    throw new Error(`${GOLDEN_PATH}: expected a version-1 object with object-valued cases`)
-  }
-  return parsed as MutationGolden
-}
-
-function mismatchedGolden(label: string, goldens: MutationGolden): MutationCaseGolden {
-  const other = Object.keys(goldens.cases).find((candidate) => candidate !== label)
-  if (other === undefined) throw new Error("prove-red needs at least two golden cases")
-  return goldens.cases[other]!
-}
 
 function compareCase(actual: MutationCaseGolden, expected: MutationCaseGolden): Array<string> {
   return [
@@ -539,7 +518,7 @@ function runTomlCase(
     ".codex/config.toml": readFileSync(join(TOML_DIR, shape), "utf8")
   })
   try {
-    const run = runEngine("native", command, variant, defaultStubs)
+    const run = runEngine(command, variant, defaultStubs)
     try {
       const problems = assertInvariants ? tomlInvariantProblems(shape, run.home) : []
       return {
@@ -582,9 +561,8 @@ function collectCases(): {
     cases[label] = runCase(cmd, fixture, stubDir, maskTools)
   }
 
-  for (const { fixture, cmd, cmd2, variant } of REPLAYS) {
-    const variantPart = variant === undefined ? "" : ` variant=${variant}`
-    const label = `fixture=${fixture} cmd=${(cmd2 ?? cmd).join(" ")} replay=2nd${variantPart}`
+  for (const { fixture, cmd, cmd2 } of REPLAYS) {
+    const label = `fixture=${fixture} cmd=${(cmd2 ?? cmd).join(" ")} replay=2nd`
     if (label in cases) throw new Error(`duplicate replay label ${label}`)
     if (!labelSelected(label, options.filter)) continue
     selectedChecks++
@@ -672,50 +650,60 @@ if (options.updateGoldens) {
   const cases =
     options.filter === undefined
       ? selectedCases
-      : { ...readGoldens().cases, ...selectedCases }
+      : { ...readGolden<MutationCaseGolden>(GOLDEN_PATH).cases, ...selectedCases }
   mkdirSync(dirname(GOLDEN_PATH), { recursive: true })
   writeFileSync(GOLDEN_PATH, stableStringify({ version: 1, cases } satisfies MutationGolden))
   console.log(`golden-mutation: updated ${Object.keys(selectedCases).length} case(s) at ${GOLDEN_PATH}`)
   process.exit(0)
 }
 
-const goldens = readGoldens()
+const goldens = readGolden<MutationCaseGolden>(GOLDEN_PATH)
 const { cases: actualCases, invariantFailures, selectedChecks } = collectCases()
 if (options.filter !== undefined && selectedChecks === 0) {
   console.error("GOLDEN_FILTER matched no cases")
   process.exit(2)
 }
-let failures = invariantFailures
+let goldenFailures = 0
 let checked = 0
+const proveRed = options.proveRed ? selectProveRedMismatch(goldens.cases) : undefined
 
 for (const [label, actual] of Object.entries(actualCases)) {
-  const expected = options.proveRed ? mismatchedGolden(label, goldens) : goldens.cases[label]
+  const expected = proveRed?.expectedFor(label) ?? goldens.cases[label]
   if (expected === undefined) {
-    failures++
+    goldenFailures++
     banner(`MISSING GOLDEN ${label}`)
     console.log("  run with --update-goldens to record this case")
     continue
   }
   checked++
   const problems = compareCase(actual, expected)
+  proveRed?.recordComparison(problems.length > 0)
   if (problems.length > 0) {
-    failures++
+    goldenFailures++
     banner(`GOLDEN MISMATCH ${label}`)
     for (const p of problems) console.log(p)
   }
 }
 
-if (options.proveRed) {
-  if (failures === 0) {
-    console.error("prove-red FAILED: golden-mutation did not detect the planted mismatch")
+if (proveRed !== undefined) {
+  const result = proveRed.result()
+  if (!result.succeeded) {
+    console.error(
+      `prove-red FAILED: golden-mutation compared ${result.comparedCases} case(s) and detected ${result.comparatorMismatches} comparator mismatch(es); ${invariantFailures} invariant failure(s) do not satisfy prove-red`
+    )
     process.exit(1)
   }
-  console.error(`prove-red OK: golden-mutation detected ${failures} planted mismatch(es); intentionally exiting 1`)
+  console.error(
+    `prove-red OK: golden-mutation compared ${result.comparedCases} case(s) and detected ${result.comparatorMismatches} planted comparator mismatch(es); intentionally exiting 1`
+  )
   process.exit(1)
 }
 
+const failures = invariantFailures + goldenFailures
 if (failures > 0) {
-  console.error(`\ngolden-mutation: ${failures} mismatch(es)`)
+  console.error(
+    `\ngolden-mutation: ${failures} failure(s) (${invariantFailures} invariant, ${goldenFailures} golden)`
+  )
   process.exit(1)
 }
 console.log(`golden-mutation: OK (${checked} case(s))`)

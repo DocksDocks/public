@@ -1,15 +1,17 @@
-import { rmSync } from "node:fs"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 
-import { p, spawnProcess } from "./exec"
+import { p, spawnProcess, type AsyncProcessOptions, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import type { EngineServices } from "./services"
 import { field } from "./toolchain"
 
 export type BunRuntimeState =
   | { readonly kind: "ready"; readonly executable: string }
-  | { readonly kind: "deferred"; readonly reason: "missing-curl" | "install-failed" }
-
+  | {
+      readonly kind: "deferred"
+      readonly reason: "missing-curl" | "download-failed" | "installer-failed" | "install-failed"
+    }
 
 function predictedExecutable(ctx: Ctx): string {
   const root = process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
@@ -18,11 +20,26 @@ function predictedExecutable(ctx: Ctx): string {
   return p(root, "bin", "bun")
 }
 
-async function installBun(pin: string, installer: string): Promise<void> {
-  const download = await spawnProcess("curl", ["-fsSL", "https://bun.sh/install", "-o", installer], { stdio: "ignore" })
-  if (download.error === undefined && download.exitCode === 0) {
-    await spawnProcess("bash", [installer, `bun-v${pin}`], { stdio: "ignore" })
+type BunInstallResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: "download-failed" | "installer-failed"; readonly detail: string }
+
+function processFailure(result: AsyncProcessResult): string {
+  const details = [result.error?.message, result.stderr.trim()].filter((value): value is string => value !== undefined && value !== "")
+  return details.join(": ") || (result.exitCode === null ? "the process ended without an exit code" : `exit code ${result.exitCode}`)
+}
+
+async function installBun(pin: string, installer: string): Promise<BunInstallResult> {
+  const options: AsyncProcessOptions = { stdio: ["ignore", "ignore", "pipe"] }
+  const download = await spawnProcess("curl", ["-fsSL", "https://bun.sh/install", "-o", installer], options)
+  if (download.error !== undefined || download.exitCode !== 0) {
+    return { ok: false, reason: "download-failed", detail: processFailure(download) }
   }
+  const install = await spawnProcess("bash", [installer, `bun-v${pin}`], options)
+  if (install.error !== undefined || install.exitCode !== 0) {
+    return { ok: false, reason: "installer-failed", detail: processFailure(install) }
+  }
+  return { ok: true }
 }
 
 export function bunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunRuntimeState> {
@@ -52,11 +69,20 @@ async function runBunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunR
     return { kind: "ready", executable }
   }
   services.logger.warn(`Bun not found — installing Bun ${pin} (kit-verified)...`)
-  const installer = p(tmpdir(), `bun-install-${process.pid}.sh`)
+  const temporaryDir = mkdtempSync(p(tmpdir(), "docks-kit-bun-"))
+  const installer = p(temporaryDir, "install.sh")
+  let result: BunInstallResult
   try {
-    await installBun(pin, installer)
+    result = await installBun(pin, installer)
   } finally {
-    rmSync(installer, { force: true })
+    rmSync(temporaryDir, { recursive: true, force: true })
+  }
+  if (!result.ok) {
+    const stage = result.reason === "download-failed" ? "installer download" : "installer"
+    services.logger.warn(
+      `Bun ${stage} failed (${result.detail}). Install Bun manually from https://bun.sh/docs/installation, then re-run sync.`
+    )
+    return { kind: "deferred", reason: result.reason }
   }
 
   const installed = await services.deps.path("bun")
