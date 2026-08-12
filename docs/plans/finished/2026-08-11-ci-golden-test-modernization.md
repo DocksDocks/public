@@ -391,3 +391,17 @@ execution.
 - `.github/workflows/release-cli.yml` — single-job release, exact pins, and suppressed failures.
 - `.claude/skills/engine-native-context/SKILL.md` — harness/golden source metadata.
 - <https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz> — official pinned actionlint archive used by A6.
+
+## Retirement
+
+Retired 2026-08-11 without execution.
+
+This plan was blocked on 2026-07-20 when the Linux/macOS-only support contract
+replaced its platform matrix, and it never restarted. It is a v1 record, so the
+v2 lifecycle cannot start, check, or archive it; a v1 plan is finished by hand
+and is never migrated.
+
+Its bytes above are preserved exactly as they were when the plan was blocked.
+The goal is carried forward only to the extent that research proves work still
+remains; anything already delivered by `2026-07-27-ci-golden-test-and-release-hardening`
+or by later commits is not re-planned.
