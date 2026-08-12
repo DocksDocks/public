@@ -2,9 +2,9 @@
 plan_contract: v2
 title: Replace symptom-level fixes with cause-level ones across the kit
 goal: Every defect the thirteen-slice durability audit proved is fixed at its cause, and the golden gate can no longer report success without comparing anything
-status: ongoing
+status: finished
 created: "2026-08-12T14:58:26.977+00:00"
-updated: "2026-08-12T16:20:13.185+00:00"
+updated: "2026-08-12T17:56:19.389+00:00"
 assignee: null
 ---
 
@@ -148,7 +148,7 @@ One register row contradicts an existing test, and the plan resolves it rather t
 | 14 | root_write_tripwire | Stop a test writing into the repository root, and fail the run when one does. Found during implementation: the `bun.test.ts` curl stub read its download target positionally, so the reverted-source prove-red run wrote the literal path `undefined` into the checkout | cli/test/unit/bun.test.ts, cli/test/lib/rootGuard.ts, vitest.config.ts | — | `local` | `done` | The curl stub derives its target from the `-o` operand and refuses a target outside its own temporary root, and a planted root write makes `vitest run` exit non-zero while deleting nothing |
 | 15 | rerecord_goldens | Re-record only the goldens a fix legitimately moves | cli/test/goldens/dryrun.json, cli/test/goldens/mutation.json | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 | `local` | `done` | Every re-recorded row traces to the step that moved it, and no row moves for a reason no step explains |
 | 16 | full_gate | Run the full gate and prove both red legs | cli/test/golden-dryrun.ts, cli/test/golden-mutation.ts | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 | `local` | `done` | `bun run test:ci` exits 0 and both prove-red legs exit non-zero for a planted comparison mismatch rather than an unrelated invariant failure |
-| 17 | release_patch | Publish patch 0.15.2: commit the working tree, tag `cli-v0.15.2`, and push both. Confirm in session immediately before running, because the effect leaves this machine. The version is 0.15.2 rather than 0.15.1 because `cli-v0.15.1` is already tagged on the remote and `docks-kit@0.15.1` is already on npm, so this remediation cannot reuse it | package.json, README.md, cli/src/generated/sotPayload.ts | 16 | `release` | `planned` | The tag `cli-v0.15.2` exists on the remote, the release workflow reports success, and `npm view docks-kit@0.15.2 version` returns `0.15.2` |
+| 17 | release_patch | Publish patch 0.15.2: commit the working tree, tag `cli-v0.15.2`, and push both. Confirm in session immediately before running, because the effect leaves this machine. The version is 0.15.2 rather than 0.15.1 because `cli-v0.15.1` is already tagged on the remote and `docks-kit@0.15.1` is already on npm, so this remediation cannot reuse it | package.json, README.md, cli/src/generated/sotPayload.ts | 16 | `release` | `done` | The tag `cli-v0.15.2` exists on the remote, the release workflow reports success, and `npm view docks-kit@0.15.2 version` returns `0.15.2` |
 
 ## Acceptance
 
@@ -220,7 +220,7 @@ Additional concern refuted: in `claudeSync.ts` `claudeSync`, the non-dry-run bra
 
 ## Verification Results
 
-Rows A1 through A15 were executed on this machine after every step through `step:full_gate` landed. Row A16 and `step:release_patch` are pending, because they observe a release that has not been published yet.
+Rows A1 through A16 were executed on this machine. Rows A1 through A15 ran after every step through `step:full_gate` landed, and row A16 ran after `step:release_patch` published the release.
 
 | ID | Observed |
 |---|---|
@@ -239,6 +239,7 @@ Rows A1 through A15 were executed on this machine after every step through `step
 | A13 | `bun cli/scripts/generate-sot-payload.ts --check` exit 0 |
 | A14 | `install.sh` holds exactly one `BEGIN GENERATED BUN PIN` marker and the generated check exits 0 |
 | A15 | A throwaway unit test writing a repository-root file makes `vitest run` exit 1 naming `undefined-probe`; the planted file survives, because the guard reports and never deletes |
+| A16 | `npm view docks-kit@0.15.2 version` prints `0.15.2`, and the `latest` dist-tag resolves to the same version. The `cli-v0.15.2` release carries `docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-x64`, `docks-kit-darwin-arm64`, and `SHA256SUMS`. All four `release-cli` jobs and all three `golden-regression` jobs report success |
 
 Two defects were found during implementation rather than by the audit, and both are fixed at the cause.
 
@@ -248,9 +249,9 @@ The second is a dry-run contradiction introduced by `step:claude_settings_truth`
 
 Global prove-red for the audit fixes: reverting all 43 changed source files while keeping every test made 78 tests across 26 files fail. Restoring the sources returned the suite to green.
 
-The close phase changed nine modules. Round 1 of the code review raised seven findings, one per module: `codexToml.ts`, `codexSync.ts`, `update.ts`, `goldenResources.ts`, `payload.ts`, `services.ts`, and `claudeSync.ts`. Two more were fixed as follow-ons: the `deps.ts` absence sentinel, which the reviewer raised while Main asked what kind of code `deps.ts` is, and the `claudeSettingsModifiers.ts` line 50 wording, which is the twin of the `claudeSync.ts` finding and would otherwise have been a relocated lie.
+The close phase changed nine modules. Round 1 of the code review raised seven findings, one per module: `codexToml.ts`, `codexSync.ts`, `update.ts`, `goldenResources.ts`, `payload.ts`, `services.ts`, and `claudeSync.ts`. Two more were fixed as follow-ons: the `deps.ts` absence sentinel, which the reviewer raised while Main asked what kind of code `deps.ts` is, and the `claudeSettingsModifiers.ts` `syncClaudeSetting` wording, which is the twin of the `claudeSync.ts` finding and would otherwise have been a relocated lie.
 
-Seven of the nine are mutation-proven: the fix was reverted at its exact line, the owning test ran, and the test failed. `codexToml.ts` reverted to `ctx.dryRun`, `codexSync.ts` install reverted to merge, `update.ts` reverted to the version-first predicate, `deps.ts` reverted to `capture(bun?.command ?? "")`, `claudeSettingsModifiers.ts` reverted to `— skipped`, and `goldenResources.ts` liveness reverted to always-false each turned its test red. `claudeSync.ts:157` reverted from `Aborting sync` to `Skipping settings sync` turned three legs red at once: `cli/test/unit/claudeSettingsTruth.test.ts`, `golden:mutation`, and `golden:dryrun`.
+Seven of the nine are mutation-proven: the fix was reverted at its exact line, the owning test ran, and the test failed. `codexToml.ts` reverted to `ctx.dryRun`, `codexSync.ts` install reverted to merge, `update.ts` reverted to the version-first predicate, `deps.ts` reverted to `capture(bun?.command ?? "")`, `claudeSettingsModifiers.ts` reverted to `— skipped`, and `goldenResources.ts` liveness reverted to always-false each turned its test red. The `claudeSync.ts` `prepareClaudeSettings` message reverted from `Aborting sync` to `Skipping settings sync` turned three legs red at once: `cli/test/unit/claudeSettingsTruth.test.ts`, `golden:mutation`, and `golden:dryrun`.
 
 The remaining two are deletions, so they are compile-proven instead: reintroducing the second `payloadDisplayPath` argument raises TS2554, and reintroducing `Platform.isLinux` raises TS2339. The tree was restored and typecheck returned 0 after every mutation.
 
