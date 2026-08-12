@@ -134,7 +134,7 @@ Details: `docks-kit docs platforms`.
 Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
 x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
 publishes the exact package tarball through trusted publishing with OIDC provenance.
-Package `docks-kit` 0.15.1 bundles the CLI + generated payload, so npm releases
+Package `docks-kit` 0.15.2 bundles the CLI + generated payload, so npm releases
 are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs
