@@ -326,7 +326,7 @@ function channelInvariantProblems(): Array<string> {
   }
 
   for (const [args, error, label] of [
-    [["toolchain", "--no-yes"], "unknown flag --no-yes for 'toolchain'", "negated toolchain option --no-yes"],
+    [["toolchain", "--no-verbose"], "unknown flag --no-verbose for 'toolchain'", "negated toolchain option --no-verbose"],
     [["sync", "-x"], "unknown flag -x for 'sync'", "single-dash unknown flag -x"],
     [
       ["sync", "--bogus", "--claude-model", "opus"],
@@ -338,7 +338,7 @@ function channelInvariantProblems(): Array<string> {
       "--claude-compact-window expects a token count",
       "dash-leading compact-window value"
     ],
-    [["sync", "--yes", "--yes"], "flag --yes was given more than once", "duplicate non-repeatable flag --yes"]
+    [["sync", "--prune", "--prune"], "flag --prune was given more than once", "duplicate non-repeatable flag --prune"]
   ] as const) {
     const bare = runPublicCli(args, "home-fresh", defaultStubs)
     if (bare.exitCode !== 2 || !bare.stderr.includes(error)) {
@@ -458,10 +458,6 @@ function channelInvariantProblems(): Array<string> {
     }
     if (NOOP_RE.test(replay.stdout)) {
       problems.push(`  verbosity: no-op confirmations leaked to stdout (public 'sync ${flag}')`)
-    }
-    const tc = runPublicCli(["toolchain", "ensure", "effect-solutions", flag], "home-fresh", defaultStubs, { reuseHome: pubFirst.home })
-    if (!/\bpresent \(|up to date/.test(tc.stderr)) {
-      problems.push(`  verbosity: public 'toolchain ensure effect-solutions ${flag}' shows no verbose no-op line`)
     }
   }
 

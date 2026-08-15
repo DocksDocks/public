@@ -9,11 +9,9 @@ import {
   DEPENDENCIES,
   defaultProbeExecutor,
   resolveDependency,
-  resolveLocation,
   resolvePath,
   resolveVersion,
   type DependencySpec,
-  type DependencyLocation,
   type ProbeExecutor,
   type ProbeResult,
   type ToolId
@@ -28,8 +26,6 @@ export interface DependencyManager {
   readonly probe: (id: ToolId) => ProbeResult
   readonly version: (id: ToolId) => Promise<string>
   readonly path: (id: ToolId) => Promise<string>
-  readonly location: (id: ToolId) => Promise<DependencyLocation>
-  readonly latest: (id: ToolId) => Promise<string>
   readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void
 }
 
@@ -68,8 +64,6 @@ export const makeDependencyManager = (
     probe: (id) => resolveDependency(DEPENDENCIES[id], exec, platform.raw()),
     version: (id) => resolveVersion(DEPENDENCIES[id], exec),
     path: (id) => resolvePath(DEPENDENCIES[id], exec, platform.raw()),
-    location: (id) => resolveLocation(DEPENDENCIES[id], exec, platform.raw()),
-    latest: (id) => DEPENDENCIES[id].latest?.(exec) ?? Promise.resolve(""),
     warnMissing: (id, logger, context) => {
       if (warned.has(id)) return
       warned.add(id)

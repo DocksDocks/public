@@ -202,17 +202,14 @@ esac`,
   npx: `exit 0`,
   npm: `case "$1" in
   view) case "$2" in
-    effect-solutions) echo "0.5.3";;
     *) echo "0.0.1";;
   esac;;
   ls) echo '{"dependencies":{"intelephense":{"version":"1.18.5"}}}';;
 esac`,
   bun: `case "$1" in
   --version) echo "1.3.14";;
-  pm) [ "$2" = "-g" ] && { [ "$3" = "ls" ] && echo "effect-solutions@0.5.3"; [ "$3" = "bin" ] && echo "\${GOLDEN_STUB_DIR}"; };;
 esac`,
   curl: `exit 0`,
-  "effect-solutions": `exit 0`,
   bwrap: `case "$1" in --version) echo "bubblewrap 0.11.0";; esac`,
   intelephense: `exit 0`,
   "typescript-language-server": `case "$1" in --version) echo "5.3.0";; esac`,

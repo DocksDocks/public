@@ -17,7 +17,7 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "flags": { summary: "Full flag reference incl. the old→new rename table", body: flags },
   "modifiers": { summary: "Deploy-time modifiers and the flag-less-sync-reverts contract", body: modifiers },
   "models": { summary: "Model catalog, validation rules, model get/set", body: models },
-  "toolchain": { summary: "Verified-version floors, gate policy, --yes semantics", body: toolchain },
+  "toolchain": { summary: "Verified-version floors and the doctor table", body: toolchain },
   "plugins": { summary: "enabledPlugins tri-state + optional plugin opt-ins", body: plugins },
   "install": { summary: "Install paths: repo checkout, bun add -g, curl installer", body: install },
   "platforms": { summary: "Platform support: Linux/macOS x64 and arm64", body: platforms }

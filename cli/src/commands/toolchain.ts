@@ -2,7 +2,7 @@ import { Argument, Command, Flag } from "effect/unstable/cli"
 import { Effect, Option } from "effect"
 import { bail, engine } from "../engine"
 
-const MANAGED = ["bun", "effect-solutions"]
+const MANAGED = ["bun"]
 
 const op = Argument.string("op").pipe(
   Argument.withDescription("check (default) | ensure <tool>"),
@@ -12,18 +12,15 @@ const tool = Argument.string("tool").pipe(
   Argument.withDescription(`Managed tool for ensure: ${MANAGED.join(", ")}`),
   Argument.optional
 )
-const yes = Flag.boolean("yes").pipe(
-  Flag.withDescription("Auto-accept above-verified installs")
-)
 const verbose = Flag.boolean("verbose").pipe(
   Flag.withAlias("v"),
   Flag.withDescription("Also print no-op confirmations (present, up to date)")
 )
 
-export const toolchainCommand = Command.make("toolchain", { op, tool, yes, verbose }, (config) =>
+export const toolchainCommand = Command.make("toolchain", { op, tool, verbose }, (config) =>
   Effect.gen(function* () {
     const operation = Option.getOrElse(config.op, () => "check")
-    const flags = [...(config.yes ? ["--yes"] : []), ...(config.verbose ? ["--verbose"] : [])]
+    const flags = config.verbose ? ["--verbose"] : []
 
     switch (operation) {
       case "check":
@@ -41,6 +38,6 @@ export const toolchainCommand = Command.make("toolchain", { op, tool, yes, verbo
   })
 ).pipe(
   Command.withDescription(
-    "Verified-version floors for external tools (SoT/toolchain.json): check prints the doctor table; ensure installs/upgrades one managed tool per policy (above-verified versions prompt; --yes accepts)."
+    "Verified-version floors for external tools (SoT/toolchain.json): check prints the doctor table; ensure installs one managed tool when it is missing."
   )
 )

@@ -12,8 +12,7 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { printModels, validateClaudeModel, validateCodexModel } from "./models"
 import { bunBootstrap } from "./bun"
-import { effectSolutionsInstall } from "./skillsSync"
-import { ensure, report } from "./toolchain"
+import { installedVersion, present, report } from "./toolchain"
 
 export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
   const { echo, err, warn } = ctx.services.logger
@@ -119,15 +118,12 @@ function tomlModelText(text: string): string {
 }
 
 export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
-  const { err } = ctx.services.logger
+  const { echo, err, verbose } = ctx.services.logger
   const words = args.filter((arg) => !arg.startsWith("--"))
   const op = words[0] ?? "check"
   const tool = words[1] ?? ""
   for (const arg of args) {
-    if (arg === "--yes") ctx.assumeYes = true
-    else if (arg === "--verbose") {
-      ctx.verbose = true
-    }
+    if (arg === "--verbose") ctx.verbose = true
   }
 
   if (op === "check") {
@@ -135,20 +131,33 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
     return 0
   }
   if (op !== "ensure") {
-    err("Usage: toolchain [check|ensure <tool>] [--yes]")
+    err("Usage: toolchain [check|ensure <tool>]")
     return 2
   }
   if (tool === "") {
-    err("Usage: toolchain ensure <tool> [--yes]")
+    err("Usage: toolchain ensure <tool>")
     return 2
   }
   switch (tool) {
-    case "bun":
-      return (await bunBootstrap(ctx, ctx.services)).kind === "ready" ? 0 : 1
-    case "effect-solutions":
-      return await ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
+    case "bun": {
+      // `bun` is the one managed tool, and its bootstrap is silent when Bun is
+      // already installed. Probe first so the no-op confirmation the `--verbose`
+      // contract promises is not mistaken for a fresh install.
+      const alreadyInstalled = present(ctx, "bun")
+      if ((await bunBootstrap(ctx, ctx.services)).kind !== "ready") return 1
+      if (alreadyInstalled) {
+        // A present tool whose --version cannot be read reports `unknown` in the
+        // doctor table; keep the same vocabulary rather than an empty pair of
+        // parentheses.
+        const probed = await installedVersion(ctx, "bun")
+        const installed = probed === "" ? "version unknown" : probed
+        if (ctx.dryRun) echo(`[dry-run] bun up to date (${installed})`)
+        else verbose(`bun up to date (${installed})`)
+      }
+      return 0
+    }
     default:
-      err("toolchain ensure supports managed tools only (bun, effect-solutions)")
+      err("toolchain ensure supports managed tools only (bun)")
       return 2
   }
 }

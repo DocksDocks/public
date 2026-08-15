@@ -30,7 +30,6 @@ interface LogRecord {
 interface StubOptions {
   readonly missing?: ReadonlyArray<ToolId>
   readonly versions?: Partial<Record<ToolId, string>>
-  readonly latest?: Partial<Record<ToolId, string>>
 }
 
 function stubServices(records: Array<LogRecord>, options: StubOptions = {}): EngineServices {
@@ -51,13 +50,8 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
   const platform = makePlatform("linux")
   const missing = new Set(options.missing ?? [])
   const versions: Partial<Record<ToolId, string>> = {
-    "effect-solutions": "0.5.3",
     bun: "1.3.14",
     ...options.versions
-  }
-  const latest: Partial<Record<ToolId, string>> = {
-    "effect-solutions": "0.5.3",
-    ...options.latest
   }
   const warned = new Set<ToolId>()
   const deps: DependencyManager = {
@@ -71,8 +65,6 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
         : { state: "present", path: `/stub-bin/${id}` },
     version: async (id) => versions[id] ?? "",
     path: async (id) => (missing.has(id) ? "" : `/stub-bin/${id}`),
-    location: async (id) => ({ path: missing.has(id) ? "" : `/stub-bin/${id}`, binDir: "" }),
-    latest: async (id) => latest[id] ?? "",
     warnMissing: (id, currentLogger, context) => {
       if (warned.has(id)) return
       warned.add(id)
@@ -129,7 +121,6 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     skipBubblewrap: false,
     reconcile: false,
     prune: false,
-    assumeYes: false,
     claudeCompactWindow: "",
     claudePermissive: false,
     claudePlugins: [],
@@ -759,12 +750,25 @@ describe.sequential("EngineNative full service injection", () => {
       }
     })
     const services = { ...factory, deps: stubServices([]).deps }
+    const home = mkdtempSync(join(tmpdir(), "engine-di-verbosity-gate-"))
+    const previousHome = process.env["HOME"]
+    process.env["HOME"] = home
+    mkdirSync(join(home, ".claude"), { recursive: true })
+    writeFileSync(join(home, ".claude", "settings.json"), "{}\n")
 
-    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
-    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], services)).toBe(0)
-    expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], services)).toBe(0)
-    expect(stderr).toEqual(["\x1b[1;32m[ok]\x1b[0m effect-solutions up to date (0.5.3)\n"])
-    expect(stdout).toEqual([])
+    try {
+      expect(await runEngineNative(["model", "claude", "default"], services)).toBe(0)
+      expect(await runEngineNative(["model", "claude", "default", "--verbose"], services)).toBe(0)
+      expect(await runEngineNative(["model", "claude", "default"], services)).toBe(0)
+      expect(stderr).toEqual([
+        "\x1b[1;32m[ok]\x1b[0m Model: deployed settings model already unset (account default)\n"
+      ])
+      expect(stdout).toEqual([])
+    } finally {
+      if (previousHome === undefined) delete process.env["HOME"]
+      else process.env["HOME"] = previousHome
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   it("preserves class-based logger methods and receivers", async () => {
@@ -788,7 +792,6 @@ describe.sequential("EngineNative full service injection", () => {
       "SKIP_BUBBLEWRAP",
       "RECONCILE",
       "PRUNE",
-      "ASSUME_YES",
       "CLAUDE_COMPACT_WINDOW",
       "CLAUDE_PERMISSIVE",
       "CLAUDE_PLUGINS",
@@ -923,22 +926,6 @@ describe.sequential("EngineNative full service injection", () => {
       expect(modelRecords.at(-1)?.message).toContain("full claude-* model IDs outside the catalog")
       noBypass()
 
-      useHome("gate-decline")
-      const gateRecords: Array<LogRecord> = []
-      const gateServices = stubServices(gateRecords, {
-        versions: { "effect-solutions": "0.5.0" },
-        latest: { "effect-solutions": "0.99.0" }
-      })
-      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], gateServices)).toBe(0)
-      expect(gateRecords).toEqual([
-        {
-          level: "warn",
-          message:
-            "skipping effect-solutions upgrade (latest 0.99.0 is above kit-verified 0.5.3; pass --yes to accept, or update SoT/toolchain.json after testing)"
-        }
-      ])
-      noBypass()
-
       const dedupWarns: Array<LogRecord> = []
       for (const run of ["dedup-1", "dedup-2"]) {
         useHome(run)
@@ -950,13 +937,35 @@ describe.sequential("EngineNative full service injection", () => {
       }
       expect(dedupWarns).toHaveLength(2)
 
-      useHome("verbosity")
+      const verboseHome = useHome("verbosity")
+      mkdirSync(join(verboseHome, ".claude"), { recursive: true })
+      writeFileSync(join(verboseHome, ".claude", "settings.json"), "{}\n")
       const verboseRecords: Array<LogRecord> = []
       const verboseServices = stubServices(verboseRecords)
-      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
-      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions", "--verbose"], verboseServices)).toBe(0)
-      expect(await runEngineNative(["toolchain", "ensure", "effect-solutions"], verboseServices)).toBe(0)
-      expect(verboseRecords).toEqual([{ level: "verbose", message: "effect-solutions up to date (0.5.3)" }])
+      expect(await runEngineNative(["model", "claude", "default"], verboseServices)).toBe(0)
+      expect(await runEngineNative(["model", "claude", "default", "--verbose"], verboseServices)).toBe(0)
+      expect(await runEngineNative(["model", "claude", "default"], verboseServices)).toBe(0)
+      expect(verboseRecords).toEqual([
+        { level: "verbose", message: "Model: deployed settings model already unset (account default)" }
+      ])
+
+      useHome("toolchain-verbosity")
+      const toolchainRecords: Array<LogRecord> = []
+      const toolchainServices = stubServices(toolchainRecords)
+      expect(await runEngineNative(["toolchain", "ensure", "bun"], toolchainServices)).toBe(0)
+      expect(await runEngineNative(["toolchain", "ensure", "bun", "--verbose"], toolchainServices)).toBe(0)
+      expect(toolchainRecords).toEqual([
+        { level: "verbose", message: "bun up to date (1.3.14)" }
+      ])
+
+      const unreadableRecords: Array<LogRecord> = []
+      const unreadableServices = stubServices(unreadableRecords, { versions: { bun: "" } })
+      expect(
+        await runEngineNative(["toolchain", "ensure", "bun", "--verbose"], unreadableServices)
+      ).toBe(0)
+      expect(unreadableRecords).toEqual([
+        { level: "verbose", message: "bun up to date (version unknown)" }
+      ])
       noBypass()
     } finally {
       stdout.mockRestore()

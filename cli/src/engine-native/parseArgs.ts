@@ -135,7 +135,6 @@ function usage(ctx: Ctx): void {
   )
   echo("  --skip-bubblewrap skip optional bubblewrap bootstrap (Codex Linux sandbox)")
   echo("  --skip-plugin-refresh  install missing plugins but skip refresh-only updates")
-  echo("  --yes             auto-accept toolchain prompts (containers/CI)")
   echo("  --verbose         also print no-op confirmations (already in sync, up to date, left as-is)")
   echo("")
   echo("Deploy-time modifiers (deployed config only; SoT untouched; a later flag-less sync reverts)")
@@ -260,9 +259,6 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         continue
       case "--prune":
         ctx.prune = true
-        continue
-      case "--yes":
-        ctx.assumeYes = true
         continue
       case "--verbose":
         ctx.verbose = true

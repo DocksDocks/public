@@ -376,7 +376,7 @@ const REMOVED_MANIFEST = {
   },
   claudeJsonKeys: [] as Array<string>,
   /** Home-relative artifacts the kit installed outside ~/.claude. */
-  homeFiles: [".local/bin/session-relay"],
+  homeFiles: [".local/bin/effect-solutions", ".local/bin/session-relay"],
   runtimeReady: {
     hooks: ["notify.sh"],
     files: ["statusline.sh", "fetch-usage.sh"],

@@ -1,17 +1,15 @@
 /**
  * EngineNative `sync agents` pipeline: universal-skill bootstrap
  * (`npx skills@<pin> add`), Claude symlink healing, --prune reconcile against
- * the kit-managed snapshot, the effect-solutions toolchain callback, and the
- * snapshot write.
+ * the kit-managed snapshot, and the snapshot write.
  */
 import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
 import { dirname, relative, resolve } from "node:path"
 import { p, spawnProcess, writeFileIfChanged } from "./exec"
-import { bunBootstrap } from "./bun"
 import type { Ctx } from "./index"
-import { compareCodepoints, isObject, parseJson } from "./jq"
+import { compareCodepoints } from "./jq"
 import type { EngineServices } from "./services"
-import { ensure, field } from "./toolchain"
+import { field } from "./toolchain"
 import { payloadText } from "../payload"
 import { ExitError } from "./parseArgs"
 
@@ -29,7 +27,6 @@ export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
 
   await syncUniversal(ctx, state, skillsDir, manifest)
   const failedRemovals = ctx.prune ? await reconcileRemovals(ctx, manifest, snapshot) : []
-  await syncEffectSolutionsCli(ctx)
   updateSnapshot(ctx, manifest, snapshot, failedRemovals)
   return state
 }
@@ -209,59 +206,6 @@ function linkOrCopyWithWarnings(target: string, link: string, services: EngineSe
     services.logger.warn(`could not create symlink ${link}`)
   }
   return linked
-}
-
-// ------------------------------------------------- toolchain callbacks ----
-
-/** skills::_effect_solutions_install. */
-export function effectSolutionsInstall(
-  ctx: Ctx
-): (mode: "install" | "upgrade", version: string, services: EngineServices) => Promise<number> {
-  return async (mode, version, services) => {
-    const { change, clearProgress, progress, verbose, warn } = services.logger
-    const verb = mode === "upgrade" ? "Upgrading" : "Installing"
-    const pkg = `effect-solutions@${version !== "" ? version : "latest"}`
-
-    const bunState = await bunBootstrap(ctx, services)
-    if (bunState.kind === "deferred") return 1
-    const bun = bunState.executable
-
-    verbose(`${verb} effect-solutions CLI via bun${version !== "" ? ` (pinned ${version})` : ""}...`)
-    progress(`${verb} effect-solutions CLI...`)
-    const installResult = await spawnProcess(bun, ["add", "-g", pkg], { stdio: "ignore" })
-    clearProgress()
-    if (installResult.exitCode !== 0) {
-      warn(`bun add -g ${pkg} failed. Try manually: bun add -g ${pkg}`)
-      return 1
-    }
-
-    const location = await services.deps.location("effect-solutions")
-    const gbin = location.binDir
-    if (location.path !== "") {
-      mkdirSync(p(ctx.home, ".local", "bin"), { recursive: true })
-      linkOrCopyWithWarnings(bun, p(ctx.home, ".local", "bin", "bun"), services)
-      linkOrCopyWithWarnings(location.path, p(ctx.home, ".local", "bin", "effect-solutions"), services)
-      change("effect-solutions CLI ready (linked bun + effect-solutions into ~/.local/bin)")
-    } else {
-      warn(`effect-solutions installed but binary not found under '${gbin !== "" ? gbin : "<unknown>"}' — link it onto PATH manually`)
-    }
-    return 0
-  }
-}
-
-async function syncEffectSolutionsCli(ctx: Ctx): Promise<void> {
-  const { clearProgress, progress, warn } = ctx.services.logger
-  const settings = parseJson(payloadText("SoT/.claude/settings.json"))
-  if (settings === undefined || !isObject(settings)) return
-  const enabledPlugins = settings["enabledPlugins"]
-  if (enabledPlugins === undefined || !isObject(enabledPlugins) || enabledPlugins["effect-kit@docks"] !== true) return
-
-  progress("Checking effect-solutions CLI...")
-  const result = await ensure(ctx, "effect-solutions", effectSolutionsInstall(ctx))
-  clearProgress()
-  if (result !== 0) {
-    warn("effect-solutions bootstrap failed — continuing sync")
-  }
 }
 
 // ----------------------------------------------------- prune + snapshot ----

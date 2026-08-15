@@ -52,9 +52,6 @@ const skipBubblewrap = Flag.boolean("skip-bubblewrap").pipe(
 const skipPluginRefresh = Flag.boolean("skip-plugin-refresh").pipe(
   Flag.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
 )
-const yes = Flag.boolean("yes").pipe(
-  Flag.withDescription("Auto-accept toolchain prompts (containers/CI)")
-)
 const verbose = Flag.boolean("verbose").pipe(
   Flag.withAlias("v"),
   Flag.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)")
@@ -102,7 +99,6 @@ export const syncCommand = Command.make(
     prune,
     skipBubblewrap,
     skipPluginRefresh,
-    yes,
     verbose,
     claudeModel,
     claudeEffort,
@@ -128,7 +124,6 @@ export const syncCommand = Command.make(
       if (config.prune) args.push("--prune")
       if (config.skipBubblewrap) args.push("--skip-bubblewrap")
       if (config.skipPluginRefresh) args.push("--skip-plugin-refresh")
-      if (config.yes) args.push("--yes")
       if (config.verbose) args.push("--verbose")
       if (config.claudePermissive) args.push("--claude-permissive")
       Option.map(config.claudeModel, (m) => args.push(`--claude-model=${m}`))

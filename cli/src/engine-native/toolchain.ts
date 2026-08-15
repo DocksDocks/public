@@ -1,20 +1,11 @@
 /**
- * Verified-version-floor layer over SoT/toolchain.json. Probe/install commands
- * spawn deterministic argv arrays and are covered by golden regression cases.
+ * Verified-version-floor layer over SoT/toolchain.json. Probe commands spawn
+ * deterministic argv arrays and are covered by golden regression cases.
  */
-import { readSync } from "node:fs"
-
 import type { ToolId } from "./deps"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
-import type { EngineServices } from "./services"
 import { payloadText } from "../payload"
-
-type InstallFn = (
-  mode: "install" | "upgrade",
-  version: string,
-  services: EngineServices
-) => number | Promise<number>
 
 function manifest(): { [k: string]: Json } {
   const doc = parseJson(payloadText("SoT/toolchain.json"))
@@ -68,7 +59,6 @@ export async function installedVersion(ctx: Ctx, tool: ToolId): Promise<string> 
     case "tsc":
       return firstLineField(await version(), 1)
     case "bun":
-    case "effect-solutions":
     case "npm":
       return await version()
     case "bwrap":
@@ -81,143 +71,6 @@ export async function installedVersion(ctx: Ctx, tool: ToolId): Promise<string> 
     default:
       return ""
   }
-}
-
-export async function latestVersion(ctx: Ctx, tool: ToolId): Promise<string> {
-  return await ctx.services.deps.latest(tool)
-}
-
-/** Blocking TTY prompt matching bash `read -r -p` (prompt on stderr). */
-export function promptLine(
-  prompt: string,
-  write: (chunk: string) => void = (chunk) => void process.stderr.write(chunk),
-  readByte: (buffer: Buffer) => number = (buffer) => readSync(0, buffer, 0, 1, null)
-): string {
-  write(prompt)
-  const buf = Buffer.alloc(1)
-  let line = ""
-  for (;;) {
-    let n: number
-    try {
-      n = readByte(buf)
-    } catch {
-      break
-    }
-    if (n === 0) break
-    const ch = buf.toString("utf8")
-    if (ch === "\n") break
-    line += ch
-  }
-  return line.replace(/\r$/, "")
-}
-
-/** toolchain::_gate — { proceed, target } ("" target = latest). */
-async function gate(
-  ctx: Ctx,
-  tool: string,
-  mode: "install" | "upgrade",
-  latest: string
-): Promise<{ proceed: boolean; target: string }> {
-  const { warn } = ctx.services.logger
-  const verified = field(ctx, tool, "verified")
-  const pinnable = field(ctx, tool, "pinnable")
-
-  if (verified === "" || !isNewer(latest, verified)) return { proceed: true, target: "" }
-
-  if (ctx.assumeYes) {
-    warn(`${tool} ${latest} is newer than kit-verified ${verified} — proceeding (--yes)`)
-    return { proceed: true, target: "" }
-  }
-
-  if (process.stdin.isTTY === true) {
-    ctx.services.logger.warn(`${tool} ${latest} is not kit-verified (verified: ${verified}).`)
-    const question = `Install ${tool} ${latest} anyway? [y/N] `
-    const answer =
-      ctx.terminalLease === undefined
-        ? promptLine(question)
-        : await ctx.terminalLease.withExclusive(() => promptLine(question))
-    if (/^[yY]/.test(answer)) return { proceed: true, target: "" }
-  }
-
-  if (mode === "install" && pinnable === "true") {
-    warn(`installing kit-verified ${tool} ${verified} instead of ${latest}`)
-    return { proceed: true, target: verified }
-  }
-  warn(
-    `skipping ${tool} ${mode} (latest ${latest} is above kit-verified ${verified}; pass --yes to accept, or update SoT/toolchain.json after testing)`
-  )
-  return { proceed: false, target: "" }
-}
-
-export async function ensure(ctx: Ctx, tool: ToolId, installFn: InstallFn): Promise<number> {
-  const { echo, verbose, warn } = ctx.services.logger
-  const policy = field(ctx, tool, "policy")
-
-  if (!present(ctx, tool)) {
-    const latest = await latestVersion(ctx, tool)
-    let target: string
-    if (latest === "") {
-      const verified = field(ctx, tool, "verified")
-      if (verified === "" || field(ctx, tool, "pinnable") !== "true") {
-        warn(`${tool} install skipped — latest version is unknown and no kit-verified pinnable version is available`)
-        return 0
-      }
-      target = verified
-      if (ctx.dryRun) {
-        echo(`[dry-run] would install ${tool} (${target}, kit-verified fallback because latest is unknown)`)
-        return 0
-      }
-      warn(`${tool} latest version unknown (offline?) — installing kit-verified ${target} instead`)
-    } else {
-      if (ctx.dryRun) {
-        echo(`[dry-run] would install ${tool} (${latest}, gated by toolchain.json verified pin)`)
-        return 0
-      }
-      const g = await gate(ctx, tool, "install", latest)
-      if (!g.proceed) return 0
-      target = g.target !== "" ? g.target : latest
-    }
-    return await installFn("install", target, ctx.services)
-  }
-
-  const installed = await installedVersion(ctx, tool)
-  const installedLabel = installed !== "" ? installed : "version unknown"
-
-  if (policy !== "track") {
-    if (ctx.dryRun) {
-      echo(`[dry-run] ${tool} present (${installedLabel})`)
-      return 0
-    }
-    verbose(`${tool} present (${installedLabel})`)
-    return 0
-  }
-
-  const latest = await latestVersion(ctx, tool)
-  if (latest === "") {
-    if (ctx.dryRun) {
-      echo(`[dry-run] ${tool} present (${installedLabel}); latest unknown (offline?) — no action`)
-      return 0
-    }
-    verbose(`${tool} present (${installedLabel}; latest unknown — no action)`)
-    return 0
-  }
-
-  if (installed === "" || isNewer(latest, installed)) {
-    if (ctx.dryRun) {
-      echo(`[dry-run] would upgrade ${tool} (${installed !== "" ? installed : "unknown"} -> ${latest}, gated by toolchain.json verified pin)`)
-      return 0
-    }
-    const g = await gate(ctx, tool, "upgrade", latest)
-    if (!g.proceed) return 0
-    return await installFn("upgrade", g.target !== "" ? g.target : latest, ctx.services)
-  }
-
-  if (ctx.dryRun) {
-    echo(`[dry-run] ${tool} up to date (${installed})`)
-    return 0
-  }
-  verbose(`${tool} up to date (${installed})`)
-  return 0
 }
 
 function row(cells: [string, string, string, string, string, string]): string {

@@ -87,7 +87,6 @@ export interface Ctx {
   skipPluginRefresh?: boolean
   reconcile: boolean
   prune: boolean
-  assumeYes: boolean
   claudeCompactWindow: string
   claudePermissive: boolean
   claudePlugins: Array<string>
@@ -140,7 +139,6 @@ function makeCtx(services: EngineServices): Ctx {
     skipPluginRefresh: false,
     reconcile: env["RECONCILE"] === "1",
     prune: env["PRUNE"] === "1",
-    assumeYes: env["ASSUME_YES"] === "1",
     claudeCompactWindow,
     claudePermissive: env["CLAUDE_PERMISSIVE"] === "1",
     claudePlugins,

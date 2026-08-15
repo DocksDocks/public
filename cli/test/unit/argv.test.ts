@@ -211,7 +211,7 @@ describe("argument validation", () => {
 
   it.each([
     ["rejects an inline value for the sync dry-run boolean", ["sync", "--dry-run=false"], "--dry-run"],
-    ["rejects an inline value for the sync yes boolean", ["sync", "--yes=true"], "--yes"],
+    ["rejects an inline value for the sync prune boolean", ["sync", "--prune=true"], "--prune"],
     ["rejects an inline value for the status JSON boolean", ["status", "--json=false"], "--json"]
   ] as const)("%s", (_name, input, flag) => {
     expect(prepareArgv(input)).toEqual({
@@ -224,8 +224,8 @@ describe("argument validation", () => {
   it.each([
     [
       "rejects duplicate uses of a non-repeatable boolean flag",
-      ["sync", "--yes", "--yes"],
-      "--yes"
+      ["sync", "--prune", "--prune"],
+      "--prune"
     ],
     [
       "rejects duplicate uses of a non-repeatable value flag",

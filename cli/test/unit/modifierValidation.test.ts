@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { runEngineNative } from "../../src/engine-native"
-import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
+import { DEPENDENCIES } from "../../src/engine-native/deps"
 import { makePlatform, type DependencyManager, type EngineServices, type Logger } from "../../src/engine-native/services"
 
 interface LogRecord {
@@ -36,8 +36,6 @@ function stubServices(records: Array<LogRecord>): EngineServices {
     probe: (id) => ({ state: "present", path: `/stub-bin/${id}` }),
     version: async (id) => (id === "bun" ? "1.3.14" : "0.5.3"),
     path: async (id) => `/stub-bin/${id}`,
-    location: async (id) => ({ path: `/stub-bin/${id}`, binDir: "" }),
-    latest: async (id: ToolId) => (id === "effect-solutions" ? "0.5.3" : ""),
     warnMissing: () => {}
   }
   return { logger, deps, platform }
@@ -51,7 +49,6 @@ const ENV_KEYS = [
   "SKIP_BUBBLEWRAP",
   "RECONCILE",
   "PRUNE",
-  "ASSUME_YES",
   "CLAUDE_COMPACT_WINDOW",
   "CLAUDE_PERMISSIVE",
   "CLAUDE_PLUGINS",
@@ -156,13 +153,13 @@ describe.sequential("modifier field validation", () => {
 
   it("derives toolchain operation and tool only from positional words", async () => {
     const checkRecords: Array<LogRecord> = []
-    expect(await runEngineNative(["toolchain", "--yes"], stubServices(checkRecords))).toBe(0)
+    expect(await runEngineNative(["toolchain", "--verbose"], stubServices(checkRecords))).toBe(0)
 
     const ensureRecords: Array<LogRecord> = []
-    expect(await runEngineNative(["toolchain", "--yes", "ensure"], stubServices(ensureRecords))).toBe(2)
+    expect(await runEngineNative(["toolchain", "--verbose", "ensure"], stubServices(ensureRecords))).toBe(2)
     expect(ensureRecords).toContainEqual({
       level: "err",
-      message: "Usage: toolchain ensure <tool> [--yes]"
+      message: "Usage: toolchain ensure <tool>"
     })
   })
 })

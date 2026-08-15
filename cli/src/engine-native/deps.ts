@@ -2,10 +2,10 @@
  * DependencyManager — one home for external-tool identity, presence probing,
  * and platform-correct install hints (Output Policy in DESIGN.md).
  *
- * Ownership split: SoT/toolchain.json + toolchain.ts keep version floors,
- * pin policy, and managed install/upgrade orchestration; this registry owns
- * WHICH external tools exist, whether they are required, and the one-line
- * command that installs a missing one.
+ * Ownership split: SoT/toolchain.json + toolchain.ts keep version floors, pin
+ * policy, and the doctor report, while bun.ts bunBootstrap owns the one managed
+ * install; this registry owns WHICH external tools exist, whether they are
+ * required, and the one-line command that installs a missing one.
  */
 import { homedir } from "node:os"
 import { isAbsolute } from "node:path"
@@ -25,7 +25,6 @@ export type ToolId =
   | "codex"
   | "bun"
   | "bwrap"
-  | "effect-solutions"
   | "ffplay"
   | "intelephense"
   | "typescript-language-server"
@@ -42,11 +41,6 @@ export type ProbeResult =
   | { readonly state: "present"; readonly path?: string }
   | { readonly state: "missing" }
 
-export interface DependencyLocation {
-  readonly path: string
-  readonly binDir: string
-}
-
 export interface ProbeExecutor {
   readonly commandExists: (name: string) => boolean
   readonly capture: (cmd: string, args: ReadonlyArray<string>) => Promise<string>
@@ -61,16 +55,12 @@ export interface DependencySpec {
   readonly installHint: (platform?: NodeJS.Platform) => string
   readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
   readonly version?: (exec: ProbeExecutor) => Promise<string>
-  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => Promise<DependencyLocation>
-  readonly latest?: (exec: ProbeExecutor) => Promise<string>
 }
 
 interface SpecOptions {
   readonly versionArgs?: ReadonlyArray<string>
   readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult
   readonly version?: (exec: ProbeExecutor) => Promise<string>
-  readonly locate?: (exec: ProbeExecutor, platform: NodeJS.Platform) => Promise<DependencyLocation>
-  readonly latest?: (exec: ProbeExecutor) => Promise<string>
 }
 
 const spec = (
@@ -84,9 +74,7 @@ const spec = (
   versionArgs: options.versionArgs ?? ["--version"],
   installHint,
   resolve: options.resolve,
-  version: options.version,
-  locate: options.locate,
-  latest: options.latest
+  version: options.version
 })
 
 const pathProbe = (id: string): ((exec: ProbeExecutor) => ProbeResult) =>
@@ -135,31 +123,6 @@ const resolveBun = (exec: ProbeExecutor): ProbeResult => {
     : { state: "present", path: bun.path }
 }
 
-const resolveEffectSolutions = (exec: ProbeExecutor): ProbeResult => {
-  return exec.commandExists("effect-solutions")
-    ? { state: "present", path: exec.which("effect-solutions") }
-    : { state: "missing" }
-}
-
-const versionEffectSolutions = async (exec: ProbeExecutor): Promise<string> => {
-  const bun = findBun(exec)
-  if (bun === undefined) return ""
-  const match = /effect-solutions@([0-9][0-9.]*)/.exec(await exec.capture(bun.command, ["pm", "-g", "ls"]))
-  return match?.[1] ?? ""
-}
-
-const locateEffectSolutions = async (exec: ProbeExecutor): Promise<DependencyLocation> => {
-  const strictBun = findBun(exec)
-  const pathBun = exec.which("bun")
-  // This site may accept a relative hit because it does not persist the Bun path.
-  const bunForGlobalBin = strictBun?.command ?? (pathBun !== "" ? "bun" : undefined)
-  if (bunForGlobalBin === undefined) return { path: "", binDir: "" }
-  const globalBin = await exec.capture(bunForGlobalBin, ["pm", "-g", "bin"])
-  const path = globalBin !== "" ? p(globalBin, "effect-solutions") : ""
-  const resolved = path !== "" && exec.which(path) !== "" ? path : ""
-  return { path: resolved, binDir: globalBin }
-}
-
 const npmGlobalCache = new WeakMap<ProbeExecutor, Promise<{ [k: string]: string }>>()
 
 const npmGlobalVersions = (exec: ProbeExecutor): Promise<{ [k: string]: string }> => {
@@ -182,9 +145,6 @@ const npmGlobalVersions = (exec: ProbeExecutor): Promise<{ [k: string]: string }
 
 const versionNpmGlobal = (pkg: string) => async (exec: ProbeExecutor): Promise<string> =>
   (await npmGlobalVersions(exec))[pkg] ?? ""
-
-const latestNpm = (id: "effect-solutions") => async (exec: ProbeExecutor): Promise<string> =>
-  exec.commandExists("npm") ? await exec.capture("npm", ["view", id, "version"]) : ""
 
 export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, which }
 
@@ -235,18 +195,11 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
         const bun = findBun(exec)
         if (bun === undefined) return ""
         return await exec.capture(bun.command, ["--version"])
-      },
-      locate: async (exec) => ({ path: findBun(exec)?.path ?? "", binDir: "" })
+      }
     }
   ),
   bwrap: spec("bwrap", "optional", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)", {
     version: versionProbe("bwrap")
-  }),
-  "effect-solutions": spec("effect-solutions", "optional", () => "bun add -g effect-solutions", {
-    resolve: resolveEffectSolutions,
-    version: versionEffectSolutions,
-    locate: locateEffectSolutions,
-    latest: latestNpm("effect-solutions")
   }),
   ffplay: spec(
     "ffplay",
@@ -288,20 +241,11 @@ export async function resolveVersion(specification: DependencySpec, exec: ProbeE
   return await (specification.version ?? versionProbe(specification.id, specification.versionArgs))(exec)
 }
 
-export async function resolveLocation(
-  specification: DependencySpec,
-  exec: ProbeExecutor,
-  platform: NodeJS.Platform = rawPlatform()
-): Promise<DependencyLocation> {
-  if (specification.locate !== undefined) return await specification.locate(exec, platform)
-  const result = resolveDependency(specification, exec, platform)
-  return { path: result.state === "present" ? (result.path ?? exec.which(specification.id)) : "", binDir: "" }
-}
-
 export async function resolvePath(
   specification: DependencySpec,
   exec: ProbeExecutor,
-  platform?: NodeJS.Platform
+  platform: NodeJS.Platform = rawPlatform()
 ): Promise<string> {
-  return (await resolveLocation(specification, exec, platform)).path
+  const result = resolveDependency(specification, exec, platform)
+  return result.state === "present" ? (result.path ?? exec.which(specification.id)) : ""
 }

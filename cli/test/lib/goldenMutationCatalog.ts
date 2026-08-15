@@ -16,11 +16,6 @@ export interface MutationReplayCase {
   cmd2?: Array<string>
 }
 
-// Stub-body variants for toolchain gate/install/upgrade/failure branches.
-const NPM_LATEST_ABOVE_VERIFIED = `case "$1" in
-  view) case "$2" in effect-solutions) echo "0.99.0";; esac;;
-esac`
-const NPM_OFFLINE = `case "$1" in view) exit 1;; esac`
 const LEGACY_CLAUDE_SETTINGS = stableStringify({
   hooks: {
     SessionStart: [{ hooks: [{ type: "command", command: "legacy-session", timeout: 5 }] }],
@@ -84,9 +79,6 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
   { fixture: "home-drift", cmd: ["model", "codex", "gpt-5.5"] },
   { fixture: "home-invalid-json", cmd: ["sync", "claude"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--verbose"] },
-  { fixture: "home-fresh", cmd: ["toolchain", "ensure", "effect-solutions", "--yes"] },
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
@@ -97,18 +89,6 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "effect-solutions"],
-    stubs: { npm: NPM_LATEST_ABOVE_VERIFIED },
-    variant: "npm-latest-above-verified"
-  },
-  {
-    fixture: "home-fresh",
-    cmd: ["toolchain", "ensure", "effect-solutions"],
-    stubs: { npm: NPM_OFFLINE },
-    variant: "npm-offline"
-  }
 ]
 
 /**

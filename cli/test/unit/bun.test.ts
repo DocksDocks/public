@@ -92,7 +92,6 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     skipBubblewrap: false,
     reconcile: false,
     prune: false,
-    assumeYes: false,
     claudeCompactWindow: "",
     claudePermissive: false,
     claudePlugins: [],

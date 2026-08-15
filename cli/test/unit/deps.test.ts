@@ -98,18 +98,6 @@ describe("DependencyManager registry", () => {
     expect(captures).toEqual([])
   })
 
-  it("locates the supported effect-solutions executable", async () => {
-    const globalBin = "/bun/global/bin"
-    const executor = (files: ReadonlyArray<string>): ProbeExecutor => ({
-      commandExists: (name) => name === "effect-solutions",
-      capture: async (cmd, args) => (cmd === "bun" && args.join(" ") === "pm -g bin" ? globalBin : ""),
-      which: (name) => (name === "bun" || files.includes(name) ? name : "")
-    })
-
-    const resolved = makeDependencyManager(makePlatform("linux"), executor([`${globalBin}/effect-solutions`]))
-    await expect(resolved.path("effect-solutions")).resolves.toBe(`${globalBin}/effect-solutions`)
-  })
-
   it("does not capture a Bun version when Bun is absent", async () => {
     const capture = vi.fn(async () => "")
     const exec: ProbeExecutor = {
@@ -124,31 +112,7 @@ describe("DependencyManager registry", () => {
     expect(capture).not.toHaveBeenCalled()
   })
 
-  it("reads the effect-solutions version only when Bun is present", async () => {
-    const version = DEPENDENCIES["effect-solutions"].version
-    if (version === undefined) throw new Error("effect-solutions version probe is not registered")
-
-    const absentCapture = vi.fn(async () => "")
-    const absentExec: ProbeExecutor = {
-      commandExists: () => false,
-      capture: absentCapture,
-      which: () => ""
-    }
-    await expect(version(absentExec)).resolves.toBe("")
-    expect(absentCapture).not.toHaveBeenCalled()
-
-    const presentCapture = vi.fn(async () => "effect-solutions@1.2.3")
-    const presentExec: ProbeExecutor = {
-      commandExists: () => true,
-      capture: presentCapture,
-      which: (name) => (name === "bun" ? "/opt/bun/bin/bun" : "")
-    }
-    await expect(version(presentExec)).resolves.toBe("1.2.3")
-    expect(presentCapture).toHaveBeenCalledOnce()
-    expect(presentCapture).toHaveBeenCalledWith("bun", ["pm", "-g", "ls"])
-  })
-
-  it("uses the resolved BUN_INSTALL executable for Bun-backed version probes", async () => {
+  it("uses the resolved BUN_INSTALL executable for the Bun version probe", async () => {
     const previousHome = process.env["HOME"]
     const previousBunInstall = process.env["BUN_INSTALL"]
     const calls: Array<[string, ReadonlyArray<string>]> = []
@@ -156,20 +120,16 @@ describe("DependencyManager registry", () => {
       process.env["HOME"] = "/fixture-home"
       process.env["BUN_INSTALL"] = "/custom-bun"
       const manager = makeDependencyManager(makePlatform("linux"), {
-        commandExists: (name) => name === "effect-solutions",
+        commandExists: () => false,
         capture: async (cmd, args) => {
           calls.push([cmd, args])
-          return args[0] === "--version" ? "1.3.14" : "effect-solutions@0.5.3"
+          return "1.3.14"
         },
         which: (name) => (name === "/custom-bun/bin/bun" ? name : "")
       })
 
       await expect(manager.version("bun")).resolves.toBe("1.3.14")
-      await expect(manager.version("effect-solutions")).resolves.toBe("0.5.3")
-      expect(calls).toEqual([
-        ["/custom-bun/bin/bun", ["--version"]],
-        ["/custom-bun/bin/bun", ["pm", "-g", "ls"]]
-      ])
+      expect(calls).toEqual([["/custom-bun/bin/bun", ["--version"]]])
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]
       else process.env["HOME"] = previousHome

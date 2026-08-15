@@ -83,9 +83,9 @@ function expectLegacyFiles(home: string): void {
 describe.sequential("Claude runtime migration transaction", () => {
   it("shares one deferred Bun result across an all-target legacy run", () => {
     const variant = legacyVariant()
-    const stubs = makeStubDir({ bun: null, curl: null, "effect-solutions": null })
+    const stubs = makeStubDir({ bun: null, curl: null })
     const run = runEngine(["sync"], variant, stubs, {
-      maskTools: ["bun", "curl", "effect-solutions"]
+      maskTools: ["bun", "curl"]
     })
     try {
       expect(run.exitCode).toBe(0)
@@ -96,7 +96,6 @@ describe.sequential("Claude runtime migration transaction", () => {
       expect(run.output.match(/Bun unavailable — Claude statusline\/hooks migration deferred/g)).toHaveLength(1)
       expect(run.output).toContain("Hooks:    migration deferred (Bun unavailable; existing hook/statusline settings preserved)")
       expect(readArgvLog(run)).not.toMatch(/^curl\t/m)
-      expect(readArgvLog(run)).not.toContain("add -g effect-solutions")
     } finally {
       cleanup([run])
       rmSync(variant, { recursive: true, force: true })

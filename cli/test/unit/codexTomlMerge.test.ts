@@ -27,8 +27,6 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
       probe: dependencyProbe,
       version: async () => "",
       path: async () => "",
-      location: async () => ({ path: "", binDir: "" }),
-      latest: async () => "",
       warnMissing: () => {}
     }
   }
@@ -42,7 +40,6 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
     skipPluginRefresh: false,
     reconcile: false,
     prune: false,
-    assumeYes: false,
     claudeCompactWindow: "",
     claudePermissive: false,
     claudePlugins: [],

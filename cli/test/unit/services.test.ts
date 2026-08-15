@@ -79,8 +79,6 @@ describe("engine service layers", () => {
       probe: () => ({ state: "missing" }),
       version: async () => "",
       path: async () => "",
-      location: async () => ({ path: "", binDir: "" }),
-      latest: async () => "",
       warnMissing: (id) => void warned.push(id)
     }
     const program = Effect.gen(function* () {
