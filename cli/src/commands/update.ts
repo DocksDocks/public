@@ -5,13 +5,25 @@ import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
+import { which } from "../engine-native/exec"
+import { hostOs, type Invocation } from "../engine-native/os"
 
 const noSync = Flag.boolean("no-sync").pipe(
   Flag.withDescription("Update the kit only; skip the chained flag-less sync")
 )
 
+/** Resolve Windows shims without changing the command spelling spawned on POSIX. */
+const updateInvocation = (command: string, args: ReadonlyArray<string>): Invocation => {
+  const host = hostOs()
+  const executablePath = host.executableSuffixes.some((suffix) => suffix !== "")
+    ? (which(command, host.executableSuffixes) || command)
+    : command
+  return host.invoke(executablePath, args)
+}
+
 const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {
-  const res = spawnSync("git", ["-C", home, ...args], {
+  const invocation = updateInvocation("git", ["-C", home, ...args])
+  const res = spawnSync(invocation.command, [...invocation.args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   })
@@ -22,7 +34,8 @@ const git = (home: string, args: Array<string>): { ok: boolean; out: string } =>
  * version loaded, so the chained sync must be a new process. */
 const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
   Effect.sync(() => {
-    const res = spawnSync(argv0, args, { stdio: "inherit" })
+    const invocation = updateInvocation(argv0, args)
+    const res = spawnSync(invocation.command, [...invocation.args], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
   })
 
@@ -56,7 +69,8 @@ type CapturePackageRoot = (
 ) => PackageRootCapture
 
 const capturePackageRoot: CapturePackageRoot = (command, args) => {
-  const res = spawnSync(command, [...args], {
+  const invocation = updateInvocation(command, args)
+  const res = spawnSync(invocation.command, [...invocation.args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   })
@@ -143,7 +157,8 @@ export const packageUpdateResult = (
 
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    if (spawnSync("git", ["--version"], { stdio: "ignore" }).status !== 0) {
+    const gitVersion = updateInvocation("git", ["--version"])
+    if (spawnSync(gitVersion.command, [...gitVersion.args], { stdio: "ignore" }).status !== 0) {
       return yield* bail("git not found - cannot update the kit checkout")
     }
     const dirty = git(home, ["status", "--porcelain"])
@@ -169,7 +184,8 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
     const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
     if (touched.includes("bun.lock") || touched.includes("package.json")) {
-      const res = spawnSync("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
+      const invocation = updateInvocation("bun", ["install", "--frozen-lockfile"])
+      const res = spawnSync(invocation.command, [...invocation.args], { cwd: home, stdio: "inherit" })
       if (res.error !== undefined || res.status !== 0) {
         return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
       }
@@ -189,10 +205,11 @@ const updatePackage = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     const manager = packageManagerForHome(home)
     const beforeVersion = readPackageVersion(home)
-    const res =
-      manager === "bun"
-        ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
-        : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
+    const updateArgs = manager === "bun"
+      ? ["add", "-g", "docks-kit@latest"]
+      : ["install", "-g", "docks-kit@latest"]
+    const invocation = updateInvocation(manager, updateArgs)
+    const res = spawnSync(invocation.command, [...invocation.args], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(
         `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,

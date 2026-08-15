@@ -1,9 +1,14 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
-import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
-import { capture } from "../../src/engine-native/exec"
+import {
+  DEPENDENCIES,
+  resolveDependency,
+  resolvePath,
+  type ProbeExecutor
+} from "../../src/engine-native/deps"
+import { capture, which } from "../../src/engine-native/exec"
 import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
 
 describe("DependencyManager registry", () => {
@@ -23,6 +28,50 @@ describe("DependencyManager registry", () => {
 
   it("returns empty output when spawn rejects invalid arguments synchronously", async () => {
     await expect(capture("\0", [])).resolves.toBe("")
+  })
+
+  it("resolves bare POSIX tools and Windows command shims from a real PATH directory", () => {
+    const directory = mkdtempSync(join(tmpdir(), "docks-exec-"))
+    const previousPath = process.env["PATH"]
+    const posixTool = join(directory, "docks-posix-tool")
+    const windowsTool = join(directory, "docks-windows-tool.cmd")
+    const firstWindowsTool = join(directory, "docks-windows-first.exe")
+    const laterWindowsTool = join(directory, "docks-windows-first.cmd")
+    try {
+      writeFileSync(posixTool, "#!/bin/sh\nexit 0\n")
+      chmodSync(posixTool, 0o755)
+      writeFileSync(windowsTool, "@echo off\r\n")
+      chmodSync(windowsTool, 0o644)
+      writeFileSync(firstWindowsTool, "")
+      writeFileSync(laterWindowsTool, "")
+      chmodSync(firstWindowsTool, 0o644)
+      chmodSync(laterWindowsTool, 0o644)
+      process.env["PATH"] = directory
+
+      expect(which("docks-posix-tool", [""])).toBe(posixTool)
+      expect(which("docks-windows-tool", [".exe", ".cmd", ".bat", ""])).toBe(windowsTool)
+      expect(which(join(directory, "docks-windows-tool"), [".exe", ".cmd", ".bat", ""])).toBe(windowsTool)
+      expect(which("docks-windows-first", [".exe", ".cmd", ".bat", ""])).toBe(firstWindowsTool)
+    } finally {
+      if (previousPath === undefined) delete process.env["PATH"]
+      else process.env["PATH"] = previousPath
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("preserves a resolved Windows shim path in dependency probes", async () => {
+    const executable = "C:/tools/npm.cmd"
+    const exec: ProbeExecutor = {
+      commandExists: () => true,
+      capture: async () => "",
+      which: (name) => (name === "npm" ? executable : "")
+    }
+
+    expect(resolveDependency(DEPENDENCIES.npm, exec, "win32")).toEqual({
+      state: "present",
+      path: executable
+    })
+    await expect(resolvePath(DEPENDENCIES.npm, exec, "win32")).resolves.toBe(executable)
   })
 
   it("gives executable Linux and macOS git hints", () => {

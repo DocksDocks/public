@@ -1,5 +1,6 @@
 import { p } from "./exec"
 import { isObject, parseJson, type Json } from "./jq"
+import { hostOs } from "./os"
 
 const BUN_SENTINEL = "__DOCKS_KIT_BUN__"
 const SESSION_START_SENTINEL = "__DOCKS_KIT_SESSION_START__"
@@ -83,14 +84,9 @@ function validateTemplate(template: Json): void {
   }
 }
 
-function posixLiteral(value: string): string {
-  return `'${value.replaceAll("'", `'"'"'`)}'`
-}
 
 export function statusLineCommand(runtime: ClaudeRuntimePaths): string {
-  const bun = posixLiteral(runtime.bun)
-  const script = posixLiteral(runtime.statusline)
-  return `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
+  return hostOs().statusLineCommand(runtime.bun, runtime.statusline)
 }
 
 export function materializeClaudeSettings(
@@ -100,6 +96,17 @@ export function materializeClaudeSettings(
   validateTemplate(template)
   const result = cloneJson(template)
   const hooks = hooksObject(result)
+  const failureGroups = hooks["PostToolUseFailure"]
+  if (Array.isArray(failureGroups)) {
+    for (const group of failureGroups) {
+      if (!isObject(group) || !Array.isArray(group["hooks"])) continue
+      for (const handler of group["hooks"]) {
+        if (isObject(handler) && handler["type"] === "command" && typeof handler["command"] === "string") {
+          handler["command"] = hostOs().failureHookCommand(handler["command"])
+        }
+      }
+    }
+  }
   if (runtime === undefined) {
     delete hooks["SessionStart"]
     delete hooks["Notification"]

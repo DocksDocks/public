@@ -5,8 +5,10 @@ import { describe, expect, it } from "vitest"
 import { claudeRuntimePaths, materializeClaudeSettings, statusLineCommand, type ClaudeRuntimePaths } from "../../src/engine-native/claudeRuntime"
 import { commitClaudeSettings, prepareClaudeSettings } from "../../src/engine-native/claudeSync"
 import type { Ctx } from "../../src/engine-native"
-import { jqStringify, type Json } from "../../src/engine-native/jq"
+import { isObject, jqStringify, parseJson, type Json } from "../../src/engine-native/jq"
 import { makeEngineServices } from "../../src/engine-native/services"
+import { hostOs } from "../../src/engine-native/os"
+import { payloadText } from "../../src/payload"
 
 const BUN_SENTINEL = "__DOCKS_KIT_BUN__"
 const SESSION_SENTINEL = "__DOCKS_KIT_SESSION_START__"
@@ -30,6 +32,26 @@ const POSIX_RUNTIME: ClaudeRuntimePaths = {
   statusline: "/home/O'Brien/.claude/bin/statusline.mjs",
   sessionStart: "/home/O'Brien/.claude/bin/session-start.mjs",
   notify: "/home/O'Brien/.claude/bin/notify.mjs"
+}
+
+const POWERSHELL_PREFIX = "powershell.exe -NoProfile -NonInteractive -EncodedCommand "
+
+function decodePowerShellCommand(command: string): string {
+  expect(command.startsWith(POWERSHELL_PREFIX)).toBe(true)
+  return Buffer.from(command.slice(POWERSHELL_PREFIX.length), "base64").toString("utf16le")
+}
+
+function postToolUseFailureCommand(settings: Json): string {
+  if (!isObject(settings) || !isObject(settings["hooks"])) throw new Error("hooks object missing")
+  const groups = settings["hooks"]["PostToolUseFailure"]
+  if (!Array.isArray(groups) || !isObject(groups[0]) || !Array.isArray(groups[0]["hooks"])) {
+    throw new Error("PostToolUseFailure hooks missing")
+  }
+  const handler = groups[0]["hooks"][0]
+  if (!isObject(handler) || typeof handler["command"] !== "string") {
+    throw new Error("PostToolUseFailure command missing")
+  }
+  return handler["command"]
 }
 
 function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines: Array<string> } {
@@ -56,15 +78,39 @@ describe("Claude runtime paths", () => {
       sessionStart: "/home/test/.claude/bin/session-start.mjs",
       notify: "/home/test/.claude/bin/notify.mjs"
     })
+    expect(claudeRuntimePaths("C:/Users/test/.claude", "C:/Users/test/.bun/bin/bun.exe")).toEqual({
+      bun: "C:/Users/test/.bun/bin/bun.exe",
+      statusline: "C:/Users/test/.claude/bin/statusline.mjs",
+      sessionStart: "C:/Users/test/.claude/bin/session-start.mjs",
+      notify: "C:/Users/test/.claude/bin/notify.mjs"
+    })
   })
 })
 
 describe("statusline shell guards", () => {
-  it("quotes POSIX apostrophes and silently succeeds when a file is missing", () => {
+  it("keeps the Darwin command byte-identical to the existing POSIX shape", () => {
     const bun = "'/home/O'\"'\"'Brien/.bun/bin/bun'"
     const script = "'/home/O'\"'\"'Brien/.claude/bin/statusline.mjs'"
-    expect(statusLineCommand(POSIX_RUNTIME)).toBe(
-      `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
+    const expected = `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
+    expect(hostOs("darwin").statusLineCommand(POSIX_RUNTIME.bun, POSIX_RUNTIME.statusline)).toBe(expected)
+    expect(statusLineCommand(POSIX_RUNTIME)).toBe(hostOs().statusLineCommand(POSIX_RUNTIME.bun, POSIX_RUNTIME.statusline))
+  })
+
+  it("decodes the Windows command to the guarded PowerShell script", () => {
+    const runtime = claudeRuntimePaths("C:/Users/test/.claude", "C:/Users/test/.bun/bin/bun.exe")
+    const command = hostOs("windows").statusLineCommand(runtime.bun, runtime.statusline)
+    expect(decodePowerShellCommand(command)).toBe(
+      "if ((Test-Path -LiteralPath 'C:/Users/test/.bun/bin/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/test/.claude/bin/statusline.mjs' -PathType Leaf)) { & 'C:/Users/test/.bun/bin/bun.exe' 'C:/Users/test/.claude/bin/statusline.mjs' }"
+    )
+  })
+
+  it("doubles apostrophes inside Windows single-quoted path literals", () => {
+    const command = hostOs("windows").statusLineCommand(
+      "C:/Users/O'Brien/$bun/bun.exe",
+      "C:/Users/O'Brien/`scripts/statusline.mjs"
+    )
+    expect(decodePowerShellCommand(command)).toBe(
+      "if ((Test-Path -LiteralPath 'C:/Users/O''Brien/$bun/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/O''Brien/`scripts/statusline.mjs' -PathType Leaf)) { & 'C:/Users/O''Brien/$bun/bun.exe' 'C:/Users/O''Brien/`scripts/statusline.mjs' }"
     )
   })
 })
@@ -88,6 +134,26 @@ describe("Claude settings materialization", () => {
     })
     expect(JSON.stringify(materialized)).not.toContain("__DOCKS_KIT_")
     expect(source).toEqual(template())
+  })
+
+  it("keeps the SoT failure hook byte-identical on POSIX and safely reshapes it for Windows", () => {
+    const source = parseJson(payloadText("SoT/.claude/settings.json"))
+    if (source === undefined) throw new Error("SoT Claude settings are not valid JSON")
+    const sotCommand = postToolUseFailureCommand(source)
+    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME)
+    expect(postToolUseFailureCommand(materialized)).toBe(sotCommand)
+    expect(hostOs("linux").failureHookCommand(sotCommand)).toBe(sotCommand)
+    expect(hostOs("darwin").failureHookCommand(sotCommand)).toBe(sotCommand)
+
+    const json = sotCommand.slice("echo '".length, -1)
+    expect(decodePowerShellCommand(hostOs("windows").failureHookCommand(sotCommand))).toBe(
+      `Write-Output '${json}'`
+    )
+
+    const escapedApostrophe = `echo '{"message":"O'"'"'Brien"}'`
+    expect(decodePowerShellCommand(hostOs("windows").failureHookCommand(escapedApostrophe))).toBe(
+      `Write-Output '{"message":"O''Brien"}'`
+    )
   })
 
   it("strips only Bun-owned pointers when runtime is deferred", () => {

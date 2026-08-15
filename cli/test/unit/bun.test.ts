@@ -26,6 +26,7 @@ vi.mock("node:os", async () => {
 import { bunBootstrap, type BunRuntimeState } from "../../src/engine-native/bun"
 import type { Ctx } from "../../src/engine-native"
 import type { ProbeExecutor } from "../../src/engine-native/deps"
+import { hostOs } from "../../src/engine-native/os"
 import { makeDependencyManager, makeEngineServices, makePlatform, type EngineServices } from "../../src/engine-native/services"
 
 interface ProbeState {
@@ -60,6 +61,7 @@ function executor(state: ProbeState, home: string): ProbeExecutor {
       return ""
     },
     which: (name) => {
+      if (name === "curl" && state.curl) return "/usr/bin/curl"
       if (name === "bun") return state.pathBun ?? ""
       if (state.installed && (name === custom || name === fallback)) return name
       return ""
@@ -212,6 +214,18 @@ describe("per-run Bun bootstrap", () => {
       expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
       expect(downloadedTo).toMatch(new RegExp(`^${testRoot}/docks-kit-bun-[^/]+/install\\.sh$`))
       expect(executed).toBe(downloadedTo)
+      expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
+        1,
+        "curl",
+        ["-fsSL", "https://bun.sh/install", "-o", downloadedTo],
+        { stdio: ["ignore", "ignore", "pipe"] }
+      )
+      expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
+        2,
+        "bash",
+        [downloadedTo, "bun-v1.3.14"],
+        { stdio: ["ignore", "ignore", "pipe"] }
+      )
       expect(downloadedTo).not.toBe(predictableSymlink)
       expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged")
       expect(mocks.rmSync).toHaveBeenCalledWith(downloadedTo.replace(/\/install\.sh$/, ""), {
@@ -221,6 +235,30 @@ describe("per-run Bun bootstrap", () => {
     } finally {
       fs.rmSync(testRoot, { recursive: true, force: true })
     }
+  })
+
+  it("shapes the Windows installer with a bare pin and explicit PowerShell argv", () => {
+    const installer = hostOs("windows").bunInstaller("1.3.14", "C:/Temp/docks-kit-bun-private")
+
+    expect(installer.scriptPath).toBe("C:/Temp/docks-kit-bun-private/install.ps1")
+    expect(installer.download.command).toBe("curl")
+    expect(installer.download.args).toEqual([
+      "-fsSL",
+      "https://bun.sh/install.ps1",
+      "-o",
+      "C:/Temp/docks-kit-bun-private/install.ps1"
+    ])
+    expect(installer.run.command).toBe("powershell.exe")
+    expect(installer.run.args).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:/Temp/docks-kit-bun-private/install.ps1",
+      "-Version",
+      "1.3.14"
+    ])
   })
 
   it("reports transport diagnostics when the Bun installer download fails", async () => {

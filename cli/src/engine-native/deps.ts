@@ -77,11 +77,14 @@ const spec = (
   version: options.version
 })
 
+// Presence is the injected executor's verdict; `which` only resolves WHERE the
+// tool is, which on Windows is the `.cmd`/`.exe` candidate rather than the name.
 const pathProbe = (id: string): ((exec: ProbeExecutor) => ProbeResult) =>
-  (exec) =>
-    exec.commandExists(id)
-      ? { state: "present", path: exec.which(id) }
-      : { state: "missing" }
+  (exec) => {
+    if (!exec.commandExists(id)) return { state: "missing" }
+    const path = exec.which(id)
+    return path === "" ? { state: "present" } : { state: "present", path }
+  }
 
 const versionProbe = (
   id: string,

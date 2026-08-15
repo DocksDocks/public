@@ -26,6 +26,7 @@ import { p, spawnProcess, writeBytesIfChanged, writeTextIfChanged } from "./exec
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { ExitError } from "./parseArgs"
+import { hostOs } from "./os"
 import { mergeSettings, reconcileSettings } from "./settings"
 import { field } from "./toolchain"
 import { payloadBytes, payloadDisplayPath, payloadText } from "../payload"
@@ -323,9 +324,10 @@ function syncClaudeJson(ctx: Ctx): void {
 function syncConnectorEnv(ctx: Ctx): void {
   const { change, echo, verbose } = ctx.services.logger
 
-  const line = "export ENABLE_CLAUDEAI_MCP_SERVERS=false"
+  const host = hostOs()
+  const line = host.environmentExport("ENABLE_CLAUDEAI_MCP_SERVERS", "false")
   const marker = "# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
-  const candidates = [".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"].map((f) => p(ctx.home, f))
+  const candidates = host.profileCandidates.map((candidate) => p(ctx.home, candidate))
 
   for (const f of candidates) {
     if (existsSync(f) && readFileSync(f, "utf8").includes("ENABLE_CLAUDEAI_MCP_SERVERS")) {
@@ -338,12 +340,10 @@ function syncConnectorEnv(ctx: Ctx): void {
     }
   }
 
-  const shell = process.env["SHELL"] ?? "bash"
-  const shellName = shell.slice(shell.lastIndexOf("/") + 1)
-  const target = shellName === "zsh" ? p(ctx.home, ".zshrc") : shellName === "bash" ? p(ctx.home, ".bashrc") : p(ctx.home, ".profile")
+  const target = p(ctx.home, host.profileTarget(process.env["SHELL"]))
 
   if (ctx.dryRun) {
-    echo(`[dry-run] append 'export ENABLE_CLAUDEAI_MCP_SERVERS=false' to ${target}`)
+    echo(`[dry-run] append '${line}' to ${target}`)
     return
   }
 

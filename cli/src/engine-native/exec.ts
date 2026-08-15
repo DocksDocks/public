@@ -5,7 +5,8 @@
  */
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { accessSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
-import { delimiter, isAbsolute, join } from "node:path"
+import { delimiter, extname, isAbsolute, join } from "node:path"
+import { hostOs } from "./os"
 
 /** Keep engine paths slash-separated so rendered output is host-stable. */
 export function p(...parts: Array<string>): string {
@@ -29,9 +30,16 @@ export function spawnProcess(
   options: AsyncProcessOptions = {}
 ): Promise<AsyncProcessResult> {
   const { promise, resolve } = Promise.withResolvers<AsyncProcessResult>()
+  const host = hostOs()
+  const executablePath = host.executableSuffixes.some((suffix) => suffix !== "")
+    ? (which(cmd, host.executableSuffixes) || cmd)
+    : cmd
+  const invocation = host.invoke(executablePath, args)
   let child: ChildProcess
   try {
-    child = spawn(cmd, [...args], { stdio: options.stdio ?? ["ignore", "pipe", "ignore"] })
+    child = spawn(invocation.command, [...invocation.args], {
+      stdio: options.stdio ?? ["ignore", "pipe", "ignore"]
+    })
   } catch (cause) {
     const error = cause instanceof Error ? cause : new Error(String(cause))
     resolve({ exitCode: null, stdout: "", stderr: "", error })
@@ -75,14 +83,20 @@ export async function capture(cmd: string, args: ReadonlyArray<string>): Promise
 }
 
 /** `command -v` — resolve an executable name on PATH. */
-export function which(name: string): string {
-  if (isAbsolute(name) || name.includes("/")) {
-    return isExecutable(name) ? name : ""
+export function which(name: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): string {
+  const runnableCandidate = (base: string): string => {
+    for (const suffix of suffixes) {
+      const candidate = `${base}${suffix}`
+      if (isExecutable(candidate, suffixes)) return candidate
+    }
+    return ""
   }
+
+  if (isAbsolute(name) || name.includes("/")) return runnableCandidate(name)
   for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
     if (dir === "") continue
-    const candidate = join(dir, name)
-    if (isExecutable(candidate)) return candidate
+    const candidate = runnableCandidate(join(dir, name))
+    if (candidate !== "") return candidate
   }
   return ""
 }
@@ -91,10 +105,16 @@ export function commandExists(name: string): boolean {
   return which(name) !== ""
 }
 
-export function isExecutable(p: string): boolean {
+export function isExecutable(path: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): boolean {
   try {
-    if (!statSync(p).isFile()) return false
-    accessSync(p, constants.X_OK)
+    if (!statSync(path).isFile()) return false
+    if (suffixes.some((suffix) => suffix !== "")) {
+      const lowerPath = path.toLowerCase()
+      return suffixes.some((suffix) =>
+        suffix === "" ? extname(path) === "" : lowerPath.endsWith(suffix.toLowerCase())
+      )
+    }
+    accessSync(path, constants.X_OK)
     return true
   } catch {
     return false
