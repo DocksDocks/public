@@ -28,6 +28,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
+    "smoke:native": "bun cli/scripts/native-smoke.ts",
     "check:generated": "bun cli/scripts/generate-sot-payload.ts --check",
     "prepack": "bun run check:generated",
     "golden:dryrun": "bun cli/test/golden-dryrun.ts",

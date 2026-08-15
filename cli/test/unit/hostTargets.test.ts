@@ -67,6 +67,19 @@ describe("host target script invariants", () => {
     expect(buildScript).toContain('[[ "$target" == windows-* ]] && name="$name.exe"')
   })
 
+  it("keeps the native smoke compile flags aligned with the release build", () => {
+    const sources = [repoFile("cli/build-binaries.sh"), repoFile("cli/scripts/native-smoke.ts")]
+    const compileFlagShape = (source: string): string | undefined =>
+      source
+        .replace(/["'`,\\\r\n]+/g, " ")
+        .replace(/\s+/g, " ")
+        .match(/--compile --minify --target=/)?.[0]
+
+    expect(sources.map(compileFlagShape)).toEqual([
+      "--compile --minify --target=",
+      "--compile --minify --target="
+    ])
+  })
 
   it("keeps the generated Bun pin synchronized across every launcher and installer", () => {
     const manifest = JSON.parse(repoFile("SoT/toolchain.json")) as {
