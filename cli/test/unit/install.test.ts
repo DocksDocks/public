@@ -97,6 +97,40 @@ afterEach(() => {
 })
 
 describe("global installer completion", () => {
+  it("keeps the PowerShell installer pinned and download-then-run", () => {
+    const bashInstaller = readFileSync(join(REPO_DIR, "install.sh"), "utf8")
+    const powershellPath = join(REPO_DIR, "install.ps1")
+    const powershellInstaller = readFileSync(powershellPath, "utf8")
+    const packageSpec = bashInstaller.match(/"\$BUN" add -g ([^\s]+)/)?.[1]
+
+    expect(existsSync(powershellPath)).toBe(true)
+    expect(powershellInstaller).toContain(
+      `# BEGIN GENERATED BUN PIN\n$BunPin = "${VERIFIED_BUN}"\n# END GENERATED BUN PIN`
+    )
+    expect(powershellInstaller).toContain(
+      "Invoke-WebRequest -Uri 'https://bun.sh/install.ps1' -OutFile $TempInstaller"
+    )
+    expect(packageSpec).toBe("docks-kit@latest")
+    expect(powershellInstaller).toContain(`& $Bun add -g ${packageSpec}`)
+  })
+
+  it.each(["docks-kit.ps1", "install.ps1"])(
+    "runs the downloaded Bun installer through an explicit interpreter in %s",
+    (script) => {
+      const text = readFileSync(join(REPO_DIR, script), "utf8")
+
+      // A downloaded .ps1 carries a Mark-of-the-Web, so a direct `& $TempInstaller`
+      // is blocked under the default RemoteSigned policy: Bun never installs and
+      // the user gets the no-Bun diagnostic instead. Only this form actually runs,
+      // and it matches os/windows.ts bunInstaller.
+      expect(text).toContain(
+        "& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $TempInstaller -Version $BunPin"
+      )
+      expect(text).not.toMatch(/^\s*&\s*\$TempInstaller\b/m)
+      expect(text).not.toMatch(/\|\s*(?:iex|Invoke-Expression)\b/i)
+    }
+  )
+
   it("prints the required PATH export instead of an unusable Next command", () => {
     const { root, result } = installerFixture({})
 

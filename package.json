@@ -6,7 +6,8 @@
   "license": "MIT",
   "os": [
     "linux",
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
     "cli/docs",
     "cli/tsconfig.json",
     "docks-kit",
+    "docks-kit.ps1",
     "AGENTS.md",
     "README.md"
   ],

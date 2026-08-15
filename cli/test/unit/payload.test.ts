@@ -21,6 +21,8 @@ function copyGeneratorRoot(): string {
   cpSync(join(REPO_DIR, "notification.mp3"), join(root, "notification.mp3"))
   cpSync(join(REPO_DIR, "docks-kit"), join(root, "docks-kit"))
   cpSync(join(REPO_DIR, "install.sh"), join(root, "install.sh"))
+  cpSync(join(REPO_DIR, "docks-kit.ps1"), join(root, "docks-kit.ps1"))
+  cpSync(join(REPO_DIR, "install.ps1"), join(root, "install.ps1"))
   cpSync(join(REPO_DIR, "package.json"), join(root, "package.json"))
   mkdirSync(join(root, "cli", "src"), { recursive: true })
   cpSync(join(REPO_DIR, "cli", "src", "generated"), join(root, "cli", "src", "generated"), { recursive: true })
@@ -202,6 +204,34 @@ describe("generated SoT payload", () => {
       const result = check(root)
       expect(result.status).toBe(1)
       expect(result.stderr).toContain("generated payload is stale: install.sh")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("fails --check when the PowerShell launcher Bun pin changes", () => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, "docks-kit.ps1")
+      const launcher = readFileSync(path, "utf8")
+      writeFileSync(path, launcher.replace(/\$BunPin = "[^"]+"/, '$BunPin = "0.0.0"'))
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("generated payload is stale: docks-kit.ps1")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("fails --check when the PowerShell installer Bun pin changes", () => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, "install.ps1")
+      const installer = readFileSync(path, "utf8")
+      writeFileSync(path, installer.replace(/\$BunPin = "[^"]+"/, '$BunPin = "0.0.0"'))
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain("generated payload is stale: install.ps1")
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

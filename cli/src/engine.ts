@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process"
 import { runEngineNative } from "./engine-native"
 import { ExitError } from "./engine-native/parseArgs"
 import { makeEngineServices } from "./engine-native/services"
+import { targetForHost } from "./engine-native/os/targets"
 import { kitHome } from "./kitHome"
 import { DependencyManagerService, LoggerService, PlatformService } from "./services"
 
@@ -16,10 +17,10 @@ const bashEngineRequested = (): boolean => process.env["DOCKS_KIT_ENGINE"] === "
 const requireSupportedHost = () => {
   const platform = process.platform
   const arch = process.arch
-  return (platform === "linux" || platform === "darwin") && (arch === "x64" || arch === "arm64")
+  return targetForHost(platform, arch) !== undefined
     ? Effect.void
     : bail(
-      `unsupported host ${platform}/${arch}; docks-kit supports only Linux and macOS on x64 or arm64`,
+      `unsupported host ${platform}/${arch}; docks-kit supports only Linux, macOS, and Windows on x64 or arm64`,
       2
     )
 }

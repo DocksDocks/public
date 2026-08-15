@@ -27,10 +27,23 @@ export const AUTHORING_EXCLUSIONS = [
 ] as const
 
 const GENERATED_MODULE = "cli/src/generated/sotPayload.ts"
-const LAUNCHER = "docks-kit"
-const INSTALLER = "install.sh"
 const BUN_PIN_START = "# BEGIN GENERATED BUN PIN"
 const BUN_PIN_END = "# END GENERATED BUN PIN"
+
+interface GeneratedScript {
+  readonly path: string
+  readonly renderAssignment: (version: string) => string
+}
+
+const renderBashBunPin = (version: string): string => `BUN_PIN=${JSON.stringify(version)}`
+const renderPowerShellBunPin = (version: string): string => `$BunPin = ${JSON.stringify(version)}`
+
+const GENERATED_SCRIPTS: ReadonlyArray<GeneratedScript> = [
+  { path: "docks-kit", renderAssignment: renderBashBunPin },
+  { path: "install.sh", renderAssignment: renderBashBunPin },
+  { path: "docks-kit.ps1", renderAssignment: renderPowerShellBunPin },
+  { path: "install.ps1", renderAssignment: renderPowerShellBunPin }
+]
 
 function repoPath(root: string, path: string): string {
   return join(root, ...path.split("/"))
@@ -86,15 +99,15 @@ function verifiedBunVersion(root: string): string {
   return verified
 }
 
-function generatedLauncher(root: string, relativePath: string = LAUNCHER): string {
-  const path = repoPath(root, relativePath)
+function generatedScript(root: string, script: GeneratedScript, version: string): string {
+  const path = repoPath(root, script.path)
   const source = readFileSync(path, "utf8")
   const start = source.indexOf(BUN_PIN_START)
   const end = source.indexOf(BUN_PIN_END)
   if (start === -1 || end === -1 || end < start) {
-    throw new Error(`${relativePath} is missing the ${BUN_PIN_START}/${BUN_PIN_END} markers`)
+    throw new Error(`${script.path} is missing the ${BUN_PIN_START}/${BUN_PIN_END} markers`)
   }
-  const replacement = `${BUN_PIN_START}\nBUN_PIN=${JSON.stringify(verifiedBunVersion(root))}\n${BUN_PIN_END}`
+  const replacement = `${BUN_PIN_START}\n${script.renderAssignment(version)}\n${BUN_PIN_END}`
   return source.slice(0, start) + replacement + source.slice(end + BUN_PIN_END.length)
 }
 
@@ -112,29 +125,35 @@ export function inventoryAuthoringPaths(root: string): ReadonlyArray<string> {
   return output.sort()
 }
 
+export interface GeneratedScriptState {
+  readonly path: string
+  readonly content: string
+}
+
 export interface GeneratedState {
   readonly module: string
-  readonly launcher: string
-  readonly installer: string
+  readonly scripts: ReadonlyArray<GeneratedScriptState>
 }
 
 export function expectedGeneratedState(root: string): GeneratedState {
+  const version = verifiedBunVersion(root)
   return {
     module: generatedModule(root),
-    launcher: generatedLauncher(root),
-    installer: generatedLauncher(root, INSTALLER)
+    scripts: GENERATED_SCRIPTS.map((script) => ({
+      path: script.path,
+      content: generatedScript(root, script, version)
+    }))
   }
 }
 
 export function staleGeneratedPaths(root: string): ReadonlyArray<string> {
   const expected = expectedGeneratedState(root)
   const modulePath = repoPath(root, GENERATED_MODULE)
-  const launcherPath = repoPath(root, LAUNCHER)
-  const installerPath = repoPath(root, INSTALLER)
   const stale: Array<string> = []
   if (!existsSync(modulePath) || readFileSync(modulePath, "utf8") !== expected.module) stale.push(GENERATED_MODULE)
-  if (readFileSync(launcherPath, "utf8") !== expected.launcher) stale.push(LAUNCHER)
-  if (readFileSync(installerPath, "utf8") !== expected.installer) stale.push(INSTALLER)
+  for (const script of expected.scripts) {
+    if (readFileSync(repoPath(root, script.path), "utf8") !== script.content) stale.push(script.path)
+  }
   return stale
 }
 
@@ -143,8 +162,9 @@ function writeGenerated(root: string): void {
   const modulePath = repoPath(root, GENERATED_MODULE)
   mkdirSync(dirname(modulePath), { recursive: true })
   writeFileSync(modulePath, expected.module)
-  writeFileSync(repoPath(root, LAUNCHER), expected.launcher)
-  writeFileSync(repoPath(root, INSTALLER), expected.installer)
+  for (const script of expected.scripts) {
+    writeFileSync(repoPath(root, script.path), script.content)
+  }
 }
 
 interface CliOptions {

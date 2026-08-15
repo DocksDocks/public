@@ -1,19 +1,19 @@
 #!/bin/bash
 # build-binaries.sh — compile docks-kit into standalone executables
 # (bun build --compile embeds the runtime + generated payload + docs topics).
-# Usage: bash cli/build-binaries.sh [target ...]   (default: all four)
+# Usage: bash cli/build-binaries.sh [target ...]   (default: all six)
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$REPO_DIR/cli/dist"
 TARGETS=("$@")
-[[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(linux-x64 linux-arm64 darwin-x64 darwin-arm64)
+[[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64)
 
 for target in "${TARGETS[@]}"; do
   case "$target" in
-    linux-x64|linux-arm64|darwin-x64|darwin-arm64) ;;
+    linux-x64|linux-arm64|darwin-x64|darwin-arm64|windows-x64|windows-arm64) ;;
     *)
-      echo "unsupported binary target: $target; supported: linux-x64 linux-arm64 darwin-x64 darwin-arm64" >&2
+      echo "unsupported binary target: $target; supported: linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64" >&2
       exit 2
       ;;
   esac
@@ -27,6 +27,7 @@ trap 'rm -rf "$STAGING"' EXIT
 ARTIFACTS=()
 for target in "${TARGETS[@]}"; do
   name="docks-kit-$target"
+  [[ "$target" == windows-* ]] && name="$name.exe"
   out="$STAGING/$name"
   ARTIFACTS+=("$name")
   echo "building $DIST/$name (bun-$target)..."

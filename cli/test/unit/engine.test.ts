@@ -28,37 +28,37 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe("supported host boundary", () => {
+  it.each(["x64", "arm64"] as const)("admits win32/%s to EngineNative", async (arch) => {
+    vi.spyOn(process, "arch", "get").mockReturnValue(arch)
+    mocks.runEngineNative.mockResolvedValue(0)
+
+    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).resolves.toBeUndefined()
+    expect(console.error).not.toHaveBeenCalled()
+    expect(mocks.runEngineNative).toHaveBeenCalledWith(
+      ["status"],
+      expect.objectContaining({
+        deps: expect.any(Object),
+        logger: expect.any(Object),
+        platform: expect.any(Object)
+      })
+    )
+    expect(mocks.spawnSync).not.toHaveBeenCalled()
+  })
+})
+
 describe("unsupported host boundary", () => {
-  it("rejects engine before EngineNative execution", async () => {
-    await expect(Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive))).rejects.toThrow("exit 2")
-    expect(console.error).toHaveBeenCalledWith(
-      "unsupported host win32/x64; docks-kit supports only Linux and macOS on x64 or arm64"
-    )
-
-    expect(mocks.runEngineNative).not.toHaveBeenCalled()
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
-  })
-
-  it("rejects engineCapture before spawning the Bun source fallback", async () => {
-    await expect(Effect.runPromise(engineCapture(["models", "workflow"]))).rejects.toThrow("exit 2")
-    expect(console.error).toHaveBeenCalledWith(
-      "unsupported host win32/x64; docks-kit supports only Linux and macOS on x64 or arm64"
-    )
-
-    expect(mocks.runEngineNative).not.toHaveBeenCalled()
-    expect(mocks.spawnSync).not.toHaveBeenCalled()
-  })
-
   it.each([
     ["freebsd", "arm64"],
-    ["linux", "ia32"]
+    ["linux", "ia32"],
+    ["win32", "ia32"]
   ] as const)("rejects unsupported %s/%s hosts", async (platform, arch) => {
     vi.spyOn(process, "platform", "get").mockReturnValue(platform)
     vi.spyOn(process, "arch", "get").mockReturnValue(arch)
 
     await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toThrow("exit 2")
     expect(console.error).toHaveBeenCalledWith(
-      `unsupported host ${platform}/${arch}; docks-kit supports only Linux and macOS on x64 or arm64`
+      `unsupported host ${platform}/${arch}; docks-kit supports only Linux, macOS, and Windows on x64 or arm64`
     )
     expect(mocks.spawnSync).not.toHaveBeenCalled()
   })
