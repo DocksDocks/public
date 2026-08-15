@@ -11,6 +11,8 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+
+import { hostOs } from "../src/engine-native/os"
 import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
 import { cleanup, runEngine, runPublicCli } from "./lib/goldenExecution"
 import { REPO_DIR, makeStubDir } from "./lib/goldenResources"
@@ -83,6 +85,13 @@ const MATRIX: Array<DryRunMatrixRow> = [
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
 const options = parseArgs(process.argv)
+const hostExecutableSuffixes = hostOs().executableSuffixes
+if (hostExecutableSuffixes.length !== 1 || !hostExecutableSuffixes.includes("")) {
+  console.error(
+    "golden-dryrun: unsupported host: goldens are Linux-canonical and goldenPlatform.ts pins the child to Linux, so the snapshot lane runs on a POSIX host only"
+  )
+  process.exit(2)
+}
 
 function labelFor(fixture: string, cmd: ReadonlyArray<string>, usePublic: boolean): string {
   const channel = usePublic ? "public" : "engine"

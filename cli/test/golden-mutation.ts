@@ -13,6 +13,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+
+import { hostOs } from "../src/engine-native/os"
 import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
 import { cleanup, readArgvLog, runEngine, runEngineSplit, runPublicCli } from "./lib/goldenExecution"
 import {
@@ -42,6 +44,13 @@ interface MutationCaseGolden {
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "mutation.json")
 const options = parseArgs(process.argv)
+const hostExecutableSuffixes = hostOs().executableSuffixes
+if (hostExecutableSuffixes.length !== 1 || !hostExecutableSuffixes.includes("")) {
+  console.error(
+    "golden-mutation: unsupported host: goldens are Linux-canonical and goldenPlatform.ts pins the child to Linux, so the snapshot lane runs on a POSIX host only"
+  )
+  process.exit(2)
+}
 const defaultStubs = makeStubDir()
 
 function matrixLabel(

@@ -32,6 +32,7 @@
     "golden:mutation": "bun cli/test/golden-mutation.ts",
     "test:unit": "vitest run",
     "test:runtime:posix": "bun cli/test/statusline-runtime-smoke.mjs posix",
+    "test:runtime:windows": "bun cli/test/statusline-runtime-smoke.mjs windows",
     "test:ci": "bun run check:generated && bun run typecheck && bun run test:unit && bun run test:runtime:posix && bun run golden:dryrun && bun run golden:mutation"
   },
   "dependencies": {

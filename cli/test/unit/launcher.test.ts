@@ -1,12 +1,19 @@
 import { cpSync, chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { delimiter, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { afterEach, describe, expect, it } from "vitest"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CURRENT_VERSION = (JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }).version
 const roots: Array<string> = []
+const bashProbe = spawnSync("bash", ["--version"], { encoding: "utf8" })
+const bashExecutable =
+  bashProbe.error !== undefined && "code" in bashProbe.error && bashProbe.error.code === "ENOENT" ? null : "bash"
+const launcherSuiteLabel =
+  bashExecutable === null
+    ? "checkout launcher binary selection (skipped: bash interpreter is unavailable)"
+    : "checkout launcher binary selection"
 
 function launcherFixture(binaryName: string, binaryVersion: string | null): { root: string; binDir: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-launcher-"))
@@ -62,12 +69,13 @@ function runLauncher(
   uname: { system: string; machine: string },
   args: ReadonlyArray<string>
 ) {
-  return spawnSync(join(fixture.root, "docks-kit"), args, {
+  if (bashExecutable === null) throw new Error("bash interpreter is unavailable")
+  return spawnSync(bashExecutable, [join(fixture.root, "docks-kit"), ...args], {
     encoding: "utf8",
     env: {
       ...process.env,
       HOME: fixture.root,
-      PATH: `${fixture.binDir}:${process.env.PATH ?? ""}`,
+      PATH: `${fixture.binDir}${delimiter}${process.env.PATH ?? ""}`,
       FAKE_UNAME_S: uname.system,
       FAKE_UNAME_M: uname.machine
     }
@@ -78,7 +86,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-describe("checkout launcher binary selection", () => {
+describe.skipIf(bashExecutable === null)(launcherSuiteLabel, () => {
   it("falls through to the current checkout source when dist is stale", () => {
     const fixture = launcherFixture("docks-kit-linux-x64", "0.4.0")
     const platform = { system: "Linux", machine: "x86_64" }

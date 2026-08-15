@@ -231,6 +231,7 @@ export function makeStubDir(overrides: Record<string, string | null> = {}): stri
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody
     if (body === null || body === undefined) continue
+    // Stub form follows the Linux platform pinned by goldenPlatform.ts, not the recording host.
     const script = `#!/bin/bash
 printf '%s\\t%s\\n' "${name}" "$*" >> "\${GOLDEN_ARGV_LOG:-/dev/null}"
 ${body}
