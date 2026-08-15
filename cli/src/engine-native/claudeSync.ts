@@ -15,6 +15,7 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs"
+import { dirname } from "node:path"
 import { bunBootstrap } from "./bun"
 import {
   syncClaudeAdvisor,
@@ -347,6 +348,10 @@ function syncConnectorEnv(ctx: Ctx): void {
     return
   }
 
+  // Every POSIX candidate sits directly in the home directory, but Windows
+  // keeps the profile under Documents/PowerShell, which a fresh home does not
+  // have yet; PowerShell itself requires the directory before a profile exists.
+  mkdirSync(dirname(target), { recursive: true })
   appendFileSync(target, `\n${marker}\n${line}\n`)
   change(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
   ctx.nextStepTriggers.claudeRestart = true
