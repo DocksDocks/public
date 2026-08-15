@@ -139,14 +139,14 @@ active logger binding.
 | `index.ts` | sync orchestration, target dispatch, run summary and next-step blocks |
 | `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
 | `claudeSync.ts` | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
-| `bun.ts` | per-run memoized Bun resolution/bootstrap shared by Claude runtime, effect-solutions, and direct toolchain ensure |
+| `bun.ts` | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure |
 | `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX statusline commands |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
 | `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, effect-solutions callback, managed-skill snapshot |
-| `toolchain.ts` | tool presence/version probes, verified-version gate, managed install/upgrade orchestration, report table |
+| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, managed-skill snapshot |
+| `toolchain.ts` | tool presence/version probes, verified-version floor reporting, report table |
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |

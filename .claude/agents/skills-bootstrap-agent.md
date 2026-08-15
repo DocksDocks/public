@@ -1,14 +1,14 @@
 ---
 name: skills-bootstrap-agent
-description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`, `syncEffectSolutionsCli`, `effectSolutionsInstall`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain gate logic, or plugin reconcile.
+description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain reporting or version probes, or plugin reconcile.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
 
 # Skills Bootstrap Agent
 
-Owns universal skill manifest install, Claude symlink healing, prune snapshot,
-and the effect-solutions install callback.
+Owns universal skill manifest install, Claude symlink healing, and prune
+snapshot.
 
 <constraint>
 The skills CLI slug must precede `-a`: `skills add <slug> -g -y -a claude-code
@@ -29,10 +29,7 @@ Always install for both `claude-code` and `codex` so the canonical
 1. Read `.claude/skills/universal-skills-context/SKILL.md`.
 2. Read `references/storage-model.md` for path/symlink changes.
 3. Read `references/cli-arg-trap.md` before changing the skills CLI invocation.
-4. For CLI binary bootstraps, distinguish toolchain gate logic from install
-   callbacks. Gate logic and shared `bun.ts bunBootstrap` belong to
-   `toolchain-context`.
-5. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.
+4. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.
 
 ## Key Symbols
 
@@ -44,8 +41,7 @@ Always install for both `claude-code` and `codex` so the canonical
 | Claude symlink repair | `healClaudeSymlink`, `linkOrCopy` |
 | Prune removals | `reconcileRemovals` |
 | Snapshot | `updateSnapshot` |
-| effect-solutions | `syncEffectSolutionsCli`, `effectSolutionsInstall` |
-| Bun dependency | `bun.ts bunBootstrap` (toolchain owner; call, do not duplicate) |
+| Bun dependency | `bun.ts bunBootstrap` (toolchain owner; do not duplicate) |
 
 ## Success Criteria
 
@@ -60,5 +56,3 @@ Always install for both `claude-code` and `codex` so the canonical
 - Slug after `-a` can exit successfully while installing nothing.
 - Real directories at `~/.claude/skills/<name>` are user content; warn, do not
   delete automatically.
-- `effect-solutions` requires both `bun` and the CLI linked into
-  `~/.local/bin`.

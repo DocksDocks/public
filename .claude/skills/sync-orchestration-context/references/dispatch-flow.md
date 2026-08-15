@@ -65,7 +65,6 @@ runEngineNative(argv)
     |   |-- skillsSync(ctx) when target selected and SoT/.agents exists
     |   |   |-- syncUniversal(ctx)
     |   |   |-- reconcileRemovals(ctx) when prune
-    |   |   |-- syncEffectSolutionsCli(ctx)
     |   |   `-- updateSnapshot(ctx)
     |   `-- summaries and next steps
     |-- model -> modeModel(ctx, args)
@@ -82,7 +81,7 @@ runEngineNative(argv)
 | `model codex gpt-5.5` | `modeModel` set path | Validates then calls `syncCodexModel`. |
 | `models claude` | `printModels` | Prints catalog from `SoT/models.json`. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the doctor table. |
-| `toolchain ensure bun\|effect-solutions` | `modeToolchain` -> managed ensure | Calls the owning callback for the selected supported tool. |
+| `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
 
 ## Idempotency Invariants
 

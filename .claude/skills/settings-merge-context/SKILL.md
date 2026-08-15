@@ -12,7 +12,7 @@ metadata:
       lines: "1-260"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-08-07"
+  updated: "2026-08-15"
 ---
 
 # Settings Merge
@@ -92,11 +92,11 @@ SoT values, except user-only keys that the SoT does not declare.
 - `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
   Claude Code's project state and user keys.
 - `claudeSync.ts syncRemovals, curated removed-manifest pass` is the narrow
-  exception to additive-by-default. Its `settingsKeys` include
-  `enabledPlugins.session-relay@docks`; `claudeSync.ts pruneJsonKeys, dotted-path
+  exception to additive-by-default. Its `settingsKeys` name retired plugin keys
+  under `enabledPlugins`; `claudeSync.ts pruneJsonKeys, dotted-path
   removal` splits each manifest key on `.` and walks the resulting path.
 - The manifest's `homeFiles` are home-relative artifacts the kit installed
-  outside `~/.claude`, currently `.local/bin/session-relay`. `claudeSync.ts
+  outside `~/.claude`, one entry per retired kit-owned command. `claudeSync.ts
   syncRemovals, unconditional home-file loop` deletes them outside the
   `runtimeReady` branch and increments the shared `filesRemoved` counter.
 - Exact permission-rule entries remove only the listed strings and preserve all

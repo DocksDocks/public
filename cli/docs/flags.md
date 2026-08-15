@@ -20,7 +20,6 @@ docks-kit sync claude agents        # two
 | `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, universal skills |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
 | `--skip-plugin-refresh` | Install missing Claude/Codex plugins but skip refresh-only updates; `docks-kit update` uses this automatically |
-| `--yes` | Auto-accept toolchain above-verified prompts (containers/CI) |
 | `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
 
 ## Environment overrides

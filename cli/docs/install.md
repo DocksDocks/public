@@ -17,7 +17,7 @@ back to Bun-from-source (auto-installing Bun via download-then-run and
 `bun install --frozen-lockfile` when needed). An ignored stale build is reported
 and bypassed.
 
-## 2. Global via Bun (effect-solutions-style)
+## 2. Global via Bun
 
 ```
 bun add -g docks-kit@latest

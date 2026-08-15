@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh — global docks-kit install (effect-solutions-style).
+# install.sh — global docks-kit install.
 # Recommended invocation (download-then-run, never `curl | bash`):
 #   curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
 #   bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh

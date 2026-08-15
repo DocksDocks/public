@@ -30,7 +30,6 @@
 | `--skip-plugin-refresh` | `ctx.skipPluginRefresh` |
 | `--reconcile` | `ctx.reconcile` |
 | `--prune` | `ctx.prune` |
-| `--yes` | `ctx.assumeYes` |
 | `--claude-compact-window=<n|Nk>` | `ctx.claudeCompactWindow` |
 | `--claude-permissive` | `ctx.claudePermissive` |
 | `--claude-plugin=<name>` | `ctx.claudePlugins` |

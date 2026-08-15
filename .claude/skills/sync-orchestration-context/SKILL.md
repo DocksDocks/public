@@ -5,16 +5,16 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine.ts
-      lines: "1-120"
+      lines: "1-99"
     - path: cli/src/engine-native/index.ts
-      lines: "1-140"
+      lines: "1-308"
     - path: cli/src/engine-native/parseArgs.ts
-      lines: "1-230"
+      lines: "1-420"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-130"
+      lines: "1-148"
     - path: cli/src/engine-native/models.ts
-      lines: "1-90"
-  updated: "2026-08-10"
+      lines: "1-65"
+  updated: "2026-08-15"
 ---
 
 # Sync Engine Orchestration
@@ -59,7 +59,7 @@ Add or change flags in both places that expose the public contract:
 - Changing model validation or the catalog in `SoT/models.json`.
 - Updating the `docks-kit` launcher or `cli/src/engine.ts` selector behavior.
 
-For verified-version gates and install callbacks, use `toolchain-context`.
+For the doctor report and Bun managed install, use `toolchain-context`.
 For Claude settings, Codex TOML, plugins, or universal skills, use the matching
 kit-mechanic skill.
 
@@ -90,7 +90,6 @@ target selector and set `ctx.targetFilterSet`; when it remains false,
 | `--prune` | `ctx.prune` | Plugin, marketplace, and kit-managed skills removals. |
 | `--skip-bubblewrap` | `ctx.skipBubblewrap` | Skips optional bubblewrap bootstrap for the Codex Linux sandbox. |
 | `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; update chains this flag. |
-| `--yes` | `ctx.assumeYes` | Auto-accepts verified-pin prompts. |
 | `--claude-model=<m>` | `ctx.claudeModel` | Validated before sync mutations. |
 | `--codex-model=<m>` | `ctx.codexModel` | Charset gate blocks TOML injection. |
 | `--claude-compact-window=<n|Nk>` | `ctx.claudeCompactWindow` | Normalized by `parseCompactWindow`. |
@@ -120,7 +119,7 @@ Partial checkouts still skip absent SoT directories; absence is not an error.
 | `model <tool> [value]` | `modeModel` | Get or set deployed Claude/Codex model; set paths reuse the deploy-time modifier functions. |
 | `models <tool>` | `printModels` | Prints the manifest catalog from `SoT/models.json`. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the toolchain table. |
-| `toolchain ensure <tool>` | `modeToolchain` -> `ensure` or Bun bootstrap | Ensures one managed tool. |
+| `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
 
 ### Model Validation
 

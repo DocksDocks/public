@@ -17,8 +17,8 @@ Order matters — runtime readiness and settings form one transaction:
    unioned, user-only keys survive. `--reconcile` replaces permissions arrays
    wholesale instead.
 4. **Removed-artifact pruning** — prune old shell assets, the Stop hook, stale
-   kit-owned settings, retired kit-owned plugin enablement, and the stale
-   `~/.local/bin/session-relay` command. A flag-less sync removes
+   kit-owned settings, retired kit-owned plugin enablement, and every
+   manifest-listed kit-owned `~/.local/bin` command. A flag-less sync removes
    `advisorModel`; an explicit advisor state excludes only that key so the
    modifier owns it.
 5. **Deploy-time modifiers** (`--claude-compact-window`, `--claude-permissive`,
@@ -43,8 +43,7 @@ and `codex plugin add` refresh.
 
 ## agents (→ ~/.agents/skills, ~/.claude/skills symlinks)
 
-`npx skills add` per missing manifest slug, Claude symlink healing,
-the effect-solutions CLI (toolchain-gated), and the
+`npx skills add` per missing manifest slug, Claude symlink healing, and the
 kit-managed snapshot that `--prune` reconciles against.
 
 ## Reconcile flags

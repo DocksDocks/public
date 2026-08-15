@@ -2,6 +2,53 @@
 
 ## Unreleased
 
+- Pinned the Effect graph to `4.0.0-rc.109` for `effect`, `@effect/platform-bun`,
+  and `@effect/vitest`, replacing `4.0.0-beta.107`. `vitest@4.1.10` is unchanged.
+  A byte-level diff of the published tarballs showed every declaration this CLI
+  imports is identical between the two releases, including all of
+  `effect/unstable/cli`, so the bump is a pin with no call-site change.
+- Removed the `effect-kit@docks` plugin from all three SoT configs. Sync now
+  withdraws the kit's enablement on already-synced machines: the curated Claude
+  removed manifest prunes the `enabledPlugins` key and the Codex config merge
+  strips the retired `[plugins."effect-kit@docks"]` table. The plugin package
+  itself is left to `--prune`, which the mutation goldens now record.
+- Removed `effect-solutions` as a managed tool, and with it the verified-version
+  install gate it was the last consumer of. `toolchain.ts` lost `ensure`, `gate`,
+  `latestVersion`, and `promptLine`; `deps.ts` lost `resolveLocation`, the
+  `DependencyLocation` type, and the `locate`/`latest` spec fields;
+  `DependencyManager` narrowed to `spec`, `probe`, `version`, `path`, and
+  `warnMissing`. `toolchain ensure` accepts only `bun`, whose `present` policy
+  never upgraded and so never consulted the gate. `docks-kit toolchain check`
+  still prints the doctor table against the manifest floors. Sync withdraws the
+  kit's own `~/.local/bin/effect-solutions` symlink on already-synced machines
+  but never touches the package: operators who also want the CLI gone should run
+  `bun remove -g effect-solutions` themselves.
+- Removed the public `--yes` flag and its `ASSUME_YES` environment seed from
+  `sync` and `toolchain`. It existed only to auto-accept the above-verified
+  prompt, which no longer exists. `--verbose` / `-v` is unaffected.
+- Restored the `--verbose` no-op confirmation for `toolchain ensure bun`. It was
+  only ever emitted by the removed gate, so deleting the gate left the flag
+  documented but silent on the one managed tool; the bootstrap now reports
+  `bun up to date (<version>)` when Bun is already installed.
+- Fixed five pre-existing test defects that were unrelated to the changes above.
+  The global installer fixture inherited a real `BUN_INSTALL`, so `find_bun`
+  resolved a developer's own Bun, skipped the pinned bootstrap, and ran
+  `bun add -g` against the real global install; both fixtures now pin
+  `BUN_INSTALL` inside the sandbox and resolve coreutils by real path, because
+  macOS has no `/bin/mktemp`. The `toolchain check` cases spawn the real CLI and
+  now carry an explicit timeout instead of relying on Vitest's 5s default, which
+  they exceeded under full-suite parallel load.
+  The mutation golden harness isolated Bun's package cache but not its runtime
+  transpiler cache, which Bun writes into `$HOME/Library/Caches/bun` for sources
+  over 50 KB; because the fake home is tree-diffed, those files keyed every
+  golden to the current bytes of the generated SoT payload. The harness now
+  redirects `BUN_RUNTIME_TRANSPILER_CACHE_PATH` out of the fake home as well.
+  The golden snapshots are also host-dependent: the engine gates `bwrap` on a
+  Linux host, so the committed Linux-recorded snapshots could never be verified
+  or re-recorded from macOS. Every child the harness spawns — raw-engine and
+  public-CLI alike — now preloads a test-only shim that pins the platform,
+  which leaves production code with no way to spoof the host.
+
 - Ran the Claude, Codex, and skills sync pipelines concurrently instead of one
   after another. Every EngineNative subprocess moved from a blocking
   `spawnSync` to an awaited `spawn`, and a bounded coordinator runs the three

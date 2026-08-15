@@ -16,7 +16,7 @@ AI-assisted dev environment on every machine.
 | `SoT/toolchain.json` | Verified-version floors for external tools (see `docks-kit docs toolchain`) |
 | `cli/src/generated/sotPayload.ts` | Deterministic generated payload embedded in standalone/npm execution |
 | `cli/src/engine-native/` | EngineNative mutation logic for sync/model/toolchain |
-| `cli/` | This CLI (Effect 4 beta on Bun) plus bundled docs |
+| `cli/` | This CLI (Effect 4 RC on Bun) plus bundled docs |
 | `docks-kit` | Launcher: version-matching compiled binary → bun-from-source, with Bun auto-install |
 
 ## Design rules

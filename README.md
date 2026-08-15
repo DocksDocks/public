@@ -52,12 +52,12 @@ docks-kit docs [topic]                     self-documentation (9 topics)
 --help --version --wizard --completions    built-in
 ```
 
-The CLI is a typed Effect 4 beta front-end on Bun; all mutation runs through
+The CLI is a typed Effect 4 RC front-end on Bun; all mutation runs through
 EngineNative in `cli/src/engine-native/`, with golden-regression coverage for
 dry-run output, mutation snapshots, and argv logs. Its dependency graph is
-`effect@4.0.0-beta.107` (including `effect/unstable/cli`),
-`@effect/platform-bun@4.0.0-beta.107` (`BunServices.layer` and
-`BunRuntime.runMain`), `@effect/vitest@4.0.0-beta.107`, and `vitest@4.1.10`
+`effect@4.0.0-rc.109` (including `effect/unstable/cli`),
+`@effect/platform-bun@4.0.0-rc.109` (`BunServices.layer` and
+`BunRuntime.runMain`), `@effect/vitest@4.0.0-rc.109`, and `vitest@4.1.10`
 (required by the `@effect/vitest` peer range). `@effect/cli` and
 `@effect/platform` are removed: neither has a 4.x release, the CLI API moved
 into core, and the standalone platform package was unused here.
@@ -76,7 +76,6 @@ into core, and the standalone platform package was unused here.
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
 | `--skip-plugin-refresh` | Install missing plugins but skip refresh-only updates (used automatically by `docks-kit update`) |
-| `--yes` | Auto-accept toolchain prompts (CI/containers) |
 
 **Deploy-time modifiers** change deployed config only — the SoT is untouched
 and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
@@ -88,11 +87,10 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   survive a plain sync. Reconciliation toward the SoT is explicit
   (`--reconcile` / `--prune`).
 - **Idempotent** — every step is safe to re-run; no-change syncs are no-ops.
-- **Toolchain floors** — external tools (bun, bwrap,
-  effect-solutions, …) install/upgrade against `SoT/toolchain.json`:
-  versions above the kit-verified pin prompt before installing
-  (`--yes` accepts; non-TTY falls back to the pinned verified version
-  when possible). `docks-kit toolchain check` shows the full table.
+- **Toolchain floors** — `SoT/toolchain.json` records the kit-verified version
+  floors for external tools (bun, bwrap, …). `docks-kit toolchain check` prints
+  the full doctor table. Bun is the one managed install and is pinned to its
+  verified version.
 - **Model catalog** — `SoT/models.json` is the research-verified source for
   model validation, listings, and pickers.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
@@ -112,7 +110,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/toolchain.json` | Verified-version floors |
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |
-| `cli/` | docks-kit CLI (Effect 4 beta on Bun) + bundled docs topics |
+| `cli/` | docks-kit CLI (Effect 4 RC on Bun) + bundled docs topics |
 | `docks-kit` | Launcher (binary → bun-from-source) |
 | `install.sh` | Global installer (Bun bootstrap + `bun add -g`) |
 | `docs/plans/` | Multi-commit work-item plans |

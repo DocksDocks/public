@@ -20,14 +20,13 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | Default plugin | Source | Purpose |
 |----------------|--------|---------|
 | `docks` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Multi-agent pipeline plugin — parallel-agent slash commands, portable skills, and tiered subagents. |
-| `plan-lifecycle` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Shared plan lifecycle for cross-tool planning workflows; required by `effect-kit@docks`. |
-| `effect-kit` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Cross-tool Effect skills. Installed as `effect-kit@docks`; the optional `effect-solutions` CLI remains independently managed. |
+| `plan-lifecycle` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Shared plan lifecycle for cross-tool planning workflows. |
 | `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
 | `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 
-For Effect work in this checkout, Claude must route to `effect-v4` from the enabled `effect-kit@docks` plugin; the sibling `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only.
+For Effect work in this checkout, verify API shapes against the installed declarations under `node_modules/effect/dist/unstable/cli/`. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only and do not apply.
 
-Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
+Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the four entries above.
 
 #### Per-project plugin scoping
 
@@ -198,7 +197,7 @@ The kit sets **`"model": "opus"`** and leaves `advisorModel` unset. `opus` is an
 | `advisorModel` | absent (off) | Advisor is opt-in via `--claude-advisor=on` (`fable`). The removed manifest prunes the formerly kit-owned key on flag-less sync; explicit `off`/`default` also delete it. |
 | `effortLevel` | `high` | See § Thinking & reasoning — Fable's default, pinned as a settings key so plugin `effort:` frontmatter still applies. |
 | `autoMemoryEnabled` | `true` | Explicit pin of the default: Claude writes per-repo notes to `~/.claude/projects/<project>/memory/` (first 200 lines / 25KB of MEMORY.md auto-loads each session; topic files load on demand). Pinned so a stray disable can't drift in — cross-session recall backs the prompt files' running-notes rule. |
-| `skillListingMaxDescChars` | `2048` | Per-skill description char cap in the skill listing (default 1536). Several docks/effect-kit CSO descriptions exceed 1536 and would truncate mid-trigger-condition; 2048 keeps them intact. Context budget already covered by `skillListingBudgetFraction: 0.05`. |
+| `skillListingMaxDescChars` | `2048` | Per-skill description char cap in the skill listing (default 1536). Several docks CSO descriptions exceed 1536 and would truncate mid-trigger-condition; 2048 keeps them intact. Context budget already covered by `skillListingBudgetFraction: 0.05`. |
 | `alwaysThinkingEnabled` | `true` | Tells Claude Code to opt into adaptive thinking on every turn. On 4.7, adaptive thinking is off by default at the API layer and must be explicitly enabled — this flag handles that. Moot on Fable 5 (thinking cannot be disabled there), still load-bearing on the Opus fallback. |
 | `showThinkingSummaries` | `true` | Display only; doesn't reduce token use. On 4.7, thinking content is omitted by default at the API layer; Claude Code opts in when this is true. |
 | `viewMode` | `default` | Default transcript view on startup. Keeps tool I/O collapsed so the feed stays readable. Press `Ctrl+O` to cycle to `verbose` on demand. Enum: `default`/`verbose`/`focus`. |
@@ -223,7 +222,6 @@ cd ~/projects/public
 ./docks-kit sync                     # full sync + Bun/runtime + plugin bootstrap (additive)
 ./docks-kit sync --dry-run           # preview before applying
 ./docks-kit sync --skip-bubblewrap   # skip optional bubblewrap bootstrap (Codex Linux sandbox)
-./docks-kit sync --yes               # auto-accept toolchain install/upgrade prompts
 ./docks-kit sync --reconcile         # replace ~/.claude/settings.json wholesale (settings layer only)
 ./docks-kit sync --prune             # uninstall plugins/marketplaces not in SoT (plugin layer only)
 ./docks-kit sync --reconcile --prune # full reset to SoT (both layers)
