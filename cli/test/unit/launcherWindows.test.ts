@@ -3,7 +3,8 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { delimiter, join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
-import { hostOs } from "../../src/engine-native/os/index"
+import { hostOs } from "../../src/engine-native/os"
+import { childEnv } from "../lib/goldenResources"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const roots: Array<string> = []
@@ -66,15 +67,16 @@ function runLauncher(
     ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", join(fixture.root, "docks-kit.ps1"), ...args],
     {
       encoding: "utf8",
-      env: {
-        ...process.env,
+      // Every case injects the architecture it tests, so no case inherits the
+      // runner's real CPU; an empty PROCESSOR_ARCHITEW6432 means "not WOW64".
+      env: childEnv({
         HOME: fixture.root,
         USERPROFILE: fixture.root,
         BUN_INSTALL: join(fixture.root, ".bun"),
         PATH: [fixture.binDir, process.env.PATH ?? ""].join(delimiter),
         PROCESSOR_ARCHITECTURE: architecture.native,
         PROCESSOR_ARCHITEW6432: architecture.wow64 ?? ""
-      }
+      })
     }
   )
 }
@@ -102,7 +104,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     }
   )
 
-  it("falls through to Bun source when the compiled binary is stale", () => {
+  it("falls through to Bun source on AMD64 when the compiled binary is stale", () => {
     const fixture = launcherFixture({
       binaryName: "docks-kit-windows-x64.exe",
       checkoutVersion: "checkout-version",
@@ -115,7 +117,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-windows-x64.exe")
   })
 
-  it("falls through to Bun source when the compiled binary version is unparseable", () => {
+  it("falls through to Bun source on AMD64 when the compiled binary version is unparseable", () => {
     const fixture = launcherFixture({
       binaryName: "docks-kit-windows-x64.exe",
       checkoutVersion: "checkout-version",
@@ -128,7 +130,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stderr).toContain("docks-kit-windows-x64.exe <unknown>; checkout is checkout-version")
   })
 
-  it("falls through to Bun source when the checkout version is unparseable", () => {
+  it("falls through to Bun source on AMD64 when the checkout version is unparseable", () => {
     const fixture = launcherFixture({
       binaryName: "docks-kit-windows-x64.exe",
       checkoutVersion: 7,
@@ -141,7 +143,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stderr).toContain("checkout is <unknown>")
   })
 
-  it("rejects an unsupported processor architecture before the Bun source fallback", () => {
+  it("rejects the injected x86 processor architecture before the Bun source fallback", () => {
     const fixture = launcherFixture({
       binaryName: "docks-kit-windows-x64.exe",
       checkoutVersion: "checkout-version",

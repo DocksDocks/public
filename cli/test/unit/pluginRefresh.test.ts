@@ -1,4 +1,5 @@
 import { readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
@@ -10,6 +11,7 @@ import {
 import { stableStringify } from "../lib/goldenSnapshot"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
+const NATIVE_HOST = { nativeHost: true } as const
 
 afterAll(cleanupTemporaryDirs)
 
@@ -31,12 +33,13 @@ describe.sequential("refresh-only plugin skip", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/plugins/installed_plugins.json": claudeInstalledPlugins()
     })
-    const stubs = makeStubDir()
-    const run = runEngine(["sync", "claude", "codex", "--skip-plugin-refresh"], variant, stubs)
+    const stubs = makeStubDir({}, NATIVE_HOST)
+    const run = runEngine(["sync", "claude", "codex", "--skip-plugin-refresh"], variant, stubs, NATIVE_HOST)
     const publicDryRun = runPublicCli(
       ["sync", "claude", "--dry-run", "--skip-plugin-refresh"],
       "home-drift",
-      stubs
+      stubs,
+      NATIVE_HOST
     )
     try {
       expect(run.exitCode).toBe(0)
@@ -55,17 +58,16 @@ describe.sequential("refresh-only plugin skip", () => {
   })
 
   it("still installs missing Claude and Codex plugins", () => {
-    const codexMissingPlugins = `case "$1" in
-  --version) echo "codex-cli 0.144.4";;
-  plugin) case "$2" in
-    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true}],"available":[]}' ;;
-    add) exit 0;;
-  esac;;
-esac`
+    const codexMissingPlugins = `if (args[0] === "--version") {
+  console.log("codex-cli 0.144.4")
+} else if (args[0] === "plugin" && args[1] === "list") {
+  console.log('{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true}],"available":[]}')
+}`
     const run = runEngine(
       ["sync", "claude", "codex", "--skip-plugin-refresh"],
       "home-drift",
-      makeStubDir({ codex: codexMissingPlugins })
+      makeStubDir({ codex: codexMissingPlugins }, NATIVE_HOST),
+      NATIVE_HOST
     )
     try {
       expect(run.exitCode).toBe(0)
@@ -89,7 +91,7 @@ describe.sequential("kit-scoped plugin refresh", () => {
     installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
     installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
       scope: "project",
-      projectPath: "/home/docks/projects/n8n-workflows",
+      projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
       version: "test"
     }]
     const variant = materializeVariant("home-drift", {
@@ -100,7 +102,7 @@ describe.sequential("kit-scoped plugin refresh", () => {
         "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
       })
     })
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
     try {
       expect(run.exitCode).toBe(0)
       const argv = readArgvLog(run)
@@ -129,7 +131,7 @@ describe.sequential("project-scoped plugin preservation", () => {
     installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
     installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
       scope: "project",
-      projectPath: "/home/docks/projects/n8n-workflows",
+      projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
       version: "test"
     }]
     const variant = materializeVariant("home-drift", {
@@ -139,7 +141,7 @@ describe.sequential("project-scoped plugin preservation", () => {
         "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
       })
     })
-    const run = runEngine(["sync", "claude", "--prune"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude", "--prune"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
     try {
       expect(run.exitCode).toBe(0)
       const argv = readArgvLog(run)

@@ -14,7 +14,9 @@ const SPAWN_TIMEOUT_MS = 30_000
 
 describe("toolchain report", () => {
   it("reports a present tool with an unreadable version as unknown instead of ok", () => {
-    const stubs = makeStubDir({ claude: `case "$1" in --version) exit 9;; esac` })
+    const stubs = makeStubDir({
+      claude: `if (args[0] === "--version") process.exitCode = 9`
+    })
     const run = runPublicCli(["toolchain", "check"], "home-fresh", stubs)
 
     try {

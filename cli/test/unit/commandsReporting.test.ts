@@ -5,6 +5,7 @@ import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { p } from "../../src/engine-native/exec"
+import { childEnv } from "../lib/goldenResources"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CLI = join(REPO_DIR, "cli", "src", "main.ts")
@@ -19,18 +20,18 @@ const temporaryDirectory = (prefix: string): string => {
 const runCli = (
   args: ReadonlyArray<string>,
   home: string,
-  environment: NodeJS.ProcessEnv = {}
+  environment: Record<string, string> = {}
 ) =>
   spawnSync("bun", [CLI, ...args], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       HOME: home,
+      USERPROFILE: home,
       AGENTS_DIR: p(home, ".agents"),
       DOCKS_KIT_ENGINE: "",
       DOCKS_KIT_HOME: REPO_DIR,
       ...environment
-    }
+    })
   })
 
 afterEach(() => {

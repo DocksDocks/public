@@ -18,7 +18,7 @@ import { delimiter, isAbsolute, join, resolve } from "node:path"
 
 import { hostOs } from "../../src/engine-native/os"
 
-import { FIXTURES_DIR, REPO_DIR, temporaryDir } from "./goldenResources"
+import { FIXTURES_DIR, REPO_DIR, childHostId, readStubHost, temporaryDir } from "./goldenResources"
 import { normalizeOutput } from "./goldenSnapshot"
 
 
@@ -35,10 +35,11 @@ function bunRuntime(): string {
 }
 
 const BUN_RUNTIME = bunRuntime()
+const BUN_MAIN = join(REPO_DIR, "cli", "src", "main.ts")
 const BUN_CLI_ARGS: ReadonlyArray<string> = [
   "--preload",
   join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"),
-  join(REPO_DIR, "cli", "src", "main.ts")
+  BUN_MAIN
 ]
 const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-")
 const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
@@ -106,6 +107,30 @@ interface RunOpts {
   readonly reuseHome?: string
   /** Extra env for the child (e.g. DOCKS_KIT_VERBOSE). */
   readonly env?: Record<string, string>
+  /** Exercise the recording host instead of the Linux-canonical golden preload. */
+  readonly nativeHost?: boolean
+}
+
+function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
+  return [...(opts.nativeHost === true ? [BUN_MAIN] : BUN_CLI_ARGS), ...args]
+}
+
+/**
+ * The stub directory and the child must agree on one host: a Linux-preloaded
+ * child resolves extensionless names, a native Windows child resolves `.cmd`.
+ * `makeStubDir` records the host it planted for, so a mismatched pair fails
+ * here with a named cause instead of as an unreproducible tool-missing branch
+ * on one runner.
+ */
+function requirePairedStubHost(stubDir: string, opts: RunOpts): void {
+  const expected = childHostId(opts.nativeHost === true)
+  const planted = readStubHost(stubDir)
+  if (planted !== expected) {
+    throw new Error(
+      `stub host mismatch: stubs were planted for ${planted} but this child runs as ${expected}. ` +
+        `Pass the same options object to makeStubDir and to the run helper.`
+    )
+  }
 }
 
 function materializeHome(kind: string, fixture: string, reuseHome?: string): string {
@@ -120,6 +145,7 @@ function materializeHome(kind: string, fixture: string, reuseHome?: string): str
 function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): Record<string, string> {
   return {
     HOME: home,
+    USERPROFILE: home,
     PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
     GOLDEN_ARGV_LOG: argvLog,
     GOLDEN_STUB_DIR: stubDir,
@@ -146,11 +172,12 @@ export function runEngine(
   stubDir: string,
   opts: RunOpts = {}
 ): EngineRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
-  const argv = [...BUN_CLI_ARGS, ...args]
+  const argv = childArgv(args, opts)
   const command = [BUN_RUNTIME, ...argv].join(" ")
   const mergedOutputPath = join(home, ".golden-merged-output")
   const mergedOutputFd = openSync(mergedOutputPath, "w")
@@ -191,10 +218,11 @@ export function runEngineSplit(
   stubDir: string,
   opts: RunOpts = {}
 ): SplitRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
-  const argv = [...BUN_CLI_ARGS, ...args]
+  const argv = childArgv(args, opts)
   const command = [BUN_RUNTIME, ...argv].join(" ")
   const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,
@@ -224,10 +252,11 @@ export function runPublicCli(
   stubDir: string,
   opts: RunOpts = {}
 ): SplitRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("cli", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
-  const argv = [...BUN_CLI_ARGS, ...args]
+  const argv = childArgv(args, opts)
   const command = [BUN_RUNTIME, ...argv].join(" ")
   const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,

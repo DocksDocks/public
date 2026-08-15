@@ -54,6 +54,7 @@ vi.mock("node:os", async () => {
 })
 
 import {
+  childEnv,
   cleanupTemporaryDirs,
   makeStubDir,
   sweepStaleTemporaryDirs,
@@ -243,5 +244,27 @@ describe("golden temporary resources", () => {
 
   it("rejects unknown stub override names", () => {
     expect(() => makeStubDir({ claud: "exit 0" })).toThrow("Unknown golden stub override(s): claud")
+  })
+
+  it("drops an inherited key that differs only in case from an override", () => {
+    process.env["UserProfile"] = "C:\\inherited"
+    try {
+      const env = childEnv({ USERPROFILE: "C:\\fixture" })
+
+      // One spelling survives, and it is the override's.
+      expect(Object.keys(env).filter((name) => name.toUpperCase() === "USERPROFILE")).toEqual(["USERPROFILE"])
+      expect(env["USERPROFILE"]).toBe("C:\\fixture")
+    } finally {
+      delete process.env["UserProfile"]
+    }
+  })
+
+  it("keeps every inherited key that no override shadows", () => {
+    process.env["GOLDEN_UNRELATED"] = "kept"
+    try {
+      expect(childEnv({ HOME: "/fixture" })["GOLDEN_UNRELATED"]).toBe("kept")
+    } finally {
+      delete process.env["GOLDEN_UNRELATED"]
+    }
   })
 })
