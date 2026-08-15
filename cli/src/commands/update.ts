@@ -2,11 +2,10 @@ import { Command, Flag } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
-import { which } from "../engine-native/exec"
-import { hostOs, type Invocation } from "../engine-native/os"
+import { p, which } from "../engine-native/exec"
+import { hostOs, type HostOs, type Invocation } from "../engine-native/os"
 
 const noSync = Flag.boolean("no-sync").pipe(
   Flag.withDescription("Update the kit only; skip the chained flag-less sync")
@@ -40,14 +39,14 @@ const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
   })
 
 export const updateSyncArgs = (home: string): Array<string> => [
-  join(home, "cli/src/main.ts"),
+  p(home, "cli/src/main.ts"),
   "sync",
   "--skip-plugin-refresh"
 ]
 
 const readPackageVersion = (home: string): string => {
   try {
-    const doc: unknown = JSON.parse(readFileSync(join(home, "package.json"), "utf8"))
+    const doc: unknown = JSON.parse(readFileSync(p(home, "package.json"), "utf8"))
     if (doc === null || typeof doc !== "object" || !("version" in doc)) return ""
     return typeof doc.version === "string" ? doc.version : ""
   } catch {
@@ -81,15 +80,27 @@ const capturePackageRoot: CapturePackageRoot = (command, args) => {
   }
 }
 
+/**
+ * A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. Windows
+ * reports that path with backslashes, so containment is tested on a normalized
+ * copy — but only on Windows, because a backslash is a legal POSIX filename
+ * character and must never be read as a separator there.
+ */
 export const packageManagerForHome = (
   home: string,
-  environment: NodeJS.ProcessEnv = process.env
+  environment: NodeJS.ProcessEnv = process.env,
+  host: HostOs = hostOs()
 ): PackageManager => {
+  const normalize = (value: string): string =>
+    host.id === "windows" ? value.replaceAll("\\", "/") : value
+  const normalizedHome = normalize(home)
   const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
     const root = environment[name]?.trim()
-    return root !== undefined && root !== "" && (home === root || home.startsWith(`${root}/`))
+    if (root === undefined || root === "") return false
+    const normalizedRoot = normalize(root)
+    return normalizedHome === normalizedRoot || normalizedHome.startsWith(`${normalizedRoot}/`)
   }
-  return home.includes("/.bun/") ||
+  return normalizedHome.includes("/.bun/") ||
     underEnvironmentRoot("BUN_INSTALL_GLOBAL_DIR") ||
     underEnvironmentRoot("BUN_INSTALL")
     ? "bun"
@@ -121,7 +132,7 @@ export const resolveGlobalPackageHome = (
     const root = result.stdout.trim()
     return root === ""
       ? { ok: false, diagnostic: "npm root -g failed: empty output" }
-      : { ok: true, home: join(root, "docks-kit") }
+      : { ok: true, home: p(root, "docks-kit") }
   }
 
   const globalHeader = result.stdout
@@ -134,7 +145,7 @@ export const resolveGlobalPackageHome = (
       : /^(.*) node_modules(?: \(\d+\))?$/.exec(globalHeader)?.[1]
   return globalDir === undefined || globalDir === ""
     ? { ok: false, diagnostic: "bun pm -g ls did not report its global package root" }
-    : { ok: true, home: join(globalDir, "node_modules", "docks-kit") }
+    : { ok: true, home: p(globalDir, "node_modules", "docks-kit") }
 }
 
 export const packageUpdateResult = (
@@ -227,7 +238,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
     const afterVersion = readPackageVersion(updated.home)
     if (afterVersion === "") {
       return yield* bail(
-        `global package update completed, but ${join(updated.home, "package.json")} has no readable version`,
+        `global package update completed, but ${p(updated.home, "package.json")} has no readable version`,
         1
       )
     }
@@ -242,7 +253,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
 export const updateCommand = Command.make("update", { noSync }, (config) =>
   Effect.gen(function* () {
     const home = kitHome()
-    if (existsSync(join(home, ".git"))) {
+    if (existsSync(p(home, ".git"))) {
       return yield* updateCheckout(home, config.noSync)
     }
     if (home.includes("node_modules")) {
