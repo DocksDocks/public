@@ -116,10 +116,10 @@ changed → restart line; skills changed → discovery line) or under `--verbose
 
 ### Platform seam
 
-All host detection routes through `os.ts`, the engine module that reads
-`process.platform`. `exec.ts` contains only POSIX executable and PATH probes.
-`deps.ts` install hints default their platform from `os.ts` and keep the
-parameter injectable for tests.
+All host detection routes through `os/index.ts`, which holds the engine's only
+`process.platform` read and keeps platform normalization injectable for tests.
+Per-OS facts live in one module per OS behind `HostOs`; consumers select those
+facts through the package rather than branching on the host directly.
 
 ### Verbosity plumbing
 
@@ -153,7 +153,7 @@ active logger binding.
 | `exec.ts` | slash-stable path helpers, POSIX command probes, capture/spawn wrappers, and change-detecting write/copy helpers |
 | `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
 | `deps.ts` | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
-| `os.ts` | platform capability seam — host reader and injected platform normalization (`rawPlatform`, `platformName`) |
+| `os/` | host reader, injected platform normalization, and per-OS `HostOs` fact modules |
 | `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
 
 ## Platform Support
@@ -162,8 +162,11 @@ active logger binding.
 - Unsupported hosts fail before launcher fallback, dependency probes, downloads,
   settings writes, or sync work.
 - Runtime hooks use POSIX commands and absolute Bun paths.
-- Symlink creation remains capability-driven: permission or filesystem failures
-  fall back to copy without predicting the host.
+- Directory linking is capability-driven. The host module supplies only the
+  order while the runtime decides the outcome: symlink, then a Windows junction
+  with an absolute target, then a recursive copy. Copies carry a kit marker so
+  later sync can heal them back to a real link and prune can reclaim them
+  without touching user-owned directories.
 
 ## Tests
 

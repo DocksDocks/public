@@ -12,7 +12,7 @@ import { isAbsolute } from "node:path"
 
 import { capture, commandExists, p, which } from "./exec"
 import { isObject, parseJson } from "./jq"
-import { rawPlatform } from "./os"
+import { hostOs, platformName, rawPlatform } from "./os"
 
 export type ToolId =
   | "git"
@@ -152,22 +152,15 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   git: spec(
     "git",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "darwin"
-        ? "brew install git"
-        : "sudo apt install -y git (or your distro's package manager)",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git"),
     { version: versionProbe("git") }
   ),
-  jq: spec("jq", "optional", (pf = rawPlatform()) =>
-    pf === "darwin"
-      ? "brew install jq"
-      : "sudo apt install -y jq",
-    { version: versionProbe("jq") }
-  ),
-  curl: spec("curl", "optional", (pf = rawPlatform()) =>
-    pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
-    { version: versionProbe("curl") }
-  ),
+  jq: spec("jq", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq"), {
+    version: versionProbe("jq")
+  }),
+  curl: spec("curl", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("curl"), {
+    version: versionProbe("curl")
+  }),
   node: spec("node", "optional", () => "install Node.js via https://nodejs.org (or your package manager)", {
     version: versionProbe("node")
   }),
@@ -204,8 +197,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   ffplay: spec(
     "ffplay",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "darwin" ? "brew install ffmpeg" : "sudo apt install -y ffmpeg",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("ffplay"),
     { versionArgs: ["-version"], version: versionProbe("ffplay", ["-version"]), resolve: pathProbe("ffplay") }
   ),
   intelephense: spec("intelephense", "optional", () => "npm install -g intelephense", {

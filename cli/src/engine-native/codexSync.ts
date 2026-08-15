@@ -9,6 +9,7 @@ import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from ".
 import { p, spawnProcess } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
+import { hostOs } from "./os"
 import { payloadBytes, payloadDisplayPath, payloadPaths, payloadText, type PayloadPath } from "../payload"
 
 export async function codexSync(ctx: Ctx): Promise<void> {
@@ -84,10 +85,11 @@ async function ensureBubblewrap(ctx: Ctx): Promise<void> {
 
 function bwrapSupportedOs(ctx: Ctx): boolean {
   const { warn } = ctx.services.logger
-  const pn = ctx.services.platform.name()
-  if (pn === "linux") return true
-  if (pn === "darwin") return false
-  warn("Unknown OS — skipping bubblewrap check; Codex sandbox may not work")
+  const os = hostOs(ctx.services.platform.name())
+  if (os.supportsBubblewrap) return true
+  if (os.id === "unknown") {
+    warn("Unknown OS — skipping bubblewrap check; Codex sandbox may not work")
+  }
   return false
 }
 
