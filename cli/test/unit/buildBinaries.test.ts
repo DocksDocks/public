@@ -1,12 +1,18 @@
 import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { delimiter, join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
+import { hostOs } from "../../src/engine-native/os/index"
 import { HOST_TARGETS } from "../../src/engine-native/os/targets"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const roots: Array<string> = []
+const currentHost = hostOs().id
+const BUILD_SCRIPT_APPLIES = currentHost === "linux" || currentHost === "darwin"
+const buildSuiteLabel = BUILD_SCRIPT_APPLIES
+  ? "compiled binary checksum manifest"
+  : "compiled binary checksum manifest (skipped: cli/build-binaries.sh is a POSIX artifact and does not apply to this host)"
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
@@ -51,7 +57,7 @@ chmod +x "\$out"
 function runBuild(buildScript: string, fakeBin: string, targets: ReadonlyArray<string> = []) {
   return spawnSync("/bin/bash", [buildScript, ...targets], {
     encoding: "utf8",
-    env: { ...process.env, PATH: `${fakeBin}:/usr/bin:/bin` }
+    env: { ...process.env, PATH: [fakeBin, "/usr/bin", "/bin"].join(delimiter) }
   })
 }
 
@@ -62,7 +68,7 @@ function manifestArtifacts(dist: string): Array<string> {
     .map((line) => line.replace(/^[a-f0-9]+\s+/, ""))
 }
 
-describe("compiled binary checksum manifest", () => {
+describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
   it("builds every host target by default with deterministic artifact names", () => {
     const { buildScript, dist, fakeBin } = fixture()
 

@@ -93,7 +93,7 @@ describe("statusline shell guards", () => {
     const script = "'/home/O'\"'\"'Brien/.claude/bin/statusline.mjs'"
     const expected = `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`
     expect(hostOs("darwin").statusLineCommand(POSIX_RUNTIME.bun, POSIX_RUNTIME.statusline)).toBe(expected)
-    expect(statusLineCommand(POSIX_RUNTIME)).toBe(hostOs().statusLineCommand(POSIX_RUNTIME.bun, POSIX_RUNTIME.statusline))
+    expect(statusLineCommand(POSIX_RUNTIME, hostOs("darwin"))).toBe(expected)
   })
 
   it("decodes the Windows command to the guarded PowerShell script", () => {
@@ -118,7 +118,7 @@ describe("statusline shell guards", () => {
 describe("Claude settings materialization", () => {
   it("emits direct exec hooks, a guarded statusline, and no Stop key", () => {
     const source = template()
-    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME)
+    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("linux"))
     expect(materialized).toEqual({
       hooks: {
         SessionStart: [{ hooks: [{ type: "command", command: POSIX_RUNTIME.bun, args: [POSIX_RUNTIME.sessionStart], timeout: 5 }] }],
@@ -127,7 +127,7 @@ describe("Claude settings materialization", () => {
       },
       statusLine: {
         type: "command",
-        command: statusLineCommand(POSIX_RUNTIME),
+        command: statusLineCommand(POSIX_RUNTIME, hostOs("linux")),
         refreshInterval: 5
       },
       model: "opus"
@@ -140,10 +140,15 @@ describe("Claude settings materialization", () => {
     const source = parseJson(payloadText("SoT/.claude/settings.json"))
     if (source === undefined) throw new Error("SoT Claude settings are not valid JSON")
     const sotCommand = postToolUseFailureCommand(source)
-    const materialized = materializeClaudeSettings(source, POSIX_RUNTIME)
-    expect(postToolUseFailureCommand(materialized)).toBe(sotCommand)
+    const posix = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("linux"))
+    expect(postToolUseFailureCommand(posix)).toBe(sotCommand)
     expect(hostOs("linux").failureHookCommand(sotCommand)).toBe(sotCommand)
     expect(hostOs("darwin").failureHookCommand(sotCommand)).toBe(sotCommand)
+
+    const windows = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("windows"))
+    expect(decodePowerShellCommand(postToolUseFailureCommand(windows))).toBe(
+      `Write-Output '${sotCommand.slice("echo '".length, -1)}'`
+    )
 
     const json = sotCommand.slice("echo '".length, -1)
     expect(decodePowerShellCommand(hostOs("windows").failureHookCommand(sotCommand))).toBe(
@@ -157,7 +162,7 @@ describe("Claude settings materialization", () => {
   })
 
   it("strips only Bun-owned pointers when runtime is deferred", () => {
-    expect(materializeClaudeSettings(template(), undefined)).toEqual({
+    expect(materializeClaudeSettings(template(), undefined, hostOs("linux"))).toEqual({
       hooks: {
         PostToolUseFailure: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo failure-context", timeout: 5 }] }]
       },
@@ -168,18 +173,18 @@ describe("Claude settings materialization", () => {
   it("rejects Stop, wrong sentinel locations, duplicate sentinels, and residue", () => {
     const withStop = template()
     Object.assign(withStop.hooks, { Stop: [{ hooks: [] }] })
-    expect(() => materializeClaudeSettings(withStop, POSIX_RUNTIME)).toThrow(/hooks\.Stop/)
+    expect(() => materializeClaudeSettings(withStop, POSIX_RUNTIME, hostOs("linux"))).toThrow(/hooks\.Stop/)
 
     const wrongLocation = template()
     wrongLocation.hooks.SessionStart[0].hooks[0].command = "bun"
-    expect(() => materializeClaudeSettings(wrongLocation, POSIX_RUNTIME)).toThrow(/SessionStart/)
+    expect(() => materializeClaudeSettings(wrongLocation, POSIX_RUNTIME, hostOs("linux"))).toThrow(/SessionStart/)
 
     const duplicate = template()
     duplicate.hooks.Notification[0].hooks[0].args.push(NOTIFY_SENTINEL)
-    expect(() => materializeClaudeSettings(duplicate, POSIX_RUNTIME)).toThrow(/Notification/)
+    expect(() => materializeClaudeSettings(duplicate, POSIX_RUNTIME, hostOs("linux"))).toThrow(/Notification/)
 
     const residue = { ...template(), note: BUN_SENTINEL }
-    expect(() => materializeClaudeSettings(residue, POSIX_RUNTIME)).toThrow(/sentinel residue/)
+    expect(() => materializeClaudeSettings(residue, POSIX_RUNTIME, hostOs("linux"))).toThrow(/sentinel residue/)
   })
 })
 
@@ -193,7 +198,7 @@ describe("Claude settings prepare/commit seam", () => {
       const repo: Json = { model: "opus", userSetting: true }
       const prepared = prepareClaudeSettings(test.ctx, claudeDir, repo)
       expect(prepared).toEqual({
-        path: join(claudeDir, "settings.json"),
+        path: `${claudeDir}/settings.json`,
         bytes: jqStringify(repo),
         previousBytes: undefined,
         changed: true

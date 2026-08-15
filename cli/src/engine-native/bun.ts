@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { p, spawnProcess, type AsyncProcessOptions, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import type { EngineServices } from "./services"
-import { hostOs } from "./os"
+import { hostOs, type HostOs } from "./os"
 import { field } from "./toolchain"
 
 export type BunRuntimeState =
@@ -14,11 +14,11 @@ export type BunRuntimeState =
       readonly reason: "missing-curl" | "download-failed" | "installer-failed" | "install-failed"
     }
 
-function predictedExecutable(ctx: Ctx): string {
+function predictedExecutable(ctx: Ctx, host: HostOs = hostOs()): string {
   const root = process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
     ? process.env["BUN_INSTALL"]!
     : p(ctx.home, ".bun")
-  return p(root, "bin", hostOs().bunExecutableName)
+  return p(root, "bin", host.bunExecutableName)
 }
 
 type BunInstallResult =
@@ -30,9 +30,9 @@ function processFailure(result: AsyncProcessResult): string {
   return details.join(": ") || (result.exitCode === null ? "the process ended without an exit code" : `exit code ${result.exitCode}`)
 }
 
-async function installBun(pin: string, directory: string): Promise<BunInstallResult> {
+async function installBun(pin: string, directory: string, host: HostOs = hostOs()): Promise<BunInstallResult> {
   const options: AsyncProcessOptions = { stdio: ["ignore", "ignore", "pipe"] }
-  const installer = hostOs().bunInstaller(pin, directory)
+  const installer = host.bunInstaller(pin, directory)
   const download = await spawnProcess(installer.download.command, installer.download.args, options)
   if (download.error !== undefined || download.exitCode !== 0) {
     return { ok: false, reason: "download-failed", detail: processFailure(download) }
@@ -52,6 +52,7 @@ export function bunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunRun
 }
 
 async function runBunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunRuntimeState> {
+  const host = hostOs(services.platform.name())
 
   const existing = await services.deps.path("bun")
   if (existing !== "") return { kind: "ready", executable: existing }
@@ -66,7 +67,7 @@ async function runBunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunR
     return { kind: "deferred", reason: "missing-curl" }
   }
   if (ctx.dryRun) {
-    const executable = predictedExecutable(ctx)
+    const executable = predictedExecutable(ctx, host)
     services.logger.echo(`[dry-run] install Bun ${pin} (kit-verified) -> ${executable}`)
     return { kind: "ready", executable }
   }
@@ -74,7 +75,7 @@ async function runBunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunR
   const temporaryDir = mkdtempSync(p(tmpdir(), "docks-kit-bun-"))
   let result: BunInstallResult
   try {
-    result = await installBun(pin, temporaryDir)
+    result = await installBun(pin, temporaryDir, host)
   } finally {
     rmSync(temporaryDir, { recursive: true, force: true })
   }

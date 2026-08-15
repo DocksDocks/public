@@ -121,7 +121,8 @@ function snapshotTreeWithTemporaryDirs(
     if (relative === ".bun/install") continue
     const stat = lstatSync(path)
     if (stat.isSymbolicLink()) {
-      acc[relative] = `link:${normalizeTreeBody(readlinkSync(path), root, temporaryDirs)}`
+      const target = normalizeTreeBody(readlinkSync(path), root, temporaryDirs).replaceAll("\\", "/")
+      acc[relative] = `link:${target}`
     } else if (stat.isDirectory()) {
       if (relative !== ".bun" && relative !== ".local" && relative !== ".local/bin") acc[`${relative}/`] = "dir"
       snapshotTreeWithTemporaryDirs(root, path, acc, temporaryDirs)

@@ -44,8 +44,9 @@ const TEMP_DIRS = new Set<string>()
  * The sweep removes dead or old orphan markers after their directory disappears.
  */
 export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
+  // Windows has no numeric uid; its temp root is user-scoped, so owner
+  // marker liveness and age remain the sweep boundary there.
   const ownerUid = process.getuid?.()
-  if (ownerUid === undefined) return
   const root = tmpdir()
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) {
@@ -56,7 +57,7 @@ export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
     const path = join(root, entry.name)
     try {
       const stat = lstatSync(path)
-      if (stat.uid !== ownerUid) continue
+      if (ownerUid !== undefined && stat.uid !== ownerUid) continue
       if (TEMP_DIRS.has(path)) continue
 
       const ownerPath = `${path}${OWNER_PID_SUFFIX}`
@@ -79,7 +80,12 @@ export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
   }
 }
 
-function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: number, nowMs: number): void {
+function sweepOrphanOwnerMarker(
+  root: string,
+  entryName: string,
+  ownerUid: number | undefined,
+  nowMs: number
+): void {
   if (!entryName.endsWith(OWNER_PID_SUFFIX)) return
   const directoryName = entryName.slice(0, -OWNER_PID_SUFFIX.length)
   if (!HARNESS_TEMP_PREFIXES.some((prefix) => directoryName.startsWith(prefix))) return
@@ -95,7 +101,7 @@ function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: numbe
   const ownerPath = join(root, entryName)
   try {
     const stat = lstatSync(ownerPath)
-    if (stat.uid !== ownerUid) return
+    if (ownerUid !== undefined && stat.uid !== ownerUid) return
     const ownerPid = readOwnerPid(ownerPath, ownerUid)
     if (ownerPid !== undefined) {
       if (ownerPid === process.pid || processIsAlive(ownerPid)) return
@@ -113,9 +119,9 @@ function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: numbe
   }
 }
 
-function readOwnerPid(ownerPath: string, ownerUid: number): number | undefined {
+function readOwnerPid(ownerPath: string, ownerUid: number | undefined): number | undefined {
   try {
-    if (lstatSync(ownerPath).uid !== ownerUid) return undefined
+    if (ownerUid !== undefined && lstatSync(ownerPath).uid !== ownerUid) return undefined
     const ownerPid = Number(readFileSync(ownerPath, "utf8").trim())
     return Number.isSafeInteger(ownerPid) && ownerPid > 0 ? ownerPid : undefined
   } catch {

@@ -1,6 +1,6 @@
 import { p } from "./exec"
 import { isObject, parseJson, type Json } from "./jq"
-import { hostOs } from "./os"
+import { hostOs, type HostOs } from "./os"
 
 const BUN_SENTINEL = "__DOCKS_KIT_BUN__"
 const SESSION_START_SENTINEL = "__DOCKS_KIT_SESSION_START__"
@@ -85,13 +85,14 @@ function validateTemplate(template: Json): void {
 }
 
 
-export function statusLineCommand(runtime: ClaudeRuntimePaths): string {
-  return hostOs().statusLineCommand(runtime.bun, runtime.statusline)
+export function statusLineCommand(runtime: ClaudeRuntimePaths, host: HostOs = hostOs()): string {
+  return host.statusLineCommand(runtime.bun, runtime.statusline)
 }
 
 export function materializeClaudeSettings(
   template: Json,
-  runtime: ClaudeRuntimePaths | undefined
+  runtime: ClaudeRuntimePaths | undefined,
+  host: HostOs = hostOs()
 ): Json {
   validateTemplate(template)
   const result = cloneJson(template)
@@ -102,7 +103,7 @@ export function materializeClaudeSettings(
       if (!isObject(group) || !Array.isArray(group["hooks"])) continue
       for (const handler of group["hooks"]) {
         if (isObject(handler) && handler["type"] === "command" && typeof handler["command"] === "string") {
-          handler["command"] = hostOs().failureHookCommand(handler["command"])
+          handler["command"] = host.failureHookCommand(handler["command"])
         }
       }
     }
@@ -120,7 +121,7 @@ export function materializeClaudeSettings(
     notification["command"] = runtime.bun
     notification["args"] = [runtime.notify]
     if (!isObject(result) || !isObject(result["statusLine"])) throw new Error("Claude statusLine object is missing")
-    result["statusLine"]["command"] = statusLineCommand(runtime)
+    result["statusLine"]["command"] = statusLineCommand(runtime, host)
   }
 
   for (const sentinel of [BUN_SENTINEL, SESSION_START_SENTINEL, NOTIFY_SENTINEL, STATUSLINE_SENTINEL]) {

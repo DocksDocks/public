@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type * as FsModule from "node:fs"
 import type * as OsModule from "node:os"
+import { join } from "node:path"
 import type * as ExecModule from "../../src/engine-native/exec"
 
 const mocks = vi.hoisted(() => ({
-  mkdtempSync: vi.fn((_prefix: string) => "/tmp/docks-kit-bun-private"),
+  mkdtempSync: vi.fn((_prefix: string) => "docks-kit-bun-private"),
   rmSync: vi.fn(),
   spawnProcess: vi.fn(),
-  tmpdir: vi.fn(() => "/tmp")
+  tmpdir: vi.fn(() => "")
 }))
 
 vi.mock("../../src/engine-native/exec", async () => {
@@ -120,11 +121,13 @@ function expectReady(state: BunRuntimeState): string {
   return state.executable
 }
 
-beforeEach(() => {
-  mocks.mkdtempSync.mockReset().mockReturnValue("/tmp/docks-kit-bun-private")
+beforeEach(async () => {
+  const os = await vi.importActual<typeof OsModule>("node:os")
+  const privateDir = join(os.tmpdir(), "docks-kit-bun-private")
+  mocks.mkdtempSync.mockReset().mockReturnValue(privateDir)
   mocks.rmSync.mockReset()
   mocks.spawnProcess.mockReset().mockResolvedValue({ error: undefined, exitCode: 0, stdout: "", stderr: "" })
-  mocks.tmpdir.mockReset().mockReturnValue("/tmp")
+  mocks.tmpdir.mockReset().mockImplementation(os.tmpdir)
   delete process.env["BUN_INSTALL"]
 })
 
@@ -167,6 +170,15 @@ describe("per-run Bun bootstrap", () => {
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
+  it("predicts the pinned Windows path in dry-run without spawning or removing", async () => {
+    process.env["BUN_INSTALL"] = "C:/custom bun"
+    const test = rig("win32", { curl: true, installed: false }, true)
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("C:/custom bun/bin/bun.exe")
+    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.3.14 (kit-verified) -> C:/custom bun/bin/bun.exe")
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
+    expect(mocks.rmSync).not.toHaveBeenCalled()
+  })
+
   it("defers a POSIX dry-run when curl cannot satisfy the planned bootstrap", async () => {
     const test = rig("linux", { curl: false, installed: false }, true)
     expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
@@ -178,11 +190,19 @@ describe("per-run Bun bootstrap", () => {
 
   it("uses a fresh private directory and never follows the predictable shared-temp symlink", async () => {
     const fs = await vi.importActual<typeof FsModule>("node:fs")
-    const testRoot = fs.mkdtempSync("/tmp/docks-kit-bun-security-")
-    const sentinel = `${testRoot}/sentinel`
-    const predictableSymlink = `${testRoot}/bun-install-${process.pid}.sh`
+    const os = await vi.importActual<typeof OsModule>("node:os")
+    const testRoot = fs.mkdtempSync(join(os.tmpdir(), "docks-kit-bun-security-"))
+    const sentinel = join(testRoot, "sentinel")
+    const predictableSymlink = join(testRoot, `bun-install-${process.pid}.sh`)
     fs.writeFileSync(sentinel, "unchanged")
-    fs.symlinkSync(sentinel, predictableSymlink)
+    let symlinkStaged = false
+    try {
+      fs.symlinkSync(sentinel, predictableSymlink)
+      symlinkStaged = true
+    } catch (cause) {
+      const code = (cause as NodeJS.ErrnoException).code
+      if (code !== "EPERM" && code !== "EACCES" && code !== "ENOTSUP" && code !== "EINVAL") throw cause
+    }
     mocks.tmpdir.mockReturnValue(testRoot)
     mocks.mkdtempSync.mockImplementation((prefix: string) => fs.mkdtempSync(prefix))
     const test = rig("linux", { curl: true, installed: false })
@@ -196,7 +216,7 @@ describe("per-run Bun bootstrap", () => {
         // operand positionally let an argument change send the write to the
         // relative path "undefined", which created a junk file in the
         // repository root.
-        if (target === undefined || !target.startsWith(`${testRoot}/`)) {
+        if (target === undefined || !target.startsWith(`${testRoot}/`) && !target.startsWith(`${testRoot}\\`)) {
           throw new Error(`curl stub expected an -o target under ${testRoot}, received ${String(target)}`)
         }
         downloadedTo = target
@@ -212,7 +232,7 @@ describe("per-run Bun bootstrap", () => {
     try {
       expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
       expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
-      expect(downloadedTo).toMatch(new RegExp(`^${testRoot}/docks-kit-bun-[^/]+/install\\.sh$`))
+      expect(downloadedTo).toMatch(new RegExp(`^${testRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[/\\\\]docks-kit-bun-[^/\\\\]+[/\\\\]install\\.sh$`))
       expect(executed).toBe(downloadedTo)
       expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
         1,
@@ -228,7 +248,8 @@ describe("per-run Bun bootstrap", () => {
       )
       expect(downloadedTo).not.toBe(predictableSymlink)
       expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged")
-      expect(mocks.rmSync).toHaveBeenCalledWith(downloadedTo.replace(/\/install\.sh$/, ""), {
+      expect(fs.existsSync(predictableSymlink)).toBe(symlinkStaged)
+      expect(mocks.rmSync).toHaveBeenCalledWith(join(downloadedTo, ".."), {
         recursive: true,
         force: true
       })

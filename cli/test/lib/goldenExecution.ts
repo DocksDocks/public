@@ -24,9 +24,12 @@ import { normalizeOutput } from "./goldenSnapshot"
 
 function bunRuntime(): string {
   if (process.versions["bun"] !== undefined) return resolve(process.execPath)
+  const { executableSuffixes } = hostOs()
   for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
-    const candidate = join(directory, "bun")
-    if (existsSync(candidate)) return resolve(candidate)
+    for (const suffix of executableSuffixes) {
+      const candidate = join(directory, `bun${suffix}`)
+      if (existsSync(candidate)) return resolve(candidate)
+    }
   }
   throw new Error("unable to locate the Bun runtime")
 }

@@ -1,11 +1,17 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { delimiter, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { afterEach, describe, expect, it } from "vitest"
+import { hostOs } from "../../src/engine-native/os/index"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const roots: Array<string> = []
+const currentHost = hostOs().id
+const INSTALL_SH_APPLIES = currentHost === "linux" || currentHost === "darwin"
+const installExecutionSuiteLabel = INSTALL_SH_APPLIES
+  ? "install.sh execution"
+  : "install.sh execution (skipped: install.sh is a POSIX artifact and does not apply to this host)"
 
 /**
  * Resolve a coreutil to its real path. macOS ships `mktemp` in /usr/bin, not
@@ -74,9 +80,10 @@ esac
   writeFileSync(installer, readFileSync(join(REPO_DIR, "install.sh")))
   chmodSync(installer, 0o755)
 
-  const path = options.bunInLocalBin
-    ? `${localBin}:${fakeBin}:/usr/bin:/bin`
-    : `${fakeBin}:/usr/bin:/bin`
+  const pathEntries = options.bunInLocalBin
+    ? [localBin, fakeBin, "/usr/bin", "/bin"]
+    : [fakeBin, "/usr/bin", "/bin"]
+  const path = pathEntries.join(delimiter)
   const result = spawnSync("/bin/bash", [installer], {
     encoding: "utf8",
     env: {
@@ -131,6 +138,7 @@ describe("global installer completion", () => {
     }
   )
 
+  describe.skipIf(!INSTALL_SH_APPLIES)(installExecutionSuiteLabel, () => {
   it("prints the required PATH export instead of an unusable Next command", () => {
     const { root, result } = installerFixture({})
 
@@ -227,5 +235,6 @@ cp '${downloadedInstaller}' "\$out"
     expect(result.status).not.toBe(0)
     expect(result.stderr).not.toContain("docks-kit ready")
     expect(result.stderr).not.toContain("Next:")
+  })
   })
 })

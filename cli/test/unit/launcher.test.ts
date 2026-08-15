@@ -3,17 +3,16 @@ import { tmpdir } from "node:os"
 import { delimiter, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { afterEach, describe, expect, it } from "vitest"
+import { hostOs } from "../../src/engine-native/os/index"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CURRENT_VERSION = (JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }).version
 const roots: Array<string> = []
-const bashProbe = spawnSync("bash", ["--version"], { encoding: "utf8" })
-const bashExecutable =
-  bashProbe.error !== undefined && "code" in bashProbe.error && bashProbe.error.code === "ENOENT" ? null : "bash"
-const launcherSuiteLabel =
-  bashExecutable === null
-    ? "checkout launcher binary selection (skipped: bash interpreter is unavailable)"
-    : "checkout launcher binary selection"
+const currentHost = hostOs().id
+const POSIX_LAUNCHER_APPLIES = currentHost === "linux" || currentHost === "darwin"
+const launcherSuiteLabel = POSIX_LAUNCHER_APPLIES
+  ? "checkout launcher binary selection"
+  : "checkout launcher binary selection (skipped: docks-kit is a POSIX artifact and does not apply to this host)"
 
 function launcherFixture(binaryName: string, binaryVersion: string | null): { root: string; binDir: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-launcher-"))
@@ -69,8 +68,7 @@ function runLauncher(
   uname: { system: string; machine: string },
   args: ReadonlyArray<string>
 ) {
-  if (bashExecutable === null) throw new Error("bash interpreter is unavailable")
-  return spawnSync(bashExecutable, [join(fixture.root, "docks-kit"), ...args], {
+  return spawnSync("bash", [join(fixture.root, "docks-kit"), ...args], {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -86,7 +84,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-describe.skipIf(bashExecutable === null)(launcherSuiteLabel, () => {
+describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
   it("falls through to the current checkout source when dist is stale", () => {
     const fixture = launcherFixture("docks-kit-linux-x64", "0.4.0")
     const platform = { system: "Linux", machine: "x86_64" }
