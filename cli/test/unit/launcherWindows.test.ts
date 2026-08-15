@@ -62,23 +62,26 @@ function runLauncher(
   args: ReadonlyArray<string>
 ) {
   if (pwshExecutable === null) throw new Error("docks-kit.ps1 requires a resolvable pwsh interpreter")
-  return spawnSync(
-    pwshExecutable,
-    ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", join(fixture.root, "docks-kit.ps1"), ...args],
-    {
-      encoding: "utf8",
-      // Every case injects the architecture it tests, so no case inherits the
-      // runner's real CPU; an empty PROCESSOR_ARCHITEW6432 means "not WOW64".
-      env: childEnv({
-        HOME: fixture.root,
-        USERPROFILE: fixture.root,
-        BUN_INSTALL: join(fixture.root, ".bun"),
-        PATH: [fixture.binDir, process.env.PATH ?? ""].join(delimiter),
-        PROCESSOR_ARCHITECTURE: architecture.native,
-        PROCESSOR_ARCHITEW6432: architecture.wow64 ?? ""
-      })
-    }
-  )
+  const literal = (value: string): string => `'${value.replaceAll("'", "''")}'`
+  // Assign the two architecture variables inside the session rather than in the
+  // spawn environment: the case under test owns them, and an in-session
+  // assignment cannot be dropped or overridden by however the host merges an
+  // environment block. `exit $LASTEXITCODE` forwards the launcher's own status.
+  const command = [
+    `$env:PROCESSOR_ARCHITECTURE=${literal(architecture.native)}`,
+    `$env:PROCESSOR_ARCHITEW6432=${literal(architecture.wow64 ?? "")}`,
+    `& ${[join(fixture.root, "docks-kit.ps1"), ...args].map(literal).join(" ")}`,
+    "exit $LASTEXITCODE"
+  ].join("; ")
+  return spawnSync(pwshExecutable, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command], {
+    encoding: "utf8",
+    env: childEnv({
+      HOME: fixture.root,
+      USERPROFILE: fixture.root,
+      BUN_INSTALL: join(fixture.root, ".bun"),
+      PATH: [fixture.binDir, process.env.PATH ?? ""].join(delimiter)
+    })
+  })
 }
 
 afterEach(() => {

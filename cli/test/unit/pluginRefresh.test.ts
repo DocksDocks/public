@@ -42,13 +42,13 @@ describe.sequential("refresh-only plugin skip", () => {
       NATIVE_HOST
     )
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const argv = readArgvLog(run)
       expect(argv).not.toContain("claude\tplugin marketplace update")
       expect(argv).not.toContain("claude\tplugin update")
       expect(argv).not.toContain("codex\tplugin add")
       expect(argv.match(/^codex\tplugin list --json$/gm)).toHaveLength(1)
-      expect(publicDryRun.exitCode).toBe(0)
+      expect(publicDryRun.exitCode, publicDryRun.stderr).toBe(0)
       expect(publicDryRun.stdout).toContain("skip refresh-only plugin updates")
     } finally {
       cleanup([run])
@@ -70,7 +70,7 @@ describe.sequential("refresh-only plugin skip", () => {
       NATIVE_HOST
     )
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const argv = readArgvLog(run)
       expect(argv).toContain("claude\tplugin install docks@docks")
       expect(argv.match(/^claude\tplugin update /gm)).toBeNull()
@@ -104,7 +104,7 @@ describe.sequential("kit-scoped plugin refresh", () => {
     })
     const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const argv = readArgvLog(run)
       expect(argv.match(/^claude\tplugin marketplace update.*$/gm)).toEqual([
         "claude\tplugin marketplace update claude-plugins-official",
@@ -143,7 +143,7 @@ describe.sequential("project-scoped plugin preservation", () => {
     })
     const run = runEngine(["sync", "claude", "--prune"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const argv = readArgvLog(run)
       expect(argv).toContain("claude\tplugin uninstall -y --scope user user-plugin@userplace")
       expect(argv).toContain("claude\tplugin marketplace remove userplace")
