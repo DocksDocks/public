@@ -3,19 +3,36 @@
  * (`npx skills@<pin> add`), Claude symlink healing, --prune reconcile against
  * the kit-managed snapshot, and the snapshot write.
  */
-import { existsSync, lstatSync, mkdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync } from "node:fs"
+import {
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync
+} from "node:fs"
 import { dirname, relative, resolve } from "node:path"
+import { payloadText } from "../payload"
 import { p, spawnProcess, writeFileIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
+import { hostOs, type DirectoryLinkKind } from "./os"
+import { ExitError } from "./parseArgs"
 import type { EngineServices } from "./services"
 import { field } from "./toolchain"
-import { payloadText } from "../payload"
-import { ExitError } from "./parseArgs"
 
 export interface SkillsState {
   present: number
 }
+
+export type LinkOutcome = "symlink" | "junction" | "copy" | "failed"
+
+/** Lets heal and prune distinguish a kit-owned copy from a user's real directory. */
+export const COPY_MARKER = ".docks-kit-copied-skill"
 
 export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
   const state: SkillsState = { present: 0 }
@@ -149,15 +166,25 @@ function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
       return false
     }
   } else if (linkStat !== undefined) {
-    warn(`~/.claude/skills/${base} exists as a real path (not a symlink) — leaving alone; remove manually if it's stale`)
-    return false
+    if (!isKitOwnedCopy(claudeLink)) {
+      warn(`~/.claude/skills/${base} exists as a real path (not a symlink) — leaving alone; remove manually if it's stale`)
+      return false
+    }
+    if (ctx.dryRun) {
+      echo(`[dry-run] would replace kit-created Claude copy: ~/.claude/skills/${base} -> ${relTarget}`)
+      return true
+    }
+    if (!removeKitOwnedCopy(claudeLink)) {
+      warn(`could not remove kit-created copy ~/.claude/skills/${base} — remove it manually, then re-run sync`)
+      return false
+    }
   } else if (ctx.dryRun) {
     echo(`[dry-run] would create missing Claude symlink: ~/.claude/skills/${base} -> ${relTarget}`)
     return true
   }
 
   mkdirSync(claudeSkillsDir, { recursive: true })
-  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services)
+  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services) !== "failed"
 }
 
 function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
@@ -165,6 +192,36 @@ function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
     return lstatSync(path)
   } catch {
     return undefined
+  }
+}
+
+/**
+ * A link only counts when it RESOLVES to the skill directory. Windows picks a
+ * symlink's file-or-directory type by autodetecting the target against the
+ * process working directory, not the link's own directory, so a relative
+ * target can yield a symlink that exists but resolves to nothing. Checking
+ * resolution is what makes the next mechanism in the chain reachable.
+ */
+function linksToDirectory(path: string): boolean {
+  if (lstat(path)?.isSymbolicLink() !== true) return false
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function isKitOwnedCopy(path: string): boolean {
+  return lstat(path)?.isDirectory() === true && existsSync(p(path, COPY_MARKER))
+}
+
+function removeKitOwnedCopy(path: string): boolean {
+  if (!isKitOwnedCopy(path)) return false
+  try {
+    rmSync(path, { recursive: true, force: true })
+    return true
+  } catch {
+    return lstat(path) === undefined
   }
 }
 
@@ -187,25 +244,56 @@ function removeLink(path: string): boolean {
   }
 }
 
-/** skills::_link_or_copy — create a symlink without replacing its source. */
-export function linkOrCopy(target: string, link: string): boolean {
+/** skills::_link_or_copy — try directory links in host order, then a marked copy. */
+export function linkOrCopy(
+  target: string,
+  link: string,
+  kinds: ReadonlyArray<DirectoryLinkKind> = hostOs().directoryLinkKinds
+): LinkOutcome {
   const resolvedLink = resolve(link)
-  if (resolve(dirname(resolvedLink), target) === resolvedLink) return true
+  const absoluteTarget = resolve(dirname(resolvedLink), target)
+  if (absoluteTarget === resolvedLink) return "symlink"
   removeLink(link)
-  try {
-    symlinkSync(target, link)
-  } catch {
-    return false
+
+  for (const kind of kinds) {
+    try {
+      if (kind === "symlink") {
+        symlinkSync(target, link)
+      } else {
+        symlinkSync(absoluteTarget, link, "junction")
+      }
+      if (linksToDirectory(link)) return kind
+    } catch {
+      // The runtime decides whether each mechanism works; try the next one.
+    }
+    removeLink(link)
   }
-  return lstat(link)?.isSymbolicLink() === true
+
+  const copyDestinationWasAbsent = lstat(link) === undefined
+  try {
+    cpSync(absoluteTarget, link, { recursive: true })
+    writeFileSync(p(link, COPY_MARKER), "")
+    return "copy"
+  } catch {
+    if (copyDestinationWasAbsent) {
+      try {
+        rmSync(link, { recursive: true, force: true })
+      } catch {
+        // The outcome remains failed; a later sync can retry the destination.
+      }
+    }
+    return "failed"
+  }
 }
 
-function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): boolean {
-  const linked = linkOrCopy(target, link)
-  if (!linked) {
+function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): LinkOutcome {
+  const outcome = linkOrCopy(target, link)
+  if (outcome === "copy") {
+    services.logger.warn(`created copy fallback ${link} because directory linking is unavailable — a later sync will restore a real link once linking works`)
+  } else if (outcome === "failed") {
     services.logger.warn(`could not create symlink ${link}`)
   }
-  return linked
+  return outcome
 }
 
 // ----------------------------------------------------- prune + snapshot ----
@@ -230,8 +318,13 @@ async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): 
     if (current.includes(slug)) continue
     const base = slug.slice(slug.lastIndexOf("/") + 1)
     if (currentBases.has(base)) continue
+    const claudeEntry = p(ctx.home, ".claude", "skills", base)
+    const managedClaudeEntry = lstat(claudeEntry)?.isSymbolicLink() === true || isKitOwnedCopy(claudeEntry)
     if (ctx.dryRun) {
       echo(`[dry-run] kit-managed skill no longer in SoT — would remove: ${base}`)
+      if (managedClaudeEntry) {
+        echo(`[dry-run] kit-managed Claude skill entry — would remove: ~/.claude/skills/${base}`)
+      }
       continue
     }
     progress(`Removing universal skill ${base}...`)
@@ -239,13 +332,24 @@ async function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): 
       stdio: "ignore"
     })
     clearProgress()
-    if (res.error === undefined && res.exitCode === 0) {
-      removed++
-    } else {
+    if (res.error !== undefined || res.exitCode !== 0) {
       warn(`Failed to remove kit-managed skill: ${base}`)
       failed++
       failedSlugs.push(slug)
+      continue
     }
+    if (managedClaudeEntry) {
+      const entryStat = lstat(claudeEntry)
+      const removedClaudeEntry = entryStat === undefined
+        || (entryStat.isSymbolicLink() ? removeLink(claudeEntry) : removeKitOwnedCopy(claudeEntry))
+      if (!removedClaudeEntry) {
+        warn(`Failed to remove kit-managed Claude skill entry: ${base}`)
+        failed++
+        failedSlugs.push(slug)
+        continue
+      }
+    }
+    removed++
   }
 
   if (removed > 0) {

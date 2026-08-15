@@ -145,7 +145,7 @@ active logger binding.
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
 | `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, managed-skill snapshot |
+| `skillsSync.ts` | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot |
 | `toolchain.ts` | tool presence/version probes, verified-version floor reporting, report table |
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
