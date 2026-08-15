@@ -19,8 +19,8 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "models": { summary: "Model catalog, validation rules, model get/set", body: models },
   "toolchain": { summary: "Verified-version floors and the doctor table", body: toolchain },
   "plugins": { summary: "enabledPlugins tri-state + optional plugin opt-ins", body: plugins },
-  "install": { summary: "Install paths: repo checkout, bun add -g, curl installer", body: install },
-  "platforms": { summary: "Platform support: Linux/macOS x64 and arm64", body: platforms }
+  "install": { summary: "Install paths: repo checkout, bun add -g, POSIX/Windows installers", body: install },
+  "platforms": { summary: "Platform support: Linux, macOS, and Windows on x64 and arm64", body: platforms }
 }
 
 const topic = Argument.string("topic").pipe(

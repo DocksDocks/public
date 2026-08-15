@@ -234,6 +234,9 @@ cd ~/projects/public
 ./docks-kit toolchain check          # verify installed tools against SoT/toolchain.json floors
 ```
 
+On Windows, replace `./docks-kit` with `.\docks-kit.ps1` in these checkout
+commands.
+
 In an active Claude Code session, run `/reload-plugins` after `./docks-kit sync` to activate any newly installed plugins without restarting.
 
 The sync auto-detects the repo location, starts the Claude pipeline with the Bun bootstrap, materializes and merges `settings.json` (deep-merge with array concat+unique for `permissions.{allow,deny,ask}`), writes `showTurnDuration` to `~/.claude.json`, and copies the status line and hook scripts before atomically committing settings. Deploy-time modifiers run only after that base settings commit.

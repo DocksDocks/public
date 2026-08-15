@@ -1,7 +1,7 @@
 # Installing docks-kit
 
-Supported hosts are Linux x64/arm64 and macOS x64/arm64. Unsupported hosts
-fail before the launcher can fall back to Bun source.
+Supported hosts are Linux x64/arm64, macOS x64/arm64, and Windows x64/arm64.
+Hosts outside this matrix fail before a launcher can fall back to Bun source.
 
 ## 1. Repo checkout (development / current users)
 
@@ -11,11 +11,11 @@ cd ~/projects/public
 ./docks-kit sync
 ```
 
-On a supported host, the `./docks-kit` launcher prefers a compiled binary in
-`cli/dist/` only when its reported version matches `package.json`, then falls
-back to Bun-from-source (auto-installing Bun via download-then-run and
-`bun install --frozen-lockfile` when needed). An ignored stale build is reported
-and bypassed.
+POSIX hosts use `./docks-kit`. Windows uses `.\docks-kit.ps1`. Each
+launcher prefers a compiled binary in `cli/dist/` only when its reported
+version matches `package.json`. It then falls back to Bun-from-source and
+auto-installs Bun plus `node_modules` when needed. Each launcher reports and
+bypasses an ignored stale build.
 
 ## 2. Global via Bun
 
@@ -55,7 +55,7 @@ install; `docks-kit --version`, model catalogs, toolchain checks, and real sync
 remain functional with the script blocked. CI pins the one-package/one-command
 identity above and will fail if the script-bearing set changes.
 
-## 3. curl installer (Linux/macOS)
+## 3. curl installer (POSIX)
 
 ```
 curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
@@ -64,8 +64,22 @@ bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh
 
 Download-then-run, never `curl | bash` — stream truncation has bitten this
 kit before. The installer bootstraps Bun when absent, runs
-`bun add -g docks-kit`, and links the binary into `~/.local/bin`.
-This installer supports Linux and macOS only.
+`bun add -g docks-kit@latest`, and links the binary into `~/.local/bin`.
+This installer serves the two POSIX platforms. Windows uses the PowerShell
+installer below.
+
+## 4. PowerShell installer (Windows)
+
+```powershell
+Invoke-WebRequest https://raw.githubusercontent.com/DocksDocks/public/main/install.ps1 -OutFile "$env:TEMP\docks-kit-install.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\docks-kit-install.ps1"
+Remove-Item "$env:TEMP\docks-kit-install.ps1"
+```
+
+Download the script before execution. Never stream it into PowerShell. The
+installer bootstraps Bun when absent. It then runs
+`bun add -g docks-kit@latest` and copies the CLI plus Bun into
+`%USERPROFILE%\.local\bin`.
 
 ## Keeping the kit up to date
 
@@ -114,6 +128,7 @@ sync/config reads.
 - Bun for source/global installs; release binaries embed the runtime
 - Node/npm for npm-global LSP servers
 - jq is optional doctor/test tooling; sync has no jq runtime dependency
-- curl is required only when a requested Linux/macOS Bun bootstrap must download
-  an installer; an already-present Bun does not require it
+- curl is required only when a source launcher must download Bun. The POSIX
+  launchers run `install.sh`; Windows runs `install.ps1` through PowerShell.
+  An already-present Bun does not require curl.
 - See `docks-kit toolchain check` for the full picture on this machine
