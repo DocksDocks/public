@@ -171,6 +171,26 @@ describe.sequential("Claude runtime migration transaction", () => {
     }
   })
 
+  it("prunes the retired effect-kit plugin key from deployed settings", () => {
+    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
+    const deployed = isObject(drift["enabledPlugins"]) ? drift["enabledPlugins"] : {}
+    drift["enabledPlugins"] = { ...deployed, "effect-kit@docks": true }
+    const variant = materializeVariant("home-drift", {
+      ".claude/settings.json": stableStringify(drift)
+    })
+    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    try {
+      expect(run.exitCode).toBe(0)
+      const plugins = settingsObject(run.home)["enabledPlugins"]
+      if (!isObject(plugins)) throw new Error("enabledPlugins is not an object after sync")
+      expect(Object.prototype.hasOwnProperty.call(plugins, "effect-kit@docks")).toBe(false)
+      expect(plugins["docks@docks"]).toBe(true)
+    } finally {
+      cleanup([run])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
+
   it("migrates the four obsolete Write permission rules on a flag-less sync", () => {
     const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
     drift["permissions"] = {

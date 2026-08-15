@@ -73,8 +73,7 @@ esac`
       expect(argv).toContain("claude\tplugin install docks@docks")
       expect(argv.match(/^claude\tplugin update /gm)).toBeNull()
       expect(argv.match(/^codex\tplugin add .+$/gm)).toEqual([
-        "codex\tplugin add plan-lifecycle@docks",
-        "codex\tplugin add effect-kit@docks"
+        "codex\tplugin add plan-lifecycle@docks"
       ])
     } finally {
       cleanup([run])
@@ -111,7 +110,6 @@ describe.sequential("kit-scoped plugin refresh", () => {
       ])
       expect(argv.match(/^claude\tplugin update .+$/gm)).toEqual([
         "claude\tplugin update docks@docks --scope user",
-        "claude\tplugin update effect-kit@docks --scope user",
         "claude\tplugin update php-lsp@claude-plugins-official --scope user",
         "claude\tplugin update plan-lifecycle@docks --scope user",
         "claude\tplugin update typescript-lsp@claude-plugins-official --scope user"

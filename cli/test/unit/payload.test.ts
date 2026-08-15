@@ -79,15 +79,13 @@ describe("generated SoT payload", () => {
 
     expect(Object.keys(settings.enabledPlugins).sort()).toEqual([
       "docks@docks",
-      "effect-kit@docks",
       "php-lsp@claude-plugins-official",
       "plan-lifecycle@docks",
       "typescript-lsp@claude-plugins-official"
     ])
-    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true, true])
+    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true])
     expect(codexPluginIds).toEqual([
       "docks@docks",
-      "effect-kit@docks",
       "plan-lifecycle@docks",
     ])
     expect(marketplacePluginIds).toEqual(codexPluginIds)

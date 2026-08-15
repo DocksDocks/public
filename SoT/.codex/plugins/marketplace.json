@@ -19,20 +19,6 @@
       "category": "Productivity"
     },
     {
-      "name": "effect-kit",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/DocksDocks/docks.git",
-        "path": "./plugins/effect-kit",
-        "ref": "main"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "plan-lifecycle",
       "source": {
         "source": "git-subdir",

@@ -93,7 +93,7 @@ describe("Codex TOML merge durability", () => {
       const deployed = readFileSync(config, "utf8")
 
       expect(deployed).not.toContain("\r")
-      expect(deployed.match(/^\[/gm)).toHaveLength(8)
+      expect(deployed.match(/^\[/gm)).toHaveLength(7)
       expectTomlToParse(deployed)
     } finally {
       rmSync(root, { recursive: true, force: true })

@@ -202,7 +202,10 @@ function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
 
 const PLUGIN_TABLE_HEADER = /^\[plugins\."([^"]+)"\][ \t]*$/
 /** Plugin ids the kit retired; their deployed tables are stripped on every sync. */
-const RETIRED_PLUGIN_IDS: Readonly<Record<string, true>> = { "session-relay@docks": true }
+const RETIRED_PLUGIN_IDS: Readonly<Record<string, true>> = {
+  "effect-kit@docks": true,
+  "session-relay@docks": true
+}
 
 /** codex::remove_retired_plugin_tables — drop [plugins."<id>"] blocks for retired ids. */
 export function removeRetiredPluginTablesText(content: string): string {

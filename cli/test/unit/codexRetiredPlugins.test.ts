@@ -6,17 +6,17 @@ describe("removeRetiredPluginTablesText", () => {
     const input = `[plugins."docks@docks"]
 enabled = true
 
-[plugins."session-relay@docks"]
+[plugins."effect-kit@docks"]
 enabled = true
 
-[plugins."effect-kit@docks"]
+[plugins."plan-lifecycle@docks"]
 enabled = true
 `
 
     expect(removeRetiredPluginTablesText(input)).toBe(`[plugins."docks@docks"]
 enabled = true
 
-[plugins."effect-kit@docks"]
+[plugins."plan-lifecycle@docks"]
 enabled = true
 `)
   })

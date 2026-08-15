@@ -1,14 +1,14 @@
 {
   "cases": {
     "advisor-migration=prior-kit-settings state=default": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-advisor=default"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -22,9 +22,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e312eb5b70ffb78a6962224b8326da3619997c04671f49acf3f20707b5d7325e",
+        ".claude/settings.json": "sha256:083fc3ef34f48ccfb0b46f29dd0849f40089f05db6c161e353d0bd6a1d695b46",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -32,13 +32,13 @@
       }
     },
     "advisor-migration=prior-kit-settings state=flagless": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -52,9 +52,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e312eb5b70ffb78a6962224b8326da3619997c04671f49acf3f20707b5d7325e",
+        ".claude/settings.json": "sha256:083fc3ef34f48ccfb0b46f29dd0849f40089f05db6c161e353d0bd6a1d695b46",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -62,14 +62,14 @@
       }
     },
     "advisor-migration=prior-kit-settings state=off": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-advisor=off"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -83,9 +83,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e312eb5b70ffb78a6962224b8326da3619997c04671f49acf3f20707b5d7325e",
+        ".claude/settings.json": "sha256:083fc3ef34f48ccfb0b46f29dd0849f40089f05db6c161e353d0bd6a1d695b46",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -93,14 +93,14 @@
       }
     },
     "advisor-migration=prior-kit-settings state=on": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-advisor=on"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -114,9 +114,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:902a95c054173bed1f0e3f32795bdc5733825c04c0dbea93f571f84a965df0b7",
+        ".claude/settings.json": "sha256:f4f8e7212ed0e464de35f5a03fd765e60b61961d0b0b0793cc286c161db3568a",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -140,7 +140,7 @@
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:e0008da590d7601b7a7edd0462ba41be80272146da2369126bca92a4d89bbec4",
         ".codex/": "dir",
@@ -166,7 +166,7 @@
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:0084f0052182e47f63bef6f72948b6436d7a4dc919b6d3972d6cdd2f5ca183e9",
         ".codex/": "dir",
@@ -192,7 +192,7 @@
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
@@ -202,18 +202,18 @@
       }
     },
     "fixture=home-drift cmd=sync --prune": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\nnpx\t--yes skills@1.5.22 remove --global gone-skill -y\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\nclaude\tplugin uninstall -y --scope user effect-kit@docks\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\nnpx\t--yes skills@1.5.22 remove --global gone-skill -y\n",
       "command": [
         "sync",
         "--prune"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +5 ~0 -1)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +4 ~0 -2)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
@@ -225,32 +225,32 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e61e9d30343d6b55700119e106b9400e4b551aff1f5e7b3c4bb60e6fd747752d",
+        ".claude/settings.json": "sha256:0e8267a1cda93e3106268356b22eacf89826bc621f9b17dec0e1b5a7aea5635a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1ac03f52821ab8f944c67373b02945f2d9aee22f5d35b7cd135cd742c6b41594",
+        ".codex/config.toml": "sha256:e3e558b19831bc65e562ed65b391053d50a7717ae5de5e4306b4186212cdb2d1",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync --reconcile": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "--reconcile"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
@@ -262,21 +262,21 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:aa1c32d196fac7fe85e7c8e4babc65db709a1acd9acfaa8fdcf4b5254ef39742",
+        ".claude/settings.json": "sha256:57771176969030fe703c9a96309b9105a73540ab40723748c25523e490c7f5d5",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1ac03f52821ab8f944c67373b02945f2d9aee22f5d35b7cd135cd742c6b41594",
+        ".codex/config.toml": "sha256:e3e558b19831bc65e562ed65b391053d50a7717ae5de5e4306b4186212cdb2d1",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-drift cmd=sync agents": {
-      "argvLog": "bun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "",
       "command": [
         "sync",
         "agents"
@@ -292,7 +292,7 @@
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
@@ -302,13 +302,13 @@
       }
     },
     "fixture=home-drift cmd=sync claude": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -322,9 +322,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e61e9d30343d6b55700119e106b9400e4b551aff1f5e7b3c4bb60e6fd747752d",
+        ".claude/settings.json": "sha256:0e8267a1cda93e3106268356b22eacf89826bc621f9b17dec0e1b5a7aea5635a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -332,14 +332,14 @@
       }
     },
     "fixture=home-drift cmd=sync claude --claude-advisor=on": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-advisor=on"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -353,9 +353,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee2ce0648c63b66bef4969067a1f05be514ebb8fd4a583700921ae80be4083e2",
+        ".claude/settings.json": "sha256:1ff4cd6f46a0c2dd259701adf07302ce4cf7fea5fc68672b2fe45409ab9639c9",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -363,14 +363,14 @@
       }
     },
     "fixture=home-drift cmd=sync claude --claude-effort=default": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-effort=default"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -384,9 +384,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e61e9d30343d6b55700119e106b9400e4b551aff1f5e7b3c4bb60e6fd747752d",
+        ".claude/settings.json": "sha256:0e8267a1cda93e3106268356b22eacf89826bc621f9b17dec0e1b5a7aea5635a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -394,7 +394,7 @@
       }
     },
     "fixture=home-drift cmd=sync claude --claude-model=opus --claude-effort=low --claude-advisor=on --claude-compact-window=680k --claude-permissive": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
@@ -405,7 +405,7 @@
         "--claude-permissive"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m Compact window: set to 680000 tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)\n\u001b[1;32m[ok]\u001b[0m Effort: deployed settings effortLevel set to low (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m Compact window: set to 680000 tokens in deployed settings (SoT and model unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Permissive mode: permissions.ask/deny emptied in deployed settings (sandbox use; SoT unchanged)\n\u001b[1;32m[ok]\u001b[0m Effort: deployed settings effortLevel set to low (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -419,9 +419,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:c1e3b8fde7f552316ed24a4c4c8d5f0434117e6279a261818dfda99c87aec364",
+        ".claude/settings.json": "sha256:6b7afdf9d78277ed8a46a2a6b588bf5d442ed4a112bf9873bf97f129af59442a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -429,14 +429,14 @@
       }
     },
     "fixture=home-drift cmd=sync claude --claude-model=opus replay=2nd": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude",
         "--claude-model=opus"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
@@ -450,9 +450,9 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e61e9d30343d6b55700119e106b9400e4b551aff1f5e7b3c4bb60e6fd747752d",
+        ".claude/settings.json": "sha256:0e8267a1cda93e3106268356b22eacf89826bc621f9b17dec0e1b5a7aea5635a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -476,7 +476,7 @@
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
@@ -486,30 +486,30 @@
       }
     },
     "fixture=home-drift cmd=sync codex": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1ac03f52821ab8f944c67373b02945f2d9aee22f5d35b7cd135cd742c6b41594",
+        ".codex/config.toml": "sha256:e3e558b19831bc65e562ed65b391053d50a7717ae5de5e4306b4186212cdb2d1",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -517,31 +517,31 @@
       }
     },
     "fixture=home-drift cmd=sync codex --codex-effort=default": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex",
         "--codex-effort=default"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1ac03f52821ab8f944c67373b02945f2d9aee22f5d35b7cd135cd742c6b41594",
+        ".codex/config.toml": "sha256:e3e558b19831bc65e562ed65b391053d50a7717ae5de5e4306b4186212cdb2d1",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -549,31 +549,31 @@
       }
     },
     "fixture=home-drift cmd=sync codex --codex-effort=ultra": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex",
         "--codex-effort=ultra"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Effort: deployed Codex model_reasoning_effort set to ultra (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Effort: deployed Codex model_reasoning_effort set to ultra (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:736d3a0dff5d76560dcf6914686fd183e6e583efae3db1da832ea4976e048f1f",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:bdcc7c576341527b0e6b0289835347e4dca4168188222341aaf557bccd03b68f",
         ".claude/": "dir",
         ".claude/CLAUDE.md": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:cc67c893f5381fcba9371f3323180356cc07264327edae45f002690840e90fb9",
+        ".codex/config.toml": "sha256:1d78a94ec7b1264f2c40106ce237ed28580820b9ae5838574237728565727569",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -581,18 +581,18 @@
       }
     },
     "fixture=home-drift cmd=sync replay=2nd": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  1 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3f8035ffa50fc8a80f5dd5d4ceab66cdba27879ee50a1cc48eaa22c34f821128",
-        ".agents/plugins/marketplace.json.bak": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
+        ".agents/plugins/marketplace.json.bak": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:b4eac33d3e004d44ca765ee1b8e74ae076b08b3a0d71592d5ae5147871410348",
         ".claude.json": "sha256:20406d4fdd4bcb880b25285d0e84b3cb813a9e50e246a82e4b82d27d3543776e",
@@ -604,33 +604,33 @@
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
-        ".claude/plugins/installed_plugins.json": "sha256:a1619585b10014828ce03d880c3537b8ae03d541bcfbfbd53f228cc258ee4de0",
+        ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:e61e9d30343d6b55700119e106b9400e4b551aff1f5e7b3c4bb60e6fd747752d",
+        ".claude/settings.json": "sha256:0e8267a1cda93e3106268356b22eacf89826bc621f9b17dec0e1b5a7aea5635a",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:1ac03f52821ab8f944c67373b02945f2d9aee22f5d35b7cd135cd742c6b41594",
+        ".codex/config.toml": "sha256:e3e558b19831bc65e562ed65b391053d50a7717ae5de5e4306b4186212cdb2d1",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync --verbose replay=2nd": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "--verbose"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime already in sync (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (0 present)\n\u001b[1;32m[ok]\u001b[0m effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime already in sync (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (0 present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3f8035ffa50fc8a80f5dd5d4ceab66cdba27879ee50a1cc48eaa22c34f821128",
-        ".agents/plugins/marketplace.json.bak": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
+        ".agents/plugins/marketplace.json.bak": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -641,17 +641,17 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:18fefcc06ab392a48ce734135b45119a1136f80969b84bcbf16c2b349c8311de",
-        ".claude/settings.json.bak": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a",
+        ".claude/settings.json": "sha256:dc0b7bebb487913ff87bc32e82be420887da393ec702ce19aacf691a1bb19697",
+        ".claude/settings.json.bak": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync agents": {
-      "argvLog": "bun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "",
       "command": [
         "sync",
         "agents"
@@ -666,7 +666,7 @@
       }
     },
     "fixture=home-fresh cmd=sync agents --dry-run --claude-effort=low --claude-advisor=on --codex-effort=max": {
-      "argvLog": "bun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "",
       "command": [
         "sync",
         "agents",
@@ -676,19 +676,19 @@
         "--codex-effort=max"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;33m[warn]\u001b[0m --claude-effort ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --claude-advisor ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --codex-effort ignored: codex target not selected\n[dry-run] effect-solutions up to date (0.5.3)\n\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n",
+      "output": "\u001b[1;33m[warn]\u001b[0m --claude-effort ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --claude-advisor ignored: claude target not selected\n\u001b[1;33m[warn]\u001b[0m --codex-effort ignored: codex target not selected\n\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
     },
     "fixture=home-fresh cmd=sync claude": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -699,7 +699,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a"
+        ".claude/settings.json": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955"
       }
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor": {
@@ -798,7 +798,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a"
+        ".claude/settings.json": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=git": {
@@ -819,17 +819,17 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a"
+        ".claude/settings.json": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=jq variant=jq-absent-bun-hooks": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -840,25 +840,25 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a"
+        ".claude/settings.json": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955"
       }
     },
     "fixture=home-fresh cmd=sync codex": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -909,15 +909,15 @@
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m codex CLI not in PATH - deployed config/marketplace only; install Codex with: tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o \"$tmp\" && CODEX_NON_INTERACTIVE=1 sh \"$tmp\" | docs: https://developers.openai.com/codex/cli; then run: codex plugin add docks@docks\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m codex CLI not in PATH - deployed config/marketplace only; install Codex with: tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o \"$tmp\" && CODEX_NON_INTERACTIVE=1 sh \"$tmp\" | docs: https://developers.openai.com/codex/cli; then run: codex plugin add docks@docks\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -929,52 +929,52 @@
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync codex stubs=jq variant=jq-absent-native-sync": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync replay=2nd": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\nbun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3f8035ffa50fc8a80f5dd5d4ceab66cdba27879ee50a1cc48eaa22c34f821128",
-        ".agents/plugins/marketplace.json.bak": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
+        ".agents/plugins/marketplace.json.bak": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -985,27 +985,27 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:18fefcc06ab392a48ce734135b45119a1136f80969b84bcbf16c2b349c8311de",
-        ".claude/settings.json.bak": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a",
+        ".claude/settings.json": "sha256:dc0b7bebb487913ff87bc32e82be420887da393ec702ce19aacf691a1bb19697",
+        ".claude/settings.json.bak": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
     },
     "fixture=home-fresh cmd=sync stubs=git": {
-      "argvLog": "bun\tpm -g ls\nnpm\tview effect-solutions version\n",
+      "argvLog": "",
       "command": [
         "sync"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/.kit-managed-skills": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".agents/skills/": "dir",
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -1016,10 +1016,10 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:d07187b655c1a1f1e97a7929182158bc1b21cd1dbc982327effee10d1bd4987a",
+        ".claude/settings.json": "sha256:cba2b0eccc6e8363bc02e7db3f2bb39aa16456a06db35b622d3670b252e2a955",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:57f463468379c0f57289129c62f9b1dbf860ffcbe2d280b6a0d220507ef572be",
+        ".codex/config.toml": "sha256:b10faa401570e63574e61e0fd77bae93fcb6b5e029a540fe40a9d0c1c9f85175",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1118,13 +1118,13 @@
       }
     },
     "migration=legacy-claude-hook-scripts": {
-      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin install effect-kit@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
+      "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin marketplace update docks\n",
       "command": [
         "sync",
         "claude"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +4 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
         ".bashrc": "sha256:db2b4470424242a285e3a20f274a03b16faca38431154535eda11e190f925b15",
         ".claude.json": "sha256:3abe39371eda7e7b6c0c0e9b2593444bdeb62485adffd963b78cf572c94c1501",
@@ -1135,26 +1135,26 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:759bf653af19306566ff4bc9d0c60d365a7a9d9fdcb51530fe1d76373a69c1f9",
+        ".claude/settings.json": "sha256:8f73e8de0b4c958400a178d3fcc0c1703dd13daa4f3f0ed097b75834664a28b5",
         ".claude/settings.json.bak": "sha256:fb9f3cab20327b58f92d501faeddcf50c6529d164e98beecaffea4359cc80ae9"
       }
     },
     "toml=01-top-level-comments.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:d865a0c12cf66b2ee4c51eb2852f10ec65e12ccde6f5501f18ce2f66cf620a35",
+        ".codex/config.toml": "sha256:9b9d042d62064ad4ae27eed06afd8bb35fb91e6ffb191777fe7070ebd281600f",
         ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1176,21 +1176,21 @@
       }
     },
     "toml=02-first-table-insert.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:7e2fc55986bc7180e588022239a86fafeb08d7996f476a7780ed3158612eaa21",
+        ".codex/config.toml": "sha256:55ee3e0dce1b107d12f7fec988d8b2d2f9c5cfa4fe5c063f4b53662c57c6c6a2",
         ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1212,21 +1212,21 @@
       }
     },
     "toml=03-features-only-landlock.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:cdf97c53ebab5211d760e9bcb48e19605e5ff6d25519cf9bfcaab78171f7badf",
+        ".codex/config.toml": "sha256:b890e35df92843a4dd15d297023aa186a481e99b53bea89236e0e29fe4554b96",
         ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1248,21 +1248,21 @@
       }
     },
     "toml=04-features-extra-keys.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:ded87a30870426076c12f9fc8a0e7ea261077359adfbebf24b3e0af2f6966082",
+        ".codex/config.toml": "sha256:b11896950423f2d4b060d58b4e181d2184224801d1b4d319fb611be3d30a70c3",
         ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1284,21 +1284,21 @@
       }
     },
     "toml=05-user-tables.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:a850091b653e0a37b347b07cc6c8b78c67f8b7b088db7925d7ffca1bbcda34b9",
+        ".codex/config.toml": "sha256:7f00d82d23f1066d827afbaa05ce4335fc9b132ff1cb99d898ded9a2915e7c05",
         ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1320,21 +1320,21 @@
       }
     },
     "toml=06-sot-table-replace.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:ded87a30870426076c12f9fc8a0e7ea261077359adfbebf24b3e0af2f6966082",
+        ".codex/config.toml": "sha256:b11896950423f2d4b060d58b4e181d2184224801d1b4d319fb611be3d30a70c3",
         ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1356,21 +1356,21 @@
       }
     },
     "toml=07-dotted-quoted-headers.toml": {
-      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\ncodex\tplugin add effect-kit@docks\n",
+      "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
       "command": [
         "sync",
         "codex"
       ],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 4 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".agents/": "dir",
         ".agents/plugins/": "dir",
-        ".agents/plugins/marketplace.json": "sha256:3beb41b00e0a35dbd44be94f4e6a0bf537c0d8ffb264ac28e21bb9a1945fd80f",
+        ".agents/plugins/marketplace.json": "sha256:2250b3c1bfd9fcc74c0634c8fcac7463049a3d54966fd3477ecc2f9b8ab44da1",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:badeeb8727ec5b8bb9cd74e1fe6d75779090084cba5a794fe361461f15218d45",
+        ".codex/config.toml": "sha256:814f56188ea5bd447f9eb1849615a6849041b0df6174c1e4d37f6fff3c16bc99",
         ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"

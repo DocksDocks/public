@@ -366,6 +366,7 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_CODE_DISABLE_1M_CONTEXT",
     "env.CLAUDE_CODE_FORK_SUBAGENT",
     "env.CLAUDE_CODE_EFFORT_LEVEL",
+    "enabledPlugins.effect-kit@docks",
     "enabledPlugins.session-relay@docks",
     "hooks.PreToolUse"
   ],
