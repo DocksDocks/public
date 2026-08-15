@@ -29,6 +29,7 @@ function bunRuntime(): string {
 
 const BUN_RUNTIME = bunRuntime()
 const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-")
+const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
 
 export interface EngineRun {
   readonly exitCode: number
@@ -52,14 +53,25 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
+/**
+ * `bun --preload <platform pin> cli/src/main.ts`, shared by the raw-engine and
+ * public-CLI children. Absolute bun path so the PATH stub `bun` never shadows
+ * the runtime, and the preload on BOTH paths so no run \u2014 snapshot, invariant,
+ * or unit \u2014 observes the recording host's platform.
+ */
+function bunCliInvocation(): string {
+  return (
+    `${shellQuote(BUN_RUNTIME)} ` +
+    `--preload ${shellQuote(join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"))} ` +
+    `${shellQuote(join(REPO_DIR, "cli", "src", "main.ts"))}`
+  )
+}
+
 function engineCommand(args: ReadonlyArray<string>): string {
   const quotedArgs = args.map(shellQuote).join(" ")
-  // Raw harness channel (bypasses effect/unstable/cli so tests drive the engine's
-  // internal argv directly); absolute bun path so the PATH stub `bun` never
-  // shadows the runtime.
-  const command =
-    `DOCKS_KIT_ENGINE=native-raw exec ${shellQuote(BUN_RUNTIME)} ` +
-    `${shellQuote(join(REPO_DIR, "cli", "src", "main.ts"))}`
+  // Raw harness channel: bypasses effect/unstable/cli so tests drive the
+  // engine's internal argv directly.
+  const command = `DOCKS_KIT_ENGINE=native-raw exec ${bunCliInvocation()}`
   return quotedArgs === "" ? command : `${command} ${quotedArgs}`
 }
 
@@ -124,9 +136,13 @@ function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): 
     GOLDEN_STUB_DIR: stubDir,
     LC_ALL: "C",
     TERM: "dumb",
-    // The native side runs under the bun runtime, which would otherwise
-    // drop its install cache inside the temp HOME and pollute the tree diff.
+    // The native side runs under the bun runtime, which would otherwise drop
+    // both its install cache and its >50KB transpiler cache inside the temp
+    // HOME and pollute the tree diff. The transpiler cache is keyed by source
+    // content, so leaving it in HOME makes every golden depend on the current
+    // bytes of sotPayload.ts.
     BUN_INSTALL_CACHE_DIR,
+    BUN_RUNTIME_TRANSPILER_CACHE_PATH,
     // env is constructed from scratch (no process.env spread), so engine
     // globals like DRY_RUN can never leak in from the invoking shell.
     AGENTS_DIR: join(home, ".agents"),
@@ -208,8 +224,7 @@ export function runPublicCli(
   writeFileSync(argvLog, "")
   const quotedArgs = args.map(shellQuote).join(" ")
   const command =
-    `exec ${shellQuote(BUN_RUNTIME)} ${shellQuote(join(REPO_DIR, "cli", "src", "main.ts"))}` +
-    (quotedArgs === "" ? "" : ` ${quotedArgs}`)
+    `exec ${bunCliInvocation()}` + (quotedArgs === "" ? "" : ` ${quotedArgs}`)
   const result = spawnSync("bash", ["-c", command], {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),

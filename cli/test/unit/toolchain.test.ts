@@ -6,6 +6,13 @@ import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
 
 afterAll(cleanupTemporaryDirs)
 
+/**
+ * Each case spawns the real public CLI, so cold Bun startup dominates the
+ * runtime. Vitest's 5s default is exceeded when the whole suite runs in
+ * parallel; the work itself takes about 1s.
+ */
+const SPAWN_TIMEOUT_MS = 30_000
+
 describe("toolchain prompt", () => {
   it("keeps the interactive prompt as raw stderr bytes", () => {
     const input = Buffer.from("n\r\n")
@@ -41,7 +48,7 @@ describe("toolchain report", () => {
     } finally {
       rmSync(run.home, { recursive: true, force: true })
     }
-  })
+  }, SPAWN_TIMEOUT_MS)
 })
 
 describe("public toolchain ensure", () => {
@@ -59,5 +66,5 @@ describe("public toolchain ensure", () => {
     } finally {
       rmSync(run.home, { recursive: true, force: true })
     }
-  })
+  }, SPAWN_TIMEOUT_MS)
 })

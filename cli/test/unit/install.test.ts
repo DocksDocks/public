@@ -7,6 +7,18 @@ import { afterEach, describe, expect, it } from "vitest"
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const roots: Array<string> = []
 
+/**
+ * Resolve a coreutil to its real path. macOS ships `mktemp` in /usr/bin, not
+ * /bin, so a hardcoded `/bin/<cmd>` symlink dangles and empties the fixture PATH.
+ */
+function systemCommand(name: string): string {
+  for (const dir of ["/bin", "/usr/bin", "/usr/local/bin"]) {
+    const candidate = join(dir, name)
+    if (existsSync(candidate)) return candidate
+  }
+  throw new Error(`required system command not found: ${name}`)
+}
+
 function verifiedBunVersion(): string {
   const manifest: unknown = JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8"))
   if (!manifest || typeof manifest !== "object" || !("tools" in manifest)) throw new Error("toolchain tools are missing")
@@ -71,6 +83,9 @@ esac
       ...process.env,
       HOME: root,
       PATH: path,
+      // find_bun probes $BUN_INSTALL before $HOME/.bun; a developer's real
+      // export would otherwise resolve outside the sandbox.
+      BUN_INSTALL: join(root, ".bun"),
       FAKE_GLOBAL_BIN_MODE: options.globalBinMode ?? "ok"
     }
   })
@@ -103,7 +118,7 @@ describe("global installer completion", () => {
     mkdirSync(fakeBin, { recursive: true })
     mkdirSync(globalBin, { recursive: true })
     for (const command of ["bash", "cat", "chmod", "cp", "ln", "mkdir", "mktemp", "rm"]) {
-      symlinkSync(`/bin/${command}`, join(fakeBin, command))
+      symlinkSync(systemCommand(command), join(fakeBin, command))
     }
 
     const cli = join(globalBin, "docks-kit")
@@ -147,7 +162,11 @@ cp '${downloadedInstaller}' "\$out"
       env: {
         ...process.env,
         HOME: root,
-        PATH: fakeBin
+        PATH: fakeBin,
+        // This case deliberately keeps Bun off PATH so the bootstrap branch
+        // runs; without pinning BUN_INSTALL, find_bun would resolve a real
+        // developer install and skip the pinned installer entirely.
+        BUN_INSTALL: join(root, ".bun")
       }
     })
 
