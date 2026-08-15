@@ -90,7 +90,29 @@ describe("Codex TOML merge durability", () => {
       const deployed = readFileSync(config, "utf8")
 
       expect(deployed).not.toContain("\r")
-      expect(deployed.match(/^\[/gm)).toHaveLength(7)
+      expect(deployed.match(/^\[/gm)).toHaveLength(8)
+      expectTomlToParse(deployed)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("declares and preserves the elevated native Windows sandbox", async () => {
+    expect(sotConfig).toMatch(/^\[windows\]\nsandbox = "elevated"$/m)
+
+    const root = mkdtempSync(join(tmpdir(), "codex-windows-merge-"))
+    const config = prepareConfig(
+      root,
+      'model = "user-choice"\n\n[windows]\nsandbox = "unelevated"\n'
+    )
+
+    try {
+      await codexSync(testCtx(root))
+      const deployed = readFileSync(config, "utf8")
+
+      expect(deployed.match(/^\[windows\]$/gm)).toHaveLength(1)
+      expect(deployed).toMatch(/^\[windows\]\nsandbox = "elevated"$/m)
+      expect(deployed).not.toContain('sandbox = "unelevated"')
       expectTomlToParse(deployed)
     } finally {
       rmSync(root, { recursive: true, force: true })

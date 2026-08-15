@@ -3,11 +3,25 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { mergeSettings } from "../../src/engine-native/settings"
+import { kitHome } from "../../src/kitHome"
 import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
 
 afterAll(cleanupTemporaryDirs)
+
+type PermissionListName = "allow" | "deny" | "ask"
+
+interface ClaudeSotSettings {
+  readonly permissions: Record<PermissionListName, ReadonlyArray<string>>
+  readonly hooks: {
+    readonly PostToolUseFailure: ReadonlyArray<{ readonly matcher?: string }>
+  }
+}
+
+const claudeSotSettings = JSON.parse(
+  readFileSync(join(kitHome(), "SoT", ".claude", "settings.json"), "utf8")
+) as ClaudeSotSettings
 
 function removeRunAndVariant(home: string, variant: string): void {
   rmSync(home, { recursive: true, force: true })
@@ -15,6 +29,53 @@ function removeRunAndVariant(home: string, variant: string): void {
 }
 
 describe.sequential("Claude settings truth", () => {
+  it("mirrors every Bash permission rule for PowerShell without broadening allow or ask", () => {
+    for (const listName of ["allow", "deny", "ask"] as const) {
+      const rules = claudeSotSettings.permissions[listName]
+      const bashRules = rules.filter((rule) => rule.startsWith("Bash("))
+      const powerShellRules = rules.filter((rule) => rule.startsWith("PowerShell("))
+      const mirrors = bashRules.map(
+        (rule) => `PowerShell(${rule.slice("Bash(".length, -1)})`
+      )
+
+      expect(powerShellRules).toEqual(expect.arrayContaining(mirrors))
+      expect(Math.max(...bashRules.map((rule) => rules.indexOf(rule)))).toBeLessThan(
+        Math.min(...powerShellRules.map((rule) => rules.indexOf(rule)))
+      )
+      if (listName !== "deny") expect(powerShellRules).toEqual(mirrors)
+    }
+  })
+
+  it("denies PowerShell-native destructive command forms", () => {
+    const deny = claudeSotSettings.permissions.deny
+    const recursiveForceDeletes = ["Remove-Item", "ri", "del", "erase", "rd", "rmdir"].flatMap(
+      (command) =>
+        ["/", "~", "$env:USERPROFILE"].flatMap((target) => [
+          `PowerShell(${command} *-Recurse*-Force* ${target}*)`,
+          `PowerShell(${command} *-Force*-Recurse* ${target}*)`
+        ])
+    )
+
+    expect(deny).toEqual(
+      expect.arrayContaining([
+        ...recursiveForceDeletes,
+        "PowerShell(sudo *)",
+        "PowerShell(Start-Process *-Verb RunAs*)",
+        "PowerShell(Invoke-Expression *)",
+        "PowerShell(iex *)",
+        "PowerShell(Format-Volume *)",
+        "PowerShell(icacls */grant*Everyone:F*)",
+        "PowerShell(icacls */grant*Everyone:(F)*)"
+      ])
+    )
+  })
+
+  it("runs the shell failure hook for Bash and PowerShell", () => {
+    expect(claudeSotSettings.hooks.PostToolUseFailure).toEqual(
+      expect.arrayContaining([expect.objectContaining({ matcher: "Bash|PowerShell" })])
+    )
+  })
+
   it.each([
     ["null", "null"],
     ["array", "[]"],
