@@ -54,8 +54,12 @@ export const windows: HostOs = {
   statusLineCommand: (bun, script) => {
     const bunLiteral = powershellLiteral(bun)
     const scriptLiteral = powershellLiteral(script)
+    // Module auto-loading reports "Preparing modules for first use" as a
+    // progress record, which a redirected host serializes to stderr as CLIXML.
+    // Claude runs this command every turn, and the records recur across runs, so
+    // silencing progress inside the stored command keeps its streams clean.
     return encodedPowerShellCommand(
-      `if ((Test-Path -LiteralPath ${bunLiteral} -PathType Leaf) -and (Test-Path -LiteralPath ${scriptLiteral} -PathType Leaf)) { & ${bunLiteral} ${scriptLiteral} }`
+      `$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath ${bunLiteral} -PathType Leaf) -and (Test-Path -LiteralPath ${scriptLiteral} -PathType Leaf)) { & ${bunLiteral} ${scriptLiteral} }`
     )
   },
   failureHookCommand: (command) => {

@@ -96,11 +96,11 @@ describe("statusline shell guards", () => {
     expect(statusLineCommand(POSIX_RUNTIME, hostOs("darwin"))).toBe(expected)
   })
 
-  it("decodes the Windows command to the guarded PowerShell script", () => {
+  it("decodes the Windows command to a progress-silenced guarded PowerShell script", () => {
     const runtime = claudeRuntimePaths("C:/Users/test/.claude", "C:/Users/test/.bun/bin/bun.exe")
     const command = hostOs("windows").statusLineCommand(runtime.bun, runtime.statusline)
     expect(decodePowerShellCommand(command)).toBe(
-      "if ((Test-Path -LiteralPath 'C:/Users/test/.bun/bin/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/test/.claude/bin/statusline.mjs' -PathType Leaf)) { & 'C:/Users/test/.bun/bin/bun.exe' 'C:/Users/test/.claude/bin/statusline.mjs' }"
+      "$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath 'C:/Users/test/.bun/bin/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/test/.claude/bin/statusline.mjs' -PathType Leaf)) { & 'C:/Users/test/.bun/bin/bun.exe' 'C:/Users/test/.claude/bin/statusline.mjs' }"
     )
   })
 
@@ -110,7 +110,7 @@ describe("statusline shell guards", () => {
       "C:/Users/O'Brien/`scripts/statusline.mjs"
     )
     expect(decodePowerShellCommand(command)).toBe(
-      "if ((Test-Path -LiteralPath 'C:/Users/O''Brien/$bun/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/O''Brien/`scripts/statusline.mjs' -PathType Leaf)) { & 'C:/Users/O''Brien/$bun/bun.exe' 'C:/Users/O''Brien/`scripts/statusline.mjs' }"
+      "$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath 'C:/Users/O''Brien/$bun/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/O''Brien/`scripts/statusline.mjs' -PathType Leaf)) { & 'C:/Users/O''Brien/$bun/bun.exe' 'C:/Users/O''Brien/`scripts/statusline.mjs' }"
     )
   })
 })

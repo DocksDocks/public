@@ -156,6 +156,7 @@ try {
     const bunLiteral = `'${runtime.bun.replaceAll("'", "''")}'`
     const statuslineLiteral = `'${runtime.statusline.replaceAll("'", "''")}'`
     const expectedScript =
+      `$ProgressPreference = 'SilentlyContinue'; ` +
       `if ((Test-Path -LiteralPath ${bunLiteral} -PathType Leaf) -and ` +
       `(Test-Path -LiteralPath ${statuslineLiteral} -PathType Leaf)) { & ${bunLiteral} ${statuslineLiteral} }`
     if (decoded !== expectedScript) {
