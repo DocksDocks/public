@@ -121,7 +121,11 @@ try {
   }
   const measuredDirect = directTimings.slice(5).sort((a, b) => a - b)
   const directP95 = measuredDirect[Math.ceil(measuredDirect.length * 0.95) - 1]
-  const directCeiling = 100
+  // Windows process creation costs materially more than a POSIX fork/exec and
+  // the runner scans every spawn, so one absolute ceiling would flag the host
+  // instead of a regression. Both values stay under a single added external
+  // process, which is the class this gate exists to catch.
+  const directCeiling = mode === "windows" ? 250 : 100
   if (directP95 > directCeiling) {
     throw new Error(`statusLine direct Bun p95 ${directP95.toFixed(2)}ms exceeds ${directCeiling}ms`)
   }
