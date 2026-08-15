@@ -38,9 +38,12 @@ function launcherFixture(options: {
 
   copyFileSync(join(REPO_DIR, "docks-kit.ps1"), join(root, "docks-kit.ps1"))
   writeFileSync(join(root, "package.json"), `${JSON.stringify({ version: options.checkoutVersion }, null, 2)}\n`)
+  // The fake bun below is a copy of whatever interpreter runs this suite, which
+  // on Windows is Node (the `vitest` bin shim is a `.cmd` that calls `node`), so
+  // the fake source must use the argv both runtimes define.
   writeFileSync(
     join(root, "cli", "src", "main.ts"),
-    "console.log(`source:${Bun.argv.slice(2).join(\" \")}`)\n"
+    "console.log(`source:${process.argv.slice(2).join(\" \")}`)\n"
   )
   copyFileSync(process.execPath, join(binDir, "bun.exe"))
 
