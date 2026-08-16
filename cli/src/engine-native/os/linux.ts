@@ -27,13 +27,16 @@ export const linux: HostOs = {
       }
     }
   },
-  profileCandidates: [".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"],
-  profileTarget: (shell) => {
-    const value = shell ?? "bash"
-    const shellName = value.slice(value.lastIndexOf("/") + 1)
-    return shellName === "zsh" ? ".zshrc" : shellName === "bash" ? ".bashrc" : ".profile"
-  },
-  environmentExport: (name, value) => `export ${name}=${value}`,
+  environmentSetting: (name, value) => ({
+    kind: "profile",
+    candidates: [".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"],
+    target: (shell) => {
+      const shellPath = shell ?? "bash"
+      const shellName = shellPath.slice(shellPath.lastIndexOf("/") + 1)
+      return shellName === "zsh" ? ".zshrc" : shellName === "bash" ? ".bashrc" : ".profile"
+    },
+    line: `export ${name}=${value}`
+  }),
   statusLineCommand: (bun, script) => {
     const bunLiteral = posixLiteral(bun)
     const scriptLiteral = posixLiteral(script)

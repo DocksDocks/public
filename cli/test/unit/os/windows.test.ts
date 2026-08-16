@@ -47,17 +47,19 @@ describe("Windows host OS", () => {
         ]
       }
     })
-    expect(host.profileCandidates).toEqual([
-      "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
-      "Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
-    ])
-    expect(host.profileTarget(undefined)).toBe("Documents/PowerShell/Microsoft.PowerShell_profile.ps1")
-    expect(host.profileTarget("C:/Program Files/PowerShell/7/pwsh.exe")).toBe(
-      "Documents/PowerShell/Microsoft.PowerShell_profile.ps1"
-    )
-    expect(host.environmentExport("ENABLE_CLAUDEAI_MCP_SERVERS", "false")).toBe(
-      "$env:ENABLE_CLAUDEAI_MCP_SERVERS = \"false\""
-    )
+    expect(host.environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false")).toEqual({
+      kind: "command",
+      probe: {
+        command: "reg",
+        args: ["query", "HKCU\\Environment", "/v", "ENABLE_CLAUDEAI_MCP_SERVERS"]
+      },
+      apply: {
+        command: "setx",
+        args: ["ENABLE_CLAUDEAI_MCP_SERVERS", "false"]
+      },
+      location: "user environment",
+      manualHint: "set it manually in System Properties > Environment Variables"
+    })
     expect(host.statusLineCommand("C:/Tools/bun.exe", "C:/Users/test/.claude/bin/statusline.mjs")).toMatch(
       /^powershell\.exe -NoProfile -NonInteractive -EncodedCommand [A-Za-z0-9+/=]+$/
     )
@@ -70,14 +72,12 @@ describe("Windows host OS", () => {
       "bunExecutableName",
       "bunInstaller",
       "directoryLinkKinds",
-      "environmentExport",
+      "environmentSetting",
       "executableSuffixes",
       "failureHookCommand",
       "id",
       "installHint",
       "invoke",
-      "profileCandidates",
-      "profileTarget",
       "statusLineCommand",
       "supportsBubblewrap",
       "toolchainOs"

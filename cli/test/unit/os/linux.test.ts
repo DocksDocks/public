@@ -30,14 +30,15 @@ describe("Linux host OS", () => {
         args: ["/tmp/bun/install.sh", "bun-v1.3.14"]
       }
     })
-    expect(host.profileCandidates).toEqual([".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"])
-    expect(host.profileTarget(undefined)).toBe(".bashrc")
-    expect(host.profileTarget("/bin/zsh")).toBe(".zshrc")
-    expect(host.profileTarget("/usr/local/bin/bash")).toBe(".bashrc")
-    expect(host.profileTarget("/bin/fish")).toBe(".profile")
-    expect(host.environmentExport("ENABLE_CLAUDEAI_MCP_SERVERS", "false")).toBe(
-      "export ENABLE_CLAUDEAI_MCP_SERVERS=false"
-    )
+    const setting = host.environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false")
+    expect(setting.kind).toBe("profile")
+    if (setting.kind !== "profile") throw new Error("expected a profile environment setting")
+    expect(setting.candidates).toEqual([".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"])
+    expect(setting.target(undefined)).toBe(".bashrc")
+    expect(setting.target("/bin/zsh")).toBe(".zshrc")
+    expect(setting.target("/usr/local/bin/bash")).toBe(".bashrc")
+    expect(setting.target("/bin/fish")).toBe(".profile")
+    expect(setting.line).toBe("export ENABLE_CLAUDEAI_MCP_SERVERS=false")
     expect(host.statusLineCommand("/home/test/.bun/bin/bun", "/home/test/.claude/bin/statusline.mjs")).toBe(
       "test -x '/home/test/.bun/bin/bun' && test -f '/home/test/.claude/bin/statusline.mjs' && exec '/home/test/.bun/bin/bun' '/home/test/.claude/bin/statusline.mjs' || true"
     )
@@ -50,14 +51,12 @@ describe("Linux host OS", () => {
       "bunExecutableName",
       "bunInstaller",
       "directoryLinkKinds",
-      "environmentExport",
+      "environmentSetting",
       "executableSuffixes",
       "failureHookCommand",
       "id",
       "installHint",
       "invoke",
-      "profileCandidates",
-      "profileTarget",
       "statusLineCommand",
       "supportsBubblewrap",
       "toolchainOs"
@@ -88,14 +87,15 @@ describe("Linux host OS", () => {
         args: ["/tmp/bun/install.sh", "bun-v1.3.14"]
       }
     })
-    expect(host.profileCandidates).toEqual([".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"])
-    expect(host.profileTarget(undefined)).toBe(".bashrc")
-    expect(host.profileTarget("/bin/zsh")).toBe(".zshrc")
-    expect(host.profileTarget("/usr/local/bin/bash")).toBe(".bashrc")
-    expect(host.profileTarget("/bin/fish")).toBe(".profile")
-    expect(host.environmentExport("ENABLE_CLAUDEAI_MCP_SERVERS", "false")).toBe(
-      "export ENABLE_CLAUDEAI_MCP_SERVERS=false"
-    )
+    const setting = host.environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false")
+    expect(setting.kind).toBe("profile")
+    if (setting.kind !== "profile") throw new Error("expected a profile environment setting")
+    expect(setting.candidates).toEqual([".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"])
+    expect(setting.target(undefined)).toBe(".bashrc")
+    expect(setting.target("/bin/zsh")).toBe(".zshrc")
+    expect(setting.target("/usr/local/bin/bash")).toBe(".bashrc")
+    expect(setting.target("/bin/fish")).toBe(".profile")
+    expect(setting.line).toBe("export ENABLE_CLAUDEAI_MCP_SERVERS=false")
     expect(host.statusLineCommand("/home/test/.bun/bin/bun", "/home/test/.claude/bin/statusline.mjs")).toBe(
       "test -x '/home/test/.bun/bin/bun' && test -f '/home/test/.claude/bin/statusline.mjs' && exec '/home/test/.bun/bin/bun' '/home/test/.claude/bin/statusline.mjs' || true"
     )
@@ -108,14 +108,12 @@ describe("Linux host OS", () => {
       "bunExecutableName",
       "bunInstaller",
       "directoryLinkKinds",
-      "environmentExport",
+      "environmentSetting",
       "executableSuffixes",
       "failureHookCommand",
       "id",
       "installHint",
       "invoke",
-      "profileCandidates",
-      "profileTarget",
       "statusLineCommand",
       "supportsBubblewrap",
       "toolchainOs"

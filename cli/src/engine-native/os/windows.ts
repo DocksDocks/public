@@ -45,12 +45,19 @@ export const windows: HostOs = {
       }
     }
   },
-  profileCandidates: [
-    "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
-    "Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1"
-  ],
-  profileTarget: () => "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
-  environmentExport: (name, value) => `$env:${name} = "${value}"`,
+  environmentSetting: (name, value) => ({
+    kind: "command",
+    probe: {
+      command: "reg",
+      args: ["query", "HKCU\\Environment", "/v", name]
+    },
+    apply: {
+      command: "setx",
+      args: [name, value]
+    },
+    location: "user environment",
+    manualHint: "set it manually in System Properties > Environment Variables"
+  }),
   statusLineCommand: (bun, script) => {
     const bunLiteral = powershellLiteral(bun)
     const scriptLiteral = powershellLiteral(script)

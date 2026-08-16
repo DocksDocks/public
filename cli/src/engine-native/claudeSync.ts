@@ -15,7 +15,6 @@ import {
   rmSync,
   writeFileSync
 } from "node:fs"
-import { dirname } from "node:path"
 import { bunBootstrap } from "./bun"
 import {
   syncClaudeAdvisor,
@@ -77,7 +76,7 @@ export async function claudeSync(ctx: Ctx): Promise<ClaudeRuntimeState> {
   syncClaudeEffort(ctx, ctx.claudeEffort)
   syncClaudeAdvisor(ctx, ctx.claudeAdvisor)
   syncClaudeJson(ctx)
-  syncConnectorEnv(ctx)
+  await syncConnectorEnv(ctx)
   await syncPlugins(ctx, claudeDir)
   await syncOptionalPlugins(ctx, claudeDir)
   await syncLspServers(ctx)
@@ -322,39 +321,62 @@ function syncClaudeJson(ctx: Ctx): void {
 
 // -------------------------------------------------------- connector env ----
 
-function syncConnectorEnv(ctx: Ctx): void {
-  const { change, echo, verbose } = ctx.services.logger
+async function syncConnectorEnv(ctx: Ctx): Promise<void> {
+  const { change, echo, verbose, warn } = ctx.services.logger
+  const name = "ENABLE_CLAUDEAI_MCP_SERVERS"
+  const setting = hostOs().environmentSetting(name, "false")
 
-  const host = hostOs()
-  const line = host.environmentExport("ENABLE_CLAUDEAI_MCP_SERVERS", "false")
-  const marker = "# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
-  const candidates = host.profileCandidates.map((candidate) => p(ctx.home, candidate))
+  switch (setting.kind) {
+    case "profile": {
+      const marker = "# docks-kit: disable claude.ai cloud MCP connectors (set =true to keep them)"
+      const candidates = setting.candidates.map((candidate) => p(ctx.home, candidate))
 
-  for (const f of candidates) {
-    if (existsSync(f) && readFileSync(f, "utf8").includes("ENABLE_CLAUDEAI_MCP_SERVERS")) {
+      for (const f of candidates) {
+        if (existsSync(f) && readFileSync(f, "utf8").includes(name)) {
+          if (ctx.dryRun) {
+            echo(`[dry-run] ${name} already in ${f} — would skip`)
+          } else {
+            verbose(`claude.ai connectors: ${name} already set in ${f} (left as-is)`)
+          }
+          return
+        }
+      }
+
+      const target = p(ctx.home, setting.target(process.env["SHELL"]))
       if (ctx.dryRun) {
-        echo(`[dry-run] ENABLE_CLAUDEAI_MCP_SERVERS already in ${f} — would skip`)
+        echo(`[dry-run] append '${setting.line}' to ${target}`)
+        return
+      }
+
+      appendFileSync(target, `\n${marker}\n${setting.line}\n`)
+      change(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
+      ctx.nextStepTriggers.claudeRestart = true
+      return
+    }
+    case "command": {
+      const existing = await spawnProcess(setting.probe.command, setting.probe.args, { stdio: "ignore" })
+      if (existing.error === undefined && existing.exitCode === 0) {
+        if (ctx.dryRun) echo(`[dry-run] ${name} already in ${setting.location} — would skip`)
+        else verbose(`claude.ai connectors: ${name} already set in ${setting.location} (left as-is)`)
+        return
+      }
+
+      const applyCommand = [setting.apply.command, ...setting.apply.args].join(" ")
+      if (ctx.dryRun) {
+        echo(`[dry-run] ${applyCommand} (${setting.location})`)
+        return
+      }
+
+      const applied = await spawnProcess(setting.apply.command, setting.apply.args, { stdio: "ignore" })
+      if (applied.error === undefined && applied.exitCode === 0) {
+        change(`claude.ai connectors disabled via ${setting.apply.command} (open a new terminal to apply)`)
+        ctx.nextStepTriggers.claudeRestart = true
       } else {
-        verbose(`claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in ${f} (left as-is)`)
+        warn(`${applyCommand} failed — ${setting.manualHint}`)
       }
       return
     }
   }
-
-  const target = p(ctx.home, host.profileTarget(process.env["SHELL"]))
-
-  if (ctx.dryRun) {
-    echo(`[dry-run] append '${line}' to ${target}`)
-    return
-  }
-
-  // Every POSIX candidate sits directly in the home directory, but Windows
-  // keeps the profile under Documents/PowerShell, which a fresh home does not
-  // have yet; PowerShell itself requires the directory before a profile exists.
-  mkdirSync(dirname(target), { recursive: true })
-  appendFileSync(target, `\n${marker}\n${line}\n`)
-  change(`claude.ai connectors disabled via ${target} (start a new shell to apply)`)
-  ctx.nextStepTriggers.claudeRestart = true
 }
 
 // ------------------------------------------------------------- removals ----

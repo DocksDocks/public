@@ -16,6 +16,29 @@ export interface Invocation {
   readonly args: ReadonlyArray<string>
 }
 
+/** How this host persists a user-level environment variable. */
+export type EnvironmentSetting =
+  | {
+      readonly kind: "profile"
+      /** Home-relative files scanned for an existing setting. */
+      readonly candidates: ReadonlyArray<string>
+      /** Home-relative file that receives the write for this shell. */
+      readonly target: (shell: string | undefined) => string
+      /** Line appended to the target file. */
+      readonly line: string
+    }
+  | {
+      readonly kind: "command"
+      /** Exits zero when the variable is already persisted. */
+      readonly probe: Invocation
+      /** Persists the variable. */
+      readonly apply: Invocation
+      /** Where the value lands, named for the log line. */
+      readonly location: string
+      /** Manual recovery when `apply` fails. */
+      readonly manualHint: string
+    }
+
 /** The two steps that fetch and run a pinned Bun installer. */
 export interface BunInstaller {
   readonly scriptPath: string
@@ -41,12 +64,8 @@ export interface HostOs {
   readonly bunExecutableName: string
   /** Download-then-run installer for a pinned Bun version placed in `directory`. */
   readonly bunInstaller: (pin: string, directory: string) => BunInstaller
-  /** Home-relative profile files scanned for an existing environment setting. */
-  readonly profileCandidates: ReadonlyArray<string>
-  /** Home-relative profile file that receives the environment write. */
-  readonly profileTarget: (shell: string | undefined) => string
-  /** One profile line exporting an environment variable in this host's syntax. */
-  readonly environmentExport: (name: string, value: string) => string
+  /** How this host persists a user-level environment variable. */
+  readonly environmentSetting: (name: string, value: string) => EnvironmentSetting
   /** Claude `statusLine.command` for a resolved bun executable and script. */
   readonly statusLineCommand: (bun: string, script: string) => string
   /** Reshape the SoT `PostToolUseFailure` command for this host's shell. */
