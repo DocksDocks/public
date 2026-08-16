@@ -48,8 +48,10 @@ jobs:
       contents: read
     runs-on: ${{ inputs.runner || 'windows-2025' }} # pinned label, never *-latest
     timeout-minutes: 20
+    # `runner` is unavailable in job-level env, so BUN_INSTALL_CACHE_DIR sits on
+    # each step exactly as the gate sets it. `inputs` is job-level legal and is
+    # simply empty for a probe/** push, which selects the defaults below.
     env:
-      BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
       PROBE_TESTS: ${{ inputs.tests || 'cli/test/unit' }}
       PROBE_REPORTER: ${{ inputs.reporter || 'default' }}
     steps:
@@ -58,14 +60,20 @@ jobs:
       - uses: ./.github/actions/setup-bun-cache
 
       - name: Install dependencies
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun install --frozen-lockfile
 
       # Inputs travel through env, never interpolated into the script body, and
       # each host keeps the parent shell the gate uses so behaviour matches.
       - name: Targeted tests (Windows)
         if: runner.os == 'Windows'
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bunx vitest run $env:PROBE_TESTS --reporter=$env:PROBE_REPORTER
 
       - name: Targeted tests (POSIX)
         if: runner.os != 'Windows'
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bunx vitest run "$PROBE_TESTS" --reporter="$PROBE_REPORTER"
