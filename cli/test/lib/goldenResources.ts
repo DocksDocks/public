@@ -217,7 +217,13 @@ const STUB_BODIES: Record<string, string> = {
   "typescript-language-server": `if (args[0] === "--version") console.log("5.3.0")`,
   tsc: `if (args[0] === "--version") console.log("Version 6.0.3")`,
   ffplay: `if (args[0] === "-version") console.log("ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers")`,
-  unshare: ``
+  unshare: ``,
+  // Windows user-environment persistence. A real `setx` writes HKCU and then
+  // broadcasts WM_SETTINGCHANGE, which blocks for seconds on a headless runner
+  // and mutates the machine outside the fixture home; `reg` reports the value
+  // as absent so the engine takes its apply branch deterministically.
+  reg: `process.exitCode = 1`,
+  setx: ``
 }
 
 /**
