@@ -162,15 +162,14 @@ Disposition — reproduced and fixed. Both files now build a temporary directory
 Code-review: fixes-required
 - LOW · Bug · cli/test/unit/exec.test.ts:21, cli/test/unit/update.test.ts:167 — if `PATH` was originally absent, assigning `savedPath` back writes the string `"undefined"` under Node instead of restoring absence, so either helper can leak a synthetic `PATH` into later tests despite its `finally` block — in each `finally`, delete `process.env["PATH"]` when `savedPath === undefined`, otherwise restore `savedPath`.
 
-Disposition — reproduced and fixed. Under Node, `process.env["PATH"] = undefined` stores the string `"undefined"`; under Bun the same assignment deletes the key. `bunx` is not a runtime boundary here: it honours vitest's `#!/usr/bin/env node` launcher, so this suite runs under Node — `bunx vitest --version` reports `vitest/4.1.10 darwin-arm64 node-v24.15.0`, and a probe test inside the suite observed no `Bun` global, `process.versions.node` of `24.15.0`, and the assignment producing the literal string. The defect was therefore live, not latent, on any run that started without `PATH`. Both helpers now delete the key when it was absent, which is the convention the `ComSpec` restore in the same file already used.
+Disposition — reproduced and fixed. Assigning `undefined` back does not restore an absent variable: under Node the property becomes the literal string `"undefined"`, which a spawned child then inherits, and these are the suites that spawn children. Both helpers now delete `PATH` when it was absent, the convention the `ComSpec` restore in the same file already used. The defect was live, not latent: `bunx` honours vitest's `#!/usr/bin/env node` launcher, so the suite runs under Node, which `bunx vitest --version` reports as `node-v24.15.0`.
 
-A first attempt at this disposition claimed the leak was latent because the suite runs through `bunx`. Review round 4 caught that, and the measurement above replaced the assumption.
-
-### Code review round 4 — 2026-08-16
+### Code review rounds 4 and 5 — 2026-08-16
 Code-review: fixes-required
-- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — the round-3 disposition says the leak is latent because the suite runs through `bunx`, but `bunx` honours vitest's `#!/usr/bin/env node` launcher and `bunx vitest --version` reports `node-v24.15.0`, so the suite currently runs under Node — state that the defect was live whenever the suite started without `PATH`, and that `bunx` does not make this vitest invocation a Bun-runtime boundary.
+- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — round 4: the disposition called the leak latent because the suite runs through `bunx`, but that launcher is Node, so the defect was live.
+- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — round 5: the disposition claimed Bun deletes the key on the same assignment, which Bun does not do.
 
-Disposition — reproduced and corrected. The code was clean; the record was wrong. A probe test inside the suite confirmed the reviewer: no `Bun` global, `process.versions.node` of `24.15.0`, and `process.env["X"] = undefined` yielding the literal string. The round-3 disposition now states the live defect and names the measurement.
+Disposition — both reproduced and corrected in the record; the code was clean in each round. The disposition above now rests on the one fact the fix depends on, that assigning `undefined` does not restore absence, and no longer compares runtimes beyond the Node measurement that dates the defect.
 
 ## Verification Results
 
