@@ -1,0 +1,71 @@
+name: probe
+
+# Targeted single-runner lane for iterating on one host, especially Windows.
+# NEVER a gate: golden-regression stays the only acceptance signal, and this
+# workflow runs one narrowed vitest filter instead of the full suite chain.
+#
+# Two entry points, because `workflow_dispatch` only appears once the file has
+# landed on the default branch:
+#   gh workflow run probe.yml --ref <branch> -f runner=windows-2025 -f tests=cli/test/unit/bun.test.ts
+#   git push origin HEAD:probe/<slug>    # any branch, no default-branch wait
+# Use a fresh <slug> per run so the push never needs a force update.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: Runner label
+        type: choice
+        default: windows-2025
+        options:
+          - windows-2025
+          - macos-26
+          - ubuntu-24.04
+      tests:
+        description: Vitest file or directory filter
+        type: string
+        default: cli/test/unit
+      reporter:
+        description: Vitest reporter
+        type: choice
+        default: default
+        options:
+          - default
+          - verbose
+  push:
+    branches:
+      - probe/**
+
+concurrency:
+  group: probe-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    permissions:
+      contents: read
+    runs-on: ${{ inputs.runner || 'windows-2025' }} # pinned label, never *-latest
+    timeout-minutes: 20
+    env:
+      BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+      PROBE_TESTS: ${{ inputs.tests || 'cli/test/unit' }}
+      PROBE_REPORTER: ${{ inputs.reporter || 'default' }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: ./.github/actions/setup-bun-cache
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Inputs travel through env, never interpolated into the script body, and
+      # each host keeps the parent shell the gate uses so behaviour matches.
+      - name: Targeted tests (Windows)
+        if: runner.os == 'Windows'
+        run: bunx vitest run $env:PROBE_TESTS --reporter=$env:PROBE_REPORTER
+
+      - name: Targeted tests (POSIX)
+        if: runner.os != 'Windows'
+        run: bunx vitest run "$PROBE_TESTS" --reporter="$PROBE_REPORTER"
