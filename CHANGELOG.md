@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
 - Pinned the Effect graph to `4.0.0-rc.109` for `effect`, `@effect/platform-bun`,
   and `@effect/vitest`, replacing `4.0.0-beta.107`. `vitest@4.1.10` is unchanged.
