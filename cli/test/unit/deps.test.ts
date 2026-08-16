@@ -1,9 +1,14 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
-import { DEPENDENCIES, type ProbeExecutor } from "../../src/engine-native/deps"
-import { capture } from "../../src/engine-native/exec"
+import {
+  DEPENDENCIES,
+  resolveDependency,
+  resolvePath,
+  type ProbeExecutor
+} from "../../src/engine-native/deps"
+import { capture, which } from "../../src/engine-native/exec"
 import { makeDependencyManager, makePlatform } from "../../src/engine-native/services"
 
 describe("DependencyManager registry", () => {
@@ -25,9 +30,74 @@ describe("DependencyManager registry", () => {
     await expect(capture("\0", [])).resolves.toBe("")
   })
 
+  it("resolves bare POSIX tools and Windows command shims from a real PATH directory", () => {
+    const directory = mkdtempSync(join(tmpdir(), "docks-exec-"))
+    const previousPath = process.env["PATH"]
+    const posixTool = join(directory, "docks-posix-tool")
+    const windowsTool = join(directory, "docks-windows-tool.cmd")
+    const firstWindowsTool = join(directory, "docks-windows-first.exe")
+    const laterWindowsTool = join(directory, "docks-windows-first.cmd")
+    try {
+      writeFileSync(posixTool, "#!/bin/sh\nexit 0\n")
+      chmodSync(posixTool, 0o755)
+      writeFileSync(windowsTool, "@echo off\r\n")
+      chmodSync(windowsTool, 0o644)
+      writeFileSync(firstWindowsTool, "")
+      writeFileSync(laterWindowsTool, "")
+      chmodSync(firstWindowsTool, 0o644)
+      chmodSync(laterWindowsTool, 0o644)
+      process.env["PATH"] = directory
+
+      expect(which("docks-posix-tool", [""])).toBe(posixTool)
+      expect(which("docks-windows-tool", [".exe", ".cmd", ".bat", ""])).toBe(windowsTool)
+      expect(which(join(directory, "docks-windows-tool"), [".exe", ".cmd", ".bat", ""])).toBe(windowsTool)
+      expect(which("docks-windows-first", [".exe", ".cmd", ".bat", ""])).toBe(firstWindowsTool)
+    } finally {
+      if (previousPath === undefined) delete process.env["PATH"]
+      else process.env["PATH"] = previousPath
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("preserves a resolved Windows shim path in dependency probes", async () => {
+    const executable = "C:/tools/npm.cmd"
+    const exec: ProbeExecutor = {
+      commandExists: () => true,
+      capture: async () => "",
+      which: (name) => (name === "npm" ? executable : "")
+    }
+
+    expect(resolveDependency(DEPENDENCIES.npm, exec, "win32")).toEqual({
+      state: "present",
+      path: executable
+    })
+    await expect(resolvePath(DEPENDENCIES.npm, exec, "win32")).resolves.toBe(executable)
+  })
+
   it("gives executable Linux and macOS git hints", () => {
     expect(DEPENDENCIES.git.installHint("darwin")).toBe("brew install git")
     expect(DEPENDENCIES.git.installHint("linux")).toBe("sudo apt install -y git (or your distro's package manager)")
+  })
+
+  it("gives platform-correct agent CLI hints", () => {
+    expect(DEPENDENCIES.claude.installHint("linux")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(DEPENDENCIES.claude.installHint("darwin")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(DEPENDENCIES.claude.installHint("win32")).toBe(
+      "$tmp = Join-Path $env:TEMP 'claude-install.ps1'; curl.exe -fsSL https://claude.ai/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
+    )
+    expect(DEPENDENCIES.codex.installHint("linux")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
+    expect(DEPENDENCIES.codex.installHint("darwin")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
+    expect(DEPENDENCIES.codex.installHint("win32")).toBe(
+      "$tmp = Join-Path $env:TEMP 'codex-install.ps1'; curl.exe -fsSL https://chatgpt.com/codex/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { $env:CODEX_NON_INTERACTIVE = '1'; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
+    )
   })
 
   it("registers the Node-shipped launchers npm and npx", () => {
@@ -51,6 +121,7 @@ describe("DependencyManager registry", () => {
     for (const spec of Object.values(DEPENDENCIES)) {
       expect(spec.installHint("linux").length).toBeGreaterThan(0)
       expect(spec.installHint("darwin").length).toBeGreaterThan(0)
+      expect(spec.installHint("win32").length).toBeGreaterThan(0)
       expect(spec.versionArgs.length).toBeGreaterThan(0)
     }
   })

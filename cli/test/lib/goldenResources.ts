@@ -16,6 +16,8 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { hostOs, type PlatformName } from "../../src/engine-native/os"
+
 export const REPO_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..")
 export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 
@@ -44,8 +46,9 @@ const TEMP_DIRS = new Set<string>()
  * The sweep removes dead or old orphan markers after their directory disappears.
  */
 export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
+  // Windows has no numeric uid; its temp root is user-scoped, so owner
+  // marker liveness and age remain the sweep boundary there.
   const ownerUid = process.getuid?.()
-  if (ownerUid === undefined) return
   const root = tmpdir()
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (!entry.isDirectory()) {
@@ -56,7 +59,7 @@ export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
     const path = join(root, entry.name)
     try {
       const stat = lstatSync(path)
-      if (stat.uid !== ownerUid) continue
+      if (ownerUid !== undefined && stat.uid !== ownerUid) continue
       if (TEMP_DIRS.has(path)) continue
 
       const ownerPath = `${path}${OWNER_PID_SUFFIX}`
@@ -79,7 +82,12 @@ export function sweepStaleTemporaryDirs(nowMs = Date.now()): void {
   }
 }
 
-function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: number, nowMs: number): void {
+function sweepOrphanOwnerMarker(
+  root: string,
+  entryName: string,
+  ownerUid: number | undefined,
+  nowMs: number
+): void {
   if (!entryName.endsWith(OWNER_PID_SUFFIX)) return
   const directoryName = entryName.slice(0, -OWNER_PID_SUFFIX.length)
   if (!HARNESS_TEMP_PREFIXES.some((prefix) => directoryName.startsWith(prefix))) return
@@ -95,7 +103,7 @@ function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: numbe
   const ownerPath = join(root, entryName)
   try {
     const stat = lstatSync(ownerPath)
-    if (stat.uid !== ownerUid) return
+    if (ownerUid !== undefined && stat.uid !== ownerUid) return
     const ownerPid = readOwnerPid(ownerPath, ownerUid)
     if (ownerPid !== undefined) {
       if (ownerPid === process.pid || processIsAlive(ownerPid)) return
@@ -113,9 +121,9 @@ function sweepOrphanOwnerMarker(root: string, entryName: string, ownerUid: numbe
   }
 }
 
-function readOwnerPid(ownerPath: string, ownerUid: number): number | undefined {
+function readOwnerPid(ownerPath: string, ownerUid: number | undefined): number | undefined {
   try {
-    if (lstatSync(ownerPath).uid !== ownerUid) return undefined
+    if (ownerUid !== undefined && lstatSync(ownerPath).uid !== ownerUid) return undefined
     const ownerPid = Number(readFileSync(ownerPath, "utf8").trim())
     return Number.isSafeInteger(ownerPid) && ownerPid > 0 ? ownerPid : undefined
   } catch {
@@ -178,67 +186,134 @@ process.on("SIGINT", handleSigint)
 process.on("SIGTERM", handleSigterm)
 
 /**
- * Canned stub behavior. Each stub appends "<name>\t<args>" to $GOLDEN_ARGV_LOG
- * and emits just enough output for the engine's probes to take a
- * deterministic branch (versions match the SoT/toolchain.json pins so every
- * `ensure` lands on "up to date").
+ * Canned stub behavior. Each stub appends "<name>\t<args>" to
+ * `GOLDEN_ARGV_LOG` and emits just enough output for the engine's probes to
+ * take a deterministic branch. Bodies are JavaScript so one runner can back
+ * both POSIX launchers and Windows `.cmd` launchers.
  */
 const STUB_BODIES: Record<string, string> = {
   // node and jq are version-probed by `toolchain check` (presence-checked in
   // preflight/skills) but never do real work in the engine — pin them so the
-  // goldens don't embed the recording machine's host versions (bit CI: the
-  // runner's node differed from the machine that recorded the goldens).
-  node: `case "$1" in --version) echo "v22.23.1";; esac`,
-  git: `case "$1" in --version) echo "git version 2.43.0";; esac`,
-  jq: `case "$1" in --version) echo "jq-1.7.1";; esac`,
-  claude: `case "$1" in --version) echo "2.1.204 (Claude Code)";; esac`,
-  codex: `case "$1" in
-  --version) echo "codex-cli 0.144.4";;
-  plugin) case "$2" in
-    list) echo '{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true}],"available":[]}' ;;
-    add) exit 0;;
-  esac;;
-esac`,
-  npx: `exit 0`,
-  npm: `case "$1" in
-  view) case "$2" in
-    *) echo "0.0.1";;
-  esac;;
-  ls) echo '{"dependencies":{"intelephense":{"version":"1.18.5"}}}';;
-esac`,
-  bun: `case "$1" in
-  --version) echo "1.3.14";;
-esac`,
-  curl: `exit 0`,
-  bwrap: `case "$1" in --version) echo "bubblewrap 0.11.0";; esac`,
-  intelephense: `exit 0`,
-  "typescript-language-server": `case "$1" in --version) echo "5.3.0";; esac`,
-  tsc: `case "$1" in --version) echo "Version 6.0.3";; esac`,
-  ffplay: `case "$1" in -version) echo "ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers";; esac`,
-  unshare: `exit 0`
+  // goldens don't embed the recording machine's host versions.
+  node: `if (args[0] === "--version") console.log("v22.23.1")`,
+  git: `if (args[0] === "--version") console.log("git version 2.43.0")`,
+  jq: `if (args[0] === "--version") console.log("jq-1.7.1")`,
+  claude: `if (args[0] === "--version") console.log("2.1.204 (Claude Code)")`,
+  codex: `if (args[0] === "--version") {
+  console.log("codex-cli 0.144.4")
+} else if (args[0] === "plugin" && args[1] === "list") {
+  console.log('{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true}],"available":[]}')
+}`,
+  npx: ``,
+  npm: `if (args[0] === "view") {
+  console.log("0.0.1")
+} else if (args[0] === "ls") {
+  console.log('{"dependencies":{"intelephense":{"version":"1.18.5"}}}')
+}`,
+  bun: `if (args[0] === "--version") console.log("1.3.14")`,
+  curl: ``,
+  bwrap: `if (args[0] === "--version") console.log("bubblewrap 0.11.0")`,
+  intelephense: ``,
+  "typescript-language-server": `if (args[0] === "--version") console.log("5.3.0")`,
+  tsc: `if (args[0] === "--version") console.log("Version 6.0.3")`,
+  ffplay: `if (args[0] === "-version") console.log("ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers")`,
+  unshare: ``,
+  // Windows user-environment persistence. A real `setx` writes HKCU and then
+  // broadcasts WM_SETTINGCHANGE, which blocks for seconds on a headless runner
+  // and mutates the machine outside the fixture home; `reg` reports the value
+  // as absent so the engine takes its apply branch deterministically.
+  reg: `process.exitCode = 1`,
+  setx: ``
 }
 
 /**
- * overrides: replace a stub's body per test row (exercising install/upgrade/
- * gate/failure branches); `null` omits the stub entirely (tool missing).
+ * Inherit the caller's environment, then apply `overrides` so they actually
+ * take effect. Windows environment names are case-insensitive but keep their
+ * creation spelling, so a plain spread can leave an inherited `UserProfile`
+ * beside an explicit `USERPROFILE`; the child then reads whichever the OS
+ * happens to hand it and the override is silently lost. Drop every inherited
+ * key that matches an override case-insensitively before applying it.
  */
-export function makeStubDir(overrides: Record<string, string | null> = {}): string {
+export function childEnv(overrides: Record<string, string>): Record<string, string> {
+  const shadowed = new Set(Object.keys(overrides).map((name) => name.toUpperCase()))
+  const inherited: Record<string, string> = {}
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value === undefined || shadowed.has(name.toUpperCase())) continue
+    inherited[name] = value
+  }
+  return { ...inherited, ...overrides }
+}
+
+/** The host a child runs as: native recording host, or Linux via the preload. */
+export function childHostId(nativeHost: boolean): PlatformName {
+  return nativeHost ? hostOs().id : "linux"
+}
+
+const STUB_HOST_MARKER = ".golden-stub-host"
+
+export function readStubHost(stubDir: string): string {
+  try {
+    return readFileSync(join(stubDir, STUB_HOST_MARKER), "utf8").trim()
+  } catch {
+    return "unrecorded"
+  }
+}
+
+/**
+ * `overrides` replaces a stub's JavaScript body per test row; `null` omits the
+ * stub entirely (tool missing). `opts.nativeHost` must match the run helper the
+ * stubs are handed to: the launcher form is the host's, so a Linux-preloaded
+ * child needs extensionless launchers even when recording on Windows.
+ */
+export function makeStubDir(
+  overrides: Record<string, string | null> = {},
+  opts: { readonly nativeHost?: boolean } = {}
+): string {
   const unknownNames = Object.keys(overrides).filter((name) => !Object.hasOwn(STUB_BODIES, name)).sort()
   if (unknownNames.length > 0) {
     throw new Error(`Unknown golden stub override(s): ${unknownNames.join(", ")}`)
   }
+  const hostId = childHostId(opts.nativeHost === true)
   const dir = temporaryDir("golden-stubs-")
+  writeFileSync(join(dir, STUB_HOST_MARKER), `${hostId}\n`)
+  const runnerPath = join(dir, "golden-stub-runner.mjs")
+  const cases: Array<string> = []
   for (const [name, defaultBody] of Object.entries(STUB_BODIES)) {
     const body = name in overrides ? overrides[name] : defaultBody
     if (body === null || body === undefined) continue
-    const script = `#!/bin/bash
-printf '%s\\t%s\\n' "${name}" "$*" >> "\${GOLDEN_ARGV_LOG:-/dev/null}"
-${body}
-exit 0
+    cases.push(`case ${JSON.stringify(name)}: {\n${body}\nbreak\n}`)
+  }
+  writeFileSync(
+    runnerPath,
+    `import { appendFileSync } from "node:fs"
+const [name, ...args] = process.argv.slice(2)
+const argvLog = process.env["GOLDEN_ARGV_LOG"]
+if (argvLog !== undefined) appendFileSync(argvLog, \`\${name}\\t\${args.join(" ")}\\n\`)
+switch (name) {
+${cases.join("\n")}
+default: throw new Error(\`unknown golden stub: \${String(name)}\`)
+}
 `
-    const path = join(dir, name)
-    writeFileSync(path, script)
-    chmodSync(path, 0o755)
+  )
+
+  // A Linux-preloaded child resolves extensionless names even when recording on
+  // Windows, so the launcher form follows the paired host, not this machine.
+  const windows = hostId === "windows"
+  const suffix = windows
+    ? hostOs("windows").executableSuffixes.find((candidate) => candidate.toLowerCase() === ".cmd")
+    : ""
+  if (suffix === undefined) throw new Error("Windows host facts do not declare a .cmd executable suffix")
+
+  for (const name of Object.keys(STUB_BODIES)) {
+    if (name in overrides && overrides[name] === null) continue
+    const path = join(dir, `${name}${suffix}`)
+    if (windows) {
+      // The engine resolves this suffix and host.invoke routes it through cmd.exe.
+      writeFileSync(path, `@echo off\r\n"${process.execPath}" "${runnerPath}" "${name}" %*\r\n`)
+    } else {
+      writeFileSync(path, `#!/bin/sh\nexec "${process.execPath}" "${runnerPath}" "${name}" "$@"\n`)
+      chmodSync(path, 0o755)
+    }
   }
   return dir
 }

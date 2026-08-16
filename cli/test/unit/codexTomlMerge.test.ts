@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { codexSync } from "../../src/engine-native/codexSync"
+import { p } from "../../src/engine-native/exec"
 import { syncCodexEffort } from "../../src/engine-native/codexToml"
 import type { Ctx } from "../../src/engine-native"
 import { DEPENDENCIES } from "../../src/engine-native/deps"
@@ -33,7 +34,7 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
   return {
     repoDir: kitHome(),
     home,
-    agentsDir: join(home, ".agents"),
+    agentsDir: p(home, ".agents"),
     dryRun: false,
     verbose: false,
     skipBubblewrap: false,
@@ -64,8 +65,9 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
 }
 
 function prepareConfig(root: string, content: string): string {
-  const config = join(root, "home", ".codex", "config.toml")
-  mkdirSync(join(root, "home", ".codex"), { recursive: true })
+  const home = join(root, "home")
+  const config = p(home, ".codex", "config.toml")
+  mkdirSync(p(home, ".codex"), { recursive: true })
   writeFileSync(config, content)
   return config
 }
@@ -90,7 +92,29 @@ describe("Codex TOML merge durability", () => {
       const deployed = readFileSync(config, "utf8")
 
       expect(deployed).not.toContain("\r")
-      expect(deployed.match(/^\[/gm)).toHaveLength(7)
+      expect(deployed.match(/^\[/gm)).toHaveLength(8)
+      expectTomlToParse(deployed)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("declares and preserves the elevated native Windows sandbox", async () => {
+    expect(sotConfig).toMatch(/^\[windows\]\nsandbox = "elevated"$/m)
+
+    const root = mkdtempSync(join(tmpdir(), "codex-windows-merge-"))
+    const config = prepareConfig(
+      root,
+      'model = "user-choice"\n\n[windows]\nsandbox = "unelevated"\n'
+    )
+
+    try {
+      await codexSync(testCtx(root))
+      const deployed = readFileSync(config, "utf8")
+
+      expect(deployed.match(/^\[windows\]$/gm)).toHaveLength(1)
+      expect(deployed).toMatch(/^\[windows\]\nsandbox = "elevated"$/m)
+      expect(deployed).not.toContain('sandbox = "unelevated"')
       expectTomlToParse(deployed)
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -120,8 +144,9 @@ describe("Codex TOML merge durability", () => {
   it("fails the sync before plugin work when the deployed marketplace JSON is invalid", async () => {
     const root = mkdtempSync(join(tmpdir(), "codex-invalid-marketplace-"))
     const dependencyProbe = vi.fn(() => ({ state: "missing" as const }))
-    const marketplace = join(root, "home", ".agents", "plugins", "marketplace.json")
-    mkdirSync(join(root, "home", ".agents", "plugins"), { recursive: true })
+    const home = join(root, "home")
+    const marketplace = p(home, ".agents", "plugins", "marketplace.json")
+    mkdirSync(p(home, ".agents", "plugins"), { recursive: true })
     writeFileSync(marketplace, "{ invalid")
 
     try {
@@ -136,7 +161,7 @@ describe("Codex TOML merge durability", () => {
 
   it("propagates a non-ENOENT Codex config read failure", () => {
     const root = mkdtempSync(join(tmpdir(), "codex-config-read-error-"))
-    const config = join(root, "home", ".codex", "config.toml")
+    const config = p(join(root, "home"), ".codex", "config.toml")
     mkdirSync(config, { recursive: true })
 
     try {

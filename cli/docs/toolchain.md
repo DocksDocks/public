@@ -17,19 +17,28 @@ manifest's `floor` and `verified` columns.
 
 - **bun** — policy `present`: installed from the pinned `verified` release and
   never auto-upgraded. `bun.ts` `bunBootstrap` owns one per-engine-run memo
-  shared by the Claude runtime and direct `toolchain ensure bun` on supported
-  Linux/macOS hosts.
+  shared by the Claude runtime and direct `toolchain ensure bun` on every
+  supported host. The POSIX modules download `install.sh` with curl and run it
+  with Bash. The Windows module downloads `install.ps1` with curl and runs it
+  through `powershell.exe`.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
-normal sync. curl is checked only when a requested Linux/macOS Bun bootstrap
-must download an installer.
+normal sync. curl is checked only when a requested Bun bootstrap must download
+an installer. An already-present Bun skips that download on every host.
 
 ## Supply-chain stance
 
-Every kit-driven install is pinned to a `verified` version — never floating
-`@latest` (the npm-worm / Shai-Hulud attack surface). That includes the
+Every kit-driven install of third-party software is pinned to a
+`SoT/toolchain.json` `verified` version — never floating `@latest` (the
+npm-worm / Shai-Hulud attack surface). That includes the
 `npx skills@<verified>` invocations on agents sync and the release workflow
 (actions pinned to commit SHAs, exact bun/npm versions).
+
+The kit's own package is the single exemption. `install.sh` and `install.ps1`
+end with `bun add -g docks-kit@latest` because a global installer that pinned
+itself would install a fixed old kit forever. The exemption covers `docks-kit`
+alone; both installers still pin the Bun installer they download to the
+manifest's `verified` version.
 
 ## Commands
 

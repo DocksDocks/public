@@ -11,6 +11,8 @@
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+
+import { hostOs } from "../src/engine-native/os"
 import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
 import { cleanup, runEngine, runPublicCli } from "./lib/goldenExecution"
 import { REPO_DIR, makeStubDir } from "./lib/goldenResources"
@@ -83,6 +85,13 @@ const MATRIX: Array<DryRunMatrixRow> = [
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "dryrun.json")
 const options = parseArgs(process.argv)
+const hostExecutableSuffixes = hostOs().executableSuffixes
+if (hostExecutableSuffixes.length !== 1 || !hostExecutableSuffixes.includes("")) {
+  console.error(
+    "golden-dryrun: unsupported host: snapshots are Linux-canonical and run only in the Linux snapshot lane. On Windows, run `bun run typecheck`, `bun run test:unit`, `bun run test:runtime:windows`, and `bun run smoke:native` instead."
+  )
+  process.exit(2)
+}
 
 function labelFor(fixture: string, cmd: ReadonlyArray<string>, usePublic: boolean): string {
   const channel = usePublic ? "public" : "engine"

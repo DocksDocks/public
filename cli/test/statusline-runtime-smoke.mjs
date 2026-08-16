@@ -3,9 +3,12 @@ import { tmpdir } from "node:os"
 import { basename, join, resolve } from "node:path"
 
 import { claudeRuntimePaths, materializeClaudeSettings } from "../src/engine-native/claudeRuntime.ts"
+import { hostOs } from "../src/engine-native/os/index.ts"
 
 const mode = process.argv[2] ?? "posix"
-if (mode !== "posix") throw new Error(`unsupported outer shell: ${mode}; supported: posix`)
+if (mode !== "posix" && mode !== "windows") {
+  throw new Error(`unsupported outer shell: ${mode}; supported: posix, windows`)
+}
 
 const repo = resolve(import.meta.dir, "..", "..")
 const root = mkdtempSync(join(tmpdir(), "statusline O'Brien-"))
@@ -118,25 +121,69 @@ try {
   }
   const measuredDirect = directTimings.slice(5).sort((a, b) => a - b)
   const directP95 = measuredDirect[Math.ceil(measuredDirect.length * 0.95) - 1]
-  const directCeiling = 100
+  // Windows process creation costs materially more than a POSIX fork/exec and
+  // the runner scans every spawn, so one absolute ceiling would flag the host
+  // instead of a regression. Both values stay under a single added external
+  // process, which is the class this gate exists to catch.
+  const directCeiling = mode === "windows" ? 250 : 100
   if (directP95 > directCeiling) {
     throw new Error(`statusLine direct Bun p95 ${directP95.toFixed(2)}ms exceeds ${directCeiling}ms`)
   }
   console.log(`runtime-smoke: direct Bun exact bytes OK; p95=${directP95.toFixed(2)}ms ceiling=${directCeiling}ms`)
-  const timings = []
-  for (let index = 0; index < 30; index += 1) {
-    const run = record(["bash", "-lc", settings.statusLine.command], stdin, baseEnv)
-    assertRun(`statusLine posix run ${index + 1}`, run, expected)
-    timings.push(run.elapsed)
+  if (mode === "posix") {
+    const timings = []
+    for (let index = 0; index < 30; index += 1) {
+      const run = record(["bash", "-lc", settings.statusLine.command], stdin, baseEnv)
+      assertRun(`statusLine posix run ${index + 1}`, run, expected)
+      timings.push(run.elapsed)
+    }
+    // Outer-shell spawn time is dominated by runner load (p95 of 25 samples is
+    // the second-worst run and flakes on shared CI), so gate the median: it only
+    // moves when the stored command got systematically slower.
+    const measured = timings.slice(5).sort((a, b) => a - b)
+    const median = measured[Math.floor(measured.length / 2)]
+    const ceiling = 250
+    if (median > ceiling) throw new Error(`statusLine posix median ${median.toFixed(2)}ms exceeds ${ceiling}ms`)
+    console.log(`runtime-smoke: posix exact commands OK; median=${median.toFixed(2)}ms ceiling=${ceiling}ms`)
+  } else {
+    const windowsCommand = hostOs("windows").statusLineCommand(runtime.bun, runtime.statusline)
+    const commandPrefix = "powershell.exe -NoProfile -NonInteractive -EncodedCommand "
+    if (!windowsCommand.startsWith(commandPrefix)) {
+      throw new Error(`Windows statusLine command has an unexpected shape: ${JSON.stringify(windowsCommand)}`)
+    }
+    const encoded = windowsCommand.slice(commandPrefix.length)
+    const decoded = Buffer.from(encoded, "base64").toString("utf16le")
+    const bunLiteral = `'${runtime.bun.replaceAll("'", "''")}'`
+    const statuslineLiteral = `'${runtime.statusline.replaceAll("'", "''")}'`
+    const expectedScript =
+      `$ProgressPreference = 'SilentlyContinue'; ` +
+      `if ((Test-Path -LiteralPath ${bunLiteral} -PathType Leaf) -and ` +
+      `(Test-Path -LiteralPath ${statuslineLiteral} -PathType Leaf)) { & ${bunLiteral} ${statuslineLiteral} }`
+    if (decoded !== expectedScript) {
+      throw new Error(
+        `Windows statusLine script mismatch\nexpected=${JSON.stringify(expectedScript)}\nactual=${JSON.stringify(decoded)}`
+      )
+    }
+
+    const powershell = Bun.which("powershell.exe")
+    if (powershell === null || powershell === "") {
+      console.log("runtime-smoke: windows encoded command shape OK; powershell.exe unavailable, execution timing skipped")
+    } else {
+      const timings = []
+      for (let index = 0; index < 30; index += 1) {
+        const run = record(
+          [powershell, "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+          stdin,
+          baseEnv
+        )
+        assertRun(`statusLine windows run ${index + 1}`, run, expected)
+        timings.push(run.elapsed)
+      }
+      const measured = timings.slice(5).sort((a, b) => a - b)
+      const median = measured[Math.floor(measured.length / 2)]
+      console.log(`runtime-smoke: windows exact commands OK; median=${median.toFixed(2)}ms`)
+    }
   }
-  // Outer-shell spawn time is dominated by runner load (p95 of 25 samples is
-  // the second-worst run and flakes on shared CI), so gate the median: it only
-  // moves when the stored command got systematically slower.
-  const measured = timings.slice(5).sort((a, b) => a - b)
-  const median = measured[Math.floor(measured.length / 2)]
-  const ceiling = 250
-  if (median > ceiling) throw new Error(`statusLine posix median ${median.toFixed(2)}ms exceeds ${ceiling}ms`)
-  console.log(`runtime-smoke: posix exact commands OK; median=${median.toFixed(2)}ms ceiling=${ceiling}ms`)
 } finally {
   rmSync(root, { recursive: true, force: true })
 }

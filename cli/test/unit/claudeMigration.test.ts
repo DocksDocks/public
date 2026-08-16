@@ -3,7 +3,8 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
-import { cleanup, readArgvLog, runEngine } from "../lib/goldenExecution"
+import { hostOs } from "../../src/engine-native/os/index"
+import { cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
 import {
   FIXTURES_DIR,
   cleanupTemporaryDirs,
@@ -42,6 +43,22 @@ function legacyVariant(settings = stableStringify(LEGACY_SETTINGS)): string {
     ".claude/settings.json": settings,
     ...LEGACY_FILES
   })
+}
+
+function runWithBunUnavailable(args: ReadonlyArray<string>, home: string): EngineRun {
+  // One token for both sides: the stubs must be launchable by the host the
+  // child actually runs as, and this case needs the native host so the
+  // Bun/curl absence it asserts is the real host's absence.
+  const native = { nativeHost: true } as const
+  const stubs = makeStubDir({ bun: null, curl: null }, native)
+  for (const tool of ["bun", "curl"]) {
+    for (const suffix of hostOs().executableSuffixes) {
+      if (existsSync(join(stubs, `${tool}${suffix}`))) {
+        throw new Error(`Bun-unavailable fixture unexpectedly contains ${tool}${suffix}`)
+      }
+    }
+  }
+  return runEngine(args, home, stubs, { ...native, reuseHome: home, env: { PATH: stubs } })
 }
 
 function settingsObject(home: string): { [key: string]: Json } {
@@ -83,12 +100,9 @@ function expectLegacyFiles(home: string): void {
 describe.sequential("Claude runtime migration transaction", () => {
   it("shares one deferred Bun result across an all-target legacy run", () => {
     const variant = legacyVariant()
-    const stubs = makeStubDir({ bun: null, curl: null })
-    const run = runEngine(["sync"], variant, stubs, {
-      maskTools: ["bun", "curl"]
-    })
+    const run = runWithBunUnavailable(["sync"], variant)
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       expectLegacyPointers(run.home)
       expectLegacyFiles(run.home)
       for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(false)
@@ -103,10 +117,10 @@ describe.sequential("Claude runtime migration transaction", () => {
   })
 
   it("installs only safe unrelated hooks on a fresh home when Bun is unavailable", () => {
-    const stubs = makeStubDir({ bun: null, curl: null })
-    const run = runEngine(["sync", "claude"], "home-fresh", stubs, { maskTools: ["bun", "curl"] })
+    const home = materializeVariant("home-fresh", {})
+    const run = runWithBunUnavailable(["sync", "claude"], home)
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const settings = settingsObject(run.home)
       const hooks = hooksObject(settings)
       expect(hooks["PostToolUseFailure"]).toBeDefined()
@@ -126,7 +140,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     const variant = legacyVariant("not-json")
     const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
-      expect(run.exitCode).toBe(1)
+      expect(run.exitCode, run.output).toBe(1)
       expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe("not-json")
       expectLegacyFiles(run.home)
       for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(false)
@@ -143,7 +157,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     mkdirSync(join(variant, ".claude", "settings.json.tmp"))
     const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
-      expect(run.exitCode).toBe(1)
+      expect(run.exitCode, run.output).toBe(1)
       expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe(original)
       expectLegacyPointers(run.home)
       expectLegacyFiles(run.home)
@@ -161,7 +175,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     const variant = legacyVariant(nullStop)
     const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const hooks = hooksObject(settingsObject(run.home))
       expect(Object.prototype.hasOwnProperty.call(hooks, "Stop")).toBe(false)
     } finally {
@@ -179,7 +193,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     })
     const run = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
-      expect(run.exitCode).toBe(0)
+      expect(run.exitCode, run.output).toBe(0)
       const plugins = settingsObject(run.home)["enabledPlugins"]
       if (!isObject(plugins)) throw new Error("enabledPlugins is not an object after sync")
       expect(Object.prototype.hasOwnProperty.call(plugins, "effect-kit@docks")).toBe(false)
@@ -234,7 +248,7 @@ describe.sequential("contextual dependency degradation", () => {
     for (const target of ["claude", "codex"] as const) {
       const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }), { maskTools: ["jq"] })
       try {
-        expect(run.exitCode).toBe(0)
+        expect(run.exitCode, run.output).toBe(0)
         expect(run.output).not.toContain("jq not installed")
         expect(readArgvLog(run)).not.toMatch(/^jq\t/m)
       } finally {

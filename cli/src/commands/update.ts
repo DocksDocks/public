@@ -2,16 +2,27 @@ import { Command, Flag } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
 import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
+import { p, which } from "../engine-native/exec"
+import { hostOs, type HostOs, type Invocation } from "../engine-native/os"
 
 const noSync = Flag.boolean("no-sync").pipe(
   Flag.withDescription("Update the kit only; skip the chained flag-less sync")
 )
 
+/** Resolve Windows shims without changing the command spelling spawned on POSIX. */
+const updateInvocation = (command: string, args: ReadonlyArray<string>): Invocation => {
+  const host = hostOs()
+  const executablePath = host.executableSuffixes.some((suffix) => suffix !== "")
+    ? (which(command, host.executableSuffixes) || command)
+    : command
+  return host.invoke(executablePath, args)
+}
+
 const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {
-  const res = spawnSync("git", ["-C", home, ...args], {
+  const invocation = updateInvocation("git", ["-C", home, ...args])
+  const res = spawnSync(invocation.command, [...invocation.args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   })
@@ -22,19 +33,20 @@ const git = (home: string, args: Array<string>): { ok: boolean; out: string } =>
  * version loaded, so the chained sync must be a new process. */
 const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
   Effect.sync(() => {
-    const res = spawnSync(argv0, args, { stdio: "inherit" })
+    const invocation = updateInvocation(argv0, args)
+    const res = spawnSync(invocation.command, [...invocation.args], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
   })
 
 export const updateSyncArgs = (home: string): Array<string> => [
-  join(home, "cli/src/main.ts"),
+  p(home, "cli/src/main.ts"),
   "sync",
   "--skip-plugin-refresh"
 ]
 
 const readPackageVersion = (home: string): string => {
   try {
-    const doc: unknown = JSON.parse(readFileSync(join(home, "package.json"), "utf8"))
+    const doc: unknown = JSON.parse(readFileSync(p(home, "package.json"), "utf8"))
     if (doc === null || typeof doc !== "object" || !("version" in doc)) return ""
     return typeof doc.version === "string" ? doc.version : ""
   } catch {
@@ -56,7 +68,8 @@ type CapturePackageRoot = (
 ) => PackageRootCapture
 
 const capturePackageRoot: CapturePackageRoot = (command, args) => {
-  const res = spawnSync(command, [...args], {
+  const invocation = updateInvocation(command, args)
+  const res = spawnSync(invocation.command, [...invocation.args], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
   })
@@ -67,15 +80,27 @@ const capturePackageRoot: CapturePackageRoot = (command, args) => {
   }
 }
 
+/**
+ * A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. Windows
+ * reports that path with backslashes, so containment is tested on a normalized
+ * copy — but only on Windows, because a backslash is a legal POSIX filename
+ * character and must never be read as a separator there.
+ */
 export const packageManagerForHome = (
   home: string,
-  environment: NodeJS.ProcessEnv = process.env
+  environment: NodeJS.ProcessEnv = process.env,
+  host: HostOs = hostOs()
 ): PackageManager => {
+  const normalize = (value: string): string =>
+    host.id === "windows" ? value.replaceAll("\\", "/") : value
+  const normalizedHome = normalize(home)
   const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
     const root = environment[name]?.trim()
-    return root !== undefined && root !== "" && (home === root || home.startsWith(`${root}/`))
+    if (root === undefined || root === "") return false
+    const normalizedRoot = normalize(root)
+    return normalizedHome === normalizedRoot || normalizedHome.startsWith(`${normalizedRoot}/`)
   }
-  return home.includes("/.bun/") ||
+  return normalizedHome.includes("/.bun/") ||
     underEnvironmentRoot("BUN_INSTALL_GLOBAL_DIR") ||
     underEnvironmentRoot("BUN_INSTALL")
     ? "bun"
@@ -107,7 +132,7 @@ export const resolveGlobalPackageHome = (
     const root = result.stdout.trim()
     return root === ""
       ? { ok: false, diagnostic: "npm root -g failed: empty output" }
-      : { ok: true, home: join(root, "docks-kit") }
+      : { ok: true, home: p(root, "docks-kit") }
   }
 
   const globalHeader = result.stdout
@@ -120,7 +145,7 @@ export const resolveGlobalPackageHome = (
       : /^(.*) node_modules(?: \(\d+\))?$/.exec(globalHeader)?.[1]
   return globalDir === undefined || globalDir === ""
     ? { ok: false, diagnostic: "bun pm -g ls did not report its global package root" }
-    : { ok: true, home: join(globalDir, "node_modules", "docks-kit") }
+    : { ok: true, home: p(globalDir, "node_modules", "docks-kit") }
 }
 
 export const packageUpdateResult = (
@@ -143,7 +168,8 @@ export const packageUpdateResult = (
 
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    if (spawnSync("git", ["--version"], { stdio: "ignore" }).status !== 0) {
+    const gitVersion = updateInvocation("git", ["--version"])
+    if (spawnSync(gitVersion.command, [...gitVersion.args], { stdio: "ignore" }).status !== 0) {
       return yield* bail("git not found - cannot update the kit checkout")
     }
     const dirty = git(home, ["status", "--porcelain"])
@@ -169,7 +195,8 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
     const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
     if (touched.includes("bun.lock") || touched.includes("package.json")) {
-      const res = spawnSync("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
+      const invocation = updateInvocation("bun", ["install", "--frozen-lockfile"])
+      const res = spawnSync(invocation.command, [...invocation.args], { cwd: home, stdio: "inherit" })
       if (res.error !== undefined || res.status !== 0) {
         return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
       }
@@ -189,10 +216,11 @@ const updatePackage = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     const manager = packageManagerForHome(home)
     const beforeVersion = readPackageVersion(home)
-    const res =
-      manager === "bun"
-        ? spawnSync("bun", ["add", "-g", "docks-kit@latest"], { stdio: "inherit" })
-        : spawnSync("npm", ["install", "-g", "docks-kit@latest"], { stdio: "inherit" })
+    const updateArgs = manager === "bun"
+      ? ["add", "-g", "docks-kit@latest"]
+      : ["install", "-g", "docks-kit@latest"]
+    const invocation = updateInvocation(manager, updateArgs)
+    const res = spawnSync(invocation.command, [...invocation.args], { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(
         `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,
@@ -210,7 +238,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
     const afterVersion = readPackageVersion(updated.home)
     if (afterVersion === "") {
       return yield* bail(
-        `global package update completed, but ${join(updated.home, "package.json")} has no readable version`,
+        `global package update completed, but ${p(updated.home, "package.json")} has no readable version`,
         1
       )
     }
@@ -225,7 +253,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
 export const updateCommand = Command.make("update", { noSync }, (config) =>
   Effect.gen(function* () {
     const home = kitHome()
-    if (existsSync(join(home, ".git"))) {
+    if (existsSync(p(home, ".git"))) {
       return yield* updateCheckout(home, config.noSync)
     }
     if (home.includes("node_modules")) {

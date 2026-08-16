@@ -12,7 +12,7 @@ import { isAbsolute } from "node:path"
 
 import { capture, commandExists, p, which } from "./exec"
 import { isObject, parseJson } from "./jq"
-import { rawPlatform } from "./os"
+import { hostOs, platformName, rawPlatform } from "./os"
 
 export type ToolId =
   | "git"
@@ -77,11 +77,14 @@ const spec = (
   version: options.version
 })
 
+// Presence is the injected executor's verdict; `which` only resolves WHERE the
+// tool is, which on Windows is the `.cmd`/`.exe` candidate rather than the name.
 const pathProbe = (id: string): ((exec: ProbeExecutor) => ProbeResult) =>
-  (exec) =>
-    exec.commandExists(id)
-      ? { state: "present", path: exec.which(id) }
-      : { state: "missing" }
+  (exec) => {
+    if (!exec.commandExists(id)) return { state: "missing" }
+    const path = exec.which(id)
+    return path === "" ? { state: "present" } : { state: "present", path }
+  }
 
 const versionProbe = (
   id: string,
@@ -152,22 +155,15 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   git: spec(
     "git",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "darwin"
-        ? "brew install git"
-        : "sudo apt install -y git (or your distro's package manager)",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git"),
     { version: versionProbe("git") }
   ),
-  jq: spec("jq", "optional", (pf = rawPlatform()) =>
-    pf === "darwin"
-      ? "brew install jq"
-      : "sudo apt install -y jq",
-    { version: versionProbe("jq") }
-  ),
-  curl: spec("curl", "optional", (pf = rawPlatform()) =>
-    pf === "darwin" ? "brew install curl" : "sudo apt install -y curl",
-    { version: versionProbe("curl") }
-  ),
+  jq: spec("jq", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq"), {
+    version: versionProbe("jq")
+  }),
+  curl: spec("curl", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("curl"), {
+    version: versionProbe("curl")
+  }),
   node: spec("node", "optional", () => "install Node.js via https://nodejs.org (or your package manager)", {
     version: versionProbe("node")
   }),
@@ -176,13 +172,13 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   claude: spec(
     "claude",
     "optional",
-    () => "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("claude"),
     { version: versionProbe("claude") }
   ),
   codex: spec(
     "codex",
     "optional",
-    () => 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("codex"),
     { version: versionProbe("codex") }
   ),
   bun: spec(
@@ -204,8 +200,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   ffplay: spec(
     "ffplay",
     "optional",
-    (pf = rawPlatform()) =>
-      pf === "darwin" ? "brew install ffmpeg" : "sudo apt install -y ffmpeg",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("ffplay"),
     { versionArgs: ["-version"], version: versionProbe("ffplay", ["-version"]), resolve: pathProbe("ffplay") }
   ),
   intelephense: spec("intelephense", "optional", () => "npm install -g intelephense", {

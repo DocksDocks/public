@@ -13,6 +13,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+
+import { hostOs } from "../src/engine-native/os"
 import { banner, labelSelected, parseArgs } from "./lib/goldenCli"
 import { cleanup, readArgvLog, runEngine, runEngineSplit, runPublicCli } from "./lib/goldenExecution"
 import {
@@ -42,6 +44,13 @@ interface MutationCaseGolden {
 
 const GOLDEN_PATH = join(REPO_DIR, "cli", "test", "goldens", "mutation.json")
 const options = parseArgs(process.argv)
+const hostExecutableSuffixes = hostOs().executableSuffixes
+if (hostExecutableSuffixes.length !== 1 || !hostExecutableSuffixes.includes("")) {
+  console.error(
+    "golden-mutation: unsupported host: snapshots are Linux-canonical and run only in the Linux snapshot lane. On Windows, run `bun run typecheck`, `bun run test:unit`, `bun run test:runtime:windows`, and `bun run smoke:native` instead."
+  )
+  process.exit(2)
+}
 const defaultStubs = makeStubDir()
 
 function matrixLabel(

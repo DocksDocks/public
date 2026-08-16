@@ -4,29 +4,35 @@ Canonical instructions for coding agents working on this project. Compatible wit
 
 ## Repository purpose
 
-Portable configuration kit for AI coding agents. Per-tool Single Source of Truth (SoT) directories get deployed to each tool's user-config location via `./docks-kit sync` — clone once and get a consistent AI-assisted dev environment across supported Linux and macOS hosts. The kit focuses on **token efficiency without sacrificing quality**: every setting and hook is tuned to minimize token consumption while preserving rigorous output. When adding or editing anything, ask: *does this change reduce tokens without weakening correctness?*
+Portable configuration kit for AI coding agents. Per-tool Single Source of Truth
+(SoT) directories deploy to each tool's user-config location through
+`./docks-kit sync`. Clone once to get a consistent AI-assisted environment on
+supported Linux, macOS, and Windows hosts. The kit focuses on **token efficiency
+without sacrificing quality**. Every setting and hook minimizes token use while
+preserving rigorous output. When you add or edit anything, ask: *does this
+change reduce tokens without weakening correctness?*
 
 Tool-specific instructions live alongside this file:
 - **`CLAUDE.md`** — Claude Code SoT (`SoT/.claude/`), env vars, hooks, plugins, status line, session management, permission mode, open concerns.
 - Codex uses this `AGENTS.md` file plus the Codex SoT under `SoT/.codex/`; no separate root `CODEX.md` is needed.
 
 
-docks-kit runtime and standalone binary support is exactly Linux x64/arm64 and
-macOS x64/arm64. Unsupported hosts fail before the launcher can fall back to
-Bun source.
+docks-kit runtime and standalone binary support covers Linux x64/arm64, macOS
+x64/arm64, and Windows x64/arm64. Hosts outside this matrix fail before either
+launcher can fall back to Bun source.
 
 ## Repository layout (cross-cutting)
 
 | Path | Purpose |
 |------|---------|
-| `docks-kit` | CLI launcher: on supported hosts, runs the platform binary in `cli/dist/` only when its `--version` matches `package.json`, otherwise Bun-from-source (auto-installs Bun + `node_modules`). Unsupported hosts fail before source fallback. No-Bun recovery is the standalone platform release binary |
+| `docks-kit` / `docks-kit.ps1` | POSIX and Windows CLI launchers. On supported hosts, each runs the matching binary in `cli/dist/` only when its `--version` matches `package.json`. Otherwise it runs Bun-from-source and auto-installs Bun plus `node_modules`. Hosts outside the support matrix fail before source fallback. The standalone platform release binary provides no-Bun recovery. |
 | `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
 | `cli/` | Effect 4 RC CLI + bundled docs topics |
 | `SoT/models.json` | Kit-verified Claude and Codex model catalog |
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative) |
 | `SoT/.claude/bin/` | Dependency-free Bun runtime programs for Claude's statusline, SessionStart, and Notification |
-| `install.sh` | Global installer |
-| `.github/workflows/release-cli.yml` | `cli-v*` release: four Linux/macOS x64/arm64 binaries, `SHA256SUMS`, and npm publish |
+| `install.sh` / `install.ps1` | POSIX and Windows global installers |
+| `.github/workflows/release-cli.yml` | `cli-v*` release: six binaries for Linux, macOS, and Windows on x64 and arm64, plus `SHA256SUMS` and npm publish |
 | `README.md` | Front door |
 | `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
 | `SoT/.agents/skills.txt` | Universal-skill manifest, intentionally empty by default. Adding an [agentskills.io](https://agentskills.io/specification) slug opts it into EngineNative's shared `~/.agents/skills/` bootstrap and Claude symlink. |
@@ -71,7 +77,8 @@ For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT d
 
 - No secrets in SoT. The kit's SoT directories are committed; treat them as declarative config only.
 - Treat external plugin marketplaces and installer downloads as untrusted input. Prefer download-then-run over `curl … | bash` so a truncated stream cannot execute a partial script.
-- **Pin, never float.** Every kit-driven install is pinned to a `SoT/toolchain.json` `verified` version — no `@latest` npm/bun installs (Shai-Hulud-class worm surface), no mutable action tags in workflows (commit SHAs only), installer scripts fetched from version tags where upstream supports it. New install surface ⇒ manifest pin first. Details: the `toolchain-context` skill and `cli/docs/toolchain.md`.
+- **Pin, never float.** Every kit-driven install of third-party software is pinned to a `SoT/toolchain.json` `verified` version — no `@latest` npm/bun installs (Shai-Hulud-class worm surface), no mutable action tags in workflows (commit SHAs only), installer scripts fetched from version tags where upstream supports it. New third-party install surface ⇒ manifest pin first. Details: the `toolchain-context` skill and `cli/docs/toolchain.md`.
+- **One exemption: the kit's own package.** `install.sh` and `install.ps1` end with `bun add -g docks-kit@latest`, because a global installer that pinned itself would install a fixed old kit forever, and pinning it to `package.json` would request an unpublished version between the release-prep commit and the npm publish. The exemption covers `docks-kit` alone. Both installers still pin the Bun installer they download to the manifest's verified version, and `cli/test/unit/install.test.ts` asserts that pin in all four launcher and installer scripts.
 ## Testing
 
 Automated coverage includes `bun run test:unit`, `bun run golden:dryrun`, and `bun run golden:mutation`; prove-red modes must exit non-zero after detecting planted mismatches. Also verify user-facing changes via `./docks-kit sync --dry-run`, per-tool sanity (`/doctor`, `/plugin`, etc.), and `diff <(jq -S . <SoT>) <(jq -S . <deployed>)` recipes from the per-tool file.

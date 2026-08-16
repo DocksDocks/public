@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type * as FsModule from "node:fs"
 import type * as OsModule from "node:os"
+import { basename, join, sep } from "node:path"
 import type * as ExecModule from "../../src/engine-native/exec"
 
 const mocks = vi.hoisted(() => ({
-  mkdtempSync: vi.fn((_prefix: string) => "/tmp/docks-kit-bun-private"),
+  mkdtempSync: vi.fn((_prefix: string) => "docks-kit-bun-private"),
   rmSync: vi.fn(),
   spawnProcess: vi.fn(),
-  tmpdir: vi.fn(() => "/tmp")
+  tmpdir: vi.fn(() => "")
 }))
 
 vi.mock("../../src/engine-native/exec", async () => {
@@ -26,6 +27,7 @@ vi.mock("node:os", async () => {
 import { bunBootstrap, type BunRuntimeState } from "../../src/engine-native/bun"
 import type { Ctx } from "../../src/engine-native"
 import type { ProbeExecutor } from "../../src/engine-native/deps"
+import { hostOs } from "../../src/engine-native/os"
 import { makeDependencyManager, makeEngineServices, makePlatform, type EngineServices } from "../../src/engine-native/services"
 
 interface ProbeState {
@@ -60,6 +62,7 @@ function executor(state: ProbeState, home: string): ProbeExecutor {
       return ""
     },
     which: (name) => {
+      if (name === "curl" && state.curl) return "/usr/bin/curl"
       if (name === "bun") return state.pathBun ?? ""
       if (state.installed && (name === custom || name === fallback)) return name
       return ""
@@ -118,11 +121,13 @@ function expectReady(state: BunRuntimeState): string {
   return state.executable
 }
 
-beforeEach(() => {
-  mocks.mkdtempSync.mockReset().mockReturnValue("/tmp/docks-kit-bun-private")
+beforeEach(async () => {
+  const os = await vi.importActual<typeof OsModule>("node:os")
+  const privateDir = join(os.tmpdir(), "docks-kit-bun-private")
+  mocks.mkdtempSync.mockReset().mockReturnValue(privateDir)
   mocks.rmSync.mockReset()
   mocks.spawnProcess.mockReset().mockResolvedValue({ error: undefined, exitCode: 0, stdout: "", stderr: "" })
-  mocks.tmpdir.mockReset().mockReturnValue("/tmp")
+  mocks.tmpdir.mockReset().mockImplementation(os.tmpdir)
   delete process.env["BUN_INSTALL"]
 })
 
@@ -165,6 +170,15 @@ describe("per-run Bun bootstrap", () => {
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
+  it("predicts the pinned Windows path in dry-run without spawning or removing", async () => {
+    process.env["BUN_INSTALL"] = "C:/custom bun"
+    const test = rig("win32", { curl: true, installed: false }, true)
+    expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("C:/custom bun/bin/bun.exe")
+    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.3.14 (kit-verified) -> C:/custom bun/bin/bun.exe")
+    expect(mocks.spawnProcess).not.toHaveBeenCalled()
+    expect(mocks.rmSync).not.toHaveBeenCalled()
+  })
+
   it("defers a POSIX dry-run when curl cannot satisfy the planned bootstrap", async () => {
     const test = rig("linux", { curl: false, installed: false }, true)
     expect(await bunBootstrap(test.ctx, test.services)).toEqual({ kind: "deferred", reason: "missing-curl" })
@@ -174,53 +188,122 @@ describe("per-run Bun bootstrap", () => {
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
 
-  it("uses a fresh private directory and never follows the predictable shared-temp symlink", async () => {
-    const fs = await vi.importActual<typeof FsModule>("node:fs")
-    const testRoot = fs.mkdtempSync("/tmp/docks-kit-bun-security-")
-    const sentinel = `${testRoot}/sentinel`
-    const predictableSymlink = `${testRoot}/bun-install-${process.pid}.sh`
-    fs.writeFileSync(sentinel, "unchanged")
-    fs.symlinkSync(sentinel, predictableSymlink)
-    mocks.tmpdir.mockReturnValue(testRoot)
-    mocks.mkdtempSync.mockImplementation((prefix: string) => fs.mkdtempSync(prefix))
-    const test = rig("linux", { curl: true, installed: false })
-    let downloadedTo = ""
-    let executed = ""
-    mocks.spawnProcess.mockImplementation(async (cmd: string, args: ReadonlyArray<string>) => {
-      if (cmd === "curl") {
-        const flag = args.indexOf("-o")
-        const target = flag === -1 ? undefined : args[flag + 1]
-        // Never write outside this test's own temporary root. Reading the
-        // operand positionally let an argument change send the write to the
-        // relative path "undefined", which created a junk file in the
-        // repository root.
-        if (target === undefined || !target.startsWith(`${testRoot}/`)) {
-          throw new Error(`curl stub expected an -o target under ${testRoot}, received ${String(target)}`)
-        }
-        downloadedTo = target
-        fs.writeFileSync(downloadedTo, "installer")
-      }
-      if (cmd === "bash") {
-        executed = String(args[0])
-        test.state.installed = true
-      }
-      return { error: undefined, exitCode: 0, stdout: "", stderr: "" }
-    })
-
-    try {
-      expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/home/test/.bun/bin/bun")
-      expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
-      expect(downloadedTo).toMatch(new RegExp(`^${testRoot}/docks-kit-bun-[^/]+/install\\.sh$`))
-      expect(executed).toBe(downloadedTo)
-      expect(downloadedTo).not.toBe(predictableSymlink)
-      expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged")
-      expect(mocks.rmSync).toHaveBeenCalledWith(downloadedTo.replace(/\/install\.sh$/, ""), {
-        recursive: true,
-        force: true
-      })
-    } finally {
-      fs.rmSync(testRoot, { recursive: true, force: true })
+  it.each([
+    {
+      hostName: "POSIX",
+      platformId: "linux",
+      hostId: "linux",
+      installerName: "install.sh",
+      expectedExecutable: "/home/test/.bun/bin/bun"
+    },
+    {
+      hostName: "Windows",
+      platformId: "win32",
+      hostId: "windows",
+      installerName: "install.ps1",
+      expectedExecutable: "/home/test/.bun/bin/bun.exe"
     }
+  ] as const)(
+    "uses a fresh private directory and never follows the predictable shared-temp symlink on $hostName",
+    async ({ platformId, hostId, installerName, expectedExecutable }) => {
+      const fs = await vi.importActual<typeof FsModule>("node:fs")
+      const os = await vi.importActual<typeof OsModule>("node:os")
+      const testRoot = fs.mkdtempSync(join(os.tmpdir(), "docks-kit-bun-security-"))
+      const sentinel = join(testRoot, "sentinel")
+      const predictableSymlink = join(testRoot, installerName)
+      fs.writeFileSync(sentinel, "unchanged")
+      let symlinkStaged = false
+      try {
+        fs.symlinkSync(sentinel, predictableSymlink)
+        symlinkStaged = true
+      } catch (cause) {
+        const code = (cause as NodeJS.ErrnoException).code
+        if (code !== "EPERM" && code !== "EACCES" && code !== "ENOTSUP" && code !== "EINVAL") throw cause
+      }
+      mocks.tmpdir.mockReturnValue(testRoot)
+      let privateDirectory = ""
+      mocks.mkdtempSync.mockImplementation((prefix: string) => {
+        privateDirectory = fs.mkdtempSync(prefix)
+        return privateDirectory
+      })
+      const test = rig(platformId, { curl: true, installed: false })
+      let downloadedTo = ""
+      mocks.spawnProcess.mockImplementation(async (cmd: string, args: ReadonlyArray<string>) => {
+        if (cmd === "curl") {
+          const flag = args.indexOf("-o")
+          const target = flag === -1 ? undefined : args[flag + 1]
+          // Never write outside this test's own temporary root. Reading the
+          // operand positionally let an argument change send the write to the
+          // relative path "undefined", which created a junk file in the
+          // repository root.
+          if (target === undefined || !target.startsWith(`${testRoot}/`) && !target.startsWith(`${testRoot}${sep}`)) {
+            throw new Error(`curl stub expected an -o target under ${testRoot}, received ${String(target)}`)
+          }
+          downloadedTo = target
+          fs.writeFileSync(downloadedTo, "installer")
+        } else {
+          test.state.pathBun = expectedExecutable
+        }
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" }
+      })
+
+      try {
+        expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe(expectedExecutable)
+        const installer = hostOs(hostId).bunInstaller("1.3.14", privateDirectory)
+        expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
+        expect(
+          privateDirectory.startsWith(`${testRoot}/`) || privateDirectory.startsWith(`${testRoot}${sep}`)
+        ).toBe(true)
+        expect(basename(privateDirectory)).toMatch(/^docks-kit-bun-.+$/)
+        expect(downloadedTo).toBe(installer.scriptPath)
+        expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
+          1,
+          installer.download.command,
+          installer.download.args,
+          { stdio: ["ignore", "ignore", "pipe"] }
+        )
+        expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
+          2,
+          installer.run.command,
+          installer.run.args,
+          { stdio: ["ignore", "ignore", "pipe"] }
+        )
+        expect(privateDirectory).not.toBe(predictableSymlink)
+        expect(downloadedTo).not.toBe(predictableSymlink)
+        expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged")
+        expect(fs.existsSync(predictableSymlink)).toBe(symlinkStaged)
+        expect(mocks.rmSync).toHaveBeenCalledWith(privateDirectory, {
+          recursive: true,
+          force: true
+        })
+      } finally {
+        fs.rmSync(testRoot, { recursive: true, force: true })
+      }
+    }
+  )
+
+  it("shapes the Windows installer with a bare pin and explicit PowerShell argv", () => {
+    const installer = hostOs("windows").bunInstaller("1.3.14", "C:/Temp/docks-kit-bun-private")
+
+    expect(installer.scriptPath).toBe("C:/Temp/docks-kit-bun-private/install.ps1")
+    expect(installer.download.command).toBe("curl")
+    expect(installer.download.args).toEqual([
+      "-fsSL",
+      "https://bun.sh/install.ps1",
+      "-o",
+      "C:/Temp/docks-kit-bun-private/install.ps1"
+    ])
+    expect(installer.run.command).toBe("powershell.exe")
+    expect(installer.run.args).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "C:/Temp/docks-kit-bun-private/install.ps1",
+      "-Version",
+      "1.3.14"
+    ])
   })
 
   it("reports transport diagnostics when the Bun installer download fails", async () => {

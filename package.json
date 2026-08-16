@@ -6,7 +6,8 @@
   "license": "MIT",
   "os": [
     "linux",
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "repository": {
     "type": "git",
@@ -20,18 +21,21 @@
     "cli/docs",
     "cli/tsconfig.json",
     "docks-kit",
+    "docks-kit.ps1",
     "AGENTS.md",
     "README.md"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
+    "smoke:native": "bun cli/scripts/native-smoke.ts",
     "check:generated": "bun cli/scripts/generate-sot-payload.ts --check",
     "prepack": "bun run check:generated",
     "golden:dryrun": "bun cli/test/golden-dryrun.ts",
     "golden:mutation": "bun cli/test/golden-mutation.ts",
     "test:unit": "vitest run",
     "test:runtime:posix": "bun cli/test/statusline-runtime-smoke.mjs posix",
+    "test:runtime:windows": "bun cli/test/statusline-runtime-smoke.mjs windows",
     "test:ci": "bun run check:generated && bun run typecheck && bun run test:unit && bun run test:runtime:posix && bun run golden:dryrun && bun run golden:mutation"
   },
   "dependencies": {

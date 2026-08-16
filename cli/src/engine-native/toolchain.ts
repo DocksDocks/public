@@ -6,6 +6,7 @@ import type { ToolId } from "./deps"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
 import { payloadText } from "../payload"
+import { hostOs } from "./os"
 
 function manifest(): { [k: string]: Json } {
   const doc = parseJson(payloadText("SoT/toolchain.json"))
@@ -82,7 +83,7 @@ export async function report(ctx: Ctx): Promise<void> {
   const { echo } = ctx.services.logger
   echo(row(["TOOL", "KIND", "INSTALLED", "FLOOR", "VERIFIED", "STATUS"]))
   const pn = ctx.services.platform.name()
-  const platformOs = pn === "unknown" ? "" : pn
+  const platformOs = hostOs(pn).toolchainOs
   for (const tool of Object.keys(manifest()).sort(compareCodepoints)) {
     const os = field(ctx, tool, "os")
     if (os !== "" && platformOs !== "" && os !== platformOs) continue

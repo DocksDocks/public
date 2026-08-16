@@ -18,7 +18,7 @@ case "$HOST" in
   Darwin-x86_64) KIT_BIN="docks-kit-darwin-x64" ;;
   Darwin-arm64)  KIT_BIN="docks-kit-darwin-arm64" ;;
   *)
-    echo "[docks-kit] unsupported host $HOST; docks-kit supports only Linux and macOS on x64 or arm64." >&2
+    echo "[docks-kit] unsupported host $HOST; this launcher serves Linux and macOS on x64 or arm64 - on Windows run docks-kit.ps1 instead." >&2
     exit 1
     ;;
 esac

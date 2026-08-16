@@ -38,8 +38,8 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
   serial, and summaries retain canonical Claude, Codex, skills order.
 - **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `bun`,
   `curl`, and platform package managers are spawned with argv arrays,
-  not shell command strings except where the external installer contract is a
-  shell script.
+  not shell command strings except where an external installer contract
+  requires a script interpreter.
 - **Backups precede mutation.** Deployed settings/config files write `.bak`
   backups before replacement.
 - **Runtime payload is in memory.** `SoT/` remains the reviewed authoring tree;
@@ -97,7 +97,7 @@ each such skip is an intentional behavior change named in its golden diff.
 Exactly one deduplicated warn per requested missing tool per run, uniform shape:
 `[warn] <tool> not installed — <platform-correct install command>`, sourced
 from the dependency registry (`deps.ts`). jq and curl are optional report rows:
-jq has no runtime consumer, while curl warns only when a requested POSIX Bun
+jq has no runtime consumer, while curl warns only when a requested Bun
 bootstrap needs an installer download. A missing Bun defers Claude runtime
 migration without deleting working legacy hooks or statusline files.
 
@@ -116,10 +116,11 @@ changed → restart line; skills changed → discovery line) or under `--verbose
 
 ### Platform seam
 
-All host detection routes through `os.ts`, the engine module that reads
-`process.platform`. `exec.ts` contains only POSIX executable and PATH probes.
-`deps.ts` install hints default their platform from `os.ts` and keep the
-parameter injectable for tests.
+All host detection routes through `os/index.ts`, which holds the engine's only
+`process.platform` read and keeps platform normalization injectable for tests.
+Per-OS facts live in `os/linux.ts`, `os/darwin.ts`, and `os/windows.ts` behind
+`HostOs`; consumers select those facts through the package rather than branching
+on the host directly.
 
 ### Verbosity plumbing
 
@@ -140,42 +141,50 @@ active logger binding.
 | `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
 | `claudeSync.ts` | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
 | `bun.ts` | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure |
-| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and POSIX statusline commands |
+| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and per-host statusline and failure-hook command materialization |
 | `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
 | `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
 | `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
 | `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, Claude symlink healing, managed-skill snapshot |
+| `skillsSync.ts` | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot |
 | `toolchain.ts` | tool presence/version probes, verified-version floor reporting, report table |
 | `modes.ts` | direct `model` and `toolchain` modes |
 | `models.ts` | model catalog listing and validation |
 | `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
-| `exec.ts` | slash-stable path helpers, POSIX command probes, capture/spawn wrappers, and change-detecting write/copy helpers |
+| `exec.ts` | slash-stable path helpers, host-aware PATH probes and invocation, capture/spawn wrappers, and change-detecting write/copy helpers |
 | `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
 | `deps.ts` | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
-| `os.ts` | platform capability seam — host reader and injected platform normalization (`rawPlatform`, `platformName`) |
+| `os/` | host reader, injected platform normalization, and per-OS `HostOs` fact modules |
 | `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
 
 ## Platform Support
 
-- EngineNative supports Linux and macOS on x64 and arm64.
+- EngineNative supports Linux, macOS, and Windows on x64 and arm64.
 - Unsupported hosts fail before launcher fallback, dependency probes, downloads,
   settings writes, or sync work.
-- Runtime hooks use POSIX commands and absolute Bun paths.
-- Symlink creation remains capability-driven: permission or filesystem failures
-  fall back to copy without predicting the host.
+- Claude runtime settings use absolute Bun/script paths and materialize
+  statusline and failure-hook commands through the selected `HostOs`.
+- Directory linking is capability-driven. The host module supplies only the
+  order while the runtime decides the outcome: symlink, then a Windows junction
+  with an absolute target, then a recursive copy. Copies carry a kit marker so
+  later sync can heal them back to a real link and prune can reclaim them
+  without touching user-owned directories.
 
 ## Tests
 
-- `bun run test:unit` covers pure JSON merge semantics and jq-oracle cases.
+- `bun run test:unit` covers pure JSON merge semantics, jq-oracle cases, and
+  the three `HostOs` modules independently of the current host.
 - `bun run golden:dryrun` compares live native dry-run output to
   `cli/test/goldens/dryrun.json`.
 - `bun run golden:mutation` compares live native mutation snapshots, argv logs,
   output, and TOML invariants to `cli/test/goldens/mutation.json`.
-- `.github/workflows/parity.yml` is the golden-regression workflow: Linux runs
-  unit + golden + prove-red plus the exact materialized POSIX runtime commands.
-- `.github/workflows/release-cli.yml` publishes the four Linux/macOS x64/arm64
-  binaries, `SHA256SUMS`, and the npm package.
+- `.github/workflows/parity.yml` runs its portable lane on `ubuntu-24.04`,
+  `macos-26`, and `windows-2025`: typecheck, unit tests, host-specific runtime
+  command checks, and compilation and execution of the native host artifact.
+  The Linux-canonical snapshot lane stays on Ubuntu and runs both golden suites
+  plus their prove-red checks.
+- `.github/workflows/release-cli.yml` publishes six binaries for Linux, macOS,
+  and Windows on x64 and arm64, plus `SHA256SUMS` and the npm package.
 
 ## Non-Goals
 

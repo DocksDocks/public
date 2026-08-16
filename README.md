@@ -1,9 +1,9 @@
 # docks-kit
 
 Portable configuration kit for AI coding agents. Per-tool **Single Source of
-Truth (SoT)** directories are deployed to each tool's user-config location —
-clone once and get a consistent AI-assisted dev environment across supported
-Linux and macOS machines. Tuned for **token efficiency without sacrificing quality**.
+Truth (SoT)** directories deploy to each tool's user-config location. Clone
+once to get a consistent AI-assisted environment on supported Linux, macOS,
+and Windows machines. Tuned for **token efficiency without sacrificing quality**.
 
 Supported tools: **Claude Code**, **Codex**, and any agent consuming
 [agentskills.io](https://agentskills.io) universal skills.
@@ -17,15 +17,15 @@ cd ~/projects/public
 ./docks-kit status          # doctor view: drift, toolchain, plugins, skills
 ```
 
-The `./docks-kit` launcher supports Linux x64/arm64 and macOS x64/arm64.
-On those hosts it prefers a compiled binary (`cli/dist/`) only when its version
-matches the checkout, then runs from source via Bun—auto-installing Bun and
-dependencies when missing. Unsupported hosts fail immediately and never fall
-back to Bun source. Stale ignored build artifacts cannot mask newer checkout
-code.
+POSIX hosts use the `./docks-kit` launcher on x64 and arm64. Windows uses
+`.\docks-kit.ps1` on x64 and arm64. Each launcher prefers the matching compiled
+binary in `cli/dist/` only when its version matches the checkout. Otherwise it
+runs from source via Bun and auto-installs Bun plus dependencies when needed.
+Hosts outside this matrix fail immediately and never fall back to Bun source.
+Stale ignored build artifacts cannot mask newer checkout code.
 
-Other install paths (global `bun add -g docks-kit`, curl installer) —
-see `./docks-kit docs install`.
+Other install paths include global `bun add -g docks-kit`, the POSIX curl
+installer, and the Windows PowerShell installer. See `./docks-kit docs install`.
 
 **No-Bun recovery path**:
 
@@ -33,9 +33,10 @@ Download the platform release binary from GitHub Releases and run it directly.
 The executable carries the generated sync payload; no checkout or adjacent
 `SoT/` directory is required.
 
-Prerequisites for source/global installs: Bun; Node/npm for npm-global tools.
-`jq` is optional doctor/test tooling. `curl` is used only when a requested
-Linux/macOS Bun bootstrap must download an installer.
+Source and global installs require Bun. npm-global tools require Node/npm.
+`jq` is optional doctor/test tooling. `curl` downloads Bun only when a source
+launcher needs it. POSIX runs `install.sh`; Windows runs `install.ps1` through
+PowerShell.
 
 ## CLI
 
@@ -111,8 +112,8 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |
 | `cli/` | docks-kit CLI (Effect 4 RC on Bun) + bundled docs topics |
-| `docks-kit` | Launcher (binary → bun-from-source) |
-| `install.sh` | Global installer (Bun bootstrap + `bun add -g`) |
+| `docks-kit` / `docks-kit.ps1` | POSIX and Windows launchers (binary → Bun-from-source) |
+| `install.sh` / `install.ps1` | POSIX and Windows global installers |
 | `docs/plans/` | Multi-commit work-item plans |
 | `AGENTS.md` / `CLAUDE.md` | Agent-facing engineering rules / Claude Code specifics |
 
@@ -124,14 +125,17 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | Linux | arm64 | ✅ | ✅ native |
 | macOS | x64 | ✅ | ✅ native |
 | macOS | arm64 | ✅ | ✅ native |
+| Windows | x64 | ✅ | ✅ native |
+| Windows | arm64 | ✅ | ✅ native |
 
 Details: `docks-kit docs platforms`.
 
 ## Releases
 
-Tagging `cli-v*` builds four standalone binaries (Linux x64/arm64 and macOS
-x64/arm64) plus `SHA256SUMS` and attaches them to the GitHub release; npm
-publishes the exact package tarball through trusted publishing with OIDC provenance.
+Tagging `cli-v*` builds six standalone binaries for Linux, macOS, and Windows
+on x64 and arm64. The workflow attaches them plus `SHA256SUMS` to the GitHub
+release. npm publishes the exact package tarball through trusted publishing
+with OIDC provenance.
 Package `docks-kit` 0.15.2 bundles the CLI + generated payload, so npm releases
 are versioned config snapshots without shipping the authoring `SoT/` tree.
 

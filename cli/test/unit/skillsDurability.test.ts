@@ -64,7 +64,7 @@ describe("skills durability", () => {
     const executable = join(root, "bun")
     writeFileSync(executable, "user bun\n")
 
-    expect(linkOrCopy(executable, executable)).toBe(true)
+    expect(linkOrCopy(executable, executable)).toBe("symlink")
     expect(readFileSync(executable, "utf8")).toBe("user bun\n")
     expect(() => readlinkSync(executable)).toThrow()
   })

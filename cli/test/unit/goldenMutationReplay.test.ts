@@ -9,6 +9,12 @@ const harness = vi.hoisted(() => ({
   firstOutput: "--- Sync complete ---\n",
   runCount: 0
 }))
+vi.mock("../../src/engine-native/os", () => ({
+  // This unit harness exercises the Linux-canonical replay logic with every
+  // engine/filesystem dependency mocked; it does not execute a host artifact.
+  hostOs: vi.fn(() => ({ executableSuffixes: [""] }))
+}))
+
 
 vi.mock("../lib/goldenExecution", () => ({
   cleanup: vi.fn(),

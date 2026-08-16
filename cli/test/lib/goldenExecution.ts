@@ -3,9 +3,11 @@
  */
 import { spawnSync, type SpawnSyncReturns } from "node:child_process"
 import {
+  closeSync,
   copyFileSync,
   cpSync,
   existsSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -14,20 +16,31 @@ import {
 } from "node:fs"
 import { delimiter, isAbsolute, join, resolve } from "node:path"
 
-import { FIXTURES_DIR, REPO_DIR, temporaryDir } from "./goldenResources"
+import { hostOs } from "../../src/engine-native/os"
+
+import { FIXTURES_DIR, REPO_DIR, childHostId, readStubHost, temporaryDir } from "./goldenResources"
 import { normalizeOutput } from "./goldenSnapshot"
 
 
 function bunRuntime(): string {
   if (process.versions["bun"] !== undefined) return resolve(process.execPath)
+  const { executableSuffixes } = hostOs()
   for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
-    const candidate = join(directory, "bun")
-    if (existsSync(candidate)) return resolve(candidate)
+    for (const suffix of executableSuffixes) {
+      const candidate = join(directory, `bun${suffix}`)
+      if (existsSync(candidate)) return resolve(candidate)
+    }
   }
   throw new Error("unable to locate the Bun runtime")
 }
 
 const BUN_RUNTIME = bunRuntime()
+const BUN_MAIN = join(REPO_DIR, "cli", "src", "main.ts")
+const BUN_CLI_ARGS: ReadonlyArray<string> = [
+  "--preload",
+  join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"),
+  BUN_MAIN
+]
 const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-")
 const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
 
@@ -49,32 +62,6 @@ export interface SplitRun {
 }
 
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`
-}
-
-/**
- * `bun --preload <platform pin> cli/src/main.ts`, shared by the raw-engine and
- * public-CLI children. Absolute bun path so the PATH stub `bun` never shadows
- * the runtime, and the preload on BOTH paths so no run \u2014 snapshot, invariant,
- * or unit \u2014 observes the recording host's platform.
- */
-function bunCliInvocation(): string {
-  return (
-    `${shellQuote(BUN_RUNTIME)} ` +
-    `--preload ${shellQuote(join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"))} ` +
-    `${shellQuote(join(REPO_DIR, "cli", "src", "main.ts"))}`
-  )
-}
-
-function engineCommand(args: ReadonlyArray<string>): string {
-  const quotedArgs = args.map(shellQuote).join(" ")
-  // Raw harness channel: bypasses effect/unstable/cli so tests drive the
-  // engine's internal argv directly.
-  const command = `DOCKS_KIT_ENGINE=native-raw exec ${bunCliInvocation()}`
-  return quotedArgs === "" ? command : `${command} ${quotedArgs}`
-}
-
 /**
  * PATH with every directory holding one of `names` replaced by a shadow
  * dir mirroring its other entries — the "tool missing" half of a `null`
@@ -88,14 +75,17 @@ function engineCommand(args: ReadonlyArray<string>): string {
 function maskedPath(names: ReadonlyArray<string>): string {
   const dirs = (process.env["PATH"] ?? "").split(delimiter)
   if (names.length === 0) return dirs.join(delimiter)
+  const blockedNames = names.flatMap((name) =>
+    hostOs().executableSuffixes.map((suffix) => `${name}${suffix}`.toLowerCase())
+  )
+  const blocked = new Set(blockedNames)
   const holdsMasked = (dir: string): boolean =>
-    dir !== "" && names.some((name) => existsSync(join(dir, name)))
-  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, names) : dir)).join(delimiter)
+    dir !== "" && blockedNames.some((name) => existsSync(join(dir, name)))
+  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, blocked) : dir)).join(delimiter)
 }
 
-function shadowDir(dir: string, names: ReadonlyArray<string>): string {
+function shadowDir(dir: string, blocked: ReadonlySet<string>): string {
   const shadow = temporaryDir("golden-mask-")
-  const blocked = new Set(names)
   for (const entry of readdirSync(dir)) {
     if (blocked.has(entry.toLowerCase())) continue
     try {
@@ -117,6 +107,30 @@ interface RunOpts {
   readonly reuseHome?: string
   /** Extra env for the child (e.g. DOCKS_KIT_VERBOSE). */
   readonly env?: Record<string, string>
+  /** Exercise the recording host instead of the Linux-canonical golden preload. */
+  readonly nativeHost?: boolean
+}
+
+function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
+  return [...(opts.nativeHost === true ? [BUN_MAIN] : BUN_CLI_ARGS), ...args]
+}
+
+/**
+ * The stub directory and the child must agree on one host: a Linux-preloaded
+ * child resolves extensionless names, a native Windows child resolves `.cmd`.
+ * `makeStubDir` records the host it planted for, so a mismatched pair fails
+ * here with a named cause instead of as an unreproducible tool-missing branch
+ * on one runner.
+ */
+function requirePairedStubHost(stubDir: string, opts: RunOpts): void {
+  const expected = childHostId(opts.nativeHost === true)
+  const planted = readStubHost(stubDir)
+  if (planted !== expected) {
+    throw new Error(
+      `stub host mismatch: stubs were planted for ${planted} but this child runs as ${expected}. ` +
+        `Pass the same options object to makeStubDir and to the run helper.`
+    )
+  }
 }
 
 function materializeHome(kind: string, fixture: string, reuseHome?: string): string {
@@ -131,6 +145,7 @@ function materializeHome(kind: string, fixture: string, reuseHome?: string): str
 function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): Record<string, string> {
   return {
     HOME: home,
+    USERPROFILE: home,
     PATH: `${stubDir}${delimiter}${maskedPath(opts.maskTools ?? [])}`,
     GOLDEN_ARGV_LOG: argvLog,
     GOLDEN_STUB_DIR: stubDir,
@@ -157,19 +172,32 @@ export function runEngine(
   stubDir: string,
   opts: RunOpts = {}
 ): EngineRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
 
-  const command = `exec 2>&1; ${engineCommand(args)}`
-  const result = spawnSync("bash", ["-c", command], {
-    cwd: REPO_DIR,
-    env: runEnv(home, stubDir, argvLog, opts),
-    stdio: ["ignore", "pipe", "pipe"],
-    encoding: "utf8",
-    timeout: 120_000
-  })
-  const output = normalizeOutput(result.stdout ?? "", home, stubDir)
+  const argv = childArgv(args, opts)
+  const command = [BUN_RUNTIME, ...argv].join(" ")
+  const mergedOutputPath = join(home, ".golden-merged-output")
+  const mergedOutputFd = openSync(mergedOutputPath, "w")
+  let result: SpawnSyncReturns<string>
+  try {
+    result = spawnSync(BUN_RUNTIME, argv, {
+      cwd: REPO_DIR,
+      env: {
+        ...runEnv(home, stubDir, argvLog, opts),
+        DOCKS_KIT_ENGINE: "native-raw"
+      },
+      stdio: ["ignore", mergedOutputFd, mergedOutputFd],
+      encoding: "utf8",
+      timeout: 120_000
+    })
+  } finally {
+    closeSync(mergedOutputFd)
+  }
+  const output = normalizeOutput(readFileSync(mergedOutputPath, "utf8"), home, stubDir)
+  rmSync(mergedOutputPath, { force: true })
   return {
     exitCode: checkedSpawnExitCode(command, result),
     output,
@@ -180,9 +208,9 @@ export function runEngine(
 }
 
 /**
- * Channel-aware variant of runEngine: no bash 2>&1 merge, so stdout and
- * stderr assert independently. Cross-channel interleaving order is NOT
- * guaranteed here — use for channel-purity invariants, not ordered goldens.
+ * Channel-aware variant of runEngine: stdout and stderr stay on separate
+ * pipes. Cross-channel interleaving order is NOT guaranteed here — use for
+ * channel-purity invariants, not ordered goldens.
  */
 export function runEngineSplit(
   args: ReadonlyArray<string>,
@@ -190,13 +218,18 @@ export function runEngineSplit(
   stubDir: string,
   opts: RunOpts = {}
 ): SplitRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("native", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
-  const command = engineCommand(args)
-  const result = spawnSync("bash", ["-c", command], {
+  const argv = childArgv(args, opts)
+  const command = [BUN_RUNTIME, ...argv].join(" ")
+  const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,
-    env: runEnv(home, stubDir, argvLog, opts),
+    env: {
+      ...runEnv(home, stubDir, argvLog, opts),
+      DOCKS_KIT_ENGINE: "native-raw"
+    },
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
     timeout: 120_000
@@ -219,13 +252,13 @@ export function runPublicCli(
   stubDir: string,
   opts: RunOpts = {}
 ): SplitRun {
+  requirePairedStubHost(stubDir, opts)
   const home = materializeHome("cli", fixture, opts.reuseHome)
   const argvLog = join(home, ".golden-argv.log")
   writeFileSync(argvLog, "")
-  const quotedArgs = args.map(shellQuote).join(" ")
-  const command =
-    `exec ${bunCliInvocation()}` + (quotedArgs === "" ? "" : ` ${quotedArgs}`)
-  const result = spawnSync("bash", ["-c", command], {
+  const argv = childArgv(args, opts)
+  const command = [BUN_RUNTIME, ...argv].join(" ")
+  const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
     stdio: ["ignore", "pipe", "pipe"],

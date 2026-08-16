@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { runBounded, runEngineNative, syncConcurrencyForManifest } from "../../src/engine-native"
+import { p } from "../../src/engine-native/exec"
 import {
   syncClaudeAdvisor,
   syncClaudeEffort
@@ -115,7 +116,7 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
   return {
     repoDir: kitHome(),
     home,
-    agentsDir: join(home, ".agents"),
+    agentsDir: p(home, ".agents"),
     dryRun,
     verbose: true,
     skipBubblewrap: false,
@@ -287,8 +288,8 @@ describe("sync pipeline coordinator", () => {
 describe("Claude settings modifiers", () => {
   it("sets effort, resolves default from the embedded SoT, and is idempotent", () => {
     const home = mkdtempSync(join(tmpdir(), "claude-effort-modifier-"))
-    const settings = join(home, ".claude", "settings.json")
-    mkdirSync(join(home, ".claude"), { recursive: true })
+    const settings = p(home, ".claude", "settings.json")
+    mkdirSync(p(home, ".claude"), { recursive: true })
     writeFileSync(settings, '{"model":"sonnet","userOnly":true}\n')
     const records: Array<LogRecord> = []
     const ctx = modifierCtx(home, records)
@@ -332,8 +333,8 @@ describe("Claude settings modifiers", () => {
 
   it("owns advisor on/off/default edits without duplicate same-state changes", () => {
     const home = mkdtempSync(join(tmpdir(), "claude-advisor-modifier-"))
-    const settings = join(home, ".claude", "settings.json")
-    mkdirSync(join(home, ".claude"), { recursive: true })
+    const settings = p(home, ".claude", "settings.json")
+    mkdirSync(p(home, ".claude"), { recursive: true })
     writeFileSync(settings, '{"advisorModel":"fable","userOnly":true}\n')
     const records: Array<LogRecord> = []
     const ctx = modifierCtx(home, records)
@@ -388,15 +389,15 @@ describe("Claude settings modifiers", () => {
 
   it("leaves invalid JSON untouched and keeps dry-run edits descriptive only", () => {
     const invalidHome = mkdtempSync(join(tmpdir(), "claude-modifier-invalid-"))
-    const invalidSettings = join(invalidHome, ".claude", "settings.json")
-    mkdirSync(join(invalidHome, ".claude"), { recursive: true })
+    const invalidSettings = p(invalidHome, ".claude", "settings.json")
+    mkdirSync(p(invalidHome, ".claude"), { recursive: true })
     writeFileSync(invalidSettings, "{broken\n")
     const invalidRecords: Array<LogRecord> = []
     const invalidCtx = modifierCtx(invalidHome, invalidRecords)
 
     const dryHome = mkdtempSync(join(tmpdir(), "claude-modifier-dry-"))
-    const drySettings = join(dryHome, ".claude", "settings.json")
-    mkdirSync(join(dryHome, ".claude"), { recursive: true })
+    const drySettings = p(dryHome, ".claude", "settings.json")
+    mkdirSync(p(dryHome, ".claude"), { recursive: true })
     writeFileSync(drySettings, '{"userOnly":true}\n')
     const dryRecords: Array<LogRecord> = []
     const dryCtx = modifierCtx(dryHome, dryRecords, true)
@@ -458,8 +459,8 @@ describe("Codex effort modifier", () => {
 
   it("sets and resolves deployed effort atomically without repeat-run churn", () => {
     const home = mkdtempSync(join(tmpdir(), "codex-effort-modifier-"))
-    const config = join(home, ".codex", "config.toml")
-    mkdirSync(join(home, ".codex"), { recursive: true })
+    const config = p(home, ".codex", "config.toml")
+    mkdirSync(p(home, ".codex"), { recursive: true })
     writeFileSync(
       config,
       '# keep\nmodel = "gpt-5.5"\nmodel_reasoning_effort = "low" # stale\nmodel_reasoning_effort = "medium"\n\n[features]\nmemories = true\n'
@@ -513,7 +514,7 @@ describe("Codex effort modifier", () => {
     const home = mkdtempSync(join(tmpdir(), "codex-effort-dry-"))
     const records: Array<LogRecord> = []
     const ctx = modifierCtx(home, records)
-    const config = join(home, ".codex", "config.toml")
+    const config = p(home, ".codex", "config.toml")
 
     try {
       syncCodexEffort(ctx, "ultra")
@@ -521,7 +522,7 @@ describe("Codex effort modifier", () => {
         { level: "warn", message: `(--codex-effort) ${config} missing — skipped` }
       ])
 
-      mkdirSync(join(home, ".codex"), { recursive: true })
+      mkdirSync(p(home, ".codex"), { recursive: true })
       writeFileSync(config, 'model_reasoning_effort = "low"\n')
       records.length = 0
       ctx.dryRun = true
@@ -604,7 +605,7 @@ describe.sequential("EngineNative full service injection", () => {
 
     try {
       process.env["HOME"] = root
-      process.env["AGENTS_DIR"] = join(root, ".agents")
+      process.env["AGENTS_DIR"] = p(root, ".agents")
       for (const [target, flag, catalog, error] of cases) {
         for (const args of [[`${flag}=`], [flag, ""]]) {
           const records: Array<LogRecord> = []
@@ -674,7 +675,7 @@ describe.sequential("EngineNative full service injection", () => {
     const previousAgents = process.env["AGENTS_DIR"]
     try {
       process.env["HOME"] = root
-      process.env["AGENTS_DIR"] = join(root, ".agents")
+      process.env["AGENTS_DIR"] = p(root, ".agents")
       const records: Array<LogRecord> = []
       expect(
         await runEngineNative([
@@ -712,7 +713,7 @@ describe.sequential("EngineNative full service injection", () => {
 
     try {
       process.env["HOME"] = root
-      process.env["AGENTS_DIR"] = join(root, ".agents")
+      process.env["AGENTS_DIR"] = p(root, ".agents")
       process.env["PATH"] = root
       delete process.env["DRY_RUN"]
       delete process.env["DOCKS_KIT_VERBOSE"]
@@ -753,8 +754,8 @@ describe.sequential("EngineNative full service injection", () => {
     const home = mkdtempSync(join(tmpdir(), "engine-di-verbosity-gate-"))
     const previousHome = process.env["HOME"]
     process.env["HOME"] = home
-    mkdirSync(join(home, ".claude"), { recursive: true })
-    writeFileSync(join(home, ".claude", "settings.json"), "{}\n")
+    mkdirSync(p(home, ".claude"), { recursive: true })
+    writeFileSync(p(home, ".claude", "settings.json"), "{}\n")
 
     try {
       expect(await runEngineNative(["model", "claude", "default"], services)).toBe(0)
@@ -808,7 +809,7 @@ describe.sequential("EngineNative full service injection", () => {
       const home = join(root, name)
       mkdirSync(home, { recursive: true })
       process.env["HOME"] = home
-      process.env["AGENTS_DIR"] = join(home, ".agents")
+      process.env["AGENTS_DIR"] = p(home, ".agents")
       return home
     }
     const noBypass = (): void => {
@@ -859,8 +860,8 @@ describe.sequential("EngineNative full service injection", () => {
       noBypass()
 
       const existingCodexHome = useHome("canonical-codex-existing")
-      mkdirSync(join(existingCodexHome, ".codex"), { recursive: true })
-      writeFileSync(join(existingCodexHome, ".codex", "config.toml"), 'model = "user-choice"\n')
+      mkdirSync(p(existingCodexHome, ".codex"), { recursive: true })
+      writeFileSync(p(existingCodexHome, ".codex", "config.toml"), 'model = "user-choice"\n')
       const existingCodexRecords: Array<LogRecord> = []
       expect(
         await runEngineNative(["sync", "codex", "--dry-run"], stubServices(existingCodexRecords))
@@ -910,8 +911,8 @@ describe.sequential("EngineNative full service injection", () => {
       noBypass()
 
       const modelHome = useHome("model")
-      mkdirSync(join(modelHome, ".claude"), { recursive: true })
-      writeFileSync(join(modelHome, ".claude", "settings.json"), '{"model":"sonnet"}\n')
+      mkdirSync(p(modelHome, ".claude"), { recursive: true })
+      writeFileSync(p(modelHome, ".claude", "settings.json"), '{"model":"sonnet"}\n')
       const modelRecords: Array<LogRecord> = []
       expect(await runEngineNative(["model", "claude"], stubServices(modelRecords))).toBe(0)
       expect(modelRecords.slice(0, 3)).toEqual([
@@ -938,8 +939,8 @@ describe.sequential("EngineNative full service injection", () => {
       expect(dedupWarns).toHaveLength(2)
 
       const verboseHome = useHome("verbosity")
-      mkdirSync(join(verboseHome, ".claude"), { recursive: true })
-      writeFileSync(join(verboseHome, ".claude", "settings.json"), "{}\n")
+      mkdirSync(p(verboseHome, ".claude"), { recursive: true })
+      writeFileSync(p(verboseHome, ".claude", "settings.json"), "{}\n")
       const verboseRecords: Array<LogRecord> = []
       const verboseServices = stubServices(verboseRecords)
       expect(await runEngineNative(["model", "claude", "default"], verboseServices)).toBe(0)

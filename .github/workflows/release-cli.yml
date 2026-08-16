@@ -98,7 +98,7 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run test:ci
 
-      - name: Build binaries (all four targets)
+      - name: Build binaries (all six targets)
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run build:binaries
@@ -175,6 +175,8 @@ jobs:
             cli/dist/docks-kit-linux-arm64
             cli/dist/docks-kit-darwin-x64
             cli/dist/docks-kit-darwin-arm64
+            cli/dist/docks-kit-windows-x64.exe
+            cli/dist/docks-kit-windows-arm64.exe
             cli/dist/SHA256SUMS
             cli/dist/docks-kit-${{ needs.resolve.outputs.release_version }}.tgz
 
@@ -211,7 +213,7 @@ jobs:
             echo "::error::could not list existing assets for $RELEASE_TAG"
             exit 1
           fi
-          for asset in docks-kit-linux-x64 docks-kit-linux-arm64 docks-kit-darwin-x64 docks-kit-darwin-arm64 SHA256SUMS; do
+          for asset in docks-kit-linux-x64 docks-kit-linux-arm64 docks-kit-darwin-x64 docks-kit-darwin-arm64 docks-kit-windows-x64.exe docks-kit-windows-arm64.exe SHA256SUMS; do
             if grep -Fxq "$asset" "$present"; then
               echo "asset already published, leaving untouched: $asset"
               continue

@@ -1,5 +1,6 @@
 import type * as FsModule from "node:fs"
 import type * as OsModule from "node:os"
+import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => {
@@ -53,6 +54,7 @@ vi.mock("node:os", async () => {
 })
 
 import {
+  childEnv,
   cleanupTemporaryDirs,
   makeStubDir,
   sweepStaleTemporaryDirs,
@@ -60,12 +62,13 @@ import {
 } from "../lib/goldenResources"
 
 const NOW_MS = 10 * 60 * 60 * 1000
+const nativeGetuid = process.getuid
 
 function addDirectory(
   name: string,
   options: { mtimeMs: number; ownerPid?: number; uid?: number }
 ): string {
-  const path = `/golden-test-tmp/${name}`
+  const path = join("/golden-test-tmp", name)
   const uid = options.uid ?? mocks.ownerUid
   mocks.entries.push({ name, isDirectory: () => true })
   mocks.stats.set(path, { uid, mtimeMs: options.mtimeMs })
@@ -79,7 +82,7 @@ function addDirectory(
 
 function addOrphanOwnerMarker(directoryName: string, ownerPid: number, mtimeMs: number): string {
   const name = `${directoryName}.owner-pid`
-  const path = `/golden-test-tmp/${name}`
+  const path = join("/golden-test-tmp", name)
   mocks.entries.push({ name, isDirectory: () => false })
   mocks.ownerFiles.set(path, `${ownerPid}\n`)
   mocks.stats.set(path, { uid: mocks.ownerUid, mtimeMs })
@@ -87,6 +90,10 @@ function addOrphanOwnerMarker(directoryName: string, ownerPid: number, mtimeMs: 
 }
 
 beforeEach(() => {
+  Object.defineProperty(process, "getuid", {
+    configurable: true,
+    value: () => mocks.ownerUid
+  })
   vi.clearAllMocks()
   mocks.entries.length = 0
   mocks.ownerFiles.clear()
@@ -96,6 +103,14 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  if (nativeGetuid === undefined) {
+    Reflect.deleteProperty(process, "getuid")
+  } else {
+    Object.defineProperty(process, "getuid", {
+      configurable: true,
+      value: nativeGetuid
+    })
+  }
 })
 
 describe("golden temporary resources", () => {
@@ -128,6 +143,23 @@ describe("golden temporary resources", () => {
     expect(kill).toHaveBeenCalledWith(protectedPid, 0)
     expect(mocks.rmSync).not.toHaveBeenCalledWith(alivePath, expect.anything())
     expect(mocks.rmSync).not.toHaveBeenCalledWith(protectedPath, expect.anything())
+    expect(mocks.rmSync).toHaveBeenCalledWith(deadPath, { recursive: true, force: true })
+    expect(mocks.rmSync).toHaveBeenCalledWith(`${deadPath}.owner-pid`, { force: true })
+  })
+
+  it("sweeps dead owners when the host has no numeric user id", () => {
+    const deadPid = 41_006
+    const deadPath = addDirectory("golden-home-windows-dead", {
+      mtimeMs: NOW_MS - 30 * 60 * 1000,
+      ownerPid: deadPid
+    })
+    vi.spyOn(process, "getuid").mockImplementation(() => undefined as never)
+    vi.spyOn(process, "kill").mockImplementation(() => {
+      throw Object.assign(new Error("process missing"), { code: "ESRCH" })
+    })
+
+    sweepStaleTemporaryDirs(NOW_MS)
+
     expect(mocks.rmSync).toHaveBeenCalledWith(deadPath, { recursive: true, force: true })
     expect(mocks.rmSync).toHaveBeenCalledWith(`${deadPath}.owner-pid`, { force: true })
   })
@@ -212,5 +244,27 @@ describe("golden temporary resources", () => {
 
   it("rejects unknown stub override names", () => {
     expect(() => makeStubDir({ claud: "exit 0" })).toThrow("Unknown golden stub override(s): claud")
+  })
+
+  it("drops an inherited key that differs only in case from an override", () => {
+    process.env["UserProfile"] = "C:\\inherited"
+    try {
+      const env = childEnv({ USERPROFILE: "C:\\fixture" })
+
+      // One spelling survives, and it is the override's.
+      expect(Object.keys(env).filter((name) => name.toUpperCase() === "USERPROFILE")).toEqual(["USERPROFILE"])
+      expect(env["USERPROFILE"]).toBe("C:\\fixture")
+    } finally {
+      delete process.env["UserProfile"]
+    }
+  })
+
+  it("keeps every inherited key that no override shadows", () => {
+    process.env["GOLDEN_UNRELATED"] = "kept"
+    try {
+      expect(childEnv({ HOME: "/fixture" })["GOLDEN_UNRELATED"]).toBe("kept")
+    } finally {
+      delete process.env["GOLDEN_UNRELATED"]
+    }
   })
 })

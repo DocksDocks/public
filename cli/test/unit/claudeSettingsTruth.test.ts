@@ -3,18 +3,125 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { mergeSettings } from "../../src/engine-native/settings"
+import { kitHome } from "../../src/kitHome"
 import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
 
 afterAll(cleanupTemporaryDirs)
 
+type PermissionListName = "allow" | "deny" | "ask"
+
+interface ClaudeSotSettings {
+  readonly permissions: Record<PermissionListName, ReadonlyArray<string>>
+  readonly hooks: {
+    readonly PostToolUseFailure: ReadonlyArray<{ readonly matcher?: string }>
+  }
+}
+
+const claudeSotSettings = JSON.parse(
+  readFileSync(join(kitHome(), "SoT", ".claude", "settings.json"), "utf8")
+) as ClaudeSotSettings
+
 function removeRunAndVariant(home: string, variant: string): void {
   rmSync(home, { recursive: true, force: true })
   rmSync(variant, { recursive: true, force: true })
 }
 
+function permissionRuleMatches(rule: string, command: string): boolean {
+  const expression = rule
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*")
+  return new RegExp(`^${expression}$`).test(command)
+}
+
 describe.sequential("Claude settings truth", () => {
+  it("mirrors every Bash permission rule for PowerShell without broadening allow or ask", () => {
+    for (const listName of ["allow", "deny", "ask"] as const) {
+      const rules = claudeSotSettings.permissions[listName]
+      const bashRules = rules.filter((rule) => rule.startsWith("Bash("))
+      const powerShellRules = rules.filter((rule) => rule.startsWith("PowerShell("))
+      const mirrors = bashRules.map(
+        (rule) => `PowerShell(${rule.slice("Bash(".length, -1)})`
+      )
+
+      expect(powerShellRules).toEqual(expect.arrayContaining(mirrors))
+      expect(Math.max(...bashRules.map((rule) => rules.indexOf(rule)))).toBeLessThan(
+        Math.min(...powerShellRules.map((rule) => rules.indexOf(rule)))
+      )
+      if (listName !== "deny") expect(powerShellRules).toEqual(mirrors)
+    }
+  })
+
+  it("denies recursive PowerShell root deletes without blocking descendant or relative paths", () => {
+    const deny = claudeSotSettings.permissions.deny
+    const deleteVerbs = ["Remove-Item", "del", "erase", "rd", "ri", "rm", "rmdir"]
+    const rootTargets = [
+      { pattern: "/", example: "/" },
+      { pattern: "~", example: "~" },
+      { pattern: "$HOME", example: "$HOME" },
+      { pattern: "$env:USERPROFILE", example: "$env:USERPROFILE" },
+      { pattern: "\\", example: "\\" },
+      { pattern: "*:\\", example: "C:\\" }
+    ]
+    const recursiveRootDeleteRules = deleteVerbs.flatMap((command) =>
+      rootTargets.flatMap(({ pattern }) => [
+        `PowerShell(${command} *-Recurse* ${pattern})`,
+        `PowerShell(${command} *-Recurse* ${pattern} *)`,
+        `PowerShell(${command} ${pattern} *-Recurse*)`,
+        `PowerShell(${command} -Path ${pattern} *-Recurse*)`,
+        `PowerShell(${command} -LiteralPath ${pattern} *-Recurse*)`
+      ])
+    )
+    const recursiveRootDeletes = deleteVerbs.flatMap((command) =>
+      rootTargets.flatMap(({ example }) => [
+        `PowerShell(${command} -Recurse ${example})`,
+        `PowerShell(${command} -Recurse ${example} -Force)`,
+        `PowerShell(${command} ${example} -Recurse)`,
+        `PowerShell(${command} -Path ${example} -Recurse)`,
+        `PowerShell(${command} -LiteralPath ${example} -Recurse)`
+      ])
+    )
+
+    expect(deny).toEqual(
+      expect.arrayContaining([
+        ...recursiveRootDeleteRules,
+        "PowerShell(sudo *)",
+        "PowerShell(Start-Process *-Verb RunAs*)",
+        "PowerShell(Invoke-Expression *)",
+        "PowerShell(iex *)",
+        "PowerShell(Format-Volume *)",
+        "PowerShell(icacls */grant*Everyone:F*)",
+        "PowerShell(icacls */grant*Everyone:(F)*)"
+      ])
+    )
+    expect(
+      recursiveRootDeletes.filter(
+        (command) => !deny.some((rule) => permissionRuleMatches(rule, command))
+      )
+    ).toEqual([])
+
+    const ordinaryRecursiveDeletes = [
+      String.raw`PowerShell(Remove-Item C:\Users\me\repo\node_modules -Recurse -Force)`,
+      "PowerShell(Remove-Item ~/projects/tmp -Recurse -Force)",
+      "PowerShell(Remove-Item /var/tmp/build -Recurse -Force)",
+      "PowerShell(Remove-Item node_modules -Recurse -Force)",
+      String.raw`PowerShell(Remove-Item -LiteralPath D:\work\dist -Recurse -Force)`
+    ]
+    expect(
+      ordinaryRecursiveDeletes.flatMap((command) =>
+        deny.filter((rule) => permissionRuleMatches(rule, command))
+      )
+    ).toEqual([])
+  })
+
+  it("runs the shell failure hook for Bash and PowerShell", () => {
+    expect(claudeSotSettings.hooks.PostToolUseFailure).toEqual(
+      expect.arrayContaining([expect.objectContaining({ matcher: "Bash|PowerShell" })])
+    )
+  })
+
   it.each([
     ["null", "null"],
     ["array", "[]"],

@@ -4,6 +4,9 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
+import { p } from "../../src/engine-native/exec"
+import { childEnv } from "../lib/goldenResources"
+
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CLI = join(REPO_DIR, "cli", "src", "main.ts")
 const temporaryDirectories = new Array<string>()
@@ -17,18 +20,18 @@ const temporaryDirectory = (prefix: string): string => {
 const runCli = (
   args: ReadonlyArray<string>,
   home: string,
-  environment: NodeJS.ProcessEnv = {}
+  environment: Record<string, string> = {}
 ) =>
   spawnSync("bun", [CLI, ...args], {
     encoding: "utf8",
-    env: {
-      ...process.env,
+    env: childEnv({
       HOME: home,
-      AGENTS_DIR: join(home, ".agents"),
+      USERPROFILE: home,
+      AGENTS_DIR: p(home, ".agents"),
       DOCKS_KIT_ENGINE: "",
       DOCKS_KIT_HOME: REPO_DIR,
       ...environment
-    }
+    })
   })
 
 afterEach(() => {
@@ -52,8 +55,8 @@ describe("command reporting", () => {
 
   it("reports malformed deployed Claude settings as JSON data with a failing exit", () => {
     const home = temporaryDirectory("docks-status-malformed-")
-    mkdirSync(join(home, ".claude"), { recursive: true })
-    writeFileSync(join(home, ".claude", "settings.json"), "{not-json\n")
+    mkdirSync(p(home, ".claude"), { recursive: true })
+    writeFileSync(p(home, ".claude", "settings.json"), "{not-json\n")
 
     const result = runCli(["status", "--json"], home)
     const output = JSON.parse(result.stdout) as {
@@ -127,7 +130,7 @@ describe("command reporting", () => {
   it("reports engine capture failure in human and JSON status output with its exit status", () => {
     const home = temporaryDirectory("docks-status-capture-home-")
     const incompleteKit = temporaryDirectory("docks-status-capture-kit-")
-    writeFileSync(join(incompleteKit, "package.json"), '{"name":"docks-kit","version":"0.0.0"}\n')
+    writeFileSync(p(incompleteKit, "package.json"), '{"name":"docks-kit","version":"0.0.0"}\n')
     const environment = { DOCKS_KIT_HOME: incompleteKit }
 
     const jsonResult = runCli(["status", "--json"], home, environment)

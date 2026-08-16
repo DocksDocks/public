@@ -298,7 +298,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "docks-kit documentation topics (docks-kit docs <topic>):\n\n  overview       What docks-kit is and how the pieces fit\n  sync-layers    The three sync layers and additive-by-default semantics\n  flags          Full flag reference incl. the old→new rename table\n  modifiers      Deploy-time modifiers and the flag-less-sync-reverts contract\n  models         Model catalog, validation rules, model get/set\n  toolchain      Verified-version floors and the doctor table\n  plugins        enabledPlugins tri-state + optional plugin opt-ins\n  install        Install paths: repo checkout, bun add -g, curl installer\n  platforms      Platform support: Linux/macOS x64 and arm64\n"
+      "output": "docks-kit documentation topics (docks-kit docs <topic>):\n\n  overview       What docks-kit is and how the pieces fit\n  sync-layers    The three sync layers and additive-by-default semantics\n  flags          Full flag reference incl. the old→new rename table\n  modifiers      Deploy-time modifiers and the flag-less-sync-reverts contract\n  models         Model catalog, validation rules, model get/set\n  toolchain      Verified-version floors and the doctor table\n  plugins        enabledPlugins tri-state + optional plugin opt-ins\n  install        Install paths: repo checkout, bun add -g, POSIX/Windows installers\n  platforms      Platform support: Linux, macOS, and Windows on x64 and arm64\n"
     },
     "cli=public fixture=home-fresh cmd=models": {
       "command": [

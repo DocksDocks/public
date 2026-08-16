@@ -117,6 +117,17 @@
 - Reduced steady-state sync on the reference host from 18.1 seconds to
   13.2 seconds.
 
+## 2026-08-15 — Native Windows support and three-OS release lane
+
+- Added Windows x64/arm64 as supported hosts. Releases now publish six binaries
+  plus `SHA256SUMS`.
+- Centralized host facts in the `os/` seam. Added the `docks-kit.ps1` launcher
+  and `install.ps1` installer twins.
+- Mirrored the Claude `PowerShell(...)` permission rules beside the existing
+  Bash rules. Added the Codex `[windows]` sandbox configuration.
+- Replaced shell-bound test execution with a shell-free harness. Added a
+  portable CI lane on Ubuntu, macOS, and Windows.
+
 ## 2026-07-22 — exact latest Opus workflow fallback (0.10.1 source)
 
 - Pinned the `claude-best` workflow fallback to Anthropic's current

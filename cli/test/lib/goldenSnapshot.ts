@@ -111,7 +111,7 @@ function snapshotTreeWithTemporaryDirs(
 ): TreeSnapshot {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name)
-    const relative = path.slice(root.length + 1)
+    const relative = path.slice(root.length + 1).replaceAll("\\", "/")
     if (relative === ".golden-argv.log") continue
     // `.bun/install` is a runtime artifact of the native side's bun
     // interpreter (module cache keyed off $HOME) — the engine never writes
@@ -121,7 +121,8 @@ function snapshotTreeWithTemporaryDirs(
     if (relative === ".bun/install") continue
     const stat = lstatSync(path)
     if (stat.isSymbolicLink()) {
-      acc[relative] = `link:${normalizeTreeBody(readlinkSync(path), root, temporaryDirs)}`
+      const target = normalizeTreeBody(readlinkSync(path), root, temporaryDirs).replaceAll("\\", "/")
+      acc[relative] = `link:${target}`
     } else if (stat.isDirectory()) {
       if (relative !== ".bun" && relative !== ".local" && relative !== ".local/bin") acc[`${relative}/`] = "dir"
       snapshotTreeWithTemporaryDirs(root, path, acc, temporaryDirs)

@@ -8,3 +8,6 @@
 # `/bin/bash^M` before any logic runs.
 docks-kit text eol=lf
 *.sh text eol=lf
+
+# PowerShell entrypoints stay LF — payload `--check` compares SoT bytes, and CRLF makes every text file stale.
+*.ps1 text eol=lf

@@ -72,7 +72,7 @@ describe("SessionStart native context", () => {
     try {
       mkdirSync(resolve(home, ".claude"), { recursive: true })
       writeFileSync(resolve(home, ".claude", "settings.json"), '{"effortLevel":"xhigh"}\n')
-      const env = { ...process.env, HOME: home, TZ: "UTC" }
+      const env = { ...process.env, HOME: home, USERPROFILE: home, TZ: "UTC" }
       delete env.CLAUDE_CODE_EFFORT_LEVEL
       const result = spawnSync("bun", [SCRIPT], {
         input: '{"effort":{"level":"low"}}',
