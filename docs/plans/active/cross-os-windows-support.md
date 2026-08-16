@@ -182,10 +182,19 @@ The first Windows run reported 37 failures across 19 files while macOS and Ubunt
 1. **Production — profile parent directory.** `syncConnectorEnv` appended the connector line to `Documents/PowerShell/Microsoft.PowerShell_profile.ps1` without creating the parent directory, which does not exist in a fresh Windows home. Every POSIX candidate sits directly in the home directory, so the write site never needed a parent before.
 2. **Production — statusline progress record.** The Windows statusline command emitted a CLIXML progress record to stderr when `Test-Path` auto-loaded its module. Restoring the historically proven `$ProgressPreference = 'SilentlyContinue'` prefix inside the encoded command fixed it; the failure-hook shape is untouched.
 3. **Test leakage.** Case-insensitive `PROCESSOR_ARCHITECTURE` collision in the launcher fixture, Bash-only stub launchers the host could not execute, `homedir()` resolving from `USERPROFILE` while the fixture overrode `HOME` alone, a Linux-canonical replay guard, and bare exit-code assertions that hid the child's own output.
-4. **Host-shaped budgets.** The runtime smoke's spawn ceiling and vitest's per-test timeout are now per host, because Windows process creation plus a cold Bun transpile of the CLI costs materially more than a POSIX fork and exec.
+4. **Host-shaped budgets.** The runtime smoke keeps a per-host spawn ceiling, because Windows process creation genuinely costs more than a POSIX fork and exec. The vitest per-test ceiling went the other way: it is now one value for every host, since the cost is a cold Bun transpile per spawn and a cold `macos-26` runner crossed the old POSIX default too.
 5. **Machine-level actor.** `setx` broadcast `WM_SETTINGCHANGE` from a headless runner and stalled the suite, so the golden stub set now covers `reg` and `setx`.
 
 `.github/workflows/probe.yml` was added during this work: a targeted single-runner lane, dispatchable or triggered by a `probe/**` push, that runs one vitest filter on one host so a Windows question costs one job instead of six. It is never a gate.
+
+### Round 2 — code-review fixes, 2026-08-16
+
+Seven commits answer the review: the deny floor, the install hints and `cmd.exe` quoting, the `install.ps1` apostrophe, the three stale contracts, the plan record, and the per-test ceiling.
+
+- Reviewing the deny fix itself caught a regression the fix introduced: root tokens carried a `*` suffix, so `Remove-Item C:\Users\me\repo\node_modules -Recurse -Force` matched `*:\*` and was hard-denied, and `~*` and `/*` did the same to descendants of home and root. The floor now matches the root as a whole argument, exactly as `Bash(rm -rf ~)` does, and the truth suite asserts five descendant and relative deletes match no deny rule at all. 216 native delete rules over 7 verbs, including the `rd` alias the first pass missed.
+- A1 through A17 re-run on darwin arm64 after the wave: `bun run test:ci` exit 0 with 374 tests passed and 7 skipped, `golden:dryrun` OK 36 cases, `golden:mutation` OK 59 cases, `dryrun.json` byte-identical, `mutation.json` moving only the 21 settings hashes the deny rewrite implies, and `bun run smoke:native` compiling and running `docks-kit-darwin-arm64`.
+- A18 re-proven on the fixed head: golden-regression run 31918822101 for commit `6ea5547` is green in all six jobs.
+- One intermediate run failed and is worth the record: `macos-26` timed out at vitest's 5s default on a flag-less sync that takes about a second warm. It was a margin, not a defect, and the uniform ceiling removed it.
 
 ### Not yet verified
 
