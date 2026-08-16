@@ -2,9 +2,9 @@
 plan_contract: v2
 title: Support Windows natively and prove macOS on real hosts
 goal: docks-kit runs natively on Windows x64 and arm64, and every supported OS is proven by its own CI runner behind one host-OS module seam.
-status: ongoing
+status: finished
 created: "2026-08-16T00:34:37.186+00:00"
-updated: "2026-08-16T00:47:00.000+00:00"
+updated: "2026-08-16T02:20:45.813+00:00"
 assignee: null
 ---
 
@@ -181,6 +181,11 @@ Code-review: fixes-required
 - LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — the disposition said "these are the suites that spawn children", but `update.test.ts` mocks `node:child_process`, so only the exec suite spawns a real child.
 
 Disposition — reproduced and corrected. The disposition now states only what the helpers do and that the focused suites pass, so no runtime or child-process claim remains to be wrong.
+
+### Code review round 7 — 2026-08-16
+Code-review: pass
+
+No findings. Both helpers delete `PATH` when it was initially absent and restore the saved value otherwise, on the throwing path as well, and the two focused suites exit 0.
 
 ## Verification Results
 
