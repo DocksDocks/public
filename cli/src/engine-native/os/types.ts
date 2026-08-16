@@ -8,12 +8,14 @@ export type PlatformName = "linux" | "darwin" | "windows" | "unknown"
 /** Directory-link mechanisms, tried in order before the copy fallback. */
 export type DirectoryLinkKind = "symlink" | "junction"
 /** Tools whose install command differs per host OS. */
-export type HintedTool = "git" | "jq" | "curl" | "ffplay"
+export type HintedTool = "git" | "jq" | "curl" | "ffplay" | "claude" | "codex"
 
 /** A command plus argv, already shaped for how this host must invoke it. */
 export interface Invocation {
   readonly command: string
   readonly args: ReadonlyArray<string>
+  /** Preserve a fully quoted Windows command line instead of applying libuv quoting. */
+  readonly windowsVerbatimArguments?: boolean
 }
 
 /** How this host persists a user-level environment variable. */

@@ -53,6 +53,10 @@ export const darwin: HostOs = {
         return "brew install curl"
       case "ffplay":
         return "brew install ffmpeg"
+      case "claude":
+        return "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+      case "codex":
+        return 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
     }
   }
 }

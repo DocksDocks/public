@@ -38,7 +38,8 @@ export function spawnProcess(
   let child: ChildProcess
   try {
     child = spawn(invocation.command, [...invocation.args], {
-      stdio: options.stdio ?? ["ignore", "pipe", "ignore"]
+      stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments
     })
   } catch (cause) {
     const error = cause instanceof Error ? cause : new Error(String(cause))

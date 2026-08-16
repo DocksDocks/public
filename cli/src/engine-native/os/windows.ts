@@ -10,6 +10,21 @@ function encodedPowerShellCommand(script: string): string {
   return `powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`
 }
 
+function windowsCommandArgument(value: string): string {
+  const escapedQuotes = value.replace(/(\\*)"/g, "$1$1\\\"")
+  const escapedTrailingSlashes = escapedQuotes.replace(/(\\*)$/, "$1$1")
+  return `"${escapedTrailingSlashes}"`
+}
+
+function commandShimInvocation(executablePath: string, args: ReadonlyArray<string>) {
+  const commandLine = [executablePath, ...args].map(windowsCommandArgument).join(" ")
+  return {
+    command: "cmd.exe",
+    args: ["/d", "/s", "/c", `"${commandLine}"`],
+    windowsVerbatimArguments: true
+  } as const
+}
+
 // Authored now, but unreachable until the supported-host admission gate opens.
 export const windows: HostOs = {
   id: "windows",
@@ -19,7 +34,7 @@ export const windows: HostOs = {
   executableSuffixes: [".exe", ".cmd", ".bat", ""],
   invoke: (executablePath, args) =>
     /\.(?:cmd|bat)$/i.test(executablePath)
-      ? { command: "cmd.exe", args: ["/c", executablePath, ...args] }
+      ? commandShimInvocation(executablePath, args)
       : { command: executablePath, args },
   bunExecutableName: "bun.exe",
   bunInstaller: (pin, directory) => {
@@ -88,6 +103,10 @@ export const windows: HostOs = {
         return "winget install --id cURL.cURL -e"
       case "ffplay":
         return "winget install --id Gyan.FFmpeg -e"
+      case "claude":
+        return "$tmp = Join-Path $env:TEMP 'claude-install.ps1'; curl.exe -fsSL https://claude.ai/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
+      case "codex":
+        return "$tmp = Join-Path $env:TEMP 'codex-install.ps1'; curl.exe -fsSL https://chatgpt.com/codex/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { $env:CODEX_NON_INTERACTIVE = '1'; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
     }
   }
 }

@@ -47,6 +47,12 @@ describe("Linux host OS", () => {
     expect(host.installHint("jq")).toBe("sudo apt install -y jq")
     expect(host.installHint("curl")).toBe("sudo apt install -y curl")
     expect(host.installHint("ffplay")).toBe("sudo apt install -y ffmpeg")
+    expect(host.installHint("claude")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(host.installHint("codex")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
     expect(Object.keys(host).sort()).toEqual([
       "bunExecutableName",
       "bunInstaller",
@@ -104,6 +110,12 @@ describe("Linux host OS", () => {
     expect(host.installHint("jq")).toBe("sudo apt install -y jq")
     expect(host.installHint("curl")).toBe("sudo apt install -y curl")
     expect(host.installHint("ffplay")).toBe("sudo apt install -y ffmpeg")
+    expect(host.installHint("claude")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(host.installHint("codex")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
     expect(Object.keys(host).sort()).toEqual([
       "bunExecutableName",
       "bunInstaller",

@@ -172,13 +172,13 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   claude: spec(
     "claude",
     "optional",
-    () => "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("claude"),
     { version: versionProbe("claude") }
   ),
   codex: spec(
     "codex",
     "optional",
-    () => 'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
+    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("codex"),
     { version: versionProbe("codex") }
   ),
   bun: spec(

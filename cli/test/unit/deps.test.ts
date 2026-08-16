@@ -79,6 +79,27 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.git.installHint("linux")).toBe("sudo apt install -y git (or your distro's package manager)")
   })
 
+  it("gives platform-correct agent CLI hints", () => {
+    expect(DEPENDENCIES.claude.installHint("linux")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(DEPENDENCIES.claude.installHint("darwin")).toBe(
+      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh"
+    )
+    expect(DEPENDENCIES.claude.installHint("win32")).toBe(
+      "$tmp = Join-Path $env:TEMP 'claude-install.ps1'; curl.exe -fsSL https://claude.ai/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
+    )
+    expect(DEPENDENCIES.codex.installHint("linux")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
+    expect(DEPENDENCIES.codex.installHint("darwin")).toBe(
+      'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"'
+    )
+    expect(DEPENDENCIES.codex.installHint("win32")).toBe(
+      "$tmp = Join-Path $env:TEMP 'codex-install.ps1'; curl.exe -fsSL https://chatgpt.com/codex/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { $env:CODEX_NON_INTERACTIVE = '1'; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }"
+    )
+  })
+
   it("registers the Node-shipped launchers npm and npx", () => {
     expect(DEPENDENCIES.npm.installHint()).toContain("Node.js")
     expect(DEPENDENCIES.npx.installHint()).toContain("Node.js")
@@ -100,6 +121,7 @@ describe("DependencyManager registry", () => {
     for (const spec of Object.values(DEPENDENCIES)) {
       expect(spec.installHint("linux").length).toBeGreaterThan(0)
       expect(spec.installHint("darwin").length).toBeGreaterThan(0)
+      expect(spec.installHint("win32").length).toBeGreaterThan(0)
       expect(spec.versionArgs.length).toBeGreaterThan(0)
     }
   })
