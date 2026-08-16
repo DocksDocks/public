@@ -151,22 +151,29 @@ describe("package update result", () => {
   )
 })
 
+/** A PATH holding exactly the named shims, so resolution is the same on every host. */
+const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
+  const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"))
+  const savedPath = process.env["PATH"]
+  try {
+    for (const name of names) {
+      const shim = join(dir, name)
+      writeFileSync(shim, "")
+      chmodSync(shim, 0o755)
+    }
+    process.env["PATH"] = dir
+    return use()
+  } finally {
+    process.env["PATH"] = savedPath
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 describe("update child spawning", () => {
   it("keeps the verbatim-arguments flag with the shim argv it encodes", () => {
     spawnCalls.length = 0
-    const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"))
-    const savedPath = process.env["PATH"]
-    try {
-      const shim = join(dir, "npx.cmd")
-      writeFileSync(shim, "")
-      chmodSync(shim, 0o755)
-      process.env["PATH"] = dir
 
-      spawnUpdate("npx", ["--version"], {}, hostOs("windows"))
-    } finally {
-      process.env["PATH"] = savedPath
-      rmSync(dir, { recursive: true, force: true })
-    }
+    withPath(["npx.cmd"], () => spawnUpdate("npx", ["--version"], {}, hostOs("windows")))
 
     const call = spawnCalls.at(-1)
     expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"])
@@ -190,7 +197,8 @@ describe("update child spawning", () => {
   it("reports an unresolvable Windows tool instead of spawning a pathless name", () => {
     spawnCalls.length = 0
 
-    const res = spawnUpdate("docks-kit-absent-tool", ["--version"], {}, hostOs("windows"))
+    // An empty PATH, so a runner that happens to hold this name cannot answer.
+    const res = withPath([], () => spawnUpdate("docks-kit-absent-tool", ["--version"], {}, hostOs("windows")))
 
     expect(spawnCalls).toEqual([])
     expect(res.status).toBeNull()

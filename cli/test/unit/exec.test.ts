@@ -5,14 +5,16 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { spawnProcess } from "../../src/engine-native/exec"
 import { hostOs } from "../../src/engine-native/os"
 
-/** A PATH holding one suffixed shim, so resolution is the same on every host. */
-const withShimOnPath = async <A>(name: string, use: () => Promise<A>): Promise<A> => {
+/** A PATH holding exactly the named shims, so resolution is the same on every host. */
+const withPath = async <A>(names: ReadonlyArray<string>, use: () => Promise<A>): Promise<A> => {
   const dir = mkdtempSync(join(tmpdir(), "docks-exec-"))
   const savedPath = process.env["PATH"]
   try {
-    const shim = join(dir, name)
-    writeFileSync(shim, "")
-    chmodSync(shim, 0o755)
+    for (const name of names) {
+      const shim = join(dir, name)
+      writeFileSync(shim, "")
+      chmodSync(shim, 0o755)
+    }
     process.env["PATH"] = dir
     return await use()
   } finally {
@@ -34,7 +36,10 @@ describe("spawnProcess host resolution", () => {
   })
 
   it("refuses a name a suffix host cannot resolve instead of spawning it", async () => {
-    const result = await spawnProcess("docks-kit-absent-tool", ["--version"], { host: hostOs("windows") })
+    // An empty PATH, so a runner that happens to hold this name cannot answer.
+    const result = await withPath([], () =>
+      spawnProcess("docks-kit-absent-tool", ["--version"], { host: hostOs("windows") })
+    )
 
     expect(result.exitCode).toBeNull()
     expect(result.stdout).toBe("")
@@ -43,7 +48,7 @@ describe("spawnProcess host resolution", () => {
   })
 
   it("spawns a resolved suffix shim instead of refusing it", async () => {
-    const result = await withShimOnPath("docks-kit-probe.cmd", () =>
+    const result = await withPath(["docks-kit-probe.cmd"], () =>
       spawnProcess("docks-kit-probe", ["--version"], { host: hostOs("windows") })
     )
 

@@ -58,7 +58,7 @@ Three outcomes:
 | 6 | harness_portability | Make the test harness shell-free before Windows is admitted: spawn argv directly instead of composing `bash -c`, reproduce `2>&1` by passing one shared temp-file descriptor as both stdout and stderr, plant stubs the host can actually execute, normalize snapshot tree-key separators, port the launcher suite off direct Bash spawning, and add a Windows mode to the runtime smoke | cli/test/lib/goldenExecution.ts, cli/test/lib/goldenResources.ts, cli/test/lib/goldenSnapshot.ts, cli/test/lib/goldenPlatform.ts, cli/test/unit/launcher.test.ts, cli/test/statusline-runtime-smoke.mjs, vitest.config.ts, package.json | 4 | `local` | `done` | `bun run golden:dryrun` and `bun run golden:mutation` pass with zero diff in `cli/test/goldens/`, both prove-red modes still exit non-zero, and no test file spawns `bash` to reach the CLI |
 | 7 | open_gate | Admit Windows only once the suite can run there: extend `requireSupportedHost` and its rejection test, add `os/targets.ts` as the single host-to-artifact map, add `win32` to the npm `os` field, add the `docks-kit.ps1` and `install.ps1` twins with the Bun pin injected by the existing generator, add the two Bun Windows targets, and pin line endings so a Windows checkout cannot mangle scripts | cli/src/engine.ts, cli/test/unit/engine.test.ts, cli/src/engine-native/os/targets.ts, package.json, docks-kit, docks-kit.ps1, install.sh, install.ps1, cli/build-binaries.sh, cli/scripts/generate-sot-payload.ts, cli/test/unit/payload.test.ts, cli/test/unit/buildBinaries.test.ts, cli/test/unit/install.test.ts, .gitattributes | 5, 6 | `local` | `done` | An invariant test parses both launchers and `cli/build-binaries.sh` and asserts all four agree with `os/targets.ts`, the generated Bun pin is asserted in all four scripts, and the `win32` rejection assertion is replaced by an admission assertion |
 | 8 | ci_matrix | Split CI into a portable lane on `ubuntu-24.04`, `macos-26`, and `windows-2025` that runs typecheck, unit, and a real native smoke — compiling the host-matching artifact and executing it for a dry run without the golden platform preload — and a snapshot lane that keeps the Linux-canonical goldens and prove-red on `ubuntu-24.04` alone | .github/workflows/parity.yml, .github/actions/setup-bun-cache/action.yml, package.json | 7 | `push` | `done` | The workflow run for the pushed head shows each of the three runners compiling and executing its own artifact, and the snapshot lane green on Ubuntu |
-| 9 | release_windows | Publish Windows artifacts and state the support matrix: two Windows binaries plus checksums in the release workflow, and every live support contract updated, including the hard-coded platform summary the docs command prints | .github/workflows/release-cli.yml, cli/build-binaries.sh, cli/src/commands/docs.ts, cli/docs/platforms.md, cli/docs/install.md, cli/docs/toolchain.md, cli/docs/overview.md, README.md, AGENTS.md, CLAUDE.md, CHANGELOG.md | 8 | `release` | `planned` | A `cli-v*` run publishes six binaries and a matching `SHA256SUMS`, and no live document or command output still says the kit supports only Linux and macOS |
+| 9 | release_windows | Publish Windows artifacts and state the support matrix: two Windows binaries plus checksums in the release workflow, and every live support contract updated, including the hard-coded platform summary the docs command prints | .github/workflows/release-cli.yml, cli/build-binaries.sh, cli/src/commands/docs.ts, cli/docs/platforms.md, cli/docs/install.md, cli/docs/toolchain.md, cli/docs/overview.md, README.md, AGENTS.md, CLAUDE.md, CHANGELOG.md | 8 | `release` | `done` | A `cli-v*` run publishes six binaries and a matching `SHA256SUMS`, and no live document or command output still says the kit supports only Linux and macOS |
 | 10 | probe_lane | Add a targeted single-runner lane the owner asked for during implementation, so one host question costs one job instead of the whole six-job matrix: a workflow that runs one vitest filter on one runner label, dispatchable with a runner and filter input and triggered by a `probe/**` push | .github/workflows/probe.yml | 8 | `local` | `done` | A `probe/**` push runs exactly one job on one runner label, the golden-regression matrix stays the only acceptance gate, and the lane declares a shell per step so `actionlint` reads each body on its real host |
 
 ## Acceptance
@@ -152,6 +152,12 @@ Disposition — seven reproduced and fixed, two not reproduced, one accepted wit
 - **Not reproduced — the admission gate.** `requireSupportedHost` reads `process.platform` and `process.arch` only to feed `targetForHost`, which is the seam's own selector, and A11 scopes the no-direct-read invariant to `cli/src/engine-native/`. Reading the host at the process boundary and answering through the seam is the seam's contract, not a breach of it.
 - **Accepted without change — `update.ts`.** The consumer already receives a `HostOs` and uses it for the install-root facts. Moving separator normalization into the interface would add indirection with no behaviour change, so the branch stays.
 
+### Code review round 2 — 2026-08-16
+Code-review: fixes-required
+- LOW · Bug · cli/test/unit/exec.test.ts:37, cli/test/unit/update.test.ts:191 — both "absent tool" cases resolve against the runner's inherited `PATH`, so a host that already has `docks-kit-absent-tool` (with `.exe`, `.cmd`, `.bat`, or no suffix) executes or mocks it and fails the asserted not-found result — set `PATH` to an isolated empty temporary directory for each case and restore it in `finally`.
+
+Disposition — reproduced and fixed. Both files now build a temporary directory holding exactly the shims a case needs, none for the absent case, and restore `PATH` in `finally`; the same helper replaces the inline `PATH` dance the shim case carried. Planting `docks-kit-absent-tool`, `.cmd`, and `.exe` on `PATH` failed exactly those two cases before the fix and none after it, so the finding was proven rather than assumed.
+
 ## Verification Results
 
 ### Local host — darwin arm64, 2026-08-15/16
@@ -196,6 +202,29 @@ Seven commits answer the review: the deny floor, the install hints and `cmd.exe`
 - A18 re-proven on the fixed head: golden-regression run 31918822101 for commit `6ea5547` is green in all six jobs.
 - One intermediate run failed and is worth the record: `macos-26` timed out at vitest's 5s default on a flag-less sync that takes about a second warm. It was a margin, not a defect, and the uniform ceiling removed it.
 
-### Not yet verified
+### Round 3 — Windows shim hardening, 2026-08-16
 
-- step:release_windows — no `cli-v*` run has happened, so the six-binary publication and its `SHA256SUMS` are unproven. The workflow, build script, and document half of that step is committed and covered by A13's cross-script invariant.
+One commit answers the review's remaining Windows-argument finding, plus two hazards the review round surfaced by inspection.
+
+- The `.cmd`/`.bat` encoder now ports cross-spawn's escaper: caret-escaping every metacharacter, doubling backslashes before a quote, and keeping the `node_modules/.bin/*.cmd` double-escape case. `/v:off` disables delayed expansion. `%`, CR, and LF are refused with the reason, because no quoting neutralizes them on a `cmd` command line — proven against Microsoft's `cmd` documentation and the BatBadBut disclosure.
+- The interpreter resolves to an absolute path — ComSpec when absolute, otherwise rebuilt under `SystemRoot`. A bare `cmd.exe` would let `CreateProcess` and libuv search the parent's current directory before System32, so an untrusted checkout could answer. For the same reason `spawnProcess` and every `update` child now report an unresolvable tool as missing instead of spawning it by bare name.
+- All six `spawnSync` sites in `update.ts` were dropping `windowsVerbatimArguments`, which lets libuv re-quote the command line the encoder prepared. They route through one helper now, so the flag cannot be separated from its argv. A prove-red confirmed the new regression test fails when the flag is removed.
+- Two host-independence defects in my own tests were caught and fixed before landing: an assertion recomputing the implementation's own expression, and a POSIX-only spawn error string. `ComSpec` and `SystemRoot` are stubbed, never inherited.
+- Gate on darwin arm64 after the wave: 402 tests passed, 7 skipped, `golden:dryrun` OK 36 cases, `golden:mutation` OK 59 cases, zero golden drift, `smoke:native` exit 0.
+- A18 re-proven on the pushed head: golden-regression run 31920243311 for `4760973` is green in all six jobs, `windows-2025` included.
+
+### Round 4 — release, 2026-08-16
+
+step:release_windows is proven. Tag `cli-v0.15.3` ran release-cli run 31920431715 to success across `resolve`, `build`, `github-release`, and `npm-publish`.
+
+- A16 satisfied: the release carries exactly six binaries — `docks-kit-{linux,darwin}-{x64,arm64}` and `docks-kit-windows-{x64,arm64}.exe` — plus a `SHA256SUMS` with six entries whose names match the assets.
+- The published `docks-kit-darwin-arm64` was downloaded and verified on a real host: its SHA-256 equals the manifest entry, `--version` prints `0.15.3`, and `sync --dry-run` exits 0. The artifact is genuine and runnable, not merely uploaded.
+- `npm view docks-kit version` reports `0.15.3`, published through OIDC trusted publishing.
+
+### Round 5 — code review of the hardening, 2026-08-16
+
+`Code-review: fixes-required` — one LOW finding, fixed in the same session.
+
+- The two "absent tool" cases resolved against the runner's inherited `PATH`, so a host holding `docks-kit-absent-tool` under any suffix would execute it and fail the asserted not-found result. Both files now build a temporary directory holding exactly the shims a case needs — none, for the absent case — and restore `PATH` in `finally`. The same helper replaces the inline `PATH` dance the shim case had.
+- The finding was proven real before the fix, not accepted on assertion: planting `docks-kit-absent-tool`, `.cmd`, and `.exe` on `PATH` fails exactly those two cases at `HEAD` and leaves all 21 passing after the fix.
+- Gate after the fix: 402 tests passed, 7 skipped, both golden lanes OK, zero drift.
