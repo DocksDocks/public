@@ -47,7 +47,7 @@ const options = parseArgs(process.argv)
 const hostExecutableSuffixes = hostOs().executableSuffixes
 if (hostExecutableSuffixes.length !== 1 || !hostExecutableSuffixes.includes("")) {
   console.error(
-    "golden-mutation: unsupported host: goldens are Linux-canonical and goldenPlatform.ts pins the child to Linux, so the snapshot lane runs on a POSIX host only"
+    "golden-mutation: unsupported host: snapshots are Linux-canonical and run only in the Linux snapshot lane. On Windows, run `bun run typecheck`, `bun run test:unit`, `bun run test:runtime:windows`, and `bun run smoke:native` instead."
   )
   process.exit(2)
 }

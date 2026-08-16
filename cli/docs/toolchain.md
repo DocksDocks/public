@@ -28,10 +28,17 @@ an installer. An already-present Bun skips that download on every host.
 
 ## Supply-chain stance
 
-Every kit-driven install is pinned to a `verified` version — never floating
-`@latest` (the npm-worm / Shai-Hulud attack surface). That includes the
+Every kit-driven install of third-party software is pinned to a
+`SoT/toolchain.json` `verified` version — never floating `@latest` (the
+npm-worm / Shai-Hulud attack surface). That includes the
 `npx skills@<verified>` invocations on agents sync and the release workflow
 (actions pinned to commit SHAs, exact bun/npm versions).
+
+The kit's own package is the single exemption. `install.sh` and `install.ps1`
+end with `bun add -g docks-kit@latest` because a global installer that pinned
+itself would install a fixed old kit forever. The exemption covers `docks-kit`
+alone; both installers still pin the Bun installer they download to the
+manifest's `verified` version.
 
 ## Commands
 
