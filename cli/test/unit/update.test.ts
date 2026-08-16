@@ -164,7 +164,9 @@ const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
     process.env["PATH"] = dir
     return use()
   } finally {
-    process.env["PATH"] = savedPath
+    // Assigning `undefined` would write the string "undefined" into the environment.
+    if (savedPath === undefined) delete process.env["PATH"]
+    else process.env["PATH"] = savedPath
     rmSync(dir, { recursive: true, force: true })
   }
 }

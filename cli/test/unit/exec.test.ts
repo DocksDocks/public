@@ -18,7 +18,9 @@ const withPath = async <A>(names: ReadonlyArray<string>, use: () => Promise<A>):
     process.env["PATH"] = dir
     return await use()
   } finally {
-    process.env["PATH"] = savedPath
+    // Assigning `undefined` would write the string "undefined" into the environment.
+    if (savedPath === undefined) delete process.env["PATH"]
+    else process.env["PATH"] = savedPath
     rmSync(dir, { recursive: true, force: true })
   }
 }

@@ -158,6 +158,12 @@ Code-review: fixes-required
 
 Disposition — reproduced and fixed. Both files now build a temporary directory holding exactly the shims a case needs, none for the absent case, and restore `PATH` in `finally`; the same helper replaces the inline `PATH` dance the shim case carried. Planting `docks-kit-absent-tool`, `.cmd`, and `.exe` on `PATH` failed exactly those two cases before the fix and none after it, so the finding was proven rather than assumed.
 
+### Code review round 3 — 2026-08-16
+Code-review: fixes-required
+- LOW · Bug · cli/test/unit/exec.test.ts:21, cli/test/unit/update.test.ts:167 — if `PATH` was originally absent, assigning `savedPath` back writes the string `"undefined"` under Node instead of restoring absence, so either helper can leak a synthetic `PATH` into later tests despite its `finally` block — in each `finally`, delete `process.env["PATH"]` when `savedPath === undefined`, otherwise restore `savedPath`.
+
+Disposition — reproduced and fixed, with the runtime boundary measured rather than assumed. Under Node, `process.env["PATH"] = undefined` stores the string `"undefined"`; under Bun the same assignment deletes the key. The suite runs through `bunx`, so the leak is latent today and live for anyone running vitest under Node. Both helpers now delete the key when it was absent, which is the convention the `ComSpec` restore in the same file already used.
+
 ## Verification Results
 
 ### Local host — darwin arm64, 2026-08-15/16
