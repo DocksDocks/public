@@ -162,14 +162,25 @@ Disposition — reproduced and fixed. Both files now build a temporary directory
 Code-review: fixes-required
 - LOW · Bug · cli/test/unit/exec.test.ts:21, cli/test/unit/update.test.ts:167 — if `PATH` was originally absent, assigning `savedPath` back writes the string `"undefined"` under Node instead of restoring absence, so either helper can leak a synthetic `PATH` into later tests despite its `finally` block — in each `finally`, delete `process.env["PATH"]` when `savedPath === undefined`, otherwise restore `savedPath`.
 
-Disposition — reproduced and fixed. Assigning `undefined` back does not restore an absent variable: under Node the property becomes the literal string `"undefined"`, which a spawned child then inherits, and these are the suites that spawn children. Both helpers now delete `PATH` when it was absent, the convention the `ComSpec` restore in the same file already used. The defect was live, not latent: `bunx` honours vitest's `#!/usr/bin/env node` launcher, so the suite runs under Node, which `bunx vitest --version` reports as `node-v24.15.0`.
+Disposition — reproduced and fixed. Both helpers delete `PATH` when it was initially absent; otherwise they restore its saved value. The focused suites pass.
 
-### Code review rounds 4 and 5 — 2026-08-16
+### Code review round 4 — 2026-08-16
 Code-review: fixes-required
-- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — round 4: the disposition called the leak latent because the suite runs through `bunx`, but that launcher is Node, so the defect was live.
-- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — round 5: the disposition claimed Bun deletes the key on the same assignment, which Bun does not do.
+- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — the round-3 disposition called the leak latent because the suite runs through `bunx`, but that launcher runs Node, so the defect was live.
 
-Disposition — both reproduced and corrected in the record; the code was clean in each round. The disposition above now rests on the one fact the fix depends on, that assigning `undefined` does not restore absence, and no longer compares runtimes beyond the Node measurement that dates the defect.
+Disposition — reproduced and corrected in the record; the code was already correct.
+
+### Code review round 5 — 2026-08-16
+Code-review: fixes-required
+- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — the disposition claimed Bun deletes the key on the same assignment, which Bun does not do.
+
+Disposition — reproduced and corrected in the record; the code was already correct.
+
+### Code review round 6 — 2026-08-16
+Code-review: fixes-required
+- LOW · Spec · docs/plans/active/cross-os-windows-support.md:165 — the disposition said "these are the suites that spawn children", but `update.test.ts` mocks `node:child_process`, so only the exec suite spawns a real child.
+
+Disposition — reproduced and corrected. The disposition now states only what the helpers do and that the focused suites pass, so no runtime or child-process claim remains to be wrong.
 
 ## Verification Results
 
@@ -234,10 +245,10 @@ step:release_windows is proven. Tag `cli-v0.15.3` ran release-cli run 3192043171
 - The published `docks-kit-darwin-arm64` was downloaded and verified on a real host: its SHA-256 equals the manifest entry, `--version` prints `0.15.3`, and `sync --dry-run` exits 0. The artifact is genuine and runnable, not merely uploaded.
 - `npm view docks-kit version` reports `0.15.3`, published through OIDC trusted publishing.
 
-### Round 5 — code review of the hardening, 2026-08-16
+### Round 5 — review fixes on the test helpers, 2026-08-16
 
-`Code-review: fixes-required` — one LOW finding, fixed in the same session.
+Review rounds 2 through 6 produced five LOW findings: two in the test helpers, three in this document's own prose. All are fixed; the verdicts and dispositions are in `## Review`.
 
-- The two "absent tool" cases resolved against the runner's inherited `PATH`, so a host holding `docks-kit-absent-tool` under any suffix would execute it and fail the asserted not-found result. Both files now build a temporary directory holding exactly the shims a case needs — none, for the absent case — and restore `PATH` in `finally`. The same helper replaces the inline `PATH` dance the shim case had.
-- The finding was proven real before the fix, not accepted on assertion: planting `docks-kit-absent-tool`, `.cmd`, and `.exe` on `PATH` fails exactly those two cases at `HEAD` and leaves all 21 passing after the fix.
-- Gate after the fix: 402 tests passed, 7 skipped, both golden lanes OK, zero drift.
+- `PATH` isolation: the two "absent tool" cases resolved against the runner's inherited `PATH`. Each case now gets a temporary directory holding exactly the shims it needs — none, for the absent case. Proven before the fix: planting `docks-kit-absent-tool`, `.cmd`, and `.exe` on `PATH` fails exactly those two cases at the pre-fix commit and none after it.
+- `PATH` restore: a saved-but-absent value was assigned back rather than deleted. Both helpers now delete the key when it was initially absent.
+- Gate after each fix: 402 tests passed, 7 skipped, both golden lanes OK, zero golden drift. A18 re-proven twice more — golden-regression runs 31920952071 for `e9c70ad` and 31921161785 for `0cf34a5` are green in all six jobs.
