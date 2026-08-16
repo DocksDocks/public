@@ -134,5 +134,6 @@ if (Test-PathEntry $InstallBin) {
   Write-Ok 'Next: docks-kit sync   (or docks-kit docs overview)'
 } else {
   Write-Warn 'Add %USERPROFILE%\.local\bin to PATH before running docks-kit:'
-  [Console]::Error.WriteLine("[Environment]::SetEnvironmentVariable('Path', '$InstallBin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')")
+  $EscapedInstallBin = $InstallBin.Replace("'", "''")
+  [Console]::Error.WriteLine("[Environment]::SetEnvironmentVariable('Path', '$EscapedInstallBin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')")
 }

@@ -119,6 +119,10 @@ describe("global installer completion", () => {
     )
     expect(packageSpec).toBe("docks-kit@latest")
     expect(powershellInstaller).toContain(`& $Bun add -g ${packageSpec}`)
+    expect(powershellInstaller).toContain(
+      `$EscapedInstallBin = $InstallBin.Replace("'", "''")
+  [Console]::Error.WriteLine("[Environment]::SetEnvironmentVariable('Path', '$EscapedInstallBin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')")`
+    )
   })
 
   it.each(["docks-kit.ps1", "install.ps1"])(
