@@ -1,11 +1,24 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
+  spawnUpdate,
   updateSyncArgs
 } from "../../src/commands/update"
 import { hostOs } from "../../src/engine-native/os"
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+const spawnCalls: Array<{ command: string; args: Array<string>; options: Record<string, unknown> }> = []
+
+vi.mock("node:child_process", () => ({
+  spawnSync: (command: string, args: Array<string>, options: Record<string, unknown>) => {
+    spawnCalls.push({ command, args, options })
+    return { status: 0, signal: null, stdout: "", stderr: "", output: [], pid: 1 }
+  }
+}))
 
 describe("update chained sync", () => {
   it("uses the fresh package entrypoint and skips refresh-only plugin work", () => {
@@ -136,4 +149,51 @@ describe("package update result", () => {
       }
     }
   )
+})
+
+describe("update child spawning", () => {
+  it("keeps the verbatim-arguments flag with the shim argv it encodes", () => {
+    spawnCalls.length = 0
+    const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"))
+    const savedPath = process.env["PATH"]
+    try {
+      const shim = join(dir, "npx.cmd")
+      writeFileSync(shim, "")
+      chmodSync(shim, 0o755)
+      process.env["PATH"] = dir
+
+      spawnUpdate("npx", ["--version"], {}, hostOs("windows"))
+    } finally {
+      process.env["PATH"] = savedPath
+      rmSync(dir, { recursive: true, force: true })
+    }
+
+    const call = spawnCalls.at(-1)
+    expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"])
+    expect(call?.args.at(-1)).toContain("npx.cmd")
+    // Without this flag libuv re-quotes the command line the encoder built.
+    expect(call?.options["windowsVerbatimArguments"]).toBe(true)
+  })
+
+  it("leaves a POSIX invocation unquoted and unflagged", () => {
+    spawnCalls.length = 0
+
+    spawnUpdate("git", ["--version"], { stdio: "inherit" }, hostOs("linux"))
+
+    const call = spawnCalls.at(-1)
+    expect(call?.command).toBe("git")
+    expect(call?.args).toEqual(["--version"])
+    expect(call?.options["windowsVerbatimArguments"]).toBeUndefined()
+    expect(call?.options["stdio"]).toBe("inherit")
+  })
+
+  it("reports an unresolvable Windows tool instead of spawning a pathless name", () => {
+    spawnCalls.length = 0
+
+    const res = spawnUpdate("docks-kit-absent-tool", ["--version"], {}, hostOs("windows"))
+
+    expect(spawnCalls).toEqual([])
+    expect(res.status).toBeNull()
+    expect(res.error?.message).toBe("command not found on PATH: docks-kit-absent-tool")
+  })
 })

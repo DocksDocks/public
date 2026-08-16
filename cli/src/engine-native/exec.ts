@@ -6,7 +6,7 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { accessSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, extname, isAbsolute, join } from "node:path"
-import { hostOs } from "./os"
+import { hostOs, type HostOs } from "./os"
 
 /** Keep engine paths slash-separated so rendered output is host-stable. */
 export function p(...parts: Array<string>): string {
@@ -22,6 +22,8 @@ export interface AsyncProcessResult {
 
 export interface AsyncProcessOptions {
   readonly stdio?: SpawnOptions["stdio"]
+  /** Host whose executable resolution and argv shaping apply; tests inject it. */
+  readonly host?: HostOs
 }
 
 export function spawnProcess(
@@ -30,13 +32,21 @@ export function spawnProcess(
   options: AsyncProcessOptions = {}
 ): Promise<AsyncProcessResult> {
   const { promise, resolve } = Promise.withResolvers<AsyncProcessResult>()
-  const host = hostOs()
-  const executablePath = host.executableSuffixes.some((suffix) => suffix !== "")
-    ? (which(cmd, host.executableSuffixes) || cmd)
-    : cmd
-  const invocation = host.invoke(executablePath, args)
+  const host = options.host ?? hostOs()
+  const resolvesSuffixes = host.executableSuffixes.some((suffix) => suffix !== "")
+  const executablePath = resolvesSuffixes ? which(cmd, host.executableSuffixes) : cmd
+  if (executablePath === "") {
+    // Never hand a pathless name to a host that resolves suffixes: CreateProcess
+    // searches the parent's current directory before the system one, so an
+    // untrusted checkout could answer for a missing tool.
+    resolve({ exitCode: null, stdout: "", stderr: "", error: new Error(`command not found on PATH: ${cmd}`) })
+    return promise
+  }
   let child: ChildProcess
   try {
+    // Inside the try: a host whose invocation encoding rejects a value it
+    // cannot represent reports it like any other spawn failure.
+    const invocation = host.invoke(executablePath, args)
     child = spawn(invocation.command, [...invocation.args], {
       stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
       windowsVerbatimArguments: invocation.windowsVerbatimArguments

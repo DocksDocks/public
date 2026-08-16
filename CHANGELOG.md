@@ -30,6 +30,17 @@
   only ever emitted by the removed gate, so deleting the gate left the flag
   documented but silent on the one managed tool; the bootstrap now reports
   `bun up to date (<version>)` when Bun is already installed.
+- Hardened the Windows command-shim invocation. A `.cmd` or `.bat` tool now runs
+  through the command interpreter with `/d /v:off /s /c` and the
+  cross-spawn-proven caret and backslash escaping, delayed expansion off, and
+  the npm shim double-escape case. A value carrying `%`, CR, or LF is refused
+  with the reason instead of being mis-parsed, because no quoting neutralizes
+  those on a `cmd` command line. The interpreter is always an absolute path -
+  `ComSpec` when it is absolute, otherwise rebuilt under `SystemRoot` - and a
+  tool the host cannot resolve is now reported as missing rather than spawned
+  by bare name, because `CreateProcess` searches the parent's current directory
+  before the system one. Every `update` child spawns through one helper, so the
+  verbatim-arguments flag can no longer be separated from the argv it encodes.
 - Fixed five pre-existing test defects that were unrelated to the changes above.
   The global installer fixture inherited a real `BUN_INSTALL`, so `find_bun`
   resolved a developer's own Bun, skipped the pinned bootstrap, and ran

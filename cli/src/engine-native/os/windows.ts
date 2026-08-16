@@ -1,3 +1,4 @@
+import { win32 } from "node:path"
 import { p } from "../exec"
 import type { HostOs } from "./types"
 
@@ -10,17 +11,80 @@ function encodedPowerShellCommand(script: string): string {
   return `powershell.exe -NoProfile -NonInteractive -EncodedCommand ${encoded}`
 }
 
-function windowsCommandArgument(value: string): string {
-  const escapedQuotes = value.replace(/(\\*)"/g, "$1$1\\\"")
-  const escapedTrailingSlashes = escapedQuotes.replace(/(\\*)$/, "$1$1")
-  return `"${escapedTrailingSlashes}"`
+/**
+ * Windows shim encoding handles three hazards: Windows argv parsing, cmd
+ * metacharacter parsing, and percent/newline values that cmd cannot escape.
+ * The encoders are ported from cross-spawn's escape.js and its parseNonShell
+ * assembly, based on:
+ * https://github.com/moxystudio/node-cross-spawn
+ * https://qntm.org/cmd
+ * https://flatt.tech/research/posts/batbadbut-you-cant-securely-execute-commands-on-windows/
+ * https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cmd
+ */
+const metaCharsRegExp = /([()\][%!^"`<>&|;, *?])/g
+
+function escapeCommand(arg: string): string {
+  return arg.replace(metaCharsRegExp, "^$1")
+}
+
+function escapeArgument(arg: string, doubleEscapeMetaChars: boolean): string {
+  arg = `${arg}`
+  arg = arg.replace(/(?=(\\+?)?)\1"/g, "$1$1\\\"")
+  arg = arg.replace(/(?=(\\+?)?)\1$/, "$1$1")
+  arg = `"${arg}"`
+  arg = arg.replace(metaCharsRegExp, "^$1")
+  if (doubleEscapeMetaChars) {
+    arg = arg.replace(metaCharsRegExp, "^$1")
+  }
+  return arg
+}
+
+function assertCommandLineValue(value: string, kind: "executable path" | "argument"): void {
+  const unsupported = value.includes("%")
+    ? "percent sign (%)"
+    : value.includes("\r")
+      ? "carriage return (CR)"
+      : value.includes("\n")
+        ? "line feed (LF)"
+        : undefined
+  if (unsupported === undefined) return
+
+  const executablePercentHint =
+    kind === "executable path" && unsupported === "percent sign (%)"
+      ? " The tool must be reached through its .exe or moved out of a directory whose name contains a percent sign."
+      : ""
+  throw new Error(
+    `${kind} ${JSON.stringify(value)} contains a ${unsupported}, which cannot be escaped on a cmd command line; the caller must pass the value another way.${executablePercentHint}`
+  )
+}
+
+/**
+ * Always absolute. A pathless name lets CreateProcess and libuv search the
+ * parent's current directory before System32, so an untrusted checkout holding
+ * a cmd.exe would win. ComSpec is the documented interpreter, honoured only
+ * when it is an absolute path; otherwise it is rebuilt under SystemRoot.
+ */
+function commandInterpreter(environment: NodeJS.ProcessEnv = process.env): string {
+  const comSpec = environment["ComSpec"] ?? ""
+  if (win32.isAbsolute(comSpec)) return comSpec
+  const systemRoot = environment["SystemRoot"] ?? ""
+  const root = win32.isAbsolute(systemRoot) ? systemRoot : "C:\\Windows"
+  return win32.join(root, "System32", "cmd.exe")
 }
 
 function commandShimInvocation(executablePath: string, args: ReadonlyArray<string>) {
-  const commandLine = [executablePath, ...args].map(windowsCommandArgument).join(" ")
+  assertCommandLineValue(executablePath, "executable path")
+  for (const arg of args) assertCommandLineValue(arg, "argument")
+
+  const normalizedPath = win32.normalize(executablePath)
+  const doubleEscapeMetaChars = /node_modules[\\/]\.bin[\\/][^\\/]+\.cmd$/i.test(normalizedPath)
+  const commandLine = [
+    escapeCommand(normalizedPath),
+    ...args.map((arg) => escapeArgument(arg, doubleEscapeMetaChars))
+  ].join(" ")
   return {
-    command: "cmd.exe",
-    args: ["/d", "/s", "/c", `"${commandLine}"`],
+    command: commandInterpreter(),
+    args: ["/d", "/v:off", "/s", "/c", `"${commandLine}"`],
     windowsVerbatimArguments: true
   } as const
 }
