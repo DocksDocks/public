@@ -66,14 +66,18 @@ jobs:
 
       # Inputs travel through env, never interpolated into the script body, and
       # each host keeps the parent shell the gate uses so behaviour matches.
+      # The shells are explicit because `runs-on` is an expression: without them
+      # actionlint reads every body as bash and shellcheck flags $env: as $env.
       - name: Targeted tests (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bunx vitest run $env:PROBE_TESTS --reporter=$env:PROBE_REPORTER
 
       - name: Targeted tests (POSIX)
         if: runner.os != 'Windows'
+        shell: bash
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bunx vitest run "$PROBE_TESTS" --reporter="$PROBE_REPORTER"
