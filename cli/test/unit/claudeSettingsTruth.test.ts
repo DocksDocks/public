@@ -28,6 +28,14 @@ function removeRunAndVariant(home: string, variant: string): void {
   rmSync(variant, { recursive: true, force: true })
 }
 
+function permissionRuleMatches(rule: string, command: string): boolean {
+  const expression = rule
+    .split("*")
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join(".*")
+  return new RegExp(`^${expression}$`).test(command)
+}
+
 describe.sequential("Claude settings truth", () => {
   it("mirrors every Bash permission rule for PowerShell without broadening allow or ask", () => {
     for (const listName of ["allow", "deny", "ask"] as const) {
@@ -46,19 +54,39 @@ describe.sequential("Claude settings truth", () => {
     }
   })
 
-  it("denies PowerShell-native destructive command forms", () => {
+  it("denies recursive PowerShell root deletes without blocking descendant or relative paths", () => {
     const deny = claudeSotSettings.permissions.deny
-    const recursiveForceDeletes = ["Remove-Item", "ri", "del", "erase", "rd", "rmdir"].flatMap(
-      (command) =>
-        ["/", "~", "$env:USERPROFILE"].flatMap((target) => [
-          `PowerShell(${command} *-Recurse*-Force* ${target}*)`,
-          `PowerShell(${command} *-Force*-Recurse* ${target}*)`
-        ])
+    const deleteVerbs = ["Remove-Item", "del", "erase", "rd", "ri", "rm", "rmdir"]
+    const rootTargets = [
+      { pattern: "/", example: "/" },
+      { pattern: "~", example: "~" },
+      { pattern: "$HOME", example: "$HOME" },
+      { pattern: "$env:USERPROFILE", example: "$env:USERPROFILE" },
+      { pattern: "\\", example: "\\" },
+      { pattern: "*:\\", example: "C:\\" }
+    ]
+    const recursiveRootDeleteRules = deleteVerbs.flatMap((command) =>
+      rootTargets.flatMap(({ pattern }) => [
+        `PowerShell(${command} *-Recurse* ${pattern})`,
+        `PowerShell(${command} *-Recurse* ${pattern} *)`,
+        `PowerShell(${command} ${pattern} *-Recurse*)`,
+        `PowerShell(${command} -Path ${pattern} *-Recurse*)`,
+        `PowerShell(${command} -LiteralPath ${pattern} *-Recurse*)`
+      ])
+    )
+    const recursiveRootDeletes = deleteVerbs.flatMap((command) =>
+      rootTargets.flatMap(({ example }) => [
+        `PowerShell(${command} -Recurse ${example})`,
+        `PowerShell(${command} -Recurse ${example} -Force)`,
+        `PowerShell(${command} ${example} -Recurse)`,
+        `PowerShell(${command} -Path ${example} -Recurse)`,
+        `PowerShell(${command} -LiteralPath ${example} -Recurse)`
+      ])
     )
 
     expect(deny).toEqual(
       expect.arrayContaining([
-        ...recursiveForceDeletes,
+        ...recursiveRootDeleteRules,
         "PowerShell(sudo *)",
         "PowerShell(Start-Process *-Verb RunAs*)",
         "PowerShell(Invoke-Expression *)",
@@ -68,6 +96,24 @@ describe.sequential("Claude settings truth", () => {
         "PowerShell(icacls */grant*Everyone:(F)*)"
       ])
     )
+    expect(
+      recursiveRootDeletes.filter(
+        (command) => !deny.some((rule) => permissionRuleMatches(rule, command))
+      )
+    ).toEqual([])
+
+    const ordinaryRecursiveDeletes = [
+      String.raw`PowerShell(Remove-Item C:\Users\me\repo\node_modules -Recurse -Force)`,
+      "PowerShell(Remove-Item ~/projects/tmp -Recurse -Force)",
+      "PowerShell(Remove-Item /var/tmp/build -Recurse -Force)",
+      "PowerShell(Remove-Item node_modules -Recurse -Force)",
+      String.raw`PowerShell(Remove-Item -LiteralPath D:\work\dist -Recurse -Force)`
+    ]
+    expect(
+      ordinaryRecursiveDeletes.flatMap((command) =>
+        deny.filter((rule) => permissionRuleMatches(rule, command))
+      )
+    ).toEqual([])
   })
 
   it("runs the shell failure hook for Bash and PowerShell", () => {

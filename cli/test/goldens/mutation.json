@@ -24,7 +24,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:6f833cd9f9a0f8bb3058ae9ada3f655ef4966394ea472f563a47f9146aaaccfe",
+        ".claude/settings.json": "sha256:526e4cb31215c358ffe43df5059a98982073bc63c1bc318f6490fdb1f1f1d2e2",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -54,7 +54,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:6f833cd9f9a0f8bb3058ae9ada3f655ef4966394ea472f563a47f9146aaaccfe",
+        ".claude/settings.json": "sha256:526e4cb31215c358ffe43df5059a98982073bc63c1bc318f6490fdb1f1f1d2e2",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -85,7 +85,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:6f833cd9f9a0f8bb3058ae9ada3f655ef4966394ea472f563a47f9146aaaccfe",
+        ".claude/settings.json": "sha256:526e4cb31215c358ffe43df5059a98982073bc63c1bc318f6490fdb1f1f1d2e2",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -116,7 +116,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:feadc44e1a81b2aaedc4b4c0f1c869e8857a7fb39a4f31f7631988e8db99aa0d",
+        ".claude/settings.json": "sha256:9c7d9653efb6b270bd7002cbd86bff165e90fb0c5c736728bcbe3e3850e2c81c",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -227,7 +227,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:bd0caa2a07197145797b19815bf3d1a0ae32120680a42933bc8ccb2fcb8e505a",
+        ".claude/settings.json": "sha256:c04806b7053dcb538d1a3b79a7c92e8aace7a350437394c67823e37d2ae07954",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
@@ -264,7 +264,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:c0d6aa041d93f99f3879d1be794862b27073bfbdb4f7b3de94515138742033ac",
+        ".claude/settings.json": "sha256:b2570015e1eac007acd98509d9fbecaaa9fff7773f3bad1a54ddc2530be60774",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
@@ -324,7 +324,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:bd0caa2a07197145797b19815bf3d1a0ae32120680a42933bc8ccb2fcb8e505a",
+        ".claude/settings.json": "sha256:c04806b7053dcb538d1a3b79a7c92e8aace7a350437394c67823e37d2ae07954",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -355,7 +355,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:44f445483abaddb167509ac7e983c3c0a042267f8a2aece8b7723cd27ece11d3",
+        ".claude/settings.json": "sha256:133361c82095b5524c1f5375dce7cda3cdcea3462f6f4e9a12525b05e5a90a6f",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -386,7 +386,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:bd0caa2a07197145797b19815bf3d1a0ae32120680a42933bc8ccb2fcb8e505a",
+        ".claude/settings.json": "sha256:c04806b7053dcb538d1a3b79a7c92e8aace7a350437394c67823e37d2ae07954",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -452,7 +452,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:bd0caa2a07197145797b19815bf3d1a0ae32120680a42933bc8ccb2fcb8e505a",
+        ".claude/settings.json": "sha256:c04806b7053dcb538d1a3b79a7c92e8aace7a350437394c67823e37d2ae07954",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -606,7 +606,7 @@
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:bd0caa2a07197145797b19815bf3d1a0ae32120680a42933bc8ccb2fcb8e505a",
+        ".claude/settings.json": "sha256:c04806b7053dcb538d1a3b79a7c92e8aace7a350437394c67823e37d2ae07954",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
@@ -641,8 +641,8 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:2da818acd1b66580fde16699c7dc928c474c5c0cc8094c6dcb313afe77c7e24b",
-        ".claude/settings.json.bak": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d",
+        ".claude/settings.json": "sha256:375b031e6c655fe75a89cc8a6013921df4ef6d15bd8f9726d98f36e8644c86a5",
+        ".claude/settings.json.bak": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/config.toml": "sha256:7cdb86ddd5e95c204423b5ff55cf66516241d6fa134213d4d9d971fa062225b4",
@@ -699,7 +699,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d"
+        ".claude/settings.json": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3"
       }
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor": {
@@ -798,7 +798,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d"
+        ".claude/settings.json": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=git": {
@@ -819,7 +819,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d"
+        ".claude/settings.json": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=jq variant=jq-absent-bun-hooks": {
@@ -840,7 +840,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d"
+        ".claude/settings.json": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3"
       }
     },
     "fixture=home-fresh cmd=sync codex": {
@@ -985,8 +985,8 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:2da818acd1b66580fde16699c7dc928c474c5c0cc8094c6dcb313afe77c7e24b",
-        ".claude/settings.json.bak": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d",
+        ".claude/settings.json": "sha256:375b031e6c655fe75a89cc8a6013921df4ef6d15bd8f9726d98f36e8644c86a5",
+        ".claude/settings.json.bak": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/config.toml": "sha256:7cdb86ddd5e95c204423b5ff55cf66516241d6fa134213d4d9d971fa062225b4",
@@ -1016,7 +1016,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:9242fd7c16dcb5279d17b8b91b6e9513f6d2284eb98b6361d821426047f7d43d",
+        ".claude/settings.json": "sha256:582eba4d657950f4560d053eb137d7984c7f02c7d393e4e0cec3466b974746b3",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/config.toml": "sha256:7cdb86ddd5e95c204423b5ff55cf66516241d6fa134213d4d9d971fa062225b4",
@@ -1068,7 +1068,7 @@
         ".claude/bin/statusline.mjs": "sha256:eb1e261f427770fad7e23b6ffafb34b7258d29e7cdb46854ee3cd35642b62fb2",
         ".claude/CLAUDE.md": "sha256:9d2436c3c6545514726f092f91231c8f4a030a2e6f3659521d37237ae8b103d8",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:b6a9de244aa7d6ae3a28c908b2e58e4fb147aab018198c0953f375d11c44a278",
+        ".claude/settings.json": "sha256:f32acfa0dc04413fa75681b15cb00e740eee69b22351444c5a6578de52433da2",
         ".claude/settings.json.bak": "sha256:fb9f3cab20327b58f92d501faeddcf50c6529d164e98beecaffea4359cc80ae9"
       }
     },
