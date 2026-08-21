@@ -9,7 +9,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # BEGIN GENERATED BUN PIN
-$BunPin = "1.3.14"
+$BunPin = "1.4.0"
 # END GENERATED BUN PIN
 
 function Write-Ok([string]$Message) {

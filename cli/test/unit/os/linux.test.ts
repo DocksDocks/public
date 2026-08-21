@@ -19,7 +19,7 @@ describe("Linux host OS", () => {
       args: ["-v"]
     })
     expect(host.bunExecutableName).toBe("bun")
-    expect(host.bunInstaller("1.3.14", "/tmp/bun")).toEqual({
+    expect(host.bunInstaller("1.4.0", "/tmp/bun")).toEqual({
       scriptPath: "/tmp/bun/install.sh",
       download: {
         command: "curl",
@@ -27,7 +27,7 @@ describe("Linux host OS", () => {
       },
       run: {
         command: "bash",
-        args: ["/tmp/bun/install.sh", "bun-v1.3.14"]
+        args: ["/tmp/bun/install.sh", "bun-v1.4.0"]
       }
     })
     const setting = host.environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false")
@@ -82,7 +82,7 @@ describe("Linux host OS", () => {
       args: ["-v"]
     })
     expect(host.bunExecutableName).toBe("bun")
-    expect(host.bunInstaller("1.3.14", "/tmp/bun")).toEqual({
+    expect(host.bunInstaller("1.4.0", "/tmp/bun")).toEqual({
       scriptPath: "/tmp/bun/install.sh",
       download: {
         command: "curl",
@@ -90,7 +90,7 @@ describe("Linux host OS", () => {
       },
       run: {
         command: "bash",
-        args: ["/tmp/bun/install.sh", "bun-v1.3.14"]
+        args: ["/tmp/bun/install.sh", "bun-v1.4.0"]
       }
     })
     const setting = host.environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false")

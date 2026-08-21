@@ -29,20 +29,41 @@ export const AUTHORING_EXCLUSIONS = [
 const GENERATED_MODULE = "cli/src/generated/sotPayload.ts"
 const BUN_PIN_START = "# BEGIN GENERATED BUN PIN"
 const BUN_PIN_END = "# END GENERATED BUN PIN"
+const BUN_FLOOR_START = "# BEGIN GENERATED BUN FLOOR"
+const BUN_FLOOR_END = "# END GENERATED BUN FLOOR"
+
+interface BunVersions {
+  readonly verified: string
+  readonly floor: string
+}
+
+interface GeneratedBlock {
+  readonly start: string
+  readonly end: string
+  readonly version: keyof BunVersions
+  readonly renderAssignment: (version: string) => string
+}
 
 interface GeneratedScript {
   readonly path: string
-  readonly renderAssignment: (version: string) => string
+  readonly blocks: ReadonlyArray<GeneratedBlock>
 }
 
 const renderBashBunPin = (version: string): string => `BUN_PIN=${JSON.stringify(version)}`
 const renderPowerShellBunPin = (version: string): string => `$BunPin = ${JSON.stringify(version)}`
+const renderBashBunFloor = (version: string): string => `BUN_FLOOR=${JSON.stringify(version)}`
+const renderPowerShellBunFloor = (version: string): string => `$BunFloor = ${JSON.stringify(version)}`
+
+const bashBunPin = { start: BUN_PIN_START, end: BUN_PIN_END, version: "verified", renderAssignment: renderBashBunPin } as const
+const powerShellBunPin = { start: BUN_PIN_START, end: BUN_PIN_END, version: "verified", renderAssignment: renderPowerShellBunPin } as const
+const bashBunFloor = { start: BUN_FLOOR_START, end: BUN_FLOOR_END, version: "floor", renderAssignment: renderBashBunFloor } as const
+const powerShellBunFloor = { start: BUN_FLOOR_START, end: BUN_FLOOR_END, version: "floor", renderAssignment: renderPowerShellBunFloor } as const
 
 const GENERATED_SCRIPTS: ReadonlyArray<GeneratedScript> = [
-  { path: "docks-kit", renderAssignment: renderBashBunPin },
-  { path: "install.sh", renderAssignment: renderBashBunPin },
-  { path: "docks-kit.ps1", renderAssignment: renderPowerShellBunPin },
-  { path: "install.ps1", renderAssignment: renderPowerShellBunPin }
+  { path: "docks-kit", blocks: [bashBunPin, bashBunFloor] },
+  { path: "install.sh", blocks: [bashBunPin] },
+  { path: "docks-kit.ps1", blocks: [powerShellBunPin, powerShellBunFloor] },
+  { path: "install.ps1", blocks: [powerShellBunPin] }
 ]
 
 function repoPath(root: string, path: string): string {
@@ -88,27 +109,34 @@ function generatedModule(root: string): string {
     `export const GENERATED_PAYLOAD_HASH = ${JSON.stringify(payloadHash(root))}\n`
 }
 
-function verifiedBunVersion(root: string): string {
+function bunVersions(root: string): BunVersions {
   const manifest = JSON.parse(readFileSync(repoPath(root, "SoT/toolchain.json"), "utf8")) as {
-    tools?: { bun?: { verified?: unknown } }
+    tools?: { bun?: { verified?: unknown; floor?: unknown } }
   }
   const verified = manifest.tools?.bun?.verified
   if (typeof verified !== "string" || verified === "") {
     throw new Error("SoT/toolchain.json has no verified Bun version")
   }
-  return verified
+  const floor = manifest.tools?.bun?.floor
+  if (typeof floor !== "string" || floor === "") {
+    throw new Error("SoT/toolchain.json has no Bun version floor")
+  }
+  return { verified, floor }
 }
 
-function generatedScript(root: string, script: GeneratedScript, version: string): string {
+function generatedScript(root: string, script: GeneratedScript, versions: BunVersions): string {
   const path = repoPath(root, script.path)
-  const source = readFileSync(path, "utf8")
-  const start = source.indexOf(BUN_PIN_START)
-  const end = source.indexOf(BUN_PIN_END)
-  if (start === -1 || end === -1 || end < start) {
-    throw new Error(`${script.path} is missing the ${BUN_PIN_START}/${BUN_PIN_END} markers`)
+  let generated = readFileSync(path, "utf8")
+  for (const block of script.blocks) {
+    const start = generated.indexOf(block.start)
+    const end = generated.indexOf(block.end)
+    if (start === -1 || end === -1 || end < start) {
+      throw new Error(`${script.path} is missing the ${block.start}/${block.end} markers`)
+    }
+    const replacement = `${block.start}\n${block.renderAssignment(versions[block.version])}\n${block.end}`
+    generated = generated.slice(0, start) + replacement + generated.slice(end + block.end.length)
   }
-  const replacement = `${BUN_PIN_START}\n${script.renderAssignment(version)}\n${BUN_PIN_END}`
-  return source.slice(0, start) + replacement + source.slice(end + BUN_PIN_END.length)
+  return generated
 }
 
 function walkFiles(root: string, dir: string, output: Array<string>): void {
@@ -136,12 +164,12 @@ export interface GeneratedState {
 }
 
 export function expectedGeneratedState(root: string): GeneratedState {
-  const version = verifiedBunVersion(root)
+  const versions = bunVersions(root)
   return {
     module: generatedModule(root),
     scripts: GENERATED_SCRIPTS.map((script) => ({
       path: script.path,
-      content: generatedScript(root, script, version)
+      content: generatedScript(root, script, versions)
     }))
   }
 }

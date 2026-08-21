@@ -14,13 +14,18 @@ const launcherSuiteLabel = POSIX_LAUNCHER_APPLIES
   ? "checkout launcher binary selection"
   : "checkout launcher binary selection (skipped: docks-kit is a POSIX artifact and does not apply to this host)"
 
-function launcherFixture(binaryName: string, binaryVersion: string | null): { root: string; binDir: string } {
+function launcherFixture(
+  binaryName: string,
+  binaryVersion: string | null,
+  bunVersion = "1.4.0",
+  dependenciesInstalled = true
+): { root: string; binDir: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-launcher-"))
   roots.push(root)
   const binDir = join(root, "test-bin")
   mkdirSync(join(root, "cli", "dist"), { recursive: true })
   mkdirSync(join(root, "cli", "src"), { recursive: true })
-  mkdirSync(join(root, "node_modules", "effect"), { recursive: true })
+  if (dependenciesInstalled) mkdirSync(join(root, "node_modules", "effect"), { recursive: true })
   mkdirSync(binDir, { recursive: true })
   cpSync(join(REPO_DIR, "docks-kit"), join(root, "docks-kit"))
   cpSync(join(REPO_DIR, "package.json"), join(root, "package.json"))
@@ -41,7 +46,7 @@ fi
   const bun = join(binDir, "bun")
   writeFileSync(bun, `#!/bin/bash
 if [[ "\${1:-}" == "--version" ]]; then
-  printf '%s\\n' '1.3.14'
+  printf '%s\\n' '${bunVersion}'
 elif [[ "\${2:-}" == "--version" ]]; then
   printf '%s\\n' '${CURRENT_VERSION}'
 else
@@ -106,6 +111,45 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     expect(result.status).toBe(0)
     expect(result.stdout.trim()).toBe("source:probe")
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 <unknown>")
+  })
+
+  it.each([
+    "1.4.0",
+    "1.10.0",
+    "2.0.0",
+    "1.4.0-canary.1+build",
+    "unparseable"
+  ])("accepts Bun %s before installing checkout dependencies", (bunVersion) => {
+    const fixture = launcherFixture("docks-kit-linux-x64", null, bunVersion, false)
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe("source:probe")
+    expect(result.stderr).toContain("Installing CLI dependencies")
+  })
+
+  it("rejects Bun below the floor before installing checkout dependencies", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", null, "1.3.14\r", false)
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
+
+    expect(result.status).toBe(1)
+    expect(result.stdout).toBe("")
+    expect(result.stderr).toContain("Bun 1.3.14 is below the required floor 1.4.0")
+    expect(result.stderr).toContain("checkout's lockfile requires Bun 1.4.0 or newer")
+    expect(result.stderr).toContain("Run: bun upgrade")
+    expect(result.stderr).not.toContain("Installing CLI dependencies")
+  })
+
+  it("compares installed Bun against the floor rather than the verified install pin", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", null, "1.4.0", false)
+    const launcherPath = join(fixture.root, "docks-kit")
+    const launcher = readFileSync(launcherPath, "utf8")
+    writeFileSync(launcherPath, launcher.replace('BUN_PIN="1.4.0"', 'BUN_PIN="9.0.0"'))
+
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout.trim()).toBe("source:probe")
   })
 
   it("fails closed when the checkout version cannot be parsed", () => {

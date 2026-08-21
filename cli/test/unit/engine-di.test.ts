@@ -51,7 +51,7 @@ function stubServices(records: Array<LogRecord>, options: StubOptions = {}): Eng
   const platform = makePlatform("linux")
   const missing = new Set(options.missing ?? [])
   const versions: Partial<Record<ToolId, string>> = {
-    bun: "1.3.14",
+    bun: "1.4.0",
     ...options.versions
   }
   const warned = new Set<ToolId>()
@@ -956,7 +956,7 @@ describe.sequential("EngineNative full service injection", () => {
       expect(await runEngineNative(["toolchain", "ensure", "bun"], toolchainServices)).toBe(0)
       expect(await runEngineNative(["toolchain", "ensure", "bun", "--verbose"], toolchainServices)).toBe(0)
       expect(toolchainRecords).toEqual([
-        { level: "verbose", message: "bun up to date (1.3.14)" }
+        { level: "verbose", message: "bun up to date (1.4.0)" }
       ])
 
       const unreadableRecords: Array<LogRecord> = []

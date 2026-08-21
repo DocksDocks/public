@@ -34,7 +34,7 @@ function stubServices(records: Array<LogRecord>): EngineServices {
       return { ...specification, installHint: (value = platform.raw()) => specification.installHint(value) }
     },
     probe: (id) => ({ state: "present", path: `/stub-bin/${id}` }),
-    version: async (id) => (id === "bun" ? "1.3.14" : "0.5.3"),
+    version: async (id) => (id === "bun" ? "1.4.0" : "0.5.3"),
     path: async (id) => `/stub-bin/${id}`,
     warnMissing: () => {}
   }

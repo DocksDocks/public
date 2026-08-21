@@ -64,7 +64,7 @@ case "\${1:-}" in
       *) printf '%s\\n' '${globalBin}' ;;
     esac
     ;;
-  --version) printf '%s\\n' '1.3.14' ;;
+  --version) printf '%s\\n' '1.4.0' ;;
   *) exit 2 ;;
 esac
 `)

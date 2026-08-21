@@ -194,12 +194,12 @@ describe("DependencyManager registry", () => {
         commandExists: () => false,
         capture: async (cmd, args) => {
           calls.push([cmd, args])
-          return "1.3.14"
+          return "1.4.0"
         },
         which: (name) => (name === "/custom-bun/bin/bun" ? name : "")
       })
 
-      await expect(manager.version("bun")).resolves.toBe("1.3.14")
+      await expect(manager.version("bun")).resolves.toBe("1.4.0")
       expect(calls).toEqual([["/custom-bun/bin/bun", ["--version"]]])
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]

@@ -168,6 +168,23 @@ describe("generated SoT payload", () => {
     expect(payloadDisplayPath("SoT/models.json")).toBe("embedded:SoT/models.json")
   })
 
+  it("generates the Bun floor only in checkout launchers", () => {
+    const manifest = JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8")) as {
+      tools: { bun: { floor: string } }
+    }
+    const launcher = readFileSync(join(REPO_DIR, "docks-kit"), "utf8")
+    const powerShellLauncher = readFileSync(join(REPO_DIR, "docks-kit.ps1"), "utf8")
+    const installer = readFileSync(join(REPO_DIR, "install.sh"), "utf8")
+    const powerShellInstaller = readFileSync(join(REPO_DIR, "install.ps1"), "utf8")
+
+    expect(launcher).toContain(`BUN_FLOOR="${manifest.tools.bun.floor}"`)
+    expect(powerShellLauncher).toContain(`$BunFloor = "${manifest.tools.bun.floor}"`)
+    expect(installer).not.toContain("GENERATED BUN FLOOR")
+    expect(installer).not.toContain("BUN_FLOOR=")
+    expect(powerShellInstaller).not.toContain("GENERATED BUN FLOOR")
+    expect(powerShellInstaller).not.toContain("$BunFloor =")
+  })
+
   it("fails --check when notification.mp3 changes", () => {
     const root = copyGeneratorRoot()
     try {
@@ -190,6 +207,23 @@ describe("generated SoT payload", () => {
       const result = check(root)
       expect(result.status).toBe(1)
       expect(result.stderr).toContain("generated payload is stale: docks-kit")
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    ["docks-kit", /BUN_FLOOR="[^"]+"/, 'BUN_FLOOR="0.0.0"'],
+    ["docks-kit.ps1", /\$BunFloor = "[^"]+"/, '$BunFloor = "0.0.0"']
+  ])("fails --check when the %s Bun floor changes", (script, assignment, replacement) => {
+    const root = copyGeneratorRoot()
+    try {
+      const path = join(root, script)
+      const launcher = readFileSync(path, "utf8")
+      writeFileSync(path, launcher.replace(assignment, replacement))
+      const result = check(root)
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain(`generated payload is stale: ${script}`)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

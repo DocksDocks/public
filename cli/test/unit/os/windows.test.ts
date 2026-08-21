@@ -30,7 +30,7 @@ describe("Windows host OS", () => {
     expect(host.directoryLinkKinds).toEqual(["symlink", "junction"])
     expect(host.executableSuffixes).toEqual([".exe", ".cmd", ".bat", ""])
     expect(host.bunExecutableName).toBe("bun.exe")
-    expect(host.bunInstaller("1.3.14", "C:/Temp/bun")).toEqual({
+    expect(host.bunInstaller("1.4.0", "C:/Temp/bun")).toEqual({
       scriptPath: "C:/Temp/bun/install.ps1",
       download: {
         command: "curl",
@@ -46,7 +46,7 @@ describe("Windows host OS", () => {
           "-File",
           "C:/Temp/bun/install.ps1",
           "-Version",
-          "1.3.14"
+          "1.4.0"
         ]
       }
     })

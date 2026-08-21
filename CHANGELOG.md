@@ -11,6 +11,13 @@
   the module importable under Node, where the unit suite loads it. `@types/bun`
   moved to `^1.4.0` for the declaration.
 - CI installs Bun 1.4.0, and its install-cache keys moved with the version.
+- Bun's toolchain entry targets 1.4.0 for both `floor` and `verified`, and the
+  payload generator emits a second marked block, `BUN_FLOOR`, into the two
+  checkout launchers. `docks-kit` and `docks-kit.ps1` now refuse to run
+  `bun install --frozen-lockfile` on a Bun below that floor and name
+  `bun upgrade` in the error, because a 1.3.x runtime cannot read this
+  repository's lockfile. The floor is deliberately separate from the verified
+  install pin, which still selects the exact release for kit-driven installs.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 

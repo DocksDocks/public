@@ -8,8 +8,12 @@ $ErrorActionPreference = 'Stop'
 $RepoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # BEGIN GENERATED BUN PIN
-$BunPin = "1.3.14"
+$BunPin = "1.4.0"
 # END GENERATED BUN PIN
+
+# BEGIN GENERATED BUN FLOOR
+$BunFloor = "1.4.0"
+# END GENERATED BUN FLOOR
 
 $ProcessorArchitecture = if (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
   $env:PROCESSOR_ARCHITEW6432
@@ -107,6 +111,32 @@ if ($null -eq $Bun) {
 # Sentinel is a real dependency dir, not bare node_modules\ — a failed or
 # partial install leaves node_modules\ present and would suppress the repair.
 if (-not (Test-Path -LiteralPath (Join-Path $RepoDir 'node_modules\effect') -PathType Container)) {
+  $DetectedBunVersion = ''
+  try {
+    $BunOutput = & $Bun --version 2>$null
+    if ($LASTEXITCODE -eq 0) {
+      $DetectedBunVersion = ([string]($BunOutput -join "`n")).TrimEnd("`r")
+    }
+  } catch {
+    $DetectedBunVersion = ''
+  }
+
+  $NormalizedBunVersion = $DetectedBunVersion -replace '[-+].*$', ''
+  $InstalledBunVersion = $null
+  $RequiredBunVersion = $null
+  if ($NormalizedBunVersion -match '^\d+\.\d+\.\d+$' -and $BunFloor -match '^\d+\.\d+\.\d+$') {
+    try {
+      $InstalledBunVersion = [version]::Parse($NormalizedBunVersion)
+      $RequiredBunVersion = [version]::Parse($BunFloor)
+    } catch {
+      $InstalledBunVersion = $null
+      $RequiredBunVersion = $null
+    }
+  }
+  if ($null -ne $InstalledBunVersion -and $null -ne $RequiredBunVersion -and $InstalledBunVersion -lt $RequiredBunVersion) {
+    [Console]::Error.WriteLine("[docks-kit] Bun $DetectedBunVersion is below the required floor $BunFloor; this checkout's lockfile requires Bun $BunFloor or newer. Run: bun upgrade")
+    exit 1
+  }
   [Console]::Error.WriteLine('[docks-kit] Installing CLI dependencies (bun install --frozen-lockfile)...')
   Push-Location $RepoDir
   try {

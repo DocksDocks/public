@@ -57,7 +57,7 @@ function executor(state: ProbeState, home: string): ProbeExecutor {
     commandExists: (name) => name === "curl" ? state.curl : false,
     capture: async (cmd, args) => {
       if ((cmd === custom || cmd === fallback || cmd === "bun") && args.join(" ") === "--version") {
-        return state.bunVersion ?? "1.3.14"
+        return state.bunVersion ?? "1.4.0"
       }
       return ""
     },
@@ -165,7 +165,7 @@ describe("per-run Bun bootstrap", () => {
     process.env["BUN_INSTALL"] = "/custom bun"
     const test = rig("linux", { curl: true, installed: false }, true)
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/custom bun/bin/bun")
-    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.3.14 (kit-verified) -> /custom bun/bin/bun")
+    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.4.0 (kit-verified) -> /custom bun/bin/bun")
     expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
@@ -174,7 +174,7 @@ describe("per-run Bun bootstrap", () => {
     process.env["BUN_INSTALL"] = "C:/custom bun"
     const test = rig("win32", { curl: true, installed: false }, true)
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("C:/custom bun/bin/bun.exe")
-    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.3.14 (kit-verified) -> C:/custom bun/bin/bun.exe")
+    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.4.0 (kit-verified) -> C:/custom bun/bin/bun.exe")
     expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
@@ -249,7 +249,7 @@ describe("per-run Bun bootstrap", () => {
 
       try {
         expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe(expectedExecutable)
-        const installer = hostOs(hostId).bunInstaller("1.3.14", privateDirectory)
+        const installer = hostOs(hostId).bunInstaller("1.4.0", privateDirectory)
         expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
         expect(
           privateDirectory.startsWith(`${testRoot}/`) || privateDirectory.startsWith(`${testRoot}${sep}`)
@@ -283,7 +283,7 @@ describe("per-run Bun bootstrap", () => {
   )
 
   it("shapes the Windows installer with a bare pin and explicit PowerShell argv", () => {
-    const installer = hostOs("windows").bunInstaller("1.3.14", "C:/Temp/docks-kit-bun-private")
+    const installer = hostOs("windows").bunInstaller("1.4.0", "C:/Temp/docks-kit-bun-private")
 
     expect(installer.scriptPath).toBe("C:/Temp/docks-kit-bun-private/install.ps1")
     expect(installer.download.command).toBe("curl")
@@ -302,7 +302,7 @@ describe("per-run Bun bootstrap", () => {
       "-File",
       "C:/Temp/docks-kit-bun-private/install.ps1",
       "-Version",
-      "1.3.14"
+      "1.4.0"
     ])
   })
 

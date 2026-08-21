@@ -12,6 +12,8 @@
 
 `docks-kit toolchain check` reports each installed version against the
 manifest's `floor` and `verified` columns.
+Before running `bun install --frozen-lockfile`, the checkout launchers reject Bun versions below the manifest's `floor` and direct the user to `bun upgrade`.
+Their generated Bun floor is intentionally separate from the generated `verified` pin: the floor gates lockfile compatibility, while the verified pin selects the exact release for kit-driven installs.
 
 ## Managed tools
 

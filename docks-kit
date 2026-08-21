@@ -8,8 +8,12 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # BEGIN GENERATED BUN PIN
-BUN_PIN="1.3.14"
+BUN_PIN="1.4.0"
 # END GENERATED BUN PIN
+
+# BEGIN GENERATED BUN FLOOR
+BUN_FLOOR="1.4.0"
+# END GENERATED BUN FLOOR
 
 HOST="$(uname -s)-$(uname -m)"
 case "$HOST" in
@@ -50,6 +54,35 @@ find_bun() {
   return 1
 }
 
+bun_version_at_least() {
+  local installed="${1%%[-+]*}"
+  local required="${2%%[-+]*}"
+  local installed_major installed_minor installed_patch
+  local required_major required_minor required_patch
+
+  if [[ "$installed" =~ ^([0-9]{1,9})\.([0-9]{1,9})\.([0-9]{1,9})$ ]]; then
+    installed_major="${BASH_REMATCH[1]}"
+    installed_minor="${BASH_REMATCH[2]}"
+    installed_patch="${BASH_REMATCH[3]}"
+  else
+    return 2
+  fi
+  if [[ "$required" =~ ^([0-9]{1,9})\.([0-9]{1,9})\.([0-9]{1,9})$ ]]; then
+    required_major="${BASH_REMATCH[1]}"
+    required_minor="${BASH_REMATCH[2]}"
+    required_patch="${BASH_REMATCH[3]}"
+  else
+    return 2
+  fi
+
+  if (( 10#$installed_major > 10#$required_major )); then return 0; fi
+  if (( 10#$installed_major < 10#$required_major )); then return 1; fi
+  if (( 10#$installed_minor > 10#$required_minor )); then return 0; fi
+  if (( 10#$installed_minor < 10#$required_minor )); then return 1; fi
+  if (( 10#$installed_patch >= 10#$required_patch )); then return 0; fi
+  return 1
+}
+
 if ! BUN="$(find_bun)"; then
   echo "[docks-kit] Bun not found — installing (download-then-run)..." >&2
   if ! command -v curl >/dev/null 2>&1; then
@@ -70,6 +103,14 @@ fi
 # Sentinel is a real dependency dir, not bare node_modules/ — a failed or
 # partial install leaves node_modules/ present and would suppress the repair.
 if [[ ! -d "$REPO_DIR/node_modules/effect" ]]; then
+  BUN_VERSION="$("$BUN" --version 2>/dev/null || true)"
+  BUN_VERSION="${BUN_VERSION%$'\r'}"
+  bun_version_status=0
+  bun_version_at_least "$BUN_VERSION" "$BUN_FLOOR" || bun_version_status=$?
+  if [[ "$bun_version_status" -eq 1 ]]; then
+    echo "[docks-kit] Bun $BUN_VERSION is below the required floor $BUN_FLOOR; this checkout's lockfile requires Bun $BUN_FLOOR or newer. Run: bun upgrade" >&2
+    exit 1
+  fi
   echo "[docks-kit] Installing CLI dependencies (bun install --frozen-lockfile)..." >&2
   (cd "$REPO_DIR" && "$BUN" install --frozen-lockfile >/dev/null)
 fi
