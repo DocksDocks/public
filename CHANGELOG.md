@@ -24,6 +24,10 @@
 - The portable Linux lane runs `bun audit` at full scope after installing
   dependencies, so a new advisory fails CI instead of only showing up in a
   local report.
+- `bun run test:ci` runs typecheck, the unit suite, and both golden suites
+  through `bun run --parallel`, leaving the timing-sensitive runtime smoke on
+  its own leg. The gate finishes in about 25 s rather than about 50 s, and a
+  failing leg still fails the gate.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
