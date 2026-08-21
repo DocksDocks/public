@@ -18,6 +18,9 @@
   `bun upgrade` in the error, because a 1.3.x runtime cannot read this
   repository's lockfile. The floor is deliberately separate from the verified
   install pin, which still selects the exact release for kit-driven installs.
+- `bun.lock` is now `lockfileVersion: 2`. Setting the field in place kept the
+  resolved graph byte-identical, so the format moved without moving a single
+  dependency.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
