@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Patched two transitive advisories inside their existing caret ranges:
+  `nanoid` 3.3.15 to 3.3.18 and `postcss` 8.5.16 to 8.5.23. Both are reached
+  only through `vitest`, so no pinned version moved.
+
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
 - Pinned the Effect graph to `4.0.0-rc.109` for `effect`, `@effect/platform-bun`,
