@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2026-08-21 — Bun 1.4.0 toolchain target, lockfile v2, and release-path hardening
 
 - Patched two transitive advisories inside their existing caret ranges:
   `nanoid` 3.3.15 to 3.3.18 and `postcss` 8.5.16 to 8.5.23. Both are reached
