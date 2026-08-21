@@ -28,6 +28,8 @@
   through `bun run --parallel`, leaving the timing-sensitive runtime smoke on
   its own leg. The gate finishes in about 25 s rather than about 50 s, and a
   failing leg still fails the gate.
+- The release workflow proves on every run, not only on a manual dispatch, that
+  the packed tarball came from a clean tree matching the release tag.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 

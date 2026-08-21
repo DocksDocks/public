@@ -120,14 +120,16 @@ jobs:
             exit 1
           fi
 
-      - name: Prove the dispatched commit packs the tag's content
-        if: github.event_name == 'workflow_dispatch'
+      - name: Prove the packed tarball is the tag's content
         env:
           RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
         run: |
-          # A dispatch runs from a branch, so `npm publish --provenance` will
-          # attest that branch and its commit. Publishing is only honest if the
-          # packaged bytes are the tag's bytes, so prove exactly that.
+          # `bun pm pack` packs the WORKING TREE, so neither trigger proves by
+          # itself that the tarball is the tag's bytes. A dispatch runs from a
+          # branch, so `npm publish --provenance` would otherwise attest that
+          # branch; a tag push checks out the tag, so only the tree can drift.
+          # Both failures publish the wrong bytes under a correct-looking
+          # attestation, so this runs unconditionally.
           #
           # The compared roots come from package.json `files` plus the manifest
           # itself, which is what decides tarball membership, so this cannot
