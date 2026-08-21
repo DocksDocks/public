@@ -84,6 +84,12 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun install --frozen-lockfile
 
+      - name: Audit dependencies for vulnerabilities
+        if: matrix.os == 'ubuntu-24.04'
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun audit
+
       - name: Generated payload is fresh
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache

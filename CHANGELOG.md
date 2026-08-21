@@ -21,6 +21,9 @@
 - `bun.lock` is now `lockfileVersion: 2`. Setting the field in place kept the
   resolved graph byte-identical, so the format moved without moving a single
   dependency.
+- The portable Linux lane runs `bun audit` at full scope after installing
+  dependencies, so a new advisory fails CI instead of only showing up in a
+  local report.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
