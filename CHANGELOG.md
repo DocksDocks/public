@@ -10,6 +10,7 @@
   1.4.0 requires because the private path is gone. A `typeof Bun` guard keeps
   the module importable under Node, where the unit suite loads it. `@types/bun`
   moved to `^1.4.0` for the declaration.
+- CI installs Bun 1.4.0, and its install-cache keys moved with the version.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 
