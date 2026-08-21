@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- The release workflow proves the published tarball holds the tag's files on
+  every run: it unpacks the tarball and compares every unpacked file with the
+  same list rebuilt from the tag. A file that `bun pm pack` ships while git
+  ignores it, a stale tarball with drifted contents, and a branch that deleted
+  a whole packaged directory now each fail the release instead of publishing
+  content that never existed at the tag.
+
 ## 2026-08-21 — Bun 1.4.0 toolchain target, lockfile v2, and release-path hardening
 
 - Patched two transitive advisories inside their existing caret ranges:

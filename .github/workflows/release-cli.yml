@@ -123,49 +123,95 @@ jobs:
       - name: Prove the packed tarball is the tag's content
         env:
           RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
         run: |
+          set -euo pipefail
+
           # `bun pm pack` packs the WORKING TREE, so neither trigger proves by
           # itself that the tarball is the tag's bytes. A dispatch runs from a
           # branch, so `npm publish --provenance` would otherwise attest that
           # branch; a tag push checks out the tag, so only the tree can drift.
           # Both failures publish the wrong bytes under a correct-looking
           # attestation, so this runs unconditionally.
-          #
-          # The compared roots come from package.json `files` plus the manifest
-          # itself, which is what decides tarball membership, so this cannot
-          # drift when `files` changes. `git diff` over those roots reports
-          # additions, deletions, renames and edits alike.
           git fetch --no-tags --depth=1 origin "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
 
-          mapfile -t roots < <(bun -p '["package.json", ...require("./package.json").files].join("\n")')
-          if [[ "${#roots[@]}" -lt 2 ]]; then
+          # Declared roots are package.json `files` plus what npm packs anyway:
+          # the manifest, and LICENCE in either spelling. Every declared root is
+          # compared even when absent from this checkout, because dropping an
+          # absent root would hide a branch that deleted a whole packaged
+          # directory: the tarball would omit it too. A pathspec matching nothing
+          # in either tree is simply quiet.
+          # Both lists are produced by an ordinary command into a file, never by
+          # process substitution: `mapfile < <(producer)` discards the producer's
+          # exit status even under strict mode, so a producer that prints some
+          # valid lines and then fails would silently shorten the comparison.
+          lists="$(mktemp -d)"
+          if ! bun -p '["package.json", "LICENSE", "LICENCE", ...require("./package.json").files].join("\n")' > "$lists/roots"; then
+            echo "::error::could not read the packaged roots from package.json"
+            exit 1
+          fi
+          mapfile -t roots < "$lists/roots"
+          if [[ "${#roots[@]}" -lt 4 ]]; then
             echo "::error::package.json declares no files array to compare"
             exit 1
           fi
 
-          # The tarball is packed from the WORKING TREE, not from HEAD, so a
-          # tree comparison only proves anything while the tree is pristine.
-          if [[ -n "$(git status --porcelain -- "${roots[@]}")" ]]; then
+          # 1. The tree must match HEAD across those roots, which is what catches
+          #    a deletion or edit that git tracks.
+          status="$(git status --porcelain -- "${roots[@]}")"
+          if [[ -n "$status" ]]; then
             echo "::error::working tree differs from HEAD across packaged roots"
-            git status --porcelain -- "${roots[@]}"
+            printf '%s\n' "$status"
             exit 1
           fi
 
-          set +e
-          git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"
-          diff_status=$?
-          set -e
-          if [[ "$diff_status" -eq 1 ]]; then
+          # 2. HEAD must match the tag across those roots, which is what catches a
+          #    dispatch branch that committed drift the tarball would inherit.
+          if ! git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"; then
             echo "::error::packaged content differs from ${RELEASE_TAG}"
             git diff --name-status "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"
             exit 1
           fi
-          if [[ "$diff_status" -ne 0 ]]; then
-            echo "::error::could not compare packaged content against ${RELEASE_TAG}"
-            exit "$diff_status"
+
+          # 3. The tarball's own files must equal the tag's. Checks 1 and 2 are
+          #    blind to paths git ignores, and `bun pm pack` packs an ignored file
+          #    that sits under a declared root, so a stray editor backup or tool
+          #    output inside `cli/src` ships while `git status` and `git diff` stay
+          #    quiet. Rebuilding the same member list from the tag turns "the roots
+          #    agree" into "these files hold these bytes", and `git archive` fails
+          #    outright when a packed path does not exist at the tag.
+          tgz="cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
+          if [[ ! -f "$tgz" ]]; then
+            echo "::error::no tarball to compare at '$tgz'"
+            exit 1
           fi
-          printf 'packaged roots identical to %s: %s\n' \
-            "$RELEASE_TAG" "${roots[*]}" >> "$GITHUB_STEP_SUMMARY"
+          packed_dir="$(mktemp -d)"
+          tagged_dir="$(mktemp -d)"
+          tar -xzf "$tgz" --strip-components=1 -C "$packed_dir"
+          if ! ( cd "$packed_dir" && find . -type f -printf '%P\n' ) > "$lists/members"; then
+            echo "::error::could not list the unpacked tarball"
+            exit 1
+          fi
+          LC_ALL=C sort -o "$lists/members" "$lists/members"
+          mapfile -t members < "$lists/members"
+          if [[ "${#members[@]}" -eq 0 ]]; then
+            echo "::error::tarball '$tgz' unpacked to no files"
+            exit 1
+          fi
+          if ! git archive --format=tar "refs/tags/${RELEASE_TAG}" -- "${members[@]}" \
+            > "$packed_dir.tar" 2> "$packed_dir.err"; then
+            echo "::error::a packed file does not exist at ${RELEASE_TAG}"
+            cat "$packed_dir.err"
+            exit 1
+          fi
+          tar -xf "$packed_dir.tar" -C "$tagged_dir"
+          if ! diff -r "$packed_dir" "$tagged_dir"; then
+            echo "::error::tarball bytes differ from ${RELEASE_TAG}"
+            exit 1
+          fi
+
+          printf 'content of every packed file matches %s: %d files\n' \
+            "$RELEASE_TAG" "${#members[@]}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
