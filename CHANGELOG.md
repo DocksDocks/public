@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2026-08-21 — Release proof states only the guarantee it enforces
 
 - The release workflow proves the published tarball holds the tag's files on
   every run: it unpacks the tarball and compares every unpacked file with the
