@@ -5,6 +5,11 @@
 - Patched two transitive advisories inside their existing caret ranges:
   `nanoid` 3.3.15 to 3.3.18 and `postcss` 8.5.16 to 8.5.23. Both are reached
   only through `vitest`, so no pinned version moved.
+- Replaced the `/$bunfs/` path heuristic for detecting a compiled binary with
+  `Bun.isStandaloneExecutable`, which Bun 1.4.0 adds as public API and which
+  1.4.0 requires because the private path is gone. A `typeof Bun` guard keeps
+  the module importable under Node, where the unit suite loads it. `@types/bun`
+  moved to `^1.4.0` for the declaration.
 
 ## 2026-08-16 — Effect 4.0.0-rc.109 pin, effect-kit retirement, and Windows shim hardening
 

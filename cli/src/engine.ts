@@ -25,11 +25,11 @@ const requireSupportedHost = () => {
     )
 }
 
-// bun build --compile runs the embedded entry from a virtual POSIX path
-// ("/$bunfs/root/…"). There process.execPath IS the CLI, so a re-spawn must
-// not pass main.ts.
-export const compiled =
-  process.argv[1] !== undefined && process.argv[1].startsWith("/$bunfs/")
+// In a compiled executable process.execPath IS the CLI, so a re-spawn must
+// not pass main.ts. Guarded because the unit suite imports this module under
+// Node, where the `Bun` global is absent; only a Bun-hosted standalone
+// executable can be compiled, so absence means false.
+export const compiled: boolean = typeof Bun !== "undefined" && Bun.isStandaloneExecutable === true
 
 export class EngineCaptureError extends ExitError {
   constructor(readonly diagnostic: string, code: number) {

@@ -1,10 +1,15 @@
 import { Effect } from "effect"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({
-  runEngineNative: vi.fn(),
-  spawnSync: vi.fn()
-}))
+const mocks = vi.hoisted(() => {
+  const bun = { isStandaloneExecutable: false }
+  Object.defineProperty(globalThis, "Bun", { configurable: true, value: bun })
+  return {
+    bun,
+    runEngineNative: vi.fn(),
+    spawnSync: vi.fn()
+  }
+})
 
 vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }))
 vi.mock("../../src/engine-native", () => ({ runEngineNative: mocks.runEngineNative }))
@@ -26,6 +31,21 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe("compiled runtime detection", () => {
+  it("uses Bun's standalone-executable predicate", async () => {
+    mocks.bun.isStandaloneExecutable = true
+    try {
+      vi.resetModules()
+      // Re-evaluate the module after changing the runtime predicate; a static import runs before test setup.
+      const { compiled } = await import("../../src/engine")
+
+      expect(compiled).toBe(true)
+    } finally {
+      mocks.bun.isStandaloneExecutable = false
+    }
+  })
 })
 
 describe("supported host boundary", () => {
