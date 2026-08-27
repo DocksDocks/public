@@ -90,6 +90,7 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     repoDir: "/repo",
     home,
     agentsDir: `${home}/.agents`,
+    interactive: false,
     dryRun,
     verbose: false,
     skipBubblewrap: false,
@@ -109,8 +110,9 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     syncClaude: true,
     syncCodex: true,
     syncAgents: true,
+    syncOmp: false,
     bunRuntime: undefined,
-    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false }
+    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false, ompRestart: false }
   }
   return { ctx, lines, services, state }
 }

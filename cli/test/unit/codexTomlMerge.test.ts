@@ -35,6 +35,7 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
     repoDir: kitHome(),
     home,
     agentsDir: p(home, ".agents"),
+    interactive: false,
     dryRun: false,
     verbose: false,
     skipBubblewrap: false,
@@ -54,11 +55,13 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
     syncClaude: false,
     syncCodex: true,
     syncAgents: false,
+    syncOmp: false,
     nextStepTriggers: {
       claudePlugins: false,
       claudeRestart: false,
       codexRestart: false,
-      skillsRestart: false
+      skillsRestart: false,
+      ompRestart: false
     },
     services
   }

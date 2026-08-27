@@ -6,7 +6,7 @@
  * vocabulary directly.
  */
 import { p } from "./exec"
-import { homedir } from "node:os"
+import { engineHome } from "./harnesses"
 
 import { kitHome } from "../kitHome"
 import { payloadText } from "../payload"
@@ -15,6 +15,7 @@ import type { TerminalLease } from "./logger"
 import type { BunRuntimeState } from "./bun"
 import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } from "./claudeSync"
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync"
+import { ompNextSteps, ompSummary, ompSync, type OmpState } from "./ompSync"
 import { normalizeManifest, skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync"
 import { modeModel, modeToolchain } from "./modes"
 import { ExitError, parseArgs, parseClaudePlugin, parseCompactWindow, validateModifierFlags } from "./parseArgs"
@@ -81,6 +82,7 @@ export interface Ctx {
   readonly repoDir: string
   readonly home: string
   readonly agentsDir: string
+  readonly interactive: boolean
   dryRun: boolean
   verbose: boolean
   skipBubblewrap: boolean
@@ -106,19 +108,21 @@ export interface Ctx {
   syncClaude: boolean
   syncCodex: boolean
   syncAgents: boolean
+  syncOmp: boolean
   /** Per-run next-step triggers (Output Policy): advice prints only when its trigger changed or --verbose. */
   readonly nextStepTriggers: {
     claudePlugins: boolean
     claudeRestart: boolean
     codexRestart: boolean
     skillsRestart: boolean
+    ompRestart: boolean
   }
 }
 
 /** Globals default from env using the historical ${VAR:-default} contract. */
 function makeCtx(services: EngineServices): Ctx {
   const env = process.env
-  const home = env["HOME"] !== undefined && env["HOME"] !== "" ? env["HOME"] : homedir()
+  const home = engineHome(env)
   const compactWindowSource = env["CLAUDE_COMPACT_WINDOW"] ?? ""
   const claudeCompactWindow = compactWindowSource === "" ? "" : parseCompactWindow(compactWindowSource)
   if (claudeCompactWindow === undefined) {
@@ -133,6 +137,11 @@ function makeCtx(services: EngineServices): Ctx {
     repoDir: kitHome(),
     home,
     agentsDir: env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== "" ? env["AGENTS_DIR"] : p(home, ".agents"),
+    interactive:
+      env["DOCKS_KIT_INTERACTIVE"] === "1" ||
+      (env["DOCKS_KIT_INTERACTIVE"] !== "0" &&
+        process.stdout.isTTY === true &&
+        process.stdin.isTTY === true),
     dryRun: env["DRY_RUN"] === "1",
     verbose: env["DOCKS_KIT_VERBOSE"] === "1",
     skipBubblewrap: env["SKIP_BUBBLEWRAP"] === "1",
@@ -154,7 +163,14 @@ function makeCtx(services: EngineServices): Ctx {
     syncClaude: false,
     syncCodex: false,
     syncAgents: false,
-    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false }
+    syncOmp: false,
+    nextStepTriggers: {
+      claudePlugins: false,
+      claudeRestart: false,
+      codexRestart: false,
+      skillsRestart: false,
+      ompRestart: false
+    }
   }
 }
 
@@ -181,6 +197,7 @@ async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number
     | { readonly kind: "claude"; readonly runtime: ClaudeRuntimeState }
     | { readonly kind: "codex" }
     | { readonly kind: "skills"; readonly state: SkillsState }
+    | { readonly kind: "omp"; readonly state: OmpState }
   interface SelectedPipeline {
     readonly name: string
     readonly run: SyncTask<PipelineResult>
@@ -206,6 +223,12 @@ async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number
     selected.push({
       name: "skills",
       run: async () => ({ kind: "skills", state: await skillsSync(ctx) })
+    })
+  }
+  if (ctx.syncOmp) {
+    selected.push({
+      name: "omp",
+      run: async () => ({ kind: "omp", state: await ompSync(ctx) })
     })
   }
 
@@ -243,9 +266,11 @@ async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number
   const codexRan = ctx.syncCodex
   let claudeRuntime: ClaudeRuntimeState | undefined
   let skillsState: SkillsState | undefined
+  let ompState: OmpState | undefined
   for (const result of results) {
     if (result.kind === "claude") claudeRuntime = result.runtime
     else if (result.kind === "skills") skillsState = result.state
+    else if (result.kind === "omp") ompState = result.state
   }
 
   echo("")
@@ -254,11 +279,13 @@ async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number
   if (claudeRuntime !== undefined) claudeSummary(ctx, claudeRuntime)
   if (codexRan) codexSummary(ctx)
   if (skillsState !== undefined) skillsSummary(ctx, skillsState)
+  if (ompState !== undefined) ompSummary(ctx, ompState)
 
   const advice = [
     ...(claudeRan ? claudeNextSteps(ctx) : []),
     ...(codexRan ? codexNextSteps(ctx) : []),
-    ...(skillsState !== undefined ? skillsNextSteps(ctx) : [])
+    ...(skillsState !== undefined ? skillsNextSteps(ctx) : []),
+    ...(ompState !== undefined ? ompNextSteps(ctx) : [])
   ]
   if (advice.length > 0) {
     echo("")

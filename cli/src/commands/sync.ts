@@ -29,11 +29,11 @@ const updateNudge = (logger: Logger): void => {
   }
 }
 
-const VALID_TARGETS = ["claude", "codex", "agents"]
+const VALID_TARGETS = ["claude", "codex", "agents", "omp"]
 
 const targets = Argument.variadic(
   Argument.string("target").pipe(
-    Argument.withDescription("Sync targets: claude, codex, agents (default: all three)")
+    Argument.withDescription("Sync targets: claude, codex, agents, omp (default: selected harnesses)")
   )
 )
 

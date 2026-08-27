@@ -5,6 +5,7 @@
  */
 
 import type { Ctx, ModifierFlag } from "./index"
+import { LEGACY_SELECTION, readHarnessSelection, type Harness } from "./harnesses"
 import {
   CLAUDE_ADVISOR_STATES,
   advisorCatalog,
@@ -118,12 +119,13 @@ const SCALAR_MODIFIER_FLAGS: Record<ScalarModifierFlag, true> = {
 function usage(ctx: Ctx): void {
   const { echo } = ctx.services.logger
   const argv0 = "docks-kit sync"
-  echo(`Usage: ${argv0} [claude] [codex] [agents] [flags]`)
+  echo(`Usage: ${argv0} [claude] [codex] [agents] [omp] [flags]`)
   echo("")
-  echo("Targets (positional; default: all three)")
+  echo("Targets (positional; default: this machine's harness selection)")
   echo("  claude            sync the Claude Code SoT")
   echo("  codex             sync the Codex SoT")
   echo("  agents            sync universal agent skills")
+  echo("  omp               sync the Oh My Pi SoT")
   echo("")
   echo("Global flags")
   echo("  --dry-run         preview without applying")
@@ -197,11 +199,36 @@ function addClaudePlugin(ctx: Ctx, name: string): void {
   markModifier(ctx, "--claude-plugin")
 }
 
-function selectTarget(ctx: Ctx, target: string): void {
-  if (target === "claude") ctx.syncClaude = true
-  else if (target === "codex") ctx.syncCodex = true
-  else ctx.syncAgents = true
+type TargetFlag = "syncClaude" | "syncCodex" | "syncAgents" | "syncOmp"
+
+const TARGET_FLAGS = {
+  claude: "syncClaude",
+  codex: "syncCodex",
+  agents: "syncAgents",
+  omp: "syncOmp"
+} satisfies Record<Harness, TargetFlag>
+
+function selectTarget(ctx: Ctx, target: Harness): void {
+  ctx[TARGET_FLAGS[target]] = true
   ctx.targetFilterSet = true
+}
+
+function applySelection(ctx: Ctx, selection: ReadonlyArray<Harness>): void {
+  ctx.syncClaude = selection.includes("claude")
+  ctx.syncCodex = selection.includes("codex")
+  ctx.syncAgents = selection.includes("agents")
+  ctx.syncOmp = selection.includes("omp")
+}
+
+function applyDefaultSelection(ctx: Ctx): void {
+  if (ctx.targetFilterSet) return
+
+  const storedSelection = readHarnessSelection(ctx.home)
+  applySelection(ctx, storedSelection ?? LEGACY_SELECTION)
+  if (storedSelection !== undefined || !ctx.interactive) return
+
+  ctx.services.logger.echo("No harness selection stored; syncing claude, codex, agents")
+  ctx.services.logger.echo("Choose harnesses with: docks-kit harnesses")
 }
 
 function setModifier(ctx: Ctx, flag: ScalarModifierFlag, value: string): void {
@@ -243,6 +270,7 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
       case "claude":
       case "codex":
       case "agents":
+      case "omp":
         selectTarget(ctx, arg)
         continue
       case "--dry-run":
@@ -296,6 +324,7 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
       case "--claude":
       case "--codex":
       case "--agents":
+      case "--omp":
         err(`${arg} was renamed: pass the target as a word, e.g. 'sync ${arg.slice(2)}'`)
         throw new ExitError(2)
       case "--force":
@@ -355,11 +384,7 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
     }
   }
 
-  if (!ctx.targetFilterSet) {
-    ctx.syncClaude = true
-    ctx.syncCodex = true
-    ctx.syncAgents = true
-  }
+  applyDefaultSelection(ctx)
 }
 
 function printCatalog(ctx: Ctx, catalog: string): void {

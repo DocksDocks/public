@@ -4,6 +4,7 @@ import { BunRuntime, BunServices } from "@effect/platform-bun"
 import { Console, Effect, Layer } from "effect"
 import { EngineServicesLive } from "./services"
 import { docsCommand } from "./commands/docs"
+import { harnessesCommand } from "./commands/harnesses"
 import { modelCommand } from "./commands/model"
 import { modelsCommand } from "./commands/models"
 import { pluginsCommand } from "./commands/plugins"
@@ -21,7 +22,8 @@ const root = Command.make("docks-kit", {}, () =>
   Effect.gen(function* () {
     yield* Console.log("docks-kit — portable AI coding agent config kit")
     yield* Console.log("")
-    yield* Console.log("  docks-kit sync [claude] [codex] [agents]   deploy the SoT to this machine")
+    yield* Console.log("  docks-kit sync [claude|codex|agents|omp]  deploy the SoT to this machine")
+    yield* Console.log("  docks-kit harnesses                       choose the flag-less sync selection")
     yield* Console.log("  docks-kit update [--no-sync]              self-update the kit, then sync")
     yield* Console.log("  docks-kit model <claude|codex> [value]     get/set the deployed model")
     yield* Console.log("  docks-kit models [tool]                    kit-verified model catalog")
@@ -40,6 +42,7 @@ const root = Command.make("docks-kit", {}, () =>
   ),
   Command.withSubcommands([
     syncCommand,
+    harnessesCommand,
     updateCommand,
     modelCommand,
     modelsCommand,

@@ -117,6 +117,7 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     repoDir: kitHome(),
     home,
     agentsDir: p(home, ".agents"),
+    interactive: false,
     dryRun,
     verbose: true,
     skipBubblewrap: false,
@@ -136,11 +137,13 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
     syncClaude: true,
     syncCodex: false,
     syncAgents: false,
+    syncOmp: false,
     nextStepTriggers: {
       claudePlugins: false,
       claudeRestart: false,
       codexRestart: false,
-      skillsRestart: false
+      skillsRestart: false,
+      ompRestart: false
     }
   }
 }
