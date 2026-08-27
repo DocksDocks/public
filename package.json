@@ -40,7 +40,8 @@
   },
   "dependencies": {
     "@effect/platform-bun": "4.0.0-rc.109",
-    "effect": "4.0.0-rc.109"
+    "effect": "4.0.0-rc.109",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@effect/vitest": "4.0.0-rc.109",
