@@ -335,7 +335,7 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 
 ### Plans
 
-Multi-commit work-item plans live under `docs/plans/` (see `AGENTS.md` § Plans). Main context invokes `plan-manager` directly; it owns classification through verified archive, while only the read-only `plan-reviewer` has Claude/Codex wrappers.
+The plan record is a GitHub issue (see `AGENTS.md` § Plans and `docs/PLAN.md`). Main context invokes `plan-manager` directly; it owns the decision through verified archive. Two read-only reviewer wrappers ship, `plan-reviewer` and `code-reviewer`.
 
 ### Open Concerns
 
