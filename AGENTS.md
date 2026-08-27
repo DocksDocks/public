@@ -87,7 +87,12 @@ Use direct acceptance and focused regressions while iterating, then run the full
 
 ## Skills
 
-This project ships **kit-mechanic skills** under `.claude/skills/` — narrowly-scoped references for how EngineNative works (settings merge, plugin bootstrap, universal-skill install, Codex TOML merge, sync orchestration). They cost prompt tokens only inside this repo's sessions and document regression-prone TypeScript sync logic in `cli/src/engine-native/`. **Pipeline content** (multi-agent slash commands, refactor/security/docs workflows, parallel-scanner agents) belongs in the separate [DocksDocks/docks](https://github.com/DocksDocks/docks) plugin — not here. Project-level agents under `.claude/agents/` follow the same rule: kit-mechanic agents that wrap kit-mechanic skills are permitted; pipeline agents live in the docks plugin.
+**Project-skill scope.** Keep project skills to one class: kit-mechanic skills, narrowly-scoped references for how EngineNative works.
+Canonical project skills live in `.agents/skills/<name>/SKILL.md`.
+Each `.claude/skills/<name>` entry is a relative symlink to its canonical directory.
+Codex reads `.agents/skills/` natively, so one copy serves both tools.
+Kit-mechanic skills document regression-prone TypeScript sync logic in `cli/src/engine-native/`.
+**Pipeline content** (multi-agent slash commands, refactor/security/docs workflows, parallel-scanner agents) belongs in the separate [DocksDocks/docks](https://github.com/DocksDocks/docks) plugin — not here. Project-level agents under `.claude/agents/` follow the same rule: kit-mechanic agents that wrap kit-mechanic skills are permitted; pipeline agents live in the docks plugin.
 
 <constraint>
 When a kit-mechanic skill, its `references/`, or a wrapper agent (`.claude/agents/*.md` + its `.codex/agents/*.toml` twin) cites EngineNative internals, name the **module + exported/local function + semantic anchor** (e.g. `claudeSync.ts syncPlugins, pass 5 uninstall guard`) — never a raw `file:NNN` line number, which goes stale on every refactor. Keep exactly one coarse `metadata.source_files[].lines` range per skill file as the sole intentional line-number touchpoint.

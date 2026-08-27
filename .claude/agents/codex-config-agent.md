@@ -26,7 +26,7 @@ deployed or overwritten by the kit.
 
 ## Workflow
 
-1. Read `.claude/skills/codex-config-merge-context/SKILL.md`.
+1. Read `.agents/skills/codex-config-merge-context/SKILL.md`.
 2. Read `references/awk-merger.md` before changing TOML line transforms.
 3. Read `references/rules-format.md` before changing command policy rules.
 4. For bubblewrap changes, trace OS gate, package-manager detection, and
