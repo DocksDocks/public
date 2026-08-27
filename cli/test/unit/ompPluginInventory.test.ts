@@ -33,6 +33,7 @@ import { makeDependencyManager, makeEngineServices, makePlatform } from "../../s
 
 const PIN = "0.10.0"
 const roots: Array<string> = []
+const ORIGINAL_XDG_DATA_HOME = process.env["XDG_DATA_HOME"]
 
 const INVENTORY_PRESENT = JSON.stringify({
   npm: [{ name: "pi-intercom", version: PIN }],
@@ -104,6 +105,8 @@ describe("omp plugin inventory", () => {
 
   afterEach(() => {
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+    if (ORIGINAL_XDG_DATA_HOME === undefined) delete process.env["XDG_DATA_HOME"]
+    else process.env["XDG_DATA_HOME"] = ORIGINAL_XDG_DATA_HOME
   })
 
   it("upgrades marketplace plugins already named by a composite id", async () => {
@@ -117,6 +120,66 @@ describe("omp plugin inventory", () => {
       "plugin upgrade --scope user plan-lifecycle@docks"
     ])
     expect(state.pluginsInstalled).toBe(3)
+  })
+
+  it("installs a plugin whose only row is project-scoped", async () => {
+    // `upgrade --scope user` fails on a project-scope row: the user scope is
+    // empty, so the pipeline must install instead.
+    respondWithInventory(
+      JSON.stringify({
+        npm: [{ name: "pi-intercom", version: PIN }],
+        marketplace: [
+          { id: "docks@docks", scope: "project", entries: [{ scope: "user", version: "0.18.0" }] },
+          { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: "0.9.0" }] }
+        ]
+      })
+    )
+    await ompSync(makeCtx(makeRoot()))
+
+    expect(ompCommands()).toEqual([
+      "plugin marketplace update docks",
+      "plugin list --json",
+      "plugin install --scope user docks@docks",
+      "plugin upgrade --scope user plan-lifecycle@docks"
+    ])
+  })
+
+  /**
+   * With an XDG data root adopted, the active registry starts absent while the
+   * legacy config-root registry still lists docks. omp itself copies the file
+   * forward when it resolves the path, so the kit only has to pick a command
+   * that triggers that resolution without fetching under
+   * `--skip-plugin-refresh`.
+   */
+  function makeAdoptableRoot(): { root: string; dataHome: string } {
+    const root = makeRoot()
+    const dataHome = join(root, "xdg")
+    mkdirSync(join(dataHome, "omp"), { recursive: true })
+    writeFileSync(
+      join(root, ".omp", "marketplaces.json"),
+      JSON.stringify({ version: 1, marketplaces: [{ name: "docks" }] })
+    )
+    return { root, dataHome }
+  }
+
+  it("refreshes the marketplace when only the legacy registry lists docks", async () => {
+    const { root, dataHome } = makeAdoptableRoot()
+    process.env["XDG_DATA_HOME"] = dataHome
+    respondWithInventory(INVENTORY_PRESENT)
+
+    await ompSync(makeCtx(root))
+
+    expect(ompCommands()[0]).toBe("plugin marketplace update docks")
+  })
+
+  it("adopts the registry with a read-only list under --skip-plugin-refresh", async () => {
+    const { root, dataHome } = makeAdoptableRoot()
+    process.env["XDG_DATA_HOME"] = dataHome
+    respondWithInventory(INVENTORY_PRESENT)
+
+    await ompSync(makeCtx(root, { skipPluginRefresh: true }))
+
+    expect(ompCommands()).toEqual(["plugin marketplace list", "plugin list --json"])
   })
 
   it("installs every plugin when the inventory is empty", async () => {

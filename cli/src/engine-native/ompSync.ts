@@ -53,7 +53,10 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
     "omp intercom configuration synced"
   )
 
-  await syncMarketplace(ctx, p(paths.dataRoot, "marketplaces.json"))
+  const legacyRegistryFile = paths.dataRoot === paths.configRoot
+    ? undefined
+    : p(paths.configRoot, "marketplaces.json")
+  await syncMarketplace(ctx, p(paths.dataRoot, "marketplaces.json"), legacyRegistryFile)
   const pluginsInstalled = await syncPlugins(ctx)
   return { pluginsInstalled }
 }
@@ -171,17 +174,32 @@ function firstOutputLine(result: AsyncProcessResult): string {
   return output.split("\n")[0] || "unknown error"
 }
 
-async function syncMarketplace(ctx: Ctx, registryFile: string): Promise<void> {
+/**
+ * Three states, because upstream `getMarketplacesRegistryPath` copies a legacy
+ * `configRoot` registry forward the first time it resolves an XDG data root:
+ * the active registry lists docks, only the legacy registry lists it, or
+ * neither does. In the middle state the kit never copies user data itself; it
+ * takes the refresh path, whose own resolution inside omp performs that
+ * adoption and leaves the active registry present.
+ */
+async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFile?: string): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const registered = registryHasDocks(registryFile)
+  const adoptable = !registered && legacyRegistryFile !== undefined && registryHasDocks(legacyRegistryFile)
 
   if (ctx.dryRun) {
-    if (registered) verbose("omp docks marketplace already registered")
+    if (adoptable) {
+      echo(
+        ctx.skipPluginRefresh === true
+          ? "[dry-run] omp plugin marketplace list"
+          : `[dry-run] omp plugin marketplace update ${MARKETPLACE_NAME}`
+      )
+    } else if (registered) verbose("omp docks marketplace already registered")
     else echo(`[dry-run] omp plugin marketplace add ${MARKETPLACE_SOURCE}`)
     return
   }
 
-  if (!registered) {
+  if (!registered && !adoptable) {
     progress("Registering omp docks marketplace...")
     const result = await spawnProcess("omp", ["plugin", "marketplace", "add", MARKETPLACE_SOURCE], {
       stdio: ["ignore", "pipe", "pipe"]
@@ -198,7 +216,26 @@ async function syncMarketplace(ctx: Ctx, registryFile: string): Promise<void> {
   }
 
   if (ctx.skipPluginRefresh === true) {
-    verbose("omp docks marketplace already registered; refresh-only update skipped")
+    if (!adoptable) {
+      verbose("omp docks marketplace already registered; refresh-only update skipped")
+      return
+    }
+
+    // Adoption only needs omp to resolve the registry path. `marketplace list`
+    // does that and fetches nothing, so it stays inside the flag's contract
+    // while leaving the active registry present.
+    progress("Adopting omp docks marketplace registry...")
+    const listed = await spawnProcess("omp", ["plugin", "marketplace", "list"], {
+      stdio: ["ignore", "ignore", "pipe"]
+    })
+    clearProgress()
+    if (listed.error === undefined && listed.exitCode === 0) {
+      change("omp docks marketplace registry adopted; refresh-only update skipped")
+    } else {
+      warn(
+        `omp docks marketplace adoption failed: ${firstOutputLine(listed)}; run manually: omp plugin marketplace list`
+      )
+    }
     return
   }
 
@@ -241,10 +278,13 @@ async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined
 
   // `omp plugin list --json` reports marketplace rows as
   // `{ id: "<plugin>@<marketplace>", scope, entries: [...] }` - the composite id
-  // is already the token `omp plugin install/upgrade` takes.
+  // is already the token `omp plugin install/upgrade` takes. Row `scope` decides
+  // which scope the plugin is active in: a `project` row means the user scope is
+  // still empty, and `upgrade --scope user` would fail there, so only a `user`
+  // row counts as installed for this pipeline.
   const marketplace = new Set<string>()
   for (const row of value["marketplace"]) {
-    if (!isObject(row) || typeof row["id"] !== "string") continue
+    if (!isObject(row) || typeof row["id"] !== "string" || row["scope"] !== "user") continue
     marketplace.add(row["id"])
   }
 
