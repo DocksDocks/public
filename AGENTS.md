@@ -94,6 +94,8 @@ Codex reads `.agents/skills/` natively, so one copy serves both tools.
 Kit-mechanic skills document regression-prone TypeScript sync logic in `cli/src/engine-native/`.
 **Pipeline content** (multi-agent slash commands, refactor/security/docs workflows, parallel-scanner agents) belongs in the separate [DocksDocks/docks](https://github.com/DocksDocks/docks) plugin — not here. Project-level agents under `.claude/agents/` follow the same rule: kit-mechanic agents that wrap kit-mechanic skills are permitted; pipeline agents live in the docks plugin.
 
+**Windows checkouts.** These eight entries are the only symlinks this repository tracks. Git for Windows defaults to `core.symlinks=false`, which checks a symlink out as a plain file holding the target path, so Claude Code finds no `SKILL.md` and silently loads no project skill. Codex is unaffected, because it reads the real directories under `.agents/skills/`. To restore Claude Code on Windows, enable Developer Mode or run as administrator, then `git config core.symlinks true` and re-checkout the paths: `git checkout -- .claude/skills`. Never repair this by replacing an entry with a copy; two copies drift, which is the failure the canonical layout removes. This limitation is confined to project skills in this checkout. It does not affect the deployed user-level skills, where `skillsSync.ts linkOrCopyWithWarnings` already falls back from symlink to junction to marked copy.
+
 `npx skills add cursor/plugins -s unslop -y -a claude-code codex` installs `unslop`, and root `skills-lock.json` pins it.
 The repository vendors upstream `unslop` text and pins it by the lockfile hash, so never edit it locally.
 Upstream licenses `pstack/` under MIT (Copyright (c) 2026 Lauren Tan), so redistribution is permitted.
