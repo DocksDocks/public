@@ -33,7 +33,19 @@ import { makeDependencyManager, makeEngineServices, makePlatform } from "../../s
 
 const PIN = "0.10.0"
 const roots: Array<string> = []
-const ORIGINAL_XDG_DATA_HOME = process.env["XDG_DATA_HOME"]
+/**
+ * `ompSync` resolves its deploy roots from `process.env`, so an ambient
+ * override on the developer's machine would send these writes outside the
+ * temporary root. Each case starts from a cleared set.
+ */
+const OMP_ENV_KEYS = [
+  "XDG_DATA_HOME",
+  "OMP_PROFILE",
+  "PI_PROFILE",
+  "PI_CONFIG_DIR",
+  "PI_CODING_AGENT_DIR"
+] as const
+const ORIGINAL_OMP_ENV = new Map(OMP_ENV_KEYS.map((key) => [key, process.env[key]] as const))
 
 const INVENTORY_PRESENT = JSON.stringify({
   npm: [{ name: "pi-intercom", version: PIN }],
@@ -101,12 +113,15 @@ describe("omp plugin inventory", () => {
       throw new Error(`Unexpected payload: ${path}`)
     })
     mocks.spawnProcess.mockReset()
+    for (const key of OMP_ENV_KEYS) delete process.env[key]
   })
 
   afterEach(() => {
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
-    if (ORIGINAL_XDG_DATA_HOME === undefined) delete process.env["XDG_DATA_HOME"]
-    else process.env["XDG_DATA_HOME"] = ORIGINAL_XDG_DATA_HOME
+    for (const [key, value] of ORIGINAL_OMP_ENV) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
   })
 
   it("upgrades marketplace plugins already named by a composite id", async () => {
