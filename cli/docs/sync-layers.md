@@ -48,7 +48,7 @@ and `codex plugin add` refresh.
 `npx skills add` per missing manifest slug, Claude symlink healing, and the
 kit-managed snapshot that `--prune` reconciles against.
 
-## omp (→ ~/.omp/agent, $PI_CODING_AGENT_DIR/intercom)
+## omp (→ resolved agent dir, intercom root)
 
 AGENTS.md, mcp.json, and intercom config.json are whole-file deploys;
 config.yml is deep-merged (SoT keys win, mapping nodes merge, deployed-only
@@ -56,9 +56,25 @@ keys survive, stale slash-bearing `retry.fallbackChains` wildcards pruned).
 Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
 registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
 through `omp plugin`, and `pi-intercom` is installed at its
-`SoT/toolchain.json` pin. Inventory comes from `omp plugin list --json`, so a
-repeat run is a no-op; `--skip-plugin-refresh` keeps installs but skips
-refreshes. A dry run invokes no omp subcommand.
+`SoT/toolchain.json` pin. Inventory comes from `omp plugin list --json`, where a
+marketplace row counts as installed only when its `scope` is `user`, so a repeat
+run is a no-op and a project-only row still installs. When just the legacy
+config-root registry lists `docks`, omp copies it forward itself: the sync runs
+`marketplace update`, or the read-only `marketplace list` under
+`--skip-plugin-refresh`, which keeps installs but fetches nothing. A dry run
+invokes no omp subcommand.
+
+Paths mirror upstream `dirs.ts` `DirResolver`, resolved from the environment
+plus directory probes, so a dry run still runs no omp subcommand. The agent
+directory is `<config root>/agent`, where the config root is
+`~/<PI_CONFIG_DIR or .omp>` plus `profiles/<name>` under an active profile
+(`OMP_PROFILE`, else legacy `PI_PROFILE`). For the default profile only,
+`PI_CODING_AGENT_DIR` replaces the agent directory outright. The agent
+directory never moves under XDG. Only the data root that holds
+`marketplaces.json` does: on Linux and macOS, with no agent-dir override
+active, an existing `$XDG_DATA_HOME/omp` (or `$XDG_DATA_HOME/omp/profiles/<name>`
+for a named profile) is adopted. The intercom file keeps pi-intercom's own
+root: `$PI_CODING_AGENT_DIR/intercom`, else `~/.pi/agent/intercom`.
 
 ## Reconcile flags
 

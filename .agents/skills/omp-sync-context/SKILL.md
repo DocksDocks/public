@@ -1,11 +1,13 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompYaml.ts mergeOmpConfig; harnesses.ts readHarnessSelection or writeHarnessSelection; or the omp pipeline in index.ts engineSync and selection in parseArgs.ts parseArgs. Covers omp deployment, YAML merge, plugins, dry-run, refresh, and harness state. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig; harnesses.ts readHarnessSelection or writeHarnessSelection; or the omp pipeline in index.ts engineSync and selection in parseArgs.ts parseArgs. Covers omp path resolution, deployment, YAML merge, plugins, dry-run, refresh, and harness state. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-378"
+      lines: "1-421"
+    - path: cli/src/engine-native/ompPaths.ts
+      lines: "1-101"
     - path: cli/src/engine-native/ompYaml.ts
       lines: "1-107"
     - path: cli/src/engine-native/harnesses.ts
@@ -37,16 +39,45 @@ Run `chmod` after each creation or write.
 </constraint>
 
 <constraint>
-Read marketplace plugin identity from the composite `id` field.
+Read marketplace plugin identity from the composite `id` field, and count a row
+as installed only when its `scope` is `user`.
+A `project` row leaves the user scope empty, so `upgrade --scope user` fails.
 Read npm plugin identity from `name` plus `version`.
 A wrong key makes every run attempt a failing reinstall.
+</constraint>
+
+<constraint>
+Treat three marketplace states, because omp copies a legacy config-root
+registry forward when it first resolves an XDG data root: the active registry
+lists docks, only the legacy registry lists it, or neither does.
+Register with `marketplace add` only in the third state.
+In the second state let omp perform the copy: `marketplace update` normally,
+and the read-only `marketplace list` under `--skip-plugin-refresh`, which never
+fetches.
+</constraint>
+
+<constraint>
+Resolve every omp path through `ompPaths.ts ompPaths`, which mirrors upstream
+`dirs.ts` `DirResolver`. Never join `ctx.home` with `.omp`.
+`PI_CONFIG_DIR` is a root dirname under home, not a path.
+`OMP_PROFILE` wins over `PI_PROFILE` whenever it is defined, including when it
+is empty; an invalid or reserved name degrades to the default profile.
+A named profile relocates the config root to `profiles/<name>`.
+`PI_CODING_AGENT_DIR` replaces the agent directory for the default profile
+only, and while it is active XDG is disabled.
+The agent directory never moves under XDG; only `dataRoot` does, on Linux and
+macOS, and only when the probed omp directory already exists.
+Deploy `AGENTS.md`, `config.yml`, and `mcp.json` to `agentDir`, and read
+`marketplaces.json` from `dataRoot`.
+Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 </constraint>
 
 ## When To Use
 
 - Change `ompSync`, `ompSummary`, or `ompNextSteps` in `ompSync.ts`.
 - Change `mergeOmpConfig` in `ompYaml.ts`.
-- Change omp deployment paths, file modes, backups, or restart triggers.
+- Change omp path resolution in `ompPaths.ts` — `ompPaths`.
+- Change omp deployment file modes, backups, or restart triggers.
 - Change omp marketplace registration or plugin reconciliation.
 - Change `readHarnessSelection` or `writeHarnessSelection` in `harnesses.ts`.
 - Change the omp pipeline branch in `index.ts` — `engineSync`.
@@ -63,9 +94,9 @@ Replace the other three deployed files as whole files.
 
 | Source | Deployed target | Root rule |
 |---|---|---|
-| `SoT/.omp/AGENTS.md` | `~/.omp/agent/AGENTS.md` | Join from `ctx.home`. |
-| `SoT/.omp/mcp.json` | `~/.omp/agent/mcp.json` | Join from `ctx.home`. |
-| `SoT/.omp/config.yml` | `~/.omp/agent/config.yml` | Join from `ctx.home`. |
+| `SoT/.omp/AGENTS.md` | `<agentDir>/AGENTS.md` | Take `agentDir` from `ompPaths`. |
+| `SoT/.omp/mcp.json` | `<agentDir>/mcp.json` | Take `agentDir` from `ompPaths`. |
+| `SoT/.omp/config.yml` | `<agentDir>/config.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/intercom.json` | `$PI_CODING_AGENT_DIR/intercom/config.json` | Default the root to `~/.pi/agent`. |
 
 Resolve a relative `PI_CODING_AGENT_DIR` against the current working directory.
@@ -136,6 +167,8 @@ Read each marketplace row from its composite `id` field.
 The value already has the `<plugin>@<marketplace>` form.
 Compare it with `docks@docks` and `plan-lifecycle@docks`.
 Use the same value for install and upgrade commands.
+Accept the row only when its `scope` is `user`, because omp reports one row per
+scope and `upgrade --scope user` fails while the user scope is empty.
 
 Read each npm row from `name` and `version`.
 Use `name` to find `pi-intercom`.
@@ -146,12 +179,13 @@ Use the exact verified version for installation.
 // BAD — marketplace rows do not use name as their installed identity.
 const present = row.name === pluginId
 
-// GOOD — id is the composite install and upgrade token.
-const present = row.id === pluginId
+// GOOD — id is the composite install and upgrade token, and scope says where
+// the plugin is active.
+const present = row.id === pluginId && row.scope === "user"
 ```
 
 Install a missing marketplace plugin with user scope.
-Upgrade an existing marketplace plugin unless refreshes are skipped.
+Upgrade a user-scope marketplace plugin unless refreshes are skipped.
 Install a missing npm plugin even when refreshes are skipped.
 Refresh a present npm plugin only when its version differs.
 Pass `--force` only when replacing a present npm plugin version.
@@ -162,7 +196,9 @@ Guard the marketplace command before every `spawnProcess("omp", ...)` call.
 Guard plugin inventory before its omp subprocess.
 Guard install and upgrade operations before their omp subprocesses.
 
-A dry run prints marketplace registration only when registration is missing.
+A dry run prints the marketplace command only when the active registry lacks
+docks: `add` when no registry lists it, `update` when only the legacy registry
+does, and `list` in that same state under `--skip-plugin-refresh`.
 A dry run prints all planned plugin installations.
 A dry run does not probe plugin inventory through omp.
 A dry run does not use omp's own `--dry-run` option.
@@ -175,10 +211,11 @@ Install every missing plugin regardless of this flag.
 
 | State | Normal sync | With `--skip-plugin-refresh` |
 |---|---|---|
-| Marketplace missing | Register | Register |
-| Marketplace present | Update | Skip update |
-| Marketplace plugin missing | Install | Install |
-| Marketplace plugin present | Upgrade | Skip upgrade |
+| Marketplace absent from both registries | Register with `add` | Register with `add` |
+| Marketplace only in the legacy registry | Adopt with `update` | Adopt with the non-fetching `list` |
+| Marketplace in the active registry | Update | Skip update |
+| Marketplace plugin missing from user scope | Install | Install |
+| Marketplace plugin present in user scope | Upgrade | Skip upgrade |
 | npm plugin missing | Install pinned version | Install pinned version |
 | npm plugin at wrong version | Force pinned version | Skip replacement |
 
