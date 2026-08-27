@@ -26,7 +26,7 @@ Always install for both `claude-code` and `codex` so the canonical
 
 ## Workflow
 
-1. Read `.claude/skills/universal-skills-context/SKILL.md`.
+1. Read `.agents/skills/universal-skills-context/SKILL.md`.
 2. Read `references/storage-model.md` for path/symlink changes.
 3. Read `references/cli-arg-trap.md` before changing the skills CLI invocation.
 4. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.

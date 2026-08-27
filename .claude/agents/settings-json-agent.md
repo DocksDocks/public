@@ -29,7 +29,7 @@ left untouched.
 
 ## Workflow
 
-1. Read `.claude/skills/settings-merge-context/SKILL.md`.
+1. Read `.agents/skills/settings-merge-context/SKILL.md`.
 2. Read `references/jq-pipelines.md` when changing merge semantics.
 3. Read `references/claude-json-keys.md` when changing key ownership.
 4. Trace the relevant TypeScript function before editing.

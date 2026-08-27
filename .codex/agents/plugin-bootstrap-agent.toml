@@ -25,7 +25,7 @@ normalization; a plain JSON rewrite can lose the CLI settings race.
 
 ## Workflow
 
-1. Read `.claude/skills/plugin-bootstrap-context/SKILL.md`.
+1. Read `.agents/skills/plugin-bootstrap-context/SKILL.md`.
 2. Read `references/seven-pass-flow.md` for pass-specific changes.
 3. Read `references/tri-state-semantics.md` before changing `enabledPlugins`.
 4. Identify whether the change is Claude marketplace, install/update, prune,
