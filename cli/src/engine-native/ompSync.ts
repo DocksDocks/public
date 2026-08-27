@@ -1,8 +1,9 @@
 /**
- * EngineNative `sync omp` pipeline. config.yml merges through
- * mergeOmpConfig because omp serialises that file itself. No omp subcommand
- * runs under ctx.dryRun because `omp plugin marketplace add --dry-run`
- * performs the write.
+ * EngineNative `sync omp` pipeline. config.yml merges through mergeOmpConfig
+ * because omp serialises that file itself. Paths come from ompPaths because
+ * profiles, PI_CONFIG_DIR, PI_CODING_AGENT_DIR, and XDG roots each move them.
+ * Resolution stays within the environment and filesystem probes so no omp
+ * subcommand runs under ctx.dryRun.
  */
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 import { isAbsolute, resolve } from "node:path"
@@ -12,6 +13,7 @@ import { bunBootstrap } from "./bun"
 import { commandExists, p, spawnProcess, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import { isObject, parseJson } from "./jq"
+import { ompPaths } from "./ompPaths"
 import { mergeOmpConfig } from "./ompYaml"
 import { field } from "./toolchain"
 
@@ -27,7 +29,8 @@ export interface OmpState {
 export async function ompSync(ctx: Ctx): Promise<OmpState> {
   await bunBootstrap(ctx, ctx.services)
 
-  const agentDir = p(ctx.home, ".omp", "agent")
+  const paths = ompPaths({ home: ctx.home, env: process.env, platform: ctx.services.platform.raw() })
+  const agentDir = paths.agentDir
   if (!ctx.dryRun) ensureDirectory(agentDir)
 
   syncWholeFile(ctx, "SoT/.omp/AGENTS.md", p(agentDir, "AGENTS.md"), "omp AGENTS.md already in sync", "omp AGENTS.md synced")
@@ -50,7 +53,7 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
     "omp intercom configuration synced"
   )
 
-  await syncMarketplace(ctx, p(ctx.home, ".omp", "marketplaces.json"))
+  await syncMarketplace(ctx, p(paths.dataRoot, "marketplaces.json"))
   const pluginsInstalled = await syncPlugins(ctx)
   return { pluginsInstalled }
 }
@@ -366,7 +369,7 @@ async function syncPlugins(ctx: Ctx): Promise<number> {
 
 export function ompSummary(ctx: Ctx, state: OmpState): void {
   const { echo } = ctx.services.logger
-  const agentDir = p(ctx.home, ".omp", "agent")
+  const agentDir = ompPaths({ home: ctx.home, env: process.env, platform: ctx.services.platform.raw() }).agentDir
   echo(`omp:      ${agentDir}`)
   if (!ctx.dryRun) echo(`omp plugins: ${state.pluginsInstalled} installed`)
 }
