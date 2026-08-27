@@ -15,7 +15,11 @@ export const TEXT_PAYLOAD_PATHS = [
   "SoT/.codex/AGENTS.md",
   "SoT/.codex/config.toml",
   "SoT/.codex/plugins/marketplace.json",
-  "SoT/.codex/rules/docks.rules"
+  "SoT/.codex/rules/docks.rules",
+  "SoT/.omp/AGENTS.md",
+  "SoT/.omp/config.yml",
+  "SoT/.omp/intercom.json",
+  "SoT/.omp/mcp.json"
 ] as const
 
 export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const

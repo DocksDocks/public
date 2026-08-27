@@ -60,6 +60,7 @@ export async function installedVersion(ctx: Ctx, tool: ToolId): Promise<string> 
     case "tsc":
       return firstLineField(await version(), 1)
     case "bun":
+    case "omp":
     case "npm":
       return await version()
     case "bwrap":
@@ -92,7 +93,8 @@ export async function report(ctx: Ctx): Promise<void> {
     const verified = field(ctx, tool, "verified")
     const dash = (v: string): string => (v !== "" ? v : "-")
     if (kind === "pin") {
-      echo(row([tool, kind, "(npx)", dash(floor), dash(verified), "pinned"]))
+      const via = field(ctx, tool, "via")
+      echo(row([tool, kind, `(${via !== "" ? via : "npx"})`, dash(floor), dash(verified), "pinned"]))
       continue
     }
     let installed: string

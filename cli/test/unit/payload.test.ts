@@ -127,7 +127,7 @@ describe("generated SoT payload", () => {
     expect(settings.permissions.deny.some((rule) => rule.startsWith("Write("))).toBe(false)
   })
 
-  it("keeps the normal Claude and Codex deploy inputs in the generated payload", () => {
+  it("keeps the normal Claude, Codex, and omp deploy inputs in the generated payload", () => {
     expect(TEXT_PAYLOAD_PATHS).toEqual([
       "SoT/.agents/skills.txt",
       "SoT/models.json",
@@ -141,7 +141,11 @@ describe("generated SoT payload", () => {
       "SoT/.codex/AGENTS.md",
       "SoT/.codex/config.toml",
       "SoT/.codex/plugins/marketplace.json",
-      "SoT/.codex/rules/docks.rules"
+      "SoT/.codex/rules/docks.rules",
+      "SoT/.omp/AGENTS.md",
+      "SoT/.omp/config.yml",
+      "SoT/.omp/intercom.json",
+      "SoT/.omp/mcp.json"
     ])
     expect(BINARY_PAYLOAD_PATHS).toEqual(["notification.mp3"])
   })

@@ -23,6 +23,7 @@ export type ToolId =
   | "npx"
   | "claude"
   | "codex"
+  | "omp"
   | "bun"
   | "bwrap"
   | "ffplay"
@@ -180,6 +181,12 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "optional",
     (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("codex"),
     { version: versionProbe("codex") }
+  ),
+  omp: spec(
+    "omp",
+    "optional",
+    () => "install omp from https://github.com/can1357/oh-my-pi (an existing install self-updates with `omp update`)",
+    { version: versionProbe("omp", ["--version"], (out) => out.trim().replace(/^omp[/v]/, "")) }
   ),
   bun: spec(
     "bun",

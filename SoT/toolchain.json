@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit toolchain manifest - DATA only (versions, floors, policy); version probing and the doctor report live in cli/src/engine-native/toolchain.ts, and the one managed install lives in cli/src/engine-native/bun.ts bunBootstrap. kind: check (doctor visibility only) | managed (kit installs it when missing) | pin (no binary probe - a version pin for a tool the kit invokes via npx). policy (managed only): present (install when missing, never upgrade). `verified` = last kit-tested version; `pinnable` marks a tool whose `verified` release the bootstrap can install by exact tag. Supply-chain stance: every kit-driven install is pinned to `verified` - never floating @latest (npm-worm/Shai-Hulud surface). Update `verified` after testing a new release.",
+  "$comment": "Kit toolchain manifest - DATA only (versions, floors, policy); version probing and the doctor report live in cli/src/engine-native/toolchain.ts, and the one managed install lives in cli/src/engine-native/bun.ts bunBootstrap. kind: check (doctor visibility only) | managed (kit installs it when missing) | pin (no binary probe - a version pin for a package the kit installs through another tool, such as npx or `omp install`). policy (managed only): present (install when missing, never upgrade). `verified` = last kit-tested version; `pinnable` marks a tool whose `verified` release the bootstrap can install by exact tag. Supply-chain stance: every kit-driven install is pinned to `verified` - never floating @latest (npm-worm/Shai-Hulud surface). Update `verified` after testing a new release.",
   "tools": {
     "jq":     { "kind": "check", "note": "optional operator CLI; EngineNative JSON and Claude runtime do not invoke it" },
     "curl":   { "kind": "check", "note": "POSIX installer transport for the Bun bootstrap" },
@@ -8,6 +8,8 @@
     "npm":    { "kind": "check", "note": "npm-global installer; also backs the intelephense version probe (`npm ls -g`)" },
     "claude": { "kind": "check", "floor": "2.1.219", "note": "kit floor — lets the `opus` alias select the newest Opus its provider offers (Anthropic API: 5; Foundry: 4.6) and subsumes Fable 5's >=2.1.170 requirement (mirrors settings minimumVersion)" },
     "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
+    "omp":    { "kind": "check", "floor": "18.0.8", "verified": "18.0.8",
+                "note": "Oh My Pi harness (https://github.com/can1357/oh-my-pi); upstream-owned and self-updating through `omp update`, so sync never installs or upgrades it. `sync omp` needs the CLI only for the marketplace and plugin passes; the file deploys proceed without it" },
     "ffplay": { "kind": "check", "note": "Notification hook sound; distro-installed, so no kit floor applies" },
     "bwrap":  { "kind": "check", "os": "linux", "floor": "0.9.0",
                 "note": "Codex Linux sandbox runtime; sync installs it via the distro package manager, so the floor is the kit-tested baseline (Ubuntu 24.04 LTS) and no verified pin applies" },
@@ -18,6 +20,8 @@
     "bun":    { "kind": "managed", "policy": "present", "floor": "1.4.0", "verified": "1.4.0", "pinnable": true,
                 "note": "runtime for the docks-kit CLI and the Claude statusline/hook programs; bootstrap installs the verified release (installer takes bun-vX.Y.Z); self-updates via `bun upgrade` when wanted" },
     "skills-cli": { "kind": "pin", "verified": "1.5.22",
-                "note": "the `skills` npm package the kit runs via `npx skills@<verified>` when SoT/.agents/skills.txt names a slug (it is empty by default) — pinned, never @latest" }
+                "note": "the `skills` npm package the kit runs via `npx skills@<verified>` when SoT/.agents/skills.txt names a slug (it is empty by default) — pinned, never @latest" },
+    "pi-intercom": { "kind": "pin", "verified": "0.10.0",
+                "note": "the cross-session messaging plugin ompSync installs with `omp install pi-intercom@<verified>` - pinned, never floating. Its broker runs under Bun because omp's flat plugin store cannot resolve the default `npx --no-install tsx` launcher" }
   }
 }
