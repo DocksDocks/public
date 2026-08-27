@@ -37,7 +37,7 @@ launcher can fall back to Bun source.
 | `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
 | `SoT/.agents/skills.txt` | Universal-skill manifest, intentionally empty by default. Adding an [agentskills.io](https://agentskills.io/specification) slug opts it into EngineNative's shared `~/.agents/skills/` bootstrap and Claude symlink. |
 | `notification.mp3` | Audio asset for Notification hooks (consumed by Claude Code today; tool-agnostic file) |
-| `docs/plans/` | Multi-commit work-item plans (`active/` with status in frontmatter, plus `finished/` archive). Convention: `docs/plans/AGENTS.md` |
+| `docs/PLAN.md` | Plan record standard. The plan record is a GitHub issue; no plan markdown is tracked. `docs/AGENTS.md` routes to it and `docs/CLAUDE.md` contains only `@AGENTS.md`. |
 | `CLAUDE.md` | Claude-specific instructions; imports this `AGENTS.md` |
 | `AGENTS.md` | This file — tool-agnostic instructions |
 
@@ -111,42 +111,78 @@ When a kit-mechanic skill, its `references/`, or a wrapper agent (`.claude/agent
 ## Plans
 
 Use direct implementation for one clear, reversible, low-risk local diff with one
-bounded acceptance path; it creates no tracked plan, reviewer, or automatic
+bounded acceptance path; it creates no plan issue, reviewer, or automatic
 commit. Use a canonical plan for explicit planning, multi-commit or
 cross-repository work, cold handoff, an unresolved decision, a cross-subsystem or
 public-contract change, security-sensitive or destructive work, or any
 non-`local` effect.
 
 <constraint>
-Canonical plans live in `docs/plans/active/`; status is frontmatter and
-`docs/plans/finished/` is terminal. Exactly three skills own the workflow:
-`plan-workspace` maintains the workspace; main-context `plan-manager` runs six
-phases — decide, draft, research, one plan review, implement, code review — and
-archives; internal `plan-reviewer` returns a readable pre-implementation verdict.
-Two read-only reviewer wrappers ship, `plan-reviewer` and `code-reviewer`, and
-nothing else in the lifecycle has a wrapper.
+The plan record is a GitHub issue. Its body starts with
+`<!-- plan-contract: v3 -->`, then a blank line and the exact eight `##`
+sections; it has no frontmatter. GitHub owns title, open-work phase, owner,
+timestamps, and completion, and no plan markdown is tracked in the repository.
+Exactly three skills own the workflow: `plan-workspace` maintains the workspace;
+main-context `plan-manager` runs six phases - decide, draft, research, plan
+review, implement, code review - with bounded repair and fresh re-review in both
+review phases, then archives; internal `plan-reviewer` returns one readable
+pre-implementation verdict block per round. Two read-only reviewer wrappers
+ship, `plan-reviewer` and `code-reviewer`, and nothing else in the lifecycle has
+a wrapper.
 </constraint>
 
-The record is markdown only: `plan_contract: v2` frontmatter plus eight `##`
-sections — `## Goal`, `## Research`, `## Steps`, `## Acceptance`,
-`## Do not touch`, `## Open questions`, `## Review`, `## Verification Results`.
-There are no hashes, permits, run identities, locks, bundles, or `v2`/`vN` plan
-files, and the `plan.mjs` shipped inside the installed `plan-lifecycle` plugin
-is the only lifecycle tool. This lifecycle creates zero commits and never
-pushes; commit when the user asks, under `docks:commit-discipline`.
+After the marker and blank line, the record carries exactly `## Goal`,
+`## Research`, `## Steps`, `## Acceptance`, `## Do not touch`,
+`## Open questions`, `## Review`, and `## Verification Results`, in that order
+and once each. `## Goal` carries exactly one mode line. Open-work phase is one
+of `drafting`, `planned`, `ongoing`, or `blocked` in a `plan:<phase>` label; a
+blocked plan starts `## Open questions` with `Blocked: <one-line reason>`.
+Closed completion derives from GitHub `state` and `stateReason`. `## Review`
+contains exactly `_Review records are stored in issue comments._`. Each reviewer
+returns one markdown block, and the manager posts that whole block as one issue
+comment. The latest trusted well-formed record per review kind wins; its author
+must equal the plan's sole assignee. A legacy body verdict is consulted only
+when no trusted comment record exists for that kind. Both review phases use
+fresh inputs and run at most five rounds, stopping on pass, no progress, a
+finding surviving its fix, or `repair` or `fixes-required` in round five. A
+plan-review `blocked` verdict always routes its user-only decision through
+`## Open questions` and `ask`.
+
+The record carries no hash, permit, run identity, lock, or bundle, and the
+`plan.mjs` shipped inside the installed `plan-lifecycle` plugin is the only
+lifecycle tool. An `export` writes the sha256 of the body it copied beside the
+copy so a stale copy cannot revert the record; that digest detects staleness and
+authorizes nothing. Routine plan issue publication, implement-start linked
+branch creation, commits, normal pushes, and the closing pull request carry the
+settled mode's authorization and need no repeated prompt. Before any branch
+checkout, including `gh issue develop --checkout`, require
+`git status --porcelain` to be empty. If it is dirty, never stash, move, or
+commit ambient work; set the plan `blocked` and name the dirty paths, or use an
+authorized clean worktree.
+Immediately after setting the plan `ongoing`, every `gh issue develop` call uses
+`--repo`; the manager reuses a linked branch or creates one with
+`--base <default> --checkout`, then re-lists and recovers after failure.
+Implementation stops when no linked branch can be verified; there is no local
+fallback. After the checks policy passes, the manager asks immediately before
+merge. Without a fresh `Merge now` answer, it leaves the pull request and issue
+open. `plan.mjs archive` verifies the latest trusted code-review result and
+merged closing pull request after landing.
 
 Every Steps row carries an `Effect` of exactly
 `local|probe|production_access|publish|push|release|deploy`. A step whose
 `Effect` is not `local` requires an in-session `ask` confirmation immediately
-before it runs; when `ask` is unavailable the step is set `blocked` with
-`blocked_reason` naming the unconfirmed effect. Persisted effects record intent
-only.
+before it runs; when `ask` is unavailable the step is set `blocked` and the plan
+reason becomes the first `## Open questions` line, `Blocked: <reason>`.
+Persisted effects record intent only. Routine issue publication and landing
+actions are outside the Steps table.
 
-A plan carrying a `Plan-run:` line is a v1 plan: render it, never parse or
-migrate it, and finish it by hand by moving the file byte-unchanged to
-`docs/plans/finished/<YYYY-MM-DD>-<slug>.md` with a `## Retirement` section
-appended. The complete contract lives in `docs/plans/AGENTS.md`;
-`docs/plans/CLAUDE.md` contains only `@AGENTS.md`.
+Render a plan body verbatim only when the user names that plan and asks to see it. After a write, report the one-line header strip and the changed lines only; a write never re-renders the body.
+
+No plan markdown is tracked. The pre-GitHub records under
+`docs/plans/finished/` were deleted; `git log -- docs/plans/finished/` recovers
+them as history, and no lifecycle command restores them. The complete contract
+lives in `docs/PLAN.md`; `docs/AGENTS.md` routes to it and `docs/CLAUDE.md`
+contains only `@AGENTS.md`.
 
 Distinct from per-tool **Open Concerns** sections (wait-on-upstream
 blockers tied to a vendor shipping a fix — these live inside the per-tool
