@@ -87,12 +87,20 @@ Use direct acceptance and focused regressions while iterating, then run the full
 
 ## Skills
 
-**Project-skill scope.** Keep project skills to one class: kit-mechanic skills, narrowly-scoped references for how EngineNative works.
+**Project-skill scope.** Keep project skills within two classes: kit-mechanic skills and the `unslop` repo-prose skill.
 Canonical project skills live in `.agents/skills/<name>/SKILL.md`.
 Each `.claude/skills/<name>` entry is a relative symlink to its canonical directory.
 Codex reads `.agents/skills/` natively, so one copy serves both tools.
 Kit-mechanic skills document regression-prone TypeScript sync logic in `cli/src/engine-native/`.
 **Pipeline content** (multi-agent slash commands, refactor/security/docs workflows, parallel-scanner agents) belongs in the separate [DocksDocks/docks](https://github.com/DocksDocks/docks) plugin — not here. Project-level agents under `.claude/agents/` follow the same rule: kit-mechanic agents that wrap kit-mechanic skills are permitted; pipeline agents live in the docks plugin.
+
+`npx skills add cursor/plugins -s unslop -y -a claude-code codex` installs `unslop`, and root `skills-lock.json` pins it.
+The repository vendors upstream `unslop` text and pins it by the lockfile hash, so never edit it locally.
+Upstream licenses `pstack/` under MIT (Copyright (c) 2026 Lauren Tan), so redistribution is permitted.
+MIT requires the notice to travel with the copy, so `.agents/skills/unslop/LICENSE` vendors it verbatim and must stay beside `SKILL.md`.
+The `unslop` "adding soul" guidance conflicts with the global Simplified Technical English Output Standard.
+The Output Standard wins.
+Use `unslop` only for its pattern-detection lists.
 
 <constraint>
 When a kit-mechanic skill, its `references/`, or a wrapper agent (`.claude/agents/*.md` + its `.codex/agents/*.toml` twin) cites EngineNative internals, name the **module + exported/local function + semantic anchor** (e.g. `claudeSync.ts syncPlugins, pass 5 uninstall guard`) — never a raw `file:NNN` line number, which goes stale on every refactor. Keep exactly one coarse `metadata.source_files[].lines` range per skill file as the sole intentional line-number touchpoint.
