@@ -219,7 +219,8 @@ Effort is pinned via the top-level `effortLevel` key — never `CLAUDE_CODE_EFFO
 # Clone and sync the kit
 git clone <this-repo> ~/projects/public
 cd ~/projects/public
-./docks-kit sync                     # full sync + Bun/runtime + plugin bootstrap (additive)
+./docks-kit harnesses                # view or change this machine's flag-less sync selection
+./docks-kit sync                     # sync this machine's harness selection (additive)
 ./docks-kit sync --dry-run           # preview before applying
 ./docks-kit sync --skip-bubblewrap   # skip optional bubblewrap bootstrap (Codex Linux sandbox)
 ./docks-kit sync --reconcile         # replace ~/.claude/settings.json wholesale (settings layer only)

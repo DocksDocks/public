@@ -1,7 +1,9 @@
 # Sync layers
 
-`docks-kit sync [claude] [codex] [agents]` — targets are positional words;
-no target means all three.
+`docks-kit sync [claude] [codex] [agents] [omp]` — targets are positional
+words; no target means this machine's harness selection in
+`~/.docks-kit/state.json`. The default is `claude codex agents`, and
+`docks-kit harnesses` changes it.
 
 ## claude (→ ~/.claude, ~/.claude.json, shell rc)
 
@@ -45,6 +47,18 @@ and `codex plugin add` refresh.
 
 `npx skills add` per missing manifest slug, Claude symlink healing, and the
 kit-managed snapshot that `--prune` reconciles against.
+
+## omp (→ ~/.omp/agent, $PI_CODING_AGENT_DIR/intercom)
+
+AGENTS.md, mcp.json, and intercom config.json are whole-file deploys;
+config.yml is deep-merged (SoT keys win, mapping nodes merge, deployed-only
+keys survive, stale slash-bearing `retry.fallbackChains` wildcards pruned).
+Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
+registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
+through `omp plugin`, and `pi-intercom` is installed at its
+`SoT/toolchain.json` pin. Inventory comes from `omp plugin list --json`, so a
+repeat run is a no-op; `--skip-plugin-refresh` keeps installs but skips
+refreshes. A dry run invokes no omp subcommand.
 
 ## Reconcile flags
 

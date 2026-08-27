@@ -5,15 +5,17 @@ Truth (SoT)** directories deploy to each tool's user-config location. Clone
 once to get a consistent AI-assisted environment on supported Linux, macOS,
 and Windows machines. Tuned for **token efficiency without sacrificing quality**.
 
-Supported tools: **Claude Code**, **Codex**, and any agent consuming
-[agentskills.io](https://agentskills.io) universal skills.
+Supported harnesses: **Claude Code**, **Codex**, and **Oh My Pi (`omp`)**.
+The kit also deploys [agentskills.io](https://agentskills.io) universal skills.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/DocksDocks/public.git ~/projects/public
 cd ~/projects/public
-./docks-kit sync            # deploy everything (Claude Code + Codex + skills)
+./docks-kit harnesses       # choose this machine's flag-less sync harnesses
+./docks-kit sync            # deploy this machine's harness selection
+./docks-kit sync omp        # deploy omp explicitly
 ./docks-kit status          # doctor view: drift, toolchain, plugins, skills
 ```
 
@@ -41,15 +43,16 @@ PowerShell.
 ## CLI
 
 ```text
-docks-kit sync [claude] [codex] [agents]   deploy the SoT (default: all three)
-docks-kit update [--no-sync]               self-update the kit (autodetects checkout vs global install), then sync
-docks-kit model <claude|codex> [value]     get/set the DEPLOYED model (TTY picker)
-docks-kit models [claude|codex]            model catalogs (`--json`)
-docks-kit toolchain [check|ensure <tool>]  verified-version floors for external tools
-docks-kit status [--json]                  deployed-vs-SoT drift + toolchain + counts
-docks-kit plugins list [--json]            enabledPlugins tri-state vs installed
-docks-kit skills list [--json]             universal skills vs manifest
-docks-kit docs [topic]                     self-documentation (9 topics)
+docks-kit sync [claude] [codex] [agents] [omp]  deploy explicit targets or the machine selection
+docks-kit harnesses                             view or change this machine's selection
+docks-kit update [--no-sync]                    self-update the kit (autodetects checkout vs global install), then sync
+docks-kit model <claude|codex> [value]          get/set the DEPLOYED model (TTY picker)
+docks-kit models [claude|codex]                 model catalogs (`--json`)
+docks-kit toolchain [check|ensure <tool>]       verified-version floors for external tools
+docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
+docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
+docks-kit skills list [--json]                  universal skills vs manifest
+docks-kit docs [topic]                          self-documentation (9 topics)
 --help --version --wizard --completions    built-in
 ```
 
@@ -87,6 +90,9 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 - **Additive by default** — user-only settings keys, plugins, and skills
   survive a plain sync. Reconciliation toward the SoT is explicit
   (`--reconcile` / `--prune`).
+- **Per-machine selection** — `~/.docks-kit/state.json` drives a flag-less sync.
+  A missing file selects Claude Code, Codex, and universal skills. It does not
+  select omp. Use `docks-kit harnesses` to view or change the selection.
 - **Idempotent** — every step is safe to re-run; no-change syncs are no-ops.
 - **Toolchain floors** — `SoT/toolchain.json` records the kit-verified version
   floors for external tools (bun, bwrap, …). `docks-kit toolchain check` prints
@@ -106,6 +112,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |------|---------|
 | `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
+| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, mcp.json, intercom.json) |
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Kit-verified Claude and Codex model catalog |
 | `SoT/toolchain.json` | Verified-version floors |

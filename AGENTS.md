@@ -4,17 +4,20 @@ Canonical instructions for coding agents working on this project. Compatible wit
 
 ## Repository purpose
 
-Portable configuration kit for AI coding agents. Per-tool Single Source of Truth
-(SoT) directories deploy to each tool's user-config location through
-`./docks-kit sync`. Clone once to get a consistent AI-assisted environment on
-supported Linux, macOS, and Windows hosts. The kit focuses on **token efficiency
-without sacrificing quality**. Every setting and hook minimizes token use while
+Portable configuration kit for AI coding agents. The kit manages three coding
+harnesses: Claude Code, Codex, and Oh My Pi (`omp`). Per-tool Single Source of
+Truth (SoT) directories deploy to each harness's user-config location through
+`./docks-kit sync`. The kit also deploys shared [agentskills.io](https://agentskills.io)
+skills. Clone once to get a consistent AI-assisted environment on supported
+Linux, macOS, and Windows hosts. The kit focuses on **token efficiency without
+sacrificing quality**. Every setting and hook minimizes token use while
 preserving rigorous output. When you add or edit anything, ask: *does this
 change reduce tokens without weakening correctness?*
 
 Tool-specific instructions live alongside this file:
 - **`CLAUDE.md`** — Claude Code SoT (`SoT/.claude/`), env vars, hooks, plugins, status line, session management, permission mode, open concerns.
 - Codex uses this `AGENTS.md` file plus the Codex SoT under `SoT/.codex/`; no separate root `CODEX.md` is needed.
+- omp uses this `AGENTS.md` file plus the omp SoT under `SoT/.omp/`.
 
 
 docks-kit runtime and standalone binary support covers Linux x64/arm64, macOS
@@ -27,10 +30,12 @@ launcher can fall back to Bun source.
 |------|---------|
 | `docks-kit` / `docks-kit.ps1` | POSIX and Windows CLI launchers. On supported hosts, each runs the matching binary in `cli/dist/` only when its `--version` matches `package.json`. Otherwise it runs Bun-from-source and auto-installs Bun plus `node_modules`. Hosts outside the support matrix fail before source fallback. The standalone platform release binary provides no-Bun recovery. |
 | `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
+| `cli/src/engine-native/ompSync.ts` | omp file deployment, marketplace registration, and plugin synchronization |
 | `cli/` | Effect 4 RC CLI + bundled docs topics |
 | `SoT/models.json` | Kit-verified Claude and Codex model catalog |
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative) |
 | `SoT/.claude/bin/` | Dependency-free Bun runtime programs for Claude's statusline, SessionStart, and Notification |
+| `SoT/.omp/` | Kit-owned omp SoT: `AGENTS.md`, `config.yml`, `mcp.json`, and `intercom.json` |
 | `install.sh` / `install.ps1` | POSIX and Windows global installers |
 | `.github/workflows/release-cli.yml` | `cli-v*` release: six binaries for Linux, macOS, and Windows on x64 and arm64, plus `SHA256SUMS` and npm publish |
 | `README.md` | Front door |
@@ -48,10 +53,19 @@ Codex SoT notes:
 - `SoT/.codex/plugins/marketplace.json` deploys to Codex's personal marketplace path at `~/.agents/plugins/marketplace.json`; when the `codex` CLI is available, sync reruns `codex plugin add <plugin@marketplace>` for enabled SoT plugins so stale cached installs are refreshed.
 - The global prompt SoTs carry the owner's standing authorization for Docks cross-company plan review, which never overrides host or platform denial.
 - The `codex` CLI binary is upstream-owned, not kit-owned. The official standalone installer keeps package metadata under `$CODEX_HOME/packages/standalone` and places the `codex` symlink in `~/.local/bin` by default; sync only warns with a download-then-run installer command when the CLI is missing. Existing installs can self-update with `codex update`; npm and Homebrew remain upstream alternatives.
+
 - Claude runtime settings are an authoring template with sentinels. `claudeRuntime.ts` materializes absolute Bun/script paths only after the shared `bun.ts` bootstrap is ready; `claudeSync.ts` writes all runtime assets before atomically committing settings, then prunes the legacy shell scripts and Stop hook. Native `rate_limits` is the sole quota source, so jq/curl/OAuth caches are not runtime dependencies. A missing Bun defers only this cutover and preserves legacy pointers/files.
 - Claude's deployed SoT defaults are `model: opus` and `effortLevel: high`; `advisorModel` is deliberately absent/off. `--claude-advisor=on` is the per-machine opt-in and writes `advisorModel: fable` after the settings merge. `opus` is the alias, not a pinned id: the `minimumVersion` floor of 2.1.219 ensures Claude Code can resolve it to the newest Opus its provider offers — Opus 5 on the Anthropic API or Opus 4.6 on Microsoft Foundry — instead of silently capping Anthropic API users at Opus 4.8 under the former 2.1.170 floor. Keeping the alias provides provider portability and tracks future Opus releases; the literal `claude-opus-5` is unavailable on Foundry. The floor also subsumes Fable 5's older 2.1.170 requirement.
 
-For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT directory.
+omp SoT notes:
+- `SoT/.omp/AGENTS.md`, `config.yml`, and `mcp.json` deploy to `~/.omp/agent/`.
+- `SoT/.omp/intercom.json` deploys to `$PI_CODING_AGENT_DIR/intercom/config.json`. The default root is `~/.pi/agent`.
+- `ompSync.ts syncConfig` deep-merges `config.yml` through `mergeOmpConfig`.
+- Sync registers the `docks` marketplace. It installs or upgrades `docks@docks` and `plan-lifecycle@docks` at user scope.
+- Sync installs `pi-intercom` at the verified version from `SoT/toolchain.json`.
+- The omp CLI is upstream-owned and self-updating through `omp update`. Sync never installs or upgrades the CLI.
+
+For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`, `SoT/.omp/`), see the matching SoT directory.
 
 ## Engineering rules
 
@@ -59,19 +73,20 @@ For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`), see the matching SoT d
 - **Removed bash engine.** The bash engine was removed after the `bash-engine-final` tag. `DOCKS_KIT_ENGINE=bash` must fail with the removed-engine message; engine bugs are fixed forward in EngineNative.
 - **Effect 4 CLI stack.** The CLI pins `effect@4.0.0-rc.109` (including `effect/unstable/cli`), `@effect/platform-bun@4.0.0-rc.109` (`BunServices.layer`, `BunRuntime.runMain`), `@effect/vitest@4.0.0-rc.109`, and `vitest@4.1.10` (required by the `@effect/vitest` peer range). `@effect/cli` and `@effect/platform` are removed and must not be reintroduced.
 - **Effect skill routing.** Effect work in this checkout must verify migration and API call shapes against the installed declarations under `node_modules/effect/dist/unstable/cli/`, never from memory or a mutable dist-tag. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills target Effect 3.x and do not apply.
-- **Targeted syncs.** `./docks-kit sync` accepts positional targets: `claude`, `codex`, and `agents`. Use the narrowest target that matches the SoT change (for example, `./docks-kit sync codex` for Codex-only config edits); targets can be combined with `--dry-run`, `--skip-bubblewrap` (skip optional bubblewrap bootstrap for the Codex Linux sandbox), `--skip-plugin-refresh` (install missing plugins without refreshing existing caches; used by `docks-kit update`), `--reconcile`, `--prune`, and the deploy-time modifiers `--claude-compact-window=<tokens>` / `--claude-permissive` / `--claude-model=<m>` / `--claude-effort=<level>` / `--claude-advisor=<on|off|default>` / `--codex-model=<m>` / `--codex-effort=<level>` (see `CLAUDE.md` § Deploy-time modifiers).
+- **Targeted syncs.** `./docks-kit sync` accepts positional targets: `claude`, `codex`, `agents`, and `omp`. Use the narrowest target that matches the SoT change (for example, `./docks-kit sync omp` for omp-only config edits); targets can be combined with `--dry-run`, `--skip-bubblewrap` (skip optional bubblewrap bootstrap for the Codex Linux sandbox), `--skip-plugin-refresh` (install missing plugins without refreshing existing caches; used by `docks-kit update`), `--reconcile`, `--prune`, and the deploy-time modifiers `--claude-compact-window=<tokens>` / `--claude-permissive` / `--claude-model=<m>` / `--claude-effort=<level>` / `--claude-advisor=<on|off|default>` / `--codex-model=<m>` / `--codex-effort=<level>` (see `CLAUDE.md` § Deploy-time modifiers).
+- **Per-machine harness selection.** `~/.docks-kit/state.json` drives a flag-less sync. A missing file selects `claude`, `codex`, and `agents`; it never selects `omp` implicitly. `sync` never prompts and never writes the selection file. `docks-kit harnesses` is the only command that writes the selection.
 - **Additive by default.** Keys present in deployed config but absent from SoT are preserved on default sync. This protects user-only additions, but means drift accumulates — neither flag-less reset can clean it up. The one exception is the Claude `removed` manifest (`claude::_removed_manifest`), a curated list of unambiguous kit-owned artifacts that `claude::sync_removals` force-prunes on every sync, including the home-relative `~/.local/bin/session-relay` artifact installed outside `~/.claude`; see `CLAUDE.md` § Pruning stale artifacts.
 - **`--reconcile` / `--prune` are the kit-owned reconcile flags.** Orthogonal — `--reconcile` reconciles the settings layer (SoT-declared keys/tables/arrays win; user-only keys and nested objects are preserved; permissions arrays are replaced wholesale by SoT). `--prune` uninstalls kit-managed installations not in the SoT (plugins, marketplaces, and `~/.agents/skills/*` entries tracked in `~/.agents/.kit-managed-skills`). Combine for a full reset to SoT's kit-managed scope. User-only additions outside the kit's scope (custom env vars, mcpServers, manually-installed skills, third-party plugins not declared in SoT) are always preserved. Each tool's per-tool file documents the specific paths and diff recipes.
-- **SOLID-aligned modules.** `cli/src/engine-native/parseArgs.ts` owns flag parsing/validation. `toolchain.ts` owns verified-version floor reporting over `SoT/toolchain.json`; `bun.ts` owns the shared, memoized Bun bootstrap; `claudeRuntime.ts` owns Claude settings materialization. `claudeSync.ts`, `codexSync.ts`, and `skillsSync.ts` own tool-specific sync logic. `index.ts` is the thin orchestrator. The public CLI seam is `cli/src/engine.ts`.
+- **SOLID-aligned modules.** `cli/src/engine-native/parseArgs.ts` owns flag parsing and validation. `toolchain.ts` owns verified-version floor reporting over `SoT/toolchain.json`; `bun.ts` owns the shared, memoized Bun bootstrap; `claudeRuntime.ts` owns Claude settings materialization. `claudeSync.ts`, `codexSync.ts`, and `skillsSync.ts` own their tool-specific sync logic. `ompSync.ts` owns omp file and plugin sync. `ompYaml.ts` owns the omp YAML merge. `harnesses.ts` owns per-machine harness selection. `index.ts` is the thin orchestrator. The public CLI seam is `cli/src/engine.ts`.
 - **Small, reviewable changes.** Bundled multi-concern PRs are harder to review and revert. Split an engine/CLI change and a per-tool config change unless the change requires atomicity.
 - **Dry-run before destructive flags.** Always preview with `./docks-kit sync --dry-run` (or the relevant `diff <(jq -S …)` recipe in the per-tool file) before invoking `--reconcile` or `--prune`. User-added permissions / env vars / plugins absent from SoT will be discarded.
-- **SoT prompt files are rules, not explanation.** `SoT/.claude/CLAUDE.md` and `SoT/.codex/AGENTS.md` are loaded into every agent session's prompt context — every line costs prompt tokens on every turn for every user. Restrict their content to rules, heuristics, and `<constraint>` blocks the agent must *act on* during a turn. Do NOT add inline source citations (`Source: …`, attributed quotes), "why this rule exists" preface text, version-watermarking trivia (e.g. "Distilled from X v2.0, captured 2025-11-07"), per-bug workarounds, or installation instructions. Provenance, motivation, and historical context belong in `CLAUDE.md` / `AGENTS.md` at the repo root (humans read once) or in commit messages — never in the SoT. For every line, apply the official test: would removing it cause the agent to make mistakes? If not, cut it — over-instruction degrades adherence on current frontier models.
+- **SoT prompt files are rules, not explanation.** `SoT/.claude/CLAUDE.md`, `SoT/.codex/AGENTS.md`, and `SoT/.omp/AGENTS.md` are loaded into agent sessions' prompt context — every line costs prompt tokens on every turn for every user. Restrict their content to rules, heuristics, and `<constraint>` blocks the agent must *act on* during a turn. Do NOT add inline source citations (`Source: …`, attributed quotes), "why this rule exists" preface text, version-watermarking trivia (e.g. "Distilled from X v2.0, captured 2025-11-07"), per-bug workarounds, or installation instructions. Provenance, motivation, and historical context belong in `CLAUDE.md` / `AGENTS.md` at the repo root (humans read once) or in commit messages — never in the SoT. For every line, apply the official test: …
 - **Cache-invariance for kit-authored prompt surfaces.** Never put timestamps, counters, or mutable state into SoT prompt files, hook outputs that land in the cached prefix, or tool definitions — cache breaks force cold-start writes. Dynamic context belongs in runtime-injected messages (e.g. SessionStart hook output), which is exactly how the kit's date/config injection works.
 
 ## Code style
 
 - Bash: for launchers/installers/hook assets, use `set -euo pipefail`, quoted variables, `[[ ]]` over `[ ]`, and function-scoped `local`.
-- JSON config: edit the SoT (`SoT/<tool>/`) and run `./docks-kit sync`. Never edit deployed config (`~/.claude/`, `~/.codex/`) directly.
+- JSON and YAML config: edit the SoT (`SoT/<tool>/`) and run `./docks-kit sync`. Never edit deployed config under `~/.claude/`, `~/.codex/`, or `~/.omp/agent/` directly.
 
 ## Security
 
@@ -92,9 +107,10 @@ Canonical project skills live in `.agents/skills/<name>/SKILL.md`.
 Each `.claude/skills/<name>` entry is a relative symlink to its canonical directory.
 Codex reads `.agents/skills/` natively, so one copy serves both tools.
 Kit-mechanic skills document regression-prone TypeScript sync logic in `cli/src/engine-native/`.
+Kit-mechanic skills: `codex-config-merge-context`, `engine-native-context`, `plugin-bootstrap-context`, `settings-merge-context`, `sync-orchestration-context`, `toolchain-context`, `universal-skills-context`, and `omp-sync-context`.
 **Pipeline content** (multi-agent slash commands, refactor/security/docs workflows, parallel-scanner agents) belongs in the separate [DocksDocks/docks](https://github.com/DocksDocks/docks) plugin — not here. Project-level agents under `.claude/agents/` follow the same rule: kit-mechanic agents that wrap kit-mechanic skills are permitted; pipeline agents live in the docks plugin.
 
-**Windows checkouts.** These eight entries are the only symlinks this repository tracks. Git for Windows defaults to `core.symlinks=false`, which checks a symlink out as a plain file holding the target path, so Claude Code finds no `SKILL.md` and silently loads no project skill. Codex is unaffected, because it reads the real directories under `.agents/skills/`. To restore Claude Code on Windows, enable Developer Mode or run as administrator, then `git config core.symlinks true` and re-checkout the paths: `git checkout -- .claude/skills`. Never repair this by replacing an entry with a copy; two copies drift, which is the failure the canonical layout removes. This limitation is confined to project skills in this checkout. It does not affect the deployed user-level skills, where `skillsSync.ts linkOrCopyWithWarnings` already falls back from symlink to junction to marked copy.
+**Windows checkouts.** These nine entries are the only symlinks this repository tracks. Git for Windows defaults to `core.symlinks=false`, which checks a symlink out as a plain file holding the target path, so Claude Code finds no `SKILL.md` and silently loads no project skill. Codex is unaffected, because it reads the real directories under `.agents/skills/`. To restore Claude Code on Windows, enable Developer Mode or run as administrator, then `git config core.symlinks true` and re-checkout the paths: `git checkout -- .claude/skills`. Never repair this by replacing an entry with a copy; two copies drift, which is the failure the canonical layout removes. This limitation is confined to project skills in this checkout. It does not affect the deployed user-level skills, where `skillsSync.ts linkOrCopyWithWarnings` already falls back from symlink to junction to marked copy.
 
 `npx skills add cursor/plugins -s unslop -y -a claude-code codex` installs `unslop`, and root `skills-lock.json` pins it.
 The repository vendors upstream `unslop` text and pins it by the lockfile hash, so never edit it locally.
