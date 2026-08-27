@@ -40,6 +40,8 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync", "claude"] },
   { fixture: "home-fresh", cmd: ["sync", "codex"] },
   { fixture: "home-fresh", cmd: ["sync", "agents"] },
+  { fixture: "home-fresh", cmd: ["sync", "omp"] },
+  { fixture: "home-fresh", cmd: ["sync", "omp"], stubs: { omp: null } },
   { fixture: "home-drift", cmd: ["sync", "claude"] },
   { fixture: "home-drift", cmd: ["sync", "codex"] },
   { fixture: "home-drift", cmd: ["sync", "agents"] },

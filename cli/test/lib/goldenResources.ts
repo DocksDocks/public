@@ -204,6 +204,14 @@ const STUB_BODIES: Record<string, string> = {
 } else if (args[0] === "plugin" && args[1] === "list") {
   console.log('{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true}],"available":[]}')
 }`,
+  // The inventory stays empty on every call, so a replay row pins the install
+  // path rather than the already-installed path; ompSync's present-detection
+  // is covered by cli/test/unit/ompPluginInventory.test.ts instead.
+  omp: `if (args[0] === "--version") {
+  console.log("omp/18.0.8")
+} else if (args[0] === "plugin" && args[1] === "list") {
+  console.log('{"npm":[],"marketplace":[]}')
+}`,
   npx: ``,
   npm: `if (args[0] === "view") {
   console.log("0.0.1")

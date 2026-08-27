@@ -38,6 +38,7 @@ const COMMANDS: Array<Array<string>> = [
   ["sync", "codex", "--dry-run"],
   ["sync", "codex", "--dry-run", "--codex-effort=ultra"],
   ["sync", "agents", "--dry-run"],
+  ["sync", "omp", "--dry-run"],
   ["sync", "--dry-run", "--reconcile", "--prune"],
   [
     "sync",
