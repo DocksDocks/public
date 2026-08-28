@@ -332,7 +332,7 @@ Remote note: installing it in a web-env setup script also works (`apt-get instal
 
 Added four env vars the kit no longer sets to `claude::_removed_manifest` `settingsKeys`, so drift from older kit versions is cleaned from the kit-managed `settings.json` on sync: `CLAUDE_CODE_SUBAGENT_MODEL` (kit now uses per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled).
 
-Policy made consistent: these are pruned from the kit-managed `settings.json`; a deliberate per-checkout override goes in that checkout's **`.claude/settings.local.json`**, which sync never touches (the kit already uses that hatch for `ANTHROPIC_DEFAULT_OPUS_MODEL`). Updated the manifest comment, the "Pruning stale artifacts" section, and the Troubleshooting `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` bullet (now points at that checkout's `.claude/settings.local.json`) so the kit no longer contradicts itself.
+Policy made consistent. Sync prunes these keys from the kit-managed `settings.json`. A deliberate per-checkout override belongs in that checkout's **`.claude/settings.local.json`**. Sync never reads or writes that file, and the kit already uses it for `ANTHROPIC_DEFAULT_OPUS_MODEL`. Updated the manifest comment, the "Pruning stale artifacts" section, and the Troubleshooting `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` bullet, which now names the same checkout-local file.
 
 Validated: nested `env.X` `delpaths` prune (5 keys), with the kit's active `CLAUDE_CODE_EFFORT_LEVEL`, a user custom env var, theme, and permissions all preserved; JSON valid; idempotent.
 
@@ -402,7 +402,7 @@ Audit of `SoT/.claude/` against the current Claude Code settings schema and Opus
 
 - Corrected the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` row: documented `64000` → actual `96000` (Opus 4.8's real output ceiling is 128K).
 - Added env-table coverage for `CLAUDE_CODE_FORK_SUBAGENT` and a top-level-keys row for `minimumVersion`.
-- Documented `autoMode.environment` as a per-checkout (`.claude/settings.local.json`) lever for cutting auto-mode false positives.
+- Documented `autoMode.environment` in that checkout's `.claude/settings.local.json`, which reduces auto-mode false positives for one checkout.
 - Recorded the deliberate **no-`fallbackModel`** decision (stay Opus-only; avoid mid-session prompt-cache cold-start).
 
 ### Considered, not adopted
