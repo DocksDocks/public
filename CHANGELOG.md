@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-08-28 — Claude permissions: parseable rules, trimmed allow list, retired-rule prune, memory and dream off
+
+- Escaped the 14 `permissions.deny` PowerShell rules whose specifier ended in a
+  single backslash before the closing parenthesis, such as
+  `PowerShell(rm *-Recurse* *:\)`. Claude Code counts backslash parity, so the
+  `\` escaped the `)` and every session start printed `Invalid permission
+  rule … Mismatched parentheses` while the rule protected nothing. The SoT now
+  writes `\\` in those positions.
+- Trimmed `permissions.allow` to four read-only tools (`Read`, `Glob`, `Grep`,
+  and `WebSearch`) plus the working-directory edit rule `Edit(./)`. The 128
+  removed shell rules (`Bash(git *)`, `Bash(curl *)`, `Bash(docker *)`, and
+  their `PowerShell(...)` twins) resolved before both Claude Code's read-only
+  command analyzer and the auto-mode classifier, so destructive variants such
+  as `git clean -fdx` were pre-approved with no review step. The analyzer
+  already runs the safe read-only forms with no prompt. `WebFetch` was removed
+  for the same reason. Headless jobs that need a non-read-only shell command
+  now pass a narrow `--allowedTools` rule on the `claude -p` command line. The
+  SoT leaves `autoMode.classifyAllShell` unset because it ships no shell allow
+  rules; enabling the setting would send every shell command to the classifier
+  and add classifier calls without closing an allow-rule bypass.
+- Kept every `PowerShell(...)` deny and ask rule on every host. The tool is
+  opt-in off Windows, not unavailable, so a host that enables it must already
+  carry the guards. An earlier draft of this change gated the rules by platform
+  and was reverted before release.
+- Added `claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule
+  inventory` and extended `claudeSync.ts syncRemovals, retired-permission pass`
+  to force-prune its exact strings from the kit-managed
+  `~/.claude/settings.json` on every sync. `settings.ts mergeSettings,
+  permission-array union` would otherwise keep a dropped rule forever. A
+  different user-authored rule survives. A user can restore an exact retired
+  rule for one checkout in that checkout's `.claude/settings.local.json`.
+  Claude Code resolves that file against the working directory and merges it
+  over user settings. Sync never reads or writes the checkout-local file.
+  Claude Code has no user-scope local settings file. For a machine-wide
+  restoration, add the rule to `SoT/.claude/settings.json`. At the same time,
+  remove the exact string from `claudeRetired.ts RETIRED_PERMISSION_RULES,
+  exact retired-rule inventory`.
+- Set `autoMemoryEnabled: false` and `autoDreamEnabled: false`. Auto-memory
+  injects a mutable MEMORY.md head into the cached prompt prefix, which breaks
+  cache invariance; dream tasks bill extra model calls between turns.
+- Replaced the change-detector permission tests with invariants. Instead of
+  restating the rule list, `cli/test/lib/permissionRules.ts` ports the rule
+  grammar from the Claude Code 2.1.251 parser and the truth tests assert
+  behavior: every shipped rule parses, each retired malformed spelling is
+  rejected, the destructive command corpus is denied on both shells, an
+  ordinary recursive delete is left to the classifier, and the allow list
+  pre-approves no shell command.
+  `cli/test/unit/claudeRetiredPermissions.test.ts` covers the prune, the
+  surviving user rules, and the SoT PowerShell rules that stay deployed.
+
 ## 2026-08-21 — Release proof states only the guarantee it enforces
 
 - The release workflow proves the published tarball holds the tag's files on
@@ -282,7 +332,7 @@ Remote note: installing it in a web-env setup script also works (`apt-get instal
 
 Added four env vars the kit no longer sets to `claude::_removed_manifest` `settingsKeys`, so drift from older kit versions is cleaned from the kit-managed `settings.json` on sync: `CLAUDE_CODE_SUBAGENT_MODEL` (kit now uses per-agent frontmatter), `ANTHROPIC_DEFAULT_OPUS_MODEL` (de-pinned), `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` (superseded by `CLAUDE_CODE_AUTO_COMPACT_WINDOW`), `CLAUDE_CODE_DISABLE_1M_CONTEXT` (1M now enabled).
 
-Policy made consistent: these are pruned from the kit-managed `settings.json`; a deliberate per-machine override goes in **`settings.local.json`**, which sync never touches (the kit already uses that hatch for `ANTHROPIC_DEFAULT_OPUS_MODEL`). Updated the manifest comment, the "Pruning stale artifacts" section, and the Troubleshooting `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` bullet (now points at `settings.local.json`) so the kit no longer contradicts itself.
+Policy made consistent. Sync prunes these keys from the kit-managed `settings.json`. A deliberate per-checkout override belongs in that checkout's **`.claude/settings.local.json`**. Sync never reads or writes that file, and the kit already uses it for `ANTHROPIC_DEFAULT_OPUS_MODEL`. Updated the manifest comment, the "Pruning stale artifacts" section, and the Troubleshooting `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` bullet, which now names the same checkout-local file.
 
 Validated: nested `env.X` `delpaths` prune (5 keys), with the kit's active `CLAUDE_CODE_EFFORT_LEVEL`, a user custom env var, theme, and permissions all preserved; JSON valid; idempotent.
 
@@ -352,7 +402,7 @@ Audit of `SoT/.claude/` against the current Claude Code settings schema and Opus
 
 - Corrected the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` row: documented `64000` → actual `96000` (Opus 4.8's real output ceiling is 128K).
 - Added env-table coverage for `CLAUDE_CODE_FORK_SUBAGENT` and a top-level-keys row for `minimumVersion`.
-- Documented `autoMode.environment` as a per-machine (`settings.local.json`) lever for cutting auto-mode false positives.
+- Documented `autoMode.environment` in that checkout's `.claude/settings.local.json`, which reduces auto-mode false positives for one checkout.
 - Recorded the deliberate **no-`fallbackModel`** decision (stay Opus-only; avoid mid-session prompt-cache cold-start).
 
 ### Considered, not adopted

@@ -22,6 +22,7 @@ import {
   syncClaudeModel
 } from "./claudeSettingsModifiers"
 import { claudeRuntimePaths, materializeClaudeSettings, type ClaudeRuntimePaths } from "./claudeRuntime"
+import { RETIRED_PERMISSION_RULES } from "./claudeRetired"
 import { p, spawnProcess, writeBytesIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -398,8 +399,14 @@ const REMOVED_MANIFEST = {
     "hooks.PreToolUse"
   ],
   permissionRules: {
-    allow: ["Write(./)", "Bash(rtk *)"],
-    deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)"]
+    allow: ["Write(./)", "Bash(rtk *)", ...RETIRED_PERMISSION_RULES.allow],
+    deny: [
+      "Write(**/.env)",
+      "Write(**/.env.local)",
+      "Write(**/secrets/**)",
+      ...RETIRED_PERMISSION_RULES.deny
+    ],
+    ask: [...RETIRED_PERMISSION_RULES.ask]
   },
   claudeJsonKeys: [] as Array<string>,
   /** Home-relative artifacts the kit installed outside ~/.claude. */
@@ -447,14 +454,14 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
 function prunePermissionRules(
   ctx: Ctx,
   file: string,
-  rules: Readonly<Record<"allow" | "deny", ReadonlyArray<string>>>
+  rules: Readonly<Record<"allow" | "deny" | "ask", ReadonlyArray<string>>>
 ): number {
   if (!existsSync(file)) return 0
   const doc = parseJson(readFileSync(file, "utf8"))
   if (doc === undefined || !isObject(doc) || !isObject(doc["permissions"])) return 0
   const permissions = doc["permissions"]
   let present = 0
-  for (const key of ["allow", "deny"] as const) {
+  for (const key of ["allow", "deny", "ask"] as const) {
     const values = permissions[key]
     if (!Array.isArray(values)) continue
     const removed = new Set(rules[key])
