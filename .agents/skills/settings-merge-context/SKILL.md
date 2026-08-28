@@ -64,12 +64,13 @@ exact permission-array members, and stale files.
 
 ## Retired Rules
 
-`claudeRetired.ts RETIRED_PERMISSION_RULES` is the exact-string inventory of
-rules the kit once shipped and no longer does: the broad shell allow rules,
-`WebFetch`, and the malformed single-backslash deny spellings. `syncRemovals`
-force-prunes it on every sync, because `mergeSettings` unions the deployed
-arrays with the SoT arrays, so dropping a rule from the SoT alone never removes
-it from a machine an earlier sync wrote.
+`claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule inventory` names
+the rules the kit once shipped and no longer does: the broad shell allow rules,
+`WebFetch`, and the malformed single-backslash deny spellings. `claudeSync.ts
+syncRemovals, retired-permission pass` force-prunes those exact strings from the
+kit-managed `~/.claude/settings.json` on every sync. Without that pass,
+`settings.ts mergeSettings, permission-array union` would retain a rule after
+the SoT dropped it.
 
 <constraint>
 The kit deploys its `PowerShell(...)` deny and ask rules on every host. Claude
@@ -78,14 +79,21 @@ host that enables it must already carry the guards. Never gate permission deny
 rules by platform.
 </constraint>
 
-`SoT/.claude/settings.json` is the only place a shipped rule is declared; the
-inventory is the only place a withdrawn rule is named.
+`SoT/.claude/settings.json` is the only place a shipped rule is declared. The
+retired inventory is the only place a withdrawn shipped rule is named.
+
+Sync never reads, writes, or prunes `~/.claude/settings.local.json`. Claude Code
+merges that file on top of the kit-managed settings file. Put a deliberately
+restored retired rule there so it survives every sync. The same exact rule does
+not survive when re-added to `~/.claude/settings.json`.
 
 <constraint>
 Retiring a permission rule takes two edits: delete it from
 `SoT/.claude/settings.json` and add the exact old string to
-`claudeRetired.ts RETIRED_PERMISSION_RULES`. Match by exact string only, so a
-user-authored rule outside the inventory survives the prune.
+`claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule inventory`.
+Match by exact string only. A different user-authored rule in the kit-managed
+file survives the prune; an exact retired-rule override belongs in
+`~/.claude/settings.local.json`.
 </constraint>
 
 ## File Ownership

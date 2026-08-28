@@ -8,22 +8,32 @@
   `\` escaped the `)` and every session start printed `Invalid permission
   rule … Mismatched parentheses` while the rule protected nothing. The SoT now
   writes `\\` in those positions.
-- Trimmed `permissions.allow` to `Read`, `Glob`, `Grep`, `WebSearch`, and
-  `Edit(./)`. The 128 removed shell rules (`Bash(git *)`, `Bash(curl *)`,
-  `Bash(docker *)`, and their `PowerShell(...)` twins) resolved before both
-  Claude Code's read-only command analyzer and the auto-mode classifier, so
-  destructive variants such as `git clean -fdx` were pre-approved with no
-  review step. The analyzer already runs the safe read-only forms with no
-  prompt. `WebFetch` was removed for the same reason.
+- Trimmed `permissions.allow` to four read-only tools (`Read`, `Glob`, `Grep`,
+  and `WebSearch`) plus the working-directory edit rule `Edit(./)`. The 128
+  removed shell rules (`Bash(git *)`, `Bash(curl *)`, `Bash(docker *)`, and
+  their `PowerShell(...)` twins) resolved before both Claude Code's read-only
+  command analyzer and the auto-mode classifier, so destructive variants such
+  as `git clean -fdx` were pre-approved with no review step. The analyzer
+  already runs the safe read-only forms with no prompt. `WebFetch` was removed
+  for the same reason. Headless jobs that need a non-read-only shell command
+  now pass a narrow `--allowedTools` rule on the `claude -p` command line. The
+  SoT leaves `autoMode.classifyAllShell` unset because it ships no shell allow
+  rules; enabling the setting would send every shell command to the classifier
+  and add classifier calls without closing an allow-rule bypass.
 - Kept every `PowerShell(...)` deny and ask rule on every host. The tool is
   opt-in off Windows, not unavailable, so a host that enables it must already
   carry the guards. An earlier draft of this change gated the rules by platform
   and was reverted before release.
-- Added `claudeRetired.ts RETIRED_PERMISSION_RULES` and extended
-  `claudeSync.ts syncRemovals` to force-prune it. `mergeSettings` unions
-  deployed arrays with SoT arrays, so a rule dropped from the SoT would
-  otherwise survive forever on a machine an earlier sync wrote. Exact strings
-  only, so a user-authored rule outside the inventory survives.
+- Added `claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule
+  inventory` and extended `claudeSync.ts syncRemovals, retired-permission pass`
+  to force-prune it from the kit-managed `~/.claude/settings.json` on every
+  sync. `settings.ts mergeSettings, permission-array union` would otherwise
+  keep a dropped rule forever. Exact strings only, so a different user-authored
+  rule survives. A deliberately restored retired rule belongs in
+  `~/.claude/settings.local.json`. Claude Code merges that file on top of the
+  kit file, and sync never reads, writes, or prunes it, so the rule survives
+  every sync. The same rule does not survive when re-added to
+  `~/.claude/settings.json`.
 - Set `autoMemoryEnabled: false` and `autoDreamEnabled: false`. Auto-memory
   injects a mutable MEMORY.md head into the cached prompt prefix, which breaks
   cache invariance; dream tasks bill extra model calls between turns.

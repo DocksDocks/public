@@ -40,15 +40,54 @@ const ALL_KIT_RULES = (["allow", "deny", "ask"] as const).flatMap(
   (listName) => claudeSotSettings.permissions[listName]
 )
 
+const INVALID_RULE_CORPUS: ReadonlyArray<{
+  readonly name: string
+  readonly rule: string
+  readonly reason: RegExp
+}> = [
+  ...RETIRED_PERMISSION_RULES.deny.map((rule, index) => ({
+    name: `retired PowerShell spelling ${index + 1}`,
+    rule,
+    reason: /mismatched parentheses/
+  })),
+  { name: "empty tool name", rule: "()", reason: /empty tool name/ },
+  { name: "unknown tool name", rule: "NotAClaudeTool", reason: /unknown tool name/ },
+  { name: "empty specifier", rule: "Bash()", reason: /empty specifier/ },
+  {
+    name: "qualified Bash command field",
+    rule: "Bash(command:rm *)",
+    reason: /raw command field/
+  },
+  {
+    name: "non-Bash prefix suffix",
+    rule: "Read(src:*)",
+    reason: /only valid on Bash command prefixes/
+  },
+  {
+    name: "parenthesized MCP specifier",
+    rule: "mcp__example__read(pattern)",
+    reason: /MCP tool rules do not accept parenthesized specifiers/
+  }
+]
+
 describe.sequential("Claude settings truth", () => {
   it("ships only rules Claude Code can load", () => {
     expect(invalidRules(ALL_KIT_RULES)).toEqual([])
   })
 
-  it("uses an oracle that rejects the malformed spellings this kit retired", () => {
-    expect(invalidRules(RETIRED_PERMISSION_RULES.deny).map(({ reason }) => reason)).toEqual(
-      RETIRED_PERMISSION_RULES.deny.map(() => "mismatched parentheses")
-    )
+  it("accepts MCP tool names without parenthesized specifiers", () => {
+    expect(invalidRules(["mcp__example__read", "mcp__example__*"])).toEqual([])
+  })
+
+  it("accepts parameter wildcards and PowerShell command prefixes", () => {
+    expect(invalidRules(["Agent(model:*)", "PowerShell(Get-ChildItem:*)"])).toEqual([])
+  })
+
+  it.each(INVALID_RULE_CORPUS)("rejects $name", ({ rule, reason }) => {
+    const rejected = invalidRules([rule])
+
+    expect(rejected).toHaveLength(1)
+    expect(rejected[0]?.reason).toMatch(reason)
   })
 
   it("pre-approves no shell command, leaving that judgement to Claude Code", () => {

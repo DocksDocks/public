@@ -116,6 +116,29 @@ describe("retired permission rule cutover", () => {
     }
   })
 
+  it("leaves local settings untouched while pruning retired deployed rules", () => {
+    const localSettingsFile = ".claude/settings.local.json"
+    const localSettings = stableStringify({
+      permissions: {
+        allow: ["Bash(git *)", "Bash(local-only *)"]
+      },
+      userOnly: "preserved"
+    })
+    const variant = materializeVariant("home-drift", {
+      ".claude/settings.json": deployedBeforeThisChange(),
+      [localSettingsFile]: localSettings
+    })
+    const applied = runEngine(["sync", "claude"], variant, makeStubDir())
+    try {
+      expect(applied.exitCode, applied.output).toBe(0)
+      expect(readFileSync(p(applied.home, localSettingsFile), "utf8")).toBe(localSettings)
+      expect(permissions(applied.home)["allow"]).not.toContain("Bash(git *)")
+    } finally {
+      cleanup([applied])
+      rmSync(variant, { recursive: true, force: true })
+    }
+  })
+
   it("deploys the SoT PowerShell deny and ask rules on this non-Windows host", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange()
@@ -154,7 +177,6 @@ describe("retired permission rule cutover", () => {
       const output = records.join("\n")
 
       expect(output).toContain(`del ${RETIRED.length} stale permission rule(s)`)
-      expect(output).not.toContain("host gating")
       expect(readFileSync(p(home, ".claude", "settings.json"), "utf8")).toBe(deployedBeforeThisChange())
     } finally {
       if (previousHome === undefined) delete process.env["HOME"]
