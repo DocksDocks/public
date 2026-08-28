@@ -41,7 +41,8 @@ Run `chmod` after each creation or write.
 <constraint>
 Read marketplace plugin identity from the composite `id` field, and count a row
 as installed only when its `scope` is `user`.
-A `project` row leaves the user scope empty, so `upgrade --scope user` fails.
+omp emits one row per scope holding the plugin, so a project-only match leaves
+the user scope empty and `upgrade --scope user` fails.
 Read npm plugin identity from `name` plus `version`.
 A wrong key makes every run attempt a failing reinstall.
 </constraint>

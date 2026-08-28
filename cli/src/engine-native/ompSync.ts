@@ -278,10 +278,10 @@ async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined
 
   // `omp plugin list --json` reports marketplace rows as
   // `{ id: "<plugin>@<marketplace>", scope, entries: [...] }` - the composite id
-  // is already the token `omp plugin install/upgrade` takes. Row `scope` decides
-  // which scope the plugin is active in: a `project` row means the user scope is
-  // still empty, and `upgrade --scope user` would fail there, so only a `user`
-  // row counts as installed for this pipeline.
+  // is already the token `omp plugin install/upgrade` takes. omp emits one row
+  // per scope holding the plugin, so a match found only in a `project` row
+  // means the user scope is empty and `upgrade --scope user` would fail; only a
+  // `user` row counts as installed for this pipeline.
   const marketplace = new Set<string>()
   for (const row of value["marketplace"]) {
     if (!isObject(row) || typeof row["id"] !== "string" || row["scope"] !== "user") continue
