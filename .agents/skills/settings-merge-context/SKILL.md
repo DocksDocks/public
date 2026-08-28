@@ -1,18 +1,20 @@
 ---
 name: settings-merge-context
-description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; or settings.ts mergeSettings/reconcileSettings. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, and readiness-gated pruning."
+description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; settings.ts mergeSettings/reconcileSettings; or claudeRetired.ts RETIRED_PERMISSION_RULES. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, retired-rule pruning, and readiness-gated pruning."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "190-460"
+      lines: "1-975"
     - path: cli/src/engine-native/settings.ts
-      lines: "1-80"
+      lines: "1-42"
+    - path: cli/src/engine-native/claudeRetired.ts
+      lines: "1-165"
     - path: SoT/.claude/settings.json
-      lines: "1-260"
+      lines: "1-372"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-08-15"
+  updated: "2026-08-28"
 ---
 
 # Settings Merge
@@ -59,6 +61,32 @@ left untouched and reported; never merge into a parse failure.
 User-only top-level keys survive both merge modes. `claudeSync.ts syncRemovals,
 curated removed-manifest pass` force-prunes only manifest-listed settings keys,
 exact permission-array members, and stale files.
+
+## Retired Rules
+
+`claudeRetired.ts RETIRED_PERMISSION_RULES` is the exact-string inventory of
+rules the kit once shipped and no longer does: the broad shell allow rules,
+`WebFetch`, and the malformed single-backslash deny spellings. `syncRemovals`
+force-prunes it on every sync, because `mergeSettings` unions the deployed
+arrays with the SoT arrays, so dropping a rule from the SoT alone never removes
+it from a machine an earlier sync wrote.
+
+<constraint>
+The kit deploys its `PowerShell(...)` deny and ask rules on every host. Claude
+Code leaves the PowerShell tool opt-in off Windows rather than unavailable, so a
+host that enables it must already carry the guards. Never gate permission deny
+rules by platform.
+</constraint>
+
+`SoT/.claude/settings.json` is the only place a shipped rule is declared; the
+inventory is the only place a withdrawn rule is named.
+
+<constraint>
+Retiring a permission rule takes two edits: delete it from
+`SoT/.claude/settings.json` and add the exact old string to
+`claudeRetired.ts RETIRED_PERMISSION_RULES`. Match by exact string only, so a
+user-authored rule outside the inventory survives the prune.
+</constraint>
 
 ## File Ownership
 

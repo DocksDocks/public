@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-28 — Claude permissions: parseable rules, trimmed allow list, retired-rule prune, memory and dream off
+
+- Escaped the 14 `permissions.deny` PowerShell rules whose specifier ended in a
+  single backslash before the closing parenthesis, such as
+  `PowerShell(rm *-Recurse* *:\)`. Claude Code counts backslash parity, so the
+  `\` escaped the `)` and every session start printed `Invalid permission
+  rule … Mismatched parentheses` while the rule protected nothing. The SoT now
+  writes `\\` in those positions.
+- Trimmed `permissions.allow` to `Read`, `Glob`, `Grep`, `WebSearch`, and
+  `Edit(./)`. The 128 removed shell rules (`Bash(git *)`, `Bash(curl *)`,
+  `Bash(docker *)`, and their `PowerShell(...)` twins) resolved before both
+  Claude Code's read-only command analyzer and the auto-mode classifier, so
+  destructive variants such as `git clean -fdx` were pre-approved with no
+  review step. The analyzer already runs the safe read-only forms with no
+  prompt. `WebFetch` was removed for the same reason.
+- Kept every `PowerShell(...)` deny and ask rule on every host. The tool is
+  opt-in off Windows, not unavailable, so a host that enables it must already
+  carry the guards. An earlier draft of this change gated the rules by platform
+  and was reverted before release.
+- Added `claudeRetired.ts RETIRED_PERMISSION_RULES` and extended
+  `claudeSync.ts syncRemovals` to force-prune it. `mergeSettings` unions
+  deployed arrays with SoT arrays, so a rule dropped from the SoT would
+  otherwise survive forever on a machine an earlier sync wrote. Exact strings
+  only, so a user-authored rule outside the inventory survives.
+- Set `autoMemoryEnabled: false` and `autoDreamEnabled: false`. Auto-memory
+  injects a mutable MEMORY.md head into the cached prompt prefix, which breaks
+  cache invariance; dream tasks bill extra model calls between turns.
+- Replaced the change-detector permission tests with invariants. Instead of
+  restating the rule list, `cli/test/lib/permissionRules.ts` ports the rule
+  grammar from the Claude Code 2.1.251 parser and the truth tests assert
+  behavior: every shipped rule parses, each retired malformed spelling is
+  rejected, the destructive command corpus is denied on both shells, an
+  ordinary recursive delete is left to the classifier, and the allow list
+  pre-approves no shell command.
+  `cli/test/unit/claudeRetiredPermissions.test.ts` covers the prune, the
+  surviving user rules, and the SoT PowerShell rules that stay deployed.
+
 ## 2026-08-21 — Release proof states only the guarantee it enforces
 
 - The release workflow proves the published tarball holds the tag's files on
