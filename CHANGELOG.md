@@ -26,14 +26,17 @@
   and was reverted before release.
 - Added `claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule
   inventory` and extended `claudeSync.ts syncRemovals, retired-permission pass`
-  to force-prune it from the kit-managed `~/.claude/settings.json` on every
-  sync. `settings.ts mergeSettings, permission-array union` would otherwise
-  keep a dropped rule forever. Exact strings only, so a different user-authored
-  rule survives. A deliberately restored retired rule belongs in
-  `~/.claude/settings.local.json`. Claude Code merges that file on top of the
-  kit file, and sync never reads, writes, or prunes it, so the rule survives
-  every sync. The same rule does not survive when re-added to
-  `~/.claude/settings.json`.
+  to force-prune its exact strings from the kit-managed
+  `~/.claude/settings.json` on every sync. `settings.ts mergeSettings,
+  permission-array union` would otherwise keep a dropped rule forever. A
+  different user-authored rule survives. A user can restore an exact retired
+  rule for one checkout in that checkout's `.claude/settings.local.json`.
+  Claude Code resolves that file against the working directory and merges it
+  over user settings. Sync never reads or writes the checkout-local file.
+  Claude Code has no user-scope local settings file. For a machine-wide
+  restoration, add the rule to `SoT/.claude/settings.json`. At the same time,
+  remove the exact string from `claudeRetired.ts RETIRED_PERMISSION_RULES,
+  exact retired-rule inventory`.
 - Set `autoMemoryEnabled: false` and `autoDreamEnabled: false`. Auto-memory
   injects a mutable MEMORY.md head into the cached prompt prefix, which breaks
   cache invariance; dream tasks bill extra model calls between turns.

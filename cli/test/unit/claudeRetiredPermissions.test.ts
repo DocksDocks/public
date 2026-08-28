@@ -116,9 +116,10 @@ describe("retired permission rule cutover", () => {
     }
   })
 
-  it("leaves local settings untouched while pruning retired deployed rules", () => {
-    const localSettingsFile = ".claude/settings.local.json"
-    const localSettings = stableStringify({
+  it("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
+    // Claude Code resolves localSettings against the working directory, so a home copy is not a user-scope source.
+    const untouchedSiblingFile = ".claude/settings.local.json"
+    const siblingContents = stableStringify({
       permissions: {
         allow: ["Bash(git *)", "Bash(local-only *)"]
       },
@@ -126,12 +127,12 @@ describe("retired permission rule cutover", () => {
     })
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange(),
-      [localSettingsFile]: localSettings
+      [untouchedSiblingFile]: siblingContents
     })
     const applied = runEngine(["sync", "claude"], variant, makeStubDir())
     try {
       expect(applied.exitCode, applied.output).toBe(0)
-      expect(readFileSync(p(applied.home, localSettingsFile), "utf8")).toBe(localSettings)
+      expect(readFileSync(p(applied.home, untouchedSiblingFile), "utf8")).toBe(siblingContents)
       expect(permissions(applied.home)["allow"]).not.toContain("Bash(git *)")
     } finally {
       cleanup([applied])

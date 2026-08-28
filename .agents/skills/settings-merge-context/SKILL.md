@@ -82,18 +82,21 @@ rules by platform.
 `SoT/.claude/settings.json` is the only place a shipped rule is declared. The
 retired inventory is the only place a withdrawn shipped rule is named.
 
-Sync never reads, writes, or prunes `~/.claude/settings.local.json`. Claude Code
-merges that file on top of the kit-managed settings file. Put a deliberately
-restored retired rule there so it survives every sync. The same exact rule does
-not survive when re-added to `~/.claude/settings.json`.
+To restore an exact retired rule for one checkout, put it in that checkout's
+`.claude/settings.local.json`. Claude Code resolves that file against the
+working directory and merges it over user settings. Sync never reads or writes
+the checkout-local file. Claude Code has no user-scope local settings file. For
+a machine-wide restoration, add the rule to `SoT/.claude/settings.json`. At the
+same time, remove the exact string from `claudeRetired.ts
+RETIRED_PERMISSION_RULES, exact retired-rule inventory`.
 
 <constraint>
-Retiring a permission rule takes two edits: delete it from
-`SoT/.claude/settings.json` and add the exact old string to
-`claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule inventory`.
-Match by exact string only. A different user-authored rule in the kit-managed
-file survives the prune; an exact retired-rule override belongs in
-`~/.claude/settings.local.json`.
+Retiring a permission rule takes two edits. Delete it from
+`SoT/.claude/settings.json`. Add the exact old string to `claudeRetired.ts
+RETIRED_PERMISSION_RULES, exact retired-rule inventory`. Match by exact string
+only. A different user-authored rule in the kit-managed file survives the
+prune. An exact checkout-only override belongs in that checkout's
+`.claude/settings.local.json`.
 </constraint>
 
 ## File Ownership
