@@ -1,26 +1,40 @@
 symbolPreset: unicode
+
 theme:
   dark: titanium
+
 statusLine:
   preset: default
   compactThinkingLevel: false
   showHookStatus: true
   sessionAccent: true
   transparent: false
+
 terminal:
   showProgress: false
+
 tui:
   textSizing: false
   tight: false
+
 defaultThinkingLevel: high
+
+cycleOrder:
+  - smol
+  - default
+  - slow
+
 tier:
   openai: none
   anthropic: none
+
 advisor:
   enabled: true
-  syncBacklog: "off"
+  syncBacklog: "1"
+
 github:
   enabled: true
+
 task:
   eager: always
   showResolvedModelBadge: true
@@ -28,60 +42,51 @@ task:
   softRequestBudgetNotice: true
   batch: true
   enableLsp: true
+  enableEffort: true
+  maxEffort: high
   maxConcurrency: 16
-  maxRecursionDepth: 3
+  maxRecursionDepth: 2
+  maxRuntimeMs: 3600000
   agentModelOverrides:
     reviewer: "@task"
     security-reviewer: "@task"
     code-reviewer: "@task"
     plan-reviewer: "@task"
+
 modelRoles:
-  smol: openai-codex/gpt-5.6-luna
-  advisor: openai-codex/gpt-5.6-sol:high
+  smol: openai-codex/gpt-5.6-luna:medium
+  advisor: openai-codex/gpt-5.6-sol:medium
   designer: anthropic/claude-opus-5:high
-  plan: anthropic/claude-opus-5:medium
-  commit: openai-codex/gpt-5.6-luna:high
+  plan: anthropic/claude-opus-5:xhigh
+  commit: openai-codex/gpt-5.6-luna:medium
   task: openai-codex/gpt-5.6-sol:high
-  vision: anthropic/claude-opus-5:low
-  tiny: openai-codex/gpt-5.6-luna:high
-  default: anthropic/claude-opus-5:medium
-  slow: anthropic/claude-opus-5:medium
+  vision: anthropic/claude-opus-5:medium
+  tiny: openai-codex/gpt-5.6-luna:low
+  default: anthropic/claude-opus-5:high
+  slow: anthropic/claude-opus-5:xhigh
   switch_fable: anthropic/claude-fable-5:high
+
 modelTags:
   switch_fable:
     name: Fable switch default
     hidden: true
+
 display:
   shimmer: classic
   showTokenUsage: true
+
 providers:
   anthropic:
     serverSideFallback: false
-  fetch: jina
+  fetch: auto
+  webSearchTimeoutSeconds: 30
   webSearchOrder:
-    - codex
+    - firecrawl
+    - exa
     - perplexity
     - gemini
-    - anthropic
-    - xai
-    - zai
-    - exa
-    - tinyfish
-    - jina
-    - kagi
-    - tavily
-    - firecrawl
-    - brave
-    - kimi
-    - parallel
-    - synthetic
-    - searxng
-    - startpage
-    - duckduckgo
-    - ecosia
-    - google
-    - mojeek
-    - public
+    - codex
+
 retry:
   usageAwareFallback: true
   fallbackChains:
@@ -90,48 +95,62 @@ retry:
     advisor:
       - anthropic/claude-opus-5:medium
     task:
-      - anthropic/claude-opus-5:medium
+      - anthropic/claude-opus-5:high
     vision:
-      - openai-codex/gpt-5.6-sol:low
+      - openai-codex/gpt-5.6-sol:medium
     smol:
       - anthropic/claude-opus-5:low
     tiny:
       - anthropic/claude-opus-5:low
     commit:
-      - anthropic/claude-opus-5:low
+      - anthropic/claude-opus-5:medium
+    switch_fable: []
+
 omitThinking: false
 includeWorkspaceTree: false
 autocompleteMaxVisible: 10
 emojiAutocomplete: true
+
 branchSummary:
   enabled: true
+
 readLineNumbers: false
+
 commands:
   enableOpencodeProject: false
   enableOpencodeUser: false
+
 skills:
   enableClaudeUser: false
   enableCodexUser: false
   enableAgentsUser: true
+
 steeringMode: all
 interruptMode: immediate
+
 dev:
   autoqa: false
   autoqaConsent: denied
+
 compaction:
   thresholdTokens: 231200
   idleEnabled: true
   handoffSaveToDisk: true
+
 doubleEscapeAction: tree
 hideThinkingBlock: false
 autoResume: false
 textVerbosity: low
+
 features:
   unexpectedStopDetection: smart
+
 codexResets:
   autoRedeem: "no"
+
 startup:
   quiet: true
   changelogMode: summary
+
 tools:
   approvalMode: yolo
