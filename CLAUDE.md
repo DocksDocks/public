@@ -157,7 +157,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 ### Hooks
 
-- **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; injects current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model) so agents don't rely on training data cutoff
+- **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; emits structured hook JSON accepted by Claude Code and Codex imports, with current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model)
 - **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
 - **Notification**: Direct Bun exec of `~/.claude/bin/notify.mjs`; plays `notification.mp3` via the first available native player when a task completes
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)

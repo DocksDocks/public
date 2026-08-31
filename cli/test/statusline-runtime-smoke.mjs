@@ -81,8 +81,15 @@ try {
   if (sessionRun.exitCode !== 0 || sessionRun.stderr !== "") {
     throw new Error(`SessionStart failed: exit=${sessionRun.exitCode} stderr=${JSON.stringify(sessionRun.stderr)}`)
   }
-  const sessionLines = sessionRun.stdout.trimEnd().split("\n")
-  if (sessionLines.length !== 2 || !sessionLines[0].startsWith("[CONTEXT] Current date: ") || !sessionLines[1].startsWith("[CONFIG] Context: ")) {
+  const sessionOutput = JSON.parse(sessionRun.stdout)
+  const sessionContext = sessionOutput.hookSpecificOutput?.additionalContext
+  const sessionLines = typeof sessionContext === "string" ? sessionContext.split("\n") : []
+  if (
+    sessionOutput.hookSpecificOutput?.hookEventName !== "SessionStart" ||
+    sessionLines.length !== 2 ||
+    !sessionLines[0].startsWith("[CONTEXT] Current date: ") ||
+    !sessionLines[1].startsWith("[CONFIG] Context: ")
+  ) {
     throw new Error(`SessionStart output shape mismatch: ${JSON.stringify(sessionRun.stdout)}`)
   }
 
