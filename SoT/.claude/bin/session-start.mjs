@@ -49,7 +49,13 @@ export function sessionStartLines(options = {}) {
 
 export async function main(options = {}) {
   const writeStdout = options.writeStdout ?? ((value) => process.stdout.write(value))
-  writeStdout(`${sessionStartLines(options).join("\n")}\n`)
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: "SessionStart",
+      additionalContext: sessionStartLines(options).join("\n")
+    }
+  }
+  writeStdout(`${JSON.stringify(output)}\n`)
   return 0
 }
 

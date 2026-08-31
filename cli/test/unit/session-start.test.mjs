@@ -53,7 +53,7 @@ describe("SessionStart native context", () => {
     expect(secondLine({ env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "", CLAUDE_CODE_SUBAGENT_MODEL: "" } })).toContain("Subagent: default")
   })
 
-  it("main writes exactly two newline-terminated lines", async () => {
+  it("main writes one valid structured hook payload with the two context lines", async () => {
     const writes = []
     expect(await main({
       env: {},
@@ -62,9 +62,15 @@ describe("SessionStart native context", () => {
       readText: () => '{"effortLevel":"high"}',
       writeStdout: (value) => void writes.push(value)
     })).toBe(0)
-    expect(writes).toEqual([
-      "[CONTEXT] Current date: Friday, 2026-07-10 12:34:56 UTC\n[CONFIG] Context: 1M | Compact-window: full | Effort: high | Thinking: adaptive | Subagent: default\n"
-    ])
+    expect(writes).toHaveLength(1)
+    expect(JSON.parse(writes[0])).toEqual({
+      hookSpecificOutput: {
+        hookEventName: "SessionStart",
+        additionalContext:
+          "[CONTEXT] Current date: Friday, 2026-07-10 12:34:56 UTC\n" +
+          "[CONFIG] Context: 1M | Compact-window: full | Effort: high | Thinking: adaptive | Subagent: default"
+      }
+    })
   })
 
   it("ignores hook stdin effort data when directly executed", () => {
@@ -81,8 +87,9 @@ describe("SessionStart native context", () => {
       })
       expect(result.status).toBe(0)
       expect(result.stderr).toBe("")
-      expect(result.stdout.split("\n")[1]).toContain("Effort: xhigh")
-      expect(result.stdout).not.toContain("Effort: low")
+      const output = JSON.parse(result.stdout)
+      expect(output.hookSpecificOutput.additionalContext).toContain("Effort: xhigh")
+      expect(output.hookSpecificOutput.additionalContext).not.toContain("Effort: low")
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
