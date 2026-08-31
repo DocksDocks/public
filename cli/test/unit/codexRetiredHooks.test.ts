@@ -16,12 +16,12 @@ const configCommand = `echo "[CONFIG] Context: $([ \\\"\${CLAUDE_CODE_DISABLE_1M
 const skillsCommand = `SKILL_COUNT=$(find .claude/skills -name 'SKILL.md' -mindepth 2 -maxdepth 2 2>/dev/null | wc -l); [ "$SKILL_COUNT" -gt 0 ] && echo "[SKILLS] $SKILL_COUNT project skills available in .claude/skills/. Claude Code loads them on demand via Skill tool. After code changes affecting documented patterns, update the relevant skill and its metadata.updated field." || true`
 
 function connectorCommand(root: string): string {
-  const script = join(root, "home", ".codex", "hooks", "disable-claudeai-connectors.sh")
+  const script = p(root, "home", ".codex", "hooks", "disable-claudeai-connectors.sh")
   return `[ -x '${script}' ] && '${script}' || true`
 }
 
 function testCtx(root: string, stdout: Array<string> = []): Ctx {
-  const home = join(root, "home")
+  const home = p(root, "home")
   const platform = makePlatform("darwin")
   const services: EngineServices = {
     logger: makeLogger({ stderr: () => {}, progress: () => {}, stdout: (chunk) => stdout.push(chunk) }),
@@ -126,6 +126,7 @@ describe("retired imported Codex hooks", () => {
     const invalidHooks = prepareHooks(invalidRoot, "{broken\n")
     const dryBefore = `${JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ type: "command", command: contextCommand }] }] } })}\n`
     const dryHooks = prepareHooks(dryRoot, dryBefore)
+    const dryHooksDisplay = p(dryRoot, "home", ".codex", "hooks.json")
     const output: Array<string> = []
     const dryCtx = testCtx(dryRoot, output)
     dryCtx.dryRun = true
@@ -138,7 +139,7 @@ describe("retired imported Codex hooks", () => {
       await codexSync(dryCtx)
       expect(readFileSync(dryHooks, "utf8")).toBe(dryBefore)
       expect(existsSync(`${dryHooks}.bak`)).toBe(false)
-      expect(output.join("")).toContain(`[dry-run] remove 1 retired imported docks-kit SessionStart hook(s) from ${dryHooks}`)
+      expect(output.join("")).toContain(`[dry-run] remove 1 retired imported docks-kit SessionStart hook(s) from ${dryHooksDisplay}`)
     } finally {
       rmSync(invalidRoot, { recursive: true, force: true })
       rmSync(dryRoot, { recursive: true, force: true })
