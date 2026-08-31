@@ -145,7 +145,7 @@ release. npm publishes the exact package tarball through trusted publishing
 with OIDC provenance.
 Published binaries, checksums, and release notes are available on
 [GitHub Releases](https://github.com/DocksDocks/public/releases).
-Package `docks-kit` 0.16.2 bundles the CLI + generated payload, so npm releases
+Each `docks-kit` npm release bundles the CLI + generated payload, so releases
 are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs
