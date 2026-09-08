@@ -17,10 +17,6 @@ export const CLAUDE_ADVISOR_STATES = ["on", "off", "default"] as const
 const VERIFIED = "2026-07-10"
 const DEFAULT = "default"
 
-export type ClaudeEffortLevel = typeof CLAUDE_EFFORT_LEVELS[number]
-export type CodexReasoningEffort = typeof CODEX_REASONING_EFFORTS[number]
-export type ClaudeAdvisorState = typeof CLAUDE_ADVISOR_STATES[number]
-
 const upstreamEfforts = (tool: Tool): ReadonlyArray<string> =>
   tool === "claude" ? CLAUDE_EFFORT_LEVELS : CODEX_REASONING_EFFORTS
 
