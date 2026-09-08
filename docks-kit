@@ -8,7 +8,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # BEGIN GENERATED BUN PIN
-BUN_PIN="1.4.0"
+BUN_PIN="1.4.2"
 # END GENERATED BUN PIN
 
 # BEGIN GENERATED BUN FLOOR

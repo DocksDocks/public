@@ -60,6 +60,42 @@ describe("package update target", () => {
     })
   })
 
+  it("resolves the Bun 1.4.2 global package root with an installed-count annotation", () => {
+    const capture = () => ({
+      status: 0,
+      stdout: "/home/u/.bun/install/global node_modules (64 installed)\n├── bun@1.3.14\n└── docks-kit@0.16.3\n"
+    })
+
+    expect(resolveGlobalPackageHome("bun", capture)).toEqual({
+      ok: true,
+      home: "/home/u/.bun/install/global/node_modules/docks-kit"
+    })
+  })
+
+  it("resolves the Bun global package root without an annotation", () => {
+    const capture = () => ({
+      status: 0,
+      stdout: "/home/u/.bun/install/global node_modules\n└── docks-kit@0.16.3\n"
+    })
+
+    expect(resolveGlobalPackageHome("bun", capture)).toEqual({
+      ok: true,
+      home: "/home/u/.bun/install/global/node_modules/docks-kit"
+    })
+  })
+
+  it("rejects Bun output without a global package root header", () => {
+    const capture = () => ({
+      status: 0,
+      stdout: "/home/u/.bun/install/global node_modules unexpected text\n├── bun@1.3.14\n└── docks-kit@0.16.3\n"
+    })
+
+    expect(resolveGlobalPackageHome("bun", capture)).toEqual({
+      ok: false,
+      diagnostic: "bun pm -g ls did not report its global package root"
+    })
+  })
+
   const linux = hostOs("linux")
   const windows = hostOs("windows")
 
