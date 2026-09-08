@@ -50,7 +50,7 @@ export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
 
 /** skills::_skills_cli — the pinned npx package spec. */
 function skillsCli(ctx: Ctx): string {
-  const version = field(ctx, "skills-cli", "verified")
+  const version = field("skills-cli", "verified")
   if (version !== "") return `skills@${version}`
   ctx.services.logger.err("Universal skills sync aborted because SoT/toolchain.json has no verified skills-cli pin")
   throw new ExitError(1)

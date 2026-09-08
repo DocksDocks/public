@@ -57,7 +57,7 @@ async function runBunBootstrap(ctx: Ctx, services: EngineServices): Promise<BunR
   const existing = await services.deps.path("bun")
   if (existing !== "") return { kind: "ready", executable: existing }
 
-  const pin = field(ctx, "bun", "verified")
+  const pin = field("bun", "verified")
   if (pin === "") {
     services.logger.warn("Bun bootstrap aborted — SoT/toolchain.json has no verified Bun pin")
     return { kind: "deferred", reason: "install-failed" }

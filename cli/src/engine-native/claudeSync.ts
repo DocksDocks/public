@@ -879,7 +879,7 @@ async function syncOptionalPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
 // ---------------------------------------------------------- LSP servers ----
 
 function lspPkg(ctx: Ctx, tool: string, pkg: string): string | undefined {
-  const version = field(ctx, tool, "verified")
+  const version = field(tool, "verified")
   if (version !== "") return `${pkg}@${version}`
   ctx.services.logger.warn(`Skipping ${pkg} install: ${tool} has no verified version in SoT/toolchain.json`)
   return undefined
