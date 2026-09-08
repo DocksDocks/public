@@ -148,7 +148,3 @@ export function writeBytesIfChanged(path: string, content: Uint8Array): boolean 
   writeFileSync(path, bytes)
   return true
 }
-
-export function writeFileIfChanged(path: string, content: string): boolean {
-  return writeTextIfChanged(path, content)
-}

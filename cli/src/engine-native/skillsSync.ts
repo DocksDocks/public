@@ -17,7 +17,7 @@ import {
 } from "node:fs"
 import { dirname, relative, resolve } from "node:path"
 import { payloadText } from "../payload"
-import { p, spawnProcess, writeFileIfChanged } from "./exec"
+import { p, spawnProcess, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import { hostOs, type DirectoryLinkKind } from "./os"
@@ -365,7 +365,7 @@ function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string, failedRemo
 
   mkdirSync(ctx.agentsDir, { recursive: true })
   const sorted = [...new Set([...normalizeManifest(manifest), ...failedRemovals])].sort(compareCodepoints)
-  writeFileIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
+  writeTextIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
 }
 
 // -------------------------------------------------------------- summary ----
