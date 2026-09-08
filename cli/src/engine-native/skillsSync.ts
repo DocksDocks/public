@@ -17,7 +17,7 @@ import {
 } from "node:fs"
 import { dirname, relative, resolve } from "node:path"
 import { payloadText } from "../payload"
-import { p, spawnProcess, writeFileIfChanged } from "./exec"
+import { p, spawnProcess, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints } from "./jq"
 import { hostOs, type DirectoryLinkKind } from "./os"
@@ -50,7 +50,7 @@ export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
 
 /** skills::_skills_cli — the pinned npx package spec. */
 function skillsCli(ctx: Ctx): string {
-  const version = field(ctx, "skills-cli", "verified")
+  const version = field("skills-cli", "verified")
   if (version !== "") return `skills@${version}`
   ctx.services.logger.err("Universal skills sync aborted because SoT/toolchain.json has no verified skills-cli pin")
   throw new ExitError(1)
@@ -365,7 +365,7 @@ function updateSnapshot(ctx: Ctx, manifest: string, snapshot: string, failedRemo
 
   mkdirSync(ctx.agentsDir, { recursive: true })
   const sorted = [...new Set([...normalizeManifest(manifest), ...failedRemovals])].sort(compareCodepoints)
-  writeFileIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
+  writeTextIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "")
 }
 
 // -------------------------------------------------------------- summary ----

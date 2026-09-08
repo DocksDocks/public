@@ -5,7 +5,7 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 
-import { syncCodexEffort, syncCodexModel, replaceTopLevelSettingInFile } from "./codexToml"
+import { mergeTableSettings, mergeTopLevelSettings, syncCodexEffort, syncCodexModel } from "./codexToml"
 import { p, spawnProcess } from "./exec"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
@@ -217,7 +217,7 @@ function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
 }
 
 /** codex::scrub_deprecated_features — the [features].use_legacy_landlock awk pass. */
-export function scrubDeprecatedFeaturesText(content: string): string {
+function scrubDeprecatedFeaturesText(content: string): string {
   const lines = content.split("\n")
   if (lines[lines.length - 1] === "") lines.pop()
   let out = ""
@@ -315,146 +315,6 @@ function removeRetiredPluginTables(ctx: Ctx, userConfig: string): void {
   writeFileSync(`${userConfig}.tmp`, removeRetiredPluginTablesText(content))
   renameSync(`${userConfig}.tmp`, userConfig)
   for (const id of present) change(`Codex: removed retired plugin table [plugins."${id}"]`)
-}
-
-function mergeTopLevelSettings(sotConfigText: string, userConfig: string): void {
-  for (const line of sotConfigText.split("\n")) {
-    if (line.startsWith("[")) break
-    if (/^[ \t]*($|#)/.test(line)) continue
-    if (!/^[A-Za-z0-9_.-]+[ \t]*=/.test(line)) continue
-    const key = line.slice(0, line.indexOf("=")).replace(/[ \t]+$/, "")
-    replaceTopLevelSettingInFile(userConfig, key, line)
-  }
-}
-
-interface TomlTableHeader {
-  readonly path: string
-}
-
-const TOML_BASIC_ESCAPES: Readonly<Record<string, string>> = {
-  b: "\b",
-  t: "\t",
-  n: "\n",
-  f: "\f",
-  r: "\r",
-  '"': '"',
-  "\\": "\\"
-}
-
-function tomlBasicEscape(line: string, offset: number): { readonly next: number; readonly value: string } | undefined {
-  const escaped = line[offset]
-  const simple = escaped === undefined ? undefined : TOML_BASIC_ESCAPES[escaped]
-  if (simple !== undefined) return { next: offset + 1, value: simple }
-  const digits = escaped === "u" ? 4 : escaped === "U" ? 8 : 0
-  if (digits === 0) return undefined
-  const hex = line.slice(offset + 1, offset + 1 + digits)
-  if (hex.length !== digits || !/^[0-9A-Fa-f]+$/.test(hex)) return undefined
-  const codePoint = Number.parseInt(hex, 16)
-  if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) return undefined
-  return { next: offset + 1 + digits, value: String.fromCodePoint(codePoint) }
-}
-
-/** Decode a table header to the TOML path that determines managed ownership. */
-function tomlTableHeader(line: string): TomlTableHeader | undefined {
-  let offset = 0
-  const skipWhitespace = (): void => {
-    while (line[offset] === " " || line[offset] === "\t") offset++
-  }
-
-  skipWhitespace()
-  if (line[offset] !== "[") return undefined
-  offset++
-  const array = line[offset] === "["
-  if (array) offset++
-
-  const keys: Array<string> = []
-  while (true) {
-    skipWhitespace()
-    const quote = line[offset]
-    let key = ""
-    if (quote === '"' || quote === "'") {
-      offset++
-      let closed = false
-      while (offset < line.length) {
-        const char = line[offset]!
-        if (char === quote) {
-          offset++
-          closed = true
-          break
-        }
-        if (quote === '"' && char === "\\") {
-          const escape = tomlBasicEscape(line, offset + 1)
-          if (escape === undefined) return undefined
-          key += escape.value
-          offset = escape.next
-          continue
-        }
-        if (char === "\n" || char === "\r") return undefined
-        key += char
-        offset++
-      }
-      if (!closed) return undefined
-    } else {
-      const start = offset
-      while (offset < line.length && /[A-Za-z0-9_-]/.test(line[offset]!)) offset++
-      if (offset === start) return undefined
-      key = line.slice(start, offset)
-    }
-    keys.push(key)
-
-    skipWhitespace()
-    if (line[offset] === ".") {
-      offset++
-      continue
-    }
-    if (line[offset] !== "]") return undefined
-    offset++
-    if (array) {
-      if (line[offset] !== "]") return undefined
-      offset++
-    }
-    skipWhitespace()
-    if (offset < line.length && line[offset] !== "#") return undefined
-    return { path: JSON.stringify(keys) }
-  }
-}
-
-function mergeTableSettingsText(sotConfigText: string, userConfigText: string): string {
-  const sotLines = sotConfigText.split("\n")
-  let merged = userConfigText
-  for (let tableOffset = 0; tableOffset < sotLines.length; tableOffset++) {
-    const managedHeader = tomlTableHeader(sotLines[tableOffset]!)
-    if (managedHeader === undefined) continue
-
-    const block: Array<string> = []
-    for (let blockOffset = tableOffset; blockOffset < sotLines.length; blockOffset++) {
-      const line = sotLines[blockOffset]!
-      if (blockOffset !== tableOffset && tomlTableHeader(line) !== undefined) break
-      block.push(line)
-    }
-    const tableBlock = block.join("\n").replace(/\n+$/, "")
-
-    const userLines = merged.split("\n")
-    if (userLines[userLines.length - 1] === "") userLines.pop()
-    let skip = false
-    const kept: Array<string> = []
-    for (const line of userLines) {
-      const header = tomlTableHeader(line)
-      if (header !== undefined) {
-        skip = header.path === managedHeader.path
-        if (skip) continue
-      }
-      if (!skip) kept.push(line)
-    }
-    merged = `${kept.join("\n")}\n\n${tableBlock}\n`
-  }
-  return merged
-}
-
-function mergeTableSettings(sotConfigText: string, userConfig: string): void {
-  const next = mergeTableSettingsText(sotConfigText, readFileSync(userConfig, "utf8"))
-  writeFileSync(`${userConfig}.tmp`, next)
-  renameSync(`${userConfig}.tmp`, userConfig)
 }
 
 // ------------------------------------------------------- rules + agents ----
@@ -560,7 +420,7 @@ function syncMarketplace(ctx: Ctx, sotMarketplaceText: string, userMarketplace: 
  * wins per plugin name; distinct names end up descending by name, exactly
  * like jq's unique_by (ascending) followed by reverse.
  */
-export function mergeMarketplace(repo: Json, user: Json): Json {
+function mergeMarketplace(repo: Json, user: Json): Json {
   const u = isObject(user) ? user : {}
   const r = isObject(repo) ? repo : {}
   const coalesce = (a: Json | undefined, b: Json | undefined): Json =>
@@ -586,7 +446,7 @@ export function mergeMarketplace(repo: Json, user: Json): Json {
 // -------------------------------------------------------------- plugins ----
 
 /** codex::_marketplace_source — first `source =` inside [marketplaces.<name>]. */
-export function marketplaceSource(marketplace: string, configFile: string): string {
+function marketplaceSource(marketplace: string, configFile: string): string {
   if (!existsSync(configFile)) return ""
   let inMarketplace = false
   for (const line of readFileSync(configFile, "utf8").split("\n")) {
@@ -629,12 +489,12 @@ async function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): Promi
 const standaloneInstallCommand = (ctx: Ctx): string => ctx.services.deps.spec("codex").installHint()
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
-export function enabledPluginIds(configFile: string): Array<string> {
+function enabledPluginIds(configFile: string): Array<string> {
   if (!existsSync(configFile)) return []
   return enabledPluginIdsFromText(readFileSync(configFile, "utf8"))
 }
 
-export function enabledPluginIdsFromText(configText: string): Array<string> {
+function enabledPluginIdsFromText(configText: string): Array<string> {
   const ids: Array<string> = []
   let plugin = ""
   let enabled = false

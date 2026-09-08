@@ -13,8 +13,8 @@ metadata:
     - path: cli/src/engine-native/modes.ts
       lines: "1-148"
     - path: cli/src/engine-native/models.ts
-      lines: "1-65"
-  updated: "2026-08-15"
+      lines: "1-87"
+  updated: "2026-09-08"
 ---
 
 # Sync Engine Orchestration

@@ -1,33 +1,16 @@
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
-import { pluginUserScopeInstalled } from "./engine-native/claudeSync"
+import { pluginUserScopeInstalled } from "./engine-native/claudePlugins"
 import { COPY_MARKER } from "./engine-native/skillsSync"
 import { payloadText } from "./payload"
 
 export { homedir }
 
-export interface ModelEntry {
-  readonly id: string
-  readonly kind: "alias" | "id"
-  readonly note?: string
-}
-
-export interface ModelCatalog {
-  readonly verified: string
-  readonly models: ReadonlyArray<ModelEntry>
-}
-
 export type Tool = "claude" | "codex"
 
 const readJson = (path: string): any => JSON.parse(readFileSync(path, "utf8"))
 const readJsonText = (text: string): any => JSON.parse(text)
-
-export const modelCatalog = (tool: Tool): ModelCatalog =>
-  readJsonText(payloadText("SoT/models.json"))[tool]
-
-export const toolchainManifest = (): Record<string, any> =>
-  readJsonText(payloadText("SoT/toolchain.json")).tools
 
 /** SoT settings (claude) — model/effort/env for drift display. */
 export const sotClaudeSettings = (): any =>

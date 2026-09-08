@@ -63,7 +63,7 @@ export const HOST_TARGETS: ReadonlyArray<HostTarget> = [
   target("windows-arm64", "windows", "arm64", [], ["ARM64"])
 ]
 
-export function targetFor(platform: PlatformName, arch: string): HostTarget | undefined {
+function targetFor(platform: PlatformName, arch: string): HostTarget | undefined {
   return HOST_TARGETS.find((t) => t.platform === platform && t.arch === arch)
 }
 

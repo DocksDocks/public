@@ -14,7 +14,7 @@ function manifest(): { [k: string]: Json } {
   return tools !== undefined && isObject(tools) ? tools : {}
 }
 
-export function field(ctx: Ctx, tool: string, name: string): string {
+export function field(tool: string, name: string): string {
   const entry = manifest()[tool]
   if (entry === undefined || !isObject(entry)) return ""
   const v = entry[name]
@@ -22,7 +22,7 @@ export function field(ctx: Ctx, tool: string, name: string): string {
 }
 
 /** toolchain::_is_newer — numeric per dotted field, GNU-sort last-resort tie-break. */
-export function isNewer(a: string, b: string): boolean {
+function isNewer(a: string, b: string): boolean {
   if (a === "" || b === "" || a === b) return false
   const fa = a.split(".")
   const fb = b.split(".")
@@ -86,14 +86,14 @@ export async function report(ctx: Ctx): Promise<void> {
   const pn = ctx.services.platform.name()
   const platformOs = hostOs(pn).toolchainOs
   for (const tool of Object.keys(manifest()).sort(compareCodepoints)) {
-    const os = field(ctx, tool, "os")
+    const os = field(tool, "os")
     if (os !== "" && platformOs !== "" && os !== platformOs) continue
-    const kind = field(ctx, tool, "kind")
-    const floor = field(ctx, tool, "floor")
-    const verified = field(ctx, tool, "verified")
+    const kind = field(tool, "kind")
+    const floor = field(tool, "floor")
+    const verified = field(tool, "verified")
     const dash = (v: string): string => (v !== "" ? v : "-")
     if (kind === "pin") {
-      const via = field(ctx, tool, "via")
+      const via = field(tool, "via")
       echo(row([tool, kind, `(${via !== "" ? via : "npx"})`, dash(floor), dash(verified), "pinned"]))
       continue
     }

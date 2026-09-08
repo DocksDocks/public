@@ -116,7 +116,7 @@ export function commandExists(name: string): boolean {
   return which(name) !== ""
 }
 
-export function isExecutable(path: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): boolean {
+function isExecutable(path: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): boolean {
   try {
     if (!statSync(path).isFile()) return false
     if (suffixes.some((suffix) => suffix !== "")) {
@@ -147,8 +147,4 @@ export function writeBytesIfChanged(path: string, content: Uint8Array): boolean 
   if (existsSync(path) && readFileSync(path).equals(bytes)) return false
   writeFileSync(path, bytes)
   return true
-}
-
-export function writeFileIfChanged(path: string, content: string): boolean {
-  return writeTextIfChanged(path, content)
 }

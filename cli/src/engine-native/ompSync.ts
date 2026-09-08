@@ -10,7 +10,7 @@ import { isAbsolute, resolve } from "node:path"
 
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload"
 import { bunBootstrap } from "./bun"
-import { commandExists, p, spawnProcess, type AsyncProcessResult } from "./exec"
+import { p, spawnProcess, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import { isObject, parseJson } from "./jq"
 import { ompPaths } from "./ompPaths"
@@ -317,7 +317,7 @@ async function syncPlugins(ctx: Ctx): Promise<number> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
 
   if (ctx.dryRun) {
-    const piIntercomPin = field(ctx, "pi-intercom", "verified")
+    const piIntercomPin = field("pi-intercom", "verified")
     for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
       echo(`[dry-run] omp plugin install --scope user ${pluginId}`)
     }
@@ -345,7 +345,7 @@ async function syncPlugins(ctx: Ctx): Promise<number> {
     )
     return 0
   }
-  const piIntercomPin = field(ctx, "pi-intercom", "verified")
+  const piIntercomPin = field("pi-intercom", "verified")
 
   progress("Checking installed omp plugins...")
   const installed = await installedPluginIdsFromCli()

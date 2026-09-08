@@ -6,6 +6,16 @@ import type { Ctx } from "./index"
 import { isObject, parseJson, type Json } from "./jq"
 import { payloadDisplayPath, payloadText } from "../payload"
 
+export interface ModelEntry {
+  readonly id: string
+  readonly kind: "alias" | "id"
+  readonly note?: string
+}
+
+export interface ModelCatalog {
+  readonly verified: string
+  readonly models: ReadonlyArray<ModelEntry>
+}
 
 function toolEntry(tool: string): { [k: string]: Json } | undefined {
   const doc = parseJson(payloadText("SoT/models.json"))
@@ -14,16 +24,28 @@ function toolEntry(tool: string): { [k: string]: Json } | undefined {
   return entry !== undefined && isObject(entry) ? entry : undefined
 }
 
-function modelEntries(tool: string): Array<{ [k: string]: Json }> {
-  const entry = toolEntry(tool)
+function modelEntries(entry: { [k: string]: Json } | undefined): Array<{ [k: string]: Json }> {
   const models = entry?.["models"]
   return Array.isArray(models) ? models.filter(isObject) : []
 }
 
-export function modelsFromManifest(tool: string): Array<string> {
-  return modelEntries(tool)
-    .map((m) => m["id"])
-    .filter((id): id is string => typeof id === "string")
+/**
+ * Typed view of one tool's `SoT/models.json` section. An entry whose `id` is not a
+ * string or whose `kind` is neither `alias` nor `id` is skipped; a missing section
+ * yields `verified: "?"` and no models.
+ */
+export function modelCatalog(tool: string): ModelCatalog {
+  const entry = toolEntry(tool)
+  const verified = entry?.["verified"]
+  const models: Array<ModelEntry> = []
+  for (const m of modelEntries(entry)) {
+    const id = m["id"]
+    const kind = m["kind"]
+    if (typeof id !== "string" || (kind !== "alias" && kind !== "id")) continue
+    const note = m["note"]
+    models.push(typeof note === "string" ? { id, kind, note } : { id, kind })
+  }
+  return { verified: typeof verified === "string" ? verified : "?", models }
 }
 
 export function printModels(ctx: Ctx, tool: string): void {
@@ -35,7 +57,7 @@ export function printModels(ctx: Ctx, tool: string): void {
   }
   const verified = typeof entry["verified"] === "string" ? entry["verified"] : "?"
   const lines = [`Available ${tool} models (kit-verified ${verified} — SoT/models.json):`]
-  for (const m of modelEntries(tool)) {
+  for (const m of modelEntries(entry)) {
     const note = typeof m["note"] === "string" ? `  — ${m["note"]}` : ""
     lines.push(`  ${String(m["id"] ?? "")}${note}`)
   }
@@ -46,7 +68,7 @@ export function printModels(ctx: Ctx, tool: string): void {
 
 export function validateClaudeModel(ctx: Ctx, m: string): boolean {
   if (m === "") return false
-  if (modelsFromManifest("claude").includes(m)) return true
+  if (modelCatalog("claude").models.some((entry) => entry.id === m)) return true
   if (m.startsWith("claude-")) {
     ctx.services.logger.warn(`Claude model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway`)
     return true
@@ -56,7 +78,7 @@ export function validateClaudeModel(ctx: Ctx, m: string): boolean {
 
 export function validateCodexModel(ctx: Ctx, m: string): boolean {
   if (!/^[A-Za-z0-9._-]+$/.test(m)) return false
-  if (!modelsFromManifest("codex").includes(m)) {
+  if (!modelCatalog("codex").models.some((entry) => entry.id === m)) {
     ctx.services.logger.warn(
       `Codex model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway (check ~/.codex/config.toml if Codex rejects it)`
     )

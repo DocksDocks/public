@@ -1,18 +1,18 @@
 ---
 name: plugin-bootstrap-context
-description: "Use when modifying cli/src/engine-native/claudeSync.ts plugin functions syncPlugins, pluginUserScopeInstalled, syncOptionalPlugins, enableOptionalPlugin, syncLspServers, or cli/src/engine-native/codexSync.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
+description: "Use when modifying cli/src/engine-native/claudePlugins.ts plugin functions syncPlugins, pluginUserScopeInstalled, syncOptionalPlugins, enableOptionalPlugin, syncLspServers, or cli/src/engine-native/codexSync.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
 user-invocable: false
 metadata:
   source_files:
-    - path: cli/src/engine-native/claudeSync.ts
-      lines: "623-810"
+    - path: cli/src/engine-native/claudePlugins.ts
+      lines: "1-390"
     - path: cli/src/engine-native/codexSync.ts
       lines: "249-500"
     - path: SoT/.claude/settings.json
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-08-07"
+  updated: "2026-09-08"
 ---
 
 # Plugin Bootstrap

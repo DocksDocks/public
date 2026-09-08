@@ -15,7 +15,8 @@ import {
   effortFlagGrammar
 } from "./efforts"
 import { KNOWN_CLAUDE_OPTIN_PLUGINS } from "./engine-native/parseArgs"
-import { modelCatalog, type Tool } from "./manifests"
+import { modelCatalog } from "./engine-native/models"
+import type { Tool } from "./manifests"
 
 export type ArgvOutcome =
   | { readonly kind: "reject"; readonly message: string; readonly exitCode: number }

@@ -11,6 +11,8 @@
  *   - output formatting: 2-space indent, UTF-8 raw, trailing newline.
  */
 
+import { existsSync, readFileSync } from "node:fs"
+
 export type Json = null | boolean | number | string | Array<Json> | { [key: string]: Json }
 
 export function isObject(v: Json): v is { [key: string]: Json } {
@@ -60,4 +62,9 @@ export function parseJson(text: string): Json | undefined {
   } catch {
     return undefined
   }
+}
+
+/** Parse a JSON file with `parseJson` semantics; a missing file is `undefined`. */
+export function readJsonFile(file: string): Json | undefined {
+  return existsSync(file) ? parseJson(readFileSync(file, "utf8")) : undefined
 }
