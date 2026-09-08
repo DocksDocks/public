@@ -166,6 +166,27 @@ level except max. Watch reviewer output, because the four reviewer agents
 inherit `@task`. If review quality drops, pin those four agents to
 `anthropic/claude-opus-5:high` rather than reverting the whole role.
 
+## What resolves to Astra low in practice
+
+`modelRoles.task` sets the model. It does not fix the level for every spawn,
+and it does not cover every agent.
+
+- The bundled `scout` and `sonic` agents carry `model: "@smol"` and
+  `thinking-level: medium` in their embedded frontmatter, so they run Luna,
+  not Astra. `task.agentModelOverrides` is the only way to move them.
+- `task.enableEffort` is `true` and `task.maxEffort` is `high` in the SoT. A
+  caller that passes `effort: hi` gets the model's highest level at or below
+  `high`: Astra `high` for `task` and the four reviewer agents, Luna `high` for
+  `scout` and `sonic`. `effort: lo` gives the lowest level. Without an
+  `effort`, the bundled `task` agent's `auto` classifier picks the level per
+  prompt, and `scout` and `sonic` use `medium`.
+
+So the Astra low figures above describe a `task` spawn without an `effort`
+hint or with `effort: lo`. A `task` spawn with `effort: hi` runs Astra high
+($1.72 per index task, 45.63 s TTFT). Both behaviors are intentional; a run
+that must stay on low sets `task.maxEffort: low`, which also lowers every
+other agent.
+
 ## Maintenance
 
 - Refresh the snapshot from the AA release page of each family
