@@ -1,6 +1,6 @@
 ---
 name: plugin-bootstrap-agent
-description: Use when editing `cli/src/engine-native/claudeSync.ts` plugin functions (`syncPlugins`, `pluginUserScopeInstalled`, `syncOptionalPlugins`, `enableOptionalPlugin`, `syncLspServers`) or `cli/src/engine-native/codexSync.ts` marketplace/plugin functions (`syncMarketplace`, `removeLegacyDocksMarketplace`, `enabledPluginIds`, plugin refresh). Not for settings merge or universal skill install.
+description: Use when editing `cli/src/engine-native/claudePlugins.ts` plugin functions (`syncPlugins`, `pluginUserScopeInstalled`, `syncOptionalPlugins`, `enableOptionalPlugin`, `syncLspServers`) or `cli/src/engine-native/codexSync.ts` marketplace/plugin functions (`syncMarketplace`, `removeLegacyDocksMarketplace`, `enabledPluginIds`, plugin refresh). Not for settings merge or universal skill install.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

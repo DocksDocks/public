@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
-import { pluginUserScopeInstalled } from "./engine-native/claudeSync"
+import { pluginUserScopeInstalled } from "./engine-native/claudePlugins"
 import { COPY_MARKER } from "./engine-native/skillsSync"
 import { payloadText } from "./payload"
 

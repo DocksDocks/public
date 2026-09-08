@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-975"
+      lines: "1-590"
     - path: cli/src/engine-native/settings.ts
       lines: "1-42"
     - path: cli/src/engine-native/claudeRetired.ts
@@ -14,7 +14,7 @@ metadata:
       lines: "1-372"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-40"
-  updated: "2026-08-28"
+  updated: "2026-09-08"
 ---
 
 # Settings Merge

@@ -1,7 +1,7 @@
 # Seven-Pass Plugin Reconcile
 
 The implementation lives in `syncPlugins(ctx, claudeDir)` in
-`cli/src/engine-native/claudeSync.ts`. The logical pass structure is preserved
+`cli/src/engine-native/claudePlugins.ts`. The logical pass structure is preserved
 from the original design, but counters and subprocess calls are TypeScript.
 
 ## Critical Constraints
