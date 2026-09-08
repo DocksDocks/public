@@ -10,6 +10,7 @@ import plugins from "../../docs/plugins.md" with { type: "text" }
 import syncLayers from "../../docs/sync-layers.md" with { type: "text" }
 import install from "../../docs/install.md" with { type: "text" }
 import platforms from "../../docs/platforms.md" with { type: "text" }
+import ompModels from "../../docs/omp-models.md" with { type: "text" }
 
 const TOPICS: Record<string, { summary: string; body: string }> = {
   "overview": { summary: "What docks-kit is and how the pieces fit", body: overview },
@@ -20,7 +21,8 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "toolchain": { summary: "Verified-version floors and the doctor table", body: toolchain },
   "plugins": { summary: "enabledPlugins tri-state + optional plugin opt-ins", body: plugins },
   "install": { summary: "Install paths: repo checkout, bun add -g, POSIX/Windows installers", body: install },
-  "platforms": { summary: "Platform support: Linux, macOS, and Windows on x64 and arm64", body: platforms }
+  "platforms": { summary: "Platform support: Linux, macOS, and Windows on x64 and arm64", body: platforms },
+  "omp-models": { summary: "omp role map and the Artificial Analysis snapshot behind it", body: ompModels }
 }
 
 const topic = Argument.string("topic").pipe(

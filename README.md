@@ -52,7 +52,7 @@ docks-kit toolchain [check|ensure <tool>]       verified-version floors for exte
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
-docks-kit docs [topic]                          self-documentation (9 topics)
+docks-kit docs [topic]                          self-documentation (10 topics)
 --help --version --wizard --completions    built-in
 ```
 
@@ -150,8 +150,9 @@ are versioned config snapshots without shipping the authoring `SoT/` tree.
 
 ## Deeper docs
 
-- `docks-kit docs <topic>` — overview, sync-layers, flags, modifiers, models,
-  toolchain, plugins, install, platforms (works offline, bundled with the CLI)
+- `docks-kit docs <topic>` - overview, sync-layers, flags, modifiers, models,
+  omp-models, toolchain, plugins, install, platforms (works offline, bundled
+  with the CLI)
 - [`AGENTS.md`](AGENTS.md) — engineering rules for agents working on the kit
 - [`CLAUDE.md`](CLAUDE.md) — Claude Code specifics: env vars, session
   management, permission mode, open concerns
