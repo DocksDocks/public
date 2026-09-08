@@ -72,20 +72,11 @@ const gatherDrift = (): {
     return { setting, deployed: d, sot: s, drifted: d !== s }
   }
   const codex = row("codex.model", deployedCodexModel(), sotCodexModel())
-  if (claudeDeployment.state === "absent") {
+  if (claudeDeployment.state !== "valid") {
     return {
       claudeDeployment,
       drift: [
-        { setting: "claude.settings", deployed: "(absent)", sot: "present", drifted: true },
-        codex
-      ]
-    }
-  }
-  if (claudeDeployment.state === "malformed") {
-    return {
-      claudeDeployment,
-      drift: [
-        { setting: "claude.settings", deployed: "(malformed)", sot: "present", drifted: true },
+        { setting: "claude.settings", deployed: `(${claudeDeployment.state})`, sot: "present", drifted: true },
         codex
       ]
     }
