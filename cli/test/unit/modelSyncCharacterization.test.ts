@@ -2,7 +2,7 @@ import { readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
-import { modelCatalog } from "../../src/manifests"
+import { modelCatalog } from "../../src/engine-native/models"
 import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
 

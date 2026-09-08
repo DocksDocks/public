@@ -1,7 +1,8 @@
 import { Argument, Command, Flag, Prompt } from "effect/unstable/cli"
 import { Effect, Option } from "effect"
 import { bail, engine } from "../engine"
-import { modelCatalog, type Tool } from "../manifests"
+import { modelCatalog } from "../engine-native/models"
+import type { Tool } from "../manifests"
 
 const tool = Argument.string("tool").pipe(
   Argument.withDescription("Which tool: claude | codex")

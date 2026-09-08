@@ -7,24 +7,10 @@ import { payloadText } from "./payload"
 
 export { homedir }
 
-export interface ModelEntry {
-  readonly id: string
-  readonly kind: "alias" | "id"
-  readonly note?: string
-}
-
-export interface ModelCatalog {
-  readonly verified: string
-  readonly models: ReadonlyArray<ModelEntry>
-}
-
 export type Tool = "claude" | "codex"
 
 const readJson = (path: string): any => JSON.parse(readFileSync(path, "utf8"))
 const readJsonText = (text: string): any => JSON.parse(text)
-
-export const modelCatalog = (tool: Tool): ModelCatalog =>
-  readJsonText(payloadText("SoT/models.json"))[tool]
 
 /** SoT settings (claude) — model/effort/env for drift display. */
 export const sotClaudeSettings = (): any =>
