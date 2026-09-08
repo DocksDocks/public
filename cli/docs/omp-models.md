@@ -135,7 +135,7 @@ published numeric cache price. Context 1M.
 Price: $0.20 in, $1.20 out, $0.02 cache read per 1M; no published cache-write
 price. Context 1M. AA lists cost per task only for max and xhigh.
 
-## Why `task` runs Astra low
+## Why `task` points at Astra low
 
 | Metric | Astra low | Sol high | Sol max | Opus 5 high |
 |---|---:|---:|---:|---:|
@@ -168,24 +168,31 @@ inherit `@task`. If review quality drops, pin those four agents to
 
 ## What resolves to Astra low in practice
 
-`modelRoles.task` sets the model. It does not fix the level for every spawn,
-and it does not cover every agent.
+`modelRoles.task` sets the model. The `:low` suffix is the role's own level;
+it does not decide the level of every spawn, and the role does not cover
+every agent.
 
 - The bundled `scout` and `sonic` agents carry `model: "@smol"` and
   `thinking-level: medium` in their embedded frontmatter, so they run Luna,
-  not Astra. `task.agentModelOverrides` is the only way to move them.
-- `task.enableEffort` is `true` and `task.maxEffort` is `high` in the SoT. A
-  caller that passes `effort: hi` gets the model's highest level at or below
-  `high`: Astra `high` for `task` and the four reviewer agents, Luna `high` for
-  `scout` and `sonic`. `effort: lo` gives the lowest level. Without an
-  `effort`, the bundled `task` agent's `auto` classifier picks the level per
-  prompt, and `scout` and `sonic` use `medium`.
+  not Astra. To move them, change `modelRoles.smol` or add a
+  `task.agentModelOverrides` entry for the agent name.
+- The bundled `task` agent carries `model: "@task"` and
+  `thinking-level: auto`. `auto` classifies each prompt and picks a level for
+  the resolved model, so a `task` spawn without an `effort` hint runs Astra at
+  the level the classifier chooses. Spawns have been observed at both `low`
+  and `high`.
+- `task.enableEffort` is `true` and `task.maxEffort` is `high` in the SoT. An
+  `effort` hint overrides `auto`: `hi` gives the model's highest level at or
+  below `high` (Astra `high`; Luna `high` for `scout` and `sonic`), `lo` gives
+  the lowest.
 
-So the Astra low figures above describe a `task` spawn without an `effort`
-hint or with `effort: lo`. A `task` spawn with `effort: hi` runs Astra high
-($1.72 per index task, 45.63 s TTFT). Both behaviors are intentional; a run
-that must stay on low sets `task.maxEffort: low`, which also lowers every
-other agent.
+So the Astra low figures above describe the role, and a `task` spawn reaches
+them only through `effort: lo` or a prompt the classifier rates low. A spawn at
+Astra high costs $1.72 per index task with 45.63 s TTFT on the same snapshot.
+Both behaviors are intentional; a run that must stay on low sets
+`task.maxEffort: low`, which also lowers every other agent.
+
+omp's model catalog lists Astra with a 272k context window, while AA lists 1M.
 
 ## Maintenance
 
