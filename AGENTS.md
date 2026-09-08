@@ -64,6 +64,10 @@ omp SoT notes:
 - `SoT/.omp/AGENTS.md`, `config.yml`, and `mcp.json` deploy to `~/.omp/agent/`.
 - `SoT/.omp/intercom.json` deploys to `$PI_CODING_AGENT_DIR/intercom/config.json`. The default root is `~/.pi/agent`.
 - `ompSync.ts syncConfig` deep-merges `config.yml` through `mergeOmpConfig`.
+- `cycleOrder` ends with the `fable` role (`modelRoles.fable` = `anthropic/claude-fable-5-1:medium`, `modelTags.fable` visible, `retry.fallbackChains.fable` empty), so the model switcher reaches Fable 5.1 as its fourth stop and never falls back off it. The hidden `switch_fable` role points at the same model and level.
+- `modelRoles.task` is `openai-codex/gpt-6-astra:low`, chosen for 2.60 s TTFT and 4k output tokens per task at cost parity with the previous `gpt-5.6-sol:high`. The four reviewer agents in `task.agentModelOverrides` inherit `@task`, and Artificial Analysis publishes no per-level Astra Coding Agent Index score, so reviewer output is the signal to watch.
+- `SoT/.omp/AGENTS.md` carries the rule `Please remove all mannered prose.` Anthropic's Fable 5.1 prompting guide documents mannered prose as a Fable 5.1 behavior and gives that sentence as its short-version fix: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
+- `cli/docs/omp-models.md` (topic `omp-models`) records the role map rationale and the Artificial Analysis snapshot behind it. Model choices change with published benchmarks, so update that topic in the same commit as a role change.
 - Sync registers the `docks` marketplace. It installs or upgrades `docks@docks` and `plan-lifecycle@docks` at user scope.
 - Sync installs `pi-intercom` at the verified version from `SoT/toolchain.json`.
 - The omp CLI is upstream-owned and self-updating through `omp update`. Sync never installs or upgrades the CLI.
