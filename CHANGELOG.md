@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-09-08 — omp: Fable 5.1 cycle role, `task` on GPT-6 Astra, and the `omp-models` topic
+
+- Added a `fable` role to `SoT/.omp/config.yml` and appended it to
+  `cycleOrder`, so the model switcher reaches Fable 5.1 as its fourth stop.
+  `modelRoles.fable` is `anthropic/claude-fable-5-1:medium`, `modelTags.fable`
+  is visible, and `retry.fallbackChains.fable` is empty, because a role the
+  user selects on purpose must not fall back to another vendor.
+- Repointed the hidden `switch_fable` role from `anthropic/claude-fable-5:high`
+  to `anthropic/claude-fable-5-1:medium`. The old target is one generation
+  behind. The two Fable roles now resolve to the same model and level, one
+  hidden and one in the cycle. Removing the duplicate would need `--reconcile`,
+  because the additive merge preserves deployed-only keys.
+- Moved `modelRoles.task` from `openai-codex/gpt-5.6-sol:high` to
+  `openai-codex/gpt-6-astra:low`. Artificial Analysis measures 2.60 s to the
+  first answer token against 11.26 s, and 4k output tokens per task against
+  13k, at $0.82 against $0.81 per index task. The change buys latency and
+  token budget, not money: Astra lists 2.5 times the token price and spends
+  about one third the tokens, so the two effects cancel.
+- Accepted one measured regression with that move. AA-Briefcase, the evaluation
+  closest to this kit's agent workload, drops from 1361 to 1253, and Artificial
+  Analysis publishes no Coding Agent Index score for any Astra level except max.
+  `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
+  `code-reviewer`, and `plan-reviewer` to `@task`, so all four reviewer agents
+  now run Astra low. If review output degrades, pin those four agents to
+  `anthropic/claude-opus-5:high` instead of reverting the role.
+  `retry.fallbackChains.task` keeps `anthropic/claude-opus-5:high` as a
+  cross-vendor fallback.
+- Added the rule `Please remove all mannered prose.` to `SoT/.omp/AGENTS.md`.
+  Anthropic's Fable 5.1 prompting guide documents mannered prose as a Fable 5.1
+  behavior and gives that sentence as its short-version fix.
+- Added `cli/docs/omp-models.md` and registered it as the `docs` topic
+  `omp-models`. The topic records the role map, the Artificial Analysis
+  snapshot behind it (Intelligence Index v4.3 and Coding Agent Index v1.4, read
+  2026-09-08), and the rule that a role change and a snapshot refresh land in
+  the same commit.
+- Extended `cli/test/unit/argv.test.ts` with a tenth Markdown mock. That suite
+  mocks every `docs/*.md` text import. Without a mock, vite lexes the new file
+  as JavaScript and the suite fails in import analysis.
+
 ## 2026-08-28 — Claude permissions: parseable rules, trimmed allow list, retired-rule prune, memory and dream off
 
 - Escaped the 14 `permissions.deny` PowerShell rules whose specifier ended in a
