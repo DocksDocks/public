@@ -22,7 +22,7 @@ export function field(tool: string, name: string): string {
 }
 
 /** toolchain::_is_newer — numeric per dotted field, GNU-sort last-resort tie-break. */
-export function isNewer(a: string, b: string): boolean {
+function isNewer(a: string, b: string): boolean {
   if (a === "" || b === "" || a === b) return false
   const fa = a.split(".")
   const fb = b.split(".")

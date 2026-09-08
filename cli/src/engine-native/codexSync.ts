@@ -217,7 +217,7 @@ function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string): void {
 }
 
 /** codex::scrub_deprecated_features — the [features].use_legacy_landlock awk pass. */
-export function scrubDeprecatedFeaturesText(content: string): string {
+function scrubDeprecatedFeaturesText(content: string): string {
   const lines = content.split("\n")
   if (lines[lines.length - 1] === "") lines.pop()
   let out = ""
@@ -560,7 +560,7 @@ function syncMarketplace(ctx: Ctx, sotMarketplaceText: string, userMarketplace: 
  * wins per plugin name; distinct names end up descending by name, exactly
  * like jq's unique_by (ascending) followed by reverse.
  */
-export function mergeMarketplace(repo: Json, user: Json): Json {
+function mergeMarketplace(repo: Json, user: Json): Json {
   const u = isObject(user) ? user : {}
   const r = isObject(repo) ? repo : {}
   const coalesce = (a: Json | undefined, b: Json | undefined): Json =>
@@ -586,7 +586,7 @@ export function mergeMarketplace(repo: Json, user: Json): Json {
 // -------------------------------------------------------------- plugins ----
 
 /** codex::_marketplace_source — first `source =` inside [marketplaces.<name>]. */
-export function marketplaceSource(marketplace: string, configFile: string): string {
+function marketplaceSource(marketplace: string, configFile: string): string {
   if (!existsSync(configFile)) return ""
   let inMarketplace = false
   for (const line of readFileSync(configFile, "utf8").split("\n")) {
@@ -629,12 +629,12 @@ async function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): Promi
 const standaloneInstallCommand = (ctx: Ctx): string => ctx.services.deps.spec("codex").installHint()
 
 /** codex::_enabled_plugin_ids — [plugins."<id>"] tables with enabled = true. */
-export function enabledPluginIds(configFile: string): Array<string> {
+function enabledPluginIds(configFile: string): Array<string> {
   if (!existsSync(configFile)) return []
   return enabledPluginIdsFromText(readFileSync(configFile, "utf8"))
 }
 
-export function enabledPluginIdsFromText(configText: string): Array<string> {
+function enabledPluginIdsFromText(configText: string): Array<string> {
   const ids: Array<string> = []
   let plugin = ""
   let enabled = false

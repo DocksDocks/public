@@ -20,7 +20,7 @@ function modelEntries(tool: string): Array<{ [k: string]: Json }> {
   return Array.isArray(models) ? models.filter(isObject) : []
 }
 
-export function modelsFromManifest(tool: string): Array<string> {
+function modelsFromManifest(tool: string): Array<string> {
   return modelEntries(tool)
     .map((m) => m["id"])
     .filter((id): id is string => typeof id === "string")

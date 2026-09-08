@@ -116,7 +116,7 @@ export function commandExists(name: string): boolean {
   return which(name) !== ""
 }
 
-export function isExecutable(path: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): boolean {
+function isExecutable(path: string, suffixes: ReadonlyArray<string> = hostOs().executableSuffixes): boolean {
   try {
     if (!statSync(path).isFile()) return false
     if (suffixes.some((suffix) => suffix !== "")) {
