@@ -10,7 +10,7 @@ import { isAbsolute, resolve } from "node:path"
 
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload"
 import { bunBootstrap } from "./bun"
-import { commandExists, p, spawnProcess, type AsyncProcessResult } from "./exec"
+import { p, spawnProcess, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import { isObject, parseJson } from "./jq"
 import { ompPaths } from "./ompPaths"
