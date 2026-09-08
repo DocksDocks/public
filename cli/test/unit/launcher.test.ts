@@ -144,7 +144,9 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     const fixture = launcherFixture("docks-kit-linux-x64", null, "1.4.0", false)
     const launcherPath = join(fixture.root, "docks-kit")
     const launcher = readFileSync(launcherPath, "utf8")
-    writeFileSync(launcherPath, launcher.replace('BUN_PIN="1.4.0"', 'BUN_PIN="9.0.0"'))
+    const rewrittenLauncher = launcher.replace(/^BUN_PIN="[^"]*"$/m, 'BUN_PIN="9.0.0"')
+    expect(rewrittenLauncher).toContain('BUN_PIN="9.0.0"')
+    writeFileSync(launcherPath, rewrittenLauncher)
 
     const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"])
 

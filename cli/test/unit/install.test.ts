@@ -4,6 +4,7 @@ import { delimiter, join, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { afterEach, describe, expect, it } from "vitest"
 import { hostOs } from "../../src/engine-native/os/index"
+import { verifiedVersion } from "../lib/toolchainManifest"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const roots: Array<string> = []
@@ -25,19 +26,7 @@ function systemCommand(name: string): string {
   throw new Error(`required system command not found: ${name}`)
 }
 
-function verifiedBunVersion(): string {
-  const manifest: unknown = JSON.parse(readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8"))
-  if (!manifest || typeof manifest !== "object" || !("tools" in manifest)) throw new Error("toolchain tools are missing")
-  const tools = manifest.tools
-  if (!tools || typeof tools !== "object" || !("bun" in tools)) throw new Error("Bun toolchain entry is missing")
-  const bun = tools.bun
-  if (!bun || typeof bun !== "object" || !("verified" in bun) || typeof bun.verified !== "string") {
-    throw new Error("verified Bun version is missing")
-  }
-  return bun.verified
-}
-
-const VERIFIED_BUN = verifiedBunVersion()
+const VERIFIED_BUN = verifiedVersion("bun")
 
 type GlobalBinMode = "ok" | "missing" | "failure"
 
@@ -123,6 +112,17 @@ describe("global installer completion", () => {
       `$EscapedInstallBin = $InstallBin.Replace("'", "''")
   [Console]::Error.WriteLine("[Environment]::SetEnvironmentVariable('Path', '$EscapedInstallBin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')")`
     )
+  })
+
+  it("pins the CI Bun setup and both cache keys to the verified version", () => {
+    // The composite action is hand-maintained, unlike the four generated script
+    // pins, so nothing else fails when a bump misses it.
+    const action = readFileSync(join(REPO_DIR, ".github", "actions", "setup-bun-cache", "action.yml"), "utf8")
+    const setupVersion = action.match(/bun-version:\s*(\S+)/)?.[1]
+    const cacheVersions = [...action.matchAll(/-bun-(\d+\.\d+\.\d+)-/g)].map((match) => match[1])
+
+    expect(setupVersion).toBe(VERIFIED_BUN)
+    expect(cacheVersions).toEqual([VERIFIED_BUN, VERIFIED_BUN])
   })
 
   it.each(["docks-kit.ps1", "install.ps1"])(

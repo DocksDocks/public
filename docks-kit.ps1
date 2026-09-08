@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $RepoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # BEGIN GENERATED BUN PIN
-$BunPin = "1.4.0"
+$BunPin = "1.4.2"
 # END GENERATED BUN PIN
 
 # BEGIN GENERATED BUN FLOOR

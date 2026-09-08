@@ -29,6 +29,9 @@ import type { Ctx } from "../../src/engine-native"
 import type { ProbeExecutor } from "../../src/engine-native/deps"
 import { hostOs } from "../../src/engine-native/os"
 import { makeDependencyManager, makeEngineServices, makePlatform, type EngineServices } from "../../src/engine-native/services"
+import { verifiedVersion } from "../lib/toolchainManifest"
+
+const VERIFIED_BUN = verifiedVersion("bun")
 
 interface ProbeState {
   curl: boolean
@@ -167,7 +170,7 @@ describe("per-run Bun bootstrap", () => {
     process.env["BUN_INSTALL"] = "/custom bun"
     const test = rig("linux", { curl: true, installed: false }, true)
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/custom bun/bin/bun")
-    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.4.0 (kit-verified) -> /custom bun/bin/bun")
+    expect(test.lines.join("")).toContain(`[dry-run] install Bun ${VERIFIED_BUN} (kit-verified) -> /custom bun/bin/bun`)
     expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
@@ -176,7 +179,9 @@ describe("per-run Bun bootstrap", () => {
     process.env["BUN_INSTALL"] = "C:/custom bun"
     const test = rig("win32", { curl: true, installed: false }, true)
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("C:/custom bun/bin/bun.exe")
-    expect(test.lines.join("")).toContain("[dry-run] install Bun 1.4.0 (kit-verified) -> C:/custom bun/bin/bun.exe")
+    expect(test.lines.join("")).toContain(
+      `[dry-run] install Bun ${VERIFIED_BUN} (kit-verified) -> C:/custom bun/bin/bun.exe`
+    )
     expect(mocks.spawnProcess).not.toHaveBeenCalled()
     expect(mocks.rmSync).not.toHaveBeenCalled()
   })
@@ -251,7 +256,7 @@ describe("per-run Bun bootstrap", () => {
 
       try {
         expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe(expectedExecutable)
-        const installer = hostOs(hostId).bunInstaller("1.4.0", privateDirectory)
+        const installer = hostOs(hostId).bunInstaller(VERIFIED_BUN, privateDirectory)
         expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`)
         expect(
           privateDirectory.startsWith(`${testRoot}/`) || privateDirectory.startsWith(`${testRoot}${sep}`)
