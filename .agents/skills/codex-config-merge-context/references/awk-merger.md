@@ -64,7 +64,7 @@ writing when no retired table is present, so a clean config stays byte-identical
 and `codexSync.ts syncConfig, change-sensitive backup` does not create a
 spurious `config.toml.bak`. The pass runs on the staging copy after
 `codexSync.ts scrubDeprecatedFeatures, staging scrub pass` and before
-`codexSync.ts mergeTopLevelSettings, staging top-level merge`; `codexSync.ts
+`codexToml.ts mergeTopLevelSettings, staging top-level merge`; `codexSync.ts
 syncConfig, dry-run branch` returns before staging, so the pass prints nothing
 under `--dry-run`.
 

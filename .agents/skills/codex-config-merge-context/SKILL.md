@@ -1,18 +1,18 @@
 ---
 name: codex-config-merge-context
-description: "Use when modifying cli/src/engine-native/codexSync.ts syncConfig, scrubDeprecatedFeatures, removeRetiredPluginTables, mergeTopLevelSettings, mergeTableSettings, ensureBubblewrap, syncRules, or cli/src/engine-native/codexToml.ts replaceTopLevelSetting/syncCodexModel; covers line-based TOML merge semantics, deprecated features scrub, Codex rules deployment, and bubblewrap checks."
+description: "Use when modifying cli/src/engine-native/codexSync.ts syncConfig, scrubDeprecatedFeatures, removeRetiredPluginTables, ensureBubblewrap, syncRules, or cli/src/engine-native/codexToml.ts mergeTopLevelSettings/mergeTableSettings/replaceTopLevelSetting/syncCodexModel; covers line-based TOML merge semantics, deprecated features scrub, Codex rules deployment, and bubblewrap checks."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/codexSync.ts
       lines: "1-250"
     - path: cli/src/engine-native/codexToml.ts
-      lines: "1-80"
+      lines: "1-253"
     - path: SoT/.codex/config.toml
       lines: "1-90"
     - path: SoT/.codex/rules/docks.rules
       lines: "1-140"
-  updated: "2026-08-10"
+  updated: "2026-09-08"
 ---
 
 # Codex Config Merge
@@ -56,9 +56,9 @@ namespaces are blocked.
    `use_legacy_landlock` and an empty `[features]` table.
 4. `codexSync.ts removeRetiredPluginTables, staging retirement pass` strips
    retired kit-owned plugin tables.
-5. `codexSync.ts mergeTopLevelSettings, staging top-level merge` replaces or
+5. `codexToml.ts mergeTopLevelSettings, staging top-level merge` replaces or
    inserts SoT top-level `key = value` lines before the first table.
-6. `codexSync.ts mergeTableSettings, staging table merge` deletes each
+6. `codexToml.ts mergeTableSettings, staging table merge` deletes each
    SoT-declared table from the staging file and appends the SoT block.
 7. A changed staging file backs up and replaces the deployed config; a byte-identical
    staging file is discarded without writing `config.toml.bak`.

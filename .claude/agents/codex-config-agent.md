@@ -1,6 +1,6 @@
 ---
 name: codex-config-agent
-description: Use when editing `cli/src/engine-native/codexSync.ts` config functions (`syncConfig`, `scrubDeprecatedFeatures`, `mergeTopLevelSettings`, `mergeTableSettings`, `ensureBubblewrap`, `syncRules`) or `cli/src/engine-native/codexToml.ts` (`replaceTopLevelSetting`, `syncCodexModel`), plus `SoT/.codex/config.toml` and `SoT/.codex/rules/*.rules`. Not for Claude settings or plugin install.
+description: Use when editing `cli/src/engine-native/codexSync.ts` config functions (`syncConfig`, `scrubDeprecatedFeatures`, `ensureBubblewrap`, `syncRules`) or `cli/src/engine-native/codexToml.ts` (`mergeTopLevelSettings`, `mergeTableSettings`, `replaceTopLevelSetting`, `syncCodexModel`), plus `SoT/.codex/config.toml` and `SoT/.codex/rules/*.rules`. Not for Claude settings or plugin install.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
