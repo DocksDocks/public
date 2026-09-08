@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-08 — Refactor pass: dead code, duplication, and module boundaries in `cli/src`
+
+- Removed dead code found by the repository-wide refactor audit (plan #32):
+  unused effort type aliases in `cli/src/efforts.ts`, the unused
+  `toolchainManifest` reader in `cli/src/manifests.ts`, an unused
+  `commandExists` import in `ompSync.ts`, the `writeFileIfChanged` alias, and
+  the unused `ctx` parameter of `toolchain.ts field`. Nine module-internal
+  helpers in `codexSync.ts`, `exec.ts`, `toolchain.ts`, `models.ts`, and
+  `os/targets.ts` are no longer exported.
+- Folded the absent and malformed drift branches of `commands/status.ts` into
+  one `state !== "valid"` branch. Output is unchanged.
+- Added `cli/src/engine-native/os/posix.ts posixHost`, shared by the Linux and
+  macOS host definitions, so the POSIX members exist once.
+- Typed the model catalog: `engine-native/models.ts modelCatalog(tool)` parses
+  `SoT/models.json` once and drops entries whose `id` is not a string or whose
+  `kind` is not `alias` or `id`. `argv.ts`, `commands/model.ts`, and
+  `commands/models.ts` consume it. New `cli/test/unit/modelCatalog.test.ts`.
+- Moved the Codex top-level and table merge passes into
+  `engine-native/codexToml.ts`, and the Claude plugin, optional-plugin, and LSP
+  passes into new `engine-native/claudePlugins.ts`. `codexSync.ts` and
+  `claudeSync.ts` keep the orchestration only. Skill and agent anchors in
+  `.agents/skills/`, `.claude/agents/`, `.codex/agents/`, and root `AGENTS.md`
+  name the new modules.
+- No user-visible behavior change: `./docks-kit sync --dry-run` output is
+  identical to 0.16.4 except the `Repo:` line, and all goldens pass unchanged.
+
 ## 2026-09-08 — `docks-kit update` parses the Bun 1.4.2 global root; verified Bun pin 1.4.2
 
 - Fixed `docks-kit update` on Bun 1.4.2. Bun changed the `bun pm -g ls` header
