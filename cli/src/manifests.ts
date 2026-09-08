@@ -26,9 +26,6 @@ const readJsonText = (text: string): any => JSON.parse(text)
 export const modelCatalog = (tool: Tool): ModelCatalog =>
   readJsonText(payloadText("SoT/models.json"))[tool]
 
-export const toolchainManifest = (): Record<string, any> =>
-  readJsonText(payloadText("SoT/toolchain.json")).tools
-
 /** SoT settings (claude) — model/effort/env for drift display. */
 export const sotClaudeSettings = (): any =>
   readJsonText(payloadText("SoT/.claude/settings.json"))
