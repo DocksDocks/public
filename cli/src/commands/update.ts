@@ -164,11 +164,11 @@ export const resolveGlobalPackageHome = (
   const globalHeader = result.stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .find((line) => / node_modules(?: \(\d+\))?$/.test(line))
+    .find((line) => / node_modules(?: \(.*\))?$/.test(line))
   const globalDir =
     globalHeader === undefined
       ? undefined
-      : /^(.*) node_modules(?: \(\d+\))?$/.exec(globalHeader)?.[1]
+      : /^(.*) node_modules(?: \(.*\))?$/.exec(globalHeader)?.[1]
   return globalDir === undefined || globalDir === ""
     ? { ok: false, diagnostic: "bun pm -g ls did not report its global package root" }
     : { ok: true, home: p(globalDir, "node_modules", "docks-kit") }
