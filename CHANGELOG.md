@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-09-08 — `docks-kit update` parses the Bun 1.4.2 global root; verified Bun pin 1.4.2
+
+- Fixed `docks-kit update` on Bun 1.4.2. Bun changed the `bun pm -g ls` header
+  annotation from `(64)` to `(64 installed)`, and both patterns in
+  `resolveGlobalPackageHome` accepted digits only, so the update printed
+  `bun pm -g ls did not report its global package root` and skipped its chained
+  sync. Both patterns now accept any parenthetical annotation and keep the
+  ` node_modules` anchor, so a tree row still cannot match and unparseable
+  output still returns the diagnostic. The npm branch reads `npm root -g` and
+  was never affected.
+- Moved the kit-verified Bun pin to 1.4.2 in `SoT/toolchain.json`, which
+  regenerates the pins in `docks-kit`, `docks-kit.ps1`, `install.sh`, and
+  `install.ps1`. The Bun `floor` stays 1.4.0, because it states what this
+  checkout's `bun.lock` supports, and the toolchain report still marks an
+  installed 1.4.0 host `ok`.
+- Removed the hardcoded-pin decay class from the suites. New
+  `cli/test/lib/toolchainManifest.ts verifiedVersion` derives the value, the Bun
+  and install suites consume it, and the launcher test now asserts that its pin
+  substitution landed instead of silently rewriting nothing after a bump. A new
+  install case ties `.github/actions/setup-bun-cache/action.yml` to the manifest
+  across `bun-version`, the cache key, and the restore key.
+
 ## 2026-09-08 — omp: Fable 5.1 cycle role, `task` on GPT-6 Astra, and the `omp-models` topic
 
 - Added a `fable` role to `SoT/.omp/config.yml` and appended it to
