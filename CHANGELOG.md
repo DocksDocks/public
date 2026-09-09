@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-09 — vitest 4.1.11; reviewer override correction
+
+- Bumped `vitest` to 4.1.11 for GHSA-82fw-gwwq-j7x9 (`@vitest/mocker` path
+  traversal, moderate). Dev dependency only; the pin stays inside the
+  `@effect/vitest` peer range `>=4.1.0 <5.0.0`. `bun audit` on `main` had
+  turned the `golden-regression` workflow red on the 0.16.6 release commit.
+- Corrected the 0.16.3 statement that all four reviewer entries in
+  `task.agentModelOverrides` run Astra. A fresh `omp -p` process lists only
+  `scout`, `reviewer`, `security-reviewer`, `task`, and `sonic`; the
+  `code-reviewer` and `plan-reviewer` entries are dormant until an OMP agent
+  with that name exists. `cli/docs/omp-models.md` and root `AGENTS.md` now
+  say so.
+
 ## 2026-09-08 — omp: cap subagent thinking at `low`
 
 - Set `task.maxEffort: low` in `SoT/.omp/config.yml`. The bundled `task` agent

@@ -36,9 +36,13 @@ What omp's settings catalog establishes about these roles:
   keeps `switch_fable` out of the switcher list.
 
 `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
-`code-reviewer`, and `plan-reviewer` to `@task`, so all four inherit whatever
-`task` resolves to. `retry.fallbackChains.task` keeps
-`anthropic/claude-opus-5:high` as a cross-vendor fallback.
+`code-reviewer`, and `plan-reviewer` to `@task`. Only the bundled `reviewer`
+and `security-reviewer` exist as OMP agents (omp's task tool lists `scout`,
+`reviewer`, `security-reviewer`, `task`, and `sonic`), so those two inherit
+whatever `task` resolves to. The `code-reviewer` and `plan-reviewer` entries
+are dormant until an OMP agent with that name exists.
+`retry.fallbackChains.task` keeps `anthropic/claude-opus-5:high` as a
+cross-vendor fallback.
 
 ## Artificial Analysis snapshot
 
@@ -162,9 +166,9 @@ published Astra coding-agent score at that level.
 
 Two risks come with it. Astra low loses AA-Briefcase, the eval closest to this
 kit's agent workload, and AA publishes no Coding Agent Index score for any Astra
-level except max. Watch reviewer output, because the four reviewer agents
-inherit `@task`. If review quality drops, pin those four agents to
-`anthropic/claude-opus-5:high` rather than reverting the whole role.
+level except max. Watch reviewer output, because `reviewer` and
+`security-reviewer` inherit `@task`. If review quality drops, pin those agents
+to `anthropic/claude-opus-5:high` rather than reverting the whole role.
 
 ## What resolves to Astra low in practice
 
@@ -186,10 +190,9 @@ cover every agent.
   classifier and the `effort` hint. Verified on 2026-09-08 for the five
   bundled agents: `task`, `reviewer`, and `security-reviewer` resolved
   `gpt-6-astra:low` with no hint and with `effort: hi`; `scout` and `sonic`
-  with `effort: hi` resolved `gpt-5.6-luna:low`. The `plan-lifecycle` plugin
-  agents `code-reviewer` and `plan-reviewer` carry no `model` or
-  `thinking-level` frontmatter and inherit `@task`; the cap applies to their
-  spawns by the same rule, but they were not probed.
+  with `effort: hi` resolved `gpt-5.6-luna:low`. The `code-reviewer` and
+  `plan-reviewer` override entries are dormant: omp's task tool rejects both
+  names as unknown agents, so no spawn exists to cap.
 
 So the bundled subagents run their models at `low`. The Astra low figures
 above are the level `task`, `reviewer`, and `security-reviewer` get. The cost
