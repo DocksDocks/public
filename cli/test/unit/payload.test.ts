@@ -145,7 +145,8 @@ describe("generated SoT payload", () => {
       "SoT/.omp/AGENTS.md",
       "SoT/.omp/config.yml",
       "SoT/.omp/intercom.json",
-      "SoT/.omp/mcp.json"
+      "SoT/.omp/mcp.json",
+      "SoT/.omp/models.yml"
     ])
     expect(BINARY_PAYLOAD_PATHS).toEqual(["notification.mp3"])
   })

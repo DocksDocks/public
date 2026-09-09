@@ -107,13 +107,13 @@ describe("omp YAML merge", () => {
 
   it("throws for invalid deployed YAML", () => {
     expect(() => mergeOmpConfig("value: 1\n", "[unterminated\n")).toThrow(
-      /Invalid deployed omp config YAML:/
+      /Invalid deployed omp YAML:/
     )
   })
 
   it("throws when the deployed root is a sequence", () => {
     expect(() => mergeOmpConfig("value: 1\n", "- first\n- second\n")).toThrow(
-      /Deployed omp config YAML root must be a mapping/
+      /Deployed omp YAML root must be a mapping/
     )
   })
 })

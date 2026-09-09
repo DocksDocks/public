@@ -112,7 +112,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |------|---------|
 | `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
-| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, mcp.json, intercom.json) |
+| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, intercom.json) |
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Kit-verified Claude and Codex model catalog |
 | `SoT/toolchain.json` | Verified-version floors |

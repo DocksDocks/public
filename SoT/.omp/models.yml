@@ -1,0 +1,8 @@
+providers:
+  openai-codex:
+    modelOverrides:
+      gpt-6-astra:
+        thinking:
+          mode: effort
+          efforts: [low]
+          defaultLevel: low

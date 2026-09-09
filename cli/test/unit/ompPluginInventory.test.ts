@@ -107,6 +107,7 @@ describe("omp plugin inventory", () => {
     mocks.payloadText.mockReset().mockImplementation((path) => {
       if (path === "SoT/.omp/AGENTS.md") return "# omp\n"
       if (path === "SoT/.omp/mcp.json") return "{}\n"
+      if (path === "SoT/.omp/models.yml") return "providers: {}\n"
       if (path === "SoT/.omp/config.yml") return "theme: dark\n"
       if (path === "SoT/.omp/intercom.json") return "{}\n"
       if (path === "SoT/toolchain.json") return `{"tools":{"pi-intercom":{"verified":"${PIN}"}}}`

@@ -1,12 +1,12 @@
 /**
- * EngineNative `sync omp` pipeline. config.yml merges through mergeOmpConfig
- * because omp serialises that file itself. Paths come from ompPaths because
+ * EngineNative `sync omp` pipeline. config.yml and models.yml merge through
+ * mergeOmpConfig to preserve user-only keys. Paths come from ompPaths because
  * profiles, PI_CONFIG_DIR, PI_CODING_AGENT_DIR, and XDG roots each move them.
  * Resolution stays within the environment and filesystem probes so no omp
  * subcommand runs under ctx.dryRun.
  */
 import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
-import { isAbsolute, resolve } from "node:path"
+import { basename, isAbsolute, resolve } from "node:path"
 
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload"
 import { bunBootstrap } from "./bun"
@@ -35,7 +35,8 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
 
   syncWholeFile(ctx, "SoT/.omp/AGENTS.md", p(agentDir, "AGENTS.md"), "omp AGENTS.md already in sync", "omp AGENTS.md synced")
   syncWholeFile(ctx, "SoT/.omp/mcp.json", p(agentDir, "mcp.json"), "omp mcp.json already in sync", "omp mcp.json synced")
-  syncConfig(ctx, p(agentDir, "config.yml"))
+  syncMergedYaml(ctx, "SoT/.omp/config.yml", p(agentDir, "config.yml"))
+  syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"))
 
   const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]
   const intercomRoot = intercomRootSetting !== undefined && intercomRootSetting !== ""
@@ -111,10 +112,11 @@ function syncWholeFile(
   ctx.nextStepTriggers.ompRestart = true
 }
 
-function syncConfig(ctx: Ctx, target: string): void {
+function syncMergedYaml(ctx: Ctx, sourcePath: OmpTextPayloadPath, target: string): void {
   const { change, echo, verbose } = ctx.services.logger
-  const source = payloadDisplayPath("SoT/.omp/config.yml")
-  const sotText = payloadText("SoT/.omp/config.yml")
+  const source = payloadDisplayPath(sourcePath)
+  const sotText = payloadText(sourcePath)
+  const name = basename(sourcePath)
 
   if (!existsSync(target)) {
     if (ctx.dryRun) {
@@ -122,7 +124,7 @@ function syncConfig(ctx: Ctx, target: string): void {
       return
     }
     writePrivateFile(target, sotText)
-    change("omp config.yml installed")
+    change(`omp ${name} installed`)
     ctx.nextStepTriggers.ompRestart = true
     return
   }
@@ -130,7 +132,7 @@ function syncConfig(ctx: Ctx, target: string): void {
   const deployedText = readFileSync(target, "utf8")
   const merged = mergeOmpConfig(sotText, deployedText)
   if (merged === deployedText) {
-    verbose("omp config.yml already in sync")
+    verbose(`omp ${name} already in sync`)
     return
   }
   if (ctx.dryRun) {
@@ -142,7 +144,7 @@ function syncConfig(ctx: Ctx, target: string): void {
   writePrivateFile(`${target}.tmp`, merged)
   renameSync(`${target}.tmp`, target)
   chmodSync(target, 0o600)
-  change("omp config.yml merged (backup at config.yml.bak)")
+  change(`omp ${name} merged (backup at ${name}.bak)`)
   ctx.nextStepTriggers.ompRestart = true
 }
 

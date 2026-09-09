@@ -19,7 +19,8 @@ export const TEXT_PAYLOAD_PATHS = [
   "SoT/.omp/AGENTS.md",
   "SoT/.omp/config.yml",
   "SoT/.omp/intercom.json",
-  "SoT/.omp/mcp.json"
+  "SoT/.omp/mcp.json",
+  "SoT/.omp/models.yml"
 ] as const
 
 export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const

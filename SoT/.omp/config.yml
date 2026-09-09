@@ -44,7 +44,7 @@ task:
   batch: true
   enableLsp: true
   enableEffort: true
-  maxEffort: low
+  maxEffort: high
   maxConcurrency: 16
   maxRecursionDepth: 2
   maxRuntimeMs: 3600000

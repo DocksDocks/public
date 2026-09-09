@@ -172,9 +172,12 @@ to `anthropic/claude-opus-5:high` rather than reverting the whole role.
 
 ## What resolves to Astra low in practice
 
-`modelRoles.task` sets the model. The `:low` suffix is the role's own level;
-it does not by itself decide the level of every spawn, and the role does not
-cover every agent.
+`modelRoles.task` sets the model. The `:low` suffix alone does not cap every
+spawn. `SoT/.omp/models.yml` restricts the `openai-codex/gpt-6-astra` effort
+ladder to `[low]` through
+`providers.openai-codex.modelOverrides.gpt-6-astra.thinking`. omp clamps any
+requested effort to the model ladder, and `auto` has only one choice. Every
+Astra spawn therefore runs `low`, regardless of its `effort` hint.
 
 - The bundled `scout` and `sonic` agents carry `model: "@smol"` and
   `thinking-level: medium` in their embedded frontmatter, so they run Luna,
@@ -182,25 +185,31 @@ cover every agent.
   `task.agentModelOverrides` entry for the agent name.
 - The bundled `task` agent carries `model: "@task"` and
   `thinking-level: auto`. `auto` classifies each prompt and picks a level for
-  the resolved model. With no ceiling, `task` spawns without an `effort` hint
-  were observed at both `low` and `high`.
+  the resolved model, but Astra's ladder permits only `low`.
 - `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
   `hi`, which overrides `auto`.
-- `task.maxEffort` is `low` in the SoT. This ceiling clamps both the `auto`
-  classifier and the `effort` hint. Verified on 2026-09-08 for the five
-  bundled agents: `task`, `reviewer`, and `security-reviewer` resolved
-  `gpt-6-astra:low` with no hint and with `effort: hi`; `scout` and `sonic`
-  with `effort: hi` resolved `gpt-5.6-luna:low`. The `code-reviewer` and
-  `plan-reviewer` override entries are dormant: omp's task tool rejects both
-  names as unknown agents, so no spawn exists to cap.
+- `task.maxEffort` is `high`, so `scout` and `sonic` run Luna `medium` by
+  default and Luna `high` with `effort: hi`.
+- The `code-reviewer` and `plan-reviewer` override entries remain dormant.
+  omp's task tool rejects both names as unknown agents, so neither can spawn.
 
-So the bundled subagents run their models at `low`. The Astra low figures
-above are the level `task`, `reviewer`, and `security-reviewer` get. The cost
-of the cap is that `scout` and `sonic` also drop from Luna `medium` to Luna
-`low` (index 22 against 26). Raising `task.maxEffort` lets `auto` and
-`effort: hi` reach Astra `high` again ($1.72 per index task, 45.63 s TTFT).
+Fresh `omp -p` runs on 2026-09-09 verified the model ladder with
+`task.maxEffort: high`. Child session logs recorded these results:
 
-omp's model catalog lists Astra with a 272k context window, while AA lists 1M.
+| Agent | Effort hint | Resolved model and level |
+|---|---|---|
+| `task` | `hi` | `gpt-6-astra:low` |
+| `task` | None, complex prompt | `gpt-6-astra:low` |
+| `reviewer` | `hi` | `gpt-6-astra:low` |
+| `security-reviewer` | None | `gpt-6-astra:low` |
+| `scout` | `hi` | `gpt-5.6-luna:high` |
+| `sonic` | `hi` | `gpt-5.6-luna:high` |
+
+The complex `task` run completed with 682 output tokens.
+
+omp's 272k context window is the `/extended-context off` window for Astra.
+`/extended-context on` uses the 922k input window, 1.05M total, which matches
+AA's 1M.
 
 ## Maintenance
 
@@ -210,3 +219,5 @@ omp's model catalog lists Astra with a 272k context window, while AA lists 1M.
 - Record the index version with the numbers. AA changes index composition
   between versions, so a score from another version is not a comparison.
 - Update the capture date in the same commit as any number.
+- Verify changes to the Astra ladder in `SoT/.omp/models.yml` and to
+  `task.maxEffort` together with a fresh `omp -p` spawn per bundled agent.

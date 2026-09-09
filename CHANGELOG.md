@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-09-09 — omp: Astra capped at low per model; scout and sonic regain high
+
+- Added `SoT/.omp/models.yml` to restrict Astra's effort ladder to `[low]`.
+  `ompSync.ts syncMergedYaml` deploys it with the same recursive merge as
+  `config.yml`, preserving user-only provider settings and credentials.
+- Restored `task.maxEffort: high` so `scout` and `sonic` can reach Luna `high`
+  with `effort: hi` and keep Luna `medium` by default. The model ladder caps
+  every Astra spawn at `low` without lowering Luna's ceiling.
+- Fresh `omp -p` runs on 2026-09-09 confirmed Astra `low` for `task` with
+  `effort: hi` and with no hint on a complex prompt, `reviewer` with
+  `effort: hi`, and `security-reviewer` with no hint. `scout` and `sonic`
+  with `effort: hi` both resolved Luna `high`.
+- Updated the `omp-models` topic with the mechanism and verification table.
+  Astra's 272k window applies with `/extended-context off`;
+  `/extended-context on` uses 922k input and 1.05M total, matching AA's 1M.
+
 ## 2026-09-09 — vitest 4.1.11; reviewer override correction
 
 - Bumped `vitest` to 4.1.11 for GHSA-82fw-gwwq-j7x9 (`@vitest/mocker` path

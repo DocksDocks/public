@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-421"
+      lines: "1-423"
     - path: cli/src/engine-native/ompPaths.ts
       lines: "1-101"
     - path: cli/src/engine-native/ompYaml.ts
@@ -16,7 +16,7 @@ metadata:
       lines: "177-296"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "202-388"
-  updated: "2026-08-27"
+  updated: "2026-09-09"
 ---
 
 # omp Sync Context
@@ -68,7 +68,7 @@ A named profile relocates the config root to `profiles/<name>`.
 only, and while it is active XDG is disabled.
 The agent directory never moves under XDG; only `dataRoot` does, on Linux and
 macOS, and only when the probed omp directory already exists.
-Deploy `AGENTS.md`, `config.yml`, and `mcp.json` to `agentDir`, and read
+Deploy `AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` to `agentDir`, and read
 `marketplaces.json` from `dataRoot`.
 Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 </constraint>
@@ -90,7 +90,7 @@ Use `toolchain-context` for the omp binary floor or the `pi-intercom` pin.
 ## Deployment Ownership
 
 Treat each Source of Truth file as kit-owned input.
-Keep user-only keys only through the `config.yml` merge.
+Keep user-only keys through both the `config.yml` and `models.yml` merges.
 Replace the other three deployed files as whole files.
 
 | Source | Deployed target | Root rule |
@@ -98,6 +98,7 @@ Replace the other three deployed files as whole files.
 | `SoT/.omp/AGENTS.md` | `<agentDir>/AGENTS.md` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/mcp.json` | `<agentDir>/mcp.json` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/config.yml` | `<agentDir>/config.yml` | Take `agentDir` from `ompPaths`. |
+| `SoT/.omp/models.yml` | `<agentDir>/models.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/intercom.json` | `$PI_CODING_AGENT_DIR/intercom/config.json` | Default the root to `~/.pi/agent`. |
 
 Resolve a relative `PI_CODING_AGENT_DIR` against the current working directory.
@@ -131,6 +132,9 @@ Let Source of Truth keys win every conflict.
 Merge mapping nodes recursively when both sides contain mappings.
 Replace every other Source of Truth node, including scalars and sequences.
 Preserve deployed-only keys by default.
+`ompSync.ts syncMergedYaml`, shared YAML deployment, applies the same merge to
+`models.yml`; fallback-chain pruning is a no-op there because
+`retry.fallbackChains` does not exist in that document.
 
 Prune one deployed-only key class.
 Inspect keys directly under `retry.fallbackChains`.

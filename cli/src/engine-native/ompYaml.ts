@@ -1,6 +1,6 @@
 /**
- * YAML merge for omp config.yml. omp serialises this file itself, so the kit
- * uses the yaml package rather than a line-based merge. Deployed-only keys are
+ * YAML merge for the omp config.yml and models.yml files.
+ * The kit uses the yaml package rather than a line-based merge. Deployed-only keys are
  * retained except for slash-bearing keys directly under retry.fallbackChains:
  * omp treats those as model or provider wildcards ahead of role chains, so a
  * stale wildcard would silently override the kit-managed role chains.
@@ -78,7 +78,7 @@ export function mergeOmpConfig(sotText: string, deployedText: string): string {
   const deployedDoc = parseDocument(deployedText)
   const deployedError = deployedDoc.errors[0]
   if (deployedError !== undefined) {
-    throw new Error(`Invalid deployed omp config YAML: ${deployedError.message}`)
+    throw new Error(`Invalid deployed omp YAML: ${deployedError.message}`)
   }
 
   const deployedContents = deployedDoc.contents
@@ -90,16 +90,16 @@ export function mergeOmpConfig(sotText: string, deployedText: string): string {
     return sotText
   }
   if (!isMap(deployedContents)) {
-    throw new Error("Deployed omp config YAML root must be a mapping")
+    throw new Error("Deployed omp YAML root must be a mapping")
   }
 
   const sotDoc = parseDocument(sotText)
   const sotError = sotDoc.errors[0]
   if (sotError !== undefined) {
-    throw new Error(`Invalid SoT omp config YAML: ${sotError.message}`)
+    throw new Error(`Invalid SoT omp YAML: ${sotError.message}`)
   }
   if (!isMap(sotDoc.contents)) {
-    throw new Error("SoT omp config YAML root must be a mapping")
+    throw new Error("SoT omp YAML root must be a mapping")
   }
 
   mergeMappings(sotDoc.contents, deployedContents, [])

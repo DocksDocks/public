@@ -23,6 +23,23 @@ describe("SoT omp tree", () => {
     expect(Object.keys(ompConfig()).length).toBeGreaterThan(0)
   })
 
+  it("caps Astra thinking at low through models.yml", () => {
+    const models = parse(readSot("models.yml")) as unknown
+    expect(models).toBeTypeOf("object")
+    expect(models).not.toBeNull()
+    expect(Array.isArray(models)).toBe(false)
+    expect(models).toHaveProperty(
+      ["providers", "openai-codex", "modelOverrides", "gpt-6-astra", "thinking"],
+      { mode: "effort", efforts: ["low"], defaultLevel: "low" }
+    )
+  })
+
+  // The Astra cap lives in models.yml, not in task.maxEffort.
+  // Keep the task ceiling high so scout and sonic can use Luna high.
+  it("allows high effort for subagents whose models support it", () => {
+    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "high")
+  })
+
   it("loads the canonical ~/.agents skills only", () => {
     expect(ompConfig()["skills"]).toEqual({
       enableClaudeUser: false,
