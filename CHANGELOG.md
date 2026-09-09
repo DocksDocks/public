@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-08 — omp: cap subagent thinking at `low`
+
+- Set `task.maxEffort: low` in `SoT/.omp/config.yml`. The bundled `task` agent
+  runs `thinking-level: auto`, which rated many prompts `high`, and a caller's
+  `effort: hi` also reached Astra `high`, so most `task` and reviewer spawns
+  ran `gpt-6-astra:high` instead of the configured `:low`. The ceiling clamps
+  both paths. Verified for the five bundled agents: `task`, `reviewer`, and
+  `security-reviewer` resolve `gpt-6-astra:low` with and without an effort
+  hint; `scout` and `sonic` resolve `gpt-5.6-luna:low`. The drop of `scout`
+  and `sonic` from Luna `medium` to `low` is the accepted cost.
+- `cli/docs/omp-models.md` (topic `omp-models`) gains a section on what
+  resolves to Astra low in practice: bundled agent frontmatter, the `auto`
+  classifier, the `effort` hint, and the `task.maxEffort` ceiling. The heading
+  for the role rationale now reads "Why `task` points at Astra low". The topic
+  also records that omp's catalog lists Astra with a 272k context window while
+  Artificial Analysis lists 1M.
+
 ## 2026-09-08 — Refactor pass: dead code, duplication, and module boundaries in `cli/src`
 
 - Removed dead code found by the repository-wide refactor audit (plan #32):
