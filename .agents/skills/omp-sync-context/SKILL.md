@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-428"
+      lines: "1-429"
     - path: cli/src/engine-native/ompPaths.ts
       lines: "1-101"
     - path: cli/src/engine-native/ompYaml.ts

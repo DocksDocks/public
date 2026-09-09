@@ -1,7 +1,8 @@
 /**
  * EngineNative `sync omp` pipeline. config.yml merges through mergeOmpConfig
- * and models.yml through mergeOmpModels; both preserve user-only keys. Paths come from ompPaths because
- * profiles, PI_CONFIG_DIR, PI_CODING_AGENT_DIR, and XDG roots each move them.
+ * and models.yml through mergeOmpModels. Both preserve user-only keys.
+ * Paths come from ompPaths because profiles, PI_CONFIG_DIR,
+ * PI_CODING_AGENT_DIR, and XDG roots each move them.
  * Resolution stays within the environment and filesystem probes so no omp
  * subcommand runs under ctx.dryRun.
  */
