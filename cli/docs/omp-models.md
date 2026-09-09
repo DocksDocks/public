@@ -169,8 +169,8 @@ inherit `@task`. If review quality drops, pin those four agents to
 ## What resolves to Astra low in practice
 
 `modelRoles.task` sets the model. The `:low` suffix is the role's own level;
-it does not decide the level of every spawn, and the role does not cover
-every agent.
+it does not by itself decide the level of every spawn, and the role does not
+cover every agent.
 
 - The bundled `scout` and `sonic` agents carry `model: "@smol"` and
   `thinking-level: medium` in their embedded frontmatter, so they run Luna,
@@ -178,19 +178,24 @@ every agent.
   `task.agentModelOverrides` entry for the agent name.
 - The bundled `task` agent carries `model: "@task"` and
   `thinking-level: auto`. `auto` classifies each prompt and picks a level for
-  the resolved model, so a `task` spawn without an `effort` hint runs Astra at
-  the level the classifier chooses. Spawns have been observed at both `low`
-  and `high`.
-- `task.enableEffort` is `true` and `task.maxEffort` is `high` in the SoT. An
-  `effort` hint overrides `auto`: `hi` gives the model's highest level at or
-  below `high` (Astra `high`; Luna `high` for `scout` and `sonic`), `lo` gives
-  the lowest.
+  the resolved model. With no ceiling, `task` spawns without an `effort` hint
+  were observed at both `low` and `high`.
+- `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
+  `hi`, which overrides `auto`.
+- `task.maxEffort` is `low` in the SoT. This ceiling clamps both the `auto`
+  classifier and the `effort` hint. Verified on 2026-09-08 for the five
+  bundled agents: `task`, `reviewer`, and `security-reviewer` resolved
+  `gpt-6-astra:low` with no hint and with `effort: hi`; `scout` and `sonic`
+  with `effort: hi` resolved `gpt-5.6-luna:low`. The `plan-lifecycle` plugin
+  agents `code-reviewer` and `plan-reviewer` carry no `model` or
+  `thinking-level` frontmatter and inherit `@task`; the cap applies to their
+  spawns by the same rule, but they were not probed.
 
-So the Astra low figures above describe the role, and a `task` spawn reaches
-them only through `effort: lo` or a prompt the classifier rates low. A spawn at
-Astra high costs $1.72 per index task with 45.63 s TTFT on the same snapshot.
-Both behaviors are intentional; a run that must stay on low sets
-`task.maxEffort: low`, which also lowers every other agent.
+So the bundled subagents run their models at `low`. The Astra low figures
+above are the level `task`, `reviewer`, and `security-reviewer` get. The cost
+of the cap is that `scout` and `sonic` also drop from Luna `medium` to Luna
+`low` (index 22 against 26). Raising `task.maxEffort` lets `auto` and
+`effort: hi` reach Astra `high` again ($1.72 per index task, 45.63 s TTFT).
 
 omp's model catalog lists Astra with a 272k context window, while AA lists 1M.
 
