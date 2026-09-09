@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - omp: split the YAML merge per file
+## 2026-09-09 - docks-kit 0.16.8: omp YAML merge split; models.yml re-merge fix
 
 - `ompYaml.ts` now exposes `mergeOmpConfig` and `mergeOmpModels` over one
   generic `mergeYamlDocuments` core. Only the config wrapper prunes stale
