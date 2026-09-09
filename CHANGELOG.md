@@ -4,8 +4,8 @@
 
 - Patch release for the omp Astra per-model cap and the two post-0.16.6 doc
   corrections (reviewer overrides dormant, vitest 4.1.11 rationale).
-## 2026-09-09 — omp: Astra capped at low per model; scout and sonic regain high
 
+## 2026-09-09 — omp: Astra capped at low per model; scout and sonic regain high
 
 - Added `SoT/.omp/models.yml` to restrict Astra's effort ladder to `[low]`.
   `ompSync.ts syncMergedYaml` deploys it with the same recursive merge as
