@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased - omp: split the YAML merge per file
+
+- `ompYaml.ts` now exposes `mergeOmpConfig` and `mergeOmpModels` over one
+  generic `mergeYamlDocuments` core. Only the config wrapper prunes stale
+  `retry.fallbackChains` wildcards; the models wrapper keeps every deployed-only
+  key, and each wrapper names its file in its diagnostics. Behavior of the
+  deployed files is unchanged.
+- Fixed a re-merge on every `sync omp` in 0.16.7: the yaml package
+  re-serialized `efforts: [low]` in `SoT/.omp/models.yml` as `[ low ]`, so the
+  merged text never matched the installed copy. The SoT now uses block
+  sequence form, and `ompSot.test.ts` asserts that both YAML files pass
+  through their own merge byte for byte.
+
 ## 2026-09-09 - docks-kit 0.16.7
 
 - Patch release for the omp Astra per-model cap and the two post-0.16.6 doc

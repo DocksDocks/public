@@ -3,6 +3,8 @@ import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import { parse } from "yaml"
 
+import { mergeOmpConfig, mergeOmpModels } from "../../src/engine-native/ompYaml"
+
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const OMP_SOT = join(REPO_DIR, "SoT", ".omp")
 
@@ -38,6 +40,16 @@ describe("SoT omp tree", () => {
   // Keep the task ceiling high so scout and sonic can use Luna high.
   it("allows high effort for subagents whose models support it", () => {
     expect(ompConfig()["task"]).toHaveProperty("maxEffort", "high")
+  })
+
+  // A fresh install copies the SoT text verbatim. If the yaml package
+  // re-serializes it differently (for example `[low]` as `[ low ]`), every
+  // later sync reports a merge and rewrites the file, breaking idempotency.
+  it("keeps both YAML files byte-stable through their own merge", () => {
+    const config = readSot("config.yml")
+    const models = readSot("models.yml")
+    expect(mergeOmpConfig(config, config)).toBe(config)
+    expect(mergeOmpModels(models, models)).toBe(models)
   })
 
   it("loads the canonical ~/.agents skills only", () => {

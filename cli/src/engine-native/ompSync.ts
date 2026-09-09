@@ -14,7 +14,7 @@ import { p, spawnProcess, type AsyncProcessResult } from "./exec"
 import type { Ctx } from "./index"
 import { isObject, parseJson } from "./jq"
 import { ompPaths } from "./ompPaths"
-import { mergeOmpConfig } from "./ompYaml"
+import { mergeOmpConfig, mergeOmpModels } from "./ompYaml"
 import { field } from "./toolchain"
 
 const MARKETPLACE_NAME = "docks"
@@ -35,8 +35,8 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
 
   syncWholeFile(ctx, "SoT/.omp/AGENTS.md", p(agentDir, "AGENTS.md"), "omp AGENTS.md already in sync", "omp AGENTS.md synced")
   syncWholeFile(ctx, "SoT/.omp/mcp.json", p(agentDir, "mcp.json"), "omp mcp.json already in sync", "omp mcp.json synced")
-  syncMergedYaml(ctx, "SoT/.omp/config.yml", p(agentDir, "config.yml"))
-  syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"))
+  syncMergedYaml(ctx, "SoT/.omp/config.yml", p(agentDir, "config.yml"), mergeOmpConfig)
+  syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels)
 
   const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]
   const intercomRoot = intercomRootSetting !== undefined && intercomRootSetting !== ""
@@ -112,7 +112,12 @@ function syncWholeFile(
   ctx.nextStepTriggers.ompRestart = true
 }
 
-function syncMergedYaml(ctx: Ctx, sourcePath: OmpTextPayloadPath, target: string): void {
+function syncMergedYaml(
+  ctx: Ctx,
+  sourcePath: OmpTextPayloadPath,
+  target: string,
+  merge: (sotText: string, deployedText: string) => string
+): void {
   const { change, echo, verbose } = ctx.services.logger
   const source = payloadDisplayPath(sourcePath)
   const sotText = payloadText(sourcePath)
@@ -130,7 +135,7 @@ function syncMergedYaml(ctx: Ctx, sourcePath: OmpTextPayloadPath, target: string
   }
 
   const deployedText = readFileSync(target, "utf8")
-  const merged = mergeOmpConfig(sotText, deployedText)
+  const merged = merge(sotText, deployedText)
   if (merged === deployedText) {
     verbose(`omp ${name} already in sync`)
     return

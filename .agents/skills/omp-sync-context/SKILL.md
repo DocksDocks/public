@@ -1,15 +1,15 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig; harnesses.ts readHarnessSelection or writeHarnessSelection; or the omp pipeline in index.ts engineSync and selection in parseArgs.ts parseArgs. Covers omp path resolution, deployment, YAML merge, plugins, dry-run, refresh, and harness state. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; harnesses.ts readHarnessSelection or writeHarnessSelection; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, and harness state. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-423"
+      lines: "1-428"
     - path: cli/src/engine-native/ompPaths.ts
       lines: "1-101"
     - path: cli/src/engine-native/ompYaml.ts
-      lines: "1-107"
+      lines: "1-128"
     - path: cli/src/engine-native/harnesses.ts
       lines: "1-75"
     - path: cli/src/engine-native/index.ts
@@ -76,7 +76,7 @@ Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 ## When To Use
 
 - Change `ompSync`, `ompSummary`, or `ompNextSteps` in `ompSync.ts`.
-- Change `mergeOmpConfig` in `ompYaml.ts`.
+- Change `mergeOmpConfig`, `mergeOmpModels`, or the shared `mergeYamlDocuments` core in `ompYaml.ts`.
 - Change omp path resolution in `ompPaths.ts` — `ompPaths`.
 - Change omp deployment file modes, backups, or restart triggers.
 - Change omp marketplace registration or plugin reconciliation.
@@ -132,11 +132,15 @@ Let Source of Truth keys win every conflict.
 Merge mapping nodes recursively when both sides contain mappings.
 Replace every other Source of Truth node, including scalars and sequences.
 Preserve deployed-only keys by default.
-`ompSync.ts syncMergedYaml`, shared YAML deployment, applies the same merge to
-`models.yml`; fallback-chain pruning is a no-op there because
-`retry.fallbackChains` does not exist in that document.
+`ompSync.ts syncMergedYaml`, shared YAML deployment, receives the file-specific
+merge as an argument: `mergeOmpConfig` for `config.yml` and `mergeOmpModels`
+for `models.yml`. Both wrap `ompYaml.ts mergeYamlDocuments`, the generic
+mapping merge, and name their file in every diagnostic.
 
-Prune one deployed-only key class.
+`mergeOmpModels` drops nothing. A user `models.yml` may carry provider
+credentials and custom models the kit never declares.
+
+`mergeOmpConfig` prunes one deployed-only key class.
 Inspect keys directly under `retry.fallbackChains`.
 Drop each key containing a slash character.
 Preserve unknown role keys without a slash.
@@ -159,7 +163,7 @@ Reject invalid deployed YAML without writing the target.
 | Direct fallback-chain key contains `/` | Prune it. |
 | Unknown fallback role has no `/` | Preserve it. |
 
-Anchor this behavior at `ompYaml.ts` — `mergeOmpConfig` — recursive merge and wildcard pruning.
+Anchor this behavior at `ompYaml.ts` — `mergeOmpConfig` — fallback wildcard predicate over the shared merge.
 Do not replace this parser with a line-based YAML merge.
 
 ## Plugin Inventory Contract

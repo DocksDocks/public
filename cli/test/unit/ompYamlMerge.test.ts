@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { parse } from "yaml"
 
-import { mergeOmpConfig } from "../../src/engine-native/ompYaml"
+import { mergeOmpConfig, mergeOmpModels } from "../../src/engine-native/ompYaml"
 
 describe("omp YAML merge", () => {
   it("recurses into nested mappings", () => {
@@ -107,13 +107,35 @@ describe("omp YAML merge", () => {
 
   it("throws for invalid deployed YAML", () => {
     expect(() => mergeOmpConfig("value: 1\n", "[unterminated\n")).toThrow(
-      /Invalid deployed omp YAML:/
+      /Invalid deployed omp config\.yml YAML:/
     )
   })
 
   it("throws when the deployed root is a sequence", () => {
     expect(() => mergeOmpConfig("value: 1\n", "- first\n- second\n")).toThrow(
-      /Deployed omp YAML root must be a mapping/
+      /Deployed omp config\.yml YAML root must be a mapping/
+    )
+  })
+
+  // models.yml is user territory for credentials and custom models, so the
+  // config-only wildcard pruning must not reach it even at the same path.
+  it("keeps every deployed-only key in models.yml, including fallback-chain wildcards", () => {
+    const deployed = "retry:\n  fallbackChains:\n    openai/*: [b]\nproviders:\n  mine:\n    apiKey: secret\n"
+    const sot = "providers:\n  openai-codex:\n    modelOverrides: {}\n"
+
+    expect(parse(mergeOmpModels(sot, deployed))).toEqual({
+      providers: { "openai-codex": { modelOverrides: {} }, mine: { apiKey: "secret" } },
+      retry: { fallbackChains: { "openai/*": ["b"] } }
+    })
+    expect(parse(mergeOmpConfig(sot, deployed))).toEqual({
+      providers: { "openai-codex": { modelOverrides: {} }, mine: { apiKey: "secret" } },
+      retry: { fallbackChains: {} }
+    })
+  })
+
+  it("names models.yml in its diagnostics", () => {
+    expect(() => mergeOmpModels("value: 1\n", "- first\n")).toThrow(
+      /Deployed omp models\.yml YAML root must be a mapping/
     )
   })
 })
