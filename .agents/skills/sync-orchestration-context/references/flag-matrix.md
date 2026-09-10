@@ -84,7 +84,7 @@ only by `--prune`.
 ## Gotchas
 
 - `--skip-bubblewrap` skips optional Codex bubblewrap auto-install.
-- `docks-kit update` chains `--skip-plugin-refresh`; a manual flag-less sync still performs full plugin refresh.
+- `docks-kit update` chains a flag-less sync, so it performs the full plugin refresh; `--skip-plugin-refresh` is a manual opt-out only.
 - Combining `--dry-run --reconcile --prune` previews both destructive layers.
 - `--claude-compact-window=abc` exits 2; only digits or digits plus `k`/`K`
   are accepted.

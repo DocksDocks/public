@@ -79,7 +79,7 @@ into core, and the standalone platform package was unused here.
 | `--claude-plugin=<name>` | Sticky opt-in plugin (supabase, n8n) |
 | `--codex-model=<m>` | Deploy-time modifier: deployed Codex model |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
-| `--skip-plugin-refresh` | Install missing plugins but skip refresh-only updates (used automatically by `docks-kit update`) |
+| `--skip-plugin-refresh` | Install missing plugins but skip refresh-only updates |
 
 **Deploy-time modifiers** change deployed config only — the SoT is untouched
 and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`

@@ -168,9 +168,9 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (separator > 0) kitMarketplaces.add(pluginId.slice(separator + 1))
   }
 
-  // Pass 3 — refresh the kit-owned marketplaces unless the update command
-  // selected its install-missing-only fast path. Pass 2 already refreshed the
-  // source marketplace of every plugin it installed, so skip those: a second
+  // Pass 3 — refresh the kit-owned marketplaces unless the caller passed
+  // --skip-plugin-refresh by hand. Pass 2 already refreshed the source
+  // marketplace of every plugin it installed, so skip those: a second
   // fetch seconds later cannot resolve a newer snapshot, and re-running it
   // would duplicate one failure in the ledger and in the failed-operation count.
   if (!ctx.skipPluginRefresh) {

@@ -102,7 +102,7 @@ target selector and set `ctx.targetFilterSet`; when it remains false,
 | `--reconcile` | `ctx.reconcile` | Settings layer only. |
 | `--prune` | `ctx.prune` | Plugin, marketplace, and kit-managed skills removals. |
 | `--skip-bubblewrap` | `ctx.skipBubblewrap` | Skips optional bubblewrap bootstrap for the Codex Linux sandbox. |
-| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; update chains this flag. |
+| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; no command passes it automatically. |
 | `--claude-model=<m>` | `ctx.claudeModel` | Validated before sync mutations. |
 | `--codex-model=<m>` | `ctx.codexModel` | Charset gate blocks TOML injection. |
 | `--claude-compact-window=<n|Nk>` | `ctx.claudeCompactWindow` | Normalized by `parseCompactWindow`. |
