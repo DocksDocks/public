@@ -122,7 +122,26 @@ bun rm -g docks-kit && bun add -g docks-kit@latest
 A plain reinstall over the broken tree is not enough. Bun keeps the previously
 resolved copy nested under
 `node_modules/@effect/platform-bun/node_modules/@effect/platform-node-shared`,
-and that stale copy still loads. Verified on Bun 1.4.2.
+and that stale copy still loads.
+
+If a plain reinstall was already attempted, the remove-then-add above no longer
+clears that nested copy either. Force a full re-resolve of the global tree:
+
+```
+bun rm -g docks-kit && bun add -g docks-kit@latest --force
+```
+
+`--force` without the remove does not repair it. Other global packages survive
+both sequences.
+
+An npm global install repairs itself with a plain upgrade, because npm rebuilds
+the tree it owns:
+
+```
+npm install -g docks-kit@latest
+```
+
+Verified on Bun 1.4.2 and npm 11, each in a clean HOME.
 
 ## No-Bun recovery
 
