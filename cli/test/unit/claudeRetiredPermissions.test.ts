@@ -21,9 +21,15 @@ import { runEngineNative } from "../../src/engine-native"
 import { mergeSettings } from "../../src/engine-native/settings"
 import { makeEngineServices, type EngineServices, type Logger } from "../../src/engine-native/services"
 import { kitHome } from "../../src/kitHome"
-import { PRELOAD_APPLIES, cleanup, runEngine } from "../lib/goldenExecution"
+import { cleanup, runEngine } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
+
+// The stub launchers and the child must agree on one host. Native pairing runs
+// the real host with its own launcher form, so these cases keep their
+// harness-CLI coverage on Windows instead of resolving a shell script the
+// host cannot execute.
+const NATIVE = { nativeHost: true } as const
 
 afterAll(cleanupTemporaryDirs)
 
@@ -89,13 +95,13 @@ describe("retired permission rule cutover", () => {
     expect(Array.isArray(allow) ? allow : []).toContain(RETIRED_PERMISSION_RULES.allow[0])
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("drops every retired rule on a flag-less sync while keeping user and SoT rules", () => {
+  it("drops every retired rule on a flag-less sync while keeping user and SoT rules", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange()
     })
-    const stubs = makeStubDir()
-    const applied = runEngine(["sync", "claude"], variant, stubs)
-    const replay = runEngine(["sync", "claude"], variant, stubs, { reuseHome: applied.home })
+    const stubs = makeStubDir({}, NATIVE)
+    const applied = runEngine(["sync", "claude"], variant, stubs, NATIVE)
+    const replay = runEngine(["sync", "claude"], variant, stubs, { ...NATIVE, reuseHome: applied.home })
     try {
       expect(applied.exitCode, applied.output).toBe(0)
       const deployed = permissions(applied.home)
@@ -116,7 +122,7 @@ describe("retired permission rule cutover", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
+  it("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
     // Claude Code resolves localSettings against the working directory, so a home copy is not a user-scope source.
     const untouchedSiblingFile = ".claude/settings.local.json"
     const siblingContents = stableStringify({
@@ -129,7 +135,7 @@ describe("retired permission rule cutover", () => {
       ".claude/settings.json": deployedBeforeThisChange(),
       [untouchedSiblingFile]: siblingContents
     })
-    const applied = runEngine(["sync", "claude"], variant, makeStubDir())
+    const applied = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(applied.exitCode, applied.output).toBe(0)
       expect(readFileSync(p(applied.home, untouchedSiblingFile), "utf8")).toBe(siblingContents)
@@ -140,11 +146,11 @@ describe("retired permission rule cutover", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("deploys the SoT PowerShell deny and ask rules on this non-Windows host", () => {
+  it("deploys the SoT PowerShell deny and ask rules on every host", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange()
     })
-    const applied = runEngine(["sync", "claude"], variant, makeStubDir())
+    const applied = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(applied.exitCode, applied.output).toBe(0)
       const deployed = permissions(applied.home)

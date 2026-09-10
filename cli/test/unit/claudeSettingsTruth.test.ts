@@ -4,9 +4,15 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { mergeSettings } from "../../src/engine-native/settings"
 import { kitHome } from "../../src/kitHome"
-import { PRELOAD_APPLIES, cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
+
+// The stub launchers and the child must agree on one host. Native pairing runs
+// the real host with its own launcher form, so these cases keep their
+// harness-CLI coverage on Windows instead of resolving a shell script the
+// host cannot execute.
+const NATIVE = { nativeHost: true } as const
 import { RETIRED_PERMISSION_RULES } from "../../src/engine-native/claudeRetired"
 import {
   invalidRules,
@@ -243,13 +249,13 @@ describe.sequential("Claude settings truth", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("rejects a non-object Claude state document without replacing it", () => {
+  it("rejects a non-object Claude state document without replacing it", () => {
     const bytes = "[]"
     const variant = materializeVariant("home-fresh", {
       ".claude/settings.json": "{}\n",
       ".claude.json": bytes
     })
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(run.exitCode).toBe(0)
       expect(readFileSync(join(run.home, ".claude.json"), "utf8")).toBe(bytes)
@@ -261,7 +267,7 @@ describe.sequential("Claude settings truth", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("prune keeps an explicitly requested optional plugin and its marketplace", () => {
+  it("prune keeps an explicitly requested optional plugin and its marketplace", () => {
     const pluginId = "n8n-mcp-skills@n8n-mcp-skills"
     const marketplace = "n8n-mcp-skills"
     const variant = materializeVariant("home-drift", {
@@ -277,7 +283,8 @@ describe.sequential("Claude settings truth", () => {
     const run = runEngine(
       ["sync", "claude", "--prune", "--claude-plugin=n8n"],
       variant,
-      makeStubDir()
+      makeStubDir({}, NATIVE),
+      NATIVE
     )
     try {
       expect(run.exitCode).toBe(0)

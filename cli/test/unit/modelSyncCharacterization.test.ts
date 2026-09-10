@@ -3,8 +3,14 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { modelCatalog } from "../../src/engine-native/models"
-import { PRELOAD_APPLIES, cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
+
+// The stub launchers and the child must agree on one host. Native pairing runs
+// the real host with its own launcher form, so these cases keep their
+// harness-CLI coverage on Windows instead of resolving a shell script the
+// host cannot execute.
+const NATIVE = { nativeHost: true } as const
 
 const EXPECTED_CATALOGS = {
   claude: {
@@ -89,8 +95,8 @@ describe.sequential("retained model and sync behavior", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
-    const run = runEngine(["sync"], "home-drift", makeStubDir())
+  it("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
+    const run = runEngine(["sync"], "home-drift", makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(run.exitCode).toBe(0)
 

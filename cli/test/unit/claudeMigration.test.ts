@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
 import { hostOs } from "../../src/engine-native/os/index"
-import { PRELOAD_APPLIES, cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
+import { cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
 import {
   FIXTURES_DIR,
   cleanupTemporaryDirs,
@@ -12,6 +12,12 @@ import {
   materializeVariant
 } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
+
+// The stub launchers and the child must agree on one host. Native pairing runs
+// the real host with its own launcher form, so these cases keep their
+// harness-CLI coverage on Windows instead of resolving a shell script the
+// host cannot execute.
+const NATIVE = { nativeHost: true } as const
 
 afterAll(cleanupTemporaryDirs)
 
@@ -49,8 +55,7 @@ function runWithBunUnavailable(args: ReadonlyArray<string>, home: string): Engin
   // One token for both sides: the stubs must be launchable by the host the
   // child actually runs as, and this case needs the native host so the
   // Bun/curl absence it asserts is the real host's absence.
-  const native = { nativeHost: true } as const
-  const stubs = makeStubDir({ bun: null, curl: null }, native)
+  const stubs = makeStubDir({ bun: null, curl: null }, NATIVE)
   for (const tool of ["bun", "curl"]) {
     for (const suffix of hostOs().executableSuffixes) {
       if (existsSync(join(stubs, `${tool}${suffix}`))) {
@@ -58,7 +63,7 @@ function runWithBunUnavailable(args: ReadonlyArray<string>, home: string): Engin
       }
     }
   }
-  return runEngine(args, home, stubs, { ...native, reuseHome: home, env: { PATH: stubs } })
+  return runEngine(args, home, stubs, { ...NATIVE, reuseHome: home, env: { PATH: stubs } })
 }
 
 function settingsObject(home: string): { [key: string]: Json } {
@@ -170,10 +175,10 @@ describe.sequential("Claude runtime migration transaction", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("prunes a null-valued hooks.Stop key on a ready migration", () => {
+  it("prunes a null-valued hooks.Stop key on a ready migration", () => {
     const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } })
     const variant = legacyVariant(nullStop)
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(run.exitCode, run.output).toBe(0)
       const hooks = hooksObject(settingsObject(run.home))
@@ -184,14 +189,14 @@ describe.sequential("Claude runtime migration transaction", () => {
     }
   })
 
-  it.skipIf(!PRELOAD_APPLIES)("prunes the retired effect-kit plugin key from deployed settings", () => {
+  it("prunes the retired effect-kit plugin key from deployed settings", () => {
     const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
     const deployed = isObject(drift["enabledPlugins"]) ? drift["enabledPlugins"] : {}
     drift["enabledPlugins"] = { ...deployed, "effect-kit@docks": true }
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": stableStringify(drift)
     })
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
     try {
       expect(run.exitCode, run.output).toBe(0)
       const plugins = settingsObject(run.home)["enabledPlugins"]
@@ -244,9 +249,9 @@ describe.sequential("Claude runtime migration transaction", () => {
 })
 
 describe.sequential("contextual dependency degradation", () => {
-  it.skipIf(!PRELOAD_APPLIES)("syncs Claude and Codex without jq or a jq warning", () => {
+  it("syncs Claude and Codex without jq or a jq warning", () => {
     for (const target of ["claude", "codex"] as const) {
-      const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }), { maskTools: ["jq"] })
+      const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }, NATIVE), { ...NATIVE, maskTools: ["jq"] })
       try {
         expect(run.exitCode, run.output).toBe(0)
         expect(run.output).not.toContain("jq not installed")
