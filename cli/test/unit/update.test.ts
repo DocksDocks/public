@@ -21,11 +21,10 @@ vi.mock("node:child_process", () => ({
 }))
 
 describe("update chained sync", () => {
-  it("uses the fresh package entrypoint and skips refresh-only plugin work", () => {
+  it("uses the fresh package entrypoint and carries no refresh-skipping flag", () => {
     expect(updateSyncArgs("C:\\fixture\\kit")).toEqual([
       "C:\\fixture\\kit/cli/src/main.ts",
-      "sync",
-      "--skip-plugin-refresh"
+      "sync"
     ])
   })
 })

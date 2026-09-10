@@ -80,7 +80,7 @@ installer bootstraps Bun when absent. It then runs
 ## Keeping the kit up to date
 
 ```
-docks-kit update            # autodetect + update + install-missing-only sync
+docks-kit update            # autodetect + update + full sync (refreshes plugins)
 docks-kit update --no-sync  # update only
 ```
 

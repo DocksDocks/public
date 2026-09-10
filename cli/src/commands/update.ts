@@ -68,11 +68,7 @@ const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
   })
 
-export const updateSyncArgs = (home: string): Array<string> => [
-  p(home, "cli/src/main.ts"),
-  "sync",
-  "--skip-plugin-refresh"
-]
+export const updateSyncArgs = (home: string): Array<string> => [p(home, "cli/src/main.ts"), "sync"]
 
 const readPackageVersion = (home: string): string => {
   try {
@@ -211,28 +207,33 @@ const updateCheckout = (home: string, skipSync: boolean) =>
     if (!pull.ok) return yield* bail(`git pull --ff-only failed (diverged history?):\n${pull.out}`)
     const after = git(home, ["rev-parse", "HEAD"]).out
 
-    if (before === after) {
-      return yield* Console.log(`Already at the latest version (${after.slice(0, 7)}, upstream ${upstream.out}).`)
-    }
+    // A current kit still syncs: the plugin passes deliver marketplace and
+    // plugin updates that move independently of the kit's own version.
+    const changed = before !== after
+    if (changed) {
+      const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out
+      yield* Console.log(`Updated ${before.slice(0, 7)}..${after.slice(0, 7)} (${count} commit(s) from ${upstream.out}).`)
 
-    const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out
-    yield* Console.log(`Updated ${before.slice(0, 7)}..${after.slice(0, 7)} (${count} commit(s) from ${upstream.out}).`)
-
-    const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
-    if (touched.includes("bun.lock") || touched.includes("package.json")) {
-      const res = spawnUpdate("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
-      if (res.error !== undefined || res.status !== 0) {
-        return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
+      const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
+      if (touched.includes("bun.lock") || touched.includes("package.json")) {
+        const res = spawnUpdate("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
+        if (res.error !== undefined || res.status !== 0) {
+          return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
+        }
       }
+    } else {
+      yield* Console.log(`Already at the latest version (${after.slice(0, 7)}, upstream ${upstream.out}).`)
     }
 
     if (compiled) {
       return yield* Console.log(
-        "This compiled binary still runs the previous version - the checkout launcher will use updated source next time. Run: ./docks-kit sync (rebuild with bash cli/build-binaries.sh to restore the binary fast path)."
+        changed
+          ? "This compiled binary still runs the previous version - the checkout launcher will use updated source next time. Run: ./docks-kit sync (rebuild with bash cli/build-binaries.sh to restore the binary fast path)."
+          : "This compiled binary cannot chain the sync. Run: ./docks-kit sync"
       )
     }
-    if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
-    yield* Console.log("Kit updated - running sync with the new version...")
+    if (skipSync) return yield* Console.log(changed ? "Kit updated. Run: docks-kit sync" : "Run: docks-kit sync")
+    yield* Console.log(changed ? "Kit updated - running sync with the new version..." : "Syncing to deliver plugin and config updates...")
     return yield* chainSync(process.execPath, updateSyncArgs(home))
   })
 
@@ -267,9 +268,12 @@ const updatePackage = (home: string, skipSync: boolean) =>
     }
     const result = packageUpdateResult(beforeVersion, afterVersion, home === updated.home)
     if (result.message !== "") yield* Console.log(result.message)
-    if (result.alreadyCurrent) return
-    if (skipSync) return yield* Console.log("Kit updated. Run: docks-kit sync")
-    yield* Console.log("Kit updated - running sync with the new version...")
+    if (skipSync) return yield* Console.log(result.alreadyCurrent ? "Run: docks-kit sync" : "Kit updated. Run: docks-kit sync")
+    yield* Console.log(
+      result.alreadyCurrent
+        ? "Syncing to deliver plugin and config updates..."
+        : "Kit updated - running sync with the new version..."
+    )
     return yield* chainSync(process.execPath, updateSyncArgs(updated.home))
   })
 
@@ -288,6 +292,6 @@ export const updateCommand = Command.make("update", { noSync }, (config) =>
   })
 ).pipe(
   Command.withDescription(
-    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest) and chains an install-missing-only sync with the new version (--no-sync to skip)."
+    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest), then chains a flag-less sync that also refreshes plugin marketplaces and plugins, even when the kit was already current (--no-sync to skip)."
   )
 )
