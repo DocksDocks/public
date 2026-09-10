@@ -29,6 +29,7 @@
     "typecheck": "tsc --noEmit -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
     "smoke:native": "bun cli/scripts/native-smoke.ts",
+    "smoke:package": "bun cli/scripts/package-smoke.ts",
     "check:generated": "bun cli/scripts/generate-sot-payload.ts --check",
     "prepack": "bun run check:generated",
     "golden:dryrun": "bun cli/test/golden-dryrun.ts",
@@ -40,6 +41,7 @@
   },
   "dependencies": {
     "@effect/platform-bun": "4.0.0-rc.109",
+    "@effect/platform-node-shared": "4.0.0-rc.109",
     "effect": "4.0.0-rc.109",
     "yaml": "2.9.0"
   },
