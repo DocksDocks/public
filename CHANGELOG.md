@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.13: pinned a floating effect transitive
+
+- A fresh install from the registry (`bun add -g docks-kit@latest`, `bunx
+  docks-kit`, or `npm i -g docks-kit`) could fail at startup with
+  `Cannot find module 'effect/ByteSize'`. `@effect/platform-bun` requests
+  `@effect/platform-node-shared` through a caret range over a prerelease, so a
+  fresh resolution paired a newer shared package with the pinned
+  `effect@4.0.0-rc.109`. The root now pins
+  `@effect/platform-node-shared` at `4.0.0-rc.109`, and an install resolves one
+  copy of each with no peer dependency warning.
+- An existing broken global install needs a remove first:
+  `bun rm -g docks-kit && bun add -g docks-kit@latest`. A plain reinstall
+  leaves the previously resolved copy nested under
+  `node_modules/@effect/platform-bun/node_modules/` and still fails.
+- Two guards keep the range from floating again:
+  `cli/test/unit/dependencyPins.test.ts` asserts the exact pins offline, and
+  `bun run smoke:package` packs the tarball, installs it in a clean-room
+  temporary directory, and runs the CLI.
+
 ## 2026-09-10 - docks-kit 0.16.12: documentation correction
 
 - `README.md`, the `sync-orchestration-context` flag table and its
