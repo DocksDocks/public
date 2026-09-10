@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.12: documentation correction
+
+- `README.md`, the `sync-orchestration-context` flag table and its
+  `flag-matrix.md` reference, and the pass 3 comment in `claudePlugins.ts` no
+  longer state that `docks-kit update` passes `--skip-plugin-refresh`. Behavior
+  changed in 0.16.11; these four lines were missed. The flag remains a manual
+  opt-out on `sync`.
+
 ## 2026-09-10 - docks-kit 0.16.11: docks-kit update delivers plugin bumps
 
 - `docks-kit update` no longer passes `--skip-plugin-refresh` to its chained
