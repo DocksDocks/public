@@ -11,9 +11,19 @@ import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, readJso
 import { field } from "./toolchain"
 import { payloadText } from "../payload"
 
-async function cli(args: Array<string>): Promise<{ ok: boolean; out: string }> {
+async function cli(args: Array<string>): Promise<{ ok: boolean; out: string; detail: string }> {
   const res = await spawnProcess("claude", args, { stdio: ["ignore", "pipe", "pipe"] })
-  return { ok: res.error === undefined && res.exitCode === 0, out: `${res.stdout}${res.stderr}` }
+  // A spawn error carries its cause in `error`, not in either stream, and that
+  // is the case a failure message cannot afford to drop: it names an
+  // unresolvable launcher instead of a rejected command.
+  const out = res.error !== undefined ? res.error.message : `${res.stdout}${res.stderr}`
+  const detail = out.split("\n").map((line) => line.trim()).find((line) => line !== "") ?? "unknown error"
+  return { ok: res.error === undefined && res.exitCode === 0, out, detail }
+}
+
+/** Failure message tail: the cause, then the command to re-run by hand. */
+function manually(detail: string, args: Array<string>): string {
+  return `${detail}; run manually: claude ${args.join(" ")}`
 }
 
 function sortedKeys(obj: Json | undefined): Array<string> {
@@ -96,7 +106,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (marketplaceResult.ok) {
       addedMp++
     } else {
-      recordFailure(ctx, `Failed to add marketplace: ${mpName} (${repo})`)
+      recordFailure(
+        ctx,
+        `Failed to add marketplace: ${mpName} (${repo}): ${manually(marketplaceResult.detail, ["plugin", "marketplace", "add", repo])}`
+      )
       f1++
     }
   }
@@ -117,7 +130,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       const refreshResult = await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
       if (!refreshResult.ok) {
-        recordFailure(ctx, `Failed to refresh marketplace: ${mpName}`)
+        recordFailure(
+          ctx,
+          `Failed to refresh marketplace: ${mpName}: ${manually(refreshResult.detail, ["plugin", "marketplace", "update", mpName])}`
+        )
         f3++
       }
       refreshedMarketplaces.add(mpName)
@@ -128,7 +144,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (installResult.ok) {
       addedPl++
     } else {
-      recordFailure(ctx, `Failed to install plugin: ${pluginId}`)
+      recordFailure(
+        ctx,
+        `Failed to install plugin: ${pluginId}: ${manually(installResult.detail, ["plugin", "install", pluginId])}`
+      )
       f2++
     }
   }
@@ -162,7 +181,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       clearProgress()
       refreshedMarketplaces.add(mpName)
       if (!refreshResult.ok) {
-        recordFailure(ctx, `Failed to refresh marketplace: ${mpName}`)
+        recordFailure(
+          ctx,
+          `Failed to refresh marketplace: ${mpName}: ${manually(refreshResult.detail, ["plugin", "marketplace", "update", mpName])}`
+        )
         f3++
       }
     }
@@ -173,7 +195,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       const updateResult = await cli(["plugin", "update", pluginId, "--scope", "user"])
       clearProgress()
       if (!updateResult.ok) {
-        recordFailure(ctx, `Failed to update plugin: ${pluginId}`)
+        recordFailure(
+          ctx,
+          `Failed to update plugin: ${pluginId}: ${manually(updateResult.detail, ["plugin", "update", pluginId, "--scope", "user"])}`
+        )
         f4++
       } else if (updateResult.out.includes("Successfully updated")) {
         updatedPl++
@@ -196,7 +221,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       if (uninstallResult.ok) {
         removedPl++
       } else {
-        recordFailure(ctx, `Failed to uninstall plugin: ${pluginId}`)
+        recordFailure(
+          ctx,
+          `Failed to uninstall plugin: ${pluginId}: ${manually(uninstallResult.detail, ["plugin", "uninstall", "-y", "--scope", "user", pluginId])}`
+        )
         f5++
       }
     }
@@ -212,7 +240,10 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       if (removeResult.ok) {
         removedMp++
       } else {
-        recordFailure(ctx, `Failed to remove marketplace: ${mpName}`)
+        recordFailure(
+          ctx,
+          `Failed to remove marketplace: ${mpName}: ${manually(removeResult.detail, ["plugin", "marketplace", "remove", mpName])}`
+        )
         f6++
       }
     }
@@ -247,10 +278,14 @@ async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, us
     const user = readJsonFile(userSettingsFile)
     const enabled = user !== undefined && isObject(user) && isObject(user["enabledPlugins"]) ? (user["enabledPlugins"] as { [k: string]: Json })[pluginId] : undefined
     if (enabled !== true) continue
-    if ((await cli(["plugin", "disable", pluginId])).ok) {
+    const disableResult = await cli(["plugin", "disable", pluginId])
+    if (disableResult.ok) {
       cliDisabled = true
     } else {
-      recordFailure(ctx, `Failed to disable SoT-false plugin: ${pluginId} (will retry next sync)`)
+      recordFailure(
+        ctx,
+        `Failed to disable SoT-false plugin: ${pluginId} (will retry next sync): ${manually(disableResult.detail, ["plugin", "disable", pluginId])}`
+      )
     }
   }
 
