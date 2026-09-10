@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.10: causes in Claude plugin failure messages
+
+- Every recorded Claude plugin failure now names the cause and the command to
+  re-run by hand, matching the omp and Codex paths. A spawn error reports its
+  own message, so an unresolvable launcher on PATH is distinguishable from a
+  command the CLI rejected.
+- Test-only: the nine unit tests that assert a clean sync under the
+  Linux-canonical stub preload now skip on Windows, where a shell-script stub
+  launcher cannot be executed. They passed before 0.16.9 only because the
+  stubbed plugin calls failed silently.
+
 ## 2026-09-10 - docks-kit 0.16.9: failed harness plugin commands fail the sync
 
 - A marketplace or plugin command that exits non-zero is now recorded, listed
