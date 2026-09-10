@@ -39,17 +39,13 @@ untrusted` reports zero untrusted dependencies with scripts. Neither
 one package with an `install` script, `msgpackr-extract` by way of
 `effect > msgpackr`, and Bun raises no trust prompt for it.
 
-The install does print one expected warning:
-
-```
-warn: incorrect peer dependency "effect@4.0.0-rc.109"
-```
-
-`@effect/platform-bun` resolves `@effect/platform-node-shared` through a caret
-range, which installs rc.111, and that release declares a peer requirement of
-`effect@^4.0.0-rc.111`. The kit pins `effect@4.0.0-rc.109` deliberately, so this
-newer transitive peer range cannot be satisfied. `docks-kit --version`, model
-catalogs, toolchain checks, and real sync are unaffected.
+The install prints no peer dependency warning. The root pins
+`@effect/platform-node-shared` at `4.0.0-rc.109`, the same release as the
+pinned `effect`, so a fresh registry resolution installs exactly one copy of
+each and the transitive peer range `effect@^4.0.0-rc.109` is satisfied. Without
+that root pin, `@effect/platform-bun` requests the shared package through a
+caret range over a prerelease and a fresh install can pair a newer shared
+package with the pinned `effect`.
 
 ## 3. curl installer (POSIX)
 
@@ -112,6 +108,21 @@ A compiled binary inside a checkout updates the checkout; on the next invocation
 the launcher bypasses that now-stale binary and uses updated source until rebuilt.
 Every `docks-kit sync` also does a best-effort behind-upstream check and
 nudges when the checkout is stale (silent offline / detached / no git).
+
+## Recovering a broken global install
+
+A global install made before the `@effect/platform-node-shared` pin can fail at
+startup with `Cannot find module 'effect/ByteSize'` or another missing
+`effect/...` module. Repair it with a remove followed by a fresh add:
+
+```
+bun rm -g docks-kit && bun add -g docks-kit@latest
+```
+
+A plain reinstall over the broken tree is not enough. Bun keeps the previously
+resolved copy nested under
+`node_modules/@effect/platform-bun/node_modules/@effect/platform-node-shared`,
+and that stale copy still loads. Verified on Bun 1.4.2.
 
 ## No-Bun recovery
 

@@ -228,6 +228,19 @@ jobs:
             cli/dist/SHA256SUMS
             cli/dist/docks-kit-${{ needs.resolve.outputs.release_version }}.tgz
 
+      # Runs last on purpose: the smoke installs the tarball at the given path
+      # rather than packing a second one, so the bytes it exercises are the
+      # bytes the equality proof accepted and the upload published. Earlier
+      # placement would smoke a tarball the proof had not yet accepted, and
+      # placement between the proof and the upload would delay the only step
+      # that saves those bytes. It still gates publication, because
+      # `github-release` and `npm-publish` declare `needs: build`, so a failure
+      # here stops both.
+      - name: Clean-room package install smoke
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run smoke:package cli/dist/docks-kit-${{ needs.resolve.outputs.release_version }}.tgz
+
   github-release:
     needs: [resolve, build]
     permissions:
