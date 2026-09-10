@@ -21,6 +21,17 @@ is absent from user settings.
 5. Re-assert SoT enabled-state (undoes install's enable side effect on
    false-keyed plugins)
 
+## Failed operations fail the sync
+
+A marketplace or plugin command that exits non-zero is warned in place AND
+recorded, then listed under a `--- Failures ---` block after the summary; the
+sync exits 1. A stale plugin therefore no longer looks like a clean sync.
+
+Not a failure: a missing harness CLI, missing git, a missing
+`SoT/toolchain.json` pin, and an unavailable plugin inventory. Those stay
+warn-and-skip with exit 0, so a host without Claude, Codex, or omp installed
+still syncs its deployed config cleanly.
+
 ## Optional opt-ins
 
 Situational plugins are kept OUT of the SoT and opted in per machine:

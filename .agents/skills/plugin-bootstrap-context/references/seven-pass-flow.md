@@ -42,14 +42,21 @@ local installs do not satisfy the kit's user-scope install contract.
 
 ## Pass 3: Marketplace Update
 
-Runs `claude plugin marketplace update` best-effort to refresh manifests unless
-`ctx.skipPluginRefresh` is true. Failure is non-fatal.
+Runs `claude plugin marketplace update` to refresh manifests unless
+`ctx.skipPluginRefresh` is true. A non-zero exit does not stop the remaining
+passes, but it is recorded through `recordFailure` and fails the run, because a
+silent refresh failure leaves the marketplace clone pinned at an old commit
+while install and enable-state still look clean. Pass 2 refreshes each source
+marketplace once before its install and records the same way; pass 3 skips a
+name already in `refreshedMarketplaces`, so one marketplace is fetched at most
+once per run and one failure produces one ledger row.
 
 ## Pass 4: Plugin Updates
 
 Unless `ctx.skipPluginRefresh` is true, iterates installed plugin ids and runs
-`claude plugin update <id>` best-effort. Only output that indicates a successful
-update increments the updated count.
+`claude plugin update <id> --scope user`. A non-zero exit is recorded through
+`recordFailure`. On a zero exit, only output containing `Successfully updated`
+increments the updated count, because an already-current plugin also exits zero.
 
 ## Pass 5: Uninstall Removed Plugins
 

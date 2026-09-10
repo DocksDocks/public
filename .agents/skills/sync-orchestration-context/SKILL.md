@@ -7,14 +7,16 @@ metadata:
     - path: cli/src/engine.ts
       lines: "1-99"
     - path: cli/src/engine-native/index.ts
-      lines: "1-308"
+      lines: "1-344"
+    - path: cli/src/engine-native/failures.ts
+      lines: "1-16"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-420"
     - path: cli/src/engine-native/modes.ts
       lines: "1-148"
     - path: cli/src/engine-native/models.ts
       lines: "1-87"
-  updated: "2026-09-08"
+  updated: "2026-09-10"
 ---
 
 # Sync Engine Orchestration
@@ -42,6 +44,17 @@ Use `ExitError` from `parseArgs.ts` for intentional exit-2 validation failures
 and command-abort parity. Unknown flags, renamed legacy flags, bad modifier
 values, and selected-target model validation failures must abort before any
 mutation.
+</constraint>
+
+<constraint>
+Report a failed kit-managed harness-CLI operation through
+`failures.ts recordFailure`, never a bare `warn`. `index.ts engineSync, failure
+ledger` prints every recorded message under `--- Failures ---` after the summary
+and returns 1, so exit 2 stays reserved for `ExitError` validation aborts and
+exit 1 means a mutation did not happen. A skip is not a failure: a missing
+harness CLI, missing git, a missing `SoT/toolchain.json` pin, and an unavailable
+inventory keep exit 0. Probe before spawning, so a host without the tool never
+records one.
 </constraint>
 
 <constraint>

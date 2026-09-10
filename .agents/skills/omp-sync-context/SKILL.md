@@ -5,7 +5,9 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-429"
+      lines: "1-441"
+    - path: cli/src/engine-native/failures.ts
+      lines: "1-16"
     - path: cli/src/engine-native/ompPaths.ts
       lines: "1-101"
     - path: cli/src/engine-native/ompYaml.ts
@@ -13,10 +15,10 @@ metadata:
     - path: cli/src/engine-native/harnesses.ts
       lines: "1-75"
     - path: cli/src/engine-native/index.ts
-      lines: "177-296"
+      lines: "180-304"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "202-388"
-  updated: "2026-09-09"
+  updated: "2026-09-10"
 ---
 
 # omp Sync Context
@@ -55,6 +57,17 @@ Register with `marketplace add` only in the third state.
 In the second state let omp perform the copy: `marketplace update` normally,
 and the read-only `marketplace list` under `--skip-plugin-refresh`, which never
 fetches.
+</constraint>
+
+<constraint>
+`ompSync.ts syncMarketplace, probe guard` returns before any spawn when the omp
+or git probe reports `missing`, because it runs before `syncPlugins` holds those
+probes. Without the guard a host that lacks omp records a false marketplace
+failure and the sync exits 1. Print no second skip line there: `syncPlugins`
+already emits the single `warnMissing` message.
+Report a real non-zero omp exit through `failures.ts recordFailure`, in
+`syncMarketplace` and in `runPluginCommand`. Keep `warn` for the missing
+toolchain pin and the unavailable-inventory fallback.
 </constraint>
 
 <constraint>

@@ -5,14 +5,16 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudePlugins.ts
-      lines: "1-390"
+      lines: "1-391"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "249-500"
+      lines: "249-635"
+    - path: cli/src/engine-native/failures.ts
+      lines: "1-16"
     - path: SoT/.claude/settings.json
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-80"
-  updated: "2026-09-08"
+  updated: "2026-09-10"
 ---
 
 # Plugin Bootstrap
@@ -80,8 +82,13 @@ All live in `syncPlugins(ctx, claudeDir)`:
    normalize deployed `enabledPlugins` so SoT-declared values win and user-only
    keys survive.
 
-Failures in marketplace/plugin update remain non-fatal; install/removal counters
-surface warnings but do not stop the rest of sync.
+A failed marketplace or plugin command never aborts the remaining passes, but it
+is no longer silent: pass its warning through `failures.ts recordFailure`, which
+warns in place and records the message so `index.ts engineSync, failure ledger`
+lists it under `--- Failures ---` and returns exit 1. Keep the aggregate
+`N plugin operation(s) failed` roll-up a plain `warn`, because every counted
+site already records itself. A missing CLI, missing git, a missing toolchain
+pin, and an unavailable inventory stay warn-only skips with exit 0.
 
 ## Optional Plugins
 
