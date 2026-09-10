@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.14: complete the global-install recovery topic
+
+- `docks-kit docs install` now states the case a remove-then-add does not
+  repair. After a plain `bun add -g docks-kit@latest` over a broken tree, the
+  stale nested copy survives the remove, and the repair needs
+  `bun rm -g docks-kit && bun add -g docks-kit@latest --force`. `--force`
+  without the remove does not repair it, and other global packages survive
+  both sequences. An npm global install repairs itself with a plain
+  `npm install -g docks-kit@latest`. Each case was verified in a clean HOME on
+  Bun 1.4.2 and npm 11.
+- Documentation only. No runtime, sync, or dependency change.
+
 ## 2026-09-10 - docks-kit 0.16.13: pinned a floating effect transitive
 
 - A fresh install from the registry (`bun add -g docks-kit@latest`, `bunx
