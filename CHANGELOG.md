@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.9: failed harness plugin commands fail the sync
+
+- A marketplace or plugin command that exits non-zero is now recorded, listed
+  under a `--- Failures ---` block after the summary, and makes `sync` exit 1.
+  Before this release such a command only printed a warning while the run still
+  reported `--- Sync complete ---` and exited 0, so a machine whose marketplace
+  clone was stuck at an old commit looked healthy and kept resolving a stale
+  plugin version.
+- A skip is still not a failure. A missing harness CLI, missing git, a missing
+  `SoT/toolchain.json` pin, and an unavailable plugin inventory keep exit 0, so
+  a host without Claude, Codex, or omp installed still syncs its deployed
+  config cleanly.
+- Claude plugin passes 2, 3, and 4 discarded their command results entirely.
+  They now record failures, which is the exact path behind the stale-clone
+  case above. Pass 3 also skips a marketplace that pass 2 already refreshed,
+  removing two redundant fetches from a fresh-home sync.
+
 ## 2026-09-09 - docks-kit 0.16.8: omp YAML merge split; models.yml re-merge fix
 
 - `ompYaml.ts` now exposes `mergeOmpConfig` and `mergeOmpModels` over one
