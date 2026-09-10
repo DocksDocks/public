@@ -84,7 +84,8 @@ function makeCtx(root: string, options: { skipPluginRefresh?: boolean } = {}): C
     prune: false,
     skipPluginRefresh: options.skipPluginRefresh ?? false,
     services,
-    nextStepTriggers: { ompRestart: false }
+    nextStepTriggers: { ompRestart: false },
+    failures: []
   } as unknown as Ctx
 }
 

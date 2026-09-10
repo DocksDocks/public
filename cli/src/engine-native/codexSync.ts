@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, 
 
 import { mergeTableSettings, mergeTopLevelSettings, syncCodexEffort, syncCodexModel } from "./codexToml"
 import { p, spawnProcess } from "./exec"
+import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
 import { hostOs } from "./os"
@@ -466,7 +467,7 @@ function marketplaceSource(marketplace: string, configFile: string): string {
 }
 
 async function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): Promise<void> {
-  const { change, echo, warn } = ctx.services.logger
+  const { change, echo } = ctx.services.logger
   if (ctx.dryRun) {
     echo("[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed")
     return
@@ -481,7 +482,7 @@ async function removeLegacyDocksMarketplace(ctx: Ctx, userConfig: string): Promi
     change("Removed legacy configured Codex Docks marketplace; using personal marketplace file")
     ctx.nextStepTriggers.codexRestart = true
   } else {
-    warn("Failed to remove legacy configured Codex Docks marketplace")
+    recordFailure(ctx, "Failed to remove legacy configured Codex Docks marketplace")
   }
 }
 
@@ -592,13 +593,15 @@ async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void> {
     if (res.error === undefined && res.exitCode === 0) {
       refreshed++
     } else if (addOut.includes("could not find a Codex CLI binary")) {
-      warn(
+      recordFailure(
+        ctx,
         `Codex plugin refresh hit a stale launcher/wrapper on PATH - install current standalone Codex with: ${standaloneInstallCommand(ctx)}`
       )
       failed++
     } else {
       const failureLine = addOut.split("\n")[0] ?? ""
-      warn(
+      recordFailure(
+        ctx,
         `Codex plugin refresh failed for ${pluginId}: ${failureLine !== "" ? failureLine : "unknown error"}; run manually: codex plugin add ${pluginId}`
       )
       failed++

@@ -117,6 +117,8 @@ export interface Ctx {
     skillsRestart: boolean
     ompRestart: boolean
   }
+  /** Harness-CLI operations that failed this run; a non-empty list fails the sync. */
+  readonly failures: Array<string>
 }
 
 /** Globals default from env using the historical ${VAR:-default} contract. */
@@ -170,7 +172,8 @@ function makeCtx(services: EngineServices): Ctx {
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false
-    }
+    },
+    failures: []
   }
 }
 
@@ -290,6 +293,12 @@ async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number
   if (advice.length > 0) {
     echo("")
     for (const line of advice) echo(line)
+  }
+  if (ctx.failures.length > 0) {
+    echo("")
+    echo("--- Failures ---")
+    for (const failure of ctx.failures) echo(`- ${failure}`)
+    return 1
   }
   return 0
 }

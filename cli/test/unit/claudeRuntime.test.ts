@@ -65,7 +65,8 @@ function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines
   const ctx = {
     reconcile,
     services,
-    nextStepTriggers: { claudeRestart: false }
+    nextStepTriggers: { claudeRestart: false },
+    failures: [] as Array<string>
   } as Ctx
   return { ctx, lines }
 }

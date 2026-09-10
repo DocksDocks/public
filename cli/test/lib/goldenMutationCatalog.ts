@@ -42,6 +42,40 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync", "agents"] },
   { fixture: "home-fresh", cmd: ["sync", "omp"] },
   { fixture: "home-fresh", cmd: ["sync", "omp"], stubs: { omp: null } },
+  // omp is present but every plugin/marketplace subcommand exits non-zero: the
+  // run must list each failed operation under `--- Failures ---` and exit 1
+  // instead of reporting a clean sync over a stale plugin.
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "omp"],
+    stubs: {
+      omp: `if (args[0] === "--version") {
+  console.log("omp/18.0.8")
+} else if (args[0] === "plugin" && args[1] === "list") {
+  console.log('{"npm":[],"marketplace":[]}')
+} else {
+  console.error("stub omp operation failure")
+  process.exitCode = 1
+}`
+    },
+    variant: "plugin-failure"
+  },
+  // Only `plugin marketplace update` exits non-zero - the incident shape, where a
+  // stale marketplace clone let install and enable-state look clean. Both refresh
+  // passes must record the failure and the run must exit 1.
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "claude"],
+    stubs: {
+      claude: `if (args[0] === "--version") {
+  console.log("2.1.204 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "update") {
+  console.error("stub claude marketplace refresh failure")
+  process.exitCode = 1
+}`
+    },
+    variant: "marketplace-refresh-failure"
+  },
   { fixture: "home-drift", cmd: ["sync", "claude"] },
   { fixture: "home-drift", cmd: ["sync", "codex"] },
   { fixture: "home-drift", cmd: ["sync", "agents"] },

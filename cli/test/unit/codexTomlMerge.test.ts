@@ -63,7 +63,8 @@ function testCtx(root: string, dependencyProbe = vi.fn(() => ({ state: "missing"
       skillsRestart: false,
       ompRestart: false
     },
-    services
+    services,
+    failures: []
   }
 }
 

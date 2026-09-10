@@ -51,7 +51,8 @@ function targetCtx(home: string, interactive: boolean, echoes: Array<string>): C
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false
-    }
+    },
+    failures: []
   }
 }
 

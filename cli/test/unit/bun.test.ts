@@ -115,7 +115,8 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     syncAgents: true,
     syncOmp: false,
     bunRuntime: undefined,
-    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false, ompRestart: false }
+    nextStepTriggers: { claudePlugins: false, claudeRestart: false, codexRestart: false, skillsRestart: false, ompRestart: false },
+    failures: []
   }
   return { ctx, lines, services, state }
 }

@@ -75,7 +75,8 @@ function makeCtx(
     prune: options.prune ?? false,
     verbose: false,
     services,
-    nextStepTriggers: { skillsRestart: false }
+    nextStepTriggers: { skillsRestart: false },
+    failures: [] as Array<string>
   } as Ctx
 }
 

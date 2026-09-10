@@ -144,7 +144,8 @@ function modifierCtx(home: string, records: Array<LogRecord>, dryRun = false): C
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false
-    }
+    },
+    failures: []
   }
 }
 

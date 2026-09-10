@@ -66,7 +66,8 @@ function testCtx(root: string, stdout: Array<string> = []): Ctx {
       skillsRestart: false,
       ompRestart: false
     },
-    services
+    services,
+    failures: []
   }
 }
 

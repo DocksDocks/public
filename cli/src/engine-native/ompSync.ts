@@ -12,6 +12,7 @@ import { basename, isAbsolute, resolve } from "node:path"
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload"
 import { bunBootstrap } from "./bun"
 import { p, spawnProcess, type AsyncProcessResult } from "./exec"
+import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { isObject, parseJson } from "./jq"
 import { ompPaths } from "./ompPaths"
@@ -191,7 +192,7 @@ function firstOutputLine(result: AsyncProcessResult): string {
  * adoption and leaves the active registry present.
  */
 async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFile?: string): Promise<void> {
-  const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, echo, progress, verbose } = ctx.services.logger
   const registered = registryHasDocks(registryFile)
   const adoptable = !registered && legacyRegistryFile !== undefined && registryHasDocks(legacyRegistryFile)
 
@@ -207,6 +208,13 @@ async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFil
     return
   }
 
+  // syncPlugins owns the single skip message for both missing CLIs, and it runs
+  // right after this pass. Without omp no marketplace command can run at all,
+  // and without git a marketplace clone cannot resolve, so both are deliberate
+  // skips: return silently instead of spawning and recording a failure.
+  if (ctx.services.deps.probe("omp").state === "missing") return
+  if (ctx.services.deps.probe("git").state === "missing") return
+
   if (!registered && !adoptable) {
     progress("Registering omp docks marketplace...")
     const result = await spawnProcess("omp", ["plugin", "marketplace", "add", MARKETPLACE_SOURCE], {
@@ -216,7 +224,8 @@ async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFil
     if (result.error === undefined && result.exitCode === 0) {
       change("omp docks marketplace registered")
     } else {
-      warn(
+      recordFailure(
+        ctx,
         `omp docks marketplace registration failed: ${firstOutputLine(result)}; run manually: omp plugin marketplace add ${MARKETPLACE_SOURCE}`
       )
     }
@@ -240,7 +249,8 @@ async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFil
     if (listed.error === undefined && listed.exitCode === 0) {
       change("omp docks marketplace registry adopted; refresh-only update skipped")
     } else {
-      warn(
+      recordFailure(
+        ctx,
         `omp docks marketplace adoption failed: ${firstOutputLine(listed)}; run manually: omp plugin marketplace list`
       )
     }
@@ -255,7 +265,8 @@ async function syncMarketplace(ctx: Ctx, registryFile: string, legacyRegistryFil
   if (result.error === undefined && result.exitCode === 0) {
     verbose("omp docks marketplace refreshed")
   } else {
-    warn(
+    recordFailure(
+      ctx,
       `omp docks marketplace update failed: ${firstOutputLine(result)}; run manually: omp plugin marketplace update ${MARKETPLACE_NAME}`
     )
   }
@@ -309,13 +320,14 @@ async function runPluginCommand(
   plugin: string,
   args: ReadonlyArray<string>
 ): Promise<boolean> {
-  const { clearProgress, progress, warn } = ctx.services.logger
+  const { clearProgress, progress } = ctx.services.logger
   progress(`Updating omp plugin ${plugin}...`)
   const result = await spawnProcess("omp", args, { stdio: ["ignore", "pipe", "pipe"] })
   clearProgress()
   if (result.error === undefined && result.exitCode === 0) return true
 
-  warn(
+  recordFailure(
+    ctx,
     `omp plugin operation failed for ${plugin}: ${firstOutputLine(result)}; run manually: omp ${args.join(" ")}`
   )
   return false

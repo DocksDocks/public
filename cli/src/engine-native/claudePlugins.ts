@@ -5,6 +5,7 @@
  */
 import { existsSync, renameSync, writeFileSync } from "node:fs"
 import { p, spawnProcess } from "./exec"
+import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, readJsonFile, type Json } from "./jq"
 import { field } from "./toolchain"
@@ -95,7 +96,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (marketplaceResult.ok) {
       addedMp++
     } else {
-      warn(`Failed to add marketplace: ${mpName} (${repo})`)
+      recordFailure(ctx, `Failed to add marketplace: ${mpName} (${repo})`)
       f1++
     }
   }
@@ -104,6 +105,8 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   // refreshing each source marketplace once so the install resolves a current snapshot.
   let addedPl = 0
   let f2 = 0
+  let f3 = 0
+  let f4 = 0
   const refreshedMarketplaces = new Set<string>()
   for (const pluginId of sortedKeys(sotPlugins)) {
     if (pluginUserScopeInstalled(installedPlugins, pluginId)) continue
@@ -111,8 +114,12 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     const mpName = separator > 0 ? pluginId.slice(separator + 1) : ""
     if (mpName !== "" && !refreshedMarketplaces.has(mpName)) {
       progress(`Refreshing marketplace ${mpName}...`)
-      await cli(["plugin", "marketplace", "update", mpName])
+      const refreshResult = await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
+      if (!refreshResult.ok) {
+        recordFailure(ctx, `Failed to refresh marketplace: ${mpName}`)
+        f3++
+      }
       refreshedMarketplaces.add(mpName)
     }
     progress(`Installing plugin ${pluginId}...`)
@@ -121,7 +128,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (installResult.ok) {
       addedPl++
     } else {
-      warn(`Failed to install plugin: ${pluginId}`)
+      recordFailure(ctx, `Failed to install plugin: ${pluginId}`)
       f2++
     }
   }
@@ -143,12 +150,21 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   }
 
   // Pass 3 — refresh the kit-owned marketplaces unless the update command
-  // selected its install-missing-only fast path.
+  // selected its install-missing-only fast path. Pass 2 already refreshed the
+  // source marketplace of every plugin it installed, so skip those: a second
+  // fetch seconds later cannot resolve a newer snapshot, and re-running it
+  // would duplicate one failure in the ledger and in the failed-operation count.
   if (!ctx.skipPluginRefresh) {
     for (const mpName of [...kitMarketplaces].sort(compareCodepoints)) {
+      if (refreshedMarketplaces.has(mpName)) continue
       progress(`Refreshing marketplace ${mpName}...`)
-      await cli(["plugin", "marketplace", "update", mpName])
+      const refreshResult = await cli(["plugin", "marketplace", "update", mpName])
       clearProgress()
+      refreshedMarketplaces.add(mpName)
+      if (!refreshResult.ok) {
+        recordFailure(ctx, `Failed to refresh marketplace: ${mpName}`)
+        f3++
+      }
     }
     // Pass 4 — update the kit-owned installed plugins.
     for (const pluginId of [...kitPluginIds].sort(compareCodepoints)) {
@@ -156,7 +172,12 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       progress(`Updating plugin ${pluginId}...`)
       const updateResult = await cli(["plugin", "update", pluginId, "--scope", "user"])
       clearProgress()
-      if (updateResult.out.includes("Successfully updated")) updatedPl++
+      if (!updateResult.ok) {
+        recordFailure(ctx, `Failed to update plugin: ${pluginId}`)
+        f4++
+      } else if (updateResult.out.includes("Successfully updated")) {
+        updatedPl++
+      }
     }
   }
 
@@ -175,7 +196,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       if (uninstallResult.ok) {
         removedPl++
       } else {
-        warn(`Failed to uninstall plugin: ${pluginId}`)
+        recordFailure(ctx, `Failed to uninstall plugin: ${pluginId}`)
         f5++
       }
     }
@@ -191,7 +212,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       if (removeResult.ok) {
         removedMp++
       } else {
-        warn(`Failed to remove marketplace: ${mpName}`)
+        recordFailure(ctx, `Failed to remove marketplace: ${mpName}`)
         f6++
       }
     }
@@ -203,7 +224,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     ctx.nextStepTriggers.claudePlugins = true
   }
 
-  const failed = f1 + f2 + f5 + f6
+  const failed = f1 + f2 + f3 + f4 + f5 + f6
   if (addedMp > 0 || addedPl > 0 || updatedPl > 0 || removedPl > 0 || removedMp > 0) {
     change(`Plugins synced (marketplaces: +${addedMp} -${removedMp}, plugins: +${addedPl} ~${updatedPl} -${removedPl})`)
     ctx.nextStepTriggers.claudePlugins = true
@@ -229,7 +250,7 @@ async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, us
     if ((await cli(["plugin", "disable", pluginId])).ok) {
       cliDisabled = true
     } else {
-      warn(`Failed to disable SoT-false plugin: ${pluginId} (will retry next sync)`)
+      recordFailure(ctx, `Failed to disable SoT-false plugin: ${pluginId} (will retry next sync)`)
     }
   }
 
@@ -250,7 +271,7 @@ async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, us
 // ------------------------------------------------------ optional plugins ----
 
 async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: string, marketplaceRepo: string): Promise<boolean> {
-  const { change, clearProgress, progress, verbose, warn } = ctx.services.logger
+  const { change, clearProgress, progress, verbose } = ctx.services.logger
   const installedPlugins = p(claudeDir, "plugins", "installed_plugins.json")
   const knownMarketplaces = p(claudeDir, "plugins", "known_marketplaces.json")
   const mpName = pluginId.slice(pluginId.lastIndexOf("@") + 1)
@@ -261,7 +282,7 @@ async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: strin
     const has = known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false
     if (!has) {
       if (!(await cli(["plugin", "marketplace", "add", marketplaceRepo])).ok) {
-        warn(`Failed to add marketplace ${marketplaceRepo} for ${pluginId}`)
+        recordFailure(ctx, `Failed to add marketplace ${marketplaceRepo} for ${pluginId}`)
         return false
       }
       marketplaceAdded = true
@@ -275,7 +296,7 @@ async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: strin
     clearProgress()
     if (!installResult.ok) {
       if (marketplaceAdded) change(`Optional plugin ${pluginId}: marketplace added (install failed — will retry next sync)`)
-      warn(`Failed to install optional plugin ${pluginId}`)
+      recordFailure(ctx, `Failed to install optional plugin ${pluginId}`)
       return marketplaceAdded
     }
   }
@@ -288,7 +309,7 @@ async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: strin
 
   if (!(await cli(["plugin", "enable", pluginId])).ok) {
     if (marketplaceAdded || !wasInstalled) change(`Optional plugin ${pluginId}: installed (enable failed — will retry next sync)`)
-    warn(`Failed to enable optional plugin ${pluginId}`)
+    recordFailure(ctx, `Failed to enable optional plugin ${pluginId}`)
     return marketplaceAdded || !wasInstalled
   }
   const changed = marketplaceAdded || !wasInstalled || !wasEnabled
