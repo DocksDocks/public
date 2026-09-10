@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { afterAll, describe, expect, it } from "vitest"
 
 import { modelCatalog } from "../../src/engine-native/models"
-import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { PRELOAD_APPLIES, cleanup, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
 
 const EXPECTED_CATALOGS = {
@@ -89,7 +89,7 @@ describe.sequential("retained model and sync behavior", () => {
     }
   })
 
-  it("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
+  it.skipIf(!PRELOAD_APPLIES)("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
     const run = runEngine(["sync"], "home-drift", makeStubDir())
     try {
       expect(run.exitCode).toBe(0)

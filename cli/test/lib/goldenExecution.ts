@@ -101,6 +101,15 @@ function shadowDir(dir: string, blocked: ReadonlySet<string>): string {
   return shadow
 }
 
+/**
+ * The Linux-canonical preload pairs with POSIX shell stub launchers, and a
+ * Windows child cannot execute a shell script: CreateProcess needs a real
+ * image, so every stubbed harness-CLI call fails there. Gate a test that
+ * asserts a clean preloaded sync on this constant; a case that must also hold
+ * on Windows runs with `nativeHost: true` and its `.cmd` launchers instead.
+ */
+export const PRELOAD_APPLIES = hostOs().id !== "windows"
+
 interface RunOpts {
   readonly maskTools?: ReadonlyArray<string>
   /** Run against an existing HOME (sequential replay) instead of materializing the fixture. */

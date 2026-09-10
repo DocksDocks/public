@@ -21,7 +21,7 @@ import { runEngineNative } from "../../src/engine-native"
 import { mergeSettings } from "../../src/engine-native/settings"
 import { makeEngineServices, type EngineServices, type Logger } from "../../src/engine-native/services"
 import { kitHome } from "../../src/kitHome"
-import { cleanup, runEngine } from "../lib/goldenExecution"
+import { PRELOAD_APPLIES, cleanup, runEngine } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
 
@@ -89,7 +89,7 @@ describe("retired permission rule cutover", () => {
     expect(Array.isArray(allow) ? allow : []).toContain(RETIRED_PERMISSION_RULES.allow[0])
   })
 
-  it("drops every retired rule on a flag-less sync while keeping user and SoT rules", () => {
+  it.skipIf(!PRELOAD_APPLIES)("drops every retired rule on a flag-less sync while keeping user and SoT rules", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange()
     })
@@ -116,7 +116,7 @@ describe("retired permission rule cutover", () => {
     }
   })
 
-  it("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
+  it.skipIf(!PRELOAD_APPLIES)("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
     // Claude Code resolves localSettings against the working directory, so a home copy is not a user-scope source.
     const untouchedSiblingFile = ".claude/settings.local.json"
     const siblingContents = stableStringify({
@@ -140,7 +140,7 @@ describe("retired permission rule cutover", () => {
     }
   })
 
-  it("deploys the SoT PowerShell deny and ask rules on this non-Windows host", () => {
+  it.skipIf(!PRELOAD_APPLIES)("deploys the SoT PowerShell deny and ask rules on this non-Windows host", () => {
     const variant = materializeVariant("home-drift", {
       ".claude/settings.json": deployedBeforeThisChange()
     })

@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { mergeSettings } from "../../src/engine-native/settings"
 import { kitHome } from "../../src/kitHome"
-import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
+import { PRELOAD_APPLIES, cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources"
 import { stableStringify } from "../lib/goldenSnapshot"
 import { RETIRED_PERMISSION_RULES } from "../../src/engine-native/claudeRetired"
@@ -243,7 +243,7 @@ describe.sequential("Claude settings truth", () => {
     }
   })
 
-  it("rejects a non-object Claude state document without replacing it", () => {
+  it.skipIf(!PRELOAD_APPLIES)("rejects a non-object Claude state document without replacing it", () => {
     const bytes = "[]"
     const variant = materializeVariant("home-fresh", {
       ".claude/settings.json": "{}\n",
@@ -261,7 +261,7 @@ describe.sequential("Claude settings truth", () => {
     }
   })
 
-  it("prune keeps an explicitly requested optional plugin and its marketplace", () => {
+  it.skipIf(!PRELOAD_APPLIES)("prune keeps an explicitly requested optional plugin and its marketplace", () => {
     const pluginId = "n8n-mcp-skills@n8n-mcp-skills"
     const marketplace = "n8n-mcp-skills"
     const variant = materializeVariant("home-drift", {

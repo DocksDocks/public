@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from "vitest"
 
 import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
 import { hostOs } from "../../src/engine-native/os/index"
-import { cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
+import { PRELOAD_APPLIES, cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
 import {
   FIXTURES_DIR,
   cleanupTemporaryDirs,
@@ -170,7 +170,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     }
   })
 
-  it("prunes a null-valued hooks.Stop key on a ready migration", () => {
+  it.skipIf(!PRELOAD_APPLIES)("prunes a null-valued hooks.Stop key on a ready migration", () => {
     const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } })
     const variant = legacyVariant(nullStop)
     const run = runEngine(["sync", "claude"], variant, makeStubDir())
@@ -184,7 +184,7 @@ describe.sequential("Claude runtime migration transaction", () => {
     }
   })
 
-  it("prunes the retired effect-kit plugin key from deployed settings", () => {
+  it.skipIf(!PRELOAD_APPLIES)("prunes the retired effect-kit plugin key from deployed settings", () => {
     const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
     const deployed = isObject(drift["enabledPlugins"]) ? drift["enabledPlugins"] : {}
     drift["enabledPlugins"] = { ...deployed, "effect-kit@docks": true }
@@ -244,7 +244,7 @@ describe.sequential("Claude runtime migration transaction", () => {
 })
 
 describe.sequential("contextual dependency degradation", () => {
-  it("syncs Claude and Codex without jq or a jq warning", () => {
+  it.skipIf(!PRELOAD_APPLIES)("syncs Claude and Codex without jq or a jq warning", () => {
     for (const target of ["claude", "codex"] as const) {
       const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }), { maskTools: ["jq"] })
       try {
