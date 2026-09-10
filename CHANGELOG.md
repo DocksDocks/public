@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-10 - docks-kit 0.16.11: docks-kit update delivers plugin bumps
+
+- `docks-kit update` no longer passes `--skip-plugin-refresh` to its chained
+  sync, and an already-current kit still syncs. Marketplace and plugin versions
+  move independently of the kit version, so the old install-missing-only path
+  could freeze a plugin: on one machine the Claude marketplace clone stayed at
+  an 08-25 commit while its manifest was rewritten 09-09. The `sync` flag
+  itself is unchanged and remains available by hand.
+- Test-only: the nine unit tests that assert a clean sync now pair their stubs
+  with the native host, so Windows exercises the harness plugin passes instead
+  of skipping them.
+
 ## 2026-09-10 - docks-kit 0.16.10: causes in Claude plugin failure messages
 
 - Every recorded Claude plugin failure now names the cause and the command to
