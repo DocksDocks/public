@@ -230,6 +230,11 @@ const STUB_BODIES: Record<string, string> = {
   intelephense: ``,
   "typescript-language-server": `if (args[0] === "--version") console.log("6.0.0")`,
   tsc: `if (args[0] === "--version") console.log("Version 6.0.3")`,
+  // PATH falls through to the real host binary when a name is neither stubbed
+  // nor masked, so both Rust tools are pinned here to keep the LSP pass from
+  // reading the recording machine's toolchain.
+  "rust-analyzer": `if (args[0] === "--version") console.log("rust-analyzer 1.92.0 (0d1f2e3a4 2026-08-31)")`,
+  rustup: `if (args[0] === "--version") console.log("rustup 1.29.0 (2026-05-12)")`,
   ffplay: `if (args[0] === "-version") console.log("ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers")`,
   unshare: ``,
   // Windows user-environment persistence. A real `setx` writes HKCU and then

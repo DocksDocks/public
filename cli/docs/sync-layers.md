@@ -30,7 +30,7 @@ Order matters — runtime readiness and settings form one transaction:
 7. **Plugins** — seven idempotent passes via the `claude plugin` CLI
    (marketplaces → install → update → [--prune: uninstall/remove] → re-assert
    SoT enabled-state). Optional opt-ins via `--claude-plugin=<name>`.
-8. LSP server binaries (npm globals).
+8. LSP server binaries (npm globals plus the rust-analyzer rustup component).
 
 The statusline reads Claude's native `rate_limits`. There is no OAuth request,
 usage cache, jq/curl runtime dependency, or Stop fetch hook.

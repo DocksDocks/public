@@ -67,6 +67,9 @@ export async function installedVersion(ctx: Ctx, tool: ToolId): Promise<string> 
       return (await version()).replace(/^jq-/, "")
     case "curl":
     case "tsc":
+    // `rust-analyzer --version` prints "rust-analyzer <version>", where the
+    // version tail also carries a commit and a date in parentheses.
+    case "rust-analyzer":
       return firstLineField(await version(), 1)
     case "bun":
     case "omp":

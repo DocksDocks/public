@@ -153,6 +153,7 @@ sync/config reads.
 
 - Bun for source/global installs; release binaries embed the runtime
 - Node/npm for npm-global LSP servers
+- rustup is optional and needed only for the Rust language server
 - jq is optional doctor/test tooling; sync has no jq runtime dependency
 - curl is required only when a source launcher must download Bun. The POSIX
   launchers run `install.sh`; Windows runs `install.ps1` through PowerShell.

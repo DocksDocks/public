@@ -114,6 +114,7 @@ describe("kit-scoped plugin refresh", () => {
         "claude\tplugin update docks@docks --scope user",
         "claude\tplugin update php-lsp@claude-plugins-official --scope user",
         "claude\tplugin update plan-lifecycle@docks --scope user",
+        "claude\tplugin update rust-analyzer-lsp@claude-plugins-official --scope user",
         "claude\tplugin update typescript-lsp@claude-plugins-official --scope user"
       ])
     } finally {

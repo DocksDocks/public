@@ -39,12 +39,25 @@ floor: it skips the `typescript-language-server` install on such a host, warns
 with the host Node version, and installs the other language servers. Nothing
 else consults the floor, so a host below it still runs every kit operation.
 
+## rust-analyzer: no floor, no pin
+
+`rust-analyzer` is a `check` row with no floor and no `verified` pin. The kit
+installs the component with `rustup component add rust-analyzer` for the
+`rust-analyzer-lsp` plugin, so the version follows the host Rust toolchain. A
+pin would claim control the kit does not have, the stance `bubblewrap` already
+takes for a tool the kit does not publish. `docks-kit toolchain check` reports
+the installed version and judges nothing.
+
 ## Language-server upgrades
 
 `claudeSync syncLspServers` installs `intelephense`, `typescript-language-server`,
-and `typescript` only when the binary is missing. It never upgrades a server
-that is already present. A `verified` bump therefore reaches a fresh host
-immediately and leaves an existing install alone.
+`typescript`, and `rust-analyzer` only when the binary is missing. It never
+upgrades a server that is already present. A `verified` bump therefore reaches
+a fresh host immediately and leaves an existing install alone.
+
+The rustup channel follows the same rule. Sync adds the component only when the
+`rust-analyzer` binary is missing, and `rustup update` is the user's remedy for
+an old component.
 
 A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
 it, upgrade Node to 22.22.2 or newer, then install the pinned version by hand:

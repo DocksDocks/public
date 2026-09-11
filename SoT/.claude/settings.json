@@ -354,6 +354,7 @@
     "docks@docks": true,
     "plan-lifecycle@docks": true,
     "php-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
