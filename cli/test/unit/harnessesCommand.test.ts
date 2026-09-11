@@ -10,10 +10,9 @@ import {
   makeStubDir,
   temporaryDir
 } from "../lib/goldenResources"
+import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout"
 
 afterAll(cleanupTemporaryDirs)
-
-const SPAWN_TIMEOUT_MS = 30_000
 
 describe("harnesses command", () => {
   it("reports the legacy default without creating selection state", () => {
