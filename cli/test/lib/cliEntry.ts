@@ -27,11 +27,11 @@
  * tarball, and `smoke:native` runs the compiled binary.
  */
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, rmdirSync, rmSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs"
 import { delimiter, join, resolve } from "node:path"
 
 import { hostOs } from "../../src/engine-native/os"
-import { REPO_DIR } from "./goldenResources"
+import { REPO_DIR, processIsAlive } from "./goldenResources"
 
 /** Env var naming the entry to spawn; set by the shared build, or by hand. */
 export const CLI_ENTRY_ENV = "DOCKS_KIT_TEST_CLI_ENTRY"
@@ -80,16 +80,35 @@ export function buildCliEntry(outFile: string): string {
 export const processCliEntryPath = (): string => join(BUILD_DIR, `main-${process.pid}.js`)
 
 /**
- * Remove a bundle, then the build directory when it holds nothing else.
- * A parallel worker may own a sibling bundle, so the directory removal is
- * non-recursive and its failure means "still in use".
+ * Remove one bundle and leave the build directory in place. Removing the
+ * directory would race a parallel lane that sits between its own
+ * `mkdirSync` and the bundler's write. Git ignores `cli/dist-test/`, and an
+ * empty directory carries no cost.
  */
 export function removeCliEntry(outFile: string): void {
   rmSync(outFile, { force: true })
+}
+
+/**
+ * Reclaim bundles left by runs that died before their exit handler ran.
+ * A bundle whose owner process is still alive belongs to a parallel lane,
+ * so this sweep leaves it untouched.
+ */
+export function sweepDeadCliEntries(): void {
+  let names: ReadonlyArray<string>
   try {
-    rmdirSync(BUILD_DIR)
+    names = readdirSync(BUILD_DIR)
   } catch {
-    // another process still owns a bundle here
+    // The first build creates the directory; nothing can be stale yet.
+    return
+  }
+  for (const name of names) {
+    const owner = /^main-(\d+)\.js$/.exec(name)
+    if (owner === null) continue
+    const pid = Number(owner[1])
+    if (!Number.isSafeInteger(pid) || pid <= 0) continue
+    if (pid === process.pid || processIsAlive(pid)) continue
+    rmSync(join(BUILD_DIR, name), { force: true })
   }
 }
 

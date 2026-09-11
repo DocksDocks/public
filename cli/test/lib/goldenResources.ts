@@ -23,6 +23,7 @@ export const FIXTURES_DIR = join(REPO_DIR, "cli", "test", "fixtures")
 
 const HARNESS_TEMP_PREFIXES = [
   "golden-bun-cache-",
+  "golden-bun-transpiler-",
   "golden-home-",
   "golden-stubs-",
   "golden-mask-",
@@ -131,7 +132,12 @@ function readOwnerPid(ownerPath: string, ownerUid: number | undefined): number |
   }
 }
 
-function processIsAlive(pid: number): boolean {
+/**
+ * Report owner liveness. A signal-zero probe that raises ESRCH proves the
+ * owner is gone; any other error means the probe itself failed, so the owner
+ * counts as alive and its resources stay.
+ */
+export function processIsAlive(pid: number): boolean {
   try {
     process.kill(pid, 0)
     return true
