@@ -7,8 +7,9 @@ import { kitHome } from "../kitHome"
 import { p, which } from "../engine-native/exec"
 import { hostOs, type HostOs, type Invocation } from "../engine-native/os"
 
-const noSync = Flag.boolean("no-sync").pipe(
-  Flag.withDescription("Update the kit only; skip the chained flag-less sync")
+const noSync = Flag.Boolean("no-sync").pipe(
+  Flag.withDescription("Update the kit only; skip the chained flag-less sync"),
+  Flag.withDefault(false)
 )
 
 /** A tool this host cannot resolve, shaped like the failed spawn it replaces. */

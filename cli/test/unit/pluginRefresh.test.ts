@@ -27,7 +27,7 @@ function claudeInstalledPlugins(): string {
 }
 
 
-describe.sequential("refresh-only plugin skip", () => {
+describe("refresh-only plugin skip", () => {
 
   it("avoids warmed Claude and Codex refresh calls through both parser layers", () => {
     const variant = materializeVariant("home-drift", {
@@ -83,7 +83,7 @@ describe.sequential("refresh-only plugin skip", () => {
   })
 })
 
-describe.sequential("kit-scoped plugin refresh", () => {
+describe("kit-scoped plugin refresh", () => {
   it("refreshes only SoT marketplaces and SoT user-scope plugins", () => {
     const installed = JSON.parse(claudeInstalledPlugins()) as {
       plugins: Record<string, Array<Record<string, string>>>
@@ -123,7 +123,7 @@ describe.sequential("kit-scoped plugin refresh", () => {
   })
 })
 
-describe.sequential("project-scoped plugin preservation", () => {
+describe("project-scoped plugin preservation", () => {
   it("keeps marketplaces used by project-scoped plugins during prune", () => {
     const installed = JSON.parse(claudeInstalledPlugins()) as {
       plugins: Record<string, Array<Record<string, string>>>

@@ -50,7 +50,7 @@ function deployedText(home: string, path: string): string {
   return readFileSync(join(home, ...path.split("/")), "utf8")
 }
 
-describe.sequential("retained model and sync behavior", () => {
+describe("retained model and sync behavior", () => {
   it("keeps the normal Claude and Codex catalogs available without a role registry", () => {
     expect(modelCatalog("claude")).toEqual(EXPECTED_CATALOGS.claude)
     expect(modelCatalog("codex")).toEqual(EXPECTED_CATALOGS.codex)

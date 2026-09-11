@@ -544,7 +544,7 @@ describe("Codex effort modifier", () => {
   })
 })
 
-describe.sequential("EngineNative full service injection", () => {
+describe("EngineNative full service injection", () => {
 
   it("keeps raw help and bare errors in parity with the effort/advisor catalogs", async () => {
     const records: Array<LogRecord> = []

@@ -11,8 +11,9 @@ import {
 } from "../manifests"
 import { kitHome } from "../kitHome"
 
-const json = Flag.boolean("json").pipe(
-  Flag.withDescription("Machine-readable output")
+const json = Flag.Boolean("json").pipe(
+  Flag.withDescription("Machine-readable output"),
+  Flag.withDefault(false)
 )
 
 interface Drift {

@@ -4,12 +4,13 @@ import { bail } from "../engine"
 import { modelCatalog } from "../engine-native/models"
 import type { Tool } from "../manifests"
 
-const tool = Argument.string("tool").pipe(
+const tool = Argument.String("tool").pipe(
   Argument.withDescription("claude | codex (omit for both tool catalogs)"),
   Argument.optional
 )
-const json = Flag.boolean("json").pipe(
-  Flag.withDescription("Machine-readable output")
+const json = Flag.Boolean("json").pipe(
+  Flag.withDescription("Machine-readable output"),
+  Flag.withDefault(false)
 )
 
 const renderTool = (t: Tool) =>

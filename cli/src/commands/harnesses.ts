@@ -38,7 +38,7 @@ export const harnessesCommand = Command.make(
 
       if (!process.stdout.isTTY) return
 
-      const answer = yield* Prompt.multiSelect({
+      const answer = yield* Prompt.MultiSelect({
         message: "Choose the harnesses for a flag-less docks-kit sync",
         choices: HARNESSES.map((harness) => ({
           title: harness,

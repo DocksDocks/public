@@ -57,7 +57,7 @@ const ENV_KEYS = [
   "DOCKS_KIT_SYNC_CONCURRENCY"
 ] as const
 
-describe.sequential("modifier field validation", () => {
+describe("modifier field validation", () => {
   let root = ""
   let previous = new Map<string, string | undefined>()
 

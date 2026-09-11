@@ -3,12 +3,13 @@ import { Console, Effect, Option } from "effect"
 import { bail } from "../engine"
 import { skillsView } from "../manifests"
 
-const action = Argument.string("action").pipe(
+const action = Argument.String("action").pipe(
   Argument.withDescription("list (default)"),
   Argument.optional
 )
-const json = Flag.boolean("json").pipe(
-  Flag.withDescription("Machine-readable output")
+const json = Flag.Boolean("json").pipe(
+  Flag.withDescription("Machine-readable output"),
+  Flag.withDefault(false)
 )
 
 export const skillsCommand = Command.make("skills", { action, json }, (config) =>
