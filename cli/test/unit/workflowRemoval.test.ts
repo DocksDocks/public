@@ -1,12 +1,12 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
+import { cliEntry } from "../lib/cliEntry"
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout"
 
-const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
-const CLI = join(REPO_DIR, "cli", "src", "main.ts")
+const CLI = cliEntry()
 const LEGACY_FLAGS = [
   "--model-orchestrator=claude:fable@high",
   "--model-reviewer=codex:gpt-5.6-sol@high",
