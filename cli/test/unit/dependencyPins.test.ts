@@ -112,29 +112,47 @@ function pinSatisfies(pin: Version, operator: string, anchor: Version): boolean 
 }
 
 /**
+ * Judge one alternative of a declared range. An exact alternative pins itself,
+ * and an alternative that anchors on a final release admits no prerelease
+ * sibling, so both leave the tree held. Every other alternative floats over a
+ * prerelease and needs an exact root pin that satisfies this alternative.
+ */
+function alternativeKind(alternative: string, pinText: string | undefined): Finding["kind"] | undefined {
+  const trimmed = alternative.trim()
+  if (EXACT_VERSION.test(trimmed)) return undefined
+  const anchorText = trimmed.replace(/^(?:\^|~|>=|<=|>|<|=)?\s*v?/, "").split(/\s/)[0] ?? ""
+  if (!PRERELEASE_BASE.test(anchorText)) return undefined
+  if (pinText === undefined || !EXACT_VERSION.test(pinText)) return "unpinned"
+  const operator = /^(\^|~|>=|<=|>|<|=)?\s*v?[0-9A-Za-z.-]+$/.exec(trimmed)?.[1] ?? ""
+  const pin = parseVersion(pinText)
+  const anchor = parseVersion(anchorText)
+  if (pin !== undefined && anchor !== undefined && pinSatisfies(pin, operator, anchor)) return undefined
+  return "unsatisfied"
+}
+
+/**
  * Report every transitive dependency that floats over a prerelease version,
  * either because no exact root pin holds it in place, or because the pin that
  * exists does not satisfy the range and therefore leaves the resolver free to
  * pick another prerelease build.
+ *
+ * A declared range splits on `||` before anything else, because a resolver
+ * weighs every alternative and picks the highest version any of them admits.
+ * The range `^3.9.0 || ^4.0.0-rc.109` floats over a prerelease through its
+ * second alternative, and a scan that read only the first would miss it. One
+ * finding per dependency is enough to name the parent that needs a pin.
  */
 function unpinnedPrereleaseTransitives(rootDependencies: Dependencies, manifests: Manifests): Array<Finding> {
   const findings: Array<Finding> = []
   for (const [parent, dependencies] of Object.entries(manifests)) {
     for (const [dependency, range] of Object.entries(dependencies)) {
-      const trimmed = range.trim()
-      if (EXACT_VERSION.test(trimmed)) continue
-      const anchorText = trimmed.replace(/^(?:\^|~|>=|<=|>|<|=)?\s*v?/, "").split(/\s|\|\|/)[0] ?? ""
-      if (!PRERELEASE_BASE.test(anchorText)) continue
       const pinText = rootDependencies[dependency]?.trim()
-      if (pinText === undefined || !EXACT_VERSION.test(pinText)) {
-        findings.push({ parent, dependency, range, kind: "unpinned" })
-        continue
+      for (const alternative of range.split("||")) {
+        const kind = alternativeKind(alternative, pinText)
+        if (kind === undefined) continue
+        findings.push({ parent, dependency, range, kind })
+        break
       }
-      const operator = /^(\^|~|>=|<=|>|<|=)?\s*v?[0-9A-Za-z.-]+$/.exec(trimmed)?.[1] ?? ""
-      const pin = parseVersion(pinText)
-      const anchor = parseVersion(anchorText)
-      if (pin !== undefined && anchor !== undefined && pinSatisfies(pin, operator, anchor)) continue
-      findings.push({ parent, dependency, range, kind: "unsatisfied" })
     }
   }
   return findings
@@ -352,6 +370,22 @@ describe("root dependency pins", () => {
     ).toBe("unsatisfied")
     const insideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.2.4" }
     expect(unpinnedPrereleaseTransitives(insideMinorPin, zeroMajorRange)).toEqual([])
+    const alternationRange = {
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^3.9.0 || ^4.0.0-rc.109" }
+    }
+    const firstBranchPin = { ...withoutPin, "@effect/platform-node-shared": "3.9.5" }
+    expect(
+      unpinnedPrereleaseTransitives(firstBranchPin, alternationRange),
+      "the second alternative floats over a prerelease, and the pin 3.9.5 holds only the first"
+    ).toEqual([
+      {
+        parent: "@effect/platform-bun",
+        dependency: "@effect/platform-node-shared",
+        range: "^3.9.0 || ^4.0.0-rc.109",
+        kind: "unsatisfied"
+      }
+    ])
+    expect(unpinnedPrereleaseTransitives(withPin, alternationRange)).toEqual([])
   })
 
   it("installs every root dependency at its pinned version with no nested copy at any depth", () => {
@@ -369,5 +403,36 @@ describe("root dependency pins", () => {
       }
     }
     expect(shadows, `nested copies defeat the root pins: ${shadows.join(", ")}`).toEqual([])
+  })
+
+  /**
+   * A published install seats two halves of one release when one parent
+   * declares `4.0.0-rc.115` while another declares `4.0.0-rc.109`. Both
+   * declarations are exact, so the range scan sees nothing float. The pin
+   * checks above skip the package as well, because it is no root dependency.
+   * Only the installed closure shows the split, so this walk compares the
+   * version of every installed copy at every depth.
+   */
+  it("installs no package at two distinct versions when either carries a prerelease tail", () => {
+    const copies = new Map<string, Map<string, string>>()
+    for (const label of installedPackages()) {
+      const cut = label.lastIndexOf("/node_modules/")
+      const name = cut === -1 ? label : label.slice(cut + "/node_modules/".length)
+      const path = join(MODULES_DIR, label, "package.json")
+      if (!existsSync(path)) continue
+      const version = String(readManifest(path).version)
+      const seen = copies.get(name) ?? new Map<string, string>()
+      if (!seen.has(version)) seen.set(version, label)
+      copies.set(name, seen)
+    }
+    const split: Array<string> = []
+    for (const [name, seen] of copies) {
+      if (seen.size < 2) continue
+      if (!Array.from(seen.keys()).some((version) => PRERELEASE_BASE.test(version))) continue
+      const listed = Array.from(seen).map(([version, label]) => `${version} at ${label}`).join(" and ")
+      split.push(`${name} is installed at ${listed}`)
+    }
+    expect(split, `a prerelease package at two versions loads two halves of one release: ${split.join(", ")}`)
+      .toEqual([])
   })
 })
