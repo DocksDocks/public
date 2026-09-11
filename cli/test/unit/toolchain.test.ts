@@ -2,15 +2,9 @@ import { rmSync } from "node:fs"
 import { afterAll, describe, expect, it } from "vitest"
 import { runPublicCli } from "../lib/goldenExecution"
 import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources"
+import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout"
 
 afterAll(cleanupTemporaryDirs)
-
-/**
- * Each case spawns the real public CLI, so cold Bun startup dominates the
- * runtime. Vitest's 5s default is exceeded when the whole suite runs in
- * parallel; the work itself takes about 1s.
- */
-const SPAWN_TIMEOUT_MS = 30_000
 
 describe("toolchain report", () => {
   it("reports a present tool with an unreadable version as unknown instead of ok", () => {

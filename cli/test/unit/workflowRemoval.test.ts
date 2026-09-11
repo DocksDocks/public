@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
+import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
 const CLI = join(REPO_DIR, "cli", "src", "main.ts")
@@ -21,7 +22,7 @@ describe("removed workflow configuration surface", () => {
       expect(result.status, args.join(" ")).not.toBe(0)
       expect(`${result.stdout}\n${result.stderr}`, args.join(" ")).not.toContain("Workflow model registry")
     }
-  })
+  }, SPAWN_TIMEOUT_MS)
 
   it("rejects former root overrides without writing prompt files", () => {
     const home = mkdtempSync(join(tmpdir(), "workflow-removal-"))
@@ -38,7 +39,7 @@ describe("removed workflow configuration surface", () => {
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
-  }, 15_000)
+  }, SPAWN_TIMEOUT_MS)
 
   it("rejects the former native workflow command", () => {
     const home = mkdtempSync(join(tmpdir(), "workflow-native-removal-"))
@@ -59,7 +60,7 @@ describe("removed workflow configuration surface", () => {
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
-  })
+  }, SPAWN_TIMEOUT_MS)
 
   it("omits former workflow override flags from root help", () => {
     const result = spawnSync("bun", [CLI, "--help"], { encoding: "utf8" })
@@ -67,5 +68,5 @@ describe("removed workflow configuration surface", () => {
     for (const flag of LEGACY_FLAGS.map((value) => value.slice(0, value.indexOf("=")))) {
       expect(result.stdout).not.toContain(flag)
     }
-  })
+  }, SPAWN_TIMEOUT_MS)
 })
