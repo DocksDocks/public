@@ -151,6 +151,17 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run golden:dryrun
 
+      # The suites spawn a bundle of the CLI so Bun transpiles it once instead
+      # of once per child. This step runs the same cases against the
+      # TypeScript entry, which is the form the npm package ships, so a defect
+      # the bundler hides cannot pass unseen. It is the cheapest lane, and the
+      # two forms must agree on every case.
+      - name: Dry-run golden regression (source entry)
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+          DOCKS_KIT_TEST_CLI_ENTRY: ${{ github.workspace }}/cli/src/main.ts
+        run: bun run golden:dryrun
+
       - name: Dry-run golden can fail (prove-red)
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache

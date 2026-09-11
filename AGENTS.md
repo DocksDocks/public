@@ -109,6 +109,8 @@ Automated coverage includes `bun run test:unit`, `bun run golden:dryrun`, and `b
 
 Use direct acceptance and focused regressions while iterating, then run the full unit/golden gate once at the pre-commit or release boundary. Reuse still-matching evidence; a later relevant edit invalidates only the affected rung and final gate, not every prior check.
 
+The spawning suites launch a bundle of `cli/src/main.ts`, built once per run into the ignored `cli/dist-test/`, because Bun otherwise transpiles the whole CLI on every child spawn. Set `DOCKS_KIT_TEST_CLI_ENTRY=<repo>/cli/src/main.ts` to run them against the TypeScript entry instead, which is also how to read a real stack trace. See `cli/test/lib/cliEntry.ts`.
+
 ## Skills
 
 **Project-skill scope.** Keep project skills within two classes: kit-mechanic skills and the `unslop` repo-prose skill.

@@ -306,6 +306,9 @@ describe("generated SoT payload", () => {
     }
   })
 
+  // Spawns `cli/src/main.ts` on purpose. Every other spawning suite runs a
+  // prebuilt bundle for speed, so this case is what proves the TypeScript
+  // entry - the form the npm package ships - still boots and reports.
   it("reports the root package version from the public CLI", () => {
     const manifest = JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }
     const result = spawnSync("bun", [join(REPO_DIR, "cli", "src", "main.ts"), "--version"], {

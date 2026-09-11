@@ -5,10 +5,11 @@ import { join, resolve } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { p } from "../../src/engine-native/exec"
+import { cliEntry } from "../lib/cliEntry"
 import { childEnv } from "../lib/goldenResources"
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
-const CLI = join(REPO_DIR, "cli", "src", "main.ts")
+const CLI = cliEntry()
 const temporaryDirectories = new Array<string>()
 
 const temporaryDirectory = (prefix: string): string => {
