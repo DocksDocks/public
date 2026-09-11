@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - Effect 4.0.0-rc.115 and vitest 5; four toolchain pins refreshed
+## 2026-09-11 - docks-kit 0.16.15: Effect 4.0.0-rc.115, vitest 5, refreshed toolchain pins
 
 - The four Effect packages and vitest move together to `effect` 4.0.0-rc.115,
   `@effect/platform-bun` 4.0.0-rc.115, `@effect/platform-node-shared`
