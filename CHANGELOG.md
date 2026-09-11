@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - the Node floor gates the language-server install
+## 2026-09-11 - docks-kit 0.16.16: the Node floor gates the language-server install
 
 - `claudeSync syncLspServers` now reads the `node` floor before it installs
   `typescript-language-server`. On a Node older than 22.22.2 it skips that one
