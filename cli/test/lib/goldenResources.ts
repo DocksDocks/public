@@ -228,7 +228,7 @@ const STUB_BODIES: Record<string, string> = {
   curl: ``,
   bwrap: `if (args[0] === "--version") console.log("bubblewrap 0.11.0")`,
   intelephense: ``,
-  "typescript-language-server": `if (args[0] === "--version") console.log("5.3.0")`,
+  "typescript-language-server": `if (args[0] === "--version") console.log("6.0.0")`,
   tsc: `if (args[0] === "--version") console.log("Version 6.0.3")`,
   ffplay: `if (args[0] === "-version") console.log("ffplay version 6.1.1-3ubuntu5 Copyright (c) 2003-2023 the FFmpeg developers")`,
   unshare: ``,

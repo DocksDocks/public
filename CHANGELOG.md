@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased - Effect 4.0.0-rc.115 and vitest 5; four toolchain pins refreshed
+
+- The four Effect packages and vitest move together to `effect` 4.0.0-rc.115,
+  `@effect/platform-bun` 4.0.0-rc.115, `@effect/platform-node-shared`
+  4.0.0-rc.115, `@effect/vitest` 4.0.0-rc.115, and `vitest` 5.0.0.
+  `@effect/vitest` at this release requires vitest 5, so the five pins are one
+  lockstep. Command-line behavior, flag names, and help text are unchanged.
+- `SoT/toolchain.json` moves three pins: `typescript-language-server` to 6.0.0,
+  `pi-intercom` to 0.13.0, and the skills CLI to 1.5.25. Every kit-driven
+  install now uses those exact versions.
+- `node` gains a floor of 22.22.2, the engine floor
+  `typescript-language-server` 6 declares. `docks-kit toolchain check` now
+  reports `below-floor` for an older Node and changes nothing else. No sync
+  pass or install consults the floor.
+- Sync installs a language server only when its binary is missing, so a host
+  already holding `typescript-language-server` 5.3.0 keeps it and reports
+  `below-floor`. Run `npm install -g typescript-language-server@6.0.0` to move
+  it. `docks-kit docs toolchain` states this under "Language-server upgrades".
+
 ## 2026-09-10 - docks-kit 0.16.14: complete the global-install recovery topic
 
 - `docks-kit docs install` now states the case a remove-then-add does not

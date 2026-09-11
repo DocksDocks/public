@@ -31,7 +31,7 @@ import type { Ctx } from "../../src/engine-native"
 import { ompSync } from "../../src/engine-native/ompSync"
 import { makeDependencyManager, makeEngineServices, makePlatform } from "../../src/engine-native/services"
 
-const PIN = "0.10.0"
+const PIN = "0.13.0"
 const roots: Array<string> = []
 /**
  * `ompSync` resolves its deploy roots from `process.env`, so an ambient
