@@ -15,7 +15,7 @@ metadata:
     - path: cli/test/golden-mutation.ts
       lines: "1-360"
     - path: cli/test/lib/goldenResources.ts
-      lines: "1-347"
+      lines: "1-353"
     - path: cli/test/lib/goldenExecution.ts
       lines: "1-288"
     - path: cli/test/lib/goldenSnapshot.ts
