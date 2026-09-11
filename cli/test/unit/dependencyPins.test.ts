@@ -12,7 +12,7 @@
  * every prerelease transitive, and these tests fail at authoring time when a
  * new one appears.
  */
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -88,13 +88,27 @@ function compareVersions(left: Version, right: Version): number {
  * holds the major and the minor, and `>=` holds nothing beyond the lower
  * bound. A compound range, an upper bound, or any other operator is treated as
  * not satisfied, because this guard does not carry a full semver solver.
+ *
+ * Two rules of the real resolvers decide the prerelease cases that this guard
+ * exists for. A pin that carries a prerelease tail enters a range only when
+ * its `major.minor.patch` tuple equals the comparator tuple, so the pin
+ * `4.1.0-rc.1` stays outside `^4.0.0-rc.109` and bun resolves a second copy. A
+ * caret narrows as the leading zeros grow: `^0.4.2` means `>=0.4.2 <0.5.0` and
+ * `^0.0.3` means `>=0.0.3 <0.0.4`.
  */
 function pinSatisfies(pin: Version, operator: string, anchor: Version): boolean {
   if (compareVersions(pin, anchor) < 0) return false
+  if (operator !== "^" && operator !== "~" && operator !== ">=") return false
+  if (pin.tail !== "") {
+    return pin.major === anchor.major && pin.minor === anchor.minor && pin.patch === anchor.patch
+  }
   if (operator === ">=") return true
-  if (operator === "^") return pin.major === anchor.major
   if (operator === "~") return pin.major === anchor.major && pin.minor === anchor.minor
-  return false
+  if (anchor.major === 0 && anchor.minor === 0) {
+    return pin.major === 0 && pin.minor === 0 && pin.patch === anchor.patch
+  }
+  if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor
+  return pin.major === anchor.major
 }
 
 /**
@@ -144,11 +158,21 @@ interface Installed {
 }
 
 /**
- * Resolve an installed package the way Node does for this closure: a nested
- * copy under the parent first, then the hoisted copy at the repository root.
+ * Resolve an installed package the way Node does for this closure: the
+ * parent's own `node_modules` first, then the `node_modules` of every ancestor
+ * walking outward, then the hoisted copy at the repository root. The parent
+ * label already spells that chain of nesting, so cutting its last
+ * `/node_modules/` segment steps one level out.
  */
 function installedPackage(name: string, parent: string | undefined): Installed | undefined {
-  const labels = parent === undefined ? [name] : [`${parent}/node_modules/${name}`, name]
+  const labels: Array<string> = []
+  let scope = parent
+  while (scope !== undefined) {
+    labels.push(`${scope}/node_modules/${name}`)
+    const cut = scope.lastIndexOf("/node_modules/")
+    scope = cut === -1 ? undefined : scope.slice(0, cut)
+  }
+  labels.push(name)
   for (const label of labels) {
     const path = join(MODULES_DIR, label, "package.json")
     if (existsSync(path)) return { path, label }
@@ -157,24 +181,38 @@ function installedPackage(name: string, parent: string | undefined): Installed |
 }
 
 /**
- * List every installed package, including one level of `@scope` directories.
- * `.bin` and `.cache` are package-manager bookkeeping, not packages.
+ * List every installed package as a label below the root `node_modules`, at
+ * every depth, so `@effect/platform-bun` and
+ * `@effect/platform-bun/node_modules/ws` both appear. A nested copy that
+ * defeats a root pin can sit at any depth, and a walk that stops at the top
+ * level would not see it. `.bin` and `.cache` are package-manager
+ * bookkeeping, not packages. A symbolic link is listed but never descended
+ * into, because a workspace link points back into the tree and would make the
+ * walk cycle.
  */
 function installedPackages(): Array<string> {
-  const names: Array<string> = []
-  for (const entry of readdirSync(MODULES_DIR, { withFileTypes: true })) {
-    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-    if (entry.name === ".bin" || entry.name === ".cache") continue
-    if (!entry.name.startsWith("@")) {
-      names.push(entry.name)
-      continue
-    }
-    for (const scoped of readdirSync(join(MODULES_DIR, entry.name), { withFileTypes: true })) {
-      if (!scoped.isDirectory() && !scoped.isSymbolicLink()) continue
-      names.push(`${entry.name}/${scoped.name}`)
+  const labels: Array<string> = []
+  const collect = (prefix: string): void => {
+    for (const entry of readdirSync(join(MODULES_DIR, prefix), { withFileTypes: true })) {
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+      if (entry.name === ".bin" || entry.name === ".cache") continue
+      const scopeLink = entry.isSymbolicLink()
+      const packages = entry.name.startsWith("@")
+        ? readdirSync(join(MODULES_DIR, prefix, entry.name), { withFileTypes: true })
+          .filter((scoped) => scoped.isDirectory() || scoped.isSymbolicLink())
+          .map((scoped) => ({ name: `${entry.name}/${scoped.name}`, link: scopeLink || scoped.isSymbolicLink() }))
+        : [{ name: entry.name, link: scopeLink }]
+      for (const pkg of packages) {
+        const label = prefix === "" ? pkg.name : `${prefix}/${pkg.name}`
+        labels.push(label)
+        if (pkg.link) continue
+        const nested = join(MODULES_DIR, label, "node_modules")
+        if (existsSync(nested) && lstatSync(nested).isDirectory()) collect(`${label}/node_modules`)
+      }
     }
   }
-  return names
+  collect("")
+  return labels
 }
 
 /**
@@ -294,9 +332,29 @@ describe("root dependency pins", () => {
     }
     expect(unpinnedPrereleaseTransitives({ ...withPin, "@effect/platform-node-shared": "4.0.5" }, tildeRange)).toEqual([])
     expect(unpinnedPrereleaseTransitives(higherPin, tildeRange)[0]?.kind).toBe("unsatisfied")
+    const laterTuplePin = { ...withPin, "@effect/platform-node-shared": "4.1.0-rc.1" }
+    expect(
+      unpinnedPrereleaseTransitives(laterTuplePin, manifests)[0]?.kind,
+      "the prerelease pin 4.1.0-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected"
+    ).toBe("unsatisfied")
+    const laterPatchPin = { ...withPin, "@effect/platform-node-shared": "4.0.1-rc.1" }
+    expect(
+      unpinnedPrereleaseTransitives(laterPatchPin, manifests)[0]?.kind,
+      "the prerelease pin 4.0.1-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected"
+    ).toBe("unsatisfied")
+    const zeroMajorRange = {
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^0.2.0-rc.1" }
+    }
+    const outsideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.3.0" }
+    expect(
+      unpinnedPrereleaseTransitives(outsideMinorPin, zeroMajorRange)[0]?.kind,
+      "a zero major caret narrows to the minor, so the pin 0.3.0 sits outside ^0.2.0-rc.1"
+    ).toBe("unsatisfied")
+    const insideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.2.4" }
+    expect(unpinnedPrereleaseTransitives(insideMinorPin, zeroMajorRange)).toEqual([])
   })
 
-  it("installs every root dependency at its pinned version with no nested copy under any package", () => {
+  it("installs every root dependency at its pinned version with no nested copy at any depth", () => {
     const parents = installedPackages()
     const shadows: Array<string> = []
     for (const [name, pin] of Object.entries(rootDependencies)) {

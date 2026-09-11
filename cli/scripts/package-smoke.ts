@@ -111,13 +111,15 @@ function installConsumer(workDir: string, tarball: string): string {
   return consumerDir
 }
 
-// One level of `@scope` directories is expanded, because a scoped package sits
-// one directory deeper than an unscoped one and would otherwise be scanned as
-// if the scope itself were the package.
+// The walk is recursive because a duplicate one level deeper defeats the root
+// pin exactly the same way as a duplicate directly under a top level package.
+// One level of `@scope` directories is expanded at every depth, because a
+// scoped package sits one directory deeper than an unscoped one and would
+// otherwise be scanned as if the scope itself were the package.
 function installedPackageDirs(nodeModulesDir: string): ReadonlyArray<string> {
-  const dirs: Array<string> = []
+  const level: Array<{ readonly path: string; readonly linked: boolean }> = []
   for (const entry of readdirSync(nodeModulesDir, { withFileTypes: true })) {
-    if (IGNORED_NODE_MODULES_ENTRIES[entry.name]) {
+    if (Object.hasOwn(IGNORED_NODE_MODULES_ENTRIES, entry.name)) {
       continue
     }
     if (!entry.isDirectory() && !entry.isSymbolicLink()) {
@@ -125,14 +127,29 @@ function installedPackageDirs(nodeModulesDir: string): ReadonlyArray<string> {
     }
     const entryPath = join(nodeModulesDir, entry.name)
     if (!entry.name.startsWith("@")) {
-      dirs.push(entryPath)
+      level.push({ path: entryPath, linked: entry.isSymbolicLink() })
       continue
     }
+    const scopeLinked = entry.isSymbolicLink()
     for (const scoped of readdirSync(entryPath, { withFileTypes: true })) {
       if (!scoped.isDirectory() && !scoped.isSymbolicLink()) {
         continue
       }
-      dirs.push(join(entryPath, scoped.name))
+      level.push({ path: join(entryPath, scoped.name), linked: scopeLinked || scoped.isSymbolicLink() })
+    }
+  }
+
+  const dirs: Array<string> = []
+  for (const packageDir of level) {
+    dirs.push(packageDir.path)
+    // A linked package is listed but never descended into, because a link
+    // pointing back at an ancestor would make the walk cycle.
+    if (packageDir.linked) {
+      continue
+    }
+    const nestedDir = join(packageDir.path, "node_modules")
+    if (existsSync(nestedDir)) {
+      dirs.push(...installedPackageDirs(nestedDir))
     }
   }
   return dirs
@@ -181,7 +198,8 @@ function assertNoNestedDuplicates(consumerDir: string, pins: ReadonlyArray<Pin>)
     }
   }
   console.log(
-    `[package-smoke] nested duplicates: none of ${pins.length} pinned names under ${packageDirs.length} installed packages`
+    `[package-smoke] nested duplicates: none of ${pins.length} pinned names under ${packageDirs.length} installed ` +
+      `packages at any depth`
   )
 }
 
