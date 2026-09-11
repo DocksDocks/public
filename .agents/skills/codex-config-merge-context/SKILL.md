@@ -9,10 +9,10 @@ metadata:
     - path: cli/src/engine-native/codexToml.ts
       lines: "1-253"
     - path: SoT/.codex/config.toml
-      lines: "1-90"
+      lines: "1-45"
     - path: SoT/.codex/rules/docks.rules
-      lines: "1-140"
-  updated: "2026-09-08"
+      lines: "1-116"
+  updated: "2026-09-11"
 ---
 
 # Codex Config Merge

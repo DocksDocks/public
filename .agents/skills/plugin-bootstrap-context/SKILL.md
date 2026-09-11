@@ -13,8 +13,8 @@ metadata:
     - path: SoT/.claude/settings.json
       lines: "220-270"
     - path: SoT/.codex/plugins/marketplace.json
-      lines: "1-80"
-  updated: "2026-09-10"
+      lines: "1-36"
+  updated: "2026-09-11"
 ---
 
 # Plugin Bootstrap

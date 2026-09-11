@@ -11,12 +11,12 @@ metadata:
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-115"
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-941"
+      lines: "1-590"
     - path: cli/src/engine-native/bun.ts
       lines: "1-96"
     - path: SoT/toolchain.json
       lines: "1-23"
-  updated: "2026-08-15"
+  updated: "2026-09-11"
 ---
 
 # Toolchain Verified-Version Floors
@@ -72,5 +72,5 @@ Never add a kit-driven floating install. Every kit-driven install uses the exact
   Bun is the only supported managed tool.
 - Installer downloads and npm global packages are supply-chain sensitive. Bump
   `verified` only after testing the release.
-- The public CLI reaches Bun bootstrap only after the supported Linux/macOS host
-  check. `bunBootstrap` checks curl only when Bun is actually missing.
+- The public CLI reaches Bun bootstrap only after the supported-host check.
+  `bunBootstrap` checks curl only when Bun is actually missing.
