@@ -113,13 +113,9 @@ The spawning suites launch a prebuilt bundle of `cli/src/main.ts`. The build run
 
 ## Landing changes
 
-Open a pull request when the change can alter what CI proves. That set is `cli/`, `SoT/`, `.github/`, the two launchers, the two installers, `package.json`, and `bun.lock`. Wait for every required check. Ask before merge. Never merge on a check result older than the head commit.
+Open a pull request when the change can alter what CI proves: `cli/`, `SoT/`, `.github/`, the launchers, the installers, `package.json`, `bun.lock`. Wait for every required check, then ask before merge. Push direct to `main` only for prose: root Markdown and code comments.
 
-Push direct to `main` only when the change touches no executable line. Root Markdown and code comments qualify. Run the full gate first when the edited file feeds a test or the generated payload.
-
-Name the route in the final report. Give the evidence that route produced: the run identifier for a pull request, or the local gate result for a direct push.
-
-Never rewrite published `main` history to correct a routing mistake. Correct it with a follow-up commit, and state what happened. A revert-and-re-land pair costs four commits and proves nothing the gate did not already prove.
+Never rewrite published `main` history to correct a routing mistake. Use a follow-up commit and say what happened.
 
 ## Skills
 
