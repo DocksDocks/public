@@ -23,10 +23,11 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | `plan-lifecycle` | [DocksDocks/docks](https://github.com/DocksDocks/docks) | Shared plan lifecycle for cross-tool planning workflows. |
 | `php-lsp` | built-in `claude-plugins-official` | PHP language-server integration with no prompt or skill context. |
 | `typescript-lsp` | built-in `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
+| `rust-analyzer-lsp` | built-in `claude-plugins-official` | Rust language-server integration with no prompt or skill context. |
 
 For Effect work in this checkout, verify API shapes against the installed declarations under `node_modules/effect/dist/unstable/cli/`. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only and do not apply.
 
-Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the four entries above.
+Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
 #### Per-project plugin scoping
 
@@ -48,7 +49,7 @@ Per-project enable lives in the project's `.claude/settings.json`:
 }
 ```
 
-The user-scope key MUST remain present (just `false`) when a project wants to override a globally installed plugin's enabled state. The kit currently ships no `false`-keyed plugins — every declared default is `true`. Plugins outside the four defaults are absent from the user-scope SoT and are removed by `--prune`.
+The user-scope key MUST remain present (just `false`) when a project wants to override a globally installed plugin's enabled state. The kit currently ships no `false`-keyed plugins — every declared default is `true`. Plugins outside the five defaults are absent from the user-scope SoT and are removed by `--prune`.
 
 For n8n on this machine, install the marketplace and plugin directly at project scope so unrelated Claude Code sessions do not discover its skills:
 
@@ -70,9 +71,9 @@ Supabase is also absent from the default SoT. `./docks-kit sync --claude-plugin=
 
 The bootstrap exists because **`extraKnownMarketplaces` declarations in settings.json are not auto-cloned**. Without it, `/reload-plugins` reports `Plugin <X> not found in marketplace <Y>` even though the marketplace block is present in settings.json. Adding a new third-party plugin? Add it to both `enabledPlugins` and `extraKnownMarketplaces` in `SoT/.claude/settings.json`, then run `./docks-kit sync`. To pick up the new plugin in an active session, run `/reload-plugins`.
 
-Official plugins live in the built-in `claude-plugins-official` marketplace but load only when enabled. The default SoT keeps only `php-lsp` and `typescript-lsp`; Context7, Frontend Design, Agent SDK, Commit Commands, Chrome DevTools, and Supabase are non-default and absent. An existing additive user installation remains until `./docks-kit sync claude --prune` removes it.
+Official plugins live in the built-in `claude-plugins-official` marketplace but load only when enabled. The default SoT keeps `php-lsp`, `typescript-lsp`, and `rust-analyzer-lsp`; Context7, Frontend Design, Agent SDK, Commit Commands, Chrome DevTools, and Supabase are non-default and absent. An existing additive user installation remains until `./docks-kit sync claude --prune` removes it.
 
-The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost — their `lspServers` config ships in the marketplace manifest (the plugin dirs on GitHub contain only a README; that's expected, not a broken install) and registers go-to-definition / find-references / post-edit diagnostics for `.php` and `.ts`/`.tsx`/`.js`/`.jsx` files. They are a no-op until the language-server binary is on PATH — `./docks-kit sync claude` auto-installs the missing ones (`claudePlugins.ts syncLspServers, missing-binary install`: `npm install -g intelephense typescript-language-server typescript`; warns and skips when npm itself is absent). nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
+The three LSP plugins (`php-lsp`, `typescript-lsp`, `rust-analyzer-lsp`) carry no skill or context cost. Their `lspServers` config ships in the marketplace manifest. The plugin dirs on GitHub contain only a README, which is expected and not a broken install. The config registers go-to-definition, find-references, and post-edit diagnostics for `.php`, `.ts`/`.tsx`/`.js`/`.jsx`, and `.rs` files. Each plugin is a no-op until its server binary is on PATH. `./docks-kit sync claude` installs the missing binaries through two channels in `claudePlugins.ts syncLspServers`. The npm channel runs `npm install -g intelephense typescript-language-server typescript`, and warns and skips when npm itself is absent. rust-analyzer has no npm package, so the rustup channel runs `rustup component add rust-analyzer` only when rustup is present. A host without rustup does no Rust work, so sync skips that component in silence. nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
 
 **Manual fallback** (only if the `claude` CLI isn't on PATH during sync — sync prints a warning and skips bootstrap):
 

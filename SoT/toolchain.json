@@ -18,6 +18,8 @@
                 "note": "php-lsp server; `verified` pins claudeSync syncLspServers' npm install. Version comes from `npm ls -g` — its own --version prints minified source" },
     "typescript-language-server": { "kind": "check", "floor": "6.0.0", "verified": "6.0.0",
                 "note": "typescript-lsp server binary; `verified` pins claudeSync syncLspServers' npm install. Version 6 requires Node >=22.22.2 (see the `node` floor)" },
+    "rust-analyzer": { "kind": "check",
+                "note": "rust-analyzer-lsp server binary; claudeSync syncLspServers installs it with `rustup component add rust-analyzer` when rustup is present, so the version follows the host Rust toolchain and no verified pin applies (the bubblewrap stance for a tool the kit does not publish). A host without rustup is skipped in silence" },
     "tsc":    { "kind": "check", "floor": "6.0.3", "verified": "6.0.3", "note": "typescript-lsp dependency (npm package `typescript`); `verified` pins claudeSync syncLspServers' npm install. Deliberately on the 6.x line: typescript-language-server embeds TypeScript's programmatic API, which TS7 (native) doesn't yet expose — the repo's own devDependency runs TS7 for tsc --noEmit" },
     "bun":    { "kind": "managed", "policy": "present", "floor": "1.4.0", "verified": "1.4.2", "pinnable": true,
                 "note": "runtime for the docks-kit CLI and the Claude statusline/hook programs; bootstrap installs the verified release (installer takes bun-vX.Y.Z); self-updates via `bun upgrade` when wanted" },

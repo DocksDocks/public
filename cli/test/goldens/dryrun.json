@@ -345,7 +345,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "SoT tri-state: true = enabled everywhere, false = installed-but-disabled (per-project enable), absent = not kit-managed\n\nPLUGIN                                       SOT     INSTALLED\ndocks@docks                                  true    no\nphp-lsp@claude-plugins-official              true    no\nplan-lifecycle@docks                         true    no\ntypescript-lsp@claude-plugins-official       true    no\n"
+      "output": "SoT tri-state: true = enabled everywhere, false = installed-but-disabled (per-project enable), absent = not kit-managed\n\nPLUGIN                                       SOT     INSTALLED\ndocks@docks                                  true    no\nphp-lsp@claude-plugins-official              true    no\nplan-lifecycle@docks                         true    no\nrust-analyzer-lsp@claude-plugins-official    true    no\ntypescript-lsp@claude-plugins-official       true    no\n"
     },
     "cli=public fixture=home-fresh cmd=skills list": {
       "command": [

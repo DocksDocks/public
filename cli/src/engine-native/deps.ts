@@ -30,6 +30,8 @@ export type ToolId =
   | "intelephense"
   | "typescript-language-server"
   | "tsc"
+  | "rust-analyzer"
+  | "rustup"
   | "apt-get"
   | "dnf"
   | "pacman"
@@ -223,6 +225,13 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
   tsc: spec("tsc", "optional", () => "npm install -g typescript", {
     resolve: pathProbe("tsc"),
     version: versionProbe("tsc")
+  }),
+  "rust-analyzer": spec("rust-analyzer", "optional", () => "rustup component add rust-analyzer", {
+    resolve: pathProbe("rust-analyzer"),
+    version: versionProbe("rust-analyzer")
+  }),
+  rustup: spec("rustup", "optional", () => "install the Rust toolchain from https://rustup.rs", {
+    version: versionProbe("rustup")
   }),
   "apt-get": spec("apt-get", "optional", () => "install apt via your Linux distribution"),
   dnf: spec("dnf", "optional", () => "install dnf via your Linux distribution"),

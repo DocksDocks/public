@@ -23,6 +23,13 @@ SoT-`false` plugin entries must be disabled through the Claude CLI before JSON
 normalization; a plain JSON rewrite can lose the CLI settings race.
 </constraint>
 
+<constraint>
+`syncLspServers` runs two install channels. `installNpmServers` handles the npm
+packages; `installRustAnalyzer` handles the rustup component. A host with a
+missing `rust-analyzer` and no `rustup` gets one verbose-only note, no warning,
+and no `missingToolCount` entry.
+</constraint>
+
 ## Workflow
 
 1. Read `.agents/skills/plugin-bootstrap-context/SKILL.md`.
@@ -40,7 +47,8 @@ normalization; a plain JSON rewrite can lose the CLI settings race.
 | Claude reconcile | `syncPlugins` |
 | User-scope installed predicate | `pluginUserScopeInstalled` |
 | Optional plugins | `syncOptionalPlugins`, `enableOptionalPlugin` |
-| LSP binaries | `syncLspServers` |
+| LSP binaries, npm channel | `syncLspServers`, `installNpmServers` |
+| LSP binaries, rustup channel | `syncLspServers`, `installRustAnalyzer` |
 | Codex marketplace | `syncMarketplace`, `mergeMarketplace` |
 | Codex legacy cleanup | `removeLegacyDocksMarketplace`, `marketplaceSource` |
 | Codex plugin ids | `enabledPluginIds` |

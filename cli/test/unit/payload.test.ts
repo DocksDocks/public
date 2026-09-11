@@ -83,9 +83,10 @@ describe("generated SoT payload", () => {
       "docks@docks",
       "php-lsp@claude-plugins-official",
       "plan-lifecycle@docks",
+      "rust-analyzer-lsp@claude-plugins-official",
       "typescript-lsp@claude-plugins-official"
     ])
-    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true])
+    expect(Object.values(settings.enabledPlugins)).toEqual([true, true, true, true, true])
     expect(codexPluginIds).toEqual([
       "docks@docks",
       "plan-lifecycle@docks",

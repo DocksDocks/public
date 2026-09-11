@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudePlugins.ts
-      lines: "1-391"
+      lines: "1-510"
     - path: cli/src/engine-native/codexSync.ts
       lines: "249-635"
     - path: cli/src/engine-native/failures.ts
@@ -104,6 +104,22 @@ currently `supabase` and `n8n`.
 These keys are absent from the SoT, so the opt-in is sticky. Only `--prune`
 removes an installed optional plugin.
 
+## LSP Server Channels
+
+`syncLspServers` reads the SoT `enabledPlugins` keys, probes the binary each
+enabled plugin needs, then delegates to one of two local install channels.
+
+| Channel | Function | Tools |
+|---------|----------|-------|
+| npm global | `installNpmServers` | intelephense, typescript-language-server, typescript |
+| rustup component | `installRustAnalyzer` | rust-analyzer |
+
+The npm channel keeps the verified pins in `SoT/toolchain.json`. It skips the
+typescript-language-server install when host Node is below the floor. The
+rustup channel runs `rustup component add rust-analyzer`. That row carries no
+verified pin, because the component version follows the host Rust toolchain.
+`bubblewrap` already takes the same stance for a distro package.
+
 ## Codex Marketplace And Plugins
 
 `syncMarketplace` merges `SoT/.codex/plugins/marketplace.json` into the personal
@@ -126,7 +142,11 @@ ids; an invalid inventory falls back to the full refresh path.
   they do not satisfy the kit's user-scope install contract.
 - `false` entries are still installed because they support project-level enable.
 - LSP binaries are installed when LSP plugin keys are present, regardless of
-  truthiness, for the same project-enable reason.
+  truthiness, for the same project-enable reason. The rust channel is the one
+  exception. `rustInstallable` requires both a missing `rust-analyzer` probe
+  and a present `rustup` probe. A host without rustup gets one verbose-only
+  note and no warning. That host is not counted toward `missingToolCount`,
+  which is why `LSP server binaries present` still prints there.
 - Codex config and marketplace deployment can proceed even when the Codex CLI is
   absent; plugin refresh degrades to a warning and manual command.
 

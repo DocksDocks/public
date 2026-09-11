@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased - rust-analyzer joins the language-server pass
+
+- `SoT/.claude/settings.json` enables a third official LSP plugin,
+  `rust-analyzer-lsp@claude-plugins-official`. Like `php-lsp` and
+  `typescript-lsp`, it ships only a server command and a file-type mapping, so
+  it adds no prompt or skill context.
+- `./docks-kit sync claude` now provisions the Rust server. rust-analyzer has
+  no npm package, so the pass runs `rustup component add rust-analyzer` when
+  rustup is present. A successful run reports
+  `LSP server installed (rust-analyzer via rustup)`. A host without rustup does
+  no Rust work, so sync skips the component in silence and still reports the
+  other server binaries.
+- `SoT/toolchain.json` gains a `rust-analyzer` `check` row with no floor and no
+  `verified` pin. The component version follows the host Rust toolchain, the
+  stance `bubblewrap` already takes for a tool the kit does not publish. Sync
+  installs the component only when the binary is missing, and `rustup update`
+  is the user's remedy for an old component.
+
 ## 2026-09-11 - docks-kit 0.16.16: the Node floor gates the language-server install
 
 - `claudeSync syncLspServers` now reads the `node` floor before it installs
