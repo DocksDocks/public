@@ -31,7 +31,7 @@ const updateNudge = (logger: Logger): void => {
 
 const VALID_TARGETS = ["claude", "codex", "agents", "omp"]
 
-const targets = Argument.String("target").pipe(
+const targets: Argument.Argument<ReadonlyArray<string>> = Argument.String("target").pipe(
   Argument.withDescription("Sync targets: claude, codex, agents, omp (default: selected harnesses)"),
   Argument.variadic()
 )

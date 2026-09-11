@@ -153,10 +153,13 @@ describe("command reporting", () => {
     expect(humanResult.stdout).toContain("ERROR: engine capture failed for 'toolchain check'")
   })
 
-  // The variadic positional is the one argument whose parse the engine suites
-  // cannot reach: `runEngine` sets DOCKS_KIT_ENGINE=native-raw, which main.ts
-  // routes around effect/unstable/cli entirely. Only a public-CLI spawn proves
-  // that more than one target survives the parser.
+  // Multi-target parsing is invisible to the engine suites: `runEngine` sets
+  // DOCKS_KIT_ENGINE=native-raw, which main.ts routes around
+  // effect/unstable/cli entirely. This case covers the runtime parse - a
+  // dropped or narrowed variadic. It cannot see the rc.115 degradation, which
+  // kept the runtime behavior and only widened the parsed type; the explicit
+  // `Argument.Argument<ReadonlyArray<string>>` annotation in sync.ts is what
+  // makes that shape a compile error.
   it("carries every positional sync target through the public CLI parser", () => {
     const home = temporaryDirectory("docks-sync-variadic-")
 
