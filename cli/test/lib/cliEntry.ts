@@ -2,28 +2,29 @@
  * The CLI entry that spawning suites launch, and the Bun runtime that runs it.
  *
  * Several suites launch the public CLI as a child process. Bun transpiles the
- * entry's whole import graph on every launch, and the graph is 271 modules:
- * 0.13 s per spawn against 0.045 s for a prebuilt bundle of the same entry,
- * measured warm on a developer machine. A full `test:ci` performs about 160
- * launches, and the `windows-2025` runner is two to six times slower than that
- * machine, which is where the cost is visible. Building the bundle costs 0.03 s
- * and happens once per process, or once per `test:unit` run through the shared
- * entry below.
+ * entry's whole import graph on every launch, and that graph is 271 modules.
+ * Measured warm on a developer machine: 0.13 s per source spawn, against
+ * 0.045 s for a prebuilt bundle of the same entry. A full `test:ci` performs
+ * about 160 launches. A shared `BUN_RUNTIME_TRANSPILER_CACHE_PATH` recovers
+ * 0.01 s of that, because Bun caches only modules above a size threshold.
+ * Building the bundle costs 0.03 s. The build runs once per process, or once
+ * per `test:unit` run through the shared entry below. It never reuses an
+ * earlier run's bundle, so the child can never execute stale source.
  *
- * The bundle is written inside the checkout, under `cli/dist-test/`, because
- * `kitHome()` resolves the kit by walking up from `import.meta.dir` to the
- * nearest `package.json` named `docks-kit`. A bundle in a temporary directory
- * would resolve through the environment source or the working-directory
- * fallback instead, so the child would exercise a resolution the shipped CLI
- * never performs. At this depth the walk lands on the repository root, exactly
- * as it does from `cli/src/main.ts`.
+ * The bundle is written inside the checkout, under `cli/dist-test/`.
+ * `kitHome()` resolves the kit by walking up from `import.meta.dir`. The walk
+ * stops at the nearest `package.json` named `docks-kit`. At this depth it
+ * lands on the repository root, exactly as it does from `cli/src/main.ts`.
+ * A bundle in a temporary directory would resolve through the environment
+ * source or the working-directory fallback instead. The child would then
+ * exercise a resolution the shipped CLI never performs.
  *
  * Source mode stays reachable and stays covered. Set `DOCKS_KIT_TEST_CLI_ENTRY`
- * to `cli/src/main.ts` to run every spawning suite against the TypeScript entry
- * — that is also how to read a real stack trace, because the bundle carries no
- * source map. `payload.test.ts` boots the source entry on every run,
- * `smoke:package` runs the published source entry out of an installed tarball,
- * and `smoke:native` runs the compiled binary.
+ * to `cli/src/main.ts` to run every spawning suite against the TypeScript
+ * entry. Use the same variable to read a real stack trace, because the bundle
+ * carries no source map. `payload.test.ts` boots the source entry on every
+ * run. `smoke:package` runs the published source entry out of an installed
+ * tarball, and `smoke:native` runs the compiled binary.
  */
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, rmdirSync, rmSync } from "node:fs"
