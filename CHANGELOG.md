@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased - the Node floor gates the language-server install
+
+- `claudeSync syncLspServers` now reads the `node` floor before it installs
+  `typescript-language-server`. On a Node older than 22.22.2 it skips that one
+  package, warns with the host Node version and the required floor, and
+  installs the other language servers. npm treats the `engines` field as
+  advisory, so the previous behavior installed a server that could not start.
+- `toolchain.ts` exports `belowFloor`. The doctor row and the install gate now
+  reach the same judgement from one place.
+- The public CLI parser carries every positional `sync` target. The engine
+  suites reach that code through `DOCKS_KIT_ENGINE=native-raw`, which bypasses
+  the parser, so a dropped variadic was invisible to them until now.
+
 ## 2026-09-11 - docks-kit 0.16.15: Effect 4.0.0-rc.115, vitest 5, refreshed toolchain pins
 
 - The four Effect packages and vitest move together to `effect` 4.0.0-rc.115,

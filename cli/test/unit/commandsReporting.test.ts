@@ -152,4 +152,27 @@ describe("command reporting", () => {
     expect(humanResult.status).toBe(1)
     expect(humanResult.stdout).toContain("ERROR: engine capture failed for 'toolchain check'")
   })
+
+  // The variadic positional is the one argument whose parse the engine suites
+  // cannot reach: `runEngine` sets DOCKS_KIT_ENGINE=native-raw, which main.ts
+  // routes around effect/unstable/cli entirely. Only a public-CLI spawn proves
+  // that more than one target survives the parser.
+  it("carries every positional sync target through the public CLI parser", () => {
+    const home = temporaryDirectory("docks-sync-variadic-")
+
+    const two = runCli(["sync", "claude", "codex", "--dry-run"], home)
+    expect(two.status).toBe(0)
+    expect(two.stdout).toContain("Claude:")
+    expect(two.stdout).toContain("Codex:")
+    expect(two.stdout).not.toContain("Skills:")
+
+    const three = runCli(["sync", "claude", "codex", "agents", "--dry-run"], home)
+    expect(three.status).toBe(0)
+    expect(three.stdout).toContain("Skills:")
+
+    // A second target must still reach validation rather than being dropped.
+    const invalid = runCli(["sync", "claude", "bogus", "--dry-run"], home)
+    expect(invalid.status).toBe(2)
+    expect(`${invalid.stdout}\n${invalid.stderr}`).toContain("Unknown sync target(s): bogus")
+  })
 })

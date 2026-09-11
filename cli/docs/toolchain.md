@@ -34,9 +34,10 @@ an installer. An already-present Bun skips that download on every host.
 from `typescript-language-server` 6's `engines` field. The kit installs that
 server as an npm global for the `typescript-lsp` plugin, so an older Node runs
 a server its own manifest rejects. `docks-kit toolchain check` prints
-`below-floor` for a Node older than 22.22.2 and changes nothing else. No sync
-pass, install, or launcher consults the Node floor. A host below the floor
-still runs every kit operation.
+`below-floor` for a Node older than 22.22.2. The sync pass reads the same
+floor: it skips the `typescript-language-server` install on such a host, warns
+with the host Node version, and installs the other language servers. Nothing
+else consults the floor, so a host below it still runs every kit operation.
 
 ## Language-server upgrades
 
@@ -46,7 +47,7 @@ that is already present. A `verified` bump therefore reaches a fresh host
 immediately and leaves an existing install alone.
 
 A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
-it, install the pinned version by hand:
+it, upgrade Node to 22.22.2 or newer, then install the pinned version by hand:
 
 ```bash
 npm install -g typescript-language-server@6.0.0

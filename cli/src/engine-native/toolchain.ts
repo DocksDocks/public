@@ -34,6 +34,15 @@ function isNewer(a: string, b: string): boolean {
   return compareCodepoints(a, b) > 0
 }
 
+/**
+ * A readable installed version strictly older than the manifest floor. The
+ * doctor row and the LSP install gate must agree on that judgement, so both
+ * ask here rather than re-deriving it.
+ */
+export function belowFloor(installed: string, floor: string): boolean {
+  return installed !== "" && floor !== "" && isNewer(floor, installed)
+}
+
 export function present(ctx: Ctx, tool: ToolId): boolean {
   return ctx.services.deps.probe(tool).state === "present"
 }
@@ -103,7 +112,7 @@ export async function report(ctx: Ctx): Promise<void> {
     if (present(ctx, toolId)) {
       installed = await installedVersion(ctx, toolId)
       status = installed === "" ? "unknown" : "ok"
-      if (floor !== "" && installed !== "" && isNewer(floor, installed)) {
+      if (belowFloor(installed, floor)) {
         status = "below-floor"
       } else if (verified !== "" && installed !== "" && isNewer(installed, verified)) {
         status = "above-verified"
