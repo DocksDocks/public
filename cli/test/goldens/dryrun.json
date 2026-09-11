@@ -104,7 +104,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-drift",
-      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.10.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
+      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.13.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
     },
     "cli=engine fixture=home-fresh cmd=sync --dry-run": {
       "command": [
@@ -201,7 +201,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.10.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
+      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.13.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
     },
     "cli=engine fixture=home-invalid-json cmd=sync --dry-run": {
       "command": [
@@ -298,7 +298,7 @@
       ],
       "exitCode": 0,
       "fixture": "home-invalid-json",
-      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.10.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
+      "output": "[dry-run] cp embedded:SoT/.omp/AGENTS.md -> <HOME>/.omp/agent/AGENTS.md\n[dry-run] cp embedded:SoT/.omp/mcp.json -> <HOME>/.omp/agent/mcp.json\n[dry-run] cp embedded:SoT/.omp/config.yml -> <HOME>/.omp/agent/config.yml\n[dry-run] cp embedded:SoT/.omp/models.yml -> <HOME>/.omp/agent/models.yml\n[dry-run] cp embedded:SoT/.omp/intercom.json -> <HOME>/.pi/agent/intercom/config.json\n[dry-run] omp plugin marketplace add https://github.com/DocksDocks/docks.git\n[dry-run] omp plugin install --scope user docks@docks\n[dry-run] omp plugin install --scope user plan-lifecycle@docks\n[dry-run] omp install pi-intercom@0.13.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\n"
     },
     "cli=public fixture=home-fresh cmd=": {
       "command": [],
