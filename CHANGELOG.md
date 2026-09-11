@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - rust-analyzer joins the language-server pass
+## 2026-09-11 - docks-kit 0.16.17: rust-analyzer joins the language-server pass
 
 - `SoT/.claude/settings.json` enables a third official LSP plugin,
   `rust-analyzer-lsp@claude-plugins-official`. Like `php-lsp` and
