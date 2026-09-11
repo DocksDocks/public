@@ -40,9 +40,9 @@ one package with an `install` script, `msgpackr-extract` by way of
 `effect > msgpackr`, and Bun raises no trust prompt for it.
 
 The install prints no peer dependency warning. The root pins
-`@effect/platform-node-shared` at `4.0.0-rc.109`, the same release as the
+`@effect/platform-node-shared` at `4.0.0-rc.115`, the same release as the
 pinned `effect`, so a fresh registry resolution installs exactly one copy of
-each and the transitive peer range `effect@^4.0.0-rc.109` is satisfied. Without
+each and the transitive peer range `effect@^4.0.0-rc.115` is satisfied. Without
 that root pin, `@effect/platform-bun` requests the shared package through a
 caret range over a prerelease and a fresh install can pair a newer shared
 package with the pinned `effect`.

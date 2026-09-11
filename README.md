@@ -59,10 +59,10 @@ docks-kit docs [topic]                          self-documentation (10 topics)
 The CLI is a typed Effect 4 RC front-end on Bun; all mutation runs through
 EngineNative in `cli/src/engine-native/`, with golden-regression coverage for
 dry-run output, mutation snapshots, and argv logs. Its dependency graph is
-`effect@4.0.0-rc.109` (including `effect/unstable/cli`),
-`@effect/platform-bun@4.0.0-rc.109` (`BunServices.layer` and
-`BunRuntime.runMain`), `@effect/vitest@4.0.0-rc.109`, and `vitest@4.1.11`
-(inside the `@effect/vitest` peer range `>=4.1.0 <5.0.0`). `@effect/cli` and
+`effect@4.0.0-rc.115` (including `effect/unstable/cli`),
+`@effect/platform-bun@4.0.0-rc.115` (`BunServices.layer` and
+`BunRuntime.runMain`), `@effect/vitest@4.0.0-rc.115`, and `vitest@5.0.0`
+(inside the `@effect/vitest` peer range `>=5.0.0 <6.0.0`). `@effect/cli` and
 `@effect/platform` are removed: neither has a 4.x release, the CLI API moved
 into core, and the standalone platform package was unused here.
 

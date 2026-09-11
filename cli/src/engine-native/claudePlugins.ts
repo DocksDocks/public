@@ -8,7 +8,7 @@ import { p, spawnProcess } from "./exec"
 import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, readJsonFile, type Json } from "./jq"
-import { field } from "./toolchain"
+import { belowFloor, field, installedVersion } from "./toolchain"
 import { payloadText } from "../payload"
 
 async function cli(args: Array<string>): Promise<{ ok: boolean; out: string; detail: string }> {
@@ -389,6 +389,19 @@ function lspPkg(ctx: Ctx, tool: string, pkg: string): string | undefined {
   return undefined
 }
 
+/**
+ * npm treats a package's `engines` field as advisory unless the host opted
+ * into engine-strict, so installing typescript-language-server 6 on an older
+ * Node succeeds and then fails at every startup. Report the host Node version
+ * when it is too old, and the empty string when the install is safe.
+ */
+async function nodeBelowServerFloor(ctx: Ctx): Promise<string> {
+  const floor = field("node", "floor")
+  if (floor === "") return ""
+  const installed = await installedVersion(ctx, "node")
+  return belowFloor(installed, floor) ? installed : ""
+}
+
 export async function syncLspServers(ctx: Ctx): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger
   const sot = parseJson(payloadText("SoT/.claude/settings.json"))
@@ -402,9 +415,17 @@ export async function syncLspServers(ctx: Ctx): Promise<void> {
   const tsServerMissing = hasTs && ctx.services.deps.probe("typescript-language-server").state === "missing"
   const tscMissing = hasTs && ctx.services.deps.probe("tsc").state === "missing"
   const missingToolCount = Number(phpMissing) + Number(tsServerMissing) + Number(tscMissing)
+  const blockingNode = tsServerMissing ? await nodeBelowServerFloor(ctx) : ""
+  if (blockingNode !== "") {
+    warn(
+      `Skipping typescript-language-server install: Node ${blockingNode} is older than the ${field("node", "floor")} that version requires. Upgrade Node, then re-run sync.`
+    )
+  }
   const missing = [
     phpMissing ? lspPkg(ctx, "intelephense", "intelephense") : undefined,
-    tsServerMissing ? lspPkg(ctx, "typescript-language-server", "typescript-language-server") : undefined,
+    tsServerMissing && blockingNode === ""
+      ? lspPkg(ctx, "typescript-language-server", "typescript-language-server")
+      : undefined,
     tscMissing ? lspPkg(ctx, "tsc", "typescript") : undefined
   ].filter((spec): spec is string => spec !== undefined)
 
