@@ -16,7 +16,7 @@ on:
       - "bun.lock"
       - "vitest.config.ts"
       - ".github/actions/setup-bun-cache/**"
-      - ".github/workflows/parity.yml"
+      - ".github/workflows/*.yml"
   pull_request:
     paths:
       - "cli/**"
@@ -29,12 +29,14 @@ on:
       - "bun.lock"
       - "vitest.config.ts"
       - ".github/actions/setup-bun-cache/**"
-      - ".github/workflows/parity.yml"
+      - ".github/workflows/*.yml"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # A superseded pull request commit is noise, but a superseded `main` commit
+  # would be left with no green run, which is the record a later bisect reads.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -47,7 +49,7 @@ jobs:
     runs-on: ubuntu-24.04 # pinned label, never *-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Lint workflows (actionlint)
         env:
@@ -75,7 +77,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup-bun-cache
 
@@ -135,7 +137,7 @@ jobs:
     runs-on: ubuntu-24.04 # pinned label, never *-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup-bun-cache
 
@@ -172,7 +174,7 @@ jobs:
     runs-on: ubuntu-24.04 # pinned label, never *-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: ./.github/actions/setup-bun-cache
 
