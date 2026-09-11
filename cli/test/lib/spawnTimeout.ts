@@ -7,12 +7,15 @@
  * ceilings exist for runner variance rather than for the work itself.
  *
  * The Windows values are higher because `windows-2025` runner throughput
- * varies by roughly a factor of two. Two attempts of the same parity run
+ * varies by a factor of two to six. Two attempts of the same parity run
  * executed identical bytes and restored the identical Bun cache key, yet the
  * unit suite took 134 seconds on the first attempt and 61 seconds on the
- * second. On the slow attempt one case crossed the 15000 ms default ceiling
- * and one spawn-heavy case crossed the 30000 ms spawn ceiling, while the fast
- * attempt passed every case. Spawn-based cases absorb that variance first.
+ * second. The slowdown is the machine, not this repository: the checkout step
+ * of the same two attempts took 36 seconds and 6 seconds, and it reads no
+ * dependency and runs no Bun. On the slow attempt one case crossed the
+ * 15000 ms default ceiling and one spawn-heavy case crossed the 30000 ms
+ * spawn ceiling, while the fast attempt passed every case. Spawn-based cases
+ * absorb that variance first.
  *
  * A genuinely hung child still fails the run; the larger Windows ceilings only
  * make it take longer to report.
