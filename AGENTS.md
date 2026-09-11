@@ -111,6 +111,16 @@ Use direct acceptance and focused regressions while iterating, then run the full
 
 The spawning suites launch a prebuilt bundle of `cli/src/main.ts`. The build runs once per run, into the ignored `cli/dist-test/`. Bun otherwise transpiles the whole CLI on every child spawn. Set `DOCKS_KIT_TEST_CLI_ENTRY=<repo>/cli/src/main.ts` to run those suites against the TypeScript entry. Use that variable to read a real stack trace. See `cli/test/lib/cliEntry.ts`.
 
+## Landing changes
+
+Open a pull request when the change can alter what CI proves. That set is `cli/`, `SoT/`, `.github/`, the two launchers, the two installers, `package.json`, and `bun.lock`. Wait for every required check. Ask before merge. Never merge on a check result older than the head commit.
+
+Push direct to `main` only when the change touches no executable line. Root Markdown and code comments qualify. Run the full gate first when the edited file feeds a test or the generated payload.
+
+Name the route in the final report. Give the evidence that route produced: the run identifier for a pull request, or the local gate result for a direct push.
+
+Never rewrite published `main` history to correct a routing mistake. Correct it with a follow-up commit, and state what happened. A revert-and-re-land pair costs four commits and proves nothing the gate did not already prove.
+
 ## Skills
 
 **Project-skill scope.** Keep project skills within two classes: kit-mechanic skills and the `unslop` repo-prose skill.
