@@ -14,35 +14,27 @@ import {
   symlinkSync,
   writeFileSync
 } from "node:fs"
-import { delimiter, isAbsolute, join, resolve } from "node:path"
+import { delimiter, isAbsolute, join } from "node:path"
 
 import { hostOs } from "../../src/engine-native/os"
 
+import { BUN_RUNTIME, cliEntry } from "./cliEntry"
 import { FIXTURES_DIR, REPO_DIR, childHostId, readStubHost, temporaryDir } from "./goldenResources"
 import { normalizeOutput } from "./goldenSnapshot"
 
 
-function bunRuntime(): string {
-  if (process.versions["bun"] !== undefined) return resolve(process.execPath)
-  const { executableSuffixes } = hostOs()
-  for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
-    for (const suffix of executableSuffixes) {
-      const candidate = join(directory, `bun${suffix}`)
-      if (existsSync(candidate)) return resolve(candidate)
-    }
-  }
-  throw new Error("unable to locate the Bun runtime")
-}
-
-const BUN_RUNTIME = bunRuntime()
-const BUN_MAIN = join(REPO_DIR, "cli", "src", "main.ts")
-const BUN_CLI_ARGS: ReadonlyArray<string> = [
-  "--preload",
-  join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"),
-  BUN_MAIN
-]
 const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-")
 const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
+
+/**
+ * Preload first, then the entry. The preload spoofs the host before the CLI
+ * reads it, and it stays a TypeScript file: one small module per spawn is
+ * cheap, and bundling it would fix the spoof into the entry every child uses.
+ */
+const childEntryArgs = (nativeHost: boolean): Array<string> =>
+  nativeHost
+    ? [cliEntry()]
+    : ["--preload", join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"), cliEntry()]
 
 export interface EngineRun {
   readonly exitCode: number
@@ -112,7 +104,7 @@ interface RunOpts {
 }
 
 function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
-  return [...(opts.nativeHost === true ? [BUN_MAIN] : BUN_CLI_ARGS), ...args]
+  return [...childEntryArgs(opts.nativeHost === true), ...args]
 }
 
 /**

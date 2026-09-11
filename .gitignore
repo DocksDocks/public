@@ -6,5 +6,6 @@ autoresearch-results.tsv
 node_modules/
 settings.json.bak
 cli/dist/
+cli/dist-test/
 SoT/.claude/settings.local.json
 .pi/
