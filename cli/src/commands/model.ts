@@ -4,19 +4,21 @@ import { bail, engine } from "../engine"
 import { modelCatalog } from "../engine-native/models"
 import type { Tool } from "../manifests"
 
-const tool = Argument.string("tool").pipe(
+const tool = Argument.String("tool").pipe(
   Argument.withDescription("Which tool: claude | codex")
 )
-const value = Argument.string("value").pipe(
+const value = Argument.String("value").pipe(
   Argument.withDescription("Model to set (omit to view current + pick interactively on a TTY)"),
   Argument.optional
 )
-const dryRun = Flag.boolean("dry-run").pipe(
-  Flag.withDescription("Preview without applying")
+const dryRun = Flag.Boolean("dry-run").pipe(
+  Flag.withDescription("Preview without applying"),
+  Flag.withDefault(false)
 )
-const verbose = Flag.boolean("verbose").pipe(
+const verbose = Flag.Boolean("verbose").pipe(
   Flag.withAlias("v"),
-  Flag.withDescription("Also print no-op confirmations (already in sync, up to date)")
+  Flag.withDescription("Also print no-op confirmations (already in sync, up to date)"),
+  Flag.withDefault(false)
 )
 
 const KEEP = "__keep__"
@@ -46,7 +48,7 @@ export const modelCommand = Command.make(
       if (!process.stdin.isTTY || !process.stdout.isTTY) return
 
       const catalog = modelCatalog(t)
-      const chosen = yield* Prompt.select({
+      const chosen = yield* Prompt.Select({
         message: `Set the deployed ${t} model (deployed config only; a flag-less sync reverts to SoT)`,
         choices: [
           { title: "(keep current)", value: KEEP },

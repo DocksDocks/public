@@ -4,17 +4,18 @@ import { bail, engine } from "../engine"
 
 const MANAGED = ["bun"]
 
-const op = Argument.string("op").pipe(
+const op = Argument.String("op").pipe(
   Argument.withDescription("check (default) | ensure <tool>"),
   Argument.optional
 )
-const tool = Argument.string("tool").pipe(
+const tool = Argument.String("tool").pipe(
   Argument.withDescription(`Managed tool for ensure: ${MANAGED.join(", ")}`),
   Argument.optional
 )
-const verbose = Flag.boolean("verbose").pipe(
+const verbose = Flag.Boolean("verbose").pipe(
   Flag.withAlias("v"),
-  Flag.withDescription("Also print no-op confirmations (present, up to date)")
+  Flag.withDescription("Also print no-op confirmations (present, up to date)"),
+  Flag.withDefault(false)
 )
 
 export const toolchainCommand = Command.make("toolchain", { op, tool, verbose }, (config) =>

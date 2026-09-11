@@ -25,12 +25,13 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "omp-models": { summary: "omp role map and the Artificial Analysis snapshot behind it", body: ompModels }
 }
 
-const topic = Argument.string("topic").pipe(
+const topic = Argument.String("topic").pipe(
   Argument.withDescription(`One of: ${Object.keys(TOPICS).join(", ")}`),
   Argument.optional
 )
-const json = Flag.boolean("json").pipe(
-  Flag.withDescription("List topics as JSON")
+const json = Flag.Boolean("json").pipe(
+  Flag.withDescription("List topics as JSON"),
+  Flag.withDefault(false)
 )
 
 export const docsCommand = Command.make("docs", { topic, json }, (config) =>

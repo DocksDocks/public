@@ -102,7 +102,7 @@ function expectLegacyFiles(home: string): void {
   }
 }
 
-describe.sequential("Claude runtime migration transaction", () => {
+describe("Claude runtime migration transaction", () => {
   it("shares one deferred Bun result across an all-target legacy run", () => {
     const variant = legacyVariant()
     const run = runWithBunUnavailable(["sync"], variant)
@@ -248,7 +248,7 @@ describe.sequential("Claude runtime migration transaction", () => {
   })
 })
 
-describe.sequential("contextual dependency degradation", () => {
+describe("contextual dependency degradation", () => {
   it("syncs Claude and Codex without jq or a jq warning", () => {
     for (const target of ["claude", "codex"] as const) {
       const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }, NATIVE), { ...NATIVE, maskTools: ["jq"] })

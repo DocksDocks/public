@@ -31,61 +31,67 @@ const updateNudge = (logger: Logger): void => {
 
 const VALID_TARGETS = ["claude", "codex", "agents", "omp"]
 
-const targets = Argument.variadic(
-  Argument.string("target").pipe(
-    Argument.withDescription("Sync targets: claude, codex, agents, omp (default: selected harnesses)")
-  )
+const targets = Argument.String("target").pipe(
+  Argument.withDescription("Sync targets: claude, codex, agents, omp (default: selected harnesses)"),
+  Argument.variadic()
 )
 
-const dryRun = Flag.boolean("dry-run").pipe(
-  Flag.withDescription("Preview without applying")
+const dryRun = Flag.Boolean("dry-run").pipe(
+  Flag.withDescription("Preview without applying"),
+  Flag.withDefault(false)
 )
-const reconcile = Flag.boolean("reconcile").pipe(
-  Flag.withDescription("Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)")
+const reconcile = Flag.Boolean("reconcile").pipe(
+  Flag.withDescription("Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)"),
+  Flag.withDefault(false)
 )
-const prune = Flag.boolean("prune").pipe(
-  Flag.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)")
+const prune = Flag.Boolean("prune").pipe(
+  Flag.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)"),
+  Flag.withDefault(false)
 )
-const skipBubblewrap = Flag.boolean("skip-bubblewrap").pipe(
-  Flag.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)")
+const skipBubblewrap = Flag.Boolean("skip-bubblewrap").pipe(
+  Flag.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)"),
+  Flag.withDefault(false)
 )
-const skipPluginRefresh = Flag.boolean("skip-plugin-refresh").pipe(
-  Flag.withDescription("Install missing plugins but skip refresh-only updates for existing plugins")
+const skipPluginRefresh = Flag.Boolean("skip-plugin-refresh").pipe(
+  Flag.withDescription("Install missing plugins but skip refresh-only updates for existing plugins"),
+  Flag.withDefault(false)
 )
-const verbose = Flag.boolean("verbose").pipe(
+const verbose = Flag.Boolean("verbose").pipe(
   Flag.withAlias("v"),
-  Flag.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)")
+  Flag.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)"),
+  Flag.withDefault(false)
 )
-const claudeModel = Flag.string("claude-model").pipe(
+const claudeModel = Flag.String("claude-model").pipe(
   Flag.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
   Flag.optional
 )
-const claudeEffort = Flag.string("claude-effort").pipe(
+const claudeEffort = Flag.String("claude-effort").pipe(
   Flag.withDescription("Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)"),
   Flag.optional
 )
-const claudeAdvisor = Flag.string("claude-advisor").pipe(
+const claudeAdvisor = Flag.String("claude-advisor").pipe(
   Flag.withDescription("Deploy-time modifier: set Claude advisor on/off/default"),
   Flag.optional
 )
-const claudeCompactWindow = Flag.string("claude-compact-window").pipe(
+const claudeCompactWindow = Flag.String("claude-compact-window").pipe(
   Flag.withDescription("Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)"),
   Flag.optional
 )
-const claudePermissive = Flag.boolean("claude-permissive").pipe(
-  Flag.withDescription("Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)")
+const claudePermissive = Flag.Boolean("claude-permissive").pipe(
+  Flag.withDescription("Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)"),
+  Flag.withDefault(false)
 )
-const claudePlugin = Flag.string("claude-plugin").pipe(
+const claudePlugin = Flag.String("claude-plugin").pipe(
   Flag.withDescription(
     "Sticky opt-in plugin(s); repeatable and/or comma-separated (known: supabase, n8n)"
   ),
   Flag.atLeast(0)
 )
-const codexModel = Flag.string("codex-model").pipe(
+const codexModel = Flag.String("codex-model").pipe(
   Flag.withDescription("Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)"),
   Flag.optional
 )
-const codexEffort = Flag.string("codex-effort").pipe(
+const codexEffort = Flag.String("codex-effort").pipe(
   Flag.withDescription("Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)"),
   Flag.optional
 )

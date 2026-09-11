@@ -76,7 +76,7 @@ const INVALID_RULE_CORPUS: ReadonlyArray<{
   }
 ]
 
-describe.sequential("Claude settings truth", () => {
+describe("Claude settings truth", () => {
   it("ships only rules Claude Code can load", () => {
     expect(invalidRules(ALL_KIT_RULES)).toEqual([])
   })
@@ -322,7 +322,7 @@ describe.sequential("Claude settings truth", () => {
   })
 })
 
-describe.sequential("Codex settings truth", () => {
+describe("Codex settings truth", () => {
   it("model dry-run skips an absent config while sync still previews the model", () => {
     const variant = materializeVariant("home-fresh", {})
     const modelRun = runPublicCli(["model", "codex", "gpt-5.6-sol", "--dry-run"], variant, makeStubDir())
