@@ -6,10 +6,17 @@ deployed config is `--<tool>-<setting>`.
 ## Targets (positional)
 
 ```
-docks-kit sync                      # all three
+docks-kit sync                      # stored harness selection
 docks-kit sync claude               # one
 docks-kit sync claude agents        # two
+docks-kit sync omp                  # opt-in harness
 ```
+
+Positional targets are `claude`, `codex`, `agents`, and `omp`. A flag-less
+`sync` deploys the per-machine harness selection stored in
+`~/.docks-kit/state.json`. A missing or invalid state file selects `claude`,
+`codex`, and `agents`, and never selects `omp`. Choose the stored selection
+with `docks-kit harnesses`.
 
 ## Global flags
 

@@ -12,6 +12,7 @@ AI-assisted dev environment on every machine.
 | `SoT/.claude/` | Claude Code config (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex config (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.agents/` | Universal agent skills manifest (agentskills.io standard) |
+| `SoT/.omp/` | omp config deployed to `~/.omp/agent/` (AGENTS.md, config.yml, models.yml, mcp.json) plus `intercom.json` for pi intercom |
 | `SoT/models.json` | Kit-verified model catalog (see `docks-kit docs models`) |
 | `SoT/toolchain.json` | Verified-version floors for external tools (see `docks-kit docs toolchain`) |
 | `cli/src/generated/sotPayload.ts` | Deterministic generated payload embedded in standalone/npm execution |

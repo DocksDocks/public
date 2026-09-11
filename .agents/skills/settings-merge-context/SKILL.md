@@ -1,11 +1,13 @@
 ---
 name: settings-merge-context
-description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; settings.ts mergeSettings/reconcileSettings; or claudeRetired.ts RETIRED_PERMISSION_RULES. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, retired-rule pruning, and readiness-gated pruning."
+description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive; claudeSettingsModifiers.ts syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; settings.ts mergeSettings/reconcileSettings; or claudeRetired.ts RETIRED_PERMISSION_RULES. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, retired-rule pruning, and readiness-gated pruning."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-590"
+    - path: cli/src/engine-native/claudeSettingsModifiers.ts
+      lines: "1-119"
     - path: cli/src/engine-native/settings.ts
       lines: "1-42"
     - path: cli/src/engine-native/claudeRetired.ts
@@ -13,8 +15,8 @@ metadata:
     - path: SoT/.claude/settings.json
       lines: "1-372"
     - path: SoT/.claude/mcp-servers.json
-      lines: "1-40"
-  updated: "2026-09-08"
+      lines: "1-3"
+  updated: "2026-09-11"
 ---
 
 # Settings Merge
@@ -121,7 +123,7 @@ SoT values, except user-only keys that the SoT does not declare.
 |------|----------|----------|
 | `--claude-compact-window=<n|Nk>` | `syncCompactWindow` | Sets `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW`. |
 | `--claude-permissive` | `syncPermissive` | Clears `permissions.ask` and `permissions.deny`. |
-| `--claude-model=<m>` | `syncClaudeModel` | Sets `.model`, or deletes it for `default`. |
+| `--claude-model=<m>` | `claudeSettingsModifiers.ts syncClaudeModel` | Sets `.model`, or deletes it for `default`. |
 
 ## Key Decisions
 

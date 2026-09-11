@@ -15,10 +15,17 @@ is absent from user settings.
 ## Sync passes (idempotent, via the `claude plugin` CLI)
 
 1. Add SoT marketplaces not yet known
-2. Install SoT-declared plugins missing at user scope
-3. Refresh marketplace manifests; update installed plugins
-4. (`--prune` only) uninstall plugins / remove marketplaces not in SoT
-5. Re-assert SoT enabled-state (undoes install's enable side effect on
+2. Install SoT-declared plugins missing at user scope, refreshing each
+   plugin's source marketplace once first
+3. Refresh the remaining kit-owned marketplaces (skipped by
+   `--skip-plugin-refresh`)
+4. Update the kit-owned installed plugins (skipped by `--skip-plugin-refresh`)
+5. (`--prune` only) uninstall user-scope plugins that are neither
+   SoT-declared nor opted in on this run
+6. (`--prune` only) remove marketplaces no kit-owned plugin needs (built-in
+   `claude-plugins-official` and marketplaces behind project- or local-scope
+   installs are never removed)
+7. Re-assert SoT enabled-state (undoes install's enable side effect on
    false-keyed plugins)
 
 ## Failed operations fail the sync

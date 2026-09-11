@@ -11,7 +11,7 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 | `SoT/.claude/CLAUDE.md` | Coding standards and conventions (synced to `~/.claude/CLAUDE.md`) |
 | `SoT/.claude/settings.json` | Permissions, plugins, env vars, token limits, and sentinel-bearing runtime settings template |
 | `SoT/.claude/bin/` | Dependency-free Bun programs materialized into `~/.claude/bin/` for statusline, SessionStart, and Notification |
-| `SoT/.claude/mcp-servers.json` | User-scoped MCP server definitions merged into `~/.claude.json` by `claude::sync_claude_json` (settings.json can't hold `mcpServers`) |
+| `SoT/.claude/mcp-servers.json` | User-scoped MCP server definitions merged into `~/.claude.json` by `claudeSync.ts syncClaudeJson, mcpServers merge` (settings.json can't hold `mcpServers`) |
 
 ### Plugins
 
@@ -48,7 +48,7 @@ Per-project enable lives in the project's `.claude/settings.json`:
 }
 ```
 
-The user-scope key MUST remain present (just `false`) when a project wants to override a globally installed plugin's enabled state. The kit currently ships no `false`-keyed plugins — every declared default is `true`. Plugins outside the five defaults are absent from the user-scope SoT and are removed by `--prune`.
+The user-scope key MUST remain present (just `false`) when a project wants to override a globally installed plugin's enabled state. The kit currently ships no `false`-keyed plugins — every declared default is `true`. Plugins outside the four defaults are absent from the user-scope SoT and are removed by `--prune`.
 
 For n8n on this machine, install the marketplace and plugin directly at project scope so unrelated Claude Code sessions do not discover its skills:
 
@@ -72,7 +72,7 @@ The bootstrap exists because **`extraKnownMarketplaces` declarations in settings
 
 Official plugins live in the built-in `claude-plugins-official` marketplace but load only when enabled. The default SoT keeps only `php-lsp` and `typescript-lsp`; Context7, Frontend Design, Agent SDK, Commit Commands, Chrome DevTools, and Supabase are non-default and absent. An existing additive user installation remains until `./docks-kit sync claude --prune` removes it.
 
-The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost — their `lspServers` config ships in the marketplace manifest (the plugin dirs on GitHub contain only a README; that's expected, not a broken install) and registers go-to-definition / find-references / post-edit diagnostics for `.php` and `.ts`/`.tsx`/`.js`/`.jsx` files. They are a no-op until the language-server binary is on PATH — `./docks-kit sync claude` auto-installs the missing ones (`claude::sync_lsp_servers`: `npm install -g intelephense typescript-language-server typescript`; warns and skips when npm itself is absent). nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
+The two LSP plugins (`php-lsp`, `typescript-lsp`) carry no skill or context cost — their `lspServers` config ships in the marketplace manifest (the plugin dirs on GitHub contain only a README; that's expected, not a broken install) and registers go-to-definition / find-references / post-edit diagnostics for `.php` and `.ts`/`.tsx`/`.js`/`.jsx` files. They are a no-op until the language-server binary is on PATH — `./docks-kit sync claude` auto-installs the missing ones (`claudePlugins.ts syncLspServers, missing-binary install`: `npm install -g intelephense typescript-language-server typescript`; warns and skips when npm itself is absent). nvm-based installs are only on the PATH of interactive shells, which covers normally-launched Claude Code sessions but not headless/cron agents.
 
 **Manual fallback** (only if the `claude` CLI isn't on PATH during sync — sync prints a warning and skips bootstrap):
 
@@ -158,7 +158,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 ### Hooks
 
 - **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; emits structured hook JSON accepted by Claude Code and Codex imports, with current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model)
-- **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claude::sync_connector_env` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
+- **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claudeSync.ts syncConnectorEnv, environment export` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
 - **Notification**: Direct Bun exec of `~/.claude/bin/notify.mjs`; plays `notification.mp3` via the first available native player when a task completes
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
 
@@ -315,7 +315,7 @@ Codex mirrors the model/effort contract with `--codex-model=<m>` and
 
 #### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
 
-Two situational plugins are kept out of the SoT entirely and opted in per machine. Neither key is in `enabledPlugins`, so a flag-less sync installs, loads, and enables neither (an absent plugin is simply not installed). Unlike `--claude-compact-window`/`--claude-permissive`, the opt-in is **sticky**: once `--claude-plugin=<name>` installs and enables a plugin it stays until you run `--prune` — a later flag-less sync won't revert it (the SoT has no key to reassert against). The flag is repeatable and accepts comma-separated names (`--claude-plugin=supabase,n8n`); unknown names exit 2. Implemented by `claude::sync_optional_plugins`, which runs right after `claude::sync_plugins`.
+Two situational plugins are kept out of the SoT entirely and opted in per machine. Neither key is in `enabledPlugins`, so a flag-less sync installs, loads, and enables neither (an absent plugin is simply not installed). Unlike `--claude-compact-window`/`--claude-permissive`, the opt-in is **sticky**: once `--claude-plugin=<name>` installs and enables a plugin it stays until you run `--prune` — a later flag-less sync won't revert it (the SoT has no key to reassert against). The flag is repeatable and accepts comma-separated names (`--claude-plugin=supabase,n8n`); unknown names exit 2. Implemented by `claudePlugins.ts syncOptionalPlugins, sticky opt-in install`, which runs right after `claudePlugins.ts syncPlugins, seven-pass reconcile`.
 
 | Flag | Plugin | What it does |
 |------|--------|--------------|
@@ -396,7 +396,7 @@ alias claude='claude --thinking-display summarized'
 
 #### [2026-06-08] claude.ai account connectors auto-load into every session
 
-**Status:** Workaround found + automated (2026-06-08). `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported as a real **shell** env var disables all claude.ai cloud connectors; `./docks-kit sync` now ensures it (`claude::sync_connector_env`). Residual gap (still Open): no settings.json key, no per-connector or per-surface (Code-vs-Chat) control — those feature requests remain unresolved.
+**Status:** Workaround found + automated (2026-06-08). `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported as a real **shell** env var disables all claude.ai cloud connectors; `./docks-kit sync` now ensures it (`claudeSync.ts syncConnectorEnv, environment export`). Residual gap (still Open): no settings.json key, no per-connector or per-surface (Code-vs-Chat) control — those feature requests remain unresolved.
 
 **Symptom:** Every connector enabled in the Claude.ai web/desktop app (Figma, Google Drive, Gmail, Notion, …) OAuth-syncs into *every* Claude Code session and loads its tool definitions + system instructions into context — even connectors you never call (~100K tokens of silent bloat). They reappear on every restart and ignore per-project intent.
 
@@ -411,10 +411,10 @@ alias claude='claude --thinking-display summarized'
 - [anthropics/claude-code#47881](https://github.com/anthropics/claude-code/issues/47881) — disable per surface (Code vs Chat) (**OPEN**)
 - Partial upstream relief: v2.1.139 disables claude.ai connectors when `ANTHROPIC_API_KEY` / `apiKeyHelper` / `ANTHROPIC_AUTH_TOKEN` is set — unusable on a Max-subscription login.
 
-**Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `./docks-kit sync` does this via `claude::sync_connector_env`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
+**Workaround (working, automated):** Export `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a real shell env var — NOT in settings.json `env` (inert there). `./docks-kit sync` does this via `claudeSync.ts syncConnectorEnv, environment export`, appending it to `~/.zshrc` (zsh) / `~/.bashrc` (bash) / `~/.profile` (idempotent; never clobbers an existing value — set it to `true` yourself to keep connectors). Surgical: disables only claude.ai connectors (MCP source #5); local/project/user/plugin servers (supabase, n8n, `.mcp.json`) are untouched. Verify in a **new shell**: `/mcp` should show an empty claude.ai section while plugin servers remain. **Guaranteed fallback** if the env var is flaky on your build: `claude --strict-mcp-config --mcp-config <file>` loads only the listed servers and ignores every other source (cloud connectors included) — all-or-nothing, so re-declare any local/plugin servers you want.
 
 The old `disable-claudeai-connectors.sh` hook + its SessionStart entry (which patched `disabledMcpServers`, a field that does NOT gate cloud connectors) were non-functional and have been **removed** — the `ENABLE_CLAUDEAI_MCP_SERVERS` shell export replaces them. The sync engine's baseline removed manifest force-prunes any previously synced copy.
 
-**Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./docks-kit sync`, confirm `/mcp` is clean, then drop the `claude::sync_connector_env` shell-rc edit and this entry.
+**Verify resolution (residual gap):** When Claude Code ships a native settings.json / per-connector / per-surface toggle (watch the linked issues), set it in SoT, `./docks-kit sync`, confirm `/mcp` is clean, then drop the `claudeSync.ts syncConnectorEnv, environment export` shell-rc edit and this entry.
 
 **Fallback (nuclear):** Disconnect connectors at claude.ai → Settings → Connected apps (removes them everywhere, including Claude.ai chat). Or authenticate with `ANTHROPIC_API_KEY` (disables all connectors per v2.1.139, but bypasses the Max subscription).

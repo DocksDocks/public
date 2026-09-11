@@ -7,24 +7,24 @@ metadata:
     - path: cli/src/engine-native/index.ts
       lines: "1-180"
     - path: cli/src/engine.ts
-      lines: "1-120"
+      lines: "1-100"
     - path: cli/test/unit/engine.test.ts
       lines: "1-75"
     - path: cli/test/golden-dryrun.ts
-      lines: "1-220"
+      lines: "1-213"
     - path: cli/test/golden-mutation.ts
       lines: "1-360"
     - path: cli/test/lib/goldenResources.ts
-      lines: "1-400"
+      lines: "1-347"
     - path: cli/test/lib/goldenExecution.ts
-      lines: "1-400"
+      lines: "1-288"
     - path: cli/test/lib/goldenSnapshot.ts
-      lines: "1-400"
+      lines: "1-180"
     - path: cli/test/lib/goldenCli.ts
-      lines: "1-400"
+      lines: "1-52"
     - path: cli/test/lib/goldenMutationCatalog.ts
-      lines: "1-400"
-  updated: "2026-07-27"
+      lines: "1-154"
+  updated: "2026-09-11"
 ---
 
 # EngineNative Golden Contract
@@ -86,8 +86,9 @@ a failed child process turns a real sync failure into a success log.
 
 ## Supported-host boundary
 
-- `engine.ts requireSupportedHost, pre-execution gate` accepts only Linux/macOS x64/arm64 and runs before EngineNative or the `engineCapture` child fallback.
-- Keep `engine.test.ts unsupported host boundary` cases, including `win32`; they prove unsupported hosts cannot reach EngineNative or Bun/source fallback.
+- `engine.ts requireSupportedHost, pre-execution gate` admits Linux, macOS, and Windows on x64 or arm64, and runs before EngineNative or the `engineCapture` child fallback.
+- Keep `engine.test.ts supported host boundary` cases for `win32/x64` and `win32/arm64`. They prove Windows on x64 or arm64 reaches EngineNative.
+- Keep `engine.test.ts unsupported host boundary` cases `freebsd/arm64`, `linux/ia32`, and `win32/ia32`. They prove rejected hosts cannot reach EngineNative or the Bun/source fallback.
 - Golden normalization canonicalizes CRLF to LF and scrubs temp paths for deterministic fixtures; that normalization is not a supported-host path.
 
 ## Gotchas
