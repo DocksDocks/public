@@ -7,6 +7,7 @@ import { docsCommand } from "./commands/docs"
 import { harnessesCommand } from "./commands/harnesses"
 import { modelCommand } from "./commands/model"
 import { modelsCommand } from "./commands/models"
+import { ompCommand } from "./commands/omp"
 import { pluginsCommand } from "./commands/plugins"
 import { skillsCommand } from "./commands/skills"
 import { statusCommand } from "./commands/status"
@@ -32,6 +33,7 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log("  docks-kit plugins list                     plugin tri-state")
     yield* Console.log("  docks-kit skills list                      universal skills")
     yield* Console.log("  docks-kit docs [topic]                     self-documentation")
+    yield* Console.log("  docks-kit omp [--model|--pick] [...]       free-model omp session")
     yield* Console.log("")
     yield* Console.log("Run 'docks-kit --help' for full option listings (also: --wizard, --completions).")
     yield* Console.log("No-Bun recovery path: use a platform release binary.")
@@ -50,7 +52,8 @@ const root = Command.make("docks-kit", {}, () =>
     statusCommand,
     pluginsCommand,
     skillsCommand,
-    docsCommand
+    docsCommand,
+    ompCommand
   ])
 )
 

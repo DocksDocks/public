@@ -366,6 +366,57 @@ describe("argument validation", () => {
   })
 })
 
+describe("omp passthrough boundary", () => {
+  it.each([
+    [
+      "forwards a short flag tail behind an injected delimiter",
+      ["omp", "-p", "hi"],
+      ["omp", "--", "-p", "hi"]
+    ],
+    [
+      "keeps a declared value flag and its value before the boundary",
+      ["omp", "--model", "x", "-p", "hi"],
+      ["omp", "--model", "x", "--", "-p", "hi"]
+    ],
+    [
+      "starts the tail at a positional message",
+      ["omp", "fix the bug"],
+      ["omp", "--", "fix the bug"]
+    ],
+    [
+      "forwards a globally declared flag behind an explicit delimiter",
+      ["omp", "--", "--help"],
+      ["omp", "--", "--help"]
+    ],
+    [
+      "leaves an explicit delimiter alone",
+      ["omp", "--", "--anything"],
+      ["omp", "--", "--anything"]
+    ],
+    ["leaves a lone picker flag unchanged", ["omp", "--pick"], ["omp", "--pick"]],
+    ["leaves help unchanged", ["omp", "--help"], ["omp", "--help"]],
+    ["leaves bare omp unchanged", ["omp"], ["omp"]],
+    [
+      "forwards an undeclared long flag and its value",
+      ["omp", "--mode", "json", "-p", "hi"],
+      ["omp", "--", "--mode", "json", "-p", "hi"]
+    ],
+    [
+      "forwards omp's own --models without confusing it with --model",
+      ["omp", "--models", "a,b"],
+      ["omp", "--", "--models", "a,b"]
+    ],
+    [
+      "forwards a mistyped launcher flag so omp reports it",
+      ["omp", "--moddel"],
+      ["omp", "--", "--moddel"]
+    ]
+  ] as const)("%s", (_name, input, args) => {
+    expect(prepareArgv(input)).toEqual({ kind: "accept", args })
+  })
+
+})
+
 describe("subcommand resolution", () => {
   it.each([
     [

@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; harnesses.ts readHarnessSelection or writeHarnessSelection; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, and harness state. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
@@ -13,12 +13,16 @@ metadata:
     - path: cli/src/engine-native/ompYaml.ts
       lines: "1-128"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-75"
+      lines: "1-156"
+    - path: cli/src/engine-native/ompOverlay.ts
+      lines: "1-159"
+    - path: cli/src/commands/omp.ts
+      lines: "1-187"
     - path: cli/src/engine-native/index.ts
       lines: "180-304"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "202-388"
-  updated: "2026-09-10"
+  updated: "2026-09-11"
 ---
 
 # omp Sync Context
@@ -93,7 +97,8 @@ Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 - Change omp path resolution in `ompPaths.ts` — `ompPaths`.
 - Change omp deployment file modes, backups, or restart triggers.
 - Change omp marketplace registration or plugin reconciliation.
-- Change `readHarnessSelection` or `writeHarnessSelection` in `harnesses.ts`.
+- Change `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, or `writeOmpSessionModel` in `harnesses.ts`.
+- Change the free-session run overlay in `ompOverlay.ts` or the launcher in `commands/omp.ts`.
 - Change the omp pipeline branch in `index.ts` — `engineSync`.
 - Change default harness resolution in `parseArgs`.
 
@@ -243,7 +248,7 @@ Install every missing plugin regardless of this flag.
 
 Anchor this behavior at `ompSync.ts` — `syncMarketplace` and `syncPlugins` — dry-run and refresh boundaries.
 
-## Harness Selection Store
+## Local State Store
 
 Store the selection at `~/.docks-kit/state.json`.
 Resolve that path from the engine home.
@@ -252,6 +257,13 @@ Normalize entries into `claude`, `codex`, `agents`, and `omp` order.
 Reject an empty or wholly unknown write.
 Write the state directory with mode `0700`.
 Write and chmod the state file with mode `0600`.
+
+The state record holds two independent kit-owned keys: `harnesses` and
+`ompSession`. Merge every write over the stored record.
+A writer that serializes the record from scratch drops the other key, and the
+loss is silent until the next reader falls back to a default.
+Keep the selection writer and the session-model writer on the one shared
+merge helper.
 
 Treat a missing, unreadable, malformed, or unusable file as no stored selection.
 Resolve no stored selection to `claude`, `codex`, and `agents`.
@@ -263,7 +275,25 @@ Let explicit positional targets override the stored selection.
 The `docks-kit harnesses` command owns prompting and persistence.
 Off a terminal, that command only prints the current selection.
 
-Anchor storage at `harnesses.ts` — `readHarnessSelection` and `writeHarnessSelection` — versioned local state.
+`docks-kit omp` owns the `ompSession` key and writes nothing else.
+It stores a required free model selector, an optional session thinking level,
+and an optional advisor thinking level.
+Compute both levels once at set time from the catalog row of the chosen model,
+so a plain launch needs no catalog call.
+Derive each level from that model's own ladder, never from the global ladder
+constant: five free models publish no `medium`, and two publish no ladder.
+Store no level for a model without a ladder, and render a bare selector for it.
+An invented level makes omp fail when the session starts, not when the user
+chooses the model.
+Treat a missing, blank, or malformed entry as no stored model, and resolve it
+to `DEFAULT_OMP_SESSION_MODEL`.
+Never throw on a corrupt entry, because a launcher that refuses to start is
+worse than one that starts on the default free model.
+Drop each level field independently when it is blank, so a stale level never
+survives a switch to a level-free model.
+
+Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — versioned local state over one merge helper.
+Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, and `renderFreeOverlay` — per-model ladder derivation and empty fallback chains.
 Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
 Anchor dispatch at `index.ts` — `engineSync` omp branch — selected pipeline execution.
 

@@ -1,14 +1,17 @@
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import {
+  DEFAULT_OMP_SESSION_MODEL,
   HARNESSES,
   engineHome,
   harnessStateFile,
   readHarnessSelection,
+  readOmpSessionModel,
   writeHarnessSelection,
+  writeOmpSessionModel,
   type Harness
 } from "../../src/engine-native/harnesses"
 
@@ -112,5 +115,150 @@ describe("harness selection state", () => {
     expect(engineHome({ HOME: "/fixture/home" })).toBe("/fixture/home")
     expect(engineHome({})).toBe(homedir())
     expect(engineHome({ HOME: "" })).toBe(homedir())
+  })
+})
+
+describe("omp session model state", () => {
+  beforeEach(() => {
+    home = mkdtempSync(join(tmpdir(), "docks-omp-session-"))
+  })
+
+  afterEach(() => {
+    rmSync(home, { recursive: true, force: true })
+  })
+
+  it("keeps a stored ompSession when a harness selection is written", () => {
+    writeOmpSessionModel(home, {
+      selector: "provider/model-free",
+      thinking: "xhigh",
+      advisorThinking: "medium",
+    })
+
+    writeHarnessSelection(home, ["claude"])
+
+    expect(readOmpSessionModel(home)).toEqual({
+      selector: "provider/model-free",
+      thinking: "xhigh",
+      advisorThinking: "medium",
+    })
+    expect(readHarnessSelection(home)).toEqual(["claude"])
+  })
+
+  it("keeps stored harnesses when an omp session model is written", () => {
+    writeHarnessSelection(home, ["codex", "agents"])
+
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "low" })
+
+    expect(readHarnessSelection(home)).toEqual(["codex", "agents"])
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free", thinking: "low" })
+  })
+
+  it("preserves an unknown top-level key across both writers", () => {
+    writeHarnessSelection(home, ["claude"])
+    const stateFile = harnessStateFile(home)
+    const parsed = JSON.parse(readFileSync(stateFile, "utf8")) as Record<string, unknown>
+    writeFileSync(stateFile, `${JSON.stringify({ ...parsed, futureKey: { flag: true } }, null, 2)}\n`)
+
+    writeHarnessSelection(home, ["codex"])
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "high" })
+
+    const next = JSON.parse(readFileSync(stateFile, "utf8")) as Record<string, unknown>
+    expect(next["futureKey"]).toEqual({ flag: true })
+    expect(readHarnessSelection(home)).toEqual(["codex"])
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free", thinking: "high" })
+  })
+
+  it("returns undefined for a missing state file", () => {
+    expect(readOmpSessionModel(home)).toBeUndefined()
+  })
+
+  it("returns undefined when ompSession is null", () => {
+    writeState(JSON.stringify({ version: 1, ompSession: null }))
+
+    expect(readOmpSessionModel(home)).toBeUndefined()
+  })
+
+  it("returns undefined when the selector is blank", () => {
+    writeState(JSON.stringify({ version: 1, ompSession: { selector: "  ", thinking: "xhigh" } }))
+
+    expect(readOmpSessionModel(home)).toBeUndefined()
+  })
+
+  it("reads a level-free model with both level fields absent", () => {
+    writeState(JSON.stringify({ version: 1, ompSession: { selector: "provider/model-free" } }))
+
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free" })
+  })
+
+  it("drops a blank level while keeping the valid one", () => {
+    writeState(
+      JSON.stringify({
+        version: 1,
+        ompSession: { selector: "provider/model-free", thinking: "  ", advisorThinking: "low" },
+      }),
+    )
+
+    expect(readOmpSessionModel(home)).toEqual({
+      selector: "provider/model-free",
+      advisorThinking: "low",
+    })
+  })
+
+  it("round-trips a written model with all three fields", () => {
+    writeOmpSessionModel(home, {
+      selector: "provider/model-free",
+      thinking: "medium",
+      advisorThinking: "low",
+    })
+
+    expect(readOmpSessionModel(home)).toEqual({
+      selector: "provider/model-free",
+      thinking: "medium",
+      advisorThinking: "low",
+    })
+  })
+
+  it("round-trips a level-free model with both level fields absent", () => {
+    writeOmpSessionModel(home, { selector: "provider/model-free" })
+
+    const stored = readOmpSessionModel(home)
+    expect(stored).toEqual({ selector: "provider/model-free" })
+    expect(stored).not.toHaveProperty("thinking")
+    expect(stored).not.toHaveProperty("advisorThinking")
+  })
+
+  it("leaves no stale level behind when a level-free model overwrites a levelled one", () => {
+    writeOmpSessionModel(home, {
+      selector: "provider/model-free",
+      thinking: "xhigh",
+      advisorThinking: "medium",
+    })
+
+    writeOmpSessionModel(home, { selector: "provider/other-free" })
+
+    const stored = readOmpSessionModel(home)
+    expect(stored).toEqual({ selector: "provider/other-free" })
+    expect(stored).not.toHaveProperty("thinking")
+    expect(stored).not.toHaveProperty("advisorThinking")
+  })
+
+  it("rejects a blank selector", () => {
+    expect(() => writeOmpSessionModel(home, { selector: "  ", thinking: "xhigh" })).toThrow(/selector/i)
+  })
+
+  it("exposes the free session default", () => {
+    expect(DEFAULT_OMP_SESSION_MODEL.selector).toBe("opencode-zen/muse-spark-1.3-contributor-free")
+    expect(DEFAULT_OMP_SESSION_MODEL.thinking).toBe("xhigh")
+    expect(DEFAULT_OMP_SESSION_MODEL.advisorThinking).toBe("medium")
+  })
+
+  it("writes the state file and directory with private modes", () => {
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "xhigh" })
+
+    expect(existsSync(harnessStateFile(home))).toBe(true)
+    if (process.platform !== "win32") {
+      expect(statSync(harnessStateFile(home)).mode & 0o777).toBe(0o600)
+      expect(statSync(join(home, ".docks-kit")).mode & 0o777).toBe(0o700)
+    }
   })
 })
