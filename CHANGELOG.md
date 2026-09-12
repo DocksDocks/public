@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-12 - docks-kit 0.17.1: the omp picker asks for thinking levels
+
+- `docks-kit omp --pick` now continues into a thinking-level wizard after the
+  model choice. It asks whether every role uses one level; `Yes` takes the
+  highest level the model offers, and `No` asks one level for all roles
+  except the advisor, then one level for the advisor.
+- `ompOverlay.ts planEffortChoice` decides which questions apply, so every
+  offered level comes from the ladder of the chosen model. A model with no
+  ladder is asked nothing and keeps bare selectors. A model with one level is
+  stated, not asked. omp rejects a `:level` suffix the model does not
+  publish, so no other list is safe to offer.
+- `ompOverlay.ts advisorRecommendation` leads the advisor question with a
+  level two steps down that model own ladder, clamped to its lowest level.
+  The recommendation is the first row, because `Prompt.Select` starts on the
+  first entry and accepts no initial index.
+- The launch line reports the advisor level when it differs from the other
+  roles.
+- `README.md` lists `docks-kit omp` in the command table. The 0.17.0 release
+  shipped the command without the row.
+
 ## 2026-09-12 - docks-kit 0.17.0: the omp free-session launcher
 
 - `docks-kit omp` starts one omp session in which every model role resolves to
