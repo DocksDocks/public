@@ -20,7 +20,8 @@ import {
   syncPermissive
 } from "./claudeSettings"
 import { syncRemovals } from "./claudeRemovals"
-import { syncOptionalPlugins, syncPlugins } from "./claudePluginPasses"
+import { syncPlugins } from "./claudePluginPasses"
+import { syncOptionalPlugins } from "./claudeOptionalPlugins"
 import { syncLspServers } from "./claudeLsp"
 import { p, spawnProcess, writeBytesIfChanged, writeTextIfChanged } from "./exec"
 import type { Ctx } from "./index"

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import type { Ctx } from "../../src/engine-native"
-import { syncLspServers } from "../../src/engine-native/claudePlugins"
+import { syncLspServers } from "../../src/engine-native/claudeLsp"
 import { DEPENDENCIES, type ToolId } from "../../src/engine-native/deps"
 import { p } from "../../src/engine-native/exec"
 import { makeLogger, type Logger } from "../../src/engine-native/logger"

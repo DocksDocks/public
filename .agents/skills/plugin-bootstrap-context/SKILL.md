@@ -1,11 +1,11 @@
 ---
 name: plugin-bootstrap-context
-description: "Use when modifying cli/src/engine-native/claudePlugins.ts plugin functions syncPlugins, pluginUserScopeInstalled, syncOptionalPlugins, enableOptionalPlugin, syncLspServers, or cli/src/engine-native/codexSync.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
+description: "Use when modifying cli/src/engine-native/claudePluginPasses.ts plugin functions syncPlugins, pluginUserScopeInstalled, claudeOptionalPlugins.ts syncOptionalPlugins, enableOptionalPlugin, claudeLsp.ts syncLspServers, or cli/src/engine-native/codexSync.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudePluginPasses.ts
-      lines: "1-378"
+      lines: "1-305"
     - path: cli/src/engine-native/codexPlugins.ts
       lines: "1-259"
     - path: cli/src/engine-native/failures.ts
