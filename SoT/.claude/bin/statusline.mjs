@@ -1,18 +1,58 @@
+/**
+ * @typedef {string | number | boolean | JsonRecord | JsonArray | null | undefined} JsonValue
+ * @typedef {{ [key: string]: JsonValue }} JsonRecord
+ * @typedef {Array<JsonValue>} JsonArray
+ * @typedef {Record<string, string | undefined> | JsonRecord | typeof process.env} EnvInput
+ * @typedef {(name: string) => string | null | undefined} WhichFn
+ * @typedef {object} SyncSpawnOptions
+ * @property {"ignore" | "pipe" | "inherit"} [stdin]
+ * @property {"ignore" | "pipe" | "inherit"} [stdout]
+ * @property {"ignore" | "pipe" | "inherit"} [stderr]
+ * @typedef {object} SyncSpawnResult
+ * @property {boolean} [success]
+ * @property {Buffer | string | null | undefined} [stdout]
+ * @typedef {(argv: string[], options: SyncSpawnOptions) => SyncSpawnResult} SyncSpawner
+ * @typedef {object} FormatStatuslineOptions
+ * @property {EnvInput} [env]
+ * @property {number} [nowMs]
+ * @property {string} [cwd]
+ * @property {string} [branch]
+ * @typedef {object} StatuslineMainOptions
+ * @property {() => Promise<string>} [readStdin]
+ * @property {(value: string) => void} [writeStdout]
+ * @property {string} [cwd]
+ * @property {EnvInput} [env]
+ * @property {number} [nowMs]
+ * @property {WhichFn} [which]
+ * @property {SyncSpawner} [spawnSync]
+ */
 const ESC = "\x1b["
 const PIPE = `${ESC}90m | ${ESC}0m`
 const DOT = `${ESC}90m • ${ESC}0m`
 const DIM = `${ESC}2m${ESC}38;2;156;162;175m`
 
+/**
+ * @param {object | string | number | boolean | null | undefined} value
+ * @returns {value is JsonRecord}
+ */
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+/**
+ * @param {JsonValue} value
+ * @returns {number | undefined}
+ */
 function finitePercentage(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100
     ? value
     : undefined
 }
 
+/**
+ * @param {number} value
+ * @returns {number}
+ */
 function roundHalfEven(value) {
   const lower = Math.floor(value)
   const fraction = value - lower
@@ -21,11 +61,19 @@ function roundHalfEven(value) {
   return lower % 2 === 0 ? lower : lower + 1
 }
 
+/**
+ * @param {string} path
+ * @returns {string}
+ */
 function pathBasename(path) {
   const parts = path.split(/[\\/]+/).filter((part) => part !== "")
   return parts.at(-1) ?? ""
 }
 
+/**
+ * @param {JsonRecord} input
+ * @returns {string}
+ */
 function modelName(input) {
   const model = isRecord(input.model) && typeof input.model.display_name === "string"
     ? input.model.display_name
@@ -34,6 +82,11 @@ function modelName(input) {
   return suffix === -1 ? model : model.slice(0, suffix)
 }
 
+/**
+ * @param {JsonRecord} input
+ * @param {string} cwd
+ * @returns {string}
+ */
 function workingDirectory(input, cwd) {
   if (isRecord(input.workspace) && typeof input.workspace.current_dir === "string" && input.workspace.current_dir !== "") {
     return input.workspace.current_dir
@@ -42,6 +95,11 @@ function workingDirectory(input, cwd) {
   return cwd
 }
 
+/**
+ * @param {EnvInput} env
+ * @param {number} total
+ * @returns {number}
+ */
 function compactWindow(env, total) {
   const raw = env.CLAUDE_CODE_AUTO_COMPACT_WINDOW
   if (typeof raw !== "string" || !/^[0-9]+$/.test(raw)) return total
@@ -49,12 +107,21 @@ function compactWindow(env, total) {
   return Number.isSafeInteger(parsed) && parsed >= 1000 && parsed < total ? parsed : total
 }
 
+/**
+ * @param {number} value
+ * @returns {string}
+ */
 function formatTokensK(value) {
   if (value < 1000) return `${value}k`
   if (value % 1000 === 0) return `${value / 1000}M`
   return `${(roundHalfEven(value / 100) / 10).toFixed(1)}M`
 }
 
+/**
+ * @param {JsonRecord} input
+ * @param {EnvInput} env
+ * @returns {string}
+ */
 function contextSegment(input, env) {
   if (!isRecord(input.context_window)) return ""
   const used = finitePercentage(input.context_window.used_percentage)
@@ -72,6 +139,11 @@ function contextSegment(input, env) {
   return `${ESC}38;2;130;160;230mctx ${effectivePercentage}%${ESC}0m ${DIM}(${formatTokensK(usedK)}/${formatTokensK(effectiveK)})${ESC}0m`
 }
 
+/**
+ * @param {JsonValue} value
+ * @param {number} nowMs
+ * @returns {string}
+ */
 function resetDelta(value, nowMs) {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return ""
   const seconds = Math.trunc(value) - Math.floor(nowMs / 1000)
@@ -83,6 +155,13 @@ function resetDelta(value, nowMs) {
   return `${Math.trunc((seconds % 3_600) / 60)}m`
 }
 
+/**
+ * @param {JsonValue} value
+ * @param {string} label
+ * @param {string} color
+ * @param {number} nowMs
+ * @returns {string}
+ */
 function quotaWindow(value, label, color, nowMs) {
   if (!isRecord(value)) return ""
   const used = finitePercentage(value.used_percentage)
@@ -92,12 +171,22 @@ function quotaWindow(value, label, color, nowMs) {
   return `${ESC}38;2;${color}m${label} ${roundHalfEven(used)}%${ESC}0m${reset}`
 }
 
+/**
+ * @param {SyncSpawnResult | null | undefined} result
+ * @returns {string}
+ */
 function decodeStdout(result) {
   const stdout = result?.stdout
   if (stdout === undefined || stdout === null) return ""
   return typeof stdout === "string" ? stdout : stdout.toString()
 }
 
+/**
+ * @param {string} directory
+ * @param {WhichFn} which
+ * @param {SyncSpawner} spawnSync
+ * @returns {string}
+ */
 function resolveBranch(directory, which, spawnSync) {
   const git = which("git")
   if (typeof git !== "string" || git === "") return ""
@@ -116,6 +205,11 @@ function resolveBranch(directory, which, spawnSync) {
   return ""
 }
 
+/**
+ * @param {JsonRecord} input
+ * @param {FormatStatuslineOptions} [options]
+ * @returns {string}
+ */
 export function formatStatusline(input, options = {}) {
   if (!isRecord(input)) return ""
   const env = isRecord(options.env) ? options.env : process.env
@@ -129,9 +223,9 @@ export function formatStatusline(input, options = {}) {
   const branchSegment = branch === "" ? "" : `${DOT}${ESC}1m${ESC}38;2;192;103;222m${branch}${ESC}22m${ESC}0m`
   const context = contextSegment(input, env)
 
-  const rateLimits = isRecord(input.rate_limits) ? input.rate_limits : {}
-  const fiveHour = quotaWindow(rateLimits.five_hour, "5h", "100;200;200", nowMs)
-  const sevenDay = quotaWindow(rateLimits.seven_day, "7d", "230;180;90", nowMs)
+  const rateLimits = isRecord(input.rate_limits) ? input.rate_limits : undefined
+  const fiveHour = quotaWindow(rateLimits?.five_hour, "5h", "100;200;200", nowMs)
+  const sevenDay = quotaWindow(rateLimits?.seven_day, "7d", "230;180;90", nowMs)
   const quota = fiveHour === "" && sevenDay === ""
     ? ""
     : `${PIPE}${fiveHour}${fiveHour !== "" && sevenDay !== "" ? DOT : ""}${sevenDay}`
@@ -139,6 +233,10 @@ export function formatStatusline(input, options = {}) {
   return `${model}${PIPE}${folder}${branchSegment}${context === "" ? "" : `${PIPE}${context}`}${quota}`
 }
 
+/**
+ * @param {StatuslineMainOptions} [options]
+ * @returns {Promise<number>}
+ */
 export async function main(options = {}) {
   const readStdin = options.readStdin ?? (() => Bun.stdin.text())
   const writeStdout = options.writeStdout ?? ((value) => process.stdout.write(value))

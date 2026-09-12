@@ -9,6 +9,7 @@ import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { compareCodepoints, deepMerge, isObject, jqStringify, parseJson, readJsonFile, type Json } from "./jq"
 import { payloadText } from "../payload"
+import type { JsonObject } from "./sharedTypes"
 
 async function cli(args: Array<string>): Promise<{ ok: boolean; out: string; detail: string }> {
   const res = await spawnProcess("claude", args, { stdio: ["ignore", "pipe", "pipe"] })
@@ -33,7 +34,7 @@ function sortedKeys(obj: Json | undefined): Array<string> {
 export function pluginUserScopeInstalled(installedPlugins: string, pluginId: string): boolean {
   const doc = readJsonFile(installedPlugins)
   if (doc === undefined || !isObject(doc) || !isObject(doc["plugins"])) return false
-  const rec = (doc["plugins"] as { [k: string]: Json })[pluginId]
+  const rec = (doc["plugins"] as JsonObject)[pluginId]
   if (rec === undefined || rec === null) return false
   const records = Array.isArray(rec) ? rec : [rec]
   return records.some((r) => isObject(r) && r["scope"] === "user")
@@ -98,7 +99,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   for (const [mpName, mpValue] of Object.entries(sotMarketplaces)) {
     const known = readJsonFile(knownMarketplaces)
     if (known !== undefined && isObject(known) && known[mpName] !== undefined && known[mpName] !== null && known[mpName] !== false) continue
-    const repo = isObject(mpValue) && isObject(mpValue["source"]) ? String((mpValue["source"] as { [k: string]: Json })["repo"] ?? "") : ""
+    const repo = isObject(mpValue) && isObject(mpValue["source"]) ? String((mpValue["source"] as JsonObject)["repo"] ?? "") : ""
     progress(`Adding marketplace ${mpName}...`)
     const marketplaceResult = await cli(["plugin", "marketplace", "add", repo])
     clearProgress()
@@ -266,7 +267,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   }
 }
 
-async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, userSettingsFile: string): Promise<boolean> {
+async function reassertEnabledState(ctx: Ctx, repoObj: JsonObject, userSettingsFile: string): Promise<boolean> {
   const { warn } = ctx.services.logger
   if (!existsSync(userSettingsFile)) return false
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {}
@@ -275,7 +276,7 @@ async function reassertEnabledState(ctx: Ctx, repoObj: { [k: string]: Json }, us
   for (const [pluginId, value] of Object.entries(sotPlugins)) {
     if (value !== false) continue
     const user = readJsonFile(userSettingsFile)
-    const enabled = user !== undefined && isObject(user) && isObject(user["enabledPlugins"]) ? (user["enabledPlugins"] as { [k: string]: Json })[pluginId] : undefined
+    const enabled = user !== undefined && isObject(user) && isObject(user["enabledPlugins"]) ? (user["enabledPlugins"] as JsonObject)[pluginId] : undefined
     if (enabled !== true) continue
     const disableResult = await cli(["plugin", "disable", pluginId])
     if (disableResult.ok) {
@@ -336,7 +337,7 @@ async function enableOptionalPlugin(ctx: Ctx, claudeDir: string, pluginId: strin
   const settingsDoc = readJsonFile(p(claudeDir, "settings.json"))
   const wasEnabled =
     settingsDoc !== undefined && isObject(settingsDoc) && isObject(settingsDoc["enabledPlugins"])
-      ? (settingsDoc["enabledPlugins"] as { [k: string]: Json })[pluginId] === true
+      ? (settingsDoc["enabledPlugins"] as JsonObject)[pluginId] === true
       : false
 
   if (!(await cli(["plugin", "enable", pluginId])).ok) {

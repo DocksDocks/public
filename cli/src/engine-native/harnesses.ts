@@ -8,20 +8,14 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 
 import { p } from "./exec"
+import type { OmpSessionModel } from "./sharedTypes"
 
 export type Harness = "claude" | "codex" | "agents" | "omp"
 
 export const HARNESSES: ReadonlyArray<Harness> = ["claude", "codex", "agents", "omp"]
 export const LEGACY_SELECTION: ReadonlyArray<Harness> = ["claude", "codex", "agents"]
 
-export interface OmpSessionModel {
-  readonly selector: string
-  // Session ceiling; absent when the model publishes no ladder, so no
-  // invented level ever reaches a selector that omp must resolve.
-  readonly thinking?: string
-  // Advisor level; absent when the model publishes no ladder.
-  readonly advisorThinking?: string
-}
+export type { OmpSessionModel };
 
 export const DEFAULT_OMP_SESSION_MODEL: OmpSessionModel = {
   selector: "opencode-zen/muse-spark-1.3-contributor-free",
@@ -122,14 +116,12 @@ export function readOmpSessionModel(home: string): OmpSessionModel | undefined {
   }
   // Each level stands alone, so a level-free model reads back with no
   // levels while a half-corrupt entry keeps the valid level.
-  const model: { selector: string; thinking?: string; advisorThinking?: string } = {
+  const thinking = record["thinking"]
+  const advisorThinking = record["advisorThinking"]
+  const model: OmpSessionModel = {
     selector: record["selector"],
-  }
-  if (isNonBlankString(record["thinking"])) {
-    model.thinking = record["thinking"]
-  }
-  if (isNonBlankString(record["advisorThinking"])) {
-    model.advisorThinking = record["advisorThinking"]
+    ...(isNonBlankString(thinking) ? { thinking } : {}),
+    ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
   }
   return model
 }
@@ -142,14 +134,12 @@ export function writeOmpSessionModel(home: string, model: OmpSessionModel): void
   }
   // Persist only non-blank levels so a switch to a level-free model leaves
   // no stale level behind in the stored record.
-  const entry: { selector: string; thinking?: string; advisorThinking?: string } = {
+  const thinking = model.thinking
+  const advisorThinking = model.advisorThinking
+  const entry: OmpSessionModel = {
     selector: model.selector,
-  }
-  if (isNonBlankString(model.thinking)) {
-    entry.thinking = model.thinking
-  }
-  if (isNonBlankString(model.advisorThinking)) {
-    entry.advisorThinking = model.advisorThinking
+    ...(isNonBlankString(thinking) ? { thinking } : {}),
+    ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
   }
 
   writeWholeState(home, { ompSession: entry })

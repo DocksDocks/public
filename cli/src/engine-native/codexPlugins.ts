@@ -11,6 +11,7 @@ import { p, spawnProcess } from "./exec"
 import { recordFailure } from "./failures"
 import type { Ctx } from "./index"
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq"
+import type { JsonObject } from "./sharedTypes"
 
 // ---------------------------------------------------------- marketplace ----
 
@@ -67,7 +68,7 @@ function mergeMarketplace(repo: Json, user: Json): Json {
   const r = isObject(repo) ? repo : {}
   const coalesce = (a: Json | undefined, b: Json | undefined): Json =>
     a !== undefined && a !== null && a !== false ? a : (b ?? null)
-  const merged: { [k: string]: Json } = {
+  const merged: JsonObject = {
     ...u,
     name: coalesce(u["name"], r["name"]),
     interface: coalesce(u["interface"], r["interface"])

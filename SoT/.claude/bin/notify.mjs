@@ -1,5 +1,28 @@
+/**
+ * @typedef {(name: string) => string | null | undefined} WhichFn
+ * @typedef {(path: string) => Promise<boolean>} FileExistsFn
+ * @typedef {object} QuietSpawnOptions
+ * @property {"ignore" | "pipe" | "inherit"} [stdin]
+ * @property {"ignore" | "pipe" | "inherit"} [stdout]
+ * @property {"ignore" | "pipe" | "inherit"} [stderr]
+ * @typedef {(argv: string[], options: QuietSpawnOptions) => void} QuietSpawner
+ * @typedef {object} PlayerOptions
+ * @property {string} [platform]
+ * @property {string} [sound]
+ * @property {WhichFn} [which]
+ * @typedef {object} NotifyOptions
+ * @property {string} [platform]
+ * @property {string} [sound]
+ * @property {WhichFn} [which]
+ * @property {FileExistsFn} [fileExists]
+ * @property {QuietSpawner} [spawnSync]
+ */
 const DEFAULT_SOUND = `${import.meta.dir}/../notification.mp3`
 
+/**
+ * @param {PlayerOptions} [options]
+ * @returns {string[] | undefined}
+ */
 export function selectPlayer(options = {}) {
   const platform = options.platform ?? process.platform
   const sound = options.sound ?? DEFAULT_SOUND
@@ -19,6 +42,10 @@ export function selectPlayer(options = {}) {
   return undefined
 }
 
+/**
+ * @param {NotifyOptions} [options]
+ * @returns {Promise<number>}
+ */
 export async function main(options = {}) {
   const sound = options.sound ?? DEFAULT_SOUND
   const fileExists = options.fileExists ?? ((path) => Bun.file(path).exists())

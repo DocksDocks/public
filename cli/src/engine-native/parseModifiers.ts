@@ -7,6 +7,7 @@
  */
 
 import type { Ctx, ModifierFlag } from "./index"
+import type { ScalarModifierFlag } from "./sharedTypes"
 import {
   CLAUDE_ADVISOR_STATES,
   advisorCatalog,
@@ -94,12 +95,7 @@ const MODIFIER_METADATA = {
   }
 } satisfies Record<ModifierFlag, ModifierMetadata>
 
-export type ScalarModifierFlag =
-  | "--claude-model"
-  | "--claude-effort"
-  | "--claude-advisor"
-  | "--codex-model"
-  | "--codex-effort"
+export type { ScalarModifierFlag };
 
 const SCALAR_MODIFIER_FLAGS: Record<ScalarModifierFlag, true> = {
   "--claude-model": true,

@@ -3,8 +3,9 @@
  * Message strings are covered by the golden suites.
  */
 import type { Ctx } from "./index"
-import { isObject, parseJson, type Json } from "./jq"
+import { isObject, parseJson } from "./jq"
 import { payloadDisplayPath, payloadText } from "../payload"
+import type { JsonObject } from "./sharedTypes"
 
 export interface ModelEntry {
   readonly id: string
@@ -17,14 +18,14 @@ export interface ModelCatalog {
   readonly models: ReadonlyArray<ModelEntry>
 }
 
-function toolEntry(tool: string): { [k: string]: Json } | undefined {
+function toolEntry(tool: string): JsonObject | undefined {
   const doc = parseJson(payloadText("SoT/models.json"))
   if (doc === undefined || !isObject(doc)) return undefined
   const entry = doc[tool]
   return entry !== undefined && isObject(entry) ? entry : undefined
 }
 
-function modelEntries(entry: { [k: string]: Json } | undefined): Array<{ [k: string]: Json }> {
+function modelEntries(entry: JsonObject | undefined): Array<JsonObject> {
   const models = entry?.["models"]
   return Array.isArray(models) ? models.filter(isObject) : []
 }

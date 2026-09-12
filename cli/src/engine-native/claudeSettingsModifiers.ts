@@ -6,14 +6,10 @@ import { resolveEffort } from "../efforts"
 import type { Ctx } from "./index"
 import { ExitError } from "./parseArgs"
 import { isObject, jqStringify, parseJson } from "./jq"
+import type { SettingEdit } from "./sharedTypes"
 
-interface ClaudeSettingEdit {
-  readonly tag: string
-  readonly key: "model" | "effortLevel" | "advisorModel"
-  readonly value: string | undefined
+interface ClaudeSettingEdit extends SettingEdit<"model" | "effortLevel" | "advisorModel"> {
   readonly dryRun: string
-  readonly changed: string
-  readonly unchanged: string
 }
 
 function syncClaudeSetting(ctx: Ctx, edit: ClaudeSettingEdit): void {

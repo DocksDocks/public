@@ -4,11 +4,12 @@
  */
 import type { ToolId } from "./deps"
 import type { Ctx } from "./index"
-import { compareCodepoints, isObject, parseJson, type Json } from "./jq"
+import { compareCodepoints, isObject, parseJson } from "./jq"
 import { payloadText } from "../payload"
 import { hostOs } from "./os"
+import type { JsonObject } from "./sharedTypes"
 
-function manifest(): { [k: string]: Json } {
+function manifest(): JsonObject {
   const doc = parseJson(payloadText("SoT/toolchain.json"))
   const tools = doc !== undefined && isObject(doc) ? doc["tools"] : undefined
   return tools !== undefined && isObject(tools) ? tools : {}

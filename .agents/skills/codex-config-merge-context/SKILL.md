@@ -7,7 +7,7 @@ metadata:
     - path: cli/src/engine-native/codexConfig.ts
       lines: "1-159"
     - path: cli/src/engine-native/codexToml.ts
-      lines: "1-253"
+      lines: "1-248"
     - path: SoT/.codex/config.toml
       lines: "1-45"
     - path: SoT/.codex/rules/docks.rules

@@ -10,6 +10,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs"
 
 import { resolveEffort } from "../efforts"
 import type { Ctx } from "./index"
+import type { SettingEdit } from "./sharedTypes"
 
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
   const lines = content.split("\n")
@@ -50,13 +51,7 @@ export function replaceTopLevelSettingInFile(file: string, key: string, replacem
   return true
 }
 
-interface CodexSettingEdit {
-  readonly tag: string
-  readonly key: "model" | "model_reasoning_effort"
-  readonly value: string
-  readonly changed: string
-  readonly unchanged: string
-}
+type CodexSettingEdit = SettingEdit<"model" | "model_reasoning_effort">
 
 function syncCodexSetting(ctx: Ctx, edit: CodexSettingEdit): void {
   const { change, echo, verbose, warn } = ctx.services.logger

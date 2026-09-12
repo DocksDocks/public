@@ -12,17 +12,18 @@
  */
 
 import { existsSync, readFileSync } from "node:fs"
+import type { JsonObject } from "./sharedTypes"
 
 export type Json = null | boolean | number | string | Array<Json> | { [key: string]: Json }
 
-export function isObject(v: Json): v is { [key: string]: Json } {
+export function isObject(v: Json): v is JsonObject {
   return typeof v === "object" && v !== null && !Array.isArray(v)
 }
 
 /** jq `$left * $right`. */
 export function deepMerge(left: Json, right: Json): Json {
   if (!isObject(left) || !isObject(right)) return right
-  const out: { [key: string]: Json } = { ...left }
+  const out: JsonObject = { ...left }
   for (const [k, v] of Object.entries(right)) {
     const lv = out[k]
     out[k] = lv !== undefined && isObject(lv) && isObject(v) ? deepMerge(lv, v) : v

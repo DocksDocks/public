@@ -13,7 +13,7 @@ metadata:
     - path: cli/src/engine-native/ompYaml.ts
       lines: "1-128"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-156"
+      lines: "1-146"
     - path: cli/src/engine-native/ompOverlay.ts
       lines: "1-211"
     - path: cli/src/commands/omp.ts
@@ -21,7 +21,7 @@ metadata:
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
-      lines: "1-226"
+      lines: "1-222"
   updated: "2026-09-12"
 ---
 

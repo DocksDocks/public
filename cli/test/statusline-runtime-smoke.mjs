@@ -1,3 +1,17 @@
+/**
+ * @typedef {object} RunRecord
+ * @property {number} elapsed
+ * @property {number} exitCode
+ * @property {string} stdout
+ * @property {string} stderr
+ * @typedef {object} DirectHook
+ * @property {string} [command]
+ * @property {string[]} [args]
+ * @typedef {object} HookSlot
+ * @property {DirectHook[]} [hooks]
+ * @typedef {object} HookSettings
+ * @property {Record<string, HookSlot[]>} [hooks]
+ */
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, join, resolve } from "node:path"
@@ -16,6 +30,12 @@ const claudeDir = join(root, ".claude")
 const binDir = join(claudeDir, "bin")
 const decoder = new TextDecoder()
 
+/**
+ * @param {string[]} argv
+ * @param {string} stdin
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {RunRecord}
+ */
 function record(argv, stdin, env = process.env) {
   const start = performance.now()
   const result = Bun.spawnSync(argv, {
@@ -32,6 +52,12 @@ function record(argv, stdin, env = process.env) {
   }
 }
 
+/**
+ * @param {string} label
+ * @param {RunRecord} run
+ * @param {string} expectedStdout
+ * @returns {void}
+ */
 function assertRun(label, run, expectedStdout) {
   if (run.exitCode !== 0) throw new Error(`${label} exited ${run.exitCode}: ${run.stderr}`)
   if (run.stdout !== expectedStdout) {
@@ -40,12 +66,17 @@ function assertRun(label, run, expectedStdout) {
   if (run.stderr !== "") throw new Error(`${label} stderr was not empty: ${JSON.stringify(run.stderr)}`)
 }
 
+/**
+ * @param {HookSettings} settings
+ * @param {string} event
+ * @returns {{ command: string, args: string[] }}
+ */
 function commandHandler(settings, event) {
   const handler = settings.hooks?.[event]?.[0]?.hooks?.[0]
   if (handler === undefined || typeof handler.command !== "string" || !Array.isArray(handler.args)) {
     throw new Error(`${event} direct handler is missing`)
   }
-  return handler
+  return { command: handler.command, args: handler.args }
 }
 
 

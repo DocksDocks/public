@@ -28,6 +28,7 @@ import { deepMerge, isObject, jqStringify, parseJson, readJsonFile, type Json } 
 import { ExitError } from "./parseArgs"
 import { hostOs } from "./os"
 import { payloadBytes, payloadText } from "../payload"
+import type { JsonObject } from "./sharedTypes"
 export type { PreparedClaudeSettings } from "./claudeSettings"
 export { commitClaudeSettings, prepareClaudeSettings } from "./claudeSettings"
 
@@ -144,7 +145,7 @@ function syncClaudeJson(ctx: Ctx): void {
     return
   }
 
-  const applyFilter = (doc: { [k: string]: Json }): void => {
+  const applyFilter = (doc: JsonObject): void => {
     doc["showTurnDuration"] = true
     if (haveMcp) {
       const sotServers = isObject(mcp!) ? mcp!["mcpServers"] ?? {} : {}
@@ -171,7 +172,7 @@ function syncClaudeJson(ctx: Ctx): void {
       renameSync(`${claudeJson}.tmp`, claudeJson)
     }
   } else {
-    const obj: { [k: string]: Json } = {}
+    const obj: JsonObject = {}
     applyFilter(obj)
     writeFileSync(claudeJson, jqStringify(obj))
   }
