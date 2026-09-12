@@ -1,63 +1,19 @@
 import { Command, Flag } from "effect/unstable/cli"
 import { Console, Effect } from "effect"
-import { spawnSync, type SpawnSyncOptions, type SpawnSyncOptionsWithStringEncoding, type SpawnSyncReturns } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
-import { p, which } from "../engine-native/exec"
-import { hostOs, type HostOs, type Invocation } from "../engine-native/os"
+import { p, spawnHost, which } from "../engine-native/exec"
+import { hostOs, type HostOs } from "../engine-native/os"
 
 const noSync = Flag.Boolean("no-sync").pipe(
   Flag.withDescription("Update the kit only; skip the chained flag-less sync"),
   Flag.withDefault(false)
 )
 
-/** A tool this host cannot resolve, shaped like the failed spawn it replaces. */
-const notFound = (command: string): SpawnSyncReturns<string> => ({
-  pid: 0,
-  output: [],
-  stdout: "",
-  stderr: "",
-  status: null,
-  signal: null,
-  error: new Error(`command not found on PATH: ${command}`)
-})
-
-/**
- * Every child in this command starts here, because two host facts must never be
- * separated from the argv they describe: a Windows shim invocation is only
- * correct with the verbatim-arguments flag, and a pathless name would let
- * CreateProcess search the parent's current directory before the system one.
- */
-export const spawnUpdate = (
-  command: string,
-  args: ReadonlyArray<string>,
-  overrides: SpawnSyncOptions = {},
-  host: HostOs = hostOs()
-): SpawnSyncReturns<string> => {
-  const resolvesSuffixes = host.executableSuffixes.some((suffix) => suffix !== "")
-  const executablePath = resolvesSuffixes ? which(command, host.executableSuffixes) : command
-  if (executablePath === "") return notFound(command)
-  let invocation: Invocation
-  try {
-    invocation = host.invoke(executablePath, args)
-  } catch (cause) {
-    // A value this host cannot put on a command line at all. Print the encoder's
-    // reason and exit, matching how this command reports a failed child.
-    process.stderr.write(`${cause instanceof Error ? cause.message : String(cause)}\n`)
-    return process.exit(2)
-  }
-  const options: SpawnSyncOptionsWithStringEncoding = {
-    stdio: ["ignore", "pipe", "pipe"],
-    ...overrides,
-    encoding: "utf8",
-    windowsVerbatimArguments: invocation.windowsVerbatimArguments
-  }
-  return spawnSync(invocation.command, [...invocation.args], options)
-}
 
 const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {
-  const res = spawnUpdate("git", ["-C", home, ...args])
+  const res = spawnHost("git", ["-C", home, ...args])
   return { ok: res.error === undefined && res.status === 0, out: `${res.stdout ?? ""}${res.stderr ?? ""}`.trim() }
 }
 
@@ -65,7 +21,7 @@ const git = (home: string, args: Array<string>): { ok: boolean; out: string } =>
  * version loaded, so the chained sync must be a new process. */
 const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
   Effect.sync(() => {
-    const res = spawnUpdate(argv0, args, { stdio: "inherit" })
+    const res = spawnHost(argv0, args, { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
   })
 
@@ -95,7 +51,7 @@ type CapturePackageRoot = (
 ) => PackageRootCapture
 
 const capturePackageRoot: CapturePackageRoot = (command, args) => {
-  const res = spawnUpdate(command, args)
+  const res = spawnHost(command, args)
   return {
     status: res.status,
     stdout: res.stdout ?? "",
@@ -191,7 +147,7 @@ export const packageUpdateResult = (
 
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    if (spawnUpdate("git", ["--version"], { stdio: "ignore" }).status !== 0) {
+    if (spawnHost("git", ["--version"], { stdio: "ignore" }).status !== 0) {
       return yield* bail("git not found - cannot update the kit checkout")
     }
     const dirty = git(home, ["status", "--porcelain"])
@@ -217,7 +173,7 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
       const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
       if (touched.includes("bun.lock") || touched.includes("package.json")) {
-        const res = spawnUpdate("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
+        const res = spawnHost("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
         if (res.error !== undefined || res.status !== 0) {
           return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
         }
@@ -245,7 +201,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
     const updateArgs = manager === "bun"
       ? ["add", "-g", "docks-kit@latest"]
       : ["install", "-g", "docks-kit@latest"]
-    const res = spawnUpdate(manager, updateArgs, { stdio: "inherit" })
+    const res = spawnHost(manager, updateArgs, { stdio: "inherit" })
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(
         `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,

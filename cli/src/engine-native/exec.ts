@@ -3,10 +3,62 @@
  * the intended binary with deterministic argv, and capture() mirrors command
  * substitution: stdout with trailing newlines stripped, empty on failure.
  */
-import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
+import {
+  spawn,
+  spawnSync,
+  type ChildProcess,
+  type SpawnOptions,
+  type SpawnSyncOptions,
+  type SpawnSyncOptionsWithStringEncoding,
+  type SpawnSyncReturns
+} from "node:child_process"
 import { accessSync, constants, existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { delimiter, extname, isAbsolute, join } from "node:path"
-import { hostOs, type HostOs } from "./os"
+import { hostOs, type HostOs, type Invocation } from "./os"
+
+/** A tool this host cannot resolve, shaped like the failed spawn it replaces. */
+const notFound = (command: string): SpawnSyncReturns<string> => ({
+  pid: 0,
+  output: [],
+  stdout: "",
+  stderr: "",
+  status: null,
+  signal: null,
+  error: new Error(`command not found on PATH: ${command}`)
+})
+
+/**
+ * Every synchronous child starts here, because two host facts must never be
+ * separated from the argv they describe: a Windows shim invocation is only
+ * correct with the verbatim-arguments flag, and a pathless name would let
+ * CreateProcess search the parent's current directory before the system one.
+ */
+export const spawnHost = (
+  command: string,
+  args: ReadonlyArray<string>,
+  overrides: SpawnSyncOptions = {},
+  host: HostOs = hostOs()
+): SpawnSyncReturns<string> => {
+  const resolvesSuffixes = host.executableSuffixes.some((suffix) => suffix !== "")
+  const executablePath = resolvesSuffixes ? which(command, host.executableSuffixes) : command
+  if (executablePath === "") return notFound(command)
+  let invocation: Invocation
+  try {
+    invocation = host.invoke(executablePath, args)
+  } catch (cause) {
+    // A value this host cannot put on a command line at all. Print the encoder's
+    // reason and exit, matching how a caller reports a failed child.
+    process.stderr.write(`${cause instanceof Error ? cause.message : String(cause)}\n`)
+    return process.exit(2)
+  }
+  const options: SpawnSyncOptionsWithStringEncoding = {
+    stdio: ["ignore", "pipe", "pipe"],
+    ...overrides,
+    encoding: "utf8",
+    windowsVerbatimArguments: invocation.windowsVerbatimArguments
+  }
+  return spawnSync(invocation.command, [...invocation.args], options)
+}
 
 /** Keep engine paths slash-separated so rendered output is host-stable. */
 export function p(...parts: Array<string>): string {
