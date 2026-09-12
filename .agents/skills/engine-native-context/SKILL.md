@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/index.ts
-      lines: "1-180"
+      lines: "1-60"
     - path: cli/src/engine.ts
       lines: "1-100"
     - path: cli/test/unit/engine.test.ts

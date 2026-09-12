@@ -4,10 +4,10 @@ description: "Use when modifying cli/src/engine-native/claudePlugins.ts plugin f
 user-invocable: false
 metadata:
   source_files:
-    - path: cli/src/engine-native/claudePlugins.ts
-      lines: "1-510"
-    - path: cli/src/engine-native/codexSync.ts
-      lines: "249-635"
+    - path: cli/src/engine-native/claudePluginPasses.ts
+      lines: "1-378"
+    - path: cli/src/engine-native/codexPlugins.ts
+      lines: "1-259"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: SoT/.claude/settings.json

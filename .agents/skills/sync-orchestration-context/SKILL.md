@@ -7,11 +7,11 @@ metadata:
     - path: cli/src/engine.ts
       lines: "1-99"
     - path: cli/src/engine-native/index.ts
-      lines: "1-344"
+      lines: "1-60"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/parseArgs.ts
-      lines: "1-420"
+      lines: "1-194"
     - path: cli/src/engine-native/modes.ts
       lines: "1-148"
     - path: cli/src/engine-native/models.ts

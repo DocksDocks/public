@@ -4,8 +4,8 @@ description: "Use when modifying cli/src/engine-native/codexSync.ts syncConfig, 
 user-invocable: false
 metadata:
   source_files:
-    - path: cli/src/engine-native/codexSync.ts
-      lines: "1-250"
+    - path: cli/src/engine-native/codexConfig.ts
+      lines: "1-159"
     - path: cli/src/engine-native/codexToml.ts
       lines: "1-253"
     - path: SoT/.codex/config.toml

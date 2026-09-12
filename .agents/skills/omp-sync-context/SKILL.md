@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-441"
+      lines: "1-77"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/ompPaths.ts
@@ -18,10 +18,10 @@ metadata:
       lines: "1-211"
     - path: cli/src/commands/omp.ts
       lines: "1-259"
-    - path: cli/src/engine-native/index.ts
-      lines: "180-304"
-    - path: cli/src/engine-native/parseArgs.ts
-      lines: "202-388"
+    - path: cli/src/engine-native/syncDispatch.ts
+      lines: "1-139"
+    - path: cli/src/engine-native/parseModifiers.ts
+      lines: "1-226"
   updated: "2026-09-12"
 ---
 
