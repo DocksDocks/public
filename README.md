@@ -48,6 +48,7 @@ docks-kit harnesses                             view or change this machine's se
 docks-kit update [--no-sync]                    self-update the kit (autodetects checkout vs global install), then sync
 docks-kit model <claude|codex> [value]          get/set the DEPLOYED model (TTY picker)
 docks-kit models [claude|codex]                 model catalogs (`--json`)
+docks-kit omp [--model <m>|--pick] [args...]    one omp session on a free model, nothing deployed changes
 docks-kit toolchain [check|ensure <tool>]       verified-version floors for external tools
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
