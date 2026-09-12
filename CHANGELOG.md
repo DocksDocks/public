@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-09-12 - docks-kit 0.17.0: the omp free-session launcher
+
+- `docks-kit omp` starts one omp session in which every model role resolves to
+  a free model, then exits leaving nothing changed on disk. The deployed
+  `~/.omp/agent/config.yml` and `models.yml` are never read or written, so the
+  next plain `omp` run uses the paid configuration again. Arguments after the
+  launcher flags forward verbatim, so `docks-kit omp -p "..."` runs one prompt
+  and a bare `docks-kit omp` opens an interactive session.
+- `--model <selector>` and `--pick` choose the free model and remember it per
+  machine in `~/.docks-kit/state.json` under `ompSession`, beside `harnesses`.
+  Both writers merge over the stored record, so neither key can drop the
+  other. The default is `opencode-zen/muse-spark-1.3-contributor-free`. The
+  picker lists zero-cost catalog models only.
+- `ompOverlay.ts` renders the run overlay in code and passes it through omp's
+  repeatable `--config` flag. Thinking levels come from the ladder of the
+  chosen model, never from a fixed list, because free ladders are not uniform:
+  of the 26 zero-cost models, three publish no `medium` and two publish no
+  ladder at all. A model without a ladder renders a bare selector. Every
+  fallback chain is emptied, so a retry can never reach a paid model.
+- Each model gets its own overlay file under `~/.cache/docks-kit/` at mode
+  0600. omp can re-read the overlay during a live session, so a second
+  launcher on another model must not rewrite it.
+- `exec.ts` gains `spawnHost`, the host-correct synchronous spawn seam moved
+  out of `update.ts`. It encodes the rule that a Windows `.cmd` shim runs only
+  under `cmd.exe /d /v:off /s /c` with verbatim arguments, which the launcher
+  needs in order to forward quoted arguments. The update command behavior is
+  unchanged.
+
 ## 2026-09-11 - docks-kit 0.16.17: rust-analyzer joins the language-server pass
 
 - `SoT/.claude/settings.json` enables a third official LSP plugin,
