@@ -8,6 +8,7 @@ import { statusCommand } from "./commands/status"
 import { syncCommand } from "./commands/sync"
 import { toolchainCommand } from "./commands/toolchain"
 import { updateCommand } from "./commands/update"
+import { ompCommand } from "./commands/omp"
 import {
   advisorCatalog,
   advisorFlagGrammar,
@@ -161,7 +162,8 @@ const COMMANDS: ReadonlyArray<CommandValue> = [
   statusCommand,
   pluginsCommand,
   skillsCommand,
-  docsCommand
+  docsCommand,
+  ompCommand
 ]
 
 // A Map, not a plain object: an object literal answers `toString` and friends from
@@ -373,11 +375,68 @@ const missingModifierValue = (flag: string): string | undefined => {
   }
 }
 
+// Without the injected `--`, Effect 4 rejects a forwarded flag such as `-p` or
+// `--mode` as unrecognized. The omp launcher therefore owns a passthrough
+// boundary: the first token after the `omp` word that is neither a flag
+// declared on the omp or global surface nor a value consumed by such a flag
+// starts the verbatim tail forwarded to omp. An undeclared long flag joins the
+// tail too, because most omp flags are long (`--mode`, `--continue`,
+// `--models`), and omp itself reports an unrecognized one accurately. Use
+// `docks-kit omp -- --model x` to reach omp's own same-named flag.
+const spliceOmpBoundary = (args: ReadonlyArray<string>): ReadonlyArray<string> => {
+  const surface = COMMAND_SURFACES.get("omp")
+  let ompIndex = -1
+  for (let index = 0; index < args.length; index++) {
+    const token = args[index] as string
+    if (token === "--") return args
+    const name = flagNameOf(token)
+    if (token === name && takesValueInAnySurface(name)) {
+      const next = args[index + 1]
+      if (next === "--") return args
+      if (next !== undefined && !(next.startsWith("-") && declaredInAnySurface(flagNameOf(next)))) {
+        index++
+        continue
+      }
+    }
+    if (!token.startsWith("-")) {
+      ompIndex = index
+      break
+    }
+  }
+  if (ompIndex === -1 || args[ompIndex] !== "omp") return args
+  for (let index = ompIndex + 1; index < args.length; index++) {
+    const token = args[index] as string
+    // An explicit delimiter already marks the tail; a second one would be
+    // forwarded to omp as a literal argument.
+    if (token === "--") return args
+    if (!token.startsWith("-")) {
+      return [...args.slice(0, index), "--", ...args.slice(index)]
+    }
+    const name = flagNameOf(token)
+    const canonical = declaredFlagName(name, surface)
+    if (canonical === undefined) return [...args.slice(0, index), "--", ...args.slice(index)]
+    const takesValue =
+      surface?.valueFlags.includes(canonical) === true ||
+      GLOBAL_SURFACE.valueFlags.includes(canonical)
+    if (takesValue && !token.includes("=")) {
+      const next = args[index + 1]
+      if (
+        next !== undefined &&
+        !(next.startsWith("-") && declaredFlagName(flagNameOf(next), surface) !== undefined)
+      ) {
+        index++
+      }
+    }
+  }
+  return args
+}
+
 /** Validate the argument list, then hand back the arguments Effect 4 should parse. */
 export const prepareArgv = (args: ReadonlyArray<string>): ArgvOutcome => {
-  const subcommand = subcommandName(args)
+  const boundaryArgs = subcommandName(args) === "omp" ? spliceOmpBoundary(args) : args
+  const subcommand = subcommandName(boundaryArgs)
   const commandSurface = subcommand === undefined ? undefined : COMMAND_SURFACES.get(subcommand)
-  const { flags, normalizations } = scanArgv(args, commandSurface)
+  const { flags, normalizations } = scanArgv(boundaryArgs, commandSurface)
   const unknownCommandWouldMisdiagnoseFlag =
     subcommand !== undefined &&
     commandSurface === undefined &&
@@ -430,5 +489,5 @@ export const prepareArgv = (args: ReadonlyArray<string>): ArgvOutcome => {
     }
   }
 
-  return { kind: "accept", args: normalizeArgv(args, normalizations) }
+  return { kind: "accept", args: normalizeArgv(boundaryArgs, normalizations) }
 }

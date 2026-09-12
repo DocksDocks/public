@@ -3,9 +3,9 @@ import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
-  spawnUpdate,
   updateSyncArgs
 } from "../../src/commands/update"
+import { spawnHost } from "../../src/engine-native/exec"
 import { hostOs } from "../../src/engine-native/os"
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -206,11 +206,11 @@ const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
   }
 }
 
-describe("update child spawning", () => {
+describe("host child spawning (exec.spawnHost)", () => {
   it("keeps the verbatim-arguments flag with the shim argv it encodes", () => {
     spawnCalls.length = 0
 
-    withPath(["npx.cmd"], () => spawnUpdate("npx", ["--version"], {}, hostOs("windows")))
+    withPath(["npx.cmd"], () => spawnHost("npx", ["--version"], {}, hostOs("windows")))
 
     const call = spawnCalls.at(-1)
     expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"])
@@ -222,7 +222,7 @@ describe("update child spawning", () => {
   it("leaves a POSIX invocation unquoted and unflagged", () => {
     spawnCalls.length = 0
 
-    spawnUpdate("git", ["--version"], { stdio: "inherit" }, hostOs("linux"))
+    spawnHost("git", ["--version"], { stdio: "inherit" }, hostOs("linux"))
 
     const call = spawnCalls.at(-1)
     expect(call?.command).toBe("git")
@@ -235,7 +235,7 @@ describe("update child spawning", () => {
     spawnCalls.length = 0
 
     // An empty PATH, so a runner that happens to hold this name cannot answer.
-    const res = withPath([], () => spawnUpdate("docks-kit-absent-tool", ["--version"], {}, hostOs("windows")))
+    const res = withPath([], () => spawnHost("docks-kit-absent-tool", ["--version"], {}, hostOs("windows")))
 
     expect(spawnCalls).toEqual([])
     expect(res.status).toBeNull()

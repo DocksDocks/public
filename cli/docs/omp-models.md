@@ -211,6 +211,65 @@ omp's 272k context window is the `/extended-context off` window for Astra.
 `/extended-context on` uses the 922k input window, 1.05M total, which matches
 AA's 1M.
 
+## Free session launcher (`docks-kit omp`)
+
+`docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
+omp session on a single free model. All 12 model roles resolve to that model.
+All 9 retry fallback chains are empty, so a retry cannot reach a paid model.
+The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
+a model that publishes no thinking ladder, where both keys are omitted and the
+deployed values apply.
+
+The launcher renders a run overlay to
+`~/.cache/docks-kit/omp-free-<model>-<digest>.yml` at mode 0600 and passes it
+through omp's repeatable `--config` flag. Each model gets its own file,
+because omp can re-read the overlay during a live session, and a second
+launcher on another model must not rewrite that file. The name sanitizes the
+selector for the file system and appends a digest of the exact selector, so
+two selectors that differ only in separator characters stay apart. The
+launcher never reads or writes `~/.omp/agent/config.yml` or `models.yml`. It
+never touches the SoT. The next plain `omp` run uses the paid configuration
+again.
+
+Every argument after the launcher flags forwards verbatim to omp. `docks-kit
+omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes the
+previous session. A bare `docks-kit omp` opens an interactive session.
+
+The default model is `opencode-zen/muse-spark-1.3-contributor-free` ("Muse
+Spark 1.3 Free", 1,048,576-token context) at `xhigh`. `xhigh` is the ceiling
+of that model ladder: `minimal, low, medium, high, xhigh`. The paid
+`muse-spark-1.3` sibling also offers `max`. The free variant does not.
+
+Both levels come from the ladder of the chosen model, never from a fixed
+list. The session level is the ceiling of that ladder. The advisor level is
+the highest level at or below `medium`, because the advisor performs quick
+review passes. When every level of a ladder is above `medium`, the advisor
+takes the lowest level, so it never becomes the most expensive role.
+
+Free ladders are not uniform. On 2026-09-11 the 26 free models published six
+distinct ladders: 21 include `medium`, 3 stop at `low, high, max` or
+`high, max`, and 2 publish no ladder at all. A model without a ladder gets
+bare selectors with no `:level` suffix, because an invented level makes omp
+fail when the session starts.
+
+The choice persists per machine in `~/.docks-kit/state.json` under
+`ompSession`, next to `harnesses`. It survives across sessions. It is never
+committed. `--model <selector>` records one selector. `--pick` opens an
+interactive picker.
+
+The picker lists only models the live `omp models --json` catalog reports at
+zero input and output cost (26 entries on 2026-09-11). This path cannot start
+a paid session. The catalog can advertise a free model that the account
+cannot call; omp reports that provider error unchanged.
+
+An omp login is required. The kit owns no login flow. It surfaces omp's own
+authentication error unchanged.
+
+When the catalog renames the free variant, change only the default selector
+constant. A ladder change needs no code change, because both levels come from
+the catalog row of the chosen model. Refresh the recorded default and the
+ladder counts in these docs in the same commit.
+
 ## Maintenance
 
 - Refresh the snapshot from the AA release page of each family

@@ -52,6 +52,27 @@ Bare model, effort, or advisor modifiers print the relevant valid-value catalog
 and exit 2. A modifier for a target not selected by the positional arguments is
 ignored with a warning; Claude modifiers never touch Codex config and vice versa.
 
+## `omp` session flags
+
+| Flag | Effect |
+|------|--------|
+| `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost; recorded in `~/.docks-kit/state.json` under `ompSession` |
+| `--pick` | Interactive picker over free catalog models; records the choice the same way |
+
+Remaining arguments forward verbatim to omp after the launcher flags.
+`docks-kit omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes
+the previous session. A bare `docks-kit omp` opens an interactive session.
+The launcher changes no deployed file and never invokes `sync`.
+The boundary opens at the first token that is neither a declared launcher
+flag nor a declared global flag. Declared flags stay with docks-kit and
+never reach omp:
+
+- `--model`, `--pick`
+- `--help`, `--version`, `--log-level`, `--wizard`, `--completions`
+
+The same names on omp stay reachable behind an explicit delimiter. Use
+`docks-kit omp -- --help` to ask omp for help.
+
 ## Renamed legacy flags (pre-CLI sync.sh)
 
 Old flags exit with a rename hint — there is no compat behavior.
