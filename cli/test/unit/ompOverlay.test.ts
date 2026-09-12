@@ -3,10 +3,12 @@ import { parse } from "yaml"
 
 import {
   advisorLevelFor,
+  advisorRecommendation,
   buildOmpArgs,
   ladderCeiling,
   overlayFileName,
   parseFreeModels,
+  planEffortChoice,
   renderFreeOverlay,
   THINKING_LADDER,
 } from "../../src/engine-native/ompOverlay"
@@ -196,5 +198,40 @@ describe("omp free-session overlay", () => {
     expect(name).not.toContain("/")
     expect(overlayFileName("opencode-zen/muse")).not.toEqual(overlayFileName("opencode/zen-muse"))
     expect(overlayFileName(FREE_SELECTOR)).toEqual(name)
+  })
+
+  it("asks nothing when the model publishes no usable ladder", () => {
+    expect(planEffortChoice([])).toEqual({ kind: "none" })
+    // An unknown future level is not a level omp would accept from the kit.
+    expect(planEffortChoice(["turbo"])).toEqual({ kind: "none" })
+  })
+
+  it("settles a single-level model without a question", () => {
+    expect(planEffortChoice(["high"])).toEqual({ kind: "fixed", level: "high" })
+  })
+
+  it("offers only the levels the model publishes, lowest first", () => {
+    const plan = planEffortChoice(["high", "minimal", "medium"])
+    expect(plan).toEqual({ kind: "choose", levels: ["minimal", "medium", "high"], highest: "high" })
+  })
+
+  it("treats the ladder top as the highest, never a fixed xhigh", () => {
+    const plan = planEffortChoice(["low", "high", "max"])
+    expect(plan.kind === "choose" ? plan.highest : undefined).toBe("max")
+    const capped = planEffortChoice(["low", "medium", "high"])
+    expect(capped.kind === "choose" ? capped.highest : undefined).toBe("high")
+  })
+
+  it("recommends an advisor two steps down the model own ladder", () => {
+    expect(advisorRecommendation(LADDER_FULL, "xhigh")).toBe("medium")
+    expect(advisorRecommendation(LADDER_FULL, "high")).toBe("low")
+  })
+
+  it("clamps the recommendation to the lowest level the model publishes", () => {
+    expect(advisorRecommendation(LADDER_FULL, "low")).toBe("minimal")
+    expect(advisorRecommendation(LADDER_FULL, "minimal")).toBe("minimal")
+    // A sparse ladder counts its own positions, so two steps cannot invent
+    // a level between high and max.
+    expect(advisorRecommendation(["high", "max"], "max")).toBe("high")
   })
 })

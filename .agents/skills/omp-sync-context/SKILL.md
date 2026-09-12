@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
@@ -293,7 +293,7 @@ Drop each level field independently when it is blank, so a stale level never
 survives a switch to a level-free model.
 
 Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — versioned local state over one merge helper.
-Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, and `renderFreeOverlay` — per-model ladder derivation and empty fallback chains.
+Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, and empty fallback chains.
 Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
 Anchor dispatch at `index.ts` — `engineSync` omp branch — selected pipeline execution.
 

@@ -12,9 +12,11 @@ import {
 } from "../engine-native/harnesses"
 import {
   advisorLevelFor,
+  advisorRecommendation,
   buildOmpArgs,
   ladderCeiling,
   overlayFileName,
+  planEffortChoice,
   parseFreeModels,
   renderFreeOverlay,
   type CatalogModel
@@ -91,6 +93,64 @@ const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>
     return free
   })
 
+/**
+ * Ask for the thinking levels of one model. Every choice comes from that
+ * model own ladder, because omp rejects a `:level` suffix the model does not
+ * publish. A model with no ladder and a model with one level are settled
+ * without a question.
+ */
+const pickLevels = (model: CatalogModel) =>
+  Effect.gen(function* () {
+    const plan = planEffortChoice(model.thinking)
+    if (plan.kind === "none") {
+      yield* Console.error(`${model.name} publishes no thinking levels; the model default applies`)
+      return { thinking: undefined, advisorThinking: undefined }
+    }
+    if (plan.kind === "fixed") {
+      yield* Console.error(`${model.name} publishes one thinking level: ${plan.level}`)
+      return { thinking: plan.level, advisorThinking: plan.level }
+    }
+    const uniform = yield* Prompt.Select({
+      message: "Use the same thinking level for every role?",
+      choices: [
+        { title: "Yes", value: true, description: `every role runs at ${plan.highest}, the highest this model offers` },
+        { title: "No", value: false, description: "set the advisor apart from the other roles" }
+      ]
+    })
+    if (uniform) return { thinking: plan.highest, advisorThinking: plan.highest }
+    const ladderChoices = plan.levels.map((level) => ({
+      title: level,
+      value: level,
+      description:
+        level === plan.highest ? "highest this model offers" : level === plan.levels[0] ? "lowest this model offers" : ""
+    }))
+    const thinking = yield* Prompt.Select({
+      message: "Thinking level for all roles except the advisor",
+      choices: ladderChoices
+    })
+    const suggested = advisorRecommendation(plan.levels, thinking)
+    // The list leads with the suggestion, because Prompt.Select always starts
+    // on the first entry and offers no initial index. The full ladder follows
+    // in ladder order, so a different level stays one keypress away. A
+    // suggestion equal to the main level would only duplicate a row.
+    const advisorChoices =
+      suggested === undefined || suggested === thinking
+        ? ladderChoices
+        : [
+            {
+              title: suggested,
+              value: suggested,
+              description: `recommended, two levels below ${thinking}`
+            },
+            ...ladderChoices
+          ]
+    const advisorThinking = yield* Prompt.Select({
+      message: "Thinking level for the advisor role",
+      choices: advisorChoices
+    })
+    return { thinking, advisorThinking }
+  })
+
 export const ompCommand = Command.make("omp", { model, pick, args }, (config) =>
   Effect.gen(function* () {
     if (Option.isSome(config.model) && config.pick) {
@@ -139,9 +199,14 @@ export const ompCommand = Command.make("omp", { model, pick, args }, (config) =>
       })
       const match = free.find((candidate) => candidate.selector === chosen)
       if (match === undefined) return yield* bail(`Model '${chosen}' is not in the free catalog`)
-      const thinking = ladderCeiling(match.thinking)
-      const advisorThinking = advisorLevelFor(match.thinking)
-      yield* Effect.sync(() => writeOmpSessionModel(home, { selector: match.selector, thinking, advisorThinking }))
+      const chosenLevels = yield* pickLevels(match)
+      yield* Effect.sync(() =>
+        writeOmpSessionModel(home, {
+          selector: match.selector,
+          thinking: chosenLevels.thinking,
+          advisorThinking: chosenLevels.advisorThinking
+        })
+      )
     }
 
     const session: OmpSessionModel = (yield* Effect.sync(() => readOmpSessionModel(home))) ??
@@ -163,12 +228,17 @@ export const ompCommand = Command.make("omp", { model, pick, args }, (config) =>
     })
 
     // A level-free model states the model default so the line never shows
-    // an undefined level.
-    const hasLevel = typeof session.thinking === "string" && session.thinking.trim() !== ""
+    // an undefined level. The advisor appears only when it differs, because
+    // a uniform session has nothing extra to report.
+    const level = typeof session.thinking === "string" && session.thinking.trim() !== "" ? session.thinking : undefined
+    const advisor =
+      typeof session.advisorThinking === "string" && session.advisorThinking.trim() !== ""
+        ? session.advisorThinking
+        : undefined
+    const levelText = level === undefined ? "the model default thinking level" : `${level} thinking`
+    const advisorText = advisor !== undefined && advisor !== level ? `, advisor at ${advisor}` : ""
     yield* Console.error(
-      hasLevel
-        ? `Starting omp with ${session.selector} at ${session.thinking} thinking (session only; deployed config unchanged)`
-        : `Starting omp with ${session.selector} at the model default thinking level (session only; deployed config unchanged)`
+      `Starting omp with ${session.selector} at ${levelText}${advisorText} (session only; deployed config unchanged)`
     )
 
     const child = yield* Effect.sync(() =>

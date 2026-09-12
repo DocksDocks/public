@@ -254,21 +254,42 @@ fail when the session starts.
 
 The choice persists per machine in `~/.docks-kit/state.json` under
 `ompSession`, next to `harnesses`. It survives across sessions. It is never
-committed. `--model <selector>` records one selector. `--pick` opens an
-interactive picker.
+committed. `--model <selector>` records one selector and derives both levels
+from the catalog row. `--pick` opens an interactive wizard.
 
 The picker lists only models the live `omp models --json` catalog reports at
 zero input and output cost (26 entries on 2026-09-11). This path cannot start
 a paid session. The catalog can advertise a free model that the account
 cannot call; omp reports that provider error unchanged.
 
+After the model, the wizard asks about thinking levels. `ompOverlay.ts
+planEffortChoice` decides which questions apply, because omp accepts a
+`:level` suffix only for a level the chosen model publishes:
+
+- No ladder: the wizard asks nothing and the overlay omits every level.
+- One level: the wizard states that level and asks nothing.
+- Two or more levels: the wizard asks whether every role uses the same
+  level. Yes takes the highest level the model offers. No asks one level for
+  all roles except the advisor, then one level for the advisor.
+
+The advisor question leads with a recommendation from `ompOverlay.ts
+advisorRecommendation`: two steps down the model own ladder, clamped to the
+lowest level that model publishes. The recommendation is the first row
+because `Prompt.Select` starts on the first entry and accepts no initial
+index, so `Enter` takes it. The full ladder follows in ladder order. A
+recommendation equal to the chosen level is omitted rather than duplicated.
+
+A session whose advisor differs from the other roles reports both on the
+launch line.
+
 An omp login is required. The kit owns no login flow. It surfaces omp's own
 authentication error unchanged.
 
 When the catalog renames the free variant, change only the default selector
-constant. A ladder change needs no code change, because both levels come from
-the catalog row of the chosen model. Refresh the recorded default and the
-ladder counts in these docs in the same commit.
+constant. A ladder change needs no code change. Under `--model` both levels
+are derived from the catalog row of the chosen model, and under `--pick` the
+user chooses them from the ladder that same row publishes. Refresh the
+recorded default and the ladder counts in these docs in the same commit.
 
 ## Maintenance
 

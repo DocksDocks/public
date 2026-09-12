@@ -135,6 +135,43 @@ export function advisorLevelFor(levels: ReadonlyArray<string>): string | undefin
 }
 
 /**
+ * What the picker may ask about thinking levels for one model. omp accepts a
+ * `:level` suffix on a role only for a level the model publishes, so the
+ * question set comes from the model own ladder: no ladder means no question,
+ * a single level means no choice to make, and two or more levels mean the
+ * user can split the advisor from the other roles.
+ */
+export type EffortPlan =
+  | { readonly kind: "none" }
+  | { readonly kind: "fixed"; readonly level: string }
+  | { readonly kind: "choose"; readonly levels: ReadonlyArray<string>; readonly highest: string }
+
+export function planEffortChoice(levels: ReadonlyArray<string>): EffortPlan {
+  const known = THINKING_LADDER.filter((level) => levels.includes(level))
+  const only = known[0]
+  if (only === undefined) return { kind: "none" }
+  if (known.length === 1) return { kind: "fixed", level: only }
+  return { kind: "choose", levels: known, highest: known[known.length - 1] as string }
+}
+
+/**
+ * Recommend an advisor level for a chosen main level. The advisor runs quick
+ * review passes, so it sits two steps down the model own ladder, and it
+ * clamps to the lowest level the model publishes. Steps count positions in
+ * that model ladder, not the global ladder, so a sparse ladder such as
+ * `high, max` still recommends a real level.
+ */
+export function advisorRecommendation(
+  levels: ReadonlyArray<string>,
+  main: string
+): string | undefined {
+  const known = THINKING_LADDER.filter((level) => levels.includes(level))
+  const index = known.indexOf(main)
+  if (index < 0) return known[0]
+  return known[Math.max(0, index - 2)]
+}
+
+/**
  * Render the run overlay as YAML text. Empty fallback chains keep a retry
  * from falling back onto a paid model. A model without a level renders bare
  * selectors with no thinking keys so the deployed values apply.
