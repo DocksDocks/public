@@ -37,6 +37,8 @@ const COMMANDS: Array<Array<string>> = [
   ["sync", "claude", "--dry-run"],
   ["sync", "codex", "--dry-run"],
   ["sync", "codex", "--dry-run", "--codex-effort=ultra"],
+  // Model modifier dry-run: pins the codex-model report shape.
+  ["sync", "codex", "--dry-run", "--codex-model=gpt-5.5"],
   ["sync", "agents", "--dry-run"],
   ["sync", "omp", "--dry-run"],
   ["sync", "--dry-run", "--reconcile", "--prune"],
@@ -67,6 +69,13 @@ const PUBLIC_COMMANDS: Array<Array<string>> = [
   ["plugins", "list"],
   ["skills", "list"],
   ["update", "--help"],
+  // Read-only success contracts: machine-readable status, per-tool catalogs,
+  // stored harness selection, and the toolchain doctor table.
+  ["status", "--json"],
+  ["models", "claude"],
+  ["models", "codex"],
+  ["harnesses"],
+  ["toolchain", "check"],
   // These rows pin the kit's argument-rejection diagnostics so they cannot drift.
   ["status", "--no-json"],
   ["update", "--no-no-sync"],
@@ -81,6 +90,8 @@ interface DryRunMatrixRow {
 const MATRIX: Array<DryRunMatrixRow> = [
   ...FIXTURES.flatMap((fixture) => COMMANDS.map((cmd) => ({ fixture, cmd }))),
   { fixture: "home-drift", cmd: ["model", "claude"] },
+  // Read-only codex catalog: deployed-vs-SoT plus the verified list.
+  { fixture: "home-drift", cmd: ["model", "codex"] },
   ...PUBLIC_COMMANDS.map((cmd) => ({ fixture: "home-fresh", cmd, public: true }))
 ]
 

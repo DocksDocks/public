@@ -9,6 +9,15 @@
       "fixture": "home-drift",
       "output": "deployed: sonnet\nSoT:      opus\nAvailable claude models (kit-verified 2026-07-27 — SoT/models.json):\n  best  — Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus  — latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)\n  fable  — Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170\n  sonnet  — latest Sonnet (currently Sonnet 5)\n  haiku  — latest Haiku (currently Haiku 4.5)\n  default  — engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5  — Fable 5\n  claude-opus-5  — Opus 5 — needs Claude Code >=2.1.219\n  claude-opus-4-8  — Opus 4.8\n  claude-sonnet-5  — Sonnet 5\n  claude-haiku-4-5-20251001  — Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n"
     },
+    "cli=engine fixture=home-drift cmd=model codex": {
+      "command": [
+        "model",
+        "codex"
+      ],
+      "exitCode": 0,
+      "fixture": "home-drift",
+      "output": "deployed: gpt-5\nSoT:      gpt-5.6-sol\nAvailable codex models (kit-verified 2026-07-16 — SoT/models.json):\n  gpt-5.6-sol  — GPT-5.6 Sol — frontier, recommended default; the kit SoT pin\n  gpt-5.6-terra  — GPT-5.6 Terra — balanced tier\n  gpt-5.6-luna  — GPT-5.6 Luna — fast/light tier\n  gpt-5.5  — previous generation\n  gpt-5.5-codex  — codex-tuned gpt-5.5\n  gpt-5.1  — previous generation\n  gpt-5  — previous generation\n  gpt-5-codex  — codex-tuned gpt-5\n  (well-formed IDs outside the catalog are accepted with a warning)\n"
+    },
     "cli=engine fixture=home-drift cmd=sync --dry-run": {
       "command": [
         "sync",
@@ -95,6 +104,17 @@
       "exitCode": 0,
       "fixture": "home-drift",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
+    "cli=engine fixture=home-drift cmd=sync codex --dry-run --codex-model=gpt-5.5": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-model=gpt-5.5"
+      ],
+      "exitCode": 0,
+      "fixture": "home-drift",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] merge embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-model) set model = \"gpt-5.5\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
     "cli=engine fixture=home-drift cmd=sync omp --dry-run": {
       "command": [
@@ -193,6 +213,17 @@
       "fixture": "home-fresh",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] install embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
+    "cli=engine fixture=home-fresh cmd=sync codex --dry-run --codex-model=gpt-5.5": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-model=gpt-5.5"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] install embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-model) set model = \"gpt-5.5\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
     "cli=engine fixture=home-fresh cmd=sync omp --dry-run": {
       "command": [
         "sync",
@@ -290,6 +321,17 @@
       "fixture": "home-invalid-json",
       "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] install embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-effort) set model_reasoning_effort = \"ultra\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
     },
+    "cli=engine fixture=home-invalid-json cmd=sync codex --dry-run --codex-model=gpt-5.5": {
+      "command": [
+        "sync",
+        "codex",
+        "--dry-run",
+        "--codex-model=gpt-5.5"
+      ],
+      "exitCode": 0,
+      "fixture": "home-invalid-json",
+      "output": "[dry-run] verify bubblewrap installed (recommended Codex Linux sandbox runtime)\n[dry-run] install embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml\n[dry-run] (--codex-model) set model = \"gpt-5.5\" in <HOME>/.codex/config.toml\n[dry-run] cp embedded:SoT/.codex/rules/*.rules -> <HOME>/.codex/rules/\n[dry-run] cp embedded:SoT/.codex/AGENTS.md -> <HOME>/.codex/AGENTS.md\n[dry-run] cp embedded:SoT/.codex/plugins/marketplace.json -> <HOME>/.agents/plugins/marketplace.json\n[dry-run] remove legacy configured Codex Docks marketplace when personal marketplace is deployed\n[dry-run] add enabled Codex plugins from SoT\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\n"
+    },
     "cli=engine fixture=home-invalid-json cmd=sync omp --dry-run": {
       "command": [
         "sync",
@@ -330,6 +372,14 @@
       "fixture": "home-fresh",
       "output": "docks-kit documentation topics (docks-kit docs <topic>):\n\n  overview       What docks-kit is and how the pieces fit\n  sync-layers    The three sync layers and additive-by-default semantics\n  flags          Full flag reference incl. the old→new rename table\n  modifiers      Deploy-time modifiers and the flag-less-sync-reverts contract\n  models         Model catalog, validation rules, model get/set\n  toolchain      Verified-version floors and the doctor table\n  plugins        enabledPlugins tri-state + optional plugin opt-ins\n  install        Install paths: repo checkout, bun add -g, POSIX/Windows installers\n  platforms      Platform support: Linux, macOS, and Windows on x64 and arm64\n  omp-models     omp role map and the Artificial Analysis snapshot behind it\n"
     },
+    "cli=public fixture=home-fresh cmd=harnesses": {
+      "command": [
+        "harnesses"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "Harness selection: claude, codex, agents (no selection is stored yet; the legacy default applies)\n"
+    },
     "cli=public fixture=home-fresh cmd=models": {
       "command": [
         "models"
@@ -337,6 +387,24 @@
       "exitCode": 0,
       "fixture": "home-fresh",
       "output": "claude models (kit-verified 2026-07-27):\n  best                         alias  Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus                         alias  latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)\n  fable                        alias  Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170\n  sonnet                       alias  latest Sonnet (currently Sonnet 5)\n  haiku                        alias  latest Haiku (currently Haiku 4.5)\n  default                      alias  engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5               id     Fable 5\n  claude-opus-5                id     Opus 5 — needs Claude Code >=2.1.219\n  claude-opus-4-8              id     Opus 4.8\n  claude-sonnet-5              id     Sonnet 5\n  claude-haiku-4-5-20251001    id     Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n\ncodex models (kit-verified 2026-07-16):\n  gpt-5.6-sol                  id     GPT-5.6 Sol — frontier, recommended default; the kit SoT pin\n  gpt-5.6-terra                id     GPT-5.6 Terra — balanced tier\n  gpt-5.6-luna                 id     GPT-5.6 Luna — fast/light tier\n  gpt-5.5                      id     previous generation\n  gpt-5.5-codex                id     codex-tuned gpt-5.5\n  gpt-5.1                      id     previous generation\n  gpt-5                        id     previous generation\n  gpt-5-codex                  id     codex-tuned gpt-5\n  (well-formed IDs outside the catalog are accepted with a warning)\n\n"
+    },
+    "cli=public fixture=home-fresh cmd=models claude": {
+      "command": [
+        "models",
+        "claude"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "claude models (kit-verified 2026-07-27):\n  best                         alias  Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)\n  opus                         alias  latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)\n  fable                        alias  Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170\n  sonnet                       alias  latest Sonnet (currently Sonnet 5)\n  haiku                        alias  latest Haiku (currently Haiku 4.5)\n  default                      alias  engine pseudo-value: deletes the deployed model key so the account default applies\n  claude-fable-5               id     Fable 5\n  claude-opus-5                id     Opus 5 — needs Claude Code >=2.1.219\n  claude-opus-4-8              id     Opus 4.8\n  claude-sonnet-5              id     Sonnet 5\n  claude-haiku-4-5-20251001    id     Haiku 4.5\n  (full claude-* model IDs outside the catalog are accepted with a warning)\n\n"
+    },
+    "cli=public fixture=home-fresh cmd=models codex": {
+      "command": [
+        "models",
+        "codex"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "codex models (kit-verified 2026-07-16):\n  gpt-5.6-sol                  id     GPT-5.6 Sol — frontier, recommended default; the kit SoT pin\n  gpt-5.6-terra                id     GPT-5.6 Terra — balanced tier\n  gpt-5.6-luna                 id     GPT-5.6 Luna — fast/light tier\n  gpt-5.5                      id     previous generation\n  gpt-5.5-codex                id     codex-tuned gpt-5.5\n  gpt-5.1                      id     previous generation\n  gpt-5                        id     previous generation\n  gpt-5-codex                  id     codex-tuned gpt-5\n  (well-formed IDs outside the catalog are accepted with a warning)\n\n"
     },
     "cli=public fixture=home-fresh cmd=plugins list": {
       "command": [
@@ -355,6 +423,15 @@
       "exitCode": 0,
       "fixture": "home-fresh",
       "output": "SKILL                        DECLARED  INSTALLED  CLAUDE-SYMLINK\n"
+    },
+    "cli=public fixture=home-fresh cmd=status --json": {
+      "command": [
+        "status",
+        "--json"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "{\n  \"kitHome\": \"<REPO>\",\n  \"deployment\": {\n    \"claude\": {\n      \"state\": \"absent\"\n    }\n  },\n  \"drift\": [\n    {\n      \"setting\": \"claude.settings\",\n      \"deployed\": \"(absent)\",\n      \"sot\": \"present\",\n      \"drifted\": true\n    },\n    {\n      \"setting\": \"codex.model\",\n      \"deployed\": \"(unset)\",\n      \"sot\": \"gpt-5.6-sol\",\n      \"drifted\": true\n    }\n  ],\n  \"plugins\": [\n    {\n      \"plugin\": \"docks@docks\",\n      \"sot\": \"true\",\n      \"installed\": false\n    },\n    {\n      \"plugin\": \"php-lsp@claude-plugins-official\",\n      \"sot\": \"true\",\n      \"installed\": false\n    },\n    {\n      \"plugin\": \"plan-lifecycle@docks\",\n      \"sot\": \"true\",\n      \"installed\": false\n    },\n    {\n      \"plugin\": \"rust-analyzer-lsp@claude-plugins-official\",\n      \"sot\": \"true\",\n      \"installed\": false\n    },\n    {\n      \"plugin\": \"typescript-lsp@claude-plugins-official\",\n      \"sot\": \"true\",\n      \"installed\": false\n    }\n  ],\n  \"skills\": [],\n  \"toolchain\": {\n    \"state\": \"valid\",\n    \"table\": \"TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\\nbun                          managed   1.4.0          1.4.0     1.4.2     ok\\nbwrap                        check     0.11.0         0.9.0     -         ok\\nclaude                       check     2.1.204        2.1.219   -         below-floor\\ncodex                        check     0.144.4        -         -         ok\\ncurl                         check     ?              -         -         unknown\\nffplay                       check     6.1.1          -         -         ok\\ngit                          check     2.43.0         -         -         ok\\nintelephense                 check     1.18.5         1.18.5    1.18.5    ok\\njq                           check     1.7.1          -         -         ok\\nnode                         check     22.23.1        22.22.2   -         ok\\nnpm                          check     ?              -         -         unknown\\nomp                          check     18.0.8         18.0.8    18.0.8    ok\\npi-intercom                  pin       (npx)          -         0.13.0    pinned\\nrust-analyzer                check     1.92.0         -         -         ok\\nskills-cli                   pin       (npx)          -         1.5.25    pinned\\ntsc                          check     6.0.3          6.0.3     6.0.3     ok\\ntypescript-language-server   check     6.0.0          6.0.0     6.0.0     ok\\n\"\n  },\n  \"diagnostics\": []\n}\n"
     },
     "cli=public fixture=home-fresh cmd=status --no-json": {
       "command": [
@@ -375,6 +452,15 @@
       "exitCode": 2,
       "fixture": "home-fresh",
       "output": "unknown flag --bogus for 'sync'\n"
+    },
+    "cli=public fixture=home-fresh cmd=toolchain check": {
+      "command": [
+        "toolchain",
+        "check"
+      ],
+      "exitCode": 0,
+      "fixture": "home-fresh",
+      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nbun                          managed   1.4.0          1.4.0     1.4.2     ok\nbwrap                        check     0.11.0         0.9.0     -         ok\nclaude                       check     2.1.204        2.1.219   -         below-floor\ncodex                        check     0.144.4        -         -         ok\ncurl                         check     ?              -         -         unknown\nffplay                       check     6.1.1          -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     1.18.5         1.18.5    1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        22.22.2   -         ok\nnpm                          check     ?              -         -         unknown\nomp                          check     18.0.8         18.0.8    18.0.8    ok\npi-intercom                  pin       (npx)          -         0.13.0    pinned\nrust-analyzer                check     1.92.0         -         -         ok\nskills-cli                   pin       (npx)          -         1.5.25    pinned\ntsc                          check     6.0.3          6.0.3     6.0.3     ok\ntypescript-language-server   check     6.0.0          6.0.0     6.0.0     ok\n"
     },
     "cli=public fixture=home-fresh cmd=update --help": {
       "command": [

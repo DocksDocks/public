@@ -125,6 +125,15 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
+  // Codex model modifier: deployed config.toml model key plus restart advice.
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-model=gpt-5.5"] },
+  // Default pseudo-value: deletes the deployed model key (flag-less sync reverts).
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-model=default"] },
+  // Missing-config model set: warn and skip instead of writing.
+  { fixture: "home-fresh", cmd: ["model", "codex", "gpt-5.5"] },
+  // Flag scope: reconcile and prune are accepted on the omp and agents targets.
+  { fixture: "home-fresh", cmd: ["sync", "omp", "--reconcile"] },
+  { fixture: "home-fresh", cmd: ["sync", "agents", "--prune"] },
 ]
 
 /**
@@ -139,7 +148,9 @@ export const REPLAYS: Array<MutationReplayCase> = [
   { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
   // Model modifier as the ONLY second-run mutation: the restart advice must
   // print from the model trigger alone (everything else is already in sync).
-  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] }
+  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] },
+  // Codex repeat run: the already-in-sync surface for the codex target.
+  { fixture: "home-drift", cmd: ["sync", "codex"] },
 ]
 
 export const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
