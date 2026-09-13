@@ -1,139 +1,161 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest";
 import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
-  updateSyncArgs
-} from "../../src/commands/update"
-import { spawnHost } from "../../src/engine-native/exec"
-import { hostOs } from "../../src/engine-native/os"
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+  updateSyncArgs,
+} from "../../src/commands/update";
+import { spawnHost } from "../../src/engine-native/exec";
+import { hostOs } from "../../src/engine-native/os";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-const spawnCalls: Array<{ command: string; args: Array<string>; options: Record<string, unknown> }> = []
+const spawnCalls: Array<{
+  command: string;
+  args: Array<string>;
+  options: Record<string, unknown>;
+}> = [];
 
 vi.mock("node:child_process", () => ({
   spawnSync: (command: string, args: Array<string>, options: Record<string, unknown>) => {
-    spawnCalls.push({ command, args, options })
-    return { status: 0, signal: null, stdout: "", stderr: "", output: [], pid: 1 }
-  }
-}))
+    spawnCalls.push({ command, args, options });
+    return { status: 0, signal: null, stdout: "", stderr: "", output: [], pid: 1 };
+  },
+}));
 
 describe("update chained sync", () => {
   it("uses the fresh package entrypoint and carries no refresh-skipping flag", () => {
     expect(updateSyncArgs("C:\\fixture\\kit")).toEqual([
       "C:\\fixture\\kit/cli/src/main.ts",
-      "sync"
-    ])
-  })
-})
+      "sync",
+    ]);
+  });
+});
 
 describe("package update target", () => {
   it("resolves the npm global package root that the selected manager writes", () => {
     const capture = (command: string, args: ReadonlyArray<string>) => {
-      expect(command).toBe("npm")
-      expect(args).toEqual(["root", "-g"])
-      return { status: 0, stdout: "C:\\new-prefix\\lib\\node_modules\n" }
-    }
+      expect(command).toBe("npm");
+      expect(args).toEqual(["root", "-g"]);
+      return { status: 0, stdout: "C:\\new-prefix\\lib\\node_modules\n" };
+    };
 
     expect(resolveGlobalPackageHome("npm", capture)).toEqual({
       ok: true,
-      home: "C:\\new-prefix\\lib\\node_modules/docks-kit"
-    })
-  })
+      home: "C:\\new-prefix\\lib\\node_modules/docks-kit",
+    });
+  });
 
   it("resolves the Bun global package root that the selected manager reports", () => {
     const capture = (command: string, args: ReadonlyArray<string>) => {
-      expect(command).toBe("bun")
-      expect(args).toEqual(["pm", "-g", "ls"])
+      expect(command).toBe("bun");
+      expect(args).toEqual(["pm", "-g", "ls"]);
       return {
         status: 0,
-        stdout: "C:\\new-bun\\install\\global node_modules (1)\n└── docks-kit@0.15.1\n"
-      }
-    }
+        stdout: "C:\\new-bun\\install\\global node_modules (1)\n└── docks-kit@0.15.1\n",
+      };
+    };
 
     expect(resolveGlobalPackageHome("bun", capture)).toEqual({
       ok: true,
-      home: "C:\\new-bun\\install\\global/node_modules/docks-kit"
-    })
-  })
+      home: "C:\\new-bun\\install\\global/node_modules/docks-kit",
+    });
+  });
 
   it("resolves the Bun 1.4.2 global package root with an installed-count annotation", () => {
     const capture = () => ({
       status: 0,
-      stdout: "/home/u/.bun/install/global node_modules (64 installed)\n├── bun@1.3.14\n└── docks-kit@0.16.3\n"
-    })
+      stdout:
+        "/home/u/.bun/install/global node_modules (64 installed)\n├── bun@1.3.14\n└── docks-kit@0.16.3\n",
+    });
 
     expect(resolveGlobalPackageHome("bun", capture)).toEqual({
       ok: true,
-      home: "/home/u/.bun/install/global/node_modules/docks-kit"
-    })
-  })
+      home: "/home/u/.bun/install/global/node_modules/docks-kit",
+    });
+  });
 
   it("resolves the Bun global package root without an annotation", () => {
     const capture = () => ({
       status: 0,
-      stdout: "/home/u/.bun/install/global node_modules\n└── docks-kit@0.16.3\n"
-    })
+      stdout: "/home/u/.bun/install/global node_modules\n└── docks-kit@0.16.3\n",
+    });
 
     expect(resolveGlobalPackageHome("bun", capture)).toEqual({
       ok: true,
-      home: "/home/u/.bun/install/global/node_modules/docks-kit"
-    })
-  })
+      home: "/home/u/.bun/install/global/node_modules/docks-kit",
+    });
+  });
 
   it("rejects Bun output without a global package root header", () => {
     const capture = () => ({
       status: 0,
-      stdout: "/home/u/.bun/install/global node_modules unexpected text\n├── bun@1.3.14\n└── docks-kit@0.16.3\n"
-    })
+      stdout:
+        "/home/u/.bun/install/global node_modules unexpected text\n├── bun@1.3.14\n└── docks-kit@0.16.3\n",
+    });
 
     expect(resolveGlobalPackageHome("bun", capture)).toEqual({
       ok: false,
-      diagnostic: "bun pm -g ls did not report its global package root"
-    })
-  })
+      diagnostic: "bun pm -g ls did not report its global package root",
+    });
+  });
 
-  const linux = hostOs("linux")
-  const windows = hostOs("windows")
+  const linux = hostOs("linux");
+  const windows = hostOs("windows");
 
   it("reads a backslash as a literal POSIX filename character, never a separator", () => {
-    expect(packageManagerForHome("/tmp/package\\.bun\\node_modules/docks-kit", {}, linux)).toBe("npm")
-  })
+    expect(packageManagerForHome("/tmp/package\\.bun\\node_modules/docks-kit", {}, linux)).toBe(
+      "npm",
+    );
+  });
 
   it("classifies a POSIX Bun global home by its .bun segment", () => {
-    expect(packageManagerForHome("/home/u/.bun/install/global/node_modules/docks-kit", {}, linux)).toBe("bun")
-  })
+    expect(
+      packageManagerForHome("/home/u/.bun/install/global/node_modules/docks-kit", {}, linux),
+    ).toBe("bun");
+  });
 
   it("classifies a Windows Bun global home written with backslashes", () => {
     expect(
-      packageManagerForHome("C:\\Users\\u\\.bun\\install\\global\\node_modules\\docks-kit", {}, windows)
-    ).toBe("bun")
-  })
+      packageManagerForHome(
+        "C:\\Users\\u\\.bun\\install\\global\\node_modules\\docks-kit",
+        {},
+        windows,
+      ),
+    ).toBe("bun");
+  });
 
   it("classifies the mixed-separator home that the Bun capture actually returns on Windows", () => {
     expect(
-      packageManagerForHome("C:\\Users\\u\\.bun\\install\\global/node_modules/docks-kit", {}, windows)
-    ).toBe("bun")
-  })
+      packageManagerForHome(
+        "C:\\Users\\u\\.bun\\install\\global/node_modules/docks-kit",
+        {},
+        windows,
+      ),
+    ).toBe("bun");
+  });
 
   it("classifies a Windows Bun install rooted by BUN_INSTALL outside any .bun segment", () => {
     expect(
       packageManagerForHome(
         "D:\\tools\\bun\\install\\global/node_modules/docks-kit",
         { BUN_INSTALL: "D:\\tools\\bun" },
-        windows
-      )
-    ).toBe("bun")
-  })
+        windows,
+      ),
+    ).toBe("bun");
+  });
 
   it("leaves a Windows npm global home classified as npm", () => {
     expect(
-      packageManagerForHome("C:\\Users\\u\\AppData\\Roaming\\npm\\node_modules/docks-kit", {}, windows)
-    ).toBe("npm")
-  })
-})
+      packageManagerForHome(
+        "C:\\Users\\u\\AppData\\Roaming\\npm\\node_modules/docks-kit",
+        {},
+        windows,
+      ),
+    ).toBe("npm");
+  });
+});
 
 describe("package update result", () => {
   it.each([
@@ -142,14 +164,14 @@ describe("package update result", () => {
       "0.14.3",
       "0.14.3",
       true,
-      { alreadyCurrent: true, message: "Already at the latest version (0.14.3)." }
+      { alreadyCurrent: true, message: "Already at the latest version (0.14.3)." },
     ],
     [
       "the same root and different versions",
       "0.14.2",
       "0.14.3",
       true,
-      { alreadyCurrent: false, message: "Updated 0.14.2 -> 0.14.3." }
+      { alreadyCurrent: false, message: "Updated 0.14.2 -> 0.14.3." },
     ],
     [
       "different roots and the same version",
@@ -158,8 +180,8 @@ describe("package update result", () => {
       false,
       {
         alreadyCurrent: false,
-        message: "Installed 0.14.3 in the selected global package root."
-      }
+        message: "Installed 0.14.3 in the selected global package root.",
+      },
     ],
     [
       "different roots and different versions",
@@ -168,77 +190,76 @@ describe("package update result", () => {
       false,
       {
         alreadyCurrent: false,
-        message: "Installed 0.14.3 in the selected global package root."
-      }
+        message: "Installed 0.14.3 in the selected global package root.",
+      },
     ],
     ["a missing before version", "", "0.14.3", false, { alreadyCurrent: false, message: "" }],
-    ["a missing after version", "0.14.2", "", false, { alreadyCurrent: false, message: "" }]
-  ] as const)(
-    "reports %s",
-    (_case, before, after, samePackageRoot, expected) => {
-      const result = packageUpdateResult(before, after, samePackageRoot)
+    ["a missing after version", "0.14.2", "", false, { alreadyCurrent: false, message: "" }],
+  ] as const)("reports %s", (_case, before, after, samePackageRoot, expected) => {
+    const result = packageUpdateResult(before, after, samePackageRoot);
 
-      expect(result).toEqual(expected)
-      if (!samePackageRoot && before !== "" && after !== "") {
-        expect(result.message).not.toContain("Updated")
-      }
+    expect(result).toEqual(expected);
+    if (!samePackageRoot && before !== "" && after !== "") {
+      expect(result.message).not.toContain("Updated");
     }
-  )
-})
+  });
+});
 
 /** A PATH holding exactly the named shims, so resolution is the same on every host. */
 const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
-  const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"))
-  const savedPath = process.env["PATH"]
+  const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"));
+  const savedPath = process.env["PATH"];
   try {
     for (const name of names) {
-      const shim = join(dir, name)
-      writeFileSync(shim, "")
-      chmodSync(shim, 0o755)
+      const shim = join(dir, name);
+      writeFileSync(shim, "");
+      chmodSync(shim, 0o755);
     }
-    process.env["PATH"] = dir
-    return use()
+    process.env["PATH"] = dir;
+    return use();
   } finally {
     // Assigning `undefined` would write the string "undefined" into the environment.
-    if (savedPath === undefined) delete process.env["PATH"]
-    else process.env["PATH"] = savedPath
-    rmSync(dir, { recursive: true, force: true })
+    if (savedPath === undefined) delete process.env["PATH"];
+    else process.env["PATH"] = savedPath;
+    rmSync(dir, { recursive: true, force: true });
   }
-}
+};
 
 describe("host child spawning (exec.spawnHost)", () => {
   it("keeps the verbatim-arguments flag with the shim argv it encodes", () => {
-    spawnCalls.length = 0
+    spawnCalls.length = 0;
 
-    withPath(["npx.cmd"], () => spawnHost("npx", ["--version"], {}, hostOs("windows")))
+    withPath(["npx.cmd"], () => spawnHost("npx", ["--version"], {}, hostOs("windows")));
 
-    const call = spawnCalls.at(-1)
-    expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"])
-    expect(call?.args.at(-1)).toContain("npx.cmd")
+    const call = spawnCalls.at(-1);
+    expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"]);
+    expect(call?.args.at(-1)).toContain("npx.cmd");
     // Without this flag libuv re-quotes the command line the encoder built.
-    expect(call?.options["windowsVerbatimArguments"]).toBe(true)
-  })
+    expect(call?.options["windowsVerbatimArguments"]).toBe(true);
+  });
 
   it("leaves a POSIX invocation unquoted and unflagged", () => {
-    spawnCalls.length = 0
+    spawnCalls.length = 0;
 
-    spawnHost("git", ["--version"], { stdio: "inherit" }, hostOs("linux"))
+    spawnHost("git", ["--version"], { stdio: "inherit" }, hostOs("linux"));
 
-    const call = spawnCalls.at(-1)
-    expect(call?.command).toBe("git")
-    expect(call?.args).toEqual(["--version"])
-    expect(call?.options["windowsVerbatimArguments"]).toBeUndefined()
-    expect(call?.options["stdio"]).toBe("inherit")
-  })
+    const call = spawnCalls.at(-1);
+    expect(call?.command).toBe("git");
+    expect(call?.args).toEqual(["--version"]);
+    expect(call?.options["windowsVerbatimArguments"]).toBeUndefined();
+    expect(call?.options["stdio"]).toBe("inherit");
+  });
 
   it("reports an unresolvable Windows tool instead of spawning a pathless name", () => {
-    spawnCalls.length = 0
+    spawnCalls.length = 0;
 
     // An empty PATH, so a runner that happens to hold this name cannot answer.
-    const res = withPath([], () => spawnHost("docks-kit-absent-tool", ["--version"], {}, hostOs("windows")))
+    const res = withPath([], () =>
+      spawnHost("docks-kit-absent-tool", ["--version"], {}, hostOs("windows")),
+    );
 
-    expect(spawnCalls).toEqual([])
-    expect(res.status).toBeNull()
-    expect(res.error?.message).toBe("command not found on PATH: docks-kit-absent-tool")
-  })
-})
+    expect(spawnCalls).toEqual([]);
+    expect(res.status).toBeNull();
+    expect(res.error?.message).toBe("command not found on PATH: docks-kit-absent-tool");
+  });
+});

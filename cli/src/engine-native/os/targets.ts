@@ -8,7 +8,7 @@
  * supported, and `requireSupportedHost` in cli/src/engine.ts admits exactly the
  * platform/arch pairs this table names.
  */
-import { platformName, type PlatformName } from "./index"
+import { platformName, type PlatformName } from "./index";
 
 export type TargetId =
   | "linux-x64"
@@ -16,26 +16,26 @@ export type TargetId =
   | "darwin-x64"
   | "darwin-arm64"
   | "windows-x64"
-  | "windows-arm64"
+  | "windows-arm64";
 
-export type TargetArch = "x64" | "arm64"
+export type TargetArch = "x64" | "arm64";
 
 export interface HostTarget {
-  readonly id: TargetId
-  readonly platform: PlatformName
-  readonly arch: TargetArch
+  readonly id: TargetId;
+  readonly platform: PlatformName;
+  readonly arch: TargetArch;
   /** `bun build --compile --target=` value. */
-  readonly bunTarget: string
+  readonly bunTarget: string;
   /** Compiled binary file name, including the Windows `.exe` suffix. */
-  readonly artifact: string
+  readonly artifact: string;
   /** `uname -s`-`uname -m` keys the Bash launcher matches; empty on Windows. */
-  readonly unameKeys: ReadonlyArray<string>
+  readonly unameKeys: ReadonlyArray<string>;
   /**
    * `$env:PROCESSOR_ARCHITECTURE` values the PowerShell launcher matches; empty
    * off Windows. Windows PowerShell 5.1 runs emulated on ARM64 and reports
    * `AMD64` there, so a launcher must read `PROCESSOR_ARCHITEW6432` first.
    */
-  readonly processorArchitectures: ReadonlyArray<string>
+  readonly processorArchitectures: ReadonlyArray<string>;
 }
 
 const target = (
@@ -43,7 +43,7 @@ const target = (
   platform: PlatformName,
   arch: TargetArch,
   unameKeys: ReadonlyArray<string>,
-  processorArchitectures: ReadonlyArray<string>
+  processorArchitectures: ReadonlyArray<string>,
 ): HostTarget => ({
   id,
   platform,
@@ -51,8 +51,8 @@ const target = (
   bunTarget: `bun-${id}`,
   artifact: platform === "windows" ? `docks-kit-${id}.exe` : `docks-kit-${id}`,
   unameKeys,
-  processorArchitectures
-})
+  processorArchitectures,
+});
 
 export const HOST_TARGETS: ReadonlyArray<HostTarget> = [
   target("linux-x64", "linux", "x64", ["Linux-x86_64"], []),
@@ -60,14 +60,14 @@ export const HOST_TARGETS: ReadonlyArray<HostTarget> = [
   target("darwin-x64", "darwin", "x64", ["Darwin-x86_64"], []),
   target("darwin-arm64", "darwin", "arm64", ["Darwin-arm64"], []),
   target("windows-x64", "windows", "x64", [], ["AMD64"]),
-  target("windows-arm64", "windows", "arm64", [], ["ARM64"])
-]
+  target("windows-arm64", "windows", "arm64", [], ["ARM64"]),
+];
 
 function targetFor(platform: PlatformName, arch: string): HostTarget | undefined {
-  return HOST_TARGETS.find((t) => t.platform === platform && t.arch === arch)
+  return HOST_TARGETS.find((t) => t.platform === platform && t.arch === arch);
 }
 
 /** Resolve the artifact for a raw Node platform/arch pair. */
 export function targetForHost(platform: NodeJS.Platform, arch: string): HostTarget | undefined {
-  return targetFor(platformName(platform), arch)
+  return targetFor(platformName(platform), arch);
 }

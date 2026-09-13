@@ -11,7 +11,7 @@ metadata:
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-115"
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-590"
+      lines: "1-276"
     - path: cli/src/engine-native/bun.ts
       lines: "1-96"
     - path: SoT/toolchain.json

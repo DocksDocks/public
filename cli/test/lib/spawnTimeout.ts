@@ -21,10 +21,10 @@
  * make it take longer to report.
  */
 
-const WINDOWS = process.platform === "win32"
+const WINDOWS = process.platform === "win32";
 
 /** Default ceiling for every case in the unit suite. */
-export const TEST_TIMEOUT_MS = WINDOWS ? 45_000 : 15_000
+export const TEST_TIMEOUT_MS = WINDOWS ? 45_000 : 15_000;
 
 /** Ceiling for a case that spawns the public CLI at least once. */
-export const SPAWN_TIMEOUT_MS = WINDOWS ? 90_000 : 30_000
+export const SPAWN_TIMEOUT_MS = WINDOWS ? 90_000 : 30_000;

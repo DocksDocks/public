@@ -1,157 +1,170 @@
-import { readFileSync, rmSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
-import { afterAll, describe, expect, it } from "vitest"
-import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution"
-import {
-  cleanupTemporaryDirs,
-  makeStubDir,
-  materializeVariant
-} from "../lib/goldenResources"
-import { stableStringify } from "../lib/goldenSnapshot"
+import { readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution";
+import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources";
+import { stableStringify } from "../lib/goldenSnapshot";
 
-const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
-const NATIVE_HOST = { nativeHost: true } as const
+const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
+const NATIVE_HOST = { nativeHost: true } as const;
 
-afterAll(cleanupTemporaryDirs)
+afterAll(cleanupTemporaryDirs);
 
 function claudeInstalledPlugins(): string {
-  const settings = JSON.parse(readFileSync(join(REPO_DIR, "SoT", ".claude", "settings.json"), "utf8")) as {
-    enabledPlugins: Record<string, boolean>
-  }
+  const settings = JSON.parse(
+    readFileSync(join(REPO_DIR, "SoT", ".claude", "settings.json"), "utf8"),
+  ) as {
+    enabledPlugins: Record<string, boolean>;
+  };
   return stableStringify({
     plugins: Object.fromEntries(
-      Object.keys(settings.enabledPlugins).map((pluginId) => [pluginId, [{ scope: "user", version: "test" }]])
-    )
-  })
+      Object.keys(settings.enabledPlugins).map((pluginId) => [
+        pluginId,
+        [{ scope: "user", version: "test" }],
+      ]),
+    ),
+  });
 }
 
-
 describe("refresh-only plugin skip", () => {
-
   it("avoids warmed Claude and Codex refresh calls through both parser layers", () => {
     const variant = materializeVariant("home-drift", {
-      ".claude/plugins/installed_plugins.json": claudeInstalledPlugins()
-    })
-    const stubs = makeStubDir({}, NATIVE_HOST)
-    const run = runEngine(["sync", "claude", "codex", "--skip-plugin-refresh"], variant, stubs, NATIVE_HOST)
+      ".claude/plugins/installed_plugins.json": claudeInstalledPlugins(),
+    });
+    const stubs = makeStubDir({}, NATIVE_HOST);
+    const run = runEngine(
+      ["sync", "claude", "codex", "--skip-plugin-refresh"],
+      variant,
+      stubs,
+      NATIVE_HOST,
+    );
     const publicDryRun = runPublicCli(
       ["sync", "claude", "--dry-run", "--skip-plugin-refresh"],
       "home-drift",
       stubs,
-      NATIVE_HOST
-    )
+      NATIVE_HOST,
+    );
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const argv = readArgvLog(run)
-      expect(argv).not.toContain("claude\tplugin marketplace update")
-      expect(argv).not.toContain("claude\tplugin update")
-      expect(argv).not.toContain("codex\tplugin add")
-      expect(argv.match(/^codex\tplugin list --json$/gm)).toHaveLength(1)
-      expect(publicDryRun.exitCode, publicDryRun.stderr).toBe(0)
-      expect(publicDryRun.stdout).toContain("skip refresh-only plugin updates")
+      expect(run.exitCode, run.output).toBe(0);
+      const argv = readArgvLog(run);
+      expect(argv).not.toContain("claude\tplugin marketplace update");
+      expect(argv).not.toContain("claude\tplugin update");
+      expect(argv).not.toContain("codex\tplugin add");
+      expect(argv.match(/^codex\tplugin list --json$/gm)).toHaveLength(1);
+      expect(publicDryRun.exitCode, publicDryRun.stderr).toBe(0);
+      expect(publicDryRun.stdout).toContain("skip refresh-only plugin updates");
     } finally {
-      cleanup([run])
-      rmSync(publicDryRun.home, { recursive: true, force: true })
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(publicDryRun.home, { recursive: true, force: true });
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("still installs missing Claude and Codex plugins", () => {
     const codexMissingPlugins = `if (args[0] === "--version") {
   console.log("codex-cli 0.144.4")
 } else if (args[0] === "plugin" && args[1] === "list") {
   console.log('{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true}],"available":[]}')
-}`
+}`;
     const run = runEngine(
       ["sync", "claude", "codex", "--skip-plugin-refresh"],
       "home-drift",
       makeStubDir({ codex: codexMissingPlugins }, NATIVE_HOST),
-      NATIVE_HOST
-    )
+      NATIVE_HOST,
+    );
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const argv = readArgvLog(run)
-      expect(argv).toContain("claude\tplugin install docks@docks")
-      expect(argv.match(/^claude\tplugin update /gm)).toBeNull()
+      expect(run.exitCode, run.output).toBe(0);
+      const argv = readArgvLog(run);
+      expect(argv).toContain("claude\tplugin install docks@docks");
+      expect(argv.match(/^claude\tplugin update /gm)).toBeNull();
       expect(argv.match(/^codex\tplugin add .+$/gm)).toEqual([
-        "codex\tplugin add plan-lifecycle@docks"
-      ])
+        "codex\tplugin add plan-lifecycle@docks",
+      ]);
     } finally {
-      cleanup([run])
+      cleanup([run]);
     }
-  })
-})
+  });
+});
 
 describe("kit-scoped plugin refresh", () => {
   it("refreshes only SoT marketplaces and SoT user-scope plugins", () => {
     const installed = JSON.parse(claudeInstalledPlugins()) as {
-      plugins: Record<string, Array<Record<string, string>>>
-    }
-    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
-    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
-      scope: "project",
-      projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
-      version: "test"
-    }]
+      plugins: Record<string, Array<Record<string, string>>>;
+    };
+    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }];
+    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [
+      {
+        scope: "project",
+        projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
+        version: "test",
+      },
+    ];
     const variant = materializeVariant("home-drift", {
       ".claude/plugins/installed_plugins.json": stableStringify(installed),
       ".claude/plugins/known_marketplaces.json": stableStringify({
         docks: { source: "DocksDocks/docks" },
         userplace: { source: "user/userplace" },
-        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
-      })
-    })
-    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
+        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" },
+      }),
+    });
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST);
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const argv = readArgvLog(run)
+      expect(run.exitCode, run.output).toBe(0);
+      const argv = readArgvLog(run);
       expect(argv.match(/^claude\tplugin marketplace update.*$/gm)).toEqual([
         "claude\tplugin marketplace update claude-plugins-official",
-        "claude\tplugin marketplace update docks"
-      ])
+        "claude\tplugin marketplace update docks",
+      ]);
       expect(argv.match(/^claude\tplugin update .+$/gm)).toEqual([
         "claude\tplugin update docks@docks --scope user",
         "claude\tplugin update php-lsp@claude-plugins-official --scope user",
         "claude\tplugin update plan-lifecycle@docks --scope user",
         "claude\tplugin update rust-analyzer-lsp@claude-plugins-official --scope user",
-        "claude\tplugin update typescript-lsp@claude-plugins-official --scope user"
-      ])
+        "claude\tplugin update typescript-lsp@claude-plugins-official --scope user",
+      ]);
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
-})
+  });
+});
 
 describe("project-scoped plugin preservation", () => {
   it("keeps marketplaces used by project-scoped plugins during prune", () => {
     const installed = JSON.parse(claudeInstalledPlugins()) as {
-      plugins: Record<string, Array<Record<string, string>>>
-    }
-    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }]
-    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [{
-      scope: "project",
-      projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
-      version: "test"
-    }]
+      plugins: Record<string, Array<Record<string, string>>>;
+    };
+    installed.plugins["user-plugin@userplace"] = [{ scope: "user", version: "1.0.0" }];
+    installed.plugins["n8n-mcp-skills@n8n-mcp-skills"] = [
+      {
+        scope: "project",
+        projectPath: join(tmpdir(), "docks", "projects", "n8n-workflows"),
+        version: "test",
+      },
+    ];
     const variant = materializeVariant("home-drift", {
       ".claude/plugins/installed_plugins.json": stableStringify(installed),
       ".claude/plugins/known_marketplaces.json": stableStringify({
         userplace: { source: "user/userplace" },
-        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" }
-      })
-    })
-    const run = runEngine(["sync", "claude", "--prune"], variant, makeStubDir({}, NATIVE_HOST), NATIVE_HOST)
+        "n8n-mcp-skills": { source: "czlonkowski/n8n-skills" },
+      }),
+    });
+    const run = runEngine(
+      ["sync", "claude", "--prune"],
+      variant,
+      makeStubDir({}, NATIVE_HOST),
+      NATIVE_HOST,
+    );
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const argv = readArgvLog(run)
-      expect(argv).toContain("claude\tplugin uninstall -y --scope user user-plugin@userplace")
-      expect(argv).toContain("claude\tplugin marketplace remove userplace")
-      expect(argv).not.toContain("claude\tplugin marketplace remove n8n-mcp-skills")
+      expect(run.exitCode, run.output).toBe(0);
+      const argv = readArgvLog(run);
+      expect(argv).toContain("claude\tplugin uninstall -y --scope user user-plugin@userplace");
+      expect(argv).toContain("claude\tplugin marketplace remove userplace");
+      expect(argv).not.toContain("claude\tplugin marketplace remove n8n-mcp-skills");
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
-})
+  });
+});

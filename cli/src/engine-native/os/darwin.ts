@@ -1,5 +1,5 @@
-import { posixHost } from "./posix"
-import type { HostOs } from "./types"
+import { posixHost } from "./posix";
+import type { HostOs } from "./types";
 
 export const darwin: HostOs = posixHost({
   id: "darwin",
@@ -9,6 +9,6 @@ export const darwin: HostOs = posixHost({
     git: "brew install git",
     jq: "brew install jq",
     curl: "brew install curl",
-    ffplay: "brew install ffmpeg"
-  }
-})
+    ffplay: "brew install ffmpeg",
+  },
+});

@@ -54,14 +54,14 @@ warnings, and the summary. Status-quo confirmations exist but are opt-in.
 
 ### Channels and levels
 
-| Emitter | Channel | Default | `--verbose` | Prefix / form |
-|---|---|---|---|---|
-| `error(msg)` | stderr | shown | shown | `[err]` red (`\x1b[1;31m`) |
-| `warn(msg)` | stderr | shown | shown | `[warn]` yellow (`\x1b[1;33m`) |
-| `change(msg)` | stderr | shown | shown | `[ok]` green (`\x1b[1;32m`) — ONLY after an operation actually mutated |
-| `verbose(msg)` | stderr | hidden | shown | `[ok]` green — no-op confirmations ("already …", "present", "up to date", "left as-is"), skips |
-| `progress(msg)` | stderr | interactive only | interactive only | dim, transient single-line status with no newline |
-| `data(line)` | stdout | shown | shown | bare — dry-run report lines, `status --json`, summary block, usage text |
+| Emitter         | Channel | Default          | `--verbose`      | Prefix / form                                                                                  |
+| --------------- | ------- | ---------------- | ---------------- | ---------------------------------------------------------------------------------------------- |
+| `error(msg)`    | stderr  | shown            | shown            | `[err]` red (`\x1b[1;31m`)                                                                     |
+| `warn(msg)`     | stderr  | shown            | shown            | `[warn]` yellow (`\x1b[1;33m`)                                                                 |
+| `change(msg)`   | stderr  | shown            | shown            | `[ok]` green (`\x1b[1;32m`) — ONLY after an operation actually mutated                         |
+| `verbose(msg)`  | stderr  | hidden           | shown            | `[ok]` green — no-op confirmations ("already …", "present", "up to date", "left as-is"), skips |
+| `progress(msg)` | stderr  | interactive only | interactive only | dim, transient single-line status with no newline                                              |
+| `data(line)`    | stdout  | shown            | shown            | bare — dry-run report lines, `status --json`, summary block, usage text                        |
 
 - stdout is data, stderr is logs — the logger NEVER writes to stdout
   (`engineCapture` depends on it).
@@ -134,28 +134,28 @@ active logger binding.
 
 ## Module Map
 
-| Module | Owns |
-|---|---|
-| `parseArgs.ts` | engine usage, target selection, flag parsing, legacy rename hints, model flag validation |
-| `index.ts` | sync orchestration, target dispatch, run summary and next-step blocks |
-| `../payload.ts` | generated text/byte payload reads and presentation-only source labels |
-| `claudeSync.ts` | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
-| `bun.ts` | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure |
-| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and per-host statusline and failure-hook command materialization |
-| `settings.ts` | pure Claude settings merge/reconcile semantics and permission-array union |
-| `claudeModel.ts` | deployed Claude model modifier and direct `model claude` write path |
-| `codexSync.ts` | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh |
-| `codexToml.ts` | line-based top-level TOML replacement and deployed Codex model modifier |
-| `skillsSync.ts` | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot |
-| `toolchain.ts` | tool presence/version probes, verified-version floor reporting, report table |
-| `modes.ts` | direct `model` and `toolchain` modes |
-| `models.ts` | model catalog listing and validation |
-| `jq.ts` | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it |
-| `exec.ts` | slash-stable path helpers, host-aware PATH probes and invocation, capture/spawn wrappers, and change-detecting write/copy helpers |
-| `logger.ts` | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts` |
-| `deps.ts` | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing` |
-| `os/` | host reader, injected platform normalization, and per-OS `HostOs` fact modules |
-| `services.ts` | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative` |
+| Module             | Owns                                                                                                                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parseArgs.ts`     | engine usage, target selection, flag parsing, legacy rename hints, model flag validation                                                                                                           |
+| `index.ts`         | sync orchestration, target dispatch, run summary and next-step blocks                                                                                                                              |
+| `../payload.ts`    | generated text/byte payload reads and presentation-only source labels                                                                                                                              |
+| `claudeSync.ts`    | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
+| `bun.ts`           | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure                                                                                                 |
+| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and per-host statusline and failure-hook command materialization                                                      |
+| `settings.ts`      | pure Claude settings merge/reconcile semantics and permission-array union                                                                                                                          |
+| `claudeModel.ts`   | deployed Claude model modifier and direct `model claude` write path                                                                                                                                |
+| `codexSync.ts`     | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh                                                                                             |
+| `codexToml.ts`     | line-based top-level TOML replacement and deployed Codex model modifier                                                                                                                            |
+| `skillsSync.ts`    | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot                                                                                |
+| `toolchain.ts`     | tool presence/version probes, verified-version floor reporting, report table                                                                                                                       |
+| `modes.ts`         | direct `model` and `toolchain` modes                                                                                                                                                               |
+| `models.ts`        | model catalog listing and validation                                                                                                                                                               |
+| `jq.ts`            | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it                                                                                       |
+| `exec.ts`          | slash-stable path helpers, host-aware PATH probes and invocation, capture/spawn wrappers, and change-detecting write/copy helpers                                                                  |
+| `logger.ts`        | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts`                                                                                            |
+| `deps.ts`          | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing`          |
+| `os/`              | host reader, injected platform normalization, and per-OS `HostOs` fact modules                                                                                                                     |
+| `services.ts`      | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative`                     |
 
 ## Platform Support
 

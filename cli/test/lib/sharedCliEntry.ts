@@ -13,27 +13,27 @@ import {
   buildCliEntry,
   processCliEntryPath,
   removeCliEntry,
-  sweepDeadCliEntries
-} from "./cliEntry"
+  sweepDeadCliEntries,
+} from "./cliEntry";
 
-let owned: string | undefined
+let owned: string | undefined;
 
 export function setup(): void {
-  const existing = process.env[CLI_ENTRY_ENV]
-  if (existing !== undefined && existing !== "") return
-  sweepDeadCliEntries()
-  owned = buildCliEntry(processCliEntryPath())
+  const existing = process.env[CLI_ENTRY_ENV];
+  if (existing !== undefined && existing !== "") return;
+  sweepDeadCliEntries();
+  owned = buildCliEntry(processCliEntryPath());
   // Vitest runs no teardown on SIGINT, so the exit handler reclaims the
   // bundle. Teardown clears `owned`, which makes the handler a no-op.
   process.on("exit", () => {
-    if (owned !== undefined) removeCliEntry(owned)
-  })
-  process.env[CLI_ENTRY_ENV] = owned
+    if (owned !== undefined) removeCliEntry(owned);
+  });
+  process.env[CLI_ENTRY_ENV] = owned;
 }
 
 export function teardown(): void {
-  if (owned === undefined) return
-  removeCliEntry(owned)
-  delete process.env[CLI_ENTRY_ENV]
-  owned = undefined
+  if (owned === undefined) return;
+  removeCliEntry(owned);
+  delete process.env[CLI_ENTRY_ENV];
+  owned = undefined;
 }

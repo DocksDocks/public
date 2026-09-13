@@ -1,35 +1,35 @@
-import { Argument, Command, Flag } from "effect/unstable/cli"
-import { Console, Effect, Option } from "effect"
-import { bail } from "../engine"
-import { pluginsView } from "../manifests"
+import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Console, Effect, Option } from "effect";
+import { bail } from "../engine";
+import { pluginsView } from "../manifests";
 
 const action = Argument.String("action").pipe(
   Argument.withDescription("list (default)"),
-  Argument.optional
-)
+  Argument.optional,
+);
 const json = Flag.Boolean("json").pipe(
   Flag.withDescription("Machine-readable output"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 
 export const pluginsCommand = Command.make("plugins", { action, json }, (config) =>
   Effect.gen(function* () {
-    const act = Option.getOrElse(config.action, () => "list")
+    const act = Option.getOrElse(config.action, () => "list");
     if (act !== "list") {
       return yield* bail(
-        `Unknown plugins action '${act}' (valid: list). Install/removal runs through sync: --claude-plugin=<name> opts in, --prune reconciles.`
-      )
+        `Unknown plugins action '${act}' (valid: list). Install/removal runs through sync: --claude-plugin=<name> opts in, --prune reconciles.`,
+      );
     }
-    const view = pluginsView()
+    const view = pluginsView();
     if (config.json) {
-      return yield* Console.log(JSON.stringify(view, null, 2))
+      return yield* Console.log(JSON.stringify(view, null, 2));
     }
-    yield* Console.log("SoT tri-state: true = enabled everywhere, false = installed-but-disabled (per-project enable), absent = not kit-managed\n")
-    yield* Console.log(`${"PLUGIN".padEnd(44)} ${"SOT".padEnd(7)} INSTALLED`)
+    yield* Console.log(
+      "SoT tri-state: true = enabled everywhere, false = installed-but-disabled (per-project enable), absent = not kit-managed\n",
+    );
+    yield* Console.log(`${"PLUGIN".padEnd(44)} ${"SOT".padEnd(7)} INSTALLED`);
     for (const p of view) {
-      yield* Console.log(`${p.plugin.padEnd(44)} ${p.sot.padEnd(7)} ${p.installed ? "yes" : "no"}`)
+      yield* Console.log(`${p.plugin.padEnd(44)} ${p.sot.padEnd(7)} ${p.installed ? "yes" : "no"}`);
     }
-  })
-).pipe(
-  Command.withDescription("Installed plugins vs SoT enabledPlugins tri-state (read-only).")
-)
+  }),
+).pipe(Command.withDescription("Installed plugins vs SoT enabledPlugins tri-state (read-only)."));

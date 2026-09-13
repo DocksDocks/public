@@ -1,32 +1,32 @@
-import { Command, Flag } from "effect/unstable/cli"
-import { Console, Effect } from "effect"
-import { engineCapture, type EngineCaptureError } from "../engine"
+import { Command, Flag } from "effect/unstable/cli";
+import { Console, Effect } from "effect";
+import { engineCapture, type EngineCaptureError } from "../engine";
 import {
   deployedClaudeSettings,
   deployedCodexModel,
   pluginsView,
   skillsView,
   sotClaudeSettings,
-  sotCodexModel
-} from "../manifests"
-import { kitHome } from "../kitHome"
+  sotCodexModel,
+} from "../manifests";
+import { kitHome } from "../kitHome";
 
 const json = Flag.Boolean("json").pipe(
   Flag.withDescription("Machine-readable output"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 
 interface Drift {
-  readonly setting: string
-  readonly deployed: string
-  readonly sot: string
-  readonly drifted: boolean
+  readonly setting: string;
+  readonly deployed: string;
+  readonly sot: string;
+  readonly drifted: boolean;
 }
 
 type ClaudeDeployment =
   | { readonly state: "absent" }
   | { readonly state: "valid"; readonly settings: Record<string, unknown> }
-  | { readonly state: "malformed"; readonly diagnostic: string }
+  | { readonly state: "malformed"; readonly diagnostic: string };
 
 const captureToolchainStatus = () =>
   engineCapture(["toolchain", "check"]).pipe(
@@ -36,58 +36,63 @@ const captureToolchainStatus = () =>
         state: "failed" as const,
         table: "",
         diagnostic: error.diagnostic,
-        exitCode: error.code
-      })
-    )
-  )
+        exitCode: error.code,
+      }),
+    ),
+  );
 
 const readClaudeDeployment = (): ClaudeDeployment => {
   try {
-    const settings: unknown = deployedClaudeSettings()
-    if (settings === undefined) return { state: "absent" }
+    const settings: unknown = deployedClaudeSettings();
+    if (settings === undefined) return { state: "absent" };
     if (settings === null || typeof settings !== "object" || Array.isArray(settings)) {
       return {
         state: "malformed",
-        diagnostic: "deployed Claude settings must contain a JSON object"
-      }
+        diagnostic: "deployed Claude settings must contain a JSON object",
+      };
     }
-    return { state: "valid", settings: settings as Record<string, unknown> }
+    return { state: "valid", settings: settings as Record<string, unknown> };
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error)
+    const detail = error instanceof Error ? error.message : String(error);
     return {
       state: "malformed",
-      diagnostic: `deployed Claude settings contain invalid JSON: ${detail}`
-    }
+      diagnostic: `deployed Claude settings contain invalid JSON: ${detail}`,
+    };
   }
-}
+};
 
 const gatherDrift = (): {
-  readonly drift: Array<Drift>
-  readonly claudeDeployment: ClaudeDeployment
+  readonly drift: Array<Drift>;
+  readonly claudeDeployment: ClaudeDeployment;
 } => {
-  const sot = sotClaudeSettings()
-  const claudeDeployment = readClaudeDeployment()
+  const sot = sotClaudeSettings();
+  const claudeDeployment = readClaudeDeployment();
   const row = (setting: string, deployed: unknown, sotVal: unknown): Drift => {
-    const d = String(deployed ?? "(unset)")
-    const s = String(sotVal ?? "(unset)")
-    return { setting, deployed: d, sot: s, drifted: d !== s }
-  }
-  const codex = row("codex.model", deployedCodexModel(), sotCodexModel())
+    const d = String(deployed ?? "(unset)");
+    const s = String(sotVal ?? "(unset)");
+    return { setting, deployed: d, sot: s, drifted: d !== s };
+  };
+  const codex = row("codex.model", deployedCodexModel(), sotCodexModel());
   if (claudeDeployment.state !== "valid") {
     return {
       claudeDeployment,
       drift: [
-        { setting: "claude.settings", deployed: `(${claudeDeployment.state})`, sot: "present", drifted: true },
-        codex
-      ]
-    }
+        {
+          setting: "claude.settings",
+          deployed: `(${claudeDeployment.state})`,
+          sot: "present",
+          drifted: true,
+        },
+        codex,
+      ],
+    };
   }
 
-  const dep = claudeDeployment.settings
+  const dep = claudeDeployment.settings;
   const env =
     dep.env !== null && typeof dep.env === "object" && !Array.isArray(dep.env)
       ? (dep.env as Record<string, unknown>)
-      : {}
+      : {};
   return {
     claudeDeployment,
     drift: [
@@ -96,40 +101,40 @@ const gatherDrift = (): {
       row(
         "claude.compactWindow",
         env.CLAUDE_CODE_AUTO_COMPACT_WINDOW,
-        sot.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW
+        sot.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW,
       ),
-      codex
-    ]
-  }
-}
+      codex,
+    ],
+  };
+};
 
 export const statusCommand = Command.make("status", { json }, (config) =>
   Effect.gen(function* () {
-    const { drift, claudeDeployment } = gatherDrift()
-    const plugins = pluginsView()
-    const skills = skillsView()
-    const toolchain = yield* captureToolchainStatus()
-    const diagnostics = new Array<{ source: string; message: string; exitCode: number }>()
+    const { drift, claudeDeployment } = gatherDrift();
+    const plugins = pluginsView();
+    const skills = skillsView();
+    const toolchain = yield* captureToolchainStatus();
+    const diagnostics = new Array<{ source: string; message: string; exitCode: number }>();
     if (claudeDeployment.state === "malformed") {
       diagnostics.push({
         source: "claude.settings",
         message: claudeDeployment.diagnostic,
-        exitCode: 1
-      })
+        exitCode: 1,
+      });
     }
     if (toolchain.state === "failed") {
       diagnostics.push({
         source: "toolchain",
         message: toolchain.diagnostic ?? "toolchain capture failed",
-        exitCode: toolchain.exitCode ?? 1
-      })
+        exitCode: toolchain.exitCode ?? 1,
+      });
     }
 
     if (config.json) {
       const deployment =
         claudeDeployment.state === "malformed"
           ? { claude: { state: claudeDeployment.state, diagnostic: claudeDeployment.diagnostic } }
-          : { claude: { state: claudeDeployment.state } }
+          : { claude: { state: claudeDeployment.state } };
       yield* Console.log(
         JSON.stringify(
           {
@@ -139,46 +144,48 @@ export const statusCommand = Command.make("status", { json }, (config) =>
             plugins,
             skills,
             toolchain,
-            diagnostics
+            diagnostics,
           },
           null,
-          2
-        )
-      )
+          2,
+        ),
+      );
     } else {
-      yield* Console.log(`Kit home: ${kitHome()}\n`)
-      yield* Console.log("Deployed vs SoT (drift is expected for deploy-time modifiers):")
+      yield* Console.log(`Kit home: ${kitHome()}\n`);
+      yield* Console.log("Deployed vs SoT (drift is expected for deploy-time modifiers):");
       for (const d of drift) {
-        const mark = d.drifted ? "≠" : "="
-        yield* Console.log(`  ${d.setting.padEnd(22)} deployed=${d.deployed}  ${mark}  SoT=${d.sot}`)
+        const mark = d.drifted ? "≠" : "=";
+        yield* Console.log(
+          `  ${d.setting.padEnd(22)} deployed=${d.deployed}  ${mark}  SoT=${d.sot}`,
+        );
       }
       if (claudeDeployment.state === "malformed") {
-        yield* Console.log(`  ERROR claude.settings: ${claudeDeployment.diagnostic}`)
+        yield* Console.log(`  ERROR claude.settings: ${claudeDeployment.diagnostic}`);
       }
-      yield* Console.log("\nToolchain:")
+      yield* Console.log("\nToolchain:");
       if (toolchain.state === "failed") {
-        yield* Console.log(`  ERROR: ${toolchain.diagnostic}`)
+        yield* Console.log(`  ERROR: ${toolchain.diagnostic}`);
       } else {
-        yield* Console.log(toolchain.table.trimEnd())
+        yield* Console.log(toolchain.table.trimEnd());
       }
-      const enabled = plugins.filter((p) => p.sot === "true").length
+      const enabled = plugins.filter((p) => p.sot === "true").length;
       yield* Console.log(
-        `\nPlugins: ${plugins.length} known (${enabled} SoT-enabled) — details: docks-kit plugins list`
-      )
-      const installed = skills.filter((s) => s.installed).length
+        `\nPlugins: ${plugins.length} known (${enabled} SoT-enabled) — details: docks-kit plugins list`,
+      );
+      const installed = skills.filter((s) => s.installed).length;
       yield* Console.log(
-        `Skills:  ${skills.length} known (${installed} installed) — details: docks-kit skills list`
-      )
+        `Skills:  ${skills.length} known (${installed} installed) — details: docks-kit skills list`,
+      );
     }
 
     if (diagnostics.length > 0) {
       yield* Effect.sync(() => {
-        process.exitCode = diagnostics[0]?.exitCode ?? 1
-      })
+        process.exitCode = diagnostics[0]?.exitCode ?? 1;
+      });
     }
-  })
+  }),
 ).pipe(
   Command.withDescription(
-    "Doctor view: deployed-vs-SoT drift, toolchain, and plugin/skill counts."
-  )
-)
+    "Doctor view: deployed-vs-SoT drift, toolchain, and plugin/skill counts.",
+  ),
+);

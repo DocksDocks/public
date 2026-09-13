@@ -1,264 +1,284 @@
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
-import { join } from "node:path"
-import { afterAll, describe, expect, it } from "vitest"
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
 
-import { isObject, parseJson, type Json } from "../../src/engine-native/jq"
-import { hostOs } from "../../src/engine-native/os/index"
-import { cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution"
+import { isObject, parseJson, type Json } from "../../src/engine-native/jq";
+import { hostOs } from "../../src/engine-native/os/index";
+import { cleanup, readArgvLog, runEngine, type EngineRun } from "../lib/goldenExecution";
 import {
   FIXTURES_DIR,
   cleanupTemporaryDirs,
   makeStubDir,
-  materializeVariant
-} from "../lib/goldenResources"
-import { stableStringify } from "../lib/goldenSnapshot"
+  materializeVariant,
+} from "../lib/goldenResources";
+import { stableStringify } from "../lib/goldenSnapshot";
 
 // The stub launchers and the child must agree on one host. Native pairing runs
 // the real host with its own launcher form, so these cases keep their
 // harness-CLI coverage on Windows instead of resolving a shell script the
 // host cannot execute.
-const NATIVE = { nativeHost: true } as const
+const NATIVE = { nativeHost: true } as const;
 
-afterAll(cleanupTemporaryDirs)
+afterAll(cleanupTemporaryDirs);
 
 const LEGACY_SETTINGS: { [key: string]: Json } = {
   hooks: {
     SessionStart: [{ hooks: [{ type: "command", command: "legacy-session", timeout: 5 }] }],
-    Notification: [{ hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] }],
-    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }]
+    Notification: [
+      { hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] },
+    ],
+    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }],
   },
   statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
-  userOnly: "preserved"
-}
+  userOnly: "preserved",
+};
 
 const LEGACY_FILES = {
   ".claude/statusline.sh": "legacy-statusline-marker\n",
   ".claude/fetch-usage.sh": "legacy-fetch-marker\n",
-  ".claude/hooks/notify.sh": "legacy-notify-marker\n"
-} as const
+  ".claude/hooks/notify.sh": "legacy-notify-marker\n",
+} as const;
 
 const RUNTIME_FILES = [
   ".claude/bin/statusline.mjs",
   ".claude/bin/session-start.mjs",
   ".claude/bin/notify.mjs",
-  ".claude/notification.mp3"
-] as const
+  ".claude/notification.mp3",
+] as const;
 
 function legacyVariant(settings = stableStringify(LEGACY_SETTINGS)): string {
   return materializeVariant("home-fresh", {
     ".claude/settings.json": settings,
-    ...LEGACY_FILES
-  })
+    ...LEGACY_FILES,
+  });
 }
 
 function runWithBunUnavailable(args: ReadonlyArray<string>, home: string): EngineRun {
   // One token for both sides: the stubs must be launchable by the host the
   // child actually runs as, and this case needs the native host so the
   // Bun/curl absence it asserts is the real host's absence.
-  const stubs = makeStubDir({ bun: null, curl: null }, NATIVE)
+  const stubs = makeStubDir({ bun: null, curl: null }, NATIVE);
   for (const tool of ["bun", "curl"]) {
     for (const suffix of hostOs().executableSuffixes) {
       if (existsSync(join(stubs, `${tool}${suffix}`))) {
-        throw new Error(`Bun-unavailable fixture unexpectedly contains ${tool}${suffix}`)
+        throw new Error(`Bun-unavailable fixture unexpectedly contains ${tool}${suffix}`);
       }
     }
   }
-  return runEngine(args, home, stubs, { ...NATIVE, reuseHome: home, env: { PATH: stubs } })
+  return runEngine(args, home, stubs, { ...NATIVE, reuseHome: home, env: { PATH: stubs } });
 }
 
 function settingsObject(home: string): { [key: string]: Json } {
-  const parsed = parseJson(readFileSync(join(home, ".claude", "settings.json"), "utf8"))
-  if (parsed === undefined || !isObject(parsed)) throw new Error("deployed settings are not an object")
-  return parsed
+  const parsed = parseJson(readFileSync(join(home, ".claude", "settings.json"), "utf8"));
+  if (parsed === undefined || !isObject(parsed))
+    throw new Error("deployed settings are not an object");
+  return parsed;
 }
 
 function hooksObject(settings: { [key: string]: Json }): { [key: string]: Json } {
-  const hooks = settings["hooks"]
-  if (hooks === undefined || !isObject(hooks)) throw new Error("deployed hooks are not an object")
-  return hooks
+  const hooks = settings["hooks"];
+  if (hooks === undefined || !isObject(hooks)) throw new Error("deployed hooks are not an object");
+  return hooks;
 }
 
 function permissionRules(settings: { [key: string]: Json }, key: "allow" | "deny"): Array<string> {
-  const permissions = settings["permissions"]
+  const permissions = settings["permissions"];
   if (!isObject(permissions) || !Array.isArray(permissions[key])) {
-    throw new Error(`deployed permissions.${key} is not an array`)
+    throw new Error(`deployed permissions.${key} is not an array`);
   }
-  return permissions[key].filter((value): value is string => typeof value === "string")
+  return permissions[key].filter((value): value is string => typeof value === "string");
 }
 
 function expectLegacyPointers(home: string): void {
-  const settings = settingsObject(home)
-  const hooks = hooksObject(settings)
-  const legacyHooks = hooksObject(LEGACY_SETTINGS)
-  expect(hooks["SessionStart"]).toEqual(legacyHooks["SessionStart"])
-  expect(hooks["Notification"]).toEqual(legacyHooks["Notification"])
-  expect(hooks["Stop"]).toEqual(legacyHooks["Stop"])
-  expect(settings["statusLine"]).toEqual(LEGACY_SETTINGS["statusLine"])
+  const settings = settingsObject(home);
+  const hooks = hooksObject(settings);
+  const legacyHooks = hooksObject(LEGACY_SETTINGS);
+  expect(hooks["SessionStart"]).toEqual(legacyHooks["SessionStart"]);
+  expect(hooks["Notification"]).toEqual(legacyHooks["Notification"]);
+  expect(hooks["Stop"]).toEqual(legacyHooks["Stop"]);
+  expect(settings["statusLine"]).toEqual(LEGACY_SETTINGS["statusLine"]);
 }
 
 function expectLegacyFiles(home: string): void {
   for (const [relative, marker] of Object.entries(LEGACY_FILES)) {
-    expect(readFileSync(join(home, relative), "utf8")).toBe(marker)
+    expect(readFileSync(join(home, relative), "utf8")).toBe(marker);
   }
 }
 
 describe("Claude runtime migration transaction", () => {
   it("shares one deferred Bun result across an all-target legacy run", () => {
-    const variant = legacyVariant()
-    const run = runWithBunUnavailable(["sync"], variant)
+    const variant = legacyVariant();
+    const run = runWithBunUnavailable(["sync"], variant);
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      expectLegacyPointers(run.home)
-      expectLegacyFiles(run.home)
-      for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(false)
-      expect(run.output.match(/curl not installed/g)).toHaveLength(1)
-      expect(run.output.match(/Bun unavailable — Claude statusline\/hooks migration deferred/g)).toHaveLength(1)
-      expect(run.output).toContain("Hooks:    migration deferred (Bun unavailable; existing hook/statusline settings preserved)")
-      expect(readArgvLog(run)).not.toMatch(/^curl\t/m)
+      expect(run.exitCode, run.output).toBe(0);
+      expectLegacyPointers(run.home);
+      expectLegacyFiles(run.home);
+      for (const relative of RUNTIME_FILES)
+        expect(existsSync(join(run.home, relative))).toBe(false);
+      expect(run.output.match(/curl not installed/g)).toHaveLength(1);
+      expect(
+        run.output.match(/Bun unavailable — Claude statusline\/hooks migration deferred/g),
+      ).toHaveLength(1);
+      expect(run.output).toContain(
+        "Hooks:    migration deferred (Bun unavailable; existing hook/statusline settings preserved)",
+      );
+      expect(readArgvLog(run)).not.toMatch(/^curl\t/m);
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("installs only safe unrelated hooks on a fresh home when Bun is unavailable", () => {
-    const home = materializeVariant("home-fresh", {})
-    const run = runWithBunUnavailable(["sync", "claude"], home)
+    const home = materializeVariant("home-fresh", {});
+    const run = runWithBunUnavailable(["sync", "claude"], home);
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const settings = settingsObject(run.home)
-      const hooks = hooksObject(settings)
-      expect(hooks["PostToolUseFailure"]).toBeDefined()
-      expect(hooks["SubagentStop"]).toBeDefined()
-      expect(hooks["SessionStart"]).toBeUndefined()
-      expect(hooks["Notification"]).toBeUndefined()
-      expect(hooks["Stop"]).toBeUndefined()
-      expect(settings["statusLine"]).toBeUndefined()
-      for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(false)
-      expect(run.output).toContain("Bun unavailable — Claude statusline/hooks migration deferred")
+      expect(run.exitCode, run.output).toBe(0);
+      const settings = settingsObject(run.home);
+      const hooks = hooksObject(settings);
+      expect(hooks["PostToolUseFailure"]).toBeDefined();
+      expect(hooks["SubagentStop"]).toBeDefined();
+      expect(hooks["SessionStart"]).toBeUndefined();
+      expect(hooks["Notification"]).toBeUndefined();
+      expect(hooks["Stop"]).toBeUndefined();
+      expect(settings["statusLine"]).toBeUndefined();
+      for (const relative of RUNTIME_FILES)
+        expect(existsSync(join(run.home, relative))).toBe(false);
+      expect(run.output).toContain("Bun unavailable — Claude statusline/hooks migration deferred");
     } finally {
-      cleanup([run])
+      cleanup([run]);
     }
-  })
+  });
 
   it("rejects invalid deployed settings before runtime or legacy fallback mutation", () => {
-    const variant = legacyVariant("not-json")
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const variant = legacyVariant("not-json");
+    const run = runEngine(["sync", "claude"], variant, makeStubDir());
     try {
-      expect(run.exitCode, run.output).toBe(1)
-      expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe("not-json")
-      expectLegacyFiles(run.home)
-      for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(false)
-      expect(run.output).toContain("is not valid JSON")
+      expect(run.exitCode, run.output).toBe(1);
+      expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe("not-json");
+      expectLegacyFiles(run.home);
+      for (const relative of RUNTIME_FILES)
+        expect(existsSync(join(run.home, relative))).toBe(false);
+      expect(run.output).toContain("is not valid JSON");
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("writes runtime assets before settings commit and preserves fallbacks when that commit fails", () => {
-    const original = stableStringify(LEGACY_SETTINGS)
-    const variant = legacyVariant(original)
-    mkdirSync(join(variant, ".claude", "settings.json.tmp"))
-    const run = runEngine(["sync", "claude"], variant, makeStubDir())
+    const original = stableStringify(LEGACY_SETTINGS);
+    const variant = legacyVariant(original);
+    mkdirSync(join(variant, ".claude", "settings.json.tmp"));
+    const run = runEngine(["sync", "claude"], variant, makeStubDir());
     try {
-      expect(run.exitCode, run.output).toBe(1)
-      expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe(original)
-      expectLegacyPointers(run.home)
-      expectLegacyFiles(run.home)
-      for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(true)
-      expect(run.output).toContain("Claude runtime synced (statusline, session-start, notify, notification)")
-      expect(run.output).not.toContain("Pruned stale artifacts")
+      expect(run.exitCode, run.output).toBe(1);
+      expect(readFileSync(join(run.home, ".claude", "settings.json"), "utf8")).toBe(original);
+      expectLegacyPointers(run.home);
+      expectLegacyFiles(run.home);
+      for (const relative of RUNTIME_FILES) expect(existsSync(join(run.home, relative))).toBe(true);
+      expect(run.output).toContain(
+        "Claude runtime synced (statusline, session-start, notify, notification)",
+      );
+      expect(run.output).not.toContain("Pruned stale artifacts");
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("prunes a null-valued hooks.Stop key on a ready migration", () => {
-    const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } })
-    const variant = legacyVariant(nullStop)
-    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
+    const nullStop = stableStringify({ ...LEGACY_SETTINGS, hooks: { Stop: null } });
+    const variant = legacyVariant(nullStop);
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE);
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const hooks = hooksObject(settingsObject(run.home))
-      expect(Object.prototype.hasOwnProperty.call(hooks, "Stop")).toBe(false)
+      expect(run.exitCode, run.output).toBe(0);
+      const hooks = hooksObject(settingsObject(run.home));
+      expect(Object.prototype.hasOwnProperty.call(hooks, "Stop")).toBe(false);
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("prunes the retired effect-kit plugin key from deployed settings", () => {
-    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
-    const deployed = isObject(drift["enabledPlugins"]) ? drift["enabledPlugins"] : {}
-    drift["enabledPlugins"] = { ...deployed, "effect-kit@docks": true }
+    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"));
+    const deployed = isObject(drift["enabledPlugins"]) ? drift["enabledPlugins"] : {};
+    drift["enabledPlugins"] = { ...deployed, "effect-kit@docks": true };
     const variant = materializeVariant("home-drift", {
-      ".claude/settings.json": stableStringify(drift)
-    })
-    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE)
+      ".claude/settings.json": stableStringify(drift),
+    });
+    const run = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE);
     try {
-      expect(run.exitCode, run.output).toBe(0)
-      const plugins = settingsObject(run.home)["enabledPlugins"]
-      if (!isObject(plugins)) throw new Error("enabledPlugins is not an object after sync")
-      expect(Object.prototype.hasOwnProperty.call(plugins, "effect-kit@docks")).toBe(false)
-      expect(plugins["docks@docks"]).toBe(true)
+      expect(run.exitCode, run.output).toBe(0);
+      const plugins = settingsObject(run.home)["enabledPlugins"];
+      if (!isObject(plugins)) throw new Error("enabledPlugins is not an object after sync");
+      expect(Object.prototype.hasOwnProperty.call(plugins, "effect-kit@docks")).toBe(false);
+      expect(plugins["docks@docks"]).toBe(true);
     } finally {
-      cleanup([run])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
+  });
 
   it("migrates the four obsolete Write permission rules on a flag-less sync", () => {
-    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"))
+    const drift = settingsObject(join(FIXTURES_DIR, "home-drift"));
     drift["permissions"] = {
       allow: ["Write(./)", "Write(user-owned/**)"],
-      deny: ["Write(**/.env)", "Write(**/.env.local)", "Write(**/secrets/**)", "Write(user-private/**)"],
-      ask: []
-    }
+      deny: [
+        "Write(**/.env)",
+        "Write(**/.env.local)",
+        "Write(**/secrets/**)",
+        "Write(user-private/**)",
+      ],
+      ask: [],
+    };
     const variant = materializeVariant("home-drift", {
-      ".claude/settings.json": stableStringify(drift)
-    })
-    const stubs = makeStubDir()
-    const dryRun = runEngine(["sync", "claude", "--dry-run"], variant, stubs)
-    const dryRunAllow = permissionRules(settingsObject(dryRun.home), "allow")
-    const applied = runEngine(["sync", "claude"], variant, stubs, { reuseHome: dryRun.home })
-    const replay = runEngine(["sync", "claude"], variant, stubs, { reuseHome: applied.home })
+      ".claude/settings.json": stableStringify(drift),
+    });
+    const stubs = makeStubDir();
+    const dryRun = runEngine(["sync", "claude", "--dry-run"], variant, stubs);
+    const dryRunAllow = permissionRules(settingsObject(dryRun.home), "allow");
+    const applied = runEngine(["sync", "claude"], variant, stubs, { reuseHome: dryRun.home });
+    const replay = runEngine(["sync", "claude"], variant, stubs, { reuseHome: applied.home });
     try {
-      expect(dryRunAllow).toContain("Write(./)")
-      expect(dryRun.output).toContain("[dry-run] del 4 stale permission rule(s)")
+      expect(dryRunAllow).toContain("Write(./)");
+      expect(dryRun.output).toContain("[dry-run] del 4 stale permission rule(s)");
 
-      const settings = settingsObject(applied.home)
-      const allow = permissionRules(settings, "allow")
-      const deny = permissionRules(settings, "deny")
-      expect(allow).toContain("Edit(./)")
-      expect(allow).toContain("Write(user-owned/**)")
-      expect(allow).not.toContain("Write(./)")
+      const settings = settingsObject(applied.home);
+      const allow = permissionRules(settings, "allow");
+      const deny = permissionRules(settings, "deny");
+      expect(allow).toContain("Edit(./)");
+      expect(allow).toContain("Write(user-owned/**)");
+      expect(allow).not.toContain("Write(./)");
       for (const path of ["**/.env", "**/.env.local", "**/secrets/**"]) {
-        expect(deny).toContain(`Edit(${path})`)
-        expect(deny).not.toContain(`Write(${path})`)
+        expect(deny).toContain(`Edit(${path})`);
+        expect(deny).not.toContain(`Write(${path})`);
       }
-      expect(deny).toContain("Write(user-private/**)")
-      expect(applied.output).toContain("permission rules: 4")
-      expect(replay.output).not.toContain("Pruned stale artifacts")
+      expect(deny).toContain("Write(user-private/**)");
+      expect(applied.output).toContain("permission rules: 4");
+      expect(replay.output).not.toContain("Pruned stale artifacts");
     } finally {
-      cleanup([replay])
-      rmSync(variant, { recursive: true, force: true })
+      cleanup([replay]);
+      rmSync(variant, { recursive: true, force: true });
     }
-  })
-})
+  });
+});
 
 describe("contextual dependency degradation", () => {
   it("syncs Claude and Codex without jq or a jq warning", () => {
     for (const target of ["claude", "codex"] as const) {
-      const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }, NATIVE), { ...NATIVE, maskTools: ["jq"] })
+      const run = runEngine(["sync", target], "home-fresh", makeStubDir({ jq: null }, NATIVE), {
+        ...NATIVE,
+        maskTools: ["jq"],
+      });
       try {
-        expect(run.exitCode, run.output).toBe(0)
-        expect(run.output).not.toContain("jq not installed")
-        expect(readArgvLog(run)).not.toMatch(/^jq\t/m)
+        expect(run.exitCode, run.output).toBe(0);
+        expect(run.output).not.toContain("jq not installed");
+        expect(readArgvLog(run)).not.toMatch(/^jq\t/m);
       } finally {
-        cleanup([run])
+        cleanup([run]);
       }
     }
-  })
-})
+  });
+});

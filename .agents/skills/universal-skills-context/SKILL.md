@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/skillsSync.ts
-      lines: "1-281"
+      lines: "1-51"
     - path: SoT/.agents/skills.txt
       lines: "1-3"
   updated: "2026-08-15"

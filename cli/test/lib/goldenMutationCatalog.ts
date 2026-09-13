@@ -1,37 +1,39 @@
-import { join } from "node:path"
+import { join } from "node:path";
 
-import { FIXTURES_DIR } from "./goldenResources"
-import { stableStringify } from "./goldenSnapshot"
+import { FIXTURES_DIR } from "./goldenResources";
+import { stableStringify } from "./goldenSnapshot";
 
 export interface MutationMatrixCase {
-  fixture: string
-  cmd: Array<string>
-  stubs?: Record<string, string | null>
-  variant?: string
+  fixture: string;
+  cmd: Array<string>;
+  stubs?: Record<string, string | null>;
+  variant?: string;
 }
 
 export interface MutationReplayCase {
-  fixture: string
-  cmd: Array<string>
-  cmd2?: Array<string>
+  fixture: string;
+  cmd: Array<string>;
+  cmd2?: Array<string>;
 }
 
 const LEGACY_CLAUDE_SETTINGS = stableStringify({
   hooks: {
     SessionStart: [{ hooks: [{ type: "command", command: "legacy-session", timeout: 5 }] }],
-    Notification: [{ hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] }],
-    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }]
+    Notification: [
+      { hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] },
+    ],
+    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }],
   },
   statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
-  userOnly: "preserved"
-})
+  userOnly: "preserved",
+});
 
 export const LEGACY_CLAUDE_FILES = {
   ".claude/settings.json": LEGACY_CLAUDE_SETTINGS,
   ".claude/statusline.sh": "legacy-statusline-marker\n",
   ".claude/fetch-usage.sh": "legacy-fetch-marker\n",
-  ".claude/hooks/notify.sh": "legacy-notify-marker\n"
-}
+  ".claude/hooks/notify.sh": "legacy-notify-marker\n",
+};
 
 // `variant` disambiguates rows whose fixture+cmd+stub-keys are identical but
 // whose stub BODIES differ — without it their labels collide and the later
@@ -56,9 +58,9 @@ export const MATRIX: Array<MutationMatrixCase> = [
 } else {
   console.error("stub omp operation failure")
   process.exitCode = 1
-}`
+}`,
     },
-    variant: "plugin-failure"
+    variant: "plugin-failure",
   },
   // Only `plugin marketplace update` exits non-zero - the incident shape, where a
   // stale marketplace clone let install and enable-state look clean. Both refresh
@@ -72,9 +74,9 @@ export const MATRIX: Array<MutationMatrixCase> = [
 } else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "update") {
   console.error("stub claude marketplace refresh failure")
   process.exitCode = 1
-}`
+}`,
     },
-    variant: "marketplace-refresh-failure"
+    variant: "marketplace-refresh-failure",
   },
   { fixture: "home-drift", cmd: ["sync", "claude"] },
   { fixture: "home-drift", cmd: ["sync", "codex"] },
@@ -96,7 +98,14 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-advisor=maybe"] },
   {
     fixture: "home-fresh",
-    cmd: ["sync", "agents", "--dry-run", "--claude-effort=low", "--claude-advisor=on", "--codex-effort=max"]
+    cmd: [
+      "sync",
+      "agents",
+      "--dry-run",
+      "--claude-effort=low",
+      "--claude-advisor=on",
+      "--codex-effort=max",
+    ],
   },
   { fixture: "home-drift", cmd: ["sync", "claude", "--claude-plugin=supabase,n8n"] },
   {
@@ -108,8 +117,8 @@ export const MATRIX: Array<MutationMatrixCase> = [
       "--claude-effort=low",
       "--claude-advisor=on",
       "--claude-compact-window=680k",
-      "--claude-permissive"
-    ]
+      "--claude-permissive",
+    ],
   },
   { fixture: "home-drift", cmd: ["model", "claude", "opus"] },
   { fixture: "home-drift", cmd: ["model", "claude", "default"] },
@@ -118,14 +127,33 @@ export const MATRIX: Array<MutationMatrixCase> = [
   { fixture: "home-fresh", cmd: ["toolchain", "check"] },
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { claude: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { codex: null } },
-  { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { jq: null }, variant: "jq-absent-bun-hooks" },
-  { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { jq: null }, variant: "jq-absent-native-sync" },
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "claude"],
+    stubs: { jq: null },
+    variant: "jq-absent-bun-hooks",
+  },
+  {
+    fixture: "home-fresh",
+    cmd: ["sync", "codex"],
+    stubs: { jq: null },
+    variant: "jq-absent-native-sync",
+  },
   // Missing-git trio: uniform hint-bearing warn from the dependency registry;
   // the combined run must emit exactly ONE deduplicated git warn.
   { fixture: "home-fresh", cmd: ["sync", "claude"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync", "codex"], stubs: { git: null } },
   { fixture: "home-fresh", cmd: ["sync"], stubs: { git: null } },
-]
+  // Codex model modifier: deployed config.toml model key plus restart advice.
+  { fixture: "home-drift", cmd: ["sync", "codex", "--codex-model=gpt-5.5"] },
+  // Default pseudo-value: deletes the deployed model key (flag-less sync reverts).
+  { fixture: "home-fresh", cmd: ["sync", "claude", "--claude-model=default"] },
+  // Missing-config model set: warn and skip instead of writing.
+  { fixture: "home-fresh", cmd: ["model", "codex", "gpt-5.5"] },
+  // Flag scope: reconcile and prune are accepted on the omp and agents targets.
+  { fixture: "home-fresh", cmd: ["sync", "omp", "--reconcile"] },
+  { fixture: "home-fresh", cmd: ["sync", "agents", "--prune"] },
+];
 
 /**
  * Sequential same-HOME replay rows — run the command twice against ONE home
@@ -139,10 +167,16 @@ export const REPLAYS: Array<MutationReplayCase> = [
   { fixture: "home-fresh", cmd: ["sync", "--verbose"] },
   // Model modifier as the ONLY second-run mutation: the restart advice must
   // print from the model trigger alone (everything else is already in sync).
-  { fixture: "home-drift", cmd: ["sync", "claude"], cmd2: ["sync", "claude", "--claude-model=opus"] }
-]
+  {
+    fixture: "home-drift",
+    cmd: ["sync", "claude"],
+    cmd2: ["sync", "claude", "--claude-model=opus"],
+  },
+  // Codex repeat run: the already-in-sync surface for the codex target.
+  { fixture: "home-drift", cmd: ["sync", "codex"] },
+];
 
-export const TOML_DIR = join(FIXTURES_DIR, "codex-toml")
+export const TOML_DIR = join(FIXTURES_DIR, "codex-toml");
 export const TOML_SHAPES = [
   "01-top-level-comments.toml",
   "02-first-table-insert.toml",
@@ -150,5 +184,5 @@ export const TOML_SHAPES = [
   "04-features-extra-keys.toml",
   "05-user-tables.toml",
   "06-sot-table-replace.toml",
-  "07-dotted-quoted-headers.toml"
-]
+  "07-dotted-quoted-headers.toml",
+];

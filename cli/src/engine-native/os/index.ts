@@ -1,24 +1,24 @@
-import { darwin } from "./darwin"
-import { linux } from "./linux"
-import type { HostOs, PlatformName } from "./types"
-import { windows } from "./windows"
+import { darwin } from "./darwin";
+import { linux } from "./linux";
+import type { HostOs, PlatformName } from "./types";
+import { windows } from "./windows";
 
-export * from "./types"
+export * from "./types";
 
 export function rawPlatform(): NodeJS.Platform {
-  return process.platform
+  return process.platform;
 }
 
 export function platformName(pf: NodeJS.Platform = rawPlatform()): PlatformName {
   switch (pf) {
     case "linux":
-      return "linux"
+      return "linux";
     case "darwin":
-      return "darwin"
+      return "darwin";
     case "win32":
-      return "windows"
+      return "windows";
     default:
-      return "unknown"
+      return "unknown";
   }
 }
 
@@ -27,16 +27,16 @@ const unknown: HostOs = {
   ...linux,
   id: "unknown",
   toolchainOs: "",
-  supportsBubblewrap: false
-}
+  supportsBubblewrap: false,
+};
 
 const HOSTS: Readonly<Record<PlatformName, HostOs>> = {
   linux,
   darwin,
   windows,
-  unknown
-}
+  unknown,
+};
 
 export function hostOs(id: PlatformName = platformName()): HostOs {
-  return HOSTS[id]
+  return HOSTS[id];
 }

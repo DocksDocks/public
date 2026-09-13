@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased - maintainability for AI-assisted development
+
+- No user-visible behavior changes. One command proves a change: `bun run check` runs oxlint, typecheck, unit tests, and both golden suites, and CI runs it on push and pull request.
+- Oversized modules split along change axes with prior exports intact; shared shapes live once in `engine-native/sharedTypes.d.ts`; shipped JavaScript is typechecked.
+- oxlint covers mechanical mistakes and oxfmt formats code. `AGENTS.md` records layout, invariants, version rules, and checks.
+
 ## 2026-09-12 - docks-kit 0.17.1: the omp picker asks for thinking levels
 
 - `docks-kit omp --pick` now continues into a thinking-level wizard after the

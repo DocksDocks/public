@@ -1,7 +1,7 @@
 /**
  * Deterministic subprocess execution for golden regressions.
  */
-import { spawnSync, type SpawnSyncReturns } from "node:child_process"
+import { spawnSync, type SpawnSyncReturns } from "node:child_process";
 import {
   closeSync,
   copyFileSync,
@@ -12,19 +12,18 @@ import {
   readdirSync,
   rmSync,
   symlinkSync,
-  writeFileSync
-} from "node:fs"
-import { delimiter, isAbsolute, join } from "node:path"
+  writeFileSync,
+} from "node:fs";
+import { delimiter, isAbsolute, join } from "node:path";
 
-import { hostOs } from "../../src/engine-native/os"
+import { hostOs } from "../../src/engine-native/os";
 
-import { BUN_RUNTIME, cliEntry } from "./cliEntry"
-import { FIXTURES_DIR, REPO_DIR, childHostId, readStubHost, temporaryDir } from "./goldenResources"
-import { normalizeOutput } from "./goldenSnapshot"
+import { BUN_RUNTIME, cliEntry } from "./cliEntry";
+import { FIXTURES_DIR, REPO_DIR, childHostId, readStubHost, temporaryDir } from "./goldenResources";
+import { normalizeOutput } from "./goldenSnapshot";
 
-
-const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-")
-const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
+const BUN_INSTALL_CACHE_DIR = temporaryDir("golden-bun-cache-");
+const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-");
 
 /**
  * Preload first, then the entry. The preload spoofs the host before the CLI
@@ -34,25 +33,24 @@ const BUN_RUNTIME_TRANSPILER_CACHE_PATH = temporaryDir("golden-bun-transpiler-")
 const childEntryArgs = (nativeHost: boolean): Array<string> =>
   nativeHost
     ? [cliEntry()]
-    : ["--preload", join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"), cliEntry()]
+    : ["--preload", join(REPO_DIR, "cli", "test", "lib", "goldenPlatform.ts"), cliEntry()];
 
 export interface EngineRun {
-  readonly exitCode: number
-  readonly output: string
+  readonly exitCode: number;
+  readonly output: string;
   /** Alias for ordered merged output; retained for focused assertions. */
-  readonly stdout: string
-  readonly home: string
-  readonly argvLog: string
+  readonly stdout: string;
+  readonly home: string;
+  readonly argvLog: string;
 }
 
 /** Channel-aware run: stdout and stderr captured separately (no 2>&1 merge). */
 export interface SplitRun {
-  readonly exitCode: number
-  readonly stdout: string
-  readonly stderr: string
-  readonly home: string
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly home: string;
 }
-
 
 /**
  * PATH with every directory holding one of `names` replaced by a shadow
@@ -65,46 +63,46 @@ export interface SplitRun {
  * /usr/local/bin, and hiding those would fail the run for the wrong reason.
  */
 function maskedPath(names: ReadonlyArray<string>): string {
-  const dirs = (process.env["PATH"] ?? "").split(delimiter)
-  if (names.length === 0) return dirs.join(delimiter)
+  const dirs = (process.env["PATH"] ?? "").split(delimiter);
+  if (names.length === 0) return dirs.join(delimiter);
   const blockedNames = names.flatMap((name) =>
-    hostOs().executableSuffixes.map((suffix) => `${name}${suffix}`.toLowerCase())
-  )
-  const blocked = new Set(blockedNames)
+    hostOs().executableSuffixes.map((suffix) => `${name}${suffix}`.toLowerCase()),
+  );
+  const blocked = new Set(blockedNames);
   const holdsMasked = (dir: string): boolean =>
-    dir !== "" && blockedNames.some((name) => existsSync(join(dir, name)))
-  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, blocked) : dir)).join(delimiter)
+    dir !== "" && blockedNames.some((name) => existsSync(join(dir, name)));
+  return dirs.map((dir) => (holdsMasked(dir) ? shadowDir(dir, blocked) : dir)).join(delimiter);
 }
 
 function shadowDir(dir: string, blocked: ReadonlySet<string>): string {
-  const shadow = temporaryDir("golden-mask-")
+  const shadow = temporaryDir("golden-mask-");
   for (const entry of readdirSync(dir)) {
-    if (blocked.has(entry.toLowerCase())) continue
+    if (blocked.has(entry.toLowerCase())) continue;
     try {
-      symlinkSync(join(dir, entry), join(shadow, entry))
+      symlinkSync(join(dir, entry), join(shadow, entry));
     } catch {
       try {
-        copyFileSync(join(dir, entry), join(shadow, entry))
+        copyFileSync(join(dir, entry), join(shadow, entry));
       } catch {
         // subdirectory or unreadable entry — PATH lookup doesn't need it
       }
     }
   }
-  return shadow
+  return shadow;
 }
 
 interface RunOpts {
-  readonly maskTools?: ReadonlyArray<string>
+  readonly maskTools?: ReadonlyArray<string>;
   /** Run against an existing HOME (sequential replay) instead of materializing the fixture. */
-  readonly reuseHome?: string
+  readonly reuseHome?: string;
   /** Extra env for the child (e.g. DOCKS_KIT_VERBOSE). */
-  readonly env?: Record<string, string>
+  readonly env?: Record<string, string>;
   /** Exercise the recording host instead of the Linux-canonical golden preload. */
-  readonly nativeHost?: boolean
+  readonly nativeHost?: boolean;
 }
 
 function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
-  return [...childEntryArgs(opts.nativeHost === true), ...args]
+  return [...childEntryArgs(opts.nativeHost === true), ...args];
 }
 
 /**
@@ -115,26 +113,31 @@ function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
  * on one runner.
  */
 function requirePairedStubHost(stubDir: string, opts: RunOpts): void {
-  const expected = childHostId(opts.nativeHost === true)
-  const planted = readStubHost(stubDir)
+  const expected = childHostId(opts.nativeHost === true);
+  const planted = readStubHost(stubDir);
   if (planted !== expected) {
     throw new Error(
       `stub host mismatch: stubs were planted for ${planted} but this child runs as ${expected}. ` +
-        `Pass the same options object to makeStubDir and to the run helper.`
-    )
+        `Pass the same options object to makeStubDir and to the run helper.`,
+    );
   }
 }
 
 function materializeHome(kind: string, fixture: string, reuseHome?: string): string {
-  if (reuseHome !== undefined) return reuseHome
-  const home = temporaryDir(`golden-home-${kind}-`)
-  rmSync(home, { recursive: true })
-  const source = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture)
-  cpSync(source, home, { recursive: true })
-  return home
+  if (reuseHome !== undefined) return reuseHome;
+  const home = temporaryDir(`golden-home-${kind}-`);
+  rmSync(home, { recursive: true });
+  const source = isAbsolute(fixture) ? fixture : join(FIXTURES_DIR, fixture);
+  cpSync(source, home, { recursive: true });
+  return home;
 }
 
-function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): Record<string, string> {
+function runEnv(
+  home: string,
+  stubDir: string,
+  argvLog: string,
+  opts: RunOpts,
+): Record<string, string> {
   return {
     HOME: home,
     USERPROFILE: home,
@@ -154,49 +157,49 @@ function runEnv(home: string, stubDir: string, argvLog: string, opts: RunOpts): 
     // globals like DRY_RUN can never leak in from the invoking shell.
     AGENTS_DIR: join(home, ".agents"),
     ...(opts.env ?? {}),
-    DOCKS_KIT_SYNC_CONCURRENCY: "1"
-  }
+    DOCKS_KIT_SYNC_CONCURRENCY: "1",
+  };
 }
 
 export function runEngine(
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
-  opts: RunOpts = {}
+  opts: RunOpts = {},
 ): EngineRun {
-  requirePairedStubHost(stubDir, opts)
-  const home = materializeHome("native", fixture, opts.reuseHome)
-  const argvLog = join(home, ".golden-argv.log")
-  writeFileSync(argvLog, "")
+  requirePairedStubHost(stubDir, opts);
+  const home = materializeHome("native", fixture, opts.reuseHome);
+  const argvLog = join(home, ".golden-argv.log");
+  writeFileSync(argvLog, "");
 
-  const argv = childArgv(args, opts)
-  const command = [BUN_RUNTIME, ...argv].join(" ")
-  const mergedOutputPath = join(home, ".golden-merged-output")
-  const mergedOutputFd = openSync(mergedOutputPath, "w")
-  let result: SpawnSyncReturns<string>
+  const argv = childArgv(args, opts);
+  const command = [BUN_RUNTIME, ...argv].join(" ");
+  const mergedOutputPath = join(home, ".golden-merged-output");
+  const mergedOutputFd = openSync(mergedOutputPath, "w");
+  let result: SpawnSyncReturns<string>;
   try {
     result = spawnSync(BUN_RUNTIME, argv, {
       cwd: REPO_DIR,
       env: {
         ...runEnv(home, stubDir, argvLog, opts),
-        DOCKS_KIT_ENGINE: "native-raw"
+        DOCKS_KIT_ENGINE: "native-raw",
       },
       stdio: ["ignore", mergedOutputFd, mergedOutputFd],
       encoding: "utf8",
-      timeout: 120_000
-    })
+      timeout: 120_000,
+    });
   } finally {
-    closeSync(mergedOutputFd)
+    closeSync(mergedOutputFd);
   }
-  const output = normalizeOutput(readFileSync(mergedOutputPath, "utf8"), home, stubDir)
-  rmSync(mergedOutputPath, { force: true })
+  const output = normalizeOutput(readFileSync(mergedOutputPath, "utf8"), home, stubDir);
+  rmSync(mergedOutputPath, { force: true });
   return {
     exitCode: checkedSpawnExitCode(command, result),
     output,
     stdout: output,
     home,
-    argvLog
-  }
+    argvLog,
+  };
 }
 
 /**
@@ -208,30 +211,30 @@ export function runEngineSplit(
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
-  opts: RunOpts = {}
+  opts: RunOpts = {},
 ): SplitRun {
-  requirePairedStubHost(stubDir, opts)
-  const home = materializeHome("native", fixture, opts.reuseHome)
-  const argvLog = join(home, ".golden-argv.log")
-  writeFileSync(argvLog, "")
-  const argv = childArgv(args, opts)
-  const command = [BUN_RUNTIME, ...argv].join(" ")
+  requirePairedStubHost(stubDir, opts);
+  const home = materializeHome("native", fixture, opts.reuseHome);
+  const argvLog = join(home, ".golden-argv.log");
+  writeFileSync(argvLog, "");
+  const argv = childArgv(args, opts);
+  const command = [BUN_RUNTIME, ...argv].join(" ");
   const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,
     env: {
       ...runEnv(home, stubDir, argvLog, opts),
-      DOCKS_KIT_ENGINE: "native-raw"
+      DOCKS_KIT_ENGINE: "native-raw",
     },
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
-    timeout: 120_000
-  })
+    timeout: 120_000,
+  });
   return {
     exitCode: checkedSpawnExitCode(command, result),
     stdout: normalizeOutput(result.stdout ?? "", home, stubDir),
     stderr: normalizeOutput(result.stderr ?? "", home, stubDir),
-    home
-  }
+    home,
+  };
 }
 
 /**
@@ -242,47 +245,47 @@ export function runPublicCli(
   args: ReadonlyArray<string>,
   fixture: string,
   stubDir: string,
-  opts: RunOpts = {}
+  opts: RunOpts = {},
 ): SplitRun {
-  requirePairedStubHost(stubDir, opts)
-  const home = materializeHome("cli", fixture, opts.reuseHome)
-  const argvLog = join(home, ".golden-argv.log")
-  writeFileSync(argvLog, "")
-  const argv = childArgv(args, opts)
-  const command = [BUN_RUNTIME, ...argv].join(" ")
+  requirePairedStubHost(stubDir, opts);
+  const home = materializeHome("cli", fixture, opts.reuseHome);
+  const argvLog = join(home, ".golden-argv.log");
+  writeFileSync(argvLog, "");
+  const argv = childArgv(args, opts);
+  const command = [BUN_RUNTIME, ...argv].join(" ");
   const result = spawnSync(BUN_RUNTIME, argv, {
     cwd: REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",
-    timeout: 120_000
-  })
+    timeout: 120_000,
+  });
   return {
     exitCode: checkedSpawnExitCode(command, result),
     stdout: normalizeOutput(result.stdout ?? "", home, stubDir),
     stderr: normalizeOutput(result.stderr ?? "", home, stubDir),
-    home
-  }
+    home,
+  };
 }
 
 export function readArgvLog(run: EngineRun): string {
-  return readFileSync(run.argvLog, "utf8")
+  return readFileSync(run.argvLog, "utf8");
 }
 
 export function cleanup(runs: Array<EngineRun>): void {
-  for (const run of runs) rmSync(run.home, { recursive: true, force: true })
+  for (const run of runs) rmSync(run.home, { recursive: true, force: true });
 }
 
 export function checkedSpawnExitCode(
   command: string,
-  result: Pick<SpawnSyncReturns<string>, "status" | "signal" | "error">
+  result: Pick<SpawnSyncReturns<string>, "status" | "signal" | "error">,
 ): number {
   if (result.error !== undefined) {
-    const code = "code" in result.error ? result.error.code : undefined
-    if (code === "ETIMEDOUT") throw new Error(`${command} timed out: ${String(result.error)}`)
-    throw new Error(`${command} failed to spawn: ${String(result.error)}`)
+    const code = "code" in result.error ? result.error.code : undefined;
+    if (code === "ETIMEDOUT") throw new Error(`${command} timed out: ${String(result.error)}`);
+    throw new Error(`${command} failed to spawn: ${String(result.error)}`);
   }
-  if (typeof result.status === "number") return result.status
-  if (result.signal !== null) throw new Error(`${command} terminated by signal ${result.signal}`)
-  throw new Error(`${command} completed without status or signal`)
+  if (typeof result.status === "number") return result.status;
+  if (result.signal !== null) throw new Error(`${command} terminated by signal ${result.signal}`);
+  throw new Error(`${command} completed without status or signal`);
 }

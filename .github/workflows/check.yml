@@ -1,0 +1,39 @@
+name: check
+
+# Fast check gate on every push and pull request: lint, typecheck, and unit
+# tests through the `check` package script. Golden-regression stays in
+# `parity.yml`; release stays in `release-cli.yml`; both are unchanged.
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # A superseded pull request commit is noise, but a superseded `main` commit
+  # would be left with no green run, which is the record a later bisect reads.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04 # pinned label, never *-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-bun-cache
+
+      - name: Install dependencies
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun install --frozen-lockfile
+
+      - name: Check gate
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run check

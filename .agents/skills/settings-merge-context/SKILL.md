@@ -5,9 +5,9 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-590"
+      lines: "1-276"
     - path: cli/src/engine-native/claudeSettingsModifiers.ts
-      lines: "1-119"
+      lines: "1-115"
     - path: cli/src/engine-native/settings.ts
       lines: "1-42"
     - path: cli/src/engine-native/claudeRetired.ts
