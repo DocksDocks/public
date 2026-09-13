@@ -99,15 +99,15 @@ const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>
  * publish. A model with no ladder and a model with one level are settled
  * without a question.
  */
-const pickLevels = (model: CatalogModel) =>
+const pickLevels = (catalogModel: CatalogModel) =>
   Effect.gen(function* () {
-    const plan = planEffortChoice(model.thinking)
+    const plan = planEffortChoice(catalogModel.thinking)
     if (plan.kind === "none") {
-      yield* Console.error(`${model.name} publishes no thinking levels; the model default applies`)
+      yield* Console.error(`${catalogModel.name} publishes no thinking levels; the model default applies`)
       return { thinking: undefined, advisorThinking: undefined }
     }
     if (plan.kind === "fixed") {
-      yield* Console.error(`${model.name} publishes one thinking level: ${plan.level}`)
+      yield* Console.error(`${catalogModel.name} publishes one thinking level: ${plan.level}`)
       return { thinking: plan.level, advisorThinking: plan.level }
     }
     const uniform = yield* Prompt.Select({

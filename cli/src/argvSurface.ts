@@ -95,7 +95,7 @@ const flagSurface = (params: ReadonlyArray<unknown>): FlagSurface => {
   return { longFlags, aliases, valueFlags, repeatableFlags }
 }
 
-const commandSurface = (command: CommandValue): FlagSurface => {
+const buildCommandSurface = (command: CommandValue): FlagSurface => {
   if (!("config" in command)) {
     throw new Error(`Effect CLI did not expose flags for '${command.name}'`)
   }
@@ -148,7 +148,7 @@ export const buildSurfaces = (
   // `Object.prototype`, so an unknown subcommand with such a name would slip past the
   // unknown-command guard and dereference a surface that was never built.
   const commandSurfaces: ReadonlyMap<string, FlagSurface> = new Map(
-    commands.map((command) => [command.name, commandSurface(command)])
+    commands.map((command) => [command.name, buildCommandSurface(command)])
   )
   return { commandSurfaces, globalSurface: globalSurface(builtIns) }
 }

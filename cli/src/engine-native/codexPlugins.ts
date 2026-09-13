@@ -78,9 +78,9 @@ function mergeMarketplace(repo: Json, user: Json): Json {
     ...(Array.isArray(r["plugins"]) ? r["plugins"] : [])
   ]
   const firstByName = new Map<string, Json>()
-  for (const p of [...plugins].reverse()) {
-    const name = isObject(p) && typeof p["name"] === "string" ? p["name"] : ""
-    if (!firstByName.has(name)) firstByName.set(name, p)
+  for (const entry of [...plugins].reverse()) {
+    const name = isObject(entry) && typeof entry["name"] === "string" ? entry["name"] : ""
+    if (!firstByName.has(name)) firstByName.set(name, entry)
   }
   merged["plugins"] = [...firstByName.keys()].sort(compareCodepoints).map((n) => firstByName.get(n)!).reverse()
   return merged

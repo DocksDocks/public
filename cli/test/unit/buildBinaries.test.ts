@@ -37,17 +37,17 @@ if [[ "\${1:-}" != "build" ]]; then
   exit 0
 fi
 out=""
-while [[ \$# -gt 0 ]]; do
-  if [[ "\$1" == "--outfile" ]]; then
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--outfile" ]]; then
     shift
-    out="\$1"
+    out="$1"
     break
   fi
   shift
 done
-[[ -n "\$out" ]] || exit 2
-printf '%s\\n' 'new binary' > "\$out"
-chmod +x "\$out"
+[[ -n "$out" ]] || exit 2
+printf '%s\\n' 'new binary' > "$out"
+chmod +x "$out"
 `)
   chmodSync(bun, 0o755)
 

@@ -12,7 +12,7 @@ import { makePlatform, type EngineServices } from "../../src/engine-native/servi
 import { kitHome } from "../../src/kitHome"
 
 const contextCommand = `echo "[CONTEXT] Current date: $(date '+%A, %Y-%m-%d %H:%M:%S %Z')"`
-const configCommand = `echo "[CONFIG] Context: $([ \\\"\${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\\" = \\\"1\\\" ] && echo '200K' || echo '1M') | Compact-window: \${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-full} | Effort: \${CLAUDE_CODE_EFFORT_LEVEL:-high} | Thinking: adaptive | Model: \${ANTHROPIC_DEFAULT_OPUS_MODEL:-default} | Subagent: \${CLAUDE_CODE_SUBAGENT_MODEL:-default}"`
+const configCommand = `echo "[CONFIG] Context: $([ \\"\${CLAUDE_CODE_DISABLE_1M_CONTEXT:-0}\\" = \\"1\\" ] && echo '200K' || echo '1M') | Compact-window: \${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-full} | Effort: \${CLAUDE_CODE_EFFORT_LEVEL:-high} | Thinking: adaptive | Model: \${ANTHROPIC_DEFAULT_OPUS_MODEL:-default} | Subagent: \${CLAUDE_CODE_SUBAGENT_MODEL:-default}"`
 const skillsCommand = `SKILL_COUNT=$(find .claude/skills -name 'SKILL.md' -mindepth 2 -maxdepth 2 2>/dev/null | wc -l); [ "$SKILL_COUNT" -gt 0 ] && echo "[SKILLS] $SKILL_COUNT project skills available in .claude/skills/. Claude Code loads them on demand via Skill tool. After code changes affecting documented patterns, update the relevant skill and its metadata.updated field." || true`
 
 function connectorCommand(root: string): string {

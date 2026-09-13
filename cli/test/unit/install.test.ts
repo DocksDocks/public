@@ -188,16 +188,16 @@ chmod +x '${bun}'
     const curl = join(fakeBin, "curl")
     writeFileSync(curl, `#!/bin/bash
 out=""
-while [[ \$# -gt 0 ]]; do
-  if [[ "\$1" == "-o" ]]; then
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-o" ]]; then
     shift
-    out="\$1"
+    out="$1"
     break
   fi
   shift
 done
-[[ -n "\$out" ]] || exit 2
-cp '${downloadedInstaller}' "\$out"
+[[ -n "$out" ]] || exit 2
+cp '${downloadedInstaller}' "$out"
 `)
     chmodSync(curl, 0o755)
 

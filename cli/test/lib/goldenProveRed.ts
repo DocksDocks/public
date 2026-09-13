@@ -14,7 +14,7 @@ export function readGolden<Case>(goldenPath: string): {
     parsed = JSON.parse(readFileSync(goldenPath, "utf8"))
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`${goldenPath}: malformed golden JSON: ${message}`)
+    throw new Error(`${goldenPath}: malformed golden JSON: ${message}`, { cause: error })
   }
 
   if (

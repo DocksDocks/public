@@ -170,17 +170,17 @@ describe("DependencyManager registry", () => {
   })
 
   it("does not capture a Bun version when Bun is absent", async () => {
-    const capture = vi.fn(async () => "")
+    const captureFn = vi.fn(async () => "")
     const exec: ProbeExecutor = {
       commandExists: () => false,
-      capture,
+      capture: captureFn,
       which: () => ""
     }
     const version = DEPENDENCIES.bun.version
     if (version === undefined) throw new Error("Bun version probe is not registered")
 
     await expect(version(exec)).resolves.toBe("")
-    expect(capture).not.toHaveBeenCalled()
+    expect(captureFn).not.toHaveBeenCalled()
   })
 
   it("uses the resolved BUN_INSTALL executable for the Bun version probe", async () => {

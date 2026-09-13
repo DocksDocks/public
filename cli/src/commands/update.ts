@@ -3,7 +3,7 @@ import { Console, Effect } from "effect"
 import { existsSync, readFileSync } from "node:fs"
 import { bail, compiled } from "../engine"
 import { kitHome } from "../kitHome"
-import { p, spawnHost, which } from "../engine-native/exec"
+import { p, spawnHost } from "../engine-native/exec"
 import { hostOs, type HostOs } from "../engine-native/os"
 
 const noSync = Flag.Boolean("no-sync").pipe(

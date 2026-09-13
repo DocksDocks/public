@@ -21,12 +21,13 @@ const explicitKitHome = (dir: string, source: string): string => {
         ? String(error.code)
         : undefined
     if (code === "ENOENT") {
-      throw new Error(`DOCKS_KIT_HOME=${source} does not contain package.json`)
+      throw new Error(`DOCKS_KIT_HOME=${source} does not contain package.json`, { cause: error })
     }
     const detail = error instanceof Error ? error.message : String(error)
     const category = code === undefined ? "" : ` (${code})`
     throw new Error(
-      `DOCKS_KIT_HOME=${source} package.json cannot be read${category}: ${detail}`
+      `DOCKS_KIT_HOME=${source} package.json cannot be read${category}: ${detail}`,
+      { cause: error }
     )
   }
 
@@ -35,7 +36,7 @@ const explicitKitHome = (dir: string, source: string): string => {
     manifest = JSON.parse(text)
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error)
-    throw new Error(`DOCKS_KIT_HOME=${source} package.json contains invalid JSON: ${detail}`)
+    throw new Error(`DOCKS_KIT_HOME=${source} package.json contains invalid JSON: ${detail}`, { cause: error })
   }
 
   if (

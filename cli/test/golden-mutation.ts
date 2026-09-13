@@ -395,7 +395,7 @@ function channelInvariantProblems(): Array<string> {
         !empty.stderr.includes(error) ||
         empty.stdout.includes("--- Sync complete ---")
       ) {
-        problems.push(`  modifiers: public explicit-empty ${args.length === 1 ? `${flag}=` : `${flag} \"\"`} lost catalog-first invalid-value behavior`)
+        problems.push(`  modifiers: public explicit-empty ${args.length === 1 ? `${flag}=` : `${flag} ""`} lost catalog-first invalid-value behavior`)
       }
       rmSync(empty.home, { recursive: true, force: true })
     }
