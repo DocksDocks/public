@@ -3,7 +3,7 @@
  * plugin command that exits non-zero is recorded here so engineSync can list
  * it and exit non-zero instead of reporting a clean sync.
  */
-import type { Ctx } from "./index"
+import type { Ctx } from "./index";
 
 /**
  * Record a failed harness-CLI operation. The warning still prints immediately so
@@ -11,6 +11,6 @@ import type { Ctx } from "./index"
  * list the failure in the summary and exit non-zero.
  */
 export function recordFailure(ctx: Ctx, message: string): void {
-  ctx.failures.push(message)
-  ctx.services.logger.warn(message)
+  ctx.failures.push(message);
+  ctx.services.logger.warn(message);
 }

@@ -12,23 +12,23 @@
  * every prerelease transitive, and these tests fail at authoring time when a
  * new one appears.
  */
-import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs"
-import { join, resolve } from "node:path"
-import { describe, expect, it } from "vitest"
+import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { describe, expect, it } from "vitest";
 
-const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..")
-const MODULES_DIR = join(REPO_DIR, "node_modules")
-const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
-const PRERELEASE_BASE = /^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/
+const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
+const MODULES_DIR = join(REPO_DIR, "node_modules");
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+const PRERELEASE_BASE = /^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/;
 
-type Dependencies = Readonly<Record<string, string>>
-type Manifests = Readonly<Record<string, Dependencies>>
+type Dependencies = Readonly<Record<string, string>>;
+type Manifests = Readonly<Record<string, Dependencies>>;
 
 interface Finding {
-  readonly parent: string
-  readonly dependency: string
-  readonly range: string
-  readonly kind: "unpinned" | "unsatisfied"
+  readonly parent: string;
+  readonly dependency: string;
+  readonly range: string;
+  readonly kind: "unpinned" | "unsatisfied";
 }
 
 /**
@@ -38,31 +38,31 @@ interface Finding {
  * every prerelease of the same version tuple.
  */
 function comparePrerelease(left: string, right: string): number {
-  if (left === right) return 0
-  if (left === "") return 1
-  if (right === "") return -1
-  const leftParts = left.split(".")
-  const rightParts = right.split(".")
+  if (left === right) return 0;
+  if (left === "") return 1;
+  if (right === "") return -1;
+  const leftParts = left.split(".");
+  const rightParts = right.split(".");
   for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
-    const a = leftParts[index]
-    const b = rightParts[index]
-    if (a === undefined) return -1
-    if (b === undefined) return 1
-    if (a === b) continue
-    const aNumeric = /^\d+$/.test(a)
-    const bNumeric = /^\d+$/.test(b)
-    if (aNumeric && bNumeric) return Number(a) - Number(b)
-    if (aNumeric !== bNumeric) return aNumeric ? -1 : 1
-    return a < b ? -1 : 1
+    const a = leftParts[index];
+    const b = rightParts[index];
+    if (a === undefined) return -1;
+    if (b === undefined) return 1;
+    if (a === b) continue;
+    const aNumeric = /^\d+$/.test(a);
+    const bNumeric = /^\d+$/.test(b);
+    if (aNumeric && bNumeric) return Number(a) - Number(b);
+    if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+    return a < b ? -1 : 1;
   }
-  return 0
+  return 0;
 }
 
 interface Version {
-  readonly major: number
-  readonly minor: number
-  readonly patch: number
-  readonly tail: string
+  readonly major: number;
+  readonly minor: number;
+  readonly patch: number;
+  readonly tail: string;
 }
 
 /**
@@ -70,16 +70,21 @@ interface Version {
  * as a tag, a URL, or a wildcard, has no version to compare.
  */
 function parseVersion(text: string): Version | undefined {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(text)
-  if (match === null) return undefined
-  return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]), tail: match[4] ?? "" }
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(text);
+  if (match === null) return undefined;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    tail: match[4] ?? "",
+  };
 }
 
 function compareVersions(left: Version, right: Version): number {
-  if (left.major !== right.major) return left.major - right.major
-  if (left.minor !== right.minor) return left.minor - right.minor
-  if (left.patch !== right.patch) return left.patch - right.patch
-  return comparePrerelease(left.tail, right.tail)
+  if (left.major !== right.major) return left.major - right.major;
+  if (left.minor !== right.minor) return left.minor - right.minor;
+  if (left.patch !== right.patch) return left.patch - right.patch;
+  return comparePrerelease(left.tail, right.tail);
 }
 
 /**
@@ -97,18 +102,18 @@ function compareVersions(left: Version, right: Version): number {
  * `^0.0.3` means `>=0.0.3 <0.0.4`.
  */
 function pinSatisfies(pin: Version, operator: string, anchor: Version): boolean {
-  if (compareVersions(pin, anchor) < 0) return false
-  if (operator !== "^" && operator !== "~" && operator !== ">=") return false
+  if (compareVersions(pin, anchor) < 0) return false;
+  if (operator !== "^" && operator !== "~" && operator !== ">=") return false;
   if (pin.tail !== "") {
-    return pin.major === anchor.major && pin.minor === anchor.minor && pin.patch === anchor.patch
+    return pin.major === anchor.major && pin.minor === anchor.minor && pin.patch === anchor.patch;
   }
-  if (operator === ">=") return true
-  if (operator === "~") return pin.major === anchor.major && pin.minor === anchor.minor
+  if (operator === ">=") return true;
+  if (operator === "~") return pin.major === anchor.major && pin.minor === anchor.minor;
   if (anchor.major === 0 && anchor.minor === 0) {
-    return pin.major === 0 && pin.minor === 0 && pin.patch === anchor.patch
+    return pin.major === 0 && pin.minor === 0 && pin.patch === anchor.patch;
   }
-  if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor
-  return pin.major === anchor.major
+  if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor;
+  return pin.major === anchor.major;
 }
 
 /**
@@ -117,17 +122,21 @@ function pinSatisfies(pin: Version, operator: string, anchor: Version): boolean 
  * sibling, so both leave the tree held. Every other alternative floats over a
  * prerelease and needs an exact root pin that satisfies this alternative.
  */
-function alternativeKind(alternative: string, pinText: string | undefined): Finding["kind"] | undefined {
-  const trimmed = alternative.trim()
-  if (EXACT_VERSION.test(trimmed)) return undefined
-  const anchorText = trimmed.replace(/^(?:\^|~|>=|<=|>|<|=)?\s*v?/, "").split(/\s/)[0] ?? ""
-  if (!PRERELEASE_BASE.test(anchorText)) return undefined
-  if (pinText === undefined || !EXACT_VERSION.test(pinText)) return "unpinned"
-  const operator = /^(\^|~|>=|<=|>|<|=)?\s*v?[0-9A-Za-z.-]+$/.exec(trimmed)?.[1] ?? ""
-  const pin = parseVersion(pinText)
-  const anchor = parseVersion(anchorText)
-  if (pin !== undefined && anchor !== undefined && pinSatisfies(pin, operator, anchor)) return undefined
-  return "unsatisfied"
+function alternativeKind(
+  alternative: string,
+  pinText: string | undefined,
+): Finding["kind"] | undefined {
+  const trimmed = alternative.trim();
+  if (EXACT_VERSION.test(trimmed)) return undefined;
+  const anchorText = trimmed.replace(/^(?:\^|~|>=|<=|>|<|=)?\s*v?/, "").split(/\s/)[0] ?? "";
+  if (!PRERELEASE_BASE.test(anchorText)) return undefined;
+  if (pinText === undefined || !EXACT_VERSION.test(pinText)) return "unpinned";
+  const operator = /^(\^|~|>=|<=|>|<|=)?\s*v?[0-9A-Za-z.-]+$/.exec(trimmed)?.[1] ?? "";
+  const pin = parseVersion(pinText);
+  const anchor = parseVersion(anchorText);
+  if (pin !== undefined && anchor !== undefined && pinSatisfies(pin, operator, anchor))
+    return undefined;
+  return "unsatisfied";
 }
 
 /**
@@ -142,37 +151,40 @@ function alternativeKind(alternative: string, pinText: string | undefined): Find
  * second alternative, and a scan that read only the first would miss it. One
  * finding per dependency is enough to name the parent that needs a pin.
  */
-function unpinnedPrereleaseTransitives(rootDependencies: Dependencies, manifests: Manifests): Array<Finding> {
-  const findings: Array<Finding> = []
+function unpinnedPrereleaseTransitives(
+  rootDependencies: Dependencies,
+  manifests: Manifests,
+): Array<Finding> {
+  const findings: Array<Finding> = [];
   for (const [parent, dependencies] of Object.entries(manifests)) {
     for (const [dependency, range] of Object.entries(dependencies)) {
-      const pinText = rootDependencies[dependency]?.trim()
+      const pinText = rootDependencies[dependency]?.trim();
       for (const alternative of range.split("||")) {
-        const kind = alternativeKind(alternative, pinText)
-        if (kind === undefined) continue
-        findings.push({ parent, dependency, range, kind })
-        break
+        const kind = alternativeKind(alternative, pinText);
+        if (kind === undefined) continue;
+        findings.push({ parent, dependency, range, kind });
+        break;
       }
     }
   }
-  return findings
+  return findings;
 }
 
 function readManifest(path: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>
+  return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
 }
 
 function dependenciesOf(manifest: Record<string, unknown>): Dependencies {
-  const declared = manifest.dependencies
-  if (typeof declared !== "object" || declared === null) return {}
-  return declared as Dependencies
+  const declared = manifest.dependencies;
+  if (typeof declared !== "object" || declared === null) return {};
+  return declared as Dependencies;
 }
 
 interface Installed {
   /** Absolute path of the resolved `package.json`. */
-  readonly path: string
+  readonly path: string;
   /** Path below `node_modules`, which reads as the package location. */
-  readonly label: string
+  readonly label: string;
 }
 
 /**
@@ -183,19 +195,19 @@ interface Installed {
  * `/node_modules/` segment steps one level out.
  */
 function installedPackage(name: string, parent: string | undefined): Installed | undefined {
-  const labels: Array<string> = []
-  let scope = parent
+  const labels: Array<string> = [];
+  let scope = parent;
   while (scope !== undefined) {
-    labels.push(`${scope}/node_modules/${name}`)
-    const cut = scope.lastIndexOf("/node_modules/")
-    scope = cut === -1 ? undefined : scope.slice(0, cut)
+    labels.push(`${scope}/node_modules/${name}`);
+    const cut = scope.lastIndexOf("/node_modules/");
+    scope = cut === -1 ? undefined : scope.slice(0, cut);
   }
-  labels.push(name)
+  labels.push(name);
   for (const label of labels) {
-    const path = join(MODULES_DIR, label, "package.json")
-    if (existsSync(path)) return { path, label }
+    const path = join(MODULES_DIR, label, "package.json");
+    if (existsSync(path)) return { path, label };
   }
-  return undefined
+  return undefined;
 }
 
 /**
@@ -209,28 +221,31 @@ function installedPackage(name: string, parent: string | undefined): Installed |
  * walk cycle.
  */
 function installedPackages(): Array<string> {
-  const labels: Array<string> = []
+  const labels: Array<string> = [];
   const collect = (prefix: string): void => {
     for (const entry of readdirSync(join(MODULES_DIR, prefix), { withFileTypes: true })) {
-      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
-      if (entry.name === ".bin" || entry.name === ".cache") continue
-      const scopeLink = entry.isSymbolicLink()
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+      if (entry.name === ".bin" || entry.name === ".cache") continue;
+      const scopeLink = entry.isSymbolicLink();
       const packages = entry.name.startsWith("@")
         ? readdirSync(join(MODULES_DIR, prefix, entry.name), { withFileTypes: true })
-          .filter((scoped) => scoped.isDirectory() || scoped.isSymbolicLink())
-          .map((scoped) => ({ name: `${entry.name}/${scoped.name}`, link: scopeLink || scoped.isSymbolicLink() }))
-        : [{ name: entry.name, link: scopeLink }]
+            .filter((scoped) => scoped.isDirectory() || scoped.isSymbolicLink())
+            .map((scoped) => ({
+              name: `${entry.name}/${scoped.name}`,
+              link: scopeLink || scoped.isSymbolicLink(),
+            }))
+        : [{ name: entry.name, link: scopeLink }];
       for (const pkg of packages) {
-        const label = prefix === "" ? pkg.name : `${prefix}/${pkg.name}`
-        labels.push(label)
-        if (pkg.link) continue
-        const nested = join(MODULES_DIR, label, "node_modules")
-        if (existsSync(nested) && lstatSync(nested).isDirectory()) collect(`${label}/node_modules`)
+        const label = prefix === "" ? pkg.name : `${prefix}/${pkg.name}`;
+        labels.push(label);
+        if (pkg.link) continue;
+        const nested = join(MODULES_DIR, label, "node_modules");
+        if (existsSync(nested) && lstatSync(nested).isDirectory()) collect(`${label}/node_modules`);
       }
     }
-  }
-  collect("")
-  return labels
+  };
+  collect("");
+  return labels;
 }
 
 /**
@@ -243,20 +258,22 @@ function installedPackages(): Array<string> {
  * published package.
  */
 function installableRanges(manifest: Record<string, unknown>): Dependencies {
-  const meta = typeof manifest.peerDependenciesMeta === "object" && manifest.peerDependenciesMeta !== null
-    ? (manifest.peerDependenciesMeta as Record<string, { readonly optional?: boolean }>)
-    : {}
-  const ranges: Record<string, string> = { ...dependenciesOf(manifest) }
-  const optional = manifest.optionalDependencies
-  if (typeof optional === "object" && optional !== null) Object.assign(ranges, optional as Dependencies)
-  const peers = manifest.peerDependencies
+  const meta =
+    typeof manifest.peerDependenciesMeta === "object" && manifest.peerDependenciesMeta !== null
+      ? (manifest.peerDependenciesMeta as Record<string, { readonly optional?: boolean }>)
+      : {};
+  const ranges: Record<string, string> = { ...dependenciesOf(manifest) };
+  const optional = manifest.optionalDependencies;
+  if (typeof optional === "object" && optional !== null)
+    Object.assign(ranges, optional as Dependencies);
+  const peers = manifest.peerDependencies;
   if (typeof peers === "object" && peers !== null) {
     for (const [name, range] of Object.entries(peers as Dependencies)) {
-      if (meta[name]?.optional === true) continue
-      ranges[name] = range
+      if (meta[name]?.optional === true) continue;
+      ranges[name] = range;
     }
   }
-  return ranges
+  return ranges;
 }
 
 /**
@@ -266,144 +283,161 @@ function installableRanges(manifest: Record<string, unknown>): Dependencies {
  * as well as the hoisted copy it shadows.
  */
 function runtimeClosure(rootDependencies: Dependencies): Manifests {
-  const manifests: Record<string, Dependencies> = {}
-  const visited = new Set<string>()
-  const queue: Array<{ readonly name: string; readonly parent: string | undefined }> = Object.keys(rootDependencies)
-    .map((name) => ({ name, parent: undefined }))
+  const manifests: Record<string, Dependencies> = {};
+  const visited = new Set<string>();
+  const queue: Array<{ readonly name: string; readonly parent: string | undefined }> = Object.keys(
+    rootDependencies,
+  ).map((name) => ({ name, parent: undefined }));
   while (queue.length > 0) {
-    const entry = queue.shift() as { readonly name: string; readonly parent: string | undefined }
-    const installed = installedPackage(entry.name, entry.parent)
-    if (installed === undefined || visited.has(installed.path)) continue
-    visited.add(installed.path)
-    const ranges = installableRanges(readManifest(installed.path))
-    manifests[installed.label] = ranges
-    for (const child of Object.keys(ranges)) queue.push({ name: child, parent: installed.label })
+    const entry = queue.shift() as { readonly name: string; readonly parent: string | undefined };
+    const installed = installedPackage(entry.name, entry.parent);
+    if (installed === undefined || visited.has(installed.path)) continue;
+    visited.add(installed.path);
+    const ranges = installableRanges(readManifest(installed.path));
+    manifests[installed.label] = ranges;
+    for (const child of Object.keys(ranges)) queue.push({ name: child, parent: installed.label });
   }
-  return manifests
+  return manifests;
 }
 
-const rootManifest = readManifest(join(REPO_DIR, "package.json"))
-const rootDependencies = dependenciesOf(rootManifest)
+const rootManifest = readManifest(join(REPO_DIR, "package.json"));
+const rootDependencies = dependenciesOf(rootManifest);
 
 describe("root dependency pins", () => {
   it("pins every runtime dependency exactly and leaves no prerelease transitive floating", () => {
     for (const [name, range] of Object.entries(rootDependencies)) {
-      expect(range, `dependencies.${name} must be an exact version, found ${range}`).toMatch(EXACT_VERSION)
+      expect(range, `dependencies.${name} must be an exact version, found ${range}`).toMatch(
+        EXACT_VERSION,
+      );
     }
-    const findings = unpinnedPrereleaseTransitives(rootDependencies, runtimeClosure(rootDependencies))
+    const findings = unpinnedPrereleaseTransitives(
+      rootDependencies,
+      runtimeClosure(rootDependencies),
+    );
     const listed = findings
       .map((finding) => {
-        const pin = rootDependencies[finding.dependency]
-        const held = pin === undefined ? "the root pins it nowhere" : `the root pin is ${pin}`
-        return `${finding.kind}: ${finding.parent} requires ${finding.dependency}@${finding.range}, ${held}`
+        const pin = rootDependencies[finding.dependency];
+        const held = pin === undefined ? "the root pins it nowhere" : `the root pin is ${pin}`;
+        return `${finding.kind}: ${finding.parent} requires ${finding.dependency}@${finding.range}, ${held}`;
       })
-      .join(", ")
-    expect(findings, `every prerelease transitive needs a root pin that satisfies the range: ${listed}`).toEqual([])
-  })
+      .join(", ");
+    expect(
+      findings,
+      `every prerelease transitive needs a root pin that satisfies the range: ${listed}`,
+    ).toEqual([]);
+  });
 
   it("reports a caret over a prerelease until an exact root pin satisfies it", () => {
     const withoutPin = {
       "@effect/platform-bun": "4.0.0-rc.109",
-      effect: "4.0.0-rc.109"
-    }
+      effect: "4.0.0-rc.109",
+    };
     const manifests = {
-      "@effect/platform-bun": { "@effect/platform-node-shared": "^4.0.0-rc.109" }
-    }
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^4.0.0-rc.109" },
+    };
     expect(unpinnedPrereleaseTransitives(withoutPin, manifests)).toEqual([
       {
         parent: "@effect/platform-bun",
         dependency: "@effect/platform-node-shared",
         range: "^4.0.0-rc.109",
-        kind: "unpinned"
-      }
-    ])
-    const withPin = { ...withoutPin, "@effect/platform-node-shared": "4.0.0-rc.109" }
-    expect(unpinnedPrereleaseTransitives(withPin, manifests)).toEqual([])
+        kind: "unpinned",
+      },
+    ]);
+    const withPin = { ...withoutPin, "@effect/platform-node-shared": "4.0.0-rc.109" };
+    expect(unpinnedPrereleaseTransitives(withPin, manifests)).toEqual([]);
     const laterRange = {
-      "@effect/platform-bun": { "@effect/platform-node-shared": "^4.0.0-rc.115" }
-    }
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^4.0.0-rc.115" },
+    };
     expect(unpinnedPrereleaseTransitives(withPin, laterRange)).toEqual([
       {
         parent: "@effect/platform-bun",
         dependency: "@effect/platform-node-shared",
         range: "^4.0.0-rc.115",
-        kind: "unsatisfied"
-      }
-    ])
-    const laterPin = { ...withPin, "@effect/platform-node-shared": "4.0.0-rc.115" }
-    expect(unpinnedPrereleaseTransitives(laterPin, laterRange)).toEqual([])
-    const higherPin = { ...withPin, "@effect/platform-node-shared": "4.1.0" }
-    expect(unpinnedPrereleaseTransitives(higherPin, manifests)).toEqual([])
-    const olderPin = { ...withPin, "@effect/platform-node-shared": "4.0.0-rc.108" }
+        kind: "unsatisfied",
+      },
+    ]);
+    const laterPin = { ...withPin, "@effect/platform-node-shared": "4.0.0-rc.115" };
+    expect(unpinnedPrereleaseTransitives(laterPin, laterRange)).toEqual([]);
+    const higherPin = { ...withPin, "@effect/platform-node-shared": "4.1.0" };
+    expect(unpinnedPrereleaseTransitives(higherPin, manifests)).toEqual([]);
+    const olderPin = { ...withPin, "@effect/platform-node-shared": "4.0.0-rc.108" };
     expect(unpinnedPrereleaseTransitives(olderPin, manifests)).toEqual([
       {
         parent: "@effect/platform-bun",
         dependency: "@effect/platform-node-shared",
         range: "^4.0.0-rc.109",
-        kind: "unsatisfied"
-      }
-    ])
-    const majorPin = { ...withPin, "@effect/platform-node-shared": "5.0.0" }
-    expect(unpinnedPrereleaseTransitives(majorPin, manifests)[0]?.kind).toBe("unsatisfied")
+        kind: "unsatisfied",
+      },
+    ]);
+    const majorPin = { ...withPin, "@effect/platform-node-shared": "5.0.0" };
+    expect(unpinnedPrereleaseTransitives(majorPin, manifests)[0]?.kind).toBe("unsatisfied");
     const tildeRange = {
-      "@effect/platform-bun": { "@effect/platform-node-shared": "~4.0.0-rc.109" }
-    }
-    expect(unpinnedPrereleaseTransitives({ ...withPin, "@effect/platform-node-shared": "4.0.5" }, tildeRange)).toEqual([])
-    expect(unpinnedPrereleaseTransitives(higherPin, tildeRange)[0]?.kind).toBe("unsatisfied")
-    const laterTuplePin = { ...withPin, "@effect/platform-node-shared": "4.1.0-rc.1" }
+      "@effect/platform-bun": { "@effect/platform-node-shared": "~4.0.0-rc.109" },
+    };
+    expect(
+      unpinnedPrereleaseTransitives(
+        { ...withPin, "@effect/platform-node-shared": "4.0.5" },
+        tildeRange,
+      ),
+    ).toEqual([]);
+    expect(unpinnedPrereleaseTransitives(higherPin, tildeRange)[0]?.kind).toBe("unsatisfied");
+    const laterTuplePin = { ...withPin, "@effect/platform-node-shared": "4.1.0-rc.1" };
     expect(
       unpinnedPrereleaseTransitives(laterTuplePin, manifests)[0]?.kind,
-      "the prerelease pin 4.1.0-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected"
-    ).toBe("unsatisfied")
-    const laterPatchPin = { ...withPin, "@effect/platform-node-shared": "4.0.1-rc.1" }
+      "the prerelease pin 4.1.0-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected",
+    ).toBe("unsatisfied");
+    const laterPatchPin = { ...withPin, "@effect/platform-node-shared": "4.0.1-rc.1" };
     expect(
       unpinnedPrereleaseTransitives(laterPatchPin, manifests)[0]?.kind,
-      "the prerelease pin 4.0.1-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected"
-    ).toBe("unsatisfied")
+      "the prerelease pin 4.0.1-rc.1 carries another version tuple than ^4.0.0-rc.109 and is rejected",
+    ).toBe("unsatisfied");
     const zeroMajorRange = {
-      "@effect/platform-bun": { "@effect/platform-node-shared": "^0.2.0-rc.1" }
-    }
-    const outsideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.3.0" }
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^0.2.0-rc.1" },
+    };
+    const outsideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.3.0" };
     expect(
       unpinnedPrereleaseTransitives(outsideMinorPin, zeroMajorRange)[0]?.kind,
-      "a zero major caret narrows to the minor, so the pin 0.3.0 sits outside ^0.2.0-rc.1"
-    ).toBe("unsatisfied")
-    const insideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.2.4" }
-    expect(unpinnedPrereleaseTransitives(insideMinorPin, zeroMajorRange)).toEqual([])
+      "a zero major caret narrows to the minor, so the pin 0.3.0 sits outside ^0.2.0-rc.1",
+    ).toBe("unsatisfied");
+    const insideMinorPin = { ...withPin, "@effect/platform-node-shared": "0.2.4" };
+    expect(unpinnedPrereleaseTransitives(insideMinorPin, zeroMajorRange)).toEqual([]);
     const alternationRange = {
-      "@effect/platform-bun": { "@effect/platform-node-shared": "^3.9.0 || ^4.0.0-rc.109" }
-    }
-    const firstBranchPin = { ...withoutPin, "@effect/platform-node-shared": "3.9.5" }
+      "@effect/platform-bun": { "@effect/platform-node-shared": "^3.9.0 || ^4.0.0-rc.109" },
+    };
+    const firstBranchPin = { ...withoutPin, "@effect/platform-node-shared": "3.9.5" };
     expect(
       unpinnedPrereleaseTransitives(firstBranchPin, alternationRange),
-      "the second alternative floats over a prerelease, and the pin 3.9.5 holds only the first"
+      "the second alternative floats over a prerelease, and the pin 3.9.5 holds only the first",
     ).toEqual([
       {
         parent: "@effect/platform-bun",
         dependency: "@effect/platform-node-shared",
         range: "^3.9.0 || ^4.0.0-rc.109",
-        kind: "unsatisfied"
-      }
-    ])
-    expect(unpinnedPrereleaseTransitives(withPin, alternationRange)).toEqual([])
-  })
+        kind: "unsatisfied",
+      },
+    ]);
+    expect(unpinnedPrereleaseTransitives(withPin, alternationRange)).toEqual([]);
+  });
 
   it("installs every root dependency at its pinned version with no nested copy at any depth", () => {
-    const parents = installedPackages()
-    const shadows: Array<string> = []
+    const parents = installedPackages();
+    const shadows: Array<string> = [];
     for (const [name, pin] of Object.entries(rootDependencies)) {
-      const installed = installedPackage(name, undefined)
-      expect(installed, `${name} is not installed under node_modules`).toBeDefined()
-      expect(readManifest((installed as Installed).path).version, `${name} must be installed at ${pin}`).toBe(pin)
+      const installed = installedPackage(name, undefined);
+      expect(installed, `${name} is not installed under node_modules`).toBeDefined();
+      expect(
+        readManifest((installed as Installed).path).version,
+        `${name} must be installed at ${pin}`,
+      ).toBe(pin);
       for (const parent of parents) {
-        const nested = join(MODULES_DIR, parent, "node_modules", name, "package.json")
-        if (!existsSync(nested)) continue
-        const version = String(readManifest(nested).version)
-        shadows.push(`${parent}/node_modules/${name}@${version} shadows the pinned ${pin}`)
+        const nested = join(MODULES_DIR, parent, "node_modules", name, "package.json");
+        if (!existsSync(nested)) continue;
+        const version = String(readManifest(nested).version);
+        shadows.push(`${parent}/node_modules/${name}@${version} shadows the pinned ${pin}`);
       }
     }
-    expect(shadows, `nested copies defeat the root pins: ${shadows.join(", ")}`).toEqual([])
-  })
+    expect(shadows, `nested copies defeat the root pins: ${shadows.join(", ")}`).toEqual([]);
+  });
 
   /**
    * A published install seats two halves of one release when one parent
@@ -414,25 +448,29 @@ describe("root dependency pins", () => {
    * version of every installed copy at every depth.
    */
   it("installs no package at two distinct versions when either carries a prerelease tail", () => {
-    const copies = new Map<string, Map<string, string>>()
+    const copies = new Map<string, Map<string, string>>();
     for (const label of installedPackages()) {
-      const cut = label.lastIndexOf("/node_modules/")
-      const name = cut === -1 ? label : label.slice(cut + "/node_modules/".length)
-      const path = join(MODULES_DIR, label, "package.json")
-      if (!existsSync(path)) continue
-      const version = String(readManifest(path).version)
-      const seen = copies.get(name) ?? new Map<string, string>()
-      if (!seen.has(version)) seen.set(version, label)
-      copies.set(name, seen)
+      const cut = label.lastIndexOf("/node_modules/");
+      const name = cut === -1 ? label : label.slice(cut + "/node_modules/".length);
+      const path = join(MODULES_DIR, label, "package.json");
+      if (!existsSync(path)) continue;
+      const version = String(readManifest(path).version);
+      const seen = copies.get(name) ?? new Map<string, string>();
+      if (!seen.has(version)) seen.set(version, label);
+      copies.set(name, seen);
     }
-    const split: Array<string> = []
+    const split: Array<string> = [];
     for (const [name, seen] of copies) {
-      if (seen.size < 2) continue
-      if (!Array.from(seen.keys()).some((version) => PRERELEASE_BASE.test(version))) continue
-      const listed = Array.from(seen).map(([version, label]) => `${version} at ${label}`).join(" and ")
-      split.push(`${name} is installed at ${listed}`)
+      if (seen.size < 2) continue;
+      if (!Array.from(seen.keys()).some((version) => PRERELEASE_BASE.test(version))) continue;
+      const listed = Array.from(seen)
+        .map(([version, label]) => `${version} at ${label}`)
+        .join(" and ");
+      split.push(`${name} is installed at ${listed}`);
     }
-    expect(split, `a prerelease package at two versions loads two halves of one release: ${split.join(", ")}`)
-      .toEqual([])
-  })
-})
+    expect(
+      split,
+      `a prerelease package at two versions loads two halves of one release: ${split.join(", ")}`,
+    ).toEqual([]);
+  });
+});

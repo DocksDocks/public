@@ -14,5 +14,5 @@ Object.defineProperty(process, "platform", {
   value: "linux",
   configurable: true,
   enumerable: true,
-  writable: false
-})
+  writable: false,
+});

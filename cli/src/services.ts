@@ -4,9 +4,14 @@
  * named test-layer constructors. Composed ONCE at main.ts — command code
  * accesses services via `yield*`, never by re-providing.
  */
-import { Context, Layer } from "effect"
-import { makeLogger, type Logger, type LoggerSinks } from "./engine-native/logger"
-import { makeEngineServices, makePlatform, type DependencyManager, type Platform } from "./engine-native/services"
+import { Context, Layer } from "effect";
+import { makeLogger, type Logger, type LoggerSinks } from "./engine-native/logger";
+import {
+  makeEngineServices,
+  makePlatform,
+  type DependencyManager,
+  type Platform,
+} from "./engine-native/services";
 
 export class LoggerService extends Context.Service<LoggerService, Logger>()("docks-kit/Logger") {}
 
@@ -15,20 +20,23 @@ export class DependencyManagerService extends Context.Service<
   DependencyManager
 >()("docks-kit/DependencyManager") {}
 
-export class PlatformService extends Context.Service<PlatformService, Platform>()("docks-kit/Platform") {}
+export class PlatformService extends Context.Service<PlatformService, Platform>()(
+  "docks-kit/Platform",
+) {}
 
-const live = makeEngineServices()
+const live = makeEngineServices();
 
-export const LoggerLive = Layer.succeed(LoggerService, live.logger)
-export const DependencyManagerLive = Layer.succeed(DependencyManagerService, live.deps)
-export const PlatformLive = Layer.succeed(PlatformService, live.platform)
-export const EngineServicesLive = Layer.mergeAll(LoggerLive, DependencyManagerLive, PlatformLive)
+export const LoggerLive = Layer.succeed(LoggerService, live.logger);
+export const DependencyManagerLive = Layer.succeed(DependencyManagerService, live.deps);
+export const PlatformLive = Layer.succeed(PlatformService, live.platform);
+export const EngineServicesLive = Layer.mergeAll(LoggerLive, DependencyManagerLive, PlatformLive);
 
 export const LoggerTest = (sinks: LoggerSinks): Layer.Layer<LoggerService> =>
-  Layer.succeed(LoggerService, makeLogger(sinks))
+  Layer.succeed(LoggerService, makeLogger(sinks));
 
 export const PlatformTest = (pf: NodeJS.Platform): Layer.Layer<PlatformService> =>
-  Layer.succeed(PlatformService, makePlatform(pf))
+  Layer.succeed(PlatformService, makePlatform(pf));
 
-export const DependencyManagerTest = (impl: DependencyManager): Layer.Layer<DependencyManagerService> =>
-  Layer.succeed(DependencyManagerService, impl)
+export const DependencyManagerTest = (
+  impl: DependencyManager,
+): Layer.Layer<DependencyManagerService> => Layer.succeed(DependencyManagerService, impl);

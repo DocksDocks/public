@@ -1,100 +1,126 @@
-import { Argument, Command, Flag } from "effect/unstable/cli"
-import { Effect, Option } from "effect"
-import { spawnSync } from "node:child_process"
-import { existsSync } from "node:fs"
-import { join } from "node:path"
-import { bail, engine } from "../engine"
-import type { Logger } from "../engine-native/logger"
-import { kitHome } from "../kitHome"
-import { LoggerService } from "../services"
+import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Effect, Option } from "effect";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { bail, engine } from "../engine";
+import type { Logger } from "../engine-native/logger";
+import { kitHome } from "../kitHome";
+import { LoggerService } from "../services";
 
 /** Best-effort update autodetection: nudge (never block, never fail) when
  * the kit checkout is behind its upstream. Silent on detached HEADs, no
  * upstream, no network, no git. */
 const updateNudge = (logger: Logger): void => {
   try {
-    const home = kitHome()
-    if (!existsSync(join(home, ".git"))) return
-    if (spawnSync("git", ["-C", home, "fetch", "--quiet"], { stdio: "ignore", timeout: 4000 }).status !== 0) return
+    const home = kitHome();
+    if (!existsSync(join(home, ".git"))) return;
+    if (
+      spawnSync("git", ["-C", home, "fetch", "--quiet"], { stdio: "ignore", timeout: 4000 })
+        .status !== 0
+    )
+      return;
     const res = spawnSync("git", ["-C", home, "rev-list", "--count", "HEAD..@{u}"], {
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
-    })
-    const behind = (res.stdout ?? "").trim()
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const behind = (res.stdout ?? "").trim();
     if (res.status === 0 && behind !== "" && behind !== "0") {
-      logger.warn(`kit checkout is ${behind} commit(s) behind its upstream — run: docks-kit update`)
+      logger.warn(
+        `kit checkout is ${behind} commit(s) behind its upstream — run: docks-kit update`,
+      );
     }
   } catch {
     // nudge only — a sync must never fail because the update check did
   }
-}
+};
 
-const VALID_TARGETS = ["claude", "codex", "agents", "omp"]
+const VALID_TARGETS = ["claude", "codex", "agents", "omp"];
 
 const targets: Argument.Argument<ReadonlyArray<string>> = Argument.String("target").pipe(
-  Argument.withDescription("Sync targets: claude, codex, agents, omp (default: selected harnesses)"),
-  Argument.variadic()
-)
+  Argument.withDescription(
+    "Sync targets: claude, codex, agents, omp (default: selected harnesses)",
+  ),
+  Argument.variadic(),
+);
 
 const dryRun = Flag.Boolean("dry-run").pipe(
   Flag.withDescription("Preview without applying"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 const reconcile = Flag.Boolean("reconcile").pipe(
-  Flag.withDescription("Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)"),
-  Flag.withDefault(false)
-)
+  Flag.withDescription(
+    "Reconcile kit-owned settings with SoT (SoT keys win; user-only keys preserved; permissions arrays replaced)",
+  ),
+  Flag.withDefault(false),
+);
 const prune = Flag.Boolean("prune").pipe(
-  Flag.withDescription("Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)"),
-  Flag.withDefault(false)
-)
+  Flag.withDescription(
+    "Uninstall kit-managed installs not in SoT (plugins, marketplaces, universal skills)",
+  ),
+  Flag.withDefault(false),
+);
 const skipBubblewrap = Flag.Boolean("skip-bubblewrap").pipe(
   Flag.withDescription("Skip optional bubblewrap bootstrap (Codex Linux sandbox)"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 const skipPluginRefresh = Flag.Boolean("skip-plugin-refresh").pipe(
-  Flag.withDescription("Install missing plugins but skip refresh-only updates for existing plugins"),
-  Flag.withDefault(false)
-)
+  Flag.withDescription(
+    "Install missing plugins but skip refresh-only updates for existing plugins",
+  ),
+  Flag.withDefault(false),
+);
 const verbose = Flag.Boolean("verbose").pipe(
   Flag.withAlias("v"),
   Flag.withDescription("Also print no-op confirmations (already in sync, up to date, left as-is)"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 const claudeModel = Flag.String("claude-model").pipe(
-  Flag.withDescription("Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)"),
-  Flag.optional
-)
+  Flag.withDescription(
+    "Deploy-time modifier: set deployed Claude model (see `docks-kit models claude`)",
+  ),
+  Flag.optional,
+);
 const claudeEffort = Flag.String("claude-effort").pipe(
-  Flag.withDescription("Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)"),
-  Flag.optional
-)
+  Flag.withDescription(
+    "Deploy-time modifier: set Claude effortLevel (bare flag shows valid levels)",
+  ),
+  Flag.optional,
+);
 const claudeAdvisor = Flag.String("claude-advisor").pipe(
   Flag.withDescription("Deploy-time modifier: set Claude advisor on/off/default"),
-  Flag.optional
-)
+  Flag.optional,
+);
 const claudeCompactWindow = Flag.String("claude-compact-window").pipe(
-  Flag.withDescription("Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)"),
-  Flag.optional
-)
+  Flag.withDescription(
+    "Deploy-time modifier: set deployed autocompact window in tokens (e.g. 680000 or 680k)",
+  ),
+  Flag.optional,
+);
 const claudePermissive = Flag.Boolean("claude-permissive").pipe(
-  Flag.withDescription("Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)"),
-  Flag.withDefault(false)
-)
+  Flag.withDescription(
+    "Deploy-time modifier: empty permissions.ask/deny in deployed settings (sandboxes)",
+  ),
+  Flag.withDefault(false),
+);
 const claudePlugin = Flag.String("claude-plugin").pipe(
   Flag.withDescription(
-    "Sticky opt-in plugin(s); repeatable and/or comma-separated (known: supabase, n8n)"
+    "Sticky opt-in plugin(s); repeatable and/or comma-separated (known: supabase, n8n)",
   ),
-  Flag.atLeast(0)
-)
+  Flag.atLeast(0),
+);
 const codexModel = Flag.String("codex-model").pipe(
-  Flag.withDescription("Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)"),
-  Flag.optional
-)
+  Flag.withDescription(
+    "Deploy-time modifier: set deployed Codex model (see `docks-kit models codex`)",
+  ),
+  Flag.optional,
+);
 const codexEffort = Flag.String("codex-effort").pipe(
-  Flag.withDescription("Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)"),
-  Flag.optional
-)
+  Flag.withDescription(
+    "Deploy-time modifier: set Codex model_reasoning_effort (bare flag shows valid levels)",
+  ),
+  Flag.optional,
+);
 
 export const syncCommand = Command.make(
   "sync",
@@ -113,53 +139,53 @@ export const syncCommand = Command.make(
     claudePermissive,
     claudePlugin,
     codexModel,
-    codexEffort
+    codexEffort,
   },
   (config) =>
     Effect.gen(function* () {
-      const bad = config.targets.filter((t) => !VALID_TARGETS.includes(t))
+      const bad = config.targets.filter((t) => !VALID_TARGETS.includes(t));
       if (bad.length > 0) {
         return yield* bail(
-          `Unknown sync target(s): ${bad.join(", ")} (valid: ${VALID_TARGETS.join(", ")})`
-        )
+          `Unknown sync target(s): ${bad.join(", ")} (valid: ${VALID_TARGETS.join(", ")})`,
+        );
       }
 
-      const args: Array<string> = ["sync", ...config.targets]
-      if (config.dryRun) args.push("--dry-run")
-      if (config.reconcile) args.push("--reconcile")
-      if (config.prune) args.push("--prune")
-      if (config.skipBubblewrap) args.push("--skip-bubblewrap")
-      if (config.skipPluginRefresh) args.push("--skip-plugin-refresh")
-      if (config.verbose) args.push("--verbose")
-      if (config.claudePermissive) args.push("--claude-permissive")
-      Option.map(config.claudeModel, (m) => args.push(`--claude-model=${m}`))
-      Option.map(config.claudeEffort, (level) => args.push(`--claude-effort=${level}`))
-      Option.map(config.claudeAdvisor, (state) => args.push(`--claude-advisor=${state}`))
-      Option.map(config.claudeCompactWindow, (w) => args.push(`--claude-compact-window=${w}`))
-      Option.map(config.codexModel, (m) => args.push(`--codex-model=${m}`))
-      Option.map(config.codexEffort, (level) => args.push(`--codex-effort=${level}`))
+      const args: Array<string> = ["sync", ...config.targets];
+      if (config.dryRun) args.push("--dry-run");
+      if (config.reconcile) args.push("--reconcile");
+      if (config.prune) args.push("--prune");
+      if (config.skipBubblewrap) args.push("--skip-bubblewrap");
+      if (config.skipPluginRefresh) args.push("--skip-plugin-refresh");
+      if (config.verbose) args.push("--verbose");
+      if (config.claudePermissive) args.push("--claude-permissive");
+      Option.map(config.claudeModel, (m) => args.push(`--claude-model=${m}`));
+      Option.map(config.claudeEffort, (level) => args.push(`--claude-effort=${level}`));
+      Option.map(config.claudeAdvisor, (state) => args.push(`--claude-advisor=${state}`));
+      Option.map(config.claudeCompactWindow, (w) => args.push(`--claude-compact-window=${w}`));
+      Option.map(config.codexModel, (m) => args.push(`--codex-model=${m}`));
+      Option.map(config.codexEffort, (level) => args.push(`--codex-effort=${level}`));
       for (const occurrence of config.claudePlugin) {
         if (occurrence.trim() === "") {
-          args.push("--claude-plugin=")
-          continue
+          args.push("--claude-plugin=");
+          continue;
         }
         occurrence
           .split(",")
           .map((p) => p.trim())
           .filter((p) => p.length > 0)
-          .forEach((p) => args.push(`--claude-plugin=${p}`))
+          .forEach((p) => args.push(`--claude-plugin=${p}`));
       }
 
       // Not on --dry-run: the nudge's git fetch writes FETCH_HEAD/remote
       // refs, and a preview command must not mutate the checkout.
       if (!config.dryRun) {
-        const logger = yield* LoggerService
-        yield* Effect.sync(() => updateNudge(logger))
+        const logger = yield* LoggerService;
+        yield* Effect.sync(() => updateNudge(logger));
       }
-      yield* engine(args)
-    })
+      yield* engine(args);
+    }),
 ).pipe(
   Command.withDescription(
-    "Deploy the SoT to this machine with EngineNative. Deploy-time modifiers touch deployed config only; a later flag-less sync reverts them to SoT."
-  )
-)
+    "Deploy the SoT to this machine with EngineNative. Deploy-time modifiers touch deployed config only; a later flag-less sync reverts them to SoT.",
+  ),
+);

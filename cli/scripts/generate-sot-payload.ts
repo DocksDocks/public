@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join, relative, resolve, sep } from "node:path"
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 export const TEXT_PAYLOAD_PATHS = [
   "SoT/.agents/skills.txt",
@@ -20,225 +20,252 @@ export const TEXT_PAYLOAD_PATHS = [
   "SoT/.omp/config.yml",
   "SoT/.omp/intercom.json",
   "SoT/.omp/mcp.json",
-  "SoT/.omp/models.yml"
-] as const
+  "SoT/.omp/models.yml",
+] as const;
 
-export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const
-export const PAYLOAD_PATHS = [...TEXT_PAYLOAD_PATHS, ...BINARY_PAYLOAD_PATHS] as const
+export const BINARY_PAYLOAD_PATHS = ["notification.mp3"] as const;
+export const PAYLOAD_PATHS = [...TEXT_PAYLOAD_PATHS, ...BINARY_PAYLOAD_PATHS] as const;
 
 export const AUTHORING_EXCLUSIONS = [
   "SoT/.claude/settings.local.json",
-  "SoT/.codex/agents/.gitkeep"
-] as const
+  "SoT/.codex/agents/.gitkeep",
+] as const;
 
-const GENERATED_MODULE = "cli/src/generated/sotPayload.ts"
-const BUN_PIN_START = "# BEGIN GENERATED BUN PIN"
-const BUN_PIN_END = "# END GENERATED BUN PIN"
-const BUN_FLOOR_START = "# BEGIN GENERATED BUN FLOOR"
-const BUN_FLOOR_END = "# END GENERATED BUN FLOOR"
+const GENERATED_MODULE = "cli/src/generated/sotPayload.ts";
+const BUN_PIN_START = "# BEGIN GENERATED BUN PIN";
+const BUN_PIN_END = "# END GENERATED BUN PIN";
+const BUN_FLOOR_START = "# BEGIN GENERATED BUN FLOOR";
+const BUN_FLOOR_END = "# END GENERATED BUN FLOOR";
 
 interface BunVersions {
-  readonly verified: string
-  readonly floor: string
+  readonly verified: string;
+  readonly floor: string;
 }
 
 interface GeneratedBlock {
-  readonly start: string
-  readonly end: string
-  readonly version: keyof BunVersions
-  readonly renderAssignment: (version: string) => string
+  readonly start: string;
+  readonly end: string;
+  readonly version: keyof BunVersions;
+  readonly renderAssignment: (version: string) => string;
 }
 
 interface GeneratedScript {
-  readonly path: string
-  readonly blocks: ReadonlyArray<GeneratedBlock>
+  readonly path: string;
+  readonly blocks: ReadonlyArray<GeneratedBlock>;
 }
 
-const renderBashBunPin = (version: string): string => `BUN_PIN=${JSON.stringify(version)}`
-const renderPowerShellBunPin = (version: string): string => `$BunPin = ${JSON.stringify(version)}`
-const renderBashBunFloor = (version: string): string => `BUN_FLOOR=${JSON.stringify(version)}`
-const renderPowerShellBunFloor = (version: string): string => `$BunFloor = ${JSON.stringify(version)}`
+const renderBashBunPin = (version: string): string => `BUN_PIN=${JSON.stringify(version)}`;
+const renderPowerShellBunPin = (version: string): string => `$BunPin = ${JSON.stringify(version)}`;
+const renderBashBunFloor = (version: string): string => `BUN_FLOOR=${JSON.stringify(version)}`;
+const renderPowerShellBunFloor = (version: string): string =>
+  `$BunFloor = ${JSON.stringify(version)}`;
 
-const bashBunPin = { start: BUN_PIN_START, end: BUN_PIN_END, version: "verified", renderAssignment: renderBashBunPin } as const
-const powerShellBunPin = { start: BUN_PIN_START, end: BUN_PIN_END, version: "verified", renderAssignment: renderPowerShellBunPin } as const
-const bashBunFloor = { start: BUN_FLOOR_START, end: BUN_FLOOR_END, version: "floor", renderAssignment: renderBashBunFloor } as const
-const powerShellBunFloor = { start: BUN_FLOOR_START, end: BUN_FLOOR_END, version: "floor", renderAssignment: renderPowerShellBunFloor } as const
+const bashBunPin = {
+  start: BUN_PIN_START,
+  end: BUN_PIN_END,
+  version: "verified",
+  renderAssignment: renderBashBunPin,
+} as const;
+const powerShellBunPin = {
+  start: BUN_PIN_START,
+  end: BUN_PIN_END,
+  version: "verified",
+  renderAssignment: renderPowerShellBunPin,
+} as const;
+const bashBunFloor = {
+  start: BUN_FLOOR_START,
+  end: BUN_FLOOR_END,
+  version: "floor",
+  renderAssignment: renderBashBunFloor,
+} as const;
+const powerShellBunFloor = {
+  start: BUN_FLOOR_START,
+  end: BUN_FLOOR_END,
+  version: "floor",
+  renderAssignment: renderPowerShellBunFloor,
+} as const;
 
 const GENERATED_SCRIPTS: ReadonlyArray<GeneratedScript> = [
   { path: "docks-kit", blocks: [bashBunPin, bashBunFloor] },
   { path: "install.sh", blocks: [bashBunPin] },
   { path: "docks-kit.ps1", blocks: [powerShellBunPin, powerShellBunFloor] },
-  { path: "install.ps1", blocks: [powerShellBunPin] }
-]
+  { path: "install.ps1", blocks: [powerShellBunPin] },
+];
 
 function repoPath(root: string, path: string): string {
-  return join(root, ...path.split("/"))
+  return join(root, ...path.split("/"));
 }
 
 function payloadHash(root: string): string {
-  const hash = createHash("sha256")
+  const hash = createHash("sha256");
   for (const path of PAYLOAD_PATHS) {
-    hash.update(path)
-    hash.update("\0")
-    hash.update(readFileSync(repoPath(root, path)))
-    hash.update("\0")
+    hash.update(path);
+    hash.update("\0");
+    hash.update(readFileSync(repoPath(root, path)));
+    hash.update("\0");
   }
-  return hash.digest("hex")
+  return hash.digest("hex");
 }
 
 function packageVersion(root: string): string {
   const manifest = JSON.parse(readFileSync(repoPath(root, "package.json"), "utf8")) as {
-    version?: unknown
-  }
+    version?: unknown;
+  };
   if (typeof manifest.version !== "string" || manifest.version === "") {
-    throw new Error("package.json has no valid version")
+    throw new Error("package.json has no valid version");
   }
-  return manifest.version
+  return manifest.version;
 }
 
 function generatedModule(root: string): string {
   const textEntries = TEXT_PAYLOAD_PATHS.map(
-    (path) => `  ${JSON.stringify(path)}: ${JSON.stringify(readFileSync(repoPath(root, path), "utf8"))}`
-  ).join(",\n")
+    (path) =>
+      `  ${JSON.stringify(path)}: ${JSON.stringify(readFileSync(repoPath(root, path), "utf8"))}`,
+  ).join(",\n");
   const binaryEntries = BINARY_PAYLOAD_PATHS.map(
-    (path) => `  ${JSON.stringify(path)}: ${JSON.stringify(readFileSync(repoPath(root, path)).toString("base64"))}`
-  ).join(",\n")
-  const paths = PAYLOAD_PATHS.map((path) => `  ${JSON.stringify(path)}`).join(",\n")
+    (path) =>
+      `  ${JSON.stringify(path)}: ${JSON.stringify(readFileSync(repoPath(root, path)).toString("base64"))}`,
+  ).join(",\n");
+  const paths = PAYLOAD_PATHS.map((path) => `  ${JSON.stringify(path)}`).join(",\n");
 
-  return `// Generated by cli/scripts/generate-sot-payload.ts. DO NOT EDIT.\n` +
+  return (
+    `// Generated by cli/scripts/generate-sot-payload.ts. DO NOT EDIT.\n` +
     `// Edit SoT/, notification.mp3, or package.json, then run: bun cli/scripts/generate-sot-payload.ts\n\n` +
     `export const GENERATED_PACKAGE_VERSION = ${JSON.stringify(packageVersion(root))}\n\n` +
     `export const GENERATED_PAYLOAD_TEXT = {\n${textEntries}\n} as const\n\n` +
     `export const GENERATED_PAYLOAD_BASE64 = {\n${binaryEntries}\n} as const\n\n` +
     `export const GENERATED_PAYLOAD_PATHS = [\n${paths}\n] as const\n\n` +
     `export const GENERATED_PAYLOAD_HASH = ${JSON.stringify(payloadHash(root))}\n`
+  );
 }
 
 function bunVersions(root: string): BunVersions {
   const manifest = JSON.parse(readFileSync(repoPath(root, "SoT/toolchain.json"), "utf8")) as {
-    tools?: { bun?: { verified?: unknown; floor?: unknown } }
-  }
-  const verified = manifest.tools?.bun?.verified
+    tools?: { bun?: { verified?: unknown; floor?: unknown } };
+  };
+  const verified = manifest.tools?.bun?.verified;
   if (typeof verified !== "string" || verified === "") {
-    throw new Error("SoT/toolchain.json has no verified Bun version")
+    throw new Error("SoT/toolchain.json has no verified Bun version");
   }
-  const floor = manifest.tools?.bun?.floor
+  const floor = manifest.tools?.bun?.floor;
   if (typeof floor !== "string" || floor === "") {
-    throw new Error("SoT/toolchain.json has no Bun version floor")
+    throw new Error("SoT/toolchain.json has no Bun version floor");
   }
-  return { verified, floor }
+  return { verified, floor };
 }
 
 function generatedScript(root: string, script: GeneratedScript, versions: BunVersions): string {
-  const path = repoPath(root, script.path)
-  let generated = readFileSync(path, "utf8")
+  const path = repoPath(root, script.path);
+  let generated = readFileSync(path, "utf8");
   for (const block of script.blocks) {
-    const start = generated.indexOf(block.start)
-    const end = generated.indexOf(block.end)
+    const start = generated.indexOf(block.start);
+    const end = generated.indexOf(block.end);
     if (start === -1 || end === -1 || end < start) {
-      throw new Error(`${script.path} is missing the ${block.start}/${block.end} markers`)
+      throw new Error(`${script.path} is missing the ${block.start}/${block.end} markers`);
     }
-    const replacement = `${block.start}\n${block.renderAssignment(versions[block.version])}\n${block.end}`
-    generated = generated.slice(0, start) + replacement + generated.slice(end + block.end.length)
+    const replacement = `${block.start}\n${block.renderAssignment(versions[block.version])}\n${block.end}`;
+    generated = generated.slice(0, start) + replacement + generated.slice(end + block.end.length);
   }
-  return generated
+  return generated;
 }
 
 function walkFiles(root: string, dir: string, output: Array<string>): void {
   for (const entry of readdirSync(dir).sort()) {
-    const path = join(dir, entry)
-    if (statSync(path).isDirectory()) walkFiles(root, path, output)
-    else output.push(relative(root, path).split(sep).join("/"))
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) walkFiles(root, path, output);
+    else output.push(relative(root, path).split(sep).join("/"));
   }
 }
 
 export function inventoryAuthoringPaths(root: string): ReadonlyArray<string> {
-  const output: Array<string> = []
-  walkFiles(root, repoPath(root, "SoT"), output)
-  return output.sort()
+  const output: Array<string> = [];
+  walkFiles(root, repoPath(root, "SoT"), output);
+  return output.sort();
 }
 
 export interface GeneratedScriptState {
-  readonly path: string
-  readonly content: string
+  readonly path: string;
+  readonly content: string;
 }
 
 export interface GeneratedState {
-  readonly module: string
-  readonly scripts: ReadonlyArray<GeneratedScriptState>
+  readonly module: string;
+  readonly scripts: ReadonlyArray<GeneratedScriptState>;
 }
 
 export function expectedGeneratedState(root: string): GeneratedState {
-  const versions = bunVersions(root)
+  const versions = bunVersions(root);
   return {
     module: generatedModule(root),
     scripts: GENERATED_SCRIPTS.map((script) => ({
       path: script.path,
-      content: generatedScript(root, script, versions)
-    }))
-  }
+      content: generatedScript(root, script, versions),
+    })),
+  };
 }
 
 export function staleGeneratedPaths(root: string): ReadonlyArray<string> {
-  const expected = expectedGeneratedState(root)
-  const modulePath = repoPath(root, GENERATED_MODULE)
-  const stale: Array<string> = []
-  if (!existsSync(modulePath) || readFileSync(modulePath, "utf8") !== expected.module) stale.push(GENERATED_MODULE)
+  const expected = expectedGeneratedState(root);
+  const modulePath = repoPath(root, GENERATED_MODULE);
+  const stale: Array<string> = [];
+  if (!existsSync(modulePath) || readFileSync(modulePath, "utf8") !== expected.module)
+    stale.push(GENERATED_MODULE);
   for (const script of expected.scripts) {
-    if (readFileSync(repoPath(root, script.path), "utf8") !== script.content) stale.push(script.path)
+    if (readFileSync(repoPath(root, script.path), "utf8") !== script.content)
+      stale.push(script.path);
   }
-  return stale
+  return stale;
 }
 
 function writeGenerated(root: string): void {
-  const expected = expectedGeneratedState(root)
-  const modulePath = repoPath(root, GENERATED_MODULE)
-  mkdirSync(dirname(modulePath), { recursive: true })
-  writeFileSync(modulePath, expected.module)
+  const expected = expectedGeneratedState(root);
+  const modulePath = repoPath(root, GENERATED_MODULE);
+  mkdirSync(dirname(modulePath), { recursive: true });
+  writeFileSync(modulePath, expected.module);
   for (const script of expected.scripts) {
-    writeFileSync(repoPath(root, script.path), script.content)
+    writeFileSync(repoPath(root, script.path), script.content);
   }
 }
 
 interface CliOptions {
-  readonly check: boolean
-  readonly root: string
+  readonly check: boolean;
+  readonly root: string;
 }
 
 function parseCli(argv: ReadonlyArray<string>): CliOptions {
-  let check = false
-  let root = resolve(import.meta.dirname, "..", "..")
+  let check = false;
+  let root = resolve(import.meta.dirname, "..", "..");
   for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index]
-    if (arg === "--check") check = true
+    const arg = argv[index];
+    if (arg === "--check") check = true;
     else if (arg === "--source-root") {
-      const value = argv[index + 1]
-      if (value === undefined) throw new Error("--source-root requires a path")
-      root = resolve(value)
-      index += 1
+      const value = argv[index + 1];
+      if (value === undefined) throw new Error("--source-root requires a path");
+      root = resolve(value);
+      index += 1;
     } else {
-      throw new Error(`Unknown argument: ${arg}`)
+      throw new Error(`Unknown argument: ${arg}`);
     }
   }
-  return { check, root }
+  return { check, root };
 }
 
 function main(argv: ReadonlyArray<string>): number {
-  const options = parseCli(argv)
+  const options = parseCli(argv);
   if (!options.check) {
-    writeGenerated(options.root)
-    return 0
+    writeGenerated(options.root);
+    return 0;
   }
-  const stale = staleGeneratedPaths(options.root)
-  for (const path of stale) console.error(`generated payload is stale: ${path}`)
-  return stale.length === 0 ? 0 : 1
+  const stale = staleGeneratedPaths(options.root);
+  for (const path of stale) console.error(`generated payload is stale: ${path}`);
+  return stale.length === 0 ? 0 : 1;
 }
 
 if (import.meta.main) {
   try {
-    process.exit(main(process.argv.slice(2)))
+    process.exit(main(process.argv.slice(2)));
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error))
-    process.exit(1)
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
   }
 }

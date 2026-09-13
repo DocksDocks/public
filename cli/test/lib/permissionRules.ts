@@ -21,22 +21,22 @@
  */
 
 /** Tools that execute a shell command, whatever the specifier says. */
-export const SHELL_TOOLS = ["Bash", "PowerShell"] as const
+export const SHELL_TOOLS = ["Bash", "PowerShell"] as const;
 
 /** Tools that read without changing state; Claude Code auto-approves these. */
-export const READ_ONLY_TOOLS = ["Read", "Glob", "Grep", "WebSearch", "NotebookRead"] as const
+export const READ_ONLY_TOOLS = ["Read", "Glob", "Grep", "WebSearch", "NotebookRead"] as const;
 
 export interface ParsedRule {
-  readonly tool: string
+  readonly tool: string;
   /** Absent for a bare `Tool` rule, which covers every use of that tool. */
-  readonly specifier: string | undefined
+  readonly specifier: string | undefined;
 }
 
 export type ParseResult =
   | { readonly ok: true; readonly rule: ParsedRule }
-  | { readonly ok: false; readonly reason: string }
+  | { readonly ok: false; readonly reason: string };
 
-const TOOL_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/
+const TOOL_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 // Claude Code 2.1.251 embeds these canonical names in its tool inventories.
 const KNOWN_TOOL_NAMES: Readonly<Record<string, true>> = {
   Bash: true,
@@ -117,8 +117,8 @@ const KNOWN_TOOL_NAMES: Readonly<Record<string, true>> = {
   ListPlugins: true,
   ListSkills: true,
   SearchPlugins: true,
-  SearchSkills: true
-}
+  SearchSkills: true,
+};
 const PRIMARY_CONTENT_FIELDS: Readonly<Record<string, string>> = {
   Bash: "command",
   PowerShell: "command",
@@ -128,8 +128,8 @@ const PRIMARY_CONTENT_FIELDS: Readonly<Record<string, string>> = {
   Grep: "path",
   Glob: "path",
   NotebookEdit: "notebook_path",
-  WebFetch: "url"
-}
+  WebFetch: "url",
+};
 const FILE_PATTERN_TOOLS: Readonly<Record<string, true>> = {
   Read: true,
   Write: true,
@@ -137,98 +137,104 @@ const FILE_PATTERN_TOOLS: Readonly<Record<string, true>> = {
   Glob: true,
   NotebookRead: true,
   NotebookEdit: true,
-  Cd: true
-}
-const STAR = "\u0000ESCAPED_STAR\u0000"
-const BACKSLASH = "\u0000ESCAPED_BACKSLASH\u0000"
+  Cd: true,
+};
+const STAR = "\u0000ESCAPED_STAR\u0000";
+const BACKSLASH = "\u0000ESCAPED_BACKSLASH\u0000";
 
 function isMcpToolName(tool: string): boolean {
-  const [prefix, server, ...toolSegments] = tool.split("__")
-  const toolName = toolSegments.join("__")
+  const [prefix, server, ...toolSegments] = tool.split("__");
+  const toolName = toolSegments.join("__");
   return (
     prefix === "mcp" &&
     server !== undefined &&
     /^[A-Za-z0-9_.*-]+$/.test(server) &&
     (toolSegments.length === 0 || /^[A-Za-z0-9_.*-]+$/.test(toolName))
-  )
+  );
 }
 
 /** Is the character at `index` escaped by an odd run of backslashes? */
 function isEscaped(text: string, index: number): boolean {
-  let backslashes = 0
-  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) backslashes++
-  return backslashes % 2 !== 0
+  let backslashes = 0;
+  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) backslashes++;
+  return backslashes % 2 !== 0;
 }
 
 export function parseRule(text: string): ParseResult {
-  if (text === "") return { ok: false, reason: "empty rule" }
-  const open = text.indexOf("(")
+  if (text === "") return { ok: false, reason: "empty rule" };
+  const open = text.indexOf("(");
   if (open === -1) {
     if (!TOOL_NAME.test(text) && !isMcpToolName(text)) {
-      return { ok: false, reason: `tool name contains invalid characters: ${text}` }
+      return { ok: false, reason: `tool name contains invalid characters: ${text}` };
     }
     if (KNOWN_TOOL_NAMES[text] !== true && !isMcpToolName(text)) {
-      return { ok: false, reason: `unknown tool name: ${text}` }
+      return { ok: false, reason: `unknown tool name: ${text}` };
     }
-    return { ok: true, rule: { tool: text, specifier: undefined } }
+    return { ok: true, rule: { tool: text, specifier: undefined } };
   }
 
-  const tool = text.slice(0, open)
-  if (tool === "") return { ok: false, reason: "empty tool name before the specifier" }
+  const tool = text.slice(0, open);
+  if (tool === "") return { ok: false, reason: "empty tool name before the specifier" };
   if (!TOOL_NAME.test(tool) && !isMcpToolName(tool)) {
-    return { ok: false, reason: `tool name contains invalid characters: ${tool}` }
+    return { ok: false, reason: `tool name contains invalid characters: ${tool}` };
   }
   if (KNOWN_TOOL_NAMES[tool] !== true && !isMcpToolName(tool)) {
-    return { ok: false, reason: `unknown tool name: ${tool}` }
+    return { ok: false, reason: `unknown tool name: ${tool}` };
   }
 
-  let depth = 1
-  let closedAt = -1
+  let depth = 1;
+  let closedAt = -1;
   for (let i = open + 1; i < text.length && closedAt === -1; i++) {
-    if (isEscaped(text, i)) continue
-    if (text[i] === "(") depth++
+    if (isEscaped(text, i)) continue;
+    if (text[i] === "(") depth++;
     else if (text[i] === ")") {
-      depth--
-      if (depth === 0) closedAt = i
+      depth--;
+      if (depth === 0) closedAt = i;
     }
   }
-  if (closedAt === -1) return { ok: false, reason: "mismatched parentheses" }
+  if (closedAt === -1) return { ok: false, reason: "mismatched parentheses" };
   if (closedAt !== text.length - 1) {
-    return { ok: false, reason: "trailing text follows the specifier" }
+    return { ok: false, reason: "trailing text follows the specifier" };
   }
 
-  const specifier = text.slice(open + 1, closedAt)
-  if (specifier === "") return { ok: false, reason: "empty specifier inside parentheses" }
+  const specifier = text.slice(open + 1, closedAt);
+  if (specifier === "") return { ok: false, reason: "empty specifier inside parentheses" };
   if (isMcpToolName(tool)) {
     return {
       ok: false,
-      reason: "MCP tool rules do not accept parenthesized specifiers"
-    }
+      reason: "MCP tool rules do not accept parenthesized specifiers",
+    };
   }
   if (specifier.includes(":*") && FILE_PATTERN_TOOLS[tool] === true) {
     return {
       ok: false,
-      reason: "the :* suffix is only valid on Bash command prefixes"
-    }
+      reason: "the :* suffix is only valid on Bash command prefixes",
+    };
   }
 
-  const primaryField = PRIMARY_CONTENT_FIELDS[tool]
-  const colon = specifier.indexOf(":")
-  if (primaryField !== undefined && colon > 0 && specifier.slice(0, colon).trim() === primaryField) {
+  const primaryField = PRIMARY_CONTENT_FIELDS[tool];
+  const colon = specifier.indexOf(":");
+  if (
+    primaryField !== undefined &&
+    colon > 0 &&
+    specifier.slice(0, colon).trim() === primaryField
+  ) {
     return {
       ok: false,
-      reason: `${tool} specifier qualifies its raw ${primaryField} field; use the tool matcher directly`
-    }
+      reason: `${tool} specifier qualifies its raw ${primaryField} field; use the tool matcher directly`,
+    };
   }
-  return { ok: true, rule: { tool, specifier } }
+  return { ok: true, rule: { tool, specifier } };
 }
 
 /** Every rule in `rules` the parser rejects, paired with its reason. */
-export function invalidRules(rules: ReadonlyArray<string>): Array<{ rule: string; reason: string }> {
+export function invalidRules(
+  rules: ReadonlyArray<string>,
+): Array<{ rule: string; reason: string }> {
   return rules.flatMap((rule) => {
-    const parsed = parseRule(rule)
-    return parsed.ok ? [] : [{ rule, reason: parsed.reason }]
-  })
+    const parsed = parseRule(rule);
+    return parsed.ok ? [] : [{ rule, reason: parsed.reason }];
+  });
 }
 
 /**
@@ -236,27 +242,27 @@ export function invalidRules(rules: ReadonlyArray<string>): Array<{ rule: string
  * a Windows drive root is one backslash here and two inside a rule.
  */
 export function ruleMatchesCommand(rule: string, tool: string, command: string): boolean {
-  const parsedRule = parseRule(rule)
-  if (!parsedRule.ok) return false
-  if (parsedRule.rule.tool !== tool) return false
-  if (parsedRule.rule.specifier === undefined) return true
+  const parsedRule = parseRule(rule);
+  if (!parsedRule.ok) return false;
+  if (parsedRule.rule.tool !== tool) return false;
+  if (parsedRule.rule.specifier === undefined) return true;
 
-  let held = ""
-  const specifier = parsedRule.rule.specifier.trim()
+  let held = "";
+  const specifier = parsedRule.rule.specifier.trim();
   for (let i = 0; i < specifier.length; i++) {
-    const next = specifier[i + 1]
+    const next = specifier[i + 1];
     if (specifier[i] === "\\" && (next === "*" || next === "\\")) {
-      held += next === "*" ? STAR : BACKSLASH
-      i++
-      continue
+      held += next === "*" ? STAR : BACKSLASH;
+      i++;
+      continue;
     }
-    held += specifier[i]
+    held += specifier[i];
   }
 
   const pattern = held
     .replace(/[.+?^${}()|[\]\\'"]/g, "\\$&")
     .replaceAll("*", ".*")
     .replaceAll(STAR, "\\*")
-    .replaceAll(BACKSLASH, "\\\\")
-  return new RegExp(`^${pattern}$`, "s").test(command.trim())
+    .replaceAll(BACKSLASH, "\\\\");
+  return new RegExp(`^${pattern}$`, "s").test(command.trim());
 }

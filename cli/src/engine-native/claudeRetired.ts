@@ -143,7 +143,7 @@ export const RETIRED_PERMISSION_RULES = {
     "PowerShell(python *)",
     "PowerShell(pip *)",
     "PowerShell(pip3 *)",
-    "WebFetch"
+    "WebFetch",
   ],
   deny: [
     "PowerShell(Remove-Item *-Recurse* \\)",
@@ -159,7 +159,7 @@ export const RETIRED_PERMISSION_RULES = {
     "PowerShell(rm *-Recurse* \\)",
     "PowerShell(rm *-Recurse* *:\\)",
     "PowerShell(rmdir *-Recurse* \\)",
-    "PowerShell(rmdir *-Recurse* *:\\)"
+    "PowerShell(rmdir *-Recurse* *:\\)",
   ],
-  ask: []
-} as const satisfies Readonly<Record<"allow" | "deny" | "ask", ReadonlyArray<string>>>
+  ask: [],
+} as const satisfies Readonly<Record<"allow" | "deny" | "ask", ReadonlyArray<string>>>;

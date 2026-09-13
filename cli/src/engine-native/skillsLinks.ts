@@ -13,76 +13,86 @@ import {
   rmSync,
   statSync,
   symlinkSync,
-  writeFileSync
-} from "node:fs"
-import { dirname, relative, resolve } from "node:path"
-import { p } from "./exec"
-import type { Ctx } from "./index"
-import { hostOs, type DirectoryLinkKind } from "./os"
-import type { EngineServices } from "./services"
+  writeFileSync,
+} from "node:fs";
+import { dirname, relative, resolve } from "node:path";
+import { p } from "./exec";
+import type { Ctx } from "./index";
+import { hostOs, type DirectoryLinkKind } from "./os";
+import type { EngineServices } from "./services";
 
-export type LinkOutcome = "symlink" | "junction" | "copy" | "failed"
+export type LinkOutcome = "symlink" | "junction" | "copy" | "failed";
 
 /** Lets heal and prune distinguish a kit-owned copy from a user's real directory. */
-export const COPY_MARKER = ".docks-kit-copied-skill"
+export const COPY_MARKER = ".docks-kit-copied-skill";
 
 export function isDir(path: string): boolean {
   try {
-    return statSync(path).isDirectory()
+    return statSync(path).isDirectory();
   } catch {
-    return false
+    return false;
   }
 }
 
 /** skills::heal_claude_symlink — true when a heal occurred. */
 export function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): boolean {
-  const { echo, warn } = ctx.services.logger
-  const canonical = p(skillsDir, base)
-  const claudeSkillsDir = p(ctx.home, ".claude", "skills")
-  const claudeLink = p(claudeSkillsDir, base)
-  const relTarget = relative(dirname(claudeLink), canonical)
+  const { echo, warn } = ctx.services.logger;
+  const canonical = p(skillsDir, base);
+  const claudeSkillsDir = p(ctx.home, ".claude", "skills");
+  const claudeLink = p(claudeSkillsDir, base);
+  const relTarget = relative(dirname(claudeLink), canonical);
 
-  if (!isDir(canonical)) return false
+  if (!isDir(canonical)) return false;
 
-  const linkStat = lstat(claudeLink)
+  const linkStat = lstat(claudeLink);
   if (linkStat?.isSymbolicLink() === true) {
-    const current = safeReadlink(claudeLink)
-    if (current === relTarget) return false
+    const current = safeReadlink(claudeLink);
+    if (current === relTarget) return false;
     if (ctx.dryRun) {
-      echo(`[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`)
-      return true
+      echo(
+        `[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`,
+      );
+      return true;
     }
     if (!removeLink(claudeLink)) {
-      warn(`could not remove stale link ~/.claude/skills/${base} — remove it manually, then re-run sync`)
-      return false
+      warn(
+        `could not remove stale link ~/.claude/skills/${base} — remove it manually, then re-run sync`,
+      );
+      return false;
     }
   } else if (linkStat !== undefined) {
     if (!isKitOwnedCopy(claudeLink)) {
-      warn(`~/.claude/skills/${base} exists as a real path (not a symlink) — leaving alone; remove manually if it's stale`)
-      return false
+      warn(
+        `~/.claude/skills/${base} exists as a real path (not a symlink) — leaving alone; remove manually if it's stale`,
+      );
+      return false;
     }
     if (ctx.dryRun) {
-      echo(`[dry-run] would replace kit-created Claude copy: ~/.claude/skills/${base} -> ${relTarget}`)
-      return true
+      echo(
+        `[dry-run] would replace kit-created Claude copy: ~/.claude/skills/${base} -> ${relTarget}`,
+      );
+      return true;
     }
     if (!removeKitOwnedCopy(claudeLink)) {
-      warn(`could not remove kit-created copy ~/.claude/skills/${base} — remove it manually, then re-run sync`)
-      return false
+      warn(
+        `could not remove kit-created copy ~/.claude/skills/${base} — remove it manually, then re-run sync`,
+      );
+      return false;
     }
   } else if (ctx.dryRun) {
-    echo(`[dry-run] would create missing Claude symlink: ~/.claude/skills/${base} -> ${relTarget}`)
-    return true
+    echo(`[dry-run] would create missing Claude symlink: ~/.claude/skills/${base} -> ${relTarget}`);
+    return true;
   }
 
-  mkdirSync(claudeSkillsDir, { recursive: true })
-  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services) !== "failed"
+  mkdirSync(claudeSkillsDir, { recursive: true });
+  return linkOrCopyWithWarnings(relTarget, claudeLink, ctx.services) !== "failed";
 }
 
 export function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
   try {
-    return lstatSync(path)
+    return lstatSync(path);
   } catch {
-    return undefined
+    return undefined;
   }
 }
 
@@ -94,44 +104,43 @@ export function lstat(path: string): ReturnType<typeof lstatSync> | undefined {
  * resolution is what makes the next mechanism in the chain reachable.
  */
 function linksToDirectory(path: string): boolean {
-  if (lstat(path)?.isSymbolicLink() !== true) return false
+  if (lstat(path)?.isSymbolicLink() !== true) return false;
   try {
-    return statSync(path).isDirectory()
+    return statSync(path).isDirectory();
   } catch {
-    return false
+    return false;
   }
 }
 
 export function isKitOwnedCopy(path: string): boolean {
-  return lstat(path)?.isDirectory() === true && existsSync(p(path, COPY_MARKER))
+  return lstat(path)?.isDirectory() === true && existsSync(p(path, COPY_MARKER));
 }
 
 export function removeKitOwnedCopy(path: string): boolean {
-  if (!isKitOwnedCopy(path)) return false
+  if (!isKitOwnedCopy(path)) return false;
   try {
-    rmSync(path, { recursive: true, force: true })
-    return true
+    rmSync(path, { recursive: true, force: true });
+    return true;
   } catch {
-    return lstat(path) === undefined
+    return lstat(path) === undefined;
   }
 }
 
 function safeReadlink(path: string): string {
   try {
-    return readlinkSync(path)
+    return readlinkSync(path);
   } catch {
-    return ""
+    return "";
   }
 }
-
 
 /** Remove a symlink without touching a real directory. */
 export function removeLink(path: string): boolean {
   try {
-    rmSync(path, { force: true })
-    return true
+    rmSync(path, { force: true });
+    return true;
   } catch {
-    return lstat(path) === undefined
+    return lstat(path) === undefined;
   }
 }
 
@@ -139,50 +148,56 @@ export function removeLink(path: string): boolean {
 export function linkOrCopy(
   target: string,
   link: string,
-  kinds: ReadonlyArray<DirectoryLinkKind> = hostOs().directoryLinkKinds
+  kinds: ReadonlyArray<DirectoryLinkKind> = hostOs().directoryLinkKinds,
 ): LinkOutcome {
-  const resolvedLink = resolve(link)
-  const absoluteTarget = resolve(dirname(resolvedLink), target)
-  if (absoluteTarget === resolvedLink) return "symlink"
-  removeLink(link)
+  const resolvedLink = resolve(link);
+  const absoluteTarget = resolve(dirname(resolvedLink), target);
+  if (absoluteTarget === resolvedLink) return "symlink";
+  removeLink(link);
 
   for (const kind of kinds) {
     try {
       if (kind === "symlink") {
-        symlinkSync(target, link)
+        symlinkSync(target, link);
       } else {
-        symlinkSync(absoluteTarget, link, "junction")
+        symlinkSync(absoluteTarget, link, "junction");
       }
-      if (linksToDirectory(link)) return kind
+      if (linksToDirectory(link)) return kind;
     } catch {
       // The runtime decides whether each mechanism works; try the next one.
     }
-    removeLink(link)
+    removeLink(link);
   }
 
-  const copyDestinationWasAbsent = lstat(link) === undefined
+  const copyDestinationWasAbsent = lstat(link) === undefined;
   try {
-    cpSync(absoluteTarget, link, { recursive: true })
-    writeFileSync(p(link, COPY_MARKER), "")
-    return "copy"
+    cpSync(absoluteTarget, link, { recursive: true });
+    writeFileSync(p(link, COPY_MARKER), "");
+    return "copy";
   } catch {
     if (copyDestinationWasAbsent) {
       try {
-        rmSync(link, { recursive: true, force: true })
+        rmSync(link, { recursive: true, force: true });
       } catch {
         // The outcome remains failed; a later sync can retry the destination.
       }
     }
-    return "failed"
+    return "failed";
   }
 }
 
-function linkOrCopyWithWarnings(target: string, link: string, services: EngineServices): LinkOutcome {
-  const outcome = linkOrCopy(target, link)
+function linkOrCopyWithWarnings(
+  target: string,
+  link: string,
+  services: EngineServices,
+): LinkOutcome {
+  const outcome = linkOrCopy(target, link);
   if (outcome === "copy") {
-    services.logger.warn(`created copy fallback ${link} because directory linking is unavailable — a later sync will restore a real link once linking works`)
+    services.logger.warn(
+      `created copy fallback ${link} because directory linking is unavailable — a later sync will restore a real link once linking works`,
+    );
   } else if (outcome === "failed") {
-    services.logger.warn(`could not create symlink ${link}`)
+    services.logger.warn(`could not create symlink ${link}`);
   }
-  return outcome
+  return outcome;
 }

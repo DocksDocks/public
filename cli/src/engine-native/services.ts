@@ -14,71 +14,71 @@ import {
   type DependencySpec,
   type ProbeExecutor,
   type ProbeResult,
-  type ToolId
-} from "./deps"
-import { makeLogger, type Logger, type LoggerSinks } from "./logger"
-import { platformName, rawPlatform, type PlatformName } from "./os"
+  type ToolId,
+} from "./deps";
+import { makeLogger, type Logger, type LoggerSinks } from "./logger";
+import { platformName, rawPlatform, type PlatformName } from "./os";
 
-export type { Logger } from "./logger"
+export type { Logger } from "./logger";
 
 export interface DependencyManager {
-  readonly spec: (id: ToolId) => DependencySpec
-  readonly probe: (id: ToolId) => ProbeResult
-  readonly version: (id: ToolId) => Promise<string>
-  readonly path: (id: ToolId) => Promise<string>
-  readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void
+  readonly spec: (id: ToolId) => DependencySpec;
+  readonly probe: (id: ToolId) => ProbeResult;
+  readonly version: (id: ToolId) => Promise<string>;
+  readonly path: (id: ToolId) => Promise<string>;
+  readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void;
 }
 
 export interface Platform {
-  readonly raw: () => NodeJS.Platform
-  readonly name: () => PlatformName
+  readonly raw: () => NodeJS.Platform;
+  readonly name: () => PlatformName;
 }
 
 export interface EngineServices {
-  readonly logger: Logger
-  readonly deps: DependencyManager
-  readonly platform: Platform
+  readonly logger: Logger;
+  readonly deps: DependencyManager;
+  readonly platform: Platform;
 }
 
 export interface EngineServiceOptions {
-  readonly sinks?: LoggerSinks
+  readonly sinks?: LoggerSinks;
 }
 
 /** Platform view over an injectable platform id. */
 export const makePlatform = (pf: NodeJS.Platform = rawPlatform()): Platform => ({
   raw: () => pf,
-  name: () => platformName(pf)
-})
+  name: () => platformName(pf),
+});
 
 /** DependencyManager whose hints default to the INJECTED platform, not the host. */
 export const makeDependencyManager = (
   platform: Platform,
-  exec: ProbeExecutor = defaultProbeExecutor
+  exec: ProbeExecutor = defaultProbeExecutor,
 ): DependencyManager => {
-  const warned = new Set<ToolId>()
+  const warned = new Set<ToolId>();
   return {
     spec: (id) => {
-      const s = DEPENDENCIES[id]
-      return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) }
+      const s = DEPENDENCIES[id];
+      return { ...s, installHint: (pf = platform.raw()) => s.installHint(pf) };
     },
     probe: (id) => resolveDependency(DEPENDENCIES[id], exec, platform.raw()),
     version: (id) => resolveVersion(DEPENDENCIES[id], exec),
     path: (id) => resolvePath(DEPENDENCIES[id], exec, platform.raw()),
     warnMissing: (id, logger, context) => {
-      if (warned.has(id)) return
-      warned.add(id)
-      const suffix = context !== undefined && context !== "" ? ` (${context})` : ""
-      logger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(platform.raw())}${suffix}`)
-    }
-  }
-}
+      if (warned.has(id)) return;
+      warned.add(id);
+      const suffix = context !== undefined && context !== "" ? ` (${context})` : "";
+      logger.warn(`${id} not installed — ${DEPENDENCIES[id].installHint(platform.raw())}${suffix}`);
+    },
+  };
+};
 
 export const makeEngineServices = (opts?: EngineServiceOptions): EngineServices => {
-  const platform = makePlatform()
-  const logger = makeLogger(opts?.sinks ?? {})
+  const platform = makePlatform();
+  const logger = makeLogger(opts?.sinks ?? {});
   return {
     logger,
     deps: makeDependencyManager(platform),
-    platform
-  }
-}
+    platform,
+  };
+};

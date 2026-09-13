@@ -7,35 +7,35 @@
  * Resolution reads the environment and probes directory existence only, so a
  * dry run stays free of omp subcommands.
  */
-import { existsSync } from "node:fs"
-import { isAbsolute, resolve } from "node:path"
+import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 
-import { p } from "./exec"
+import { p } from "./exec";
 
 /** Upstream CONFIG_DIR_NAME; PI_CONFIG_DIR renames this directory under home. */
-const DEFAULT_CONFIG_DIR_NAME = ".omp"
+const DEFAULT_CONFIG_DIR_NAME = ".omp";
 /** Upstream APP_NAME, the fixed segment under an XDG category root. */
-const APP_NAME = "omp"
+const APP_NAME = "omp";
 /** Upstream PROFILE_NAME_RE. An invalid name degrades to the default profile. */
-const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/
+const PROFILE_NAME_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 /** Windows device aliases upstream rejects, bare or with any extension. */
-const WINDOWS_RESERVED_BASENAME_RE = /^(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])(?:\..*)?$/i
+const WINDOWS_RESERVED_BASENAME_RE = /^(?:CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])(?:\..*)?$/i;
 
 export interface OmpPaths {
   /** undefined for the default profile, else the normalized profile name */
-  readonly profile: string | undefined
+  readonly profile: string | undefined;
   /** config root for the active profile */
-  readonly configRoot: string
+  readonly configRoot: string;
   /** directory holding AGENTS.md, config.yml, mcp.json - never XDG-redirected */
-  readonly agentDir: string
+  readonly agentDir: string;
   /** root holding marketplaces.json and plugins/ - XDG-redirected when adopted */
-  readonly dataRoot: string
+  readonly dataRoot: string;
 }
 
 export interface OmpPathInputs {
-  readonly home: string
-  readonly env: Record<string, string | undefined>
-  readonly platform: NodeJS.Platform
+  readonly home: string;
+  readonly env: Record<string, string | undefined>;
+  readonly platform: NodeJS.Platform;
 }
 
 /**
@@ -44,36 +44,47 @@ export interface OmpPathInputs {
  * var cannot crash a bare import.
  */
 function normalizeProfile(value: string | undefined): string | undefined {
-  const name = value?.trim()
-  if (name === undefined || name === "" || name === "default") return undefined
-  if (name === "." || name === ".." || name.endsWith(".")) return undefined
-  if (!PROFILE_NAME_RE.test(name) || WINDOWS_RESERVED_BASENAME_RE.test(name)) return undefined
-  return name
+  const name = value?.trim();
+  if (name === undefined || name === "" || name === "default") return undefined;
+  if (name === "." || name === ".." || name.endsWith(".")) return undefined;
+  if (!PROFILE_NAME_RE.test(name) || WINDOWS_RESERVED_BASENAME_RE.test(name)) return undefined;
+  return name;
 }
 
 /** Upstream applies `path.resolve` to PI_CODING_AGENT_DIR, so cwd anchors a relative value. */
 function resolveAgentOverride(value: string): string {
-  return isAbsolute(value) ? value : resolve(process.cwd(), value)
+  return isAbsolute(value) ? value : resolve(process.cwd(), value);
 }
 
 export function ompPaths({ home, env, platform }: OmpPathInputs): OmpPaths {
   // OMP_PROFILE wins whenever it is defined, including when explicitly empty;
   // PI_PROFILE is only the legacy fallback.
-  const profile = normalizeProfile(env["OMP_PROFILE"] !== undefined ? env["OMP_PROFILE"] : env["PI_PROFILE"])
+  const profile = normalizeProfile(
+    env["OMP_PROFILE"] !== undefined ? env["OMP_PROFILE"] : env["PI_PROFILE"],
+  );
 
   // PI_CONFIG_DIR is a config root dirname joined under home, not a path.
-  const configDirName = env["PI_CONFIG_DIR"]
-  const baseRoot = p(home, configDirName !== undefined && configDirName !== "" ? configDirName : DEFAULT_CONFIG_DIR_NAME)
-  const configRoot = profile === undefined ? baseRoot : p(baseRoot, "profiles", profile)
+  const configDirName = env["PI_CONFIG_DIR"];
+  const baseRoot = p(
+    home,
+    configDirName !== undefined && configDirName !== "" ? configDirName : DEFAULT_CONFIG_DIR_NAME,
+  );
+  const configRoot = profile === undefined ? baseRoot : p(baseRoot, "profiles", profile);
 
   // A named profile derives its own agent directory and ignores the override.
-  const agentOverride = env["PI_CODING_AGENT_DIR"]
-  const defaultAgentDir = p(configRoot, "agent")
-  const agentDir = profile === undefined && agentOverride !== undefined && agentOverride !== ""
-    ? resolveAgentOverride(agentOverride)
-    : defaultAgentDir
+  const agentOverride = env["PI_CODING_AGENT_DIR"];
+  const defaultAgentDir = p(configRoot, "agent");
+  const agentDir =
+    profile === undefined && agentOverride !== undefined && agentOverride !== ""
+      ? resolveAgentOverride(agentOverride)
+      : defaultAgentDir;
 
-  return { profile, configRoot, agentDir, dataRoot: xdgDataRoot(env, platform, profile, agentDir === defaultAgentDir) ?? configRoot }
+  return {
+    profile,
+    configRoot,
+    agentDir,
+    dataRoot: xdgDataRoot(env, platform, profile, agentDir === defaultAgentDir) ?? configRoot,
+  };
 }
 
 /**
@@ -87,15 +98,15 @@ function xdgDataRoot(
   env: Record<string, string | undefined>,
   platform: NodeJS.Platform,
   profile: string | undefined,
-  agentDirIsDefault: boolean
+  agentDirIsDefault: boolean,
 ): string | undefined {
-  if (!agentDirIsDefault) return undefined
-  if (platform !== "linux" && platform !== "darwin") return undefined
+  if (!agentDirIsDefault) return undefined;
+  if (platform !== "linux" && platform !== "darwin") return undefined;
 
-  const dataHome = env["XDG_DATA_HOME"]
-  if (dataHome === undefined || dataHome === "") return undefined
+  const dataHome = env["XDG_DATA_HOME"];
+  if (dataHome === undefined || dataHome === "") return undefined;
 
-  const appRoot = p(dataHome, APP_NAME)
-  const candidate = profile === undefined ? appRoot : p(appRoot, "profiles", profile)
-  return existsSync(candidate) ? candidate : undefined
+  const appRoot = p(dataHome, APP_NAME);
+  const candidate = profile === undefined ? appRoot : p(appRoot, "profiles", profile);
+  return existsSync(candidate) ? candidate : undefined;
 }

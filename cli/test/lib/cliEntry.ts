@@ -26,33 +26,33 @@
  * run. `smoke:package` runs the published source entry out of an installed
  * tarball, and `smoke:native` runs the compiled binary.
  */
-import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs"
-import { delimiter, join, resolve } from "node:path"
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { delimiter, join, resolve } from "node:path";
 
-import { hostOs } from "../../src/engine-native/os"
-import { REPO_DIR, processIsAlive } from "./goldenResources"
+import { hostOs } from "../../src/engine-native/os";
+import { REPO_DIR, processIsAlive } from "./goldenResources";
 
 /** Env var naming the entry to spawn; set by the shared build, or by hand. */
-export const CLI_ENTRY_ENV = "DOCKS_KIT_TEST_CLI_ENTRY"
+export const CLI_ENTRY_ENV = "DOCKS_KIT_TEST_CLI_ENTRY";
 
-export const SOURCE_CLI_ENTRY = join(REPO_DIR, "cli", "src", "main.ts")
+export const SOURCE_CLI_ENTRY = join(REPO_DIR, "cli", "src", "main.ts");
 
-const BUILD_DIR = join(REPO_DIR, "cli", "dist-test")
+const BUILD_DIR = join(REPO_DIR, "cli", "dist-test");
 
 function locateBunRuntime(): string {
-  if (process.versions["bun"] !== undefined) return resolve(process.execPath)
-  const { executableSuffixes } = hostOs()
+  if (process.versions["bun"] !== undefined) return resolve(process.execPath);
+  const { executableSuffixes } = hostOs();
   for (const directory of (process.env["PATH"] ?? "").split(delimiter)) {
     for (const suffix of executableSuffixes) {
-      const candidate = join(directory, `bun${suffix}`)
-      if (existsSync(candidate)) return resolve(candidate)
+      const candidate = join(directory, `bun${suffix}`);
+      if (existsSync(candidate)) return resolve(candidate);
     }
   }
-  throw new Error("unable to locate the Bun runtime")
+  throw new Error("unable to locate the Bun runtime");
 }
 
-export const BUN_RUNTIME = locateBunRuntime()
+export const BUN_RUNTIME = locateBunRuntime();
 
 /**
  * Bundle the CLI to `outFile`. Returns the path so a caller can hand it to a
@@ -60,24 +60,26 @@ export const BUN_RUNTIME = locateBunRuntime()
  * fallback to source would hide a bundling defect behind a slow green run.
  */
 export function buildCliEntry(outFile: string): string {
-  mkdirSync(BUILD_DIR, { recursive: true })
+  mkdirSync(BUILD_DIR, { recursive: true });
   const result = spawnSync(
     BUN_RUNTIME,
     ["build", SOURCE_CLI_ENTRY, "--target", "bun", "--outfile", outFile],
-    { cwd: REPO_DIR, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-  )
+    { cwd: REPO_DIR, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
   if (result.error !== undefined) {
-    throw new Error(`bundling ${SOURCE_CLI_ENTRY} failed to spawn: ${String(result.error)}`)
+    throw new Error(`bundling ${SOURCE_CLI_ENTRY} failed to spawn: ${String(result.error)}`);
   }
   if (result.status !== 0 || !existsSync(outFile)) {
-    const detail = [result.stdout, result.stderr].filter(Boolean).join("\n").trim()
-    throw new Error(`bundling ${SOURCE_CLI_ENTRY} failed (exit ${String(result.status)}):\n${detail}`)
+    const detail = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+    throw new Error(
+      `bundling ${SOURCE_CLI_ENTRY} failed (exit ${String(result.status)}):\n${detail}`,
+    );
   }
-  return outFile
+  return outFile;
 }
 
 /** Path for a bundle owned by one process; the pid keeps parallel workers apart. */
-export const processCliEntryPath = (): string => join(BUILD_DIR, `main-${process.pid}.js`)
+export const processCliEntryPath = (): string => join(BUILD_DIR, `main-${process.pid}.js`);
 
 /**
  * Remove one bundle and leave the build directory in place. Removing the
@@ -86,7 +88,7 @@ export const processCliEntryPath = (): string => join(BUILD_DIR, `main-${process
  * empty directory carries no cost.
  */
 export function removeCliEntry(outFile: string): void {
-  rmSync(outFile, { force: true })
+  rmSync(outFile, { force: true });
 }
 
 /**
@@ -95,42 +97,42 @@ export function removeCliEntry(outFile: string): void {
  * so this sweep leaves it untouched.
  */
 export function sweepDeadCliEntries(): void {
-  let names: ReadonlyArray<string>
+  let names: ReadonlyArray<string>;
   try {
-    names = readdirSync(BUILD_DIR)
+    names = readdirSync(BUILD_DIR);
   } catch {
     // The first build creates the directory; nothing can be stale yet.
-    return
+    return;
   }
   for (const name of names) {
-    const owner = /^main-(\d+)\.js$/.exec(name)
-    if (owner === null) continue
-    const pid = Number(owner[1])
-    if (!Number.isSafeInteger(pid) || pid <= 0) continue
-    if (pid === process.pid || processIsAlive(pid)) continue
-    rmSync(join(BUILD_DIR, name), { force: true })
+    const owner = /^main-(\d+)\.js$/.exec(name);
+    if (owner === null) continue;
+    const pid = Number(owner[1]);
+    if (!Number.isSafeInteger(pid) || pid <= 0) continue;
+    if (pid === process.pid || processIsAlive(pid)) continue;
+    rmSync(join(BUILD_DIR, name), { force: true });
   }
 }
 
-let entry: string | undefined
+let entry: string | undefined;
 
 /**
  * The entry to spawn, built at most once per process. A shared entry named in
  * the environment wins, so the unit run builds one bundle for every worker.
  */
 export function cliEntry(): string {
-  if (entry !== undefined) return entry
-  const shared = process.env[CLI_ENTRY_ENV]
+  if (entry !== undefined) return entry;
+  const shared = process.env[CLI_ENTRY_ENV];
   if (shared !== undefined && shared !== "") {
     if (!existsSync(shared)) {
-      throw new Error(`${CLI_ENTRY_ENV} names '${shared}', which does not exist`)
+      throw new Error(`${CLI_ENTRY_ENV} names '${shared}', which does not exist`);
     }
-    entry = shared
-    return entry
+    entry = shared;
+    return entry;
   }
-  const owned = processCliEntryPath()
-  buildCliEntry(owned)
-  process.on("exit", () => removeCliEntry(owned))
-  entry = owned
-  return entry
+  const owned = processCliEntryPath();
+  buildCliEntry(owned);
+  process.on("exit", () => removeCliEntry(owned));
+  entry = owned;
+  return entry;
 }

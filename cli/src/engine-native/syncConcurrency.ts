@@ -3,10 +3,10 @@
  * manifest-driven serialization rule. Split from index.ts, which re-exports
  * the public surface so existing import paths keep working.
  */
-import { normalizeManifest } from "./skillsManifest"
+import { normalizeManifest } from "./skillsManifest";
 
-export type SyncConcurrency = 1 | 2 | 3
-export type SyncTask<T> = () => Promise<T>
+export type SyncConcurrency = 1 | 2 | 3;
+export type SyncTask<T> = () => Promise<T>;
 
 /**
  * Run input-ordered tasks with bounded overlap. Once one task rejects, queued
@@ -15,40 +15,41 @@ export type SyncTask<T> = () => Promise<T>
  */
 export async function runBounded<T>(
   tasks: ReadonlyArray<SyncTask<T>>,
-  concurrency: SyncConcurrency
+  concurrency: SyncConcurrency,
 ): Promise<Array<T>> {
-  const results = new Array<T>(tasks.length)
-  const failures = new Map<number, unknown>()
-  let nextIndex = 0
-  let stopped = false
+  const results = new Array<T>(tasks.length);
+  const failures = new Map<number, unknown>();
+  let nextIndex = 0;
+  let stopped = false;
 
   const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, async () => {
     for (;;) {
-      if (stopped || nextIndex >= tasks.length) return
-      const index = nextIndex
-      nextIndex += 1
+      if (stopped || nextIndex >= tasks.length) return;
+      const index = nextIndex;
+      nextIndex += 1;
       try {
-        results[index] = await tasks[index]!()
+        results[index] = await tasks[index]!();
       } catch (error) {
-        failures.set(index, error)
-        stopped = true
+        failures.set(index, error);
+        stopped = true;
       }
     }
-  })
-  await Promise.all(workers)
+  });
+  await Promise.all(workers);
 
   for (let index = 0; index < tasks.length; index += 1) {
-    if (failures.has(index)) throw failures.get(index)
+    if (failures.has(index)) throw failures.get(index);
   }
-  return results
+  return results;
 }
 
 export function syncConcurrencyForManifest(
   configured: SyncConcurrency,
   manifest: string,
   claudeSelected: boolean,
-  skillsSelected: boolean
+  skillsSelected: boolean,
 ): SyncConcurrency {
-  if (!claudeSelected || !skillsSelected || normalizeManifest(manifest).length === 0) return configured
-  return 1
+  if (!claudeSelected || !skillsSelected || normalizeManifest(manifest).length === 0)
+    return configured;
+  return 1;
 }

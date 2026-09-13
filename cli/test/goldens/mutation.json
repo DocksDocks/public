@@ -2,11 +2,7 @@
   "cases": {
     "advisor-migration=prior-kit-settings state=default": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor=default"
-      ],
+      "command": ["sync", "claude", "--claude-advisor=default"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
@@ -33,10 +29,7 @@
     },
     "advisor-migration=prior-kit-settings state=flagless": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
@@ -63,11 +56,7 @@
     },
     "advisor-migration=prior-kit-settings state=off": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor=off"
-      ],
+      "command": ["sync", "claude", "--claude-advisor=off"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
@@ -94,11 +83,7 @@
     },
     "advisor-migration=prior-kit-settings state=on": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor=on"
-      ],
+      "command": ["sync", "claude", "--claude-advisor=on"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
@@ -125,11 +110,7 @@
     },
     "fixture=home-drift cmd=model claude default": {
       "argvLog": "",
-      "command": [
-        "model",
-        "claude",
-        "default"
-      ],
+      "command": ["model", "claude", "default"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to default (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -151,11 +132,7 @@
     },
     "fixture=home-drift cmd=model claude opus": {
       "argvLog": "",
-      "command": [
-        "model",
-        "claude",
-        "opus"
-      ],
+      "command": ["model", "claude", "opus"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to opus (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -177,11 +154,7 @@
     },
     "fixture=home-drift cmd=model codex gpt-5.5": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -203,10 +176,7 @@
     },
     "fixture=home-drift cmd=sync --prune": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\nclaude\tplugin uninstall -y --scope user effect-kit@docks\nclaude\tplugin uninstall -y --scope user user-plugin@userplace\nclaude\tplugin marketplace remove userplace\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\nnpx\t--yes skills@1.5.25 remove --global gone-skill -y\n",
-      "command": [
-        "sync",
-        "--prune"
-      ],
+      "command": ["sync", "--prune"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -1, plugins: +5 ~0 -2)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\u001b[1;32m[ok]\u001b[0m Kit-managed skills removed (-1)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
@@ -240,10 +210,7 @@
     },
     "fixture=home-drift cmd=sync --reconcile": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "--reconcile"
-      ],
+      "command": ["sync", "--reconcile"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings reconciled (backup at settings.json.bak; user-only keys preserved, permissions arrays replaced by SoT)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -277,10 +244,7 @@
     },
     "fixture=home-drift cmd=sync agents": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "agents"
-      ],
+      "command": ["sync", "agents"],
       "exitCode": 0,
       "output": "\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n",
       "tree": {
@@ -303,10 +267,7 @@
     },
     "fixture=home-drift cmd=sync claude": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -333,11 +294,7 @@
     },
     "fixture=home-drift cmd=sync claude --claude-advisor=on": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor=on"
-      ],
+      "command": ["sync", "claude", "--claude-advisor=on"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -364,11 +321,7 @@
     },
     "fixture=home-drift cmd=sync claude --claude-effort=default": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-effort=default"
-      ],
+      "command": ["sync", "claude", "--claude-effort=default"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 0, files: 1, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -430,11 +383,7 @@
     },
     "fixture=home-drift cmd=sync claude --claude-model=opus replay=2nd": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-model=opus"
-      ],
+      "command": ["sync", "claude", "--claude-model=opus"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\n",
       "tree": {
@@ -461,11 +410,7 @@
     },
     "fixture=home-drift cmd=sync claude --claude-plugin=supabase,n8n": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-plugin=supabase,n8n"
-      ],
+      "command": ["sync", "claude", "--claude-plugin=supabase,n8n"],
       "exitCode": 2,
       "output": "\u001b[1;31m[err]\u001b[0m Unknown opt-in plugin 'supabase,n8n'. Known: supabase, n8n\n",
       "tree": {
@@ -487,10 +432,7 @@
     },
     "fixture=home-drift cmd=sync codex": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -518,11 +460,7 @@
     },
     "fixture=home-drift cmd=sync codex --codex-effort=default": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-effort=default"
-      ],
+      "command": ["sync", "codex", "--codex-effort=default"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -550,11 +488,7 @@
     },
     "fixture=home-drift cmd=sync codex --codex-effort=ultra": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-effort=ultra"
-      ],
+      "command": ["sync", "codex", "--codex-effort=ultra"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Effort: deployed Codex model_reasoning_effort set to ultra (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -582,11 +516,7 @@
     },
     "fixture=home-drift cmd=sync codex --codex-model=gpt-5.5": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-model=gpt-5.5"
-      ],
+      "command": ["sync", "codex", "--codex-model=gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex: removed retired plugin table [plugins.\"session-relay@docks\"]\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -614,10 +544,7 @@
     },
     "fixture=home-drift cmd=sync codex replay=2nd": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -646,9 +573,7 @@
     },
     "fixture=home-drift cmd=sync replay=2nd": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync"
-      ],
+      "command": ["sync"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  2 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -683,11 +608,7 @@
     },
     "fixture=home-fresh cmd=model codex gpt-5.5": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;33m[warn]\u001b[0m (--codex-model) <HOME>/.codex/config.toml missing — skipped\n",
       "tree": {
@@ -696,10 +617,7 @@
     },
     "fixture=home-fresh cmd=sync --verbose replay=2nd": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "--verbose"
-      ],
+      "command": ["sync", "--verbose"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime already in sync (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md already in sync\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json already in sync (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors: ENABLE_CLAUDEAI_MCP_SERVERS already set in <HOME>/.bashrc (left as-is)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m LSP server binaries present\n\u001b[1;32m[ok]\u001b[0m Codex config already in sync\n\u001b[1;32m[ok]\u001b[0m Codex rules already in sync\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md already in sync\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\u001b[1;32m[ok]\u001b[0m Universal skills already in sync (0 present)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\nRestart Claude Code (and Codex) to discover newly installed universal skills.\n",
       "tree": {
@@ -729,10 +647,7 @@
     },
     "fixture=home-fresh cmd=sync agents": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "agents"
-      ],
+      "command": ["sync", "agents"],
       "exitCode": 0,
       "output": "\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n",
       "tree": {
@@ -760,11 +675,7 @@
     },
     "fixture=home-fresh cmd=sync agents --prune": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "agents",
-        "--prune"
-      ],
+      "command": ["sync", "agents", "--prune"],
       "exitCode": 0,
       "output": "\n--- Sync complete ---\nRepo:     <REPO>\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n",
       "tree": {
@@ -776,10 +687,7 @@
     },
     "fixture=home-fresh cmd=sync claude": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -797,11 +705,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor"
-      ],
+      "command": ["sync", "claude", "--claude-advisor"],
       "exitCode": 2,
       "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m --claude-advisor requires a value: --claude-advisor=<on|off|default>\n",
       "tree": {
@@ -810,11 +714,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor=": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor="
-      ],
+      "command": ["sync", "claude", "--claude-advisor="],
       "exitCode": 2,
       "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m Invalid Claude advisor state '' — valid: on|off|default\n",
       "tree": {
@@ -823,11 +723,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor=maybe": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-advisor=maybe"
-      ],
+      "command": ["sync", "claude", "--claude-advisor=maybe"],
       "exitCode": 2,
       "output": "Available claude advisor states (advisorModel; verified 2026-07-10):\n  on  — set advisorModel: fable\n  off  — unset advisorModel\n  default  — SoT: off (unset)\n\u001b[1;31m[err]\u001b[0m Invalid Claude advisor state 'maybe' — valid: on|off|default\n",
       "tree": {
@@ -836,11 +732,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-effort": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-effort"
-      ],
+      "command": ["sync", "claude", "--claude-effort"],
       "exitCode": 2,
       "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m --claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>\n",
       "tree": {
@@ -849,11 +741,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-effort=": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-effort="
-      ],
+      "command": ["sync", "claude", "--claude-effort="],
       "exitCode": 2,
       "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m Invalid Claude effort '' — valid: low|medium|high|xhigh|default\n",
       "tree": {
@@ -862,11 +750,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-effort=max": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-effort=max"
-      ],
+      "command": ["sync", "claude", "--claude-effort=max"],
       "exitCode": 2,
       "output": "Available claude effort levels (effortLevel; verified 2026-07-10):\n  low\n  medium\n  high\n  xhigh\n  default  — SoT: high\n\u001b[1;31m[err]\u001b[0m Invalid Claude effort 'max' — valid: low|medium|high|xhigh|default\n",
       "tree": {
@@ -875,11 +759,7 @@
     },
     "fixture=home-fresh cmd=sync claude --claude-model=default": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude",
-        "--claude-model=default"
-      ],
+      "command": ["sync", "claude", "--claude-model=default"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m Model: deployed settings model set to default (SoT unchanged; flag-less sync reverts)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -897,10 +777,7 @@
     },
     "fixture=home-fresh cmd=sync claude stubs=claude": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;33m[warn]\u001b[0m claude CLI not found - config deploys, but plugin passes are skipped. Install Claude Code: curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh | docs: https://code.claude.com/docs/en/setup\n\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m claude CLI not in PATH — skipping plugin reconcile (run /plugin marketplace add + /plugin install manually)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  skipped - claude CLI not installed\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -918,10 +795,7 @@
     },
     "fixture=home-fresh cmd=sync claude stubs=claude variant=marketplace-refresh-failure": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 1,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m Failed to refresh marketplace: docks: stub claude marketplace refresh failure; run manually: claude plugin marketplace update docks\n\u001b[1;33m[warn]\u001b[0m Failed to refresh marketplace: claude-plugins-official: stub claude marketplace refresh failure; run manually: claude plugin marketplace update claude-plugins-official\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;33m[warn]\u001b[0m 2 plugin operation(s) failed — re-run sync or install manually\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n\n--- Failures ---\n- Failed to refresh marketplace: docks: stub claude marketplace refresh failure; run manually: claude plugin marketplace update docks\n- Failed to refresh marketplace: claude-plugins-official: stub claude marketplace refresh failure; run manually: claude plugin marketplace update claude-plugins-official\n",
       "tree": {
@@ -939,10 +813,7 @@
     },
     "fixture=home-fresh cmd=sync claude stubs=git": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -960,10 +831,7 @@
     },
     "fixture=home-fresh cmd=sync claude stubs=jq variant=jq-absent-bun-hooks": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -981,10 +849,7 @@
     },
     "fixture=home-fresh cmd=sync codex": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1001,11 +866,7 @@
     },
     "fixture=home-fresh cmd=sync codex --codex-effort": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-effort"
-      ],
+      "command": ["sync", "codex", "--codex-effort"],
       "exitCode": 2,
       "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m --codex-effort requires a value: --codex-effort=<none|minimal|low|medium|high|xhigh|max|ultra|default>\n",
       "tree": {
@@ -1014,11 +875,7 @@
     },
     "fixture=home-fresh cmd=sync codex --codex-effort=": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-effort="
-      ],
+      "command": ["sync", "codex", "--codex-effort="],
       "exitCode": 2,
       "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort '' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
       "tree": {
@@ -1027,11 +884,7 @@
     },
     "fixture=home-fresh cmd=sync codex --codex-effort=future": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "codex",
-        "--codex-effort=future"
-      ],
+      "command": ["sync", "codex", "--codex-effort=future"],
       "exitCode": 2,
       "output": "Available codex effort levels (model_reasoning_effort; verified 2026-07-10):\n  none\n  minimal\n  low\n  medium\n  high\n  xhigh\n  max\n  ultra\n  default  — SoT: high\n  (support is model-dependent)\n\u001b[1;31m[err]\u001b[0m Invalid Codex effort 'future' — valid: none|minimal|low|medium|high|xhigh|max|ultra|default\n",
       "tree": {
@@ -1040,10 +893,7 @@
     },
     "fixture=home-fresh cmd=sync codex stubs=codex": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m codex CLI not in PATH - deployed config/marketplace only; install Codex with: tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o \"$tmp\" && CODEX_NON_INTERACTIVE=1 sh \"$tmp\" | docs: https://developers.openai.com/codex/cli; then run: codex plugin add docks@docks\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1060,10 +910,7 @@
     },
     "fixture=home-fresh cmd=sync codex stubs=git": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Codex plugin refresh skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1080,10 +927,7 @@
     },
     "fixture=home-fresh cmd=sync codex stubs=jq variant=jq-absent-native-sync": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1100,10 +944,7 @@
     },
     "fixture=home-fresh cmd=sync omp": {
       "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.13.0\n",
-      "command": [
-        "sync",
-        "omp"
-      ],
+      "command": ["sync", "omp"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 3 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1122,11 +963,7 @@
     },
     "fixture=home-fresh cmd=sync omp --reconcile": {
       "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.13.0\n",
-      "command": [
-        "sync",
-        "omp",
-        "--reconcile"
-      ],
+      "command": ["sync", "omp", "--reconcile"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced (plugins: ~3)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 3 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1145,10 +982,7 @@
     },
     "fixture=home-fresh cmd=sync omp stubs=omp": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "omp"
-      ],
+      "command": ["sync", "omp"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;33m[warn]\u001b[0m omp not installed — install omp from https://github.com/can1357/oh-my-pi (an existing install self-updates with `omp update`) (deployed omp config only — marketplace and plugin passes skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 0 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1167,10 +1001,7 @@
     },
     "fixture=home-fresh cmd=sync omp stubs=omp variant=plugin-failure": {
       "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.13.0\n",
-      "command": [
-        "sync",
-        "omp"
-      ],
+      "command": ["sync", "omp"],
       "exitCode": 1,
       "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;33m[warn]\u001b[0m omp docks marketplace registration failed: stub omp operation failure; run manually: omp plugin marketplace add https://github.com/DocksDocks/docks.git\n\u001b[1;33m[warn]\u001b[0m omp plugin operation failed for docks@docks: stub omp operation failure; run manually: omp plugin install --scope user docks@docks\n\u001b[1;33m[warn]\u001b[0m omp plugin operation failed for plan-lifecycle@docks: stub omp operation failure; run manually: omp plugin install --scope user plan-lifecycle@docks\n\u001b[1;33m[warn]\u001b[0m omp plugin operation failed for pi-intercom: stub omp operation failure; run manually: omp install pi-intercom@0.13.0\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 0 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n\n--- Failures ---\n- omp docks marketplace registration failed: stub omp operation failure; run manually: omp plugin marketplace add https://github.com/DocksDocks/docks.git\n- omp plugin operation failed for docks@docks: stub omp operation failure; run manually: omp plugin install --scope user docks@docks\n- omp plugin operation failed for plan-lifecycle@docks: stub omp operation failure; run manually: omp plugin install --scope user plan-lifecycle@docks\n- omp plugin operation failed for pi-intercom: stub omp operation failure; run manually: omp install pi-intercom@0.13.0\n",
       "tree": {
@@ -1189,9 +1020,7 @@
     },
     "fixture=home-fresh cmd=sync replay=2nd": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\ncodex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync"
-      ],
+      "command": ["sync"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\u001b[1;32m[ok]\u001b[0m Codex marketplace merged (backup at marketplace.json.bak)\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1221,9 +1050,7 @@
     },
     "fixture=home-fresh cmd=sync stubs=git": {
       "argvLog": "",
-      "command": [
-        "sync"
-      ],
+      "command": ["sync"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings installed\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — Claude plugin passes skipped; re-run sync after installing)\n\u001b[1;32m[ok]\u001b[0m Codex config installed\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\nSkills:   <HOME>/.agents/skills\n          0 universal skill(s) installed\n\nRestart Claude Code for hook/env-var changes to take effect.\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1251,10 +1078,7 @@
     },
     "fixture=home-fresh cmd=toolchain check": {
       "argvLog": "bun\t--version\nbwrap\t--version\nclaude\t--version\ncodex\t--version\ncurl\t--version\nffplay\t-version\ngit\t--version\nnpm\tls -g --depth=0 --json\njq\t--version\nnode\t--version\nnpm\t--version\nomp\t--version\nrust-analyzer\t--version\ntsc\t--version\ntypescript-language-server\t--version\n",
-      "command": [
-        "toolchain",
-        "check"
-      ],
+      "command": ["toolchain", "check"],
       "exitCode": 0,
       "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nbun                          managed   1.4.0          1.4.0     1.4.2     ok\nbwrap                        check     0.11.0         0.9.0     -         ok\nclaude                       check     2.1.204        2.1.219   -         below-floor\ncodex                        check     0.144.4        -         -         ok\ncurl                         check     ?              -         -         unknown\nffplay                       check     6.1.1          -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     1.18.5         1.18.5    1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        22.22.2   -         ok\nnpm                          check     ?              -         -         unknown\nomp                          check     18.0.8         18.0.8    18.0.8    ok\npi-intercom                  pin       (npx)          -         0.13.0    pinned\nrust-analyzer                check     1.92.0         -         -         ok\nskills-cli                   pin       (npx)          -         1.5.25    pinned\ntsc                          check     6.0.3          6.0.3     6.0.3     ok\ntypescript-language-server   check     6.0.0          6.0.0     6.0.0     ok\n",
       "tree": {
@@ -1263,10 +1087,7 @@
     },
     "fixture=home-invalid-json cmd=sync claude": {
       "argvLog": "",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 1,
       "output": "\u001b[1;31m[err]\u001b[0m Aborting sync: <HOME>/.claude/settings.json is not valid JSON. Fix it manually or delete it to reinstall.\n",
       "tree": {
@@ -1277,10 +1098,7 @@
     },
     "migration=legacy-claude-hook-scripts": {
       "argvLog": "claude\tplugin marketplace add DocksDocks/docks\nclaude\tplugin marketplace update docks\nclaude\tplugin install docks@docks\nclaude\tplugin marketplace update claude-plugins-official\nclaude\tplugin install php-lsp@claude-plugins-official\nclaude\tplugin install plan-lifecycle@docks\nclaude\tplugin install rust-analyzer-lsp@claude-plugins-official\nclaude\tplugin install typescript-lsp@claude-plugins-official\n",
-      "command": [
-        "sync",
-        "claude"
-      ],
+      "command": ["sync", "claude"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Claude runtime synced (statusline, session-start, notify, notification)\n\u001b[1;32m[ok]\u001b[0m CLAUDE.md synced\n\u001b[1;32m[ok]\u001b[0m Settings merged (backup at settings.json.bak)\n\u001b[1;32m[ok]\u001b[0m Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)\n\u001b[1;32m[ok]\u001b[0m ~/.claude.json updated (showTurnDuration, mcpServers)\n\u001b[1;32m[ok]\u001b[0m claude.ai connectors disabled via <HOME>/.bashrc (start a new shell to apply)\n\u001b[1;32m[ok]\u001b[0m Plugins synced (marketplaces: +1 -0, plugins: +5 ~0 -0)\n\n--- Sync complete ---\nRepo:     <REPO>\nClaude:   <HOME>/.claude\nHooks:    Bun (statusline, session-start, notify)\nPlugins:  0 installed (from SoT enabledPlugins + Anthropic auto-installs)\n\nIn a Claude Code session, run /reload-plugins to pick up newly installed plugins.\nRestart Claude Code for hook/env-var changes to take effect.\n",
       "tree": {
@@ -1299,10 +1117,7 @@
     },
     "toml=01-top-level-comments.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1320,11 +1135,7 @@
     },
     "toml=01-top-level-comments.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1335,10 +1146,7 @@
     },
     "toml=02-first-table-insert.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1356,11 +1164,7 @@
     },
     "toml=02-first-table-insert.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1371,10 +1175,7 @@
     },
     "toml=03-features-only-landlock.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1392,11 +1193,7 @@
     },
     "toml=03-features-only-landlock.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1407,10 +1204,7 @@
     },
     "toml=04-features-extra-keys.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex: scrubbed deprecated [features].use_legacy_landlock\n\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1428,11 +1222,7 @@
     },
     "toml=04-features-extra-keys.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1443,10 +1233,7 @@
     },
     "toml=05-user-tables.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1464,11 +1251,7 @@
     },
     "toml=05-user-tables.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1479,10 +1262,7 @@
     },
     "toml=06-sot-table-replace.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 2 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1500,11 +1280,7 @@
     },
     "toml=06-sot-table-replace.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {
@@ -1515,10 +1291,7 @@
     },
     "toml=07-dotted-quoted-headers.toml": {
       "argvLog": "codex\tplugin add docks@docks\ncodex\tplugin add plan-lifecycle@docks\n",
-      "command": [
-        "sync",
-        "codex"
-      ],
+      "command": ["sync", "codex"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)\n\u001b[1;32m[ok]\u001b[0m Codex rules synced\n\u001b[1;32m[ok]\u001b[0m Codex AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m Codex marketplace installed\n\u001b[1;32m[ok]\u001b[0m Codex plugins synced (plugins: ~2)\n\n--- Sync complete ---\nRepo:     <REPO>\nCodex:    <HOME>/.codex\nCodex plugins: 3 enabled in config.toml\n\nRestart Codex to load any refreshed plugins, skills, or tools.\n",
       "tree": {
@@ -1536,11 +1309,7 @@
     },
     "toml=07-dotted-quoted-headers.toml model codex": {
       "argvLog": "",
-      "command": [
-        "model",
-        "codex",
-        "gpt-5.5"
-      ],
+      "command": ["model", "codex", "gpt-5.5"],
       "exitCode": 0,
       "output": "\u001b[1;32m[ok]\u001b[0m Model: deployed Codex model set to gpt-5.5 (SoT unchanged; flag-less sync reverts)\n",
       "tree": {

@@ -1,63 +1,62 @@
-import { Command, Flag } from "effect/unstable/cli"
-import { Console, Effect } from "effect"
-import { existsSync, readFileSync } from "node:fs"
-import { bail, compiled } from "../engine"
-import { kitHome } from "../kitHome"
-import { p, spawnHost } from "../engine-native/exec"
-import { hostOs, type HostOs } from "../engine-native/os"
+import { Command, Flag } from "effect/unstable/cli";
+import { Console, Effect } from "effect";
+import { existsSync, readFileSync } from "node:fs";
+import { bail, compiled } from "../engine";
+import { kitHome } from "../kitHome";
+import { p, spawnHost } from "../engine-native/exec";
+import { hostOs, type HostOs } from "../engine-native/os";
 
 const noSync = Flag.Boolean("no-sync").pipe(
   Flag.withDescription("Update the kit only; skip the chained flag-less sync"),
-  Flag.withDefault(false)
-)
-
+  Flag.withDefault(false),
+);
 
 const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {
-  const res = spawnHost("git", ["-C", home, ...args])
-  return { ok: res.error === undefined && res.status === 0, out: `${res.stdout ?? ""}${res.stderr ?? ""}`.trim() }
-}
+  const res = spawnHost("git", ["-C", home, ...args]);
+  return {
+    ok: res.error === undefined && res.status === 0,
+    out: `${res.stdout ?? ""}${res.stderr ?? ""}`.trim(),
+  };
+};
 
 /** Spawn the freshly-updated code — the running process still has the old
  * version loaded, so the chained sync must be a new process. */
 const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
   Effect.sync(() => {
-    const res = spawnHost(argv0, args, { stdio: "inherit" })
-    if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1)
-  })
+    const res = spawnHost(argv0, args, { stdio: "inherit" });
+    if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1);
+  });
 
-export const updateSyncArgs = (home: string): Array<string> => [p(home, "cli/src/main.ts"), "sync"]
+export const updateSyncArgs = (home: string): Array<string> => [p(home, "cli/src/main.ts"), "sync"];
 
 const readPackageVersion = (home: string): string => {
   try {
-    const doc: unknown = JSON.parse(readFileSync(p(home, "package.json"), "utf8"))
-    if (doc === null || typeof doc !== "object" || !("version" in doc)) return ""
-    return typeof doc.version === "string" ? doc.version : ""
+    const doc: unknown = JSON.parse(readFileSync(p(home, "package.json"), "utf8"));
+    if (doc === null || typeof doc !== "object" || !("version" in doc)) return "";
+    return typeof doc.version === "string" ? doc.version : "";
   } catch {
-    return ""
+    return "";
   }
-}
+};
 
-export type PackageManager = "bun" | "npm"
+export type PackageManager = "bun" | "npm";
 
 interface PackageRootCapture {
-  readonly status: number | null
-  readonly stdout: string
-  readonly error?: Error
+  readonly status: number | null;
+  readonly stdout: string;
+  readonly error?: Error;
 }
 
-type CapturePackageRoot = (
-  command: string,
-  args: ReadonlyArray<string>
-) => PackageRootCapture
+type CapturePackageRoot = (command: string, args: ReadonlyArray<string>) => PackageRootCapture;
 
 const capturePackageRoot: CapturePackageRoot = (command, args) => {
-  const res = spawnHost(command, args)
+  const res = spawnHost(command, args);
   return {
     status: res.status,
     stdout: res.stdout ?? "",
-    ...(res.error === undefined ? {} : { error: res.error })
-  }
-}
+    ...(res.error === undefined ? {} : { error: res.error }),
+  };
+};
 
 /**
  * A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. Windows
@@ -68,187 +67,210 @@ const capturePackageRoot: CapturePackageRoot = (command, args) => {
 export const packageManagerForHome = (
   home: string,
   environment: NodeJS.ProcessEnv = process.env,
-  host: HostOs = hostOs()
+  host: HostOs = hostOs(),
 ): PackageManager => {
   const normalize = (value: string): string =>
-    host.id === "windows" ? value.replaceAll("\\", "/") : value
-  const normalizedHome = normalize(home)
+    host.id === "windows" ? value.replaceAll("\\", "/") : value;
+  const normalizedHome = normalize(home);
   const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
-    const root = environment[name]?.trim()
-    if (root === undefined || root === "") return false
-    const normalizedRoot = normalize(root)
-    return normalizedHome === normalizedRoot || normalizedHome.startsWith(`${normalizedRoot}/`)
-  }
+    const root = environment[name]?.trim();
+    if (root === undefined || root === "") return false;
+    const normalizedRoot = normalize(root);
+    return normalizedHome === normalizedRoot || normalizedHome.startsWith(`${normalizedRoot}/`);
+  };
   return normalizedHome.includes("/.bun/") ||
     underEnvironmentRoot("BUN_INSTALL_GLOBAL_DIR") ||
     underEnvironmentRoot("BUN_INSTALL")
     ? "bun"
-    : "npm"
-}
+    : "npm";
+};
 
 export type GlobalPackageHome =
   | { readonly ok: true; readonly home: string }
-  | { readonly ok: false; readonly diagnostic: string }
+  | { readonly ok: false; readonly diagnostic: string };
 
 export const resolveGlobalPackageHome = (
   manager: PackageManager,
-  capture: CapturePackageRoot = capturePackageRoot
+  capture: CapturePackageRoot = capturePackageRoot,
 ): GlobalPackageHome => {
-  const commandArgs = manager === "bun" ? ["pm", "-g", "ls"] : ["root", "-g"]
-  const result = capture(manager, commandArgs)
+  const commandArgs = manager === "bun" ? ["pm", "-g", "ls"] : ["root", "-g"];
+  const result = capture(manager, commandArgs);
   if (result.error !== undefined || result.status !== 0) {
     const detail =
       result.error !== undefined
         ? result.error.message
-        : `exit ${result.status ?? "without status"}`
+        : `exit ${result.status ?? "without status"}`;
     return {
       ok: false,
-      diagnostic: `${manager} ${commandArgs.join(" ")} failed: ${detail}`
-    }
+      diagnostic: `${manager} ${commandArgs.join(" ")} failed: ${detail}`,
+    };
   }
 
   if (manager === "npm") {
-    const root = result.stdout.trim()
+    const root = result.stdout.trim();
     return root === ""
       ? { ok: false, diagnostic: "npm root -g failed: empty output" }
-      : { ok: true, home: p(root, "docks-kit") }
+      : { ok: true, home: p(root, "docks-kit") };
   }
 
   const globalHeader = result.stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .find((line) => / node_modules(?: \(.*\))?$/.test(line))
+    .find((line) => / node_modules(?: \(.*\))?$/.test(line));
   const globalDir =
     globalHeader === undefined
       ? undefined
-      : /^(.*) node_modules(?: \(.*\))?$/.exec(globalHeader)?.[1]
+      : /^(.*) node_modules(?: \(.*\))?$/.exec(globalHeader)?.[1];
   return globalDir === undefined || globalDir === ""
     ? { ok: false, diagnostic: "bun pm -g ls did not report its global package root" }
-    : { ok: true, home: p(globalDir, "node_modules", "docks-kit") }
-}
+    : { ok: true, home: p(globalDir, "node_modules", "docks-kit") };
+};
 
 export const packageUpdateResult = (
   before: string,
   after: string,
-  samePackageRoot = true
+  samePackageRoot = true,
 ): { alreadyCurrent: boolean; message: string } => {
-  if (before === "" || after === "") return { alreadyCurrent: false, message: "" }
+  if (before === "" || after === "") return { alreadyCurrent: false, message: "" };
   if (!samePackageRoot) {
     return {
       alreadyCurrent: false,
-      message: `Installed ${after} in the selected global package root.`
-    }
+      message: `Installed ${after} in the selected global package root.`,
+    };
   }
   if (before === after) {
-    return { alreadyCurrent: true, message: `Already at the latest version (${after}).` }
+    return { alreadyCurrent: true, message: `Already at the latest version (${after}).` };
   }
-  return { alreadyCurrent: false, message: `Updated ${before} -> ${after}.` }
-}
+  return { alreadyCurrent: false, message: `Updated ${before} -> ${after}.` };
+};
 
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     if (spawnHost("git", ["--version"], { stdio: "ignore" }).status !== 0) {
-      return yield* bail("git not found - cannot update the kit checkout")
+      return yield* bail("git not found - cannot update the kit checkout");
     }
-    const dirty = git(home, ["status", "--porcelain"])
-    if (!dirty.ok) return yield* bail(`git status failed in ${home}: ${dirty.out}`)
+    const dirty = git(home, ["status", "--porcelain"]);
+    if (!dirty.ok) return yield* bail(`git status failed in ${home}: ${dirty.out}`);
     if (dirty.out !== "") {
-      return yield* bail(`kit checkout ${home} has local changes - commit or stash them, then re-run docks-kit update`)
+      return yield* bail(
+        `kit checkout ${home} has local changes - commit or stash them, then re-run docks-kit update`,
+      );
     }
-    const upstream = git(home, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+    const upstream = git(home, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
     if (!upstream.ok) {
-      return yield* bail("current branch has no upstream - set one (git branch --set-upstream-to) or update manually")
+      return yield* bail(
+        "current branch has no upstream - set one (git branch --set-upstream-to) or update manually",
+      );
     }
-    const before = git(home, ["rev-parse", "HEAD"]).out
-    const pull = git(home, ["pull", "--ff-only"])
-    if (!pull.ok) return yield* bail(`git pull --ff-only failed (diverged history?):\n${pull.out}`)
-    const after = git(home, ["rev-parse", "HEAD"]).out
+    const before = git(home, ["rev-parse", "HEAD"]).out;
+    const pull = git(home, ["pull", "--ff-only"]);
+    if (!pull.ok) return yield* bail(`git pull --ff-only failed (diverged history?):\n${pull.out}`);
+    const after = git(home, ["rev-parse", "HEAD"]).out;
 
     // A current kit still syncs: the plugin passes deliver marketplace and
     // plugin updates that move independently of the kit's own version.
-    const changed = before !== after
+    const changed = before !== after;
     if (changed) {
-      const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out
-      yield* Console.log(`Updated ${before.slice(0, 7)}..${after.slice(0, 7)} (${count} commit(s) from ${upstream.out}).`)
+      const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out;
+      yield* Console.log(
+        `Updated ${before.slice(0, 7)}..${after.slice(0, 7)} (${count} commit(s) from ${upstream.out}).`,
+      );
 
-      const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n")
+      const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n");
       if (touched.includes("bun.lock") || touched.includes("package.json")) {
-        const res = spawnHost("bun", ["install", "--frozen-lockfile"], { cwd: home, stdio: "inherit" })
+        const res = spawnHost("bun", ["install", "--frozen-lockfile"], {
+          cwd: home,
+          stdio: "inherit",
+        });
         if (res.error !== undefined || res.status !== 0) {
-          return yield* bail("dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync", 1)
+          return yield* bail(
+            "dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync",
+            1,
+          );
         }
       }
     } else {
-      yield* Console.log(`Already at the latest version (${after.slice(0, 7)}, upstream ${upstream.out}).`)
+      yield* Console.log(
+        `Already at the latest version (${after.slice(0, 7)}, upstream ${upstream.out}).`,
+      );
     }
 
     if (compiled) {
       return yield* Console.log(
         changed
           ? "This compiled binary still runs the previous version - the checkout launcher will use updated source next time. Run: ./docks-kit sync (rebuild with bash cli/build-binaries.sh to restore the binary fast path)."
-          : "This compiled binary cannot chain the sync. Run: ./docks-kit sync"
-      )
+          : "This compiled binary cannot chain the sync. Run: ./docks-kit sync",
+      );
     }
-    if (skipSync) return yield* Console.log(changed ? "Kit updated. Run: docks-kit sync" : "Run: docks-kit sync")
-    yield* Console.log(changed ? "Kit updated - running sync with the new version..." : "Syncing to deliver plugin and config updates...")
-    return yield* chainSync(process.execPath, updateSyncArgs(home))
-  })
+    if (skipSync)
+      return yield* Console.log(
+        changed ? "Kit updated. Run: docks-kit sync" : "Run: docks-kit sync",
+      );
+    yield* Console.log(
+      changed
+        ? "Kit updated - running sync with the new version..."
+        : "Syncing to deliver plugin and config updates...",
+    );
+    return yield* chainSync(process.execPath, updateSyncArgs(home));
+  });
 
 const updatePackage = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
-    const manager = packageManagerForHome(home)
-    const beforeVersion = readPackageVersion(home)
-    const updateArgs = manager === "bun"
-      ? ["add", "-g", "docks-kit@latest"]
-      : ["install", "-g", "docks-kit@latest"]
-    const res = spawnHost(manager, updateArgs, { stdio: "inherit" })
+    const manager = packageManagerForHome(home);
+    const beforeVersion = readPackageVersion(home);
+    const updateArgs =
+      manager === "bun" ? ["add", "-g", "docks-kit@latest"] : ["install", "-g", "docks-kit@latest"];
+    const res = spawnHost(manager, updateArgs, { stdio: "inherit" });
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(
         `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,
-        1
-      )
+        1,
+      );
     }
 
-    const updated = resolveGlobalPackageHome(manager)
+    const updated = resolveGlobalPackageHome(manager);
     if (!updated.ok) {
       return yield* bail(
         `global package update completed, but the updated package root could not be resolved: ${updated.diagnostic}`,
-        1
-      )
+        1,
+      );
     }
-    const afterVersion = readPackageVersion(updated.home)
+    const afterVersion = readPackageVersion(updated.home);
     if (afterVersion === "") {
       return yield* bail(
         `global package update completed, but ${p(updated.home, "package.json")} has no readable version`,
-        1
-      )
+        1,
+      );
     }
-    const result = packageUpdateResult(beforeVersion, afterVersion, home === updated.home)
-    if (result.message !== "") yield* Console.log(result.message)
-    if (skipSync) return yield* Console.log(result.alreadyCurrent ? "Run: docks-kit sync" : "Kit updated. Run: docks-kit sync")
+    const result = packageUpdateResult(beforeVersion, afterVersion, home === updated.home);
+    if (result.message !== "") yield* Console.log(result.message);
+    if (skipSync)
+      return yield* Console.log(
+        result.alreadyCurrent ? "Run: docks-kit sync" : "Kit updated. Run: docks-kit sync",
+      );
     yield* Console.log(
       result.alreadyCurrent
         ? "Syncing to deliver plugin and config updates..."
-        : "Kit updated - running sync with the new version..."
-    )
-    return yield* chainSync(process.execPath, updateSyncArgs(updated.home))
-  })
+        : "Kit updated - running sync with the new version...",
+    );
+    return yield* chainSync(process.execPath, updateSyncArgs(updated.home));
+  });
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>
   Effect.gen(function* () {
-    const home = kitHome()
+    const home = kitHome();
     if (existsSync(p(home, ".git"))) {
-      return yield* updateCheckout(home, config.noSync)
+      return yield* updateCheckout(home, config.noSync);
     }
     if (home.includes("node_modules")) {
-      return yield* updatePackage(home, config.noSync)
+      return yield* updatePackage(home, config.noSync);
     }
     return yield* bail(
-      `kit home ${home} is neither a git checkout nor a global package install - update it the way it was installed (e.g. download the latest release binary)`
-    )
-  })
+      `kit home ${home} is neither a git checkout nor a global package install - update it the way it was installed (e.g. download the latest release binary)`,
+    );
+  }),
 ).pipe(
   Command.withDescription(
-    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest), then chains a flag-less sync that also refreshes plugin marketplaces and plugins, even when the kit was already current (--no-sync to skip)."
-  )
-)
+    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest), then chains a flag-less sync that also refreshes plugin marketplaces and plugins, even when the kit was already current (--no-sync to skip).",
+  ),
+);

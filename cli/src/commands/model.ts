@@ -1,70 +1,65 @@
-import { Argument, Command, Flag, Prompt } from "effect/unstable/cli"
-import { Effect, Option } from "effect"
-import { bail, engine } from "../engine"
-import { modelCatalog } from "../engine-native/models"
-import type { Tool } from "../manifests"
+import { Argument, Command, Flag, Prompt } from "effect/unstable/cli";
+import { Effect, Option } from "effect";
+import { bail, engine } from "../engine";
+import { modelCatalog } from "../engine-native/models";
+import type { Tool } from "../manifests";
 
-const tool = Argument.String("tool").pipe(
-  Argument.withDescription("Which tool: claude | codex")
-)
+const tool = Argument.String("tool").pipe(Argument.withDescription("Which tool: claude | codex"));
 const value = Argument.String("value").pipe(
   Argument.withDescription("Model to set (omit to view current + pick interactively on a TTY)"),
-  Argument.optional
-)
+  Argument.optional,
+);
 const dryRun = Flag.Boolean("dry-run").pipe(
   Flag.withDescription("Preview without applying"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 const verbose = Flag.Boolean("verbose").pipe(
   Flag.withAlias("v"),
   Flag.withDescription("Also print no-op confirmations (already in sync, up to date)"),
-  Flag.withDefault(false)
-)
+  Flag.withDefault(false),
+);
 
-const KEEP = "__keep__"
+const KEEP = "__keep__";
 
-export const modelCommand = Command.make(
-  "model",
-  { tool, value, dryRun, verbose },
-  (config) =>
-    Effect.gen(function* () {
-      if (config.tool !== "claude" && config.tool !== "codex") {
-        return yield* bail(`Unknown tool '${config.tool}' (valid: claude, codex)`)
+export const modelCommand = Command.make("model", { tool, value, dryRun, verbose }, (config) =>
+  Effect.gen(function* () {
+    if (config.tool !== "claude" && config.tool !== "codex") {
+      return yield* bail(`Unknown tool '${config.tool}' (valid: claude, codex)`);
+    }
+    const t = config.tool as Tool;
+    const dry = [...(config.dryRun ? ["--dry-run"] : []), ...(config.verbose ? ["--verbose"] : [])];
+
+    if (Option.isSome(config.value)) {
+      if (config.value.value.trim() === "") {
+        return yield* bail("Model value must not be empty or blank");
       }
-      const t = config.tool as Tool
-      const dry = [...(config.dryRun ? ["--dry-run"] : []), ...(config.verbose ? ["--verbose"] : [])]
+      return yield* engine(["model", t, config.value.value, ...dry]);
+    }
 
-      if (Option.isSome(config.value)) {
-        if (config.value.value.trim() === "") {
-          return yield* bail("Model value must not be empty or blank")
-        }
-        return yield* engine(["model", t, config.value.value, ...dry])
-      }
+    // No value: show current (engine prints deployed + SoT + catalog) …
+    yield* engine(["model", t, ...(config.verbose ? ["--verbose"] : [])]);
 
-      // No value: show current (engine prints deployed + SoT + catalog) …
-      yield* engine(["model", t, ...(config.verbose ? ["--verbose"] : [])])
+    // … and offer an interactive picker when attached to a terminal.
+    if (!process.stdin.isTTY || !process.stdout.isTTY) return;
 
-      // … and offer an interactive picker when attached to a terminal.
-      if (!process.stdin.isTTY || !process.stdout.isTTY) return
-
-      const catalog = modelCatalog(t)
-      const chosen = yield* Prompt.Select({
-        message: `Set the deployed ${t} model (deployed config only; a flag-less sync reverts to SoT)`,
-        choices: [
-          { title: "(keep current)", value: KEEP },
-          ...catalog.models.map((m) => ({
-            title: m.id,
-            value: m.id,
-            description: m.note ?? ""
-          }))
-        ]
-      })
-      if (chosen !== KEEP) {
-        yield* engine(["model", t, chosen, ...dry])
-      }
-    })
+    const catalog = modelCatalog(t);
+    const chosen = yield* Prompt.Select({
+      message: `Set the deployed ${t} model (deployed config only; a flag-less sync reverts to SoT)`,
+      choices: [
+        { title: "(keep current)", value: KEEP },
+        ...catalog.models.map((m) => ({
+          title: m.id,
+          value: m.id,
+          description: m.note ?? "",
+        })),
+      ],
+    });
+    if (chosen !== KEEP) {
+      yield* engine(["model", t, chosen, ...dry]);
+    }
+  }),
 ).pipe(
   Command.withDescription(
-    "Get or set the DEPLOYED model for one tool without a full sync (deploy-time modifier semantics: SoT untouched; flag-less sync reverts)."
-  )
-)
+    "Get or set the DEPLOYED model for one tool without a full sync (deploy-time modifier semantics: SoT untouched; flag-less sync reverts).",
+  ),
+);
