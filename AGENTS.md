@@ -164,33 +164,31 @@ non-`local` effect.
 
 <constraint>
 The plan record is a GitHub issue. Its body starts with
-`<!-- plan-contract: v3 -->`, then a blank line and the exact eight `##`
-sections; it has no frontmatter. GitHub owns title, open-work phase, owner,
-timestamps, and completion, and no plan markdown is tracked in the repository.
-Exactly three skills own the workflow: `plan-workspace` maintains the workspace;
-main-context `plan-manager` runs six phases - decide, draft, research, plan
-review, implement, code review - with bounded repair and fresh re-review in both
-review phases, then archives; internal `plan-reviewer` returns one readable
-pre-implementation verdict block per round. Two read-only reviewer wrappers
-ship, `plan-reviewer` and `code-reviewer`, and nothing else in the lifecycle has
-a wrapper.
+`<!-- plan-contract: v4 -->`, followed by one blank line and seven `##`
+sections. It has no frontmatter. GitHub owns the title, open-work phase, owner,
+timestamps, and completion. The repository tracks no plan markdown.
+Exactly three skills own the workflow. `plan-workspace` maintains the workspace.
+Main-context `plan-manager` runs six phases: decide, draft, research, plan
+review, implement, and code review. It uses bounded repair and fresh re-review
+in both review phases, then archives. Internal `plan-reviewer` returns one
+readable pre-implementation verdict block per round. Two read-only reviewer
+wrappers ship: `plan-reviewer` and `code-reviewer`.
 </constraint>
 
-After the marker and blank line, the record carries exactly `## Goal`,
-`## Research`, `## Steps`, `## Acceptance`, `## Do not touch`,
-`## Open questions`, `## Review`, and `## Verification Results`, in that order
-and once each. `## Goal` carries exactly one mode line. Open-work phase is one
-of `drafting`, `planned`, `ongoing`, or `blocked` in a `plan:<phase>` label; a
-blocked plan starts `## Open questions` with `Blocked: <one-line reason>`.
-Closed completion derives from GitHub `state` and `stateReason`. `## Review`
-contains exactly `_Review records are stored in issue comments._`. Each reviewer
-returns one markdown block, and the manager posts that whole block as one issue
-comment. The latest trusted well-formed record per review kind wins; its author
-must equal the plan's sole assignee. A legacy body verdict is consulted only
-when no trusted comment record exists for that kind. Both review phases use
-fresh inputs and run at most five rounds, stopping on pass, no progress, a
-finding surviving its fix, or `repair` or `fixes-required` in round five. A
-plan-review `blocked` verdict always routes its user-only decision through
+After the marker and blank line, the record carries exactly seven sections.
+They appear once each in this order: `## Goal`, `## Research`, `## Steps`,
+`## Acceptance`, `## Do not touch`, `## Open questions`, and
+`## Verification Results`. `## Goal` carries exactly one mode line.
+Open-work phase is `drafting`, `planned`, `ongoing`, or `blocked`.
+Every plan carries `plan`. A `plan:<phase>` label stores the open phase.
+A blocked plan starts `## Open questions` with `Blocked: <one-line reason>`.
+GitHub `state` and `stateReason` determine closed status. Review records live
+only in issue comments. Each reviewer returns one markdown block.
+The manager posts that block as one issue comment. The latest trusted eligible
+comment per review kind wins. Its author must equal the plan's sole assignee.
+Both review phases use fresh inputs and run at most five rounds. They stop on
+pass, no progress, a finding that survives repair, or a round-five non-pass.
+A plan-review `blocked` verdict routes its user-only decision through
 `## Open questions` and `ask`.
 
 The record carries no hash, permit, run identity, lock, or bundle, and the

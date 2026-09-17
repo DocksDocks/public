@@ -1,9 +1,8 @@
 # PLAN.md - plan record standard
 
-The plan record is a GitHub issue. Its body carries the v3 byte contract and the
-human-authored plan, review records live in issue comments, and GitHub fields
-carry the machine state GitHub already owns. No plan markdown is tracked in the
-repository.
+The plan record is a GitHub issue. Its body carries the v4 byte contract and the
+human-authored plan. Review records live in issue comments. GitHub fields carry
+the machine state that GitHub owns. The repository tracks no plan markdown.
 
 Use direct implementation for one clear, reversible, low-risk local diff with one
 bounded acceptance path; it creates no plan issue, reviewer, or automatic
@@ -45,41 +44,40 @@ and the plan issue is the tracker that points at it.
 
 ## Labels
 
-The exact closed lifecycle label set is created idempotently with `gh label create --force`: `plan`, `plan:drafting`, `plan:planned`, `plan:ongoing`, and `plan:blocked`. The four open-work statuses are exactly `drafting`, `planned`, `ongoing`, and `blocked`; `finished` is not a writable status. The retired names `plan:finished` and `plan-scheduled` are deleted and are not created, parsed, or applied.
-
-Every plan issue carries `plan`. Every open plan normally carries exactly one
-phase label. GitHub enforces no exclusion between labels, so every status write
-removes all phase labels present except the one it applies. An open issue with
-no phase label derives `unlabelled` rather than guessing a status.
-
-Phase labels describe open work only. Every read of a closed issue ignores all phase labels and derives completion from `stateReason`. `plan.mjs status` refuses a closed issue with a message containing `is closed; status applies to open plans`. `plan.mjs archive` and `plan.mjs retire` strip every phase label that a closing merge or earlier edit left behind.
+`plan.mjs new` creates five labels idempotently with `gh label create --force`:
+`plan`, `plan:drafting`, `plan:planned`, `plan:ongoing`, and `plan:blocked`.
+The writable plan statuses are `drafting`, `planned`, `ongoing`, and `blocked`.
+Every plan issue carries `plan`. An open plan normally carries one phase label.
+Status writes remove other phase labels before applying the target label.
+No phase label derives `unlabelled`. Multiple phase labels derive `unreadable`.
+Closed issues ignore phase labels and derive completion from `stateReason`.
+`archive` and `retire` remove stale phase labels.
 
 A `plan`-labelled issue is a record, not an invitation. Another agent that finds
 one does not start implementing it; only the manager run that owns the plan moves
 it.
 
-Topic labels such as `security`, `auth`, or `cookies` are project-owned: name
-them on `plan.mjs labels --extra` to create them and on `plan.mjs new --label`
-to attach them. The `plan` namespace is reserved: both commands reject `plan`
-and every value beginning `plan:` so a caller cannot forge lifecycle state.
+Topic labels such as `security`, `auth`, or `cookies` are project-owned.
+Use `plan.mjs new --label <name>` to attach them. The `plan` namespace is
+reserved. The command rejects `plan` and every value that starts with `plan:`.
 
 ## Body contract
 
-A v3 issue body starts with the exact line `<!-- plan-contract: v3 -->`, followed
-by one blank line. The marker travels with the bytes whose format it identifies.
-It is not a label: a triage-capable actor can delete a label independently, and
-a body must not become unreadable because its separately stored version was
-removed. Labels carry lifecycle classification, not body-format identity.
+A v4 issue body starts with the exact line `<!-- plan-contract: v4 -->`.
+One blank line follows the marker. The marker travels with the bytes whose
+format it identifies. It is not a label. A triage-capable actor can delete a
+label independently. Labels carry lifecycle classification, not body-format
+identity.
 
-After the marker, the body contains exactly these eight `##` sections, once each and in this order: `## Goal`, `## Research`, `## Steps`, `## Acceptance`, `## Do not touch`, `## Open questions`, `## Review`, `## Verification Results`.
+The body has exactly seven `##` sections. They appear once each in this order:
+`## Goal`, `## Research`, `## Steps`, `## Acceptance`, `## Do not touch`,
+`## Open questions`, and `## Verification Results`.
 
-A v3 body has no frontmatter and contains no `---` fence anywhere. These keys are
-retired and never live fields in a v3 record: `plan_contract`, `title`, `goal`,
-`status`, `created`, `updated`, `assignee`, and `blocked_reason`.
-
-`## Goal` still contains exactly one `Mode: plan-and-implement` or `Mode: plan-only` line. Mode stays in the body because GitHub has no field that owns this plan-specific choice. Once an open plan leaves `drafting`, `## Research` must no longer carry the template placeholder `_Not researched yet._`.
-`## Review` contains exactly `_Review records are stored in issue comments._`;
-review reports are not appended to the body.
+A v4 body has no frontmatter. `## Goal` contains one
+`Mode: plan-and-implement` or `Mode: plan-only` line. Mode stays in the body
+because GitHub has no field for this plan-specific choice. After drafting,
+`## Research` must not contain `_Not researched yet._`.
+Review records live only in issue comments. The body has no Review section.
 
 A blocked plan carries its reason as the first content line of `## Open questions`.
 Spell it `Blocked: <one-line text>`. Only a blocked plan may open that section
@@ -94,7 +92,8 @@ Contract classification is byte-driven and deliberately does not guess:
 
 | Body evidence | Classification | Handling |
 |---|---|---|
-| First line is exactly `<!-- plan-contract: v3 -->`, followed by one blank line | record | Parsed as the current contract |
+| Body starts with the v4 marker, followed by one blank line | record | Parsed as the canonical contract |
+| Body starts with a readable legacy marker | legacy record | Normalized to v4 on the next write |
 | Anything else | unreadable | Refused; no parser is attempted |
 
 ## GitHub-owned fields
@@ -105,11 +104,10 @@ issue owns its status. The issue assignee owns the single-writer owner.
 `stateReason` owns completion. The body does not duplicate any of those values.
 
 One writer owns a plan issue at a time. `plan.mjs new` assigns the creating
-login, and `plan.mjs claim <issue>` claims an unassigned plan or stays idempotent
-for its current owner. Every mutating command refuses a plan assigned to another
-login. Read-only commands never check ownership. Taking a plan from another
-owner is a deliberate manual GitHub action; no lifecycle command transfers
-ownership and there is no override flag.
+login. A write claims an unassigned plan in the same operation.
+Every mutating command refuses a plan assigned to another login.
+Read-only commands do not check ownership. Taking a plan from another owner
+requires a deliberate GitHub action. No lifecycle command transfers ownership.
 
 ## Plan tables
 
@@ -147,34 +145,27 @@ State is derived by this closed truth table:
 
 | Issue state | Phase label / state reason | Derived status |
 |---|---|---|
-| `OPEN` | exactly one phase label | that phase: `drafting`, `planned`, `ongoing`, or `blocked` |
+| `OPEN` | one valid phase label | `drafting`, `planned`, `ongoing`, or `blocked` |
 | `OPEN` | no phase label | `unlabelled` |
+| `OPEN` | multiple valid phase labels | `unreadable` |
 | `CLOSED` | `COMPLETED` | `finished` |
 | `CLOSED` | `NOT_PLANNED` | `retired` |
 | `CLOSED` | `DUPLICATE` | `duplicate` |
+| `CLOSED` | any other reason | `unreadable` |
 
 A closed issue's phase labels are absent for derivation even when GitHub still
 returns them. Reopening returns the issue to `OPEN`; its status is again derived
 only from the phase labels then present.
 
-Phase lives in the labels, so a body alone carries no phase. `check <issue>`
-enforces every rule. `check --file <path>` enforces only the rules that read the
-body: it skips the phase-label rule, both `Blocked:` rules, and the filled-Research
-rule instead of assuming a phase.
+Phase lives in the labels, so a body alone carries no phase.
 
-The legal open-status transitions are:
-
-```text
-drafting  -> planned | ongoing | blocked
-planned   -> drafting | ongoing | blocked
-ongoing   -> blocked
-blocked   -> drafting | planned | ongoing
-```
-
-The `planned -> drafting` transition returns a plan to drafting after
-substantive review repair. Completion and retirement are issue closure results,
-not status transitions. `plan.mjs archive` does not close the issue;
-`plan.mjs retire` closes it as not planned.
+Before work starts, any open status may change to any open status.
+Work starts when the status is neither `drafting` nor `planned`.
+Applying `plan:ongoing` at any time also marks work as started.
+After work starts, only `ongoing` and `blocked` are legal targets.
+Completion and retirement are issue closure results, not status transitions.
+`plan.mjs archive` does not close the issue. `plan.mjs retire` closes it as not
+planned.
 
 ## Lifecycle commands
 
@@ -189,33 +180,28 @@ resolves the target repository from that checkout's GitHub remote.
 
 | Command | Semantics |
 |---|---|
-| `plan.mjs labels [--extra <name>]…` | Create or update the exact five-label lifecycle set with `gh label create --force`, plus any extra topic labels named on the command line. |
-| `plan.mjs new --title <t> --goal <g> [--mode plan-and-implement\|plan-only] [--label <name>]…` | Create a v3 issue whose body starts with the marker, with labels `plan` and `plan:drafting`, and assign the creating login. |
-| `plan.mjs claim <issue>` | Take single-writer ownership of an existing plan: assign the acting login, stay idempotent when it already owns the plan, and refuse when another login does. |
-| `plan.mjs show <issue> [--body]` | Print the header strip, then `reviews: plan=<pass\|repair\|blocked\|none> code=<pass\|fixes-required\|blocked\|none>`. With `--body`, print only the body to stdout and send both metadata lines to stderr, header first. |
-| `plan.mjs export <issue>` | Write the issue body verbatim to `plan-<issue>.md` inside the scratch directory `git rev-parse --git-path docks-review` resolves, creating it mode 0700 when missing, and print the absolute path. |
-| `plan.mjs edit <issue> --file <path>` | Validate the file as the plan record and enforce the irreversible execution-state freeze: existing step state is immutable after work starts, and new rows are append-only `planned` work on open plans. Refuse on any failed check, instruct re-export, replace the issue body, and print the header strip and changed lines. |
-| `plan.mjs check <issue \| --file <path>>` | Validate a v3 record and print the pass result. |
-| `plan.mjs status <issue> <status> [--reason <text>]` | Validate and apply one open-status transition, then replace all phase labels with the target phase label. Refuse closed issues. |
-| `plan.mjs step <issue> <step-id> <status>` | Rewrite one Steps `Status` cell after checking dependencies; require an open `ongoing` plan, or a `finished` plan when the target status is terminal (`done` or `skipped`) for repair. |
-| `plan.mjs list [--status <s>]` | Print `<status>\t#<issue>\t<title>` for every issue labelled `plan`, deriving `unlabelled`, `finished`, `retired`, and `duplicate` rather than reading them from the body. |
-| `plan.mjs next` | Print startable open plans, using the queue when it is present and valid. |
-| `plan.mjs archive <issue>` | Verify terminal steps, the latest trusted code-review result (with legacy body fallback only when no trusted comment record exists), completed closure, and an eligible merged closing pull request; strip stale phase labels and write no status. |
-| `plan.mjs retire <issue> --reason <text>` | Close the issue as not planned and strip all phase labels; completion derives as `retired`. |
+| `plan.mjs new --title <t> --goal <g> [--mode <m>] [--label <name>]…` | Create a v4 issue. Assign the actor. Apply `plan` and `plan:drafting`. |
+| `plan.mjs show <issue> [--body]` | Print status, review verdicts, and advice. With `--body`, print the body to stdout. |
+| `plan.mjs export <issue>` | Write the body and its digest sidecar to the protected scratch directory. Print the body path. |
+| `plan.mjs edit <issue> --file <path>` | Validate provenance. Normalize the record. Enforce frozen step state. Write the body and changed lines. |
+| `plan.mjs status <issue> <status> [--reason <text>]` | Apply an open-plan status. Maintain the blocked reason and phase labels. |
+| `plan.mjs step <issue> <step-id> <status>` | Apply one step status. Require an ongoing plan, except terminal repair on a finished plan. |
+| `plan.mjs list [--status <s>]` | List plan issues by derived status. Show open plans before closed plans. |
+| `plan.mjs archive <issue>` | Verify terminal steps, trusted code review, and merged closure. Remove stale phase labels. |
+| `plan.mjs retire <issue> --reason <text>` | Close an eligible plan as not planned. Remove phase labels. |
 
-Legal step transitions are `planned → in-flight | done | blocked | skipped`, `in-flight → done | blocked | skipped`, and `blocked → in-flight | done | skipped`.
+Open non-terminal step statuses may change freely. A `done` or `skipped` step is
+immutable. A finished plan permits only terminal step repair.
 
 ## Archive verification
 
-`plan.mjs archive` is a verifier, not a writer of lifecycle state. It requires
-all Steps rows to be terminal (`done` or `skipped`), the latest trusted
-well-formed code-review comment to carry `Code-review: pass`, and an issue
-already closed as completed by an eligible merged pull request. It accepts an
-exact legacy body line `Code-review: pass` only when no trusted well-formed
-code-review comment exists. It writes no status. On success it removes any
-stale phase label and prints `plan #<n> finished (closed by <url>)`. A pass may
-carry advisory `MEDIUM` and `LOW` finding lines; an unfixed `CRITICAL` or `HIGH`
-keeps a plan from archiving.
+`plan.mjs archive` verifies lifecycle state. It requires all Steps rows to be
+terminal. It also requires the latest trusted eligible code-review comment to
+carry `Code-review: pass`. The issue must already be closed as completed.
+An eligible merged pull request must prove that closure. On success, the
+command removes stale phase labels. It prints
+`plan #<n> finished (closed by <url>)`. A recognized critical or high severity
+field changes a code-review pass to `fixes-required`.
 
 The verifier reads the issue's `closedByPullRequestsReferences` with
 `excludeUserLinked: true`. It accepts only keyword-linked merged pull requests.
@@ -242,10 +228,9 @@ precondition for it. Every mutating command re-reads the issue body immediately
 before the edit, refuses when it differs from the body it read, and re-reads
 after the edit to confirm the pushed bytes.
 
-Ownership narrows the writer set to one; compare-before-write narrows the
-remaining window but does not close it, because the read and the edit are
-separate API calls. A conflict is not an error to retry blindly: re-read the
-record, re-apply the intent, and run `plan.mjs check <issue>` before continuing.
+Ownership narrows the writer set to one. Compare-before-write reduces the
+remaining window but does not close it. The API read and edit are separate.
+After a conflict, re-read the record and re-apply the intent.
 
 `step` requires an open `ongoing` plan, except that a `finished` plan accepts a
 step mutation when the target status is terminal (`done` or `skipped`). This
@@ -264,10 +249,10 @@ superseded body. These refusals prevent stale or unverified copies from
 replacing recorded state.
 
 After validation, `edit` refreshes the digest before it writes the remote body.
-A local digest failure fails closed before the remote write and requires one
-re-export. The `claim`, `archive`, and `retire` commands do not rewrite body
-bytes. A successful phase-only status change writes labels only and leaves the
-body and digest valid. The guard compares body bytes, not the issue timestamp.
+A local digest failure stops the write and requires a new export.
+The `archive` and `retire` commands do not rewrite body bytes.
+A successful phase-only status change writes labels only.
+It leaves the body digest valid. The guard compares body bytes, not timestamps.
 
 Once work starts (irreversibly: when the current phase is neither `drafting` nor
 `planned`, or label events show that `plan:ongoing` was ever applied), `edit`
@@ -279,9 +264,9 @@ Before this boundary, a `drafting` or `planned` plan with no historical
 `plan:ongoing` event may edit Steps freely. On a closed plan, post-merge step
 mutation remains limited to terminal repair; new work requires a follow-up plan.
 
-Re-export immediately before every body edit. Edit the export. Run
-`plan.mjs check <issue>`. Delete the export and its `.origin` sidecar. Never
-carry an edit across an intervening body write.
+Re-export immediately before every body edit. Edit the export.
+Apply it with `plan.mjs edit <issue> --file <path>`.
+Never carry an edit across an intervening body write.
 
 ## Reading the record
 
@@ -306,56 +291,43 @@ metadata lines go to stderr, header first.
 
 ## Review records - one issue comment per reviewer report
 
-`## Review` is a static pointer, not a review log:
-
-```markdown
-_Review records are stored in issue comments._
-```
+Review records live in issue comments, not in the plan body.
 
 Before every dispatch, the manager runs `plan.mjs export <issue>` and passes the
 printed absolute path; the reviewer reads the export path the manager supplies.
 For code review, the manager also supplies a fresh complete-candidate diff.
 
-The reviewer returns exactly one markdown block. The manager posts that whole
-block as one issue comment without editing it. The two exact shapes are:
+The reviewer returns one markdown block. The manager posts that block as one
+issue comment without editing it. These examples show both review kinds:
 
 ```markdown
 ### Plan review - <YYYY-MM-DD>
 Plan-review: pass|repair|blocked
-- [goal_fit] `## Steps` row 4 - the step removes the validator without replacing it - add the replacement before removal
+- <finding>
 ```
 
 ```markdown
 ### Code review round <n> - <YYYY-MM-DD>
 Code-review: pass|fixes-required|blocked
-- HIGH · Security · plugins/x/y.mjs:41 - user input reaches a shell command unquoted - pass an argument array
+- [HIGH] <finding>
 ```
 
-A well-formed record occupies the whole comment. It has the matching heading,
-then exactly one verdict line, then zero or more nonblank finding lines. Extra
-prose, multiple records, a missing heading, or an invalid verdict makes the
-comment ineligible. `Plan-review:` is exactly `pass`, `repair`, or `blocked`. Plan-review findings use
-`- [goal_fit|research_gap|security_risk] <locator> - <defect> - <fix>`.
-`Code-review:` is exactly `pass`, `fixes-required`, or `blocked`. Code-review
-findings use `- <CRITICAL|HIGH|MEDIUM|LOW> · <Bug|Security|Performance|Maintainability|Spec> · <locator> - <defect> - <fix>`.
+An eligible comment starts on its first nonblank line with `plan review` or
+`code review`. Matching ignores case. Any heading level and suffix are allowed.
+A later verdict line uses `Plan-review:` or `Code-review:`.
+Finding lines are free text.
 
-A record is trusted only when the issue has exactly one assignee and the
-comment's author login equals that assignee. For each review kind independently,
-the latest trusted well-formed comment wins, ordered by `createdAt` with API
-order as the tie-break. Foreign-authored, malformed, and superseded comments
-never establish current review state. A legacy verdict in the body is consulted
-for one review kind only when there is no trusted well-formed comment record of
-that kind.
+Plan verdicts are `pass`, `repair`, or `blocked`. Code verdicts are `pass`,
+`fixes-required`, or `blocked`. The helper accepts the documented aliases.
 
-A code-review `pass` means no `CRITICAL` or `HIGH` finding stands unfixed; it
-carries only advisory `MEDIUM` and `LOW` lines, or none. After a pass, record
-each advisory as follow-up work and do not change reviewed bytes; advisory
-findings never trigger another review. `fixes-required` names at least one
-evidenced `CRITICAL` or `HIGH` defect. A `blocked` verdict has at least one
-finding line.
+A record is trusted only when the issue has exactly one assignee.
+The comment author must equal that assignee. For each review kind, the latest
+trusted eligible comment wins. Creation time sets the order. API order breaks
+ties. Missing trusted review comments derive as `none`.
 
-A plan-review finding is exactly one of `goal_fit`, `research_gap`, or
-`security_risk`; nothing else is a finding. A sufficient plan passes.
+A code-review pass changes to `fixes-required` when a finding starts with
+`- [critical]`, `- [high]`, `critical:`, or `high:`.
+Matching ignores case. Severity words elsewhere in finding prose do not count.
 
 Both review phases run at most five rounds. Each round uses a fresh plan export;
 each code-review round also uses a fresh complete-candidate diff. On rounds 1
@@ -376,7 +348,7 @@ branch before recording the blocker, setting the plan `blocked`, and stopping.
 
 1. **Decide.** Phase 1 asks exactly one question with exactly three options, in this order and wording: `Plan and implement now`, `Plan only, stop at planned`, `Implement directly` - and skips the question only when the request already settles the mode.
 2. **Draft.** Create the plan issue, write the goal and research hypothesis, and keep provisional Steps and Acceptance tables while status remains `drafting`.
-3. **Research.** Verify repository facts and external claims, record their sources, choose the durable fix, bind the exact files, complete Acceptance, pass `plan.mjs check`, and set the plan `planned`.
+3. **Research.** Verify facts and sources. Choose the durable fix. Bind the files. Complete Acceptance. Set the plan `planned`.
 4. **Plan review.** Run up to five rounds from fresh exports. Post each reviewer block as one issue comment. Fix reproduced findings and dispatch a fresh review; stop on pass, no progress, a finding surviving its fix, or `repair` in round five. Route every `blocked` user-only decision through `## Open questions` and `ask`, including in round five. A plan-only run stops at `planned` only after plan review passes.
 5. **Implement.** Set the plan `ongoing`, verify and check out its GitHub-linked branch before changing implementation bytes, move each step through its legal states, and record real Acceptance output in `## Verification Results` before the closing merge.
 6. **Code review.** Run up to five rounds from fresh complete-candidate diffs and fresh plan exports. Post each reviewer block as one issue comment. Fix every critical and high finding and dispatch a fresh review; stop on pass, no progress, a finding surviving its fix, a technical block, or `fixes-required` in round five. Before recording a technical block or terminal repair failure, commit and normally push all current work to the linked plan branch. Every step must be terminal and code review must pass before the closing merge; archive verifies those facts afterward.
