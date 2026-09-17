@@ -6,4 +6,8 @@ providers:
           mode: effort
           efforts:
             - low
-          defaultLevel: low
+            - medium
+            - high
+            - xhigh
+            - max
+          defaultLevel: xhigh

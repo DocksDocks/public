@@ -11,7 +11,7 @@ against.
 | `default` | `anthropic/claude-opus-5` | high | 48 | $3.61 | 16.96 s | 66 (Claude Code) |
 | `slow` | `anthropic/claude-opus-5` | xhigh | 50 | $4.88 | 28.65 s | 68 (Claude Code) |
 | `plan` | `anthropic/claude-opus-5` | xhigh | 50 | $4.88 | 28.65 s | 68 (Claude Code) |
-| `task` | `openai-codex/gpt-6-astra` | low | 46 | $0.82 | 2.60 s | n/a |
+| `task` | `openai-codex/gpt-5.6-sol` | high | 42 | $0.81 | 11.26 s | 64 (Codex) |
 | `advisor` | `openai-codex/gpt-5.6-sol` | medium | 39 | $0.50 | 4.90 s | 62 (Codex) |
 | `designer` | `anthropic/claude-opus-5` | high | 48 | $3.61 | 16.96 s | 66 (Claude Code) |
 | `vision` | `anthropic/claude-opus-5` | medium | 45 | $2.19 | 3.79 s | 64 (Claude Code) |
@@ -19,6 +19,7 @@ against.
 | `tiny` | `openai-codex/gpt-5.6-luna` | low | 22 | n/a | 1.78 s | 25 (Codex) |
 | `fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 9.65 s | n/a |
 | `switch_fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 9.65 s | n/a |
+| `astra` | `openai-codex/gpt-6-astra` | xhigh | 53 | $2.31 | 161.65 s | n/a |
 
 The table reports the measured Artificial Analysis figures for each assigned
 model and level. It states no motive that the config or omp's own
@@ -28,8 +29,8 @@ max.
 
 What omp's settings catalog establishes about these roles:
 
-- `cycleOrder` lists the roles the model switcher cycles, so `fable` is the
-  fourth `Ctrl+P` stop.
+- `cycleOrder` lists the roles the model switcher cycles. `fable` is the
+  fourth `Ctrl+P` stop, and `astra` is the fifth and last stop.
 - `tiny` overrides the model for lightweight background tasks: titles, memory,
   auto-thinking, and unexpected-stop detection.
 - `modelTags` carries role metadata and can introduce roles; `hidden: true`
@@ -43,6 +44,14 @@ whatever `task` resolves to. The `code-reviewer` and `plan-reviewer` entries
 are dormant until an OMP agent with that name exists.
 `retry.fallbackChains.task` keeps `anthropic/claude-opus-5:high` as a
 cross-vendor fallback.
+
+`retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
+`retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
+Each deliberate cycle stop falls to the other vendor. Without these explicit
+chains, `retry.fallbackChains.default` would send either stop to
+`openai-codex/gpt-5.6-sol:high`.
+Chain entries are concrete selectors, not role aliases, so this pair cannot
+recurse. The hidden `switch_fable` chain stays empty.
 
 ## Artificial Analysis snapshot
 
@@ -139,9 +148,14 @@ published numeric cache price. Context 1M.
 Price: $0.20 in, $1.20 out, $0.02 cache read per 1M; no published cache-write
 price. Context 1M. AA lists cost per task only for max and xhigh.
 
-## Why `task` points at Astra low
+## Why `task` returns to Sol high
 
-| Metric | Astra low | Sol high | Sol max | Opus 5 high |
+`task` runs `openai-codex/gpt-5.6-sol:high`. The owner uses Astra only for
+main orchestration, so Astra now has a dedicated `astra` cycle stop at `xhigh`.
+The comparison below records the retired Astra-low choice beside the current
+Sol-high choice and the other measured alternatives.
+
+| Metric | Astra low, retired task | Sol high, current task | Sol max | Opus 5 high |
 |---|---:|---:|---:|---:|
 | Intelligence Index | 46 | 42 | 47 | 48 |
 | Cost per Index task | $0.82 | $0.81 | $1.99 | $3.61 |
@@ -154,58 +168,53 @@ price. Context 1M. AA lists cost per task only for max and xhigh.
 | AA-Briefcase | 1253 | 1361 | 1475 | 1557 |
 | AA-Omniscience | 41 | 20 | 22 | 34 |
 
-Astra low beats the previous `task` model, Sol high, on intelligence, latency,
-and token use at the same cost per task. Astra costs 2.5× per token and spends
-about one third the tokens, so the price rise and the efficiency gain cancel:
-this is a latency and token-budget win, not a cost saving.
+Astra low beat Sol high on intelligence, latency, and token use at effectively
+equal cost per task. It cost $0.82 against $0.81 and used 4k output tokens
+per task against 13k. Its 2.60 s TTFT beat Sol high's 11.26 s.
+That was a latency and token-budget win, not a cost saving.
+The owner reversed that trade on purpose to reserve Astra for interactive
+orchestration.
 
-Sol medium is the cheaper measured alternative, and it was not chosen: index
-39, Coding Agent Index 62 (Codex), $0.50 per task, 4.90 s TTFT. Against it,
-Astra low costs 64% more per task and scores 7 index points higher, with no
-published Astra coding-agent score at that level.
+Sol high scores 64 in the Codex Coding Agent Index and 1361 on AA-Briefcase.
+Astra low scores 1253 on AA-Briefcase. AA publishes no Astra Coding Agent
+Index except max, which scores 67 in Codex.
+The new Astra xhigh cycle stop scores 53 on the Intelligence Index, costs
+$2.31 per index task, and has 161.65 s TTFT.
+It has no published Coding Agent Index.
 
-Two risks come with it. Astra low loses AA-Briefcase, the eval closest to this
-kit's agent workload, and AA publishes no Coding Agent Index score for any Astra
-level except max. Watch reviewer output, because `reviewer` and
-`security-reviewer` inherit `@task`. If review quality drops, pin those agents
-to `anthropic/claude-opus-5:high` rather than reverting the whole role.
+## How Astra is selected in practice
 
-## What resolves to Astra low in practice
+No subagent role or `task.agentModelOverrides` entry resolves Astra.
+`modelRoles.astra` is reachable only through the model switcher as a main
+orchestrator role. The explicit Fable retry chain can also select Astra.
+No subagent selects Astra automatically.
 
-`modelRoles.task` sets the model. The `:low` suffix alone does not cap every
-spawn. `SoT/.omp/models.yml` restricts the `openai-codex/gpt-6-astra` effort
-ladder to `[low]` through
-`providers.openai-codex.modelOverrides.gpt-6-astra.thinking`. omp clamps any
-requested effort to the model ladder, and `auto` has only one choice. Every
-Astra spawn therefore runs `low`, regardless of its `effort` hint.
+`SoT/.omp/models.yml` declares the full `low, medium, high, xhigh, max` ladder
+with `defaultLevel: xhigh` under
+`providers.openai-codex.modelOverrides.gpt-6-astra.thinking`.
+The override stays as the kit's worked example of a provider ladder
+redefinition. The in-session thinking control can still select `low` for a
+quick answer.
 
 - The bundled `scout` and `sonic` agents carry `model: "@smol"` and
   `thinking-level: medium` in their embedded frontmatter, so they run Luna,
-  not Astra. To move them, change `modelRoles.smol` or add a
+  not Sol or Astra. To move them, change `modelRoles.smol` or add a
   `task.agentModelOverrides` entry for the agent name.
 - The bundled `task` agent carries `model: "@task"` and
-  `thinking-level: auto`. `auto` classifies each prompt and picks a level for
-  the resolved model, but Astra's ladder permits only `low`.
+  `thinking-level: auto`. It resolves Sol, and `auto` classifies each prompt
+  to choose a thinking level.
 - `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
   `hi`, which overrides `auto`.
 - `task.maxEffort` is `high`, so `scout` and `sonic` run Luna `medium` by
   default and Luna `high` with `effort: hi`.
+- The bundled `reviewer` and `security-reviewer` inherit `@task`, now Sol high.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.
-  omp's task tool rejects both names as unknown agents, so neither can spawn.
+  Both point to `@task`, now Sol high. omp's task tool rejects both names as
+  unknown agents, so neither can spawn.
 
-Fresh `omp -p` runs on 2026-09-09 verified the model ladder with
-`task.maxEffort: high`. Child session logs recorded these results:
-
-| Agent | Effort hint | Resolved model and level |
-|---|---|---|
-| `task` | `hi` | `gpt-6-astra:low` |
-| `task` | None, complex prompt | `gpt-6-astra:low` |
-| `reviewer` | `hi` | `gpt-6-astra:low` |
-| `security-reviewer` | None | `gpt-6-astra:low` |
-| `scout` | `hi` | `gpt-5.6-luna:high` |
-| `sonic` | `hi` | `gpt-5.6-luna:high` |
-
-The complex `task` run completed with 682 output tokens.
+The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
+predates this change. It applies to the retired Astra-low `task` configuration,
+not the current role map.
 
 omp's 272k context window is the `/extended-context off` window for Astra.
 `/extended-context on` uses the 922k input window, 1.05M total, which matches
@@ -214,8 +223,9 @@ AA's 1M.
 ## Free session launcher (`docks-kit omp`)
 
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
-omp session on a single free model. All 12 model roles resolve to that model.
-All 9 retry fallback chains are empty, so a retry cannot reach a paid model.
+omp session on a single free model. The overlay owns the configuration layer.
+It sets all 13 model roles to that model and empties all 10 retry fallback
+chains, so no configured role and no retry reaches a paid model.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.
@@ -234,6 +244,28 @@ again.
 Every argument after the launcher flags forwards verbatim to omp. `docks-kit
 omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes the
 previous session. A bare `docks-kit omp` opens an interactive session.
+
+The overlay ranks above the deployed global and project configuration, and
+below runtime overrides and later overlay files. Each input below therefore
+selects a model that the overlay does not control:
+
+- A forwarded later config overlay. The launcher passes its own `--config`
+  first, and omp applies a later overlay file over an earlier one.
+- The runtime model flags `--model`, `--smol`, `--slow`, and `--plan`. The
+  legacy `--provider` flag selects a provider. `--models` sets the model
+  patterns that `Ctrl+P` cycling can reach, so cycling can leave the free
+  model.
+- The model environment variables `PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and
+  `PI_PLAN_MODEL`. `PI_CONFIG_FILES` is not in this set, because those files
+  load before `--config` overlays.
+- The in-session model selector. `Alt+M` sets the roles, and `Alt+P` picks a
+  model for the current session only.
+- A restored persisted session model. `--continue`, `--resume`, and
+  `autoResume` restore the model of the session they open, so a session that
+  started under the paid configuration returns to its paid model.
+
+This list names the known selection paths. It is not a closed set. The
+launcher does not reject these inputs today.
 
 The default model is `opencode-zen/muse-spark-1.3-contributor-free` ("Muse
 Spark 1.3 Free", 1,048,576-token context) at `xhigh`. `xhigh` is the ceiling
@@ -299,5 +331,6 @@ recorded default and the ladder counts in these docs in the same commit.
 - Record the index version with the numbers. AA changes index composition
   between versions, so a score from another version is not a comparison.
 - Update the capture date in the same commit as any number.
-- Verify changes to the Astra ladder in `SoT/.omp/models.yml` and to
-  `task.maxEffort` together with a fresh `omp -p` spawn per bundled agent.
+- Verify Astra ladder changes in `SoT/.omp/models.yml` through the model
+  switcher and in-session thinking control.
+- Verify `task.maxEffort` changes with a fresh `omp -p` spawn per bundled agent.

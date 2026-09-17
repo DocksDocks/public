@@ -6,6 +6,25 @@
 - Oversized modules split along change axes with prior exports intact; shared shapes live once in `engine-native/sharedTypes.d.ts`; shipped JavaScript is typechecked.
 - oxlint covers mechanical mistakes and oxfmt formats code. `AGENTS.md` records layout, invariants, version rules, and checks.
 
+## 2026-09-17 - docks-kit 0.17.2: omp gets an Astra cycle stop
+
+- The new visible `astra` role uses `openai-codex/gpt-6-astra:xhigh` as the
+  fifth and last model-switcher stop. Astra is reserved for main orchestration.
+- `task` returns to `openai-codex/gpt-5.6-sol:high`. All four reviewer
+  overrides inherit it through `@task`. Bundled `reviewer` and
+  `security-reviewer` use it; `code-reviewer` and `plan-reviewer` stay dormant.
+- Astra's override declares `low, medium, high, xhigh, max` with
+  `defaultLevel: xhigh`. `models.yml` stays as the worked provider
+  ladder-override example, and in-session thinking controls can still select
+  `low`.
+- Astra falls back to `anthropic/claude-fable-5-1:medium`, and Fable falls
+  back to `openai-codex/gpt-6-astra:xhigh`. The `default` chain would send
+  either deliberate cycle stop to Sol high instead of the other vendor.
+  Concrete selectors prevent recursion between the pair.
+- `ompOverlay.ts` adds `astra` to `ROLE_ORDER` and `FALLBACK_ORDER`.
+  Without both additions, the free-session overlay would leave a paid
+  selector reachable through the Astra role or its retry chain.
+
 ## 2026-09-12 - docks-kit 0.17.1: the omp picker asks for thinking levels
 
 - `docks-kit omp --pick` now continues into a thinking-level wizard after the

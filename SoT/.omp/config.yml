@@ -24,6 +24,7 @@ cycleOrder:
   - default
   - slow
   - fable
+  - astra
 
 tier:
   openai: none
@@ -60,13 +61,14 @@ modelRoles:
   designer: anthropic/claude-opus-5:high
   plan: anthropic/claude-opus-5:xhigh
   commit: openai-codex/gpt-5.6-luna:medium
-  task: openai-codex/gpt-6-astra:low
+  task: openai-codex/gpt-5.6-sol:high
   vision: anthropic/claude-opus-5:medium
   tiny: openai-codex/gpt-5.6-luna:low
   default: anthropic/claude-opus-5:high
   slow: anthropic/claude-opus-5:xhigh
   fable: anthropic/claude-fable-5-1:medium
   switch_fable: anthropic/claude-fable-5-1:medium
+  astra: openai-codex/gpt-6-astra:xhigh
 
 modelTags:
   fable:
@@ -74,6 +76,8 @@ modelTags:
   switch_fable:
     name: Fable switch default
     hidden: true
+  astra:
+    name: GPT-6 Astra
 
 display:
   shimmer: classic
@@ -109,7 +113,10 @@ retry:
     commit:
       - anthropic/claude-opus-5:medium
     switch_fable: []
-    fable: []
+    fable:
+      - openai-codex/gpt-6-astra:xhigh
+    astra:
+      - anthropic/claude-fable-5-1:medium
 
 omitThinking: false
 includeWorkspaceTree: false
