@@ -24,6 +24,10 @@
 - `ompOverlay.ts` adds `astra` to `ROLE_ORDER` and `FALLBACK_ORDER`.
   Without both additions, the free-session overlay would leave a paid
   selector reachable through the Astra role or its retry chain.
+- Earlier free-session wording claimed more than the overlay can guarantee.
+  The topic now scopes the guarantee to the roles and retry chains the overlay
+  writes. Behavior did not change. Launcher enforcement remains tracked
+  separately.
 
 ## 2026-09-12 - docks-kit 0.17.1: the omp picker asks for thinking levels
 

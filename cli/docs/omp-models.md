@@ -223,9 +223,9 @@ AA's 1M.
 ## Free session launcher (`docks-kit omp`)
 
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
-omp session on a single free model. The overlay owns the configuration layer.
-It sets all 13 model roles to that model and empties all 10 retry fallback
-chains, so no configured role and no retry reaches a paid model.
+omp session with a configuration overlay that selects a free model. The
+overlay sets all 13 model roles to that model and empties all 10 retry fallback
+chains. Higher-precedence model selection can replace those values.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.
@@ -290,9 +290,11 @@ committed. `--model <selector>` records one selector and derives both levels
 from the catalog row. `--pick` opens an interactive wizard.
 
 The picker lists only models the live `omp models --json` catalog reports at
-zero input and output cost (26 entries on 2026-09-11). This path cannot start
-a paid session. The catalog can advertise a free model that the account
-cannot call; omp reports that provider error unchanged.
+zero input and output cost (26 entries on 2026-09-11). The resulting overlay
+sets every role to the chosen free model and empties every retry chain.
+Higher-precedence model selection can replace those values. The catalog can
+advertise a free model that the account cannot call; omp reports that provider
+error unchanged.
 
 After the model, the wizard asks about thinking levels. `ompOverlay.ts
 planEffortChoice` decides which questions apply, because omp accepts a

@@ -66,8 +66,12 @@ describe("SoT omp tree", () => {
     }
     const task = config["task"] as Record<string, unknown>;
     const overrides = task["agentModelOverrides"] as Record<string, string>;
-    for (const alias of Object.values(overrides)) {
+    for (const [agent, alias] of Object.entries(overrides)) {
       expect(alias).toMatch(/^@/);
+      const target = alias.slice(1);
+      const resolved = roles[target];
+      expect(resolved, `${agent} -> ${alias} resolves to no role`).toBeDefined();
+      expect(resolved).not.toContain("gpt-6-astra");
     }
   });
 
