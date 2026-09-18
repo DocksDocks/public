@@ -70,15 +70,15 @@ omp SoT notes:
 - `SoT/.omp/AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` deploy to `~/.omp/agent/`.
 - `SoT/.omp/intercom.json` deploys to `$PI_CODING_AGENT_DIR/intercom/config.json`. The default root is `~/.pi/agent`.
 - `ompSync.ts syncMergedYaml` deep-merges `config.yml` through `ompYaml.ts mergeOmpConfig` and `models.yml` through `mergeOmpModels`. Both wrap one generic mapping merge; only the config wrapper prunes stale `retry.fallbackChains` wildcards.
-- `cycleOrder` ends with the `fable` role (`modelRoles.fable` = `anthropic/claude-fable-5-1:medium`, `modelTags.fable` visible, `retry.fallbackChains.fable` empty), so the model switcher reaches Fable 5.1 as its fourth stop and never falls back off it. The hidden `switch_fable` role points at the same model and level.
-- `modelRoles.task` is `openai-codex/gpt-6-astra:low`, chosen for 2.60 s TTFT and 4k output tokens per task at cost parity with the previous `gpt-5.6-sol:high`. `task.agentModelOverrides` points four reviewer names at `@task`; only the bundled `reviewer` and `security-reviewer` are discoverable OMP agents, so those two inherit `task`, and the `code-reviewer` and `plan-reviewer` entries are dormant. Artificial Analysis publishes no per-level Astra Coding Agent Index score, so reviewer output is the signal to watch.
-- `SoT/.omp/models.yml` deploys to `~/.omp/agent/models.yml` through `mergeOmpModels`, which keeps every deployed-only key. A user file may carry provider credentials, so whole-file replacement is wrong. It restricts the `gpt-6-astra` effort ladder to `low`, so every Astra subagent runs `low` while `task.maxEffort: high` lets `scout` and `sonic` reach Luna `high` with `effort: hi`. `cli/docs/omp-models.md` records the verification.
+- `cycleOrder` ends with `astra` as its fifth stop. `modelRoles.astra` is `openai-codex/gpt-6-astra:xhigh`, and `modelTags.astra` is visible. Astra and Fable fall back to each other through concrete selectors. `modelRoles.fable` remains `anthropic/claude-fable-5-1:medium`, with visible `modelTags.fable`. The hidden `switch_fable` role uses the same Fable selector and keeps an empty fallback chain.
+- `modelRoles.task` is `openai-codex/gpt-5.6-sol:high`. The four reviewer entries in `task.agentModelOverrides` inherit it through `@task`. Only bundled `reviewer` and `security-reviewer` are discoverable OMP agents; `code-reviewer` and `plan-reviewer` stay dormant.
+- `SoT/.omp/models.yml` declares Astra's full `low, medium, high, xhigh, max` ladder with `defaultLevel: xhigh` as the worked provider ladder-override example. `ompYaml.ts mergeOmpModels` preserves deployed-only keys in `~/.omp/agent/models.yml`, because a user file may carry provider credentials. Whole-file replacement is wrong.
 - `SoT/.omp/AGENTS.md` carries the rule `Please remove all mannered prose.` Anthropic's Fable 5.1 prompting guide documents mannered prose as a Fable 5.1 behavior and gives that sentence as its short-version fix: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1
 - `cli/docs/omp-models.md` (topic `omp-models`) records the role map rationale and the Artificial Analysis snapshot behind it. Model choices change with published benchmarks, so update that topic in the same commit as a role change.
 - Sync registers the `docks` marketplace. It installs or upgrades `docks@docks` and `plan-lifecycle@docks` at user scope.
 - Sync installs `pi-intercom` at the verified version from `SoT/toolchain.json`.
 - The omp CLI is upstream-owned and self-updating through `omp update`. Sync never installs or upgrades the CLI.
-- `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive omp session on a single free model. It renders a run overlay to `~/.cache/docks-kit/omp-free-<model>-<digest>.yml` (mode 0600) and passes it through omp's repeatable `--config` flag. `ompOverlay.ts overlayFileName` gives each model its own file, because omp can re-read the overlay during a live session and a second launcher on another model must not rewrite it. Deployed `~/.omp/agent/` files stay untouched, so the next plain `omp` run uses the paid configuration again. Remaining arguments forward verbatim to omp.
+- `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive omp session with every model role set to one free model and every retry chain empty. Higher-precedence model selection can replace those overlay values. It renders the overlay to `~/.cache/docks-kit/omp-free-<model>-<digest>.yml` (mode 0600) and passes it through omp's repeatable `--config` flag. `ompOverlay.ts overlayFileName` gives each model its own file, because omp can re-read the overlay during a live session and a second launcher on another model must not rewrite it. Deployed `~/.omp/agent/` files stay untouched, so the next plain `omp` run uses the paid configuration again. Remaining arguments forward verbatim to omp.
 - The session model persists per machine in `~/.docks-kit/state.json` under `ompSession`, next to `harnesses`. The default is `opencode-zen/muse-spark-1.3-contributor-free` at `xhigh`. `ompOverlay.ts ladderCeiling, advisorLevelFor` derive both levels from the ladder of the chosen model for the `--model` path, and `ompOverlay.ts planEffortChoice` drives the `--pick` wizard, which asks whether every role shares one level and otherwise takes one level for the main roles and one for the advisor from that model's own ladder. Levels never come from a fixed list: free ladders are not uniform, three free models publish no `medium`, and two publish no ladder, which the overlay renders as bare selectors. The picker lists only zero-cost catalog models.
 
 For per-tool SoT layouts (`SoT/.claude/`, `SoT/.codex/`, `SoT/.omp/`), see the matching SoT directory.
@@ -164,33 +164,31 @@ non-`local` effect.
 
 <constraint>
 The plan record is a GitHub issue. Its body starts with
-`<!-- plan-contract: v3 -->`, then a blank line and the exact eight `##`
-sections; it has no frontmatter. GitHub owns title, open-work phase, owner,
-timestamps, and completion, and no plan markdown is tracked in the repository.
-Exactly three skills own the workflow: `plan-workspace` maintains the workspace;
-main-context `plan-manager` runs six phases - decide, draft, research, plan
-review, implement, code review - with bounded repair and fresh re-review in both
-review phases, then archives; internal `plan-reviewer` returns one readable
-pre-implementation verdict block per round. Two read-only reviewer wrappers
-ship, `plan-reviewer` and `code-reviewer`, and nothing else in the lifecycle has
-a wrapper.
+`<!-- plan-contract: v4 -->`, followed by one blank line and seven `##`
+sections. It has no frontmatter. GitHub owns the title, open-work phase, owner,
+timestamps, and completion. The repository tracks no plan markdown.
+Exactly three skills own the workflow. `plan-workspace` maintains the workspace.
+Main-context `plan-manager` runs six phases: decide, draft, research, plan
+review, implement, and code review. It uses bounded repair and fresh re-review
+in both review phases, then archives. Internal `plan-reviewer` returns one
+readable pre-implementation verdict block per round. Two read-only reviewer
+wrappers ship: `plan-reviewer` and `code-reviewer`.
 </constraint>
 
-After the marker and blank line, the record carries exactly `## Goal`,
-`## Research`, `## Steps`, `## Acceptance`, `## Do not touch`,
-`## Open questions`, `## Review`, and `## Verification Results`, in that order
-and once each. `## Goal` carries exactly one mode line. Open-work phase is one
-of `drafting`, `planned`, `ongoing`, or `blocked` in a `plan:<phase>` label; a
-blocked plan starts `## Open questions` with `Blocked: <one-line reason>`.
-Closed completion derives from GitHub `state` and `stateReason`. `## Review`
-contains exactly `_Review records are stored in issue comments._`. Each reviewer
-returns one markdown block, and the manager posts that whole block as one issue
-comment. The latest trusted well-formed record per review kind wins; its author
-must equal the plan's sole assignee. A legacy body verdict is consulted only
-when no trusted comment record exists for that kind. Both review phases use
-fresh inputs and run at most five rounds, stopping on pass, no progress, a
-finding surviving its fix, or `repair` or `fixes-required` in round five. A
-plan-review `blocked` verdict always routes its user-only decision through
+After the marker and blank line, the record carries exactly seven sections.
+They appear once each in this order: `## Goal`, `## Research`, `## Steps`,
+`## Acceptance`, `## Do not touch`, `## Open questions`, and
+`## Verification Results`. `## Goal` carries exactly one mode line.
+Open-work phase is `drafting`, `planned`, `ongoing`, or `blocked`.
+Every plan carries `plan`. A `plan:<phase>` label stores the open phase.
+A blocked plan starts `## Open questions` with `Blocked: <one-line reason>`.
+GitHub `state` and `stateReason` determine closed status. Review records live
+only in issue comments. Each reviewer returns one markdown block.
+The manager posts that block as one issue comment. The latest trusted eligible
+comment per review kind wins. Its author must equal the plan's sole assignee.
+Both review phases use fresh inputs and run at most five rounds. They stop on
+pass, no progress, a finding that survives repair, or a round-five non-pass.
+A plan-review `blocked` verdict routes its user-only decision through
 `## Open questions` and `ask`.
 
 The record carries no hash, permit, run identity, lock, or bundle, and the

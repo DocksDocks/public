@@ -51,6 +51,7 @@ const ROLE_ORDER: ReadonlyArray<string> = [
   "slow",
   "fable",
   "switch_fable",
+  "astra",
 ];
 
 /** Retry chain keys in the order used by SoT/.omp/config.yml. */
@@ -64,6 +65,7 @@ const FALLBACK_ORDER: ReadonlyArray<string> = [
   "commit",
   "switch_fable",
   "fable",
+  "astra",
 ];
 
 /**

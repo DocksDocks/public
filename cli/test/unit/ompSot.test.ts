@@ -25,19 +25,58 @@ describe("SoT omp tree", () => {
     expect(Object.keys(ompConfig()).length).toBeGreaterThan(0);
   });
 
-  it("caps Astra thinking at low through models.yml", () => {
-    const models = parse(readSot("models.yml")) as unknown;
+  // This override is the kit's worked example of a provider ladder redefinition.
+  // Every level stays reachable from the in-session thinking control.
+  it("declares the full Astra thinking ladder through models.yml", () => {
+    const models = parse(mergeOmpModels(readSot("models.yml"), "")) as unknown;
     expect(models).toBeTypeOf("object");
     expect(models).not.toBeNull();
     expect(Array.isArray(models)).toBe(false);
     expect(models).toHaveProperty(
       ["providers", "openai-codex", "modelOverrides", "gpt-6-astra", "thinking"],
-      { mode: "effort", efforts: ["low"], defaultLevel: "low" },
+      {
+        mode: "effort",
+        efforts: ["low", "medium", "high", "xhigh", "max"],
+        defaultLevel: "xhigh",
+      },
     );
   });
 
-  // The Astra cap lives in models.yml, not in task.maxEffort.
-  // Keep the task ceiling high so scout and sonic can use Luna high.
+  it("reaches Astra as the last model-switcher stop", () => {
+    const config = ompConfig();
+    expect(config["cycleOrder"]).toEqual(["smol", "default", "slow", "fable", "astra"]);
+    expect(config["modelRoles"]).toHaveProperty("astra", "openai-codex/gpt-6-astra:xhigh");
+  });
+
+  // A role the user selects on purpose must not fall onto Sol high through
+  // `fallbackChains.default`. Astra and Fable cover each other instead.
+  it("pairs the Astra and Fable retry chains across vendors", () => {
+    const retry = ompConfig()["retry"] as Record<string, unknown>;
+    const chains = retry["fallbackChains"] as Record<string, ReadonlyArray<string>>;
+    expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-1:medium"]);
+    expect(chains["fable"]).toEqual(["openai-codex/gpt-6-astra:xhigh"]);
+  });
+
+  it("keeps Astra off every subagent role", () => {
+    const config = ompConfig();
+    const roles = config["modelRoles"] as Record<string, string>;
+    expect(roles["task"]).toBe("openai-codex/gpt-5.6-sol:high");
+    for (const [role, selector] of Object.entries(roles)) {
+      if (role !== "astra") expect(selector).not.toContain("gpt-6-astra");
+    }
+    const task = config["task"] as Record<string, unknown>;
+    const overrides = task["agentModelOverrides"] as Record<string, string>;
+    for (const [agent, alias] of Object.entries(overrides)) {
+      expect(alias).toMatch(/^@/);
+      const target = alias.slice(1);
+      const resolved = roles[target];
+      expect(resolved, `${agent} -> ${alias} resolves to no role`).toBeDefined();
+      expect(resolved).not.toContain("gpt-6-astra");
+    }
+  });
+
+  // No kit role caps a subagent through models.yml any more.
+  // Keep the task ceiling high so scout and sonic can reach Luna high.
   it("allows high effort for subagents whose models support it", () => {
     expect(ompConfig()["task"]).toHaveProperty("maxEffort", "high");
   });

@@ -28,6 +28,7 @@ const ROLE_KEYS = [
   "slow",
   "fable",
   "switch_fable",
+  "astra",
 ];
 
 const FALLBACK_KEYS = [
@@ -40,6 +41,7 @@ const FALLBACK_KEYS = [
   "commit",
   "switch_fable",
   "fable",
+  "astra",
 ];
 
 // The six ladders observed in the live free catalog.
