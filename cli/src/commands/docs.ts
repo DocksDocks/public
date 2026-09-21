@@ -11,6 +11,7 @@ import syncLayers from "../../docs/sync-layers.md" with { type: "text" };
 import install from "../../docs/install.md" with { type: "text" };
 import platforms from "../../docs/platforms.md" with { type: "text" };
 import ompModels from "../../docs/omp-models.md" with { type: "text" };
+import ompContext from "../../docs/omp-context.md" with { type: "text" };
 
 const TOPICS: Record<string, { summary: string; body: string }> = {
   overview: { summary: "What docks-kit is and how the pieces fit", body: overview },
@@ -37,6 +38,10 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "omp-models": {
     summary: "omp role map and the Artificial Analysis snapshot behind it",
     body: ompModels,
+  },
+  "omp-context": {
+    summary: "omp compaction trigger, the reserve-based default, and context-window lanes",
+    body: ompContext,
   },
 };
 

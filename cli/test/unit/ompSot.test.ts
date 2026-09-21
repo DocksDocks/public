@@ -76,9 +76,52 @@ describe("SoT omp tree", () => {
   });
 
   // No kit role caps a subagent through models.yml any more.
-  // Keep the task ceiling high so scout and sonic can reach Luna high.
-  it("allows high effort for subagents whose models support it", () => {
-    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "high");
+  // Keep the task ceiling at omp's own ceiling so scout and sonic can reach
+  // the top level their model publishes.
+  it("allows max effort for subagents whose models support it", () => {
+    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "max");
+  });
+
+  // omp retired `providers.webSearchOrder`. It expands the key in memory into
+  // `modelRoles.web` plus `retry.fallbackChains.web` and then drops it, and it
+  // never writes that expansion back. The kit declares both keys instead. An
+  // explicit chain replaces omp's built-in web order wholesale, so a shortened
+  // list drops providers rather than reordering them.
+  it("declares the web role instead of the retired webSearchOrder key", () => {
+    const config = ompConfig();
+    expect(config["providers"]).not.toHaveProperty("webSearchOrder");
+    expect(config["modelRoles"]).toHaveProperty("web", "web/firecrawl");
+    const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
+    const web = (chains as Record<string, unknown>)["web"];
+    expect(web).toEqual([
+      "web/exa",
+      "web/perplexity",
+      "google/gemini-2.5-flash",
+      "openai-codex/gpt-5.6-luna",
+      "web/parallel",
+      "google-antigravity/gemini-2.5-flash",
+      "anthropic/claude-haiku-4-5",
+      "openai-codex/gpt-5.6",
+      "openai-codex/gpt-5.5",
+      "xai/grok-4.5",
+      "xai-oauth/grok-4.5",
+      "web/zai",
+      "web/tinyfish",
+      "web/jina",
+      "web/kagi",
+      "web/tavily",
+      "web/brave",
+      "web/kimi",
+      "web/synthetic",
+      "web/ollama",
+      "web/searxng",
+      "web/startpage",
+      "web/duckduckgo",
+      "web/ecosia",
+      "web/google",
+      "web/mojeek",
+      "web/public",
+    ]);
   });
 
   // A fresh install copies the SoT text verbatim. If the yaml package

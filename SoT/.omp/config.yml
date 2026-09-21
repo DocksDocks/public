@@ -37,6 +37,9 @@ advisor:
 github:
   enabled: true
 
+find:
+  enabled: true
+
 task:
   eager: always
   showResolvedModelBadge: true
@@ -45,7 +48,7 @@ task:
   batch: true
   enableLsp: true
   enableEffort: true
-  maxEffort: high
+  maxEffort: max
   maxConcurrency: 16
   maxRecursionDepth: 2
   maxRuntimeMs: 3600000
@@ -69,6 +72,7 @@ modelRoles:
   fable: anthropic/claude-fable-5-1:medium
   switch_fable: anthropic/claude-fable-5-1:medium
   astra: openai-codex/gpt-6-astra:xhigh
+  web: web/firecrawl
 
 modelTags:
   fable:
@@ -88,12 +92,6 @@ providers:
     serverSideFallback: false
   fetch: auto
   webSearchTimeoutSeconds: 30
-  webSearchOrder:
-    - firecrawl
-    - exa
-    - perplexity
-    - gemini
-    - codex
 
 retry:
   usageAwareFallback: true
@@ -117,6 +115,34 @@ retry:
       - openai-codex/gpt-6-astra:xhigh
     astra:
       - anthropic/claude-fable-5-1:medium
+    web:
+      - web/exa
+      - web/perplexity
+      - google/gemini-2.5-flash
+      - openai-codex/gpt-5.6-luna
+      - web/parallel
+      - google-antigravity/gemini-2.5-flash
+      - anthropic/claude-haiku-4-5
+      - openai-codex/gpt-5.6
+      - openai-codex/gpt-5.5
+      - xai/grok-4.5
+      - xai-oauth/grok-4.5
+      - web/zai
+      - web/tinyfish
+      - web/jina
+      - web/kagi
+      - web/tavily
+      - web/brave
+      - web/kimi
+      - web/synthetic
+      - web/ollama
+      - web/searxng
+      - web/startpage
+      - web/duckduckgo
+      - web/ecosia
+      - web/google
+      - web/mojeek
+      - web/public
 
 omitThinking: false
 includeWorkspaceTree: false
@@ -145,7 +171,7 @@ dev:
   autoqaConsent: denied
 
 compaction:
-  thresholdTokens: 231200
+  thresholdTokens: -1
   idleEnabled: true
   handoffSaveToDisk: true
 
