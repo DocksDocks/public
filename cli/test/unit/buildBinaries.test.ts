@@ -192,4 +192,16 @@ describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
     expect(result.stderr).not.toContain("retained without rebuild");
     expect(manifestArtifacts(dist)).toEqual(["docks-kit-darwin-arm64", "docks-kit-linux-x64"]);
   });
+
+  // A mistyped flag used to fall through to target validation and report
+  // "unsupported binary target: --prunes", which points at the wrong thing.
+  it("rejects an unknown option instead of treating it as a target", () => {
+    const { buildScript, fakeBin } = fixture();
+
+    const result = runBuild(buildScript, fakeBin, ["--prunes"]);
+
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("unknown option: --prunes");
+    expect(result.stderr).not.toContain("unsupported binary target");
+  });
 });
