@@ -62,7 +62,7 @@ if (Test-Path -LiteralPath $KitPath -PathType Leaf) {
 
   $DisplayedBinVersion = if ([string]::IsNullOrEmpty($BinVersion)) { '<unknown>' } else { $BinVersion }
   $DisplayedCheckoutVersion = if ([string]::IsNullOrEmpty($CheckoutVersion)) { '<unknown>' } else { $CheckoutVersion }
-  [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion — running from source")
+  [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion — running from source; run 'bun run build:binaries' to refresh it or delete it")
 }
 
 function Find-Bun {

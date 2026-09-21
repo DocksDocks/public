@@ -138,6 +138,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout.trim()).toBe("source:probe");
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-windows-x64.exe");
+    expect(result.stderr).toContain("run 'bun run build:binaries' to refresh it or delete it");
   });
 
   it("falls through to Bun source on AMD64 when the compiled binary version is unparseable", () => {
