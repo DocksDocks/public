@@ -82,6 +82,16 @@ describe("SoT omp tree", () => {
     expect(ompConfig()["task"]).toHaveProperty("maxEffort", "max");
   });
 
+  // `-1` is omp's schema default sentinel, which selects reserve-based
+  // compaction: `contextWindow` minus `max(floor(contextWindow * 0.15), 16384)`.
+  // The key must stay present rather than be deleted as a redundant default,
+  // because `ompYaml.ts mergeOmpConfig` is additive: a key absent from the SoT
+  // is returned from the deployed file, so deleting it would strand the kit's
+  // former `231200` pin in every already-deployed `~/.omp/agent/config.yml`.
+  it("keeps the compaction trigger on omp's reserve-based default", () => {
+    expect(ompConfig()["compaction"]).toHaveProperty("thresholdTokens", -1);
+  });
+
   // omp retired `providers.webSearchOrder`. It expands the key in memory into
   // `modelRoles.web` plus `retry.fallbackChains.web` and then drops it, and it
   // never writes that expansion back. The kit declares both keys instead. An

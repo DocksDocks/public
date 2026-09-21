@@ -26,7 +26,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function fixture(): { buildScript: string; dist: string; fakeBin: string } {
+function fixture(version = "9.9.9"): { buildScript: string; dist: string; fakeBin: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-build-"));
   roots.push(root);
   const cliDir = join(root, "cli");
@@ -34,6 +34,10 @@ function fixture(): { buildScript: string; dist: string; fakeBin: string } {
   const fakeBin = join(root, "test-bin");
   mkdirSync(dist, { recursive: true });
   mkdirSync(fakeBin, { recursive: true });
+  writeFileSync(
+    join(root, "package.json"),
+    `${JSON.stringify({ name: "docks-kit", version }, null, 2)}\n`,
+  );
 
   const buildScript = join(cliDir, "build-binaries.sh");
   writeFileSync(buildScript, readFileSync(join(REPO_DIR, "cli", "build-binaries.sh")));
@@ -102,6 +106,58 @@ describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
     const result = runBuild(buildScript, fakeBin, ["linux-x64"]);
 
     expect(result.status, result.stderr).toBe(0);
+    expect(manifestArtifacts(dist)).toEqual(["docks-kit-darwin-arm64", "docks-kit-linux-x64"]);
+  });
+
+  it("stamps the dist version after a full build", () => {
+    const { buildScript, dist, fakeBin } = fixture("1.2.3");
+
+    const result = runBuild(buildScript, fakeBin);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(dist, "VERSION"), "utf8").trim()).toBe("1.2.3");
+    expect(result.stderr).not.toContain("retained without rebuild");
+  });
+
+  it("never checksums a packed tarball beside the binaries", () => {
+    const { buildScript, dist, fakeBin } = fixture();
+    writeFileSync(join(dist, "docks-kit-0.15.5.tgz"), "tarball\n");
+
+    const result = runBuild(buildScript, fakeBin, ["linux-x64"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(manifestArtifacts(dist)).toEqual(["docks-kit-linux-x64"]);
+  });
+
+  // Stamping a mixed dist would certify it as one version, so the warning
+  // would fire once and never again.
+  it("refuses to stamp a dist that mixes versions, and keeps warning", () => {
+    const { buildScript, dist, fakeBin } = fixture("1.2.3");
+    const retained = join(dist, "docks-kit-darwin-arm64");
+    writeFileSync(retained, "older binary\n");
+    chmodSync(retained, 0o755);
+    writeFileSync(join(dist, "VERSION"), "0.0.1\n");
+
+    const first = runBuild(buildScript, fakeBin, ["linux-x64"]);
+    expect(first.status, first.stderr).toBe(0);
+    expect(first.stderr).toContain("retained without rebuild: docks-kit-darwin-arm64");
+    expect(readFileSync(join(dist, "VERSION"), "utf8").trim()).toBe("0.0.1");
+
+    const second = runBuild(buildScript, fakeBin, ["linux-x64"]);
+    expect(second.stderr).toContain("retained without rebuild: docks-kit-darwin-arm64");
+  });
+
+  it("stays silent when retained binaries match the stamped version", () => {
+    const { buildScript, dist, fakeBin } = fixture("1.2.3");
+    const retained = join(dist, "docks-kit-darwin-arm64");
+    writeFileSync(retained, "same version binary\n");
+    chmodSync(retained, 0o755);
+    writeFileSync(join(dist, "VERSION"), "1.2.3\n");
+
+    const result = runBuild(buildScript, fakeBin, ["linux-x64"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).not.toContain("retained without rebuild");
     expect(manifestArtifacts(dist)).toEqual(["docks-kit-darwin-arm64", "docks-kit-linux-x64"]);
   });
 });

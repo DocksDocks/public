@@ -37,12 +37,13 @@
     "test:unit": "vitest run",
     "test:runtime:posix": "bun cli/test/statusline-runtime-smoke.mjs posix",
     "test:runtime:windows": "bun cli/test/statusline-runtime-smoke.mjs windows",
-    "test:ci": "bun run check:generated && bun run --parallel typecheck test:unit golden:dryrun golden:mutation && bun run test:runtime:posix",
+    "test:ci": "bun run check:generated && bun run --parallel typecheck test:unit golden:dryrun golden:mutation format:check && bun run test:runtime:posix",
     "test:integration": "bun run --parallel golden:dryrun golden:mutation",
     "test": "bun run --parallel test:unit test:integration",
     "lint": "oxlint",
     "format": "oxfmt --write cli/src cli/test cli/scripts vitest.config.ts",
-    "check": "bun run --parallel lint typecheck test"
+    "format:check": "oxfmt --check cli/src cli/test cli/scripts vitest.config.ts",
+    "check": "bun run --parallel lint format:check typecheck test"
   },
   "dependencies": {
     "@effect/platform-bun": "4.0.0-rc.115",

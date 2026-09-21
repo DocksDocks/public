@@ -737,6 +737,9 @@ if (options.updateGoldens) {
   console.log(
     `golden-mutation: updated ${Object.keys(selectedCases).length} case(s) at ${GOLDEN_PATH}`,
   );
+  console.log(
+    "run 'bun run format' before committing; the golden writer does not match oxfmt output",
+  );
   process.exit(0);
 }
 

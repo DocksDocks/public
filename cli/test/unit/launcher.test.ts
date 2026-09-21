@@ -123,6 +123,7 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     expect(catalog.stderr).toContain(
       "ignoring stale cli/dist/docks-kit-linux-x64 0.4.0; checkout is",
     );
+    expect(catalog.stderr).toContain("run 'bun run build:binaries' to refresh it or delete it");
   });
 
   it("falls through to source when the compiled binary prints no version", () => {

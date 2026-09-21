@@ -39,7 +39,7 @@ if [[ -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
   if [[ -n "$CHECKOUT_VERSION" && "$BIN_VERSION" == "$CHECKOUT_VERSION" ]]; then
     exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
   fi
-  echo "[docks-kit] ignoring stale cli/dist/$KIT_BIN ${BIN_VERSION:-<unknown>}; checkout is ${CHECKOUT_VERSION:-<unknown>} — running from source" >&2
+  echo "[docks-kit] ignoring stale cli/dist/$KIT_BIN ${BIN_VERSION:-<unknown>}; checkout is ${CHECKOUT_VERSION:-<unknown>} — running from source; run 'bun run build:binaries' to refresh it or delete it" >&2
 fi
 
 # Locate bun: PATH, then the known install locations that sit off the
