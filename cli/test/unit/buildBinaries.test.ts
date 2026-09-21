@@ -131,20 +131,52 @@ describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
 
   // Stamping a mixed dist would certify it as one version, so the warning
   // would fire once and never again.
-  it("refuses to stamp a dist that mixes versions, and keeps warning", () => {
+  it("refuses to stamp a dist of unknown provenance, and keeps warning", () => {
     const { buildScript, dist, fakeBin } = fixture("1.2.3");
     const retained = join(dist, "docks-kit-darwin-arm64");
-    writeFileSync(retained, "older binary\n");
+    writeFileSync(retained, "hand-built binary\n");
     chmodSync(retained, 0o755);
-    writeFileSync(join(dist, "VERSION"), "0.0.1\n");
 
     const first = runBuild(buildScript, fakeBin, ["linux-x64"]);
     expect(first.status, first.stderr).toBe(0);
     expect(first.stderr).toContain("retained without rebuild: docks-kit-darwin-arm64");
-    expect(readFileSync(join(dist, "VERSION"), "utf8").trim()).toBe("0.0.1");
+    expect(existsSync(join(dist, "VERSION"))).toBe(false);
 
     const second = runBuild(buildScript, fakeBin, ["linux-x64"]);
     expect(second.stderr).toContain("retained without rebuild: docks-kit-darwin-arm64");
+  });
+
+  // A stamp naming another version proves the artifact beside it is stale: a
+  // launcher refuses to run it, and keeping it makes SHA256SUMS span two
+  // versions.
+  it("discards artifacts a stamp attributes to another version", () => {
+    const { buildScript, dist, fakeBin } = fixture("1.2.3");
+    const stale = join(dist, "docks-kit-darwin-arm64");
+    writeFileSync(stale, "older binary\n");
+    chmodSync(stale, 0o755);
+    writeFileSync(join(dist, "VERSION"), "0.0.1\n");
+
+    const result = runBuild(buildScript, fakeBin, ["linux-x64"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stderr).toContain("discarding docks-kit-darwin-arm64 from 0.0.1");
+    expect(existsSync(stale)).toBe(false);
+    expect(manifestArtifacts(dist)).toEqual(["docks-kit-linux-x64"]);
+    expect(readFileSync(join(dist, "VERSION"), "utf8").trim()).toBe("1.2.3");
+  });
+
+  it("discards artifacts of unknown provenance only when --prune is given", () => {
+    const { buildScript, dist, fakeBin } = fixture("1.2.3");
+    const unknown = join(dist, "docks-kit-darwin-arm64");
+    writeFileSync(unknown, "unknown binary\n");
+    chmodSync(unknown, 0o755);
+
+    const result = runBuild(buildScript, fakeBin, ["--prune", "linux-x64"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(existsSync(unknown)).toBe(false);
+    expect(manifestArtifacts(dist)).toEqual(["docks-kit-linux-x64"]);
+    expect(readFileSync(join(dist, "VERSION"), "utf8").trim()).toBe("1.2.3");
   });
 
   it("stays silent when retained binaries match the stamped version", () => {

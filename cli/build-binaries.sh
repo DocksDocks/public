@@ -1,12 +1,21 @@
 #!/bin/bash
 # build-binaries.sh — compile docks-kit into standalone executables
 # (bun build --compile embeds the runtime + generated payload + docs topics).
-# Usage: bash cli/build-binaries.sh [target ...]   (default: all six)
+# Usage: bash cli/build-binaries.sh [--prune] [target ...]   (default: all six)
+#   --prune also discards binaries whose version cannot be established.
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$REPO_DIR/cli/dist"
-TARGETS=("$@")
+PRUNE_UNKNOWN=0
+TARGETS=()
+for arg in "$@"; do
+  if [[ "$arg" == "--prune" ]]; then
+    PRUNE_UNKNOWN=1
+  else
+    TARGETS+=("$arg")
+  fi
+done
 [[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64)
 
 for target in "${TARGETS[@]}"; do
@@ -44,14 +53,31 @@ artifact_name() {
   fi
 }
 
-# A partial target list retains binaries this run did not build, and those may
-# predate the current version. Never delete them: on a host without Bun a
-# compiled binary is the only remaining way to run the CLI. Report them instead,
-# so a mixed-version dist is visible rather than silent.
 STAMP="$DIST/VERSION"
 STAMPED=""
 if [[ -f "$STAMP" ]]; then
   STAMPED="$(cat "$STAMP")"
+fi
+
+# A stamp naming a different version proves every artifact beside it is wrong:
+# a launcher refuses to run one, and keeping it makes SHA256SUMS span two
+# versions. Discard those, because their provenance is known and known-stale.
+# An absent stamp means unknown provenance, which may be a hand-built or
+# downloaded recovery binary, so keep it unless --prune says otherwise. On a
+# host without Bun a compiled binary is the only remaining way to run the CLI,
+# which is why nothing here removes a binary the stamp vouches for.
+if [[ -n "$CHECKOUT_VERSION" && "$STAMPED" != "$CHECKOUT_VERSION" ]]; then
+  if [[ -n "$STAMPED" || "$PRUNE_UNKNOWN" -eq 1 ]]; then
+    for target in "${ALL_TARGETS[@]}"; do
+      stale="$DIST/$(artifact_name "$target")"
+      if [[ -e "$stale" ]]; then
+        echo "discarding ${stale##*/} from ${STAMPED:-an unrecorded version}; this build is $CHECKOUT_VERSION" >&2
+        rm -f "$stale"
+      fi
+    done
+    rm -f "$DIST/SHA256SUMS" "$STAMP"
+    STAMPED=""
+  fi
 fi
 STAGING="$(mktemp -d "$DIST/.build-XXXXXX")"
 trap 'rm -rf "$STAGING"' EXIT
