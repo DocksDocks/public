@@ -2,8 +2,27 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type * as ExecModule from "../../src/engine-native/exec";
+
+const mocks = vi.hoisted(() => ({
+  payloadText: vi.fn<(path: string) => string>(),
+  spawnProcess: vi.fn(),
+}));
+
+vi.mock("../../src/payload", () => ({
+  payloadText: mocks.payloadText,
+  payloadDisplayPath: (path: string) => `embedded:${path}`,
+}));
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec");
+  return { ...actual, spawnProcess: mocks.spawnProcess };
+});
+vi.mock("../../src/engine-native/bun", () => ({
+  bunBootstrap: async () => ({ kind: "ready", executable: "bun" }),
+}));
 
 import { syncOmpRemovals } from "../../src/engine-native/ompRemovals";
+import { ompSync } from "../../src/engine-native/ompSync";
 import { DEPENDENCIES } from "../../src/engine-native/deps";
 import { p } from "../../src/engine-native/exec";
 import type { Ctx } from "../../src/engine-native";
@@ -154,5 +173,87 @@ describe("retired omp config keys", () => {
 
     expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(source);
+  });
+
+  // With no later key to carry it, a header would otherwise vanish. This is the
+  // one position where the carry-over has nowhere obvious to go.
+  it("keeps a carried header when the pruned key was last in its mapping", () => {
+    const { file, root } = deployConfig(
+      "steeringMode: all\n\n# kit-owned omp configuration\n\n# about autoResume\nautoResume: false\n",
+    );
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    const after = readFileSync(file, "utf8");
+    expect(after).toContain("# kit-owned omp configuration");
+    expect(after).toContain("steeringMode: all");
+    expect(after).not.toContain("autoResume");
+    expect(after).not.toContain("# about autoResume");
+  });
+
+  // A trailing comment belongs to the mapping that holds it, not to the
+  // document. Hoisting it to the document instead would drag a nested section
+  // header to the top of the file.
+  it("keeps a carried header inside the mapping it came from", () => {
+    const { file, root } = deployConfig(
+      "tui:\n  keepMe: 1\n\n  # tui section header\n\n  # about tight\n  tight: false\nsteeringMode: all\n",
+    );
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    const after = readFileSync(file, "utf8");
+    const header = after.indexOf("# tui section header");
+    expect(header).toBeGreaterThan(after.indexOf("keepMe: 1"));
+    expect(header).toBeLessThan(after.indexOf("steeringMode: all"));
+    expect(after).not.toContain("tight: false");
+  });
+
+  // Without this the call site is unguarded: a refactor could drop it and every
+  // direct test above would still pass.
+  it("runs as part of ompSync, after the additive config merge", async () => {
+    const root = mkdtempSync(join(tmpdir(), "omp-removals-sync-"));
+    roots.push(root);
+    // PI_CODING_AGENT_DIR relocates the whole agent directory, so an ambient
+    // value would send these writes outside the temporary root.
+    const ompEnvKeys = [
+      "XDG_DATA_HOME",
+      "OMP_PROFILE",
+      "PI_PROFILE",
+      "PI_CONFIG_DIR",
+      "PI_CODING_AGENT_DIR",
+    ] as const;
+    const restore: Record<string, string | undefined> = {};
+    for (const key of ompEnvKeys) {
+      restore[key] = process.env[key];
+      delete process.env[key];
+    }
+    mocks.payloadText.mockImplementation((path) => {
+      if (path === "SoT/.omp/config.yml") return "steeringMode: all\n";
+      if (path === "SoT/.omp/models.yml") return "providers: {}\n";
+      if (path === "SoT/.omp/AGENTS.md") return "# omp\n";
+      return "{}\n";
+    });
+    mocks.spawnProcess.mockResolvedValue({
+      error: undefined,
+      exitCode: 0,
+      stdout: "",
+      stderr: "",
+    });
+
+    const agentDir = join(root, ".omp", "agent");
+    mkdirSync(agentDir, { recursive: true });
+    const file = join(agentDir, "config.yml");
+    writeFileSync(file, "symbolPreset: unicode\nproviders:\n  webSearchOrder:\n    - brave\n");
+
+    const ctx = testCtx(root);
+    await ompSync({ ...ctx, home: root });
+
+    for (const [key, value] of Object.entries(restore)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+
+    const after = readFileSync(file, "utf8");
+    expect(after).not.toContain("symbolPreset");
+    expect(after).not.toContain("webSearchOrder");
+    expect(after).toContain("steeringMode: all");
   });
 });
