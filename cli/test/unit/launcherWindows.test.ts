@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -61,6 +69,12 @@ function launcherFixture(options: {
       throw new Error(`required Windows executable not found: ${whereExecutable}`);
     copyFileSync(whereExecutable, binaryPath);
   }
+  // copyFileSync preserves the source timestamp on Windows, so a copied
+  // interpreter would look older than the fixture sources and trip the
+  // launcher's content-freshness check. A fixture binary stands for one that
+  // was just built.
+  const built = new Date();
+  utimesSync(binaryPath, built, built);
 
   return { root, binDir };
 }
@@ -139,6 +153,28 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stdout.trim()).toBe("source:probe");
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-windows-x64.exe");
     expect(result.stderr).toContain("run 'bun run build:binaries' to refresh it or delete it");
+  });
+
+  // An unreleased change does not move package.json, so a binary compiled
+  // before it still reports the checkout version.
+  it("ignores a version-matching binary that predates a source file", () => {
+    const runtimeVersion = spawnSync(process.execPath, ["--version"], {
+      encoding: "utf8",
+    }).stdout.trim();
+    const fixture = launcherFixture({
+      binaryName: "docks-kit-windows-x64.exe",
+      checkoutVersion: runtimeVersion,
+      binary: "bun",
+    });
+    const source = join(fixture.root, "cli", "src", "main.ts");
+    const future = new Date(Date.now() + 60_000);
+    utimesSync(source, future, future);
+
+    const result = runLauncher(fixture, { native: "AMD64" }, ["probe"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toBe("source:probe");
+    expect(result.stderr).toContain("is newer than the binary");
   });
 
   it("falls through to Bun source on AMD64 when the compiled binary version is unparseable", () => {

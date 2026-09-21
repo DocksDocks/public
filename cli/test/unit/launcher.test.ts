@@ -5,6 +5,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -199,6 +200,22 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toBe("compiled:probe");
     expect(result.stderr).toBe("");
+  });
+
+  // An unreleased change does not move package.json, so a binary compiled
+  // before it still reports the checkout version. Without a content check the
+  // launcher runs code that predates the source and reports a false result.
+  it("ignores a version-matching binary that predates a source file", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", CURRENT_VERSION);
+    const source = join(fixture.root, "cli", "src", "main.ts");
+    const future = new Date(Date.now() + 60_000);
+    utimesSync(source, future, future);
+
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe("source:probe");
+    expect(result.stderr).toContain("cli/src/main.ts is newer than the binary");
   });
 
   it.each([
