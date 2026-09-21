@@ -1,21 +1,5 @@
-symbolPreset: unicode
-
-theme:
-  dark: titanium
-
 statusLine:
-  preset: default
   compactThinkingLevel: false
-  showHookStatus: true
-  sessionAccent: true
-  transparent: false
-
-terminal:
-  showProgress: false
-
-tui:
-  textSizing: false
-  tight: false
 
 defaultThinkingLevel: high
 
@@ -84,7 +68,6 @@ modelTags:
     name: GPT-6 Astra
 
 display:
-  shimmer: classic
   showTokenUsage: true
 
 providers:
@@ -144,15 +127,10 @@ retry:
       - web/mojeek
       - web/public
 
-omitThinking: false
 includeWorkspaceTree: false
-autocompleteMaxVisible: 10
-emojiAutocomplete: true
 
 branchSummary:
   enabled: true
-
-readLineNumbers: false
 
 commands:
   enableOpencodeProject: false
@@ -164,7 +142,6 @@ skills:
   enableAgentsUser: true
 
 steeringMode: all
-interruptMode: immediate
 
 dev:
   autoqa: false
@@ -176,8 +153,6 @@ compaction:
   handoffSaveToDisk: true
 
 doubleEscapeAction: tree
-hideThinkingBlock: false
-autoResume: false
 textVerbosity: low
 
 features:
@@ -188,7 +163,6 @@ codexResets:
 
 startup:
   quiet: true
-  changelogMode: summary
 
 tools:
   approvalMode: yolo
