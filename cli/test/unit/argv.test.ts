@@ -11,6 +11,7 @@ vi.mock("../../docs/sync-layers.md", () => ({ default: "" }));
 vi.mock("../../docs/install.md", () => ({ default: "" }));
 vi.mock("../../docs/platforms.md", () => ({ default: "" }));
 vi.mock("../../docs/omp-models.md", () => ({ default: "" }));
+vi.mock("../../docs/omp-context.md", () => ({ default: "" }));
 
 import { prepareArgv, subcommandName } from "../../src/argv";
 

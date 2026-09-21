@@ -20,12 +20,13 @@ against.
 | `fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 9.65 s | n/a |
 | `switch_fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 9.65 s | n/a |
 | `astra` | `openai-codex/gpt-6-astra` | xhigh | 53 | $2.31 | 161.65 s | n/a |
+| `web` | `web/firecrawl` | n/a | n/a | n/a | n/a | n/a |
 
 The table reports the measured Artificial Analysis figures for each assigned
 model and level. It states no motive that the config or omp's own
 documentation does not establish. AA lists no cost per task for Luna medium
 and low, and no Coding Agent Index for any Astra or Fable 5.1 level except
-max.
+max. AA measures no web search provider, so the `web` row carries no figures.
 
 What omp's settings catalog establishes about these roles:
 
@@ -52,6 +53,20 @@ chains, `retry.fallbackChains.default` would send either stop to
 `openai-codex/gpt-5.6-sol:high`.
 Chain entries are concrete selectors, not role aliases, so this pair cannot
 recurse. The hidden `switch_fable` chain stays empty.
+
+`modelRoles.web` is `web/firecrawl`, and `retry.fallbackChains.web` lists the
+explicit 27-entry provider order that follows it. The two keys replace the
+retired `providers.webSearchOrder` key, which omp no longer carries in its
+settings schema. omp still accepts that key in a deployed file, expands it in
+memory into the same two keys, and then drops it, but it never writes the
+expansion back to disk. The kit therefore declares both keys itself.
+
+The chain is the verbatim expansion omp produces today, read back with
+`omp config get retry.fallbackChains`. It must stay complete. An explicit
+chain replaces omp's built-in web order wholesale, so a shortened list drops
+providers instead of reordering them. The first five entries keep the previous
+Firecrawl, Exa, Perplexity, Gemini, Codex preference; the remaining entries
+are omp's own ordering of the providers behind it.
 
 ## Artificial Analysis snapshot
 
@@ -205,8 +220,8 @@ quick answer.
   to choose a thinking level.
 - `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
   `hi`, which overrides `auto`.
-- `task.maxEffort` is `high`, so `scout` and `sonic` run Luna `medium` by
-  default and Luna `high` with `effort: hi`.
+- `task.maxEffort` is `max`, so `scout` and `sonic` run Luna `medium` by
+  default and Luna `max` with `effort: hi`.
 - The bundled `reviewer` and `security-reviewer` inherit `@task`, now Sol high.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.
   Both point to `@task`, now Sol high. omp's task tool rejects both names as
