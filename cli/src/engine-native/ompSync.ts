@@ -7,8 +7,9 @@
  * subcommand runs under ctx.dryRun.
  *
  * Split: file deploy lives in `ompFileDeploy.ts`, the marketplace pass in
- * `ompMarketplace.ts`, and the plugin pass in `ompPlugins.ts`. This module
- * keeps the orchestration plus the summary surface.
+ * `ompMarketplace.ts`, the plugin pass in `ompPlugins.ts`, and the retired-key
+ * prune in `ompRemovals.ts`. This module keeps the orchestration plus the
+ * summary surface.
  */
 import { isAbsolute, resolve } from "node:path";
 
@@ -20,6 +21,7 @@ import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncMarketplace } from "./ompMarketplace";
 import { syncPlugins } from "./ompPlugins";
+import { syncOmpRemovals } from "./ompRemovals";
 
 export interface OmpState {
   readonly pluginsInstalled: number;
@@ -51,6 +53,8 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
     "omp mcp.json synced",
   );
   syncMergedYaml(ctx, "SoT/.omp/config.yml", p(agentDir, "config.yml"), mergeOmpConfig);
+  // mergeOmpConfig is additive, so the prune must run on the merged result.
+  syncOmpRemovals(ctx, p(agentDir, "config.yml"));
   syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels);
 
   const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"];
