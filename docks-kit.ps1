@@ -56,13 +56,28 @@ if (Test-Path -LiteralPath $KitPath -PathType Leaf) {
   }
 
   if (-not [string]::IsNullOrEmpty($CheckoutVersion) -and $BinVersion -eq $CheckoutVersion) {
-    & $KitPath @args
-    exit $LASTEXITCODE
+    # A matching version does not prove matching content. Unreleased work does
+    # not move package.json, so a binary compiled before it still reports the
+    # checkout version and would silently shadow the source it predates.
+    $NewerSource = $null
+    $SrcDir = Join-Path $RepoDir 'cli\src'
+    if (Test-Path -LiteralPath $SrcDir -PathType Container) {
+      $BinWritten = (Get-Item -LiteralPath $KitPath).LastWriteTimeUtc
+      $NewerSource = Get-ChildItem -LiteralPath $SrcDir -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTimeUtc -gt $BinWritten } |
+        Select-Object -First 1
+    }
+    if ($null -eq $NewerSource) {
+      & $KitPath @args
+      exit $LASTEXITCODE
+    }
+    $NewerRelative = $NewerSource.FullName.Substring($RepoDir.Length).TrimStart('\', '/')
+    [Console]::Error.WriteLine("[docks-kit] ignoring cli/dist/$KitBin; $NewerRelative is newer than the binary — running from source; run 'bun run build:binaries' to refresh it or delete it")
+  } else {
+    $DisplayedBinVersion = if ([string]::IsNullOrEmpty($BinVersion)) { '<unknown>' } else { $BinVersion }
+    $DisplayedCheckoutVersion = if ([string]::IsNullOrEmpty($CheckoutVersion)) { '<unknown>' } else { $CheckoutVersion }
+    [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion — running from source; run 'bun run build:binaries' to refresh it or delete it")
   }
-
-  $DisplayedBinVersion = if ([string]::IsNullOrEmpty($BinVersion)) { '<unknown>' } else { $BinVersion }
-  $DisplayedCheckoutVersion = if ([string]::IsNullOrEmpty($CheckoutVersion)) { '<unknown>' } else { $CheckoutVersion }
-  [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion — running from source; run 'bun run build:binaries' to refresh it or delete it")
 }
 
 function Find-Bun {

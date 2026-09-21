@@ -37,9 +37,20 @@ if [[ -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
   BIN_VERSION="$("$REPO_DIR/cli/dist/$KIT_BIN" --version 2>/dev/null || true)"
   BIN_VERSION="${BIN_VERSION%$'\r'}"
   if [[ -n "$CHECKOUT_VERSION" && "$BIN_VERSION" == "$CHECKOUT_VERSION" ]]; then
-    exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
+    # A matching version does not prove matching content. Unreleased work does
+    # not move package.json, so a binary compiled before it still reports the
+    # checkout version and would silently shadow the source it predates.
+    NEWER_SOURCE=""
+    if [[ -d "$REPO_DIR/cli/src" ]]; then
+      NEWER_SOURCE="$(find "$REPO_DIR/cli/src" -type f -newer "$REPO_DIR/cli/dist/$KIT_BIN" -print -quit 2>/dev/null || true)"
+    fi
+    if [[ -z "$NEWER_SOURCE" ]]; then
+      exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
+    fi
+    echo "[docks-kit] ignoring cli/dist/$KIT_BIN; ${NEWER_SOURCE#"$REPO_DIR/"} is newer than the binary — running from source; run 'bun run build:binaries' to refresh it or delete it" >&2
+  else
+    echo "[docks-kit] ignoring stale cli/dist/$KIT_BIN ${BIN_VERSION:-<unknown>}; checkout is ${CHECKOUT_VERSION:-<unknown>} — running from source; run 'bun run build:binaries' to refresh it or delete it" >&2
   fi
-  echo "[docks-kit] ignoring stale cli/dist/$KIT_BIN ${BIN_VERSION:-<unknown>}; checkout is ${CHECKOUT_VERSION:-<unknown>} — running from source; run 'bun run build:binaries' to refresh it or delete it" >&2
 fi
 
 # Locate bun: PATH, then the known install locations that sit off the
