@@ -87,20 +87,27 @@ function deletePath(
 
   // `commentBefore` can hold several blocks separated by a blank line. Only the
   // final block sits against this key; anything above it is a file or section
-  // header that happens to precede the first key, so it moves to the next
-  // sibling instead of leaving with the key.
+  // header that happens to precede the key, so it survives the removal instead
+  // of leaving with it.
   const leafKey: unknown = leafPair.key;
   const priorComment =
     isScalar(leafKey) && typeof leafKey.commentBefore === "string"
       ? leafKey.commentBefore.slice(0, Math.max(0, leafKey.commentBefore.lastIndexOf("\n\n")))
       : "";
   cursor.items.splice(leafIndex, 1);
-  const heir: unknown = cursor.items[leafIndex]?.key;
-  if (priorComment !== "" && isScalar(heir)) {
-    heir.commentBefore =
-      typeof heir.commentBefore === "string"
-        ? `${priorComment}\n\n${heir.commentBefore}`
-        : priorComment;
+  if (priorComment !== "") {
+    const heir: unknown = cursor.items[leafIndex]?.key;
+    if (isScalar(heir)) {
+      heir.commentBefore =
+        typeof heir.commentBefore === "string"
+          ? `${priorComment}\n\n${heir.commentBefore}`
+          : priorComment;
+    } else {
+      // The key was last in its mapping, so there is no later key to carry the
+      // header. A trailing mapping comment keeps the text in the file.
+      cursor.comment =
+        typeof cursor.comment === "string" ? `${cursor.comment}\n${priorComment}` : priorComment;
+    }
   }
 
   for (let depth = owners.length - 1; depth >= 1; depth--) {
