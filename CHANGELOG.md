@@ -1,11 +1,5 @@
 # Changelog
 
-## Unreleased - maintainability for AI-assisted development
-
-- No user-visible behavior changes. One command proves a change: `bun run check` runs oxlint, typecheck, unit tests, and both golden suites, and CI runs it on push and pull request.
-- Oversized modules split along change axes with prior exports intact; shared shapes live once in `engine-native/sharedTypes.d.ts`; shipped JavaScript is typechecked.
-- oxlint covers mechanical mistakes and oxfmt formats code. `AGENTS.md` records layout, invariants, version rules, and checks.
-
 ## 2026-09-22 - docks-kit 0.18.0: Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna
 
 - The five Anthropic omp roles (`default`, `slow`, `plan`, `designer`,
@@ -66,6 +60,33 @@
   Index table lists the five entries for these families, including Codex with
   GPT-6 Sol max at 56.7 and with GPT-6 Luna max at 41.1.
 
+## 2026-09-21 - docks-kit 0.17.3: omp compaction default, retired-key prune, and build hygiene
+
+- omp `compaction.thresholdTokens` changes from `231200` to `-1`, omp's
+  reserve-based default. The Codex lane still compacts at 231,200 tokens. The
+  Anthropic lane now compacts at 850,000 tokens instead of 231,200. The new
+  `omp-context` docs topic records the derivation and the measured evidence.
+- The retired `providers.webSearchOrder` key gives way to `modelRoles.web`
+  and an explicit `retry.fallbackChains.web` chain. The omp SoT also enables
+  the find tool and raises `task.maxEffort` to `max`.
+- `./docks-kit sync omp` force-prunes retired kit-owned keys from
+  `~/.omp/agent/config.yml` on every sync, without `--reconcile`. A key the
+  kit used to deploy is pruned only while it still holds the deployed value,
+  so a user edit survives. `providers.webSearchOrder` is pruned at any value.
+  A comment above a pruned key moves to the next key or to the end of its
+  mapping.
+- The omp SoT drops 18 presentation keys that only restated an omp default.
+  The prune removes them from a deployed file while their values are
+  unchanged.
+- `SHA256SUMS` lists only the six release binaries. The build stamps
+  `cli/dist/VERSION` and discards artifacts the stamp attributes to another
+  version. `--prune` also discards unstamped artifacts. An unknown build
+  option exits 2 with a usage line.
+- A launcher ignores a `cli/dist` binary when a file under `cli/src` is newer
+  than it, even if the versions match. The stale-binary warning now names the
+  rebuild-or-delete remedy.
+- `bun run check` and `test:ci` now include `format:check`.
+
 ## 2026-09-17 - docks-kit 0.17.2: omp gets an Astra cycle stop
 
 - The new visible `astra` role uses `openai-codex/gpt-6-astra:xhigh` as the
@@ -88,6 +109,14 @@
   The topic now scopes the guarantee to the roles and retry chains the overlay
   writes. Behavior did not change. Launcher enforcement remains tracked
   separately.
+- No user-visible behavior changes in this part: one command proves a change.
+  `bun run check` runs oxlint, typecheck, unit tests, and both golden suites,
+  and CI runs it on push and pull request.
+- Oversized modules split along change axes with prior exports intact. Shared
+  shapes live once in `engine-native/sharedTypes.d.ts`, and shipped
+  JavaScript is typechecked.
+- oxlint covers mechanical mistakes and oxfmt formats code. `AGENTS.md`
+  records layout, invariants, version rules, and checks.
 
 ## 2026-09-12 - docks-kit 0.17.1: the omp picker asks for thinking levels
 
