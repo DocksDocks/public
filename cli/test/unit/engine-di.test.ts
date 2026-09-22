@@ -346,7 +346,7 @@ describe("Claude settings modifiers", () => {
     const home = mkdtempSync(join(tmpdir(), "claude-advisor-modifier-"));
     const settings = p(home, ".claude", "settings.json");
     mkdirSync(p(home, ".claude"), { recursive: true });
-    writeFileSync(settings, '{"advisorModel":"fable","userOnly":true}\n');
+    writeFileSync(settings, '{"advisorModel":"opus","userOnly":true}\n');
     const records: Array<LogRecord> = [];
     const ctx = modifierCtx(home, records);
 
@@ -365,13 +365,13 @@ describe("Claude settings modifiers", () => {
       syncClaudeAdvisor(ctx, "on");
       expect(JSON.parse(readFileSync(settings, "utf8"))).toEqual({
         userOnly: true,
-        advisorModel: "fable",
+        advisorModel: "opus",
       });
       expect(records).toEqual([
         {
           level: "change",
           message:
-            "Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)",
+            "Advisor: deployed settings advisorModel set to opus (SoT unchanged; flag-less sync reverts)",
         },
       ]);
       expect(ctx.nextStepTriggers.claudeRestart).toBe(true);
@@ -380,7 +380,7 @@ describe("Claude settings modifiers", () => {
       ctx.nextStepTriggers.claudeRestart = false;
       syncClaudeAdvisor(ctx, "on");
       expect(records).toEqual([
-        { level: "verbose", message: "Advisor: deployed settings advisorModel already fable" },
+        { level: "verbose", message: "Advisor: deployed settings advisorModel already opus" },
       ]);
       expect(ctx.nextStepTriggers.claudeRestart).toBe(false);
 
@@ -438,7 +438,7 @@ describe("Claude settings modifiers", () => {
         },
         {
           level: "echo",
-          message: `[dry-run] (--claude-advisor) set .advisorModel=fable in ${drySettings}`,
+          message: `[dry-run] (--claude-advisor) set .advisorModel=opus in ${drySettings}`,
         },
       ]);
     } finally {

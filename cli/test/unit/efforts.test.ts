@@ -92,8 +92,8 @@ describe("deploy-time effort catalogs", () => {
     );
     expect(advisorCatalog()).toBe(
       [
-        "Available claude advisor states (advisorModel; verified 2026-07-10):",
-        "  on  — set advisorModel: fable",
+        "Available claude advisor states (advisorModel; verified 2026-09-22):",
+        "  on  — set advisorModel: opus",
         "  off  — unset advisorModel",
         "  default  — SoT: off (unset)",
       ].join("\n"),

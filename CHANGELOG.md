@@ -6,6 +6,66 @@
 - Oversized modules split along change axes with prior exports intact; shared shapes live once in `engine-native/sharedTypes.d.ts`; shipped JavaScript is typechecked.
 - oxlint covers mechanical mistakes and oxfmt formats code. `AGENTS.md` records layout, invariants, version rules, and checks.
 
+## 2026-09-22 - docks-kit 0.18.0: Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna
+
+- The five Anthropic omp roles (`default`, `slow`, `plan`, `designer`,
+  `vision`) and the five Anthropic retry chains move from
+  `anthropic/claude-opus-5` to `anthropic/claude-opus-5-5` at the same
+  thinking levels. The Fable roles are unchanged.
+- `SoT/.omp/models.yml` gains a temporary
+  `providers.anthropic.modelOverrides.claude-opus-5-5` block carrying the
+  1M context window, the 128K output limit, the five-level ladder, and the
+  published prices. The shared catalog still serves this id as a stub with
+  null limits and zero cost, which would break compaction sizing and cost
+  reporting. Remove the block once the catalog publishes the row.
+- The Claude floor rises from 2.1.219 to 2.1.280 in both
+  `SoT/.claude/settings.json` `minimumVersion` and the `SoT/toolchain.json`
+  `claude` pin. Claude Code 2.1.280 makes Opus 5.5 the default Opus, so the
+  `opus` alias now resolves to it. The kit keeps the alias rather than
+  pinning `claude-opus-5-5`, because the alias tracks the next Opus release
+  without a kit change.
+- `--claude-advisor=on` writes `advisorModel: opus` instead of `fable`. That
+  was the only Claude settings surface that selected a Fable model. A machine
+  synced earlier with `fable` is migrated on the next explicit `on`.
+- `SoT/models.json` adds the ids `claude-opus-5-5` and `claude-fable-5-1`,
+  marks `claude-fable-5`, `claude-opus-5`, and `claude-opus-4-8` legacy, and
+  rewrites the `best`, `opus`, and `fable` alias notes. `claude-fable-5-1`
+  previously validated only as an uncatalogued warning.
+- The omp `task` and `advisor` roles and the `default` and `vision` retry
+  chains move from `openai-codex/gpt-5.6-sol` to `openai-codex/gpt-6-sol`.
+  The `smol`, `commit`, and `tiny` roles and the Codex entry of the web chain
+  move from `openai-codex/gpt-5.6-luna` to `openai-codex/gpt-6-luna`. Every
+  thinking level is unchanged.
+- Codex moves from `model = "gpt-5.6-sol"` to `gpt-6-sol` in
+  `SoT/.codex/config.toml` and in the project `code-reviewer` and
+  `plan-reviewer` agents under `.codex/agents/`. The Codex catalog in
+  `SoT/models.json` adds `gpt-6-sol`, `gpt-6-luna`, and `gpt-6-astra`, and
+  marks the three GPT-5.6 models previous generation.
+- The omp web search fallback chain drops every entry that named an older
+  model: `google/gemini-2.5-flash`, `google-antigravity/gemini-2.5-flash`,
+  `anthropic/claude-haiku-4-5`, `openai-codex/gpt-5.6`,
+  `openai-codex/gpt-5.5`, `xai/grok-4.5`, and `xai-oauth/grok-4.5`. The
+  chain goes from 27 to 20 entries, and omp no longer tries those search
+  backends.
+- Warning: omp 18.2.9 does not list `gpt-6-sol` or `gpt-6-luna` in its
+  `openai-codex` catalog, so it fuzzy-matches the new selectors to the GPT-5.6
+  models without a warning. On 2026-09-22 the ChatGPT backend first rejected
+  both ids with HTTP 400 while the rollout was in progress, then listed both
+  for the same account twelve minutes later. `cli/docs/omp-models.md` records
+  the checks and how to confirm that omp resolves the new models.
+- `cli/docs/omp-models.md` replaces the whole 2026-09-08 snapshot with one
+  2026-09-22 capture at Intelligence Index v4.3.2 and Coding Agent Index v1.5.
+  Every per-level row comes from the metric table of an AA comparison page
+  whose title names that model and level. The capture covers every level AA
+  publishes for Opus 5.5, Fable 5.1, Astra, GPT-6 Sol, and GPT-6 Luna, and
+  keeps GPT-5.6 Sol and Luna as the previous-generation baseline. The Opus 5
+  table is gone. Each table gains a Terminal-Bench 4.0 column. Opus 5.5
+  latency is measured for every level except max. AA has not measured speed
+  or latency for GPT-6 Sol or GPT-6 Luna. GPT-6 Sol high scores 43 at $0.37
+  per index task, against 42 at $0.81 for GPT-5.6 Sol high. The Coding Agent
+  Index table lists the five entries for these families, including Codex with
+  GPT-6 Sol max at 56.7 and with GPT-6 Luna max at 41.1.
+
 ## 2026-09-17 - docks-kit 0.17.2: omp gets an Astra cycle stop
 
 - The new visible `astra` role uses `openai-codex/gpt-6-astra:xhigh` as the

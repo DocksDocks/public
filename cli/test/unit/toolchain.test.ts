@@ -18,7 +18,7 @@ describe("toolchain report", () => {
       try {
         expect(run.exitCode).toBe(0);
         const claude = run.stdout.split("\n").find((line) => line.startsWith("claude"));
-        expect(claude).toMatch(/^claude\s+check\s+\?\s+2\.1\.219\s+-\s+unknown$/);
+        expect(claude).toMatch(/^claude\s+check\s+\?\s+2\.1\.280\s+-\s+unknown$/);
         expect(claude).not.toMatch(/\bok$/);
       } finally {
         rmSync(run.home, { recursive: true, force: true });

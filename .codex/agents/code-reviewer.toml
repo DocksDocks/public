@@ -1,6 +1,6 @@
 name = "code-reviewer"
 description = "Use when plan-manager needs a read-only post-implementation review of a scoped diff against code standards and the canonical plan. Not for plan review, applying fixes, broad security audits, lifecycle control, or direct user invocation."
-model = "gpt-5.6-sol"
+model = "gpt-6-sol"
 sandbox_mode = "read-only"
 developer_instructions = """
 # Code Reviewer

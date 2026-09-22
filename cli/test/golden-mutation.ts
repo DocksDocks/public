@@ -185,6 +185,7 @@ function runAdvisorMigrationCase(
   const sourceSettings = JSON.parse(
     readFileSync(join(FIXTURES_DIR, "home-drift", ".claude", "settings.json"), "utf8"),
   ) as Record<string, unknown>;
+  // The seed is the retired `fable` value, so `on` must migrate it to `opus`.
   sourceSettings["advisorModel"] = "fable";
   // Retirement cleanups (the stale relay command, its enablement key) fire on
   // every state and would mask which mechanism owns advisorModel, so this case
@@ -228,8 +229,8 @@ function runAdvisorMigrationCase(
       const settings = JSON.parse(
         readFileSync(join(second.home, ".claude", "settings.json"), "utf8"),
       ) as Record<string, unknown>;
-      if (state === "on" && settings["advisorModel"] !== "fable") {
-        problems.push("  advisor migration: explicit on did not preserve advisorModel=fable");
+      if (state === "on" && settings["advisorModel"] !== "opus") {
+        problems.push("  advisor migration: explicit on did not write advisorModel=opus");
       }
       if (state !== "on" && Object.prototype.hasOwnProperty.call(settings, "advisorModel")) {
         problems.push(`  advisor migration: ${state} left advisorModel deployed`);

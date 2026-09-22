@@ -15,6 +15,7 @@ export const CODEX_REASONING_EFFORTS = [
 export const CLAUDE_ADVISOR_STATES = ["on", "off", "default"] as const;
 
 const VERIFIED = "2026-07-10";
+const ADVISOR_VERIFIED = "2026-09-22";
 const DEFAULT = "default";
 
 const upstreamEfforts = (tool: Tool): ReadonlyArray<string> =>
@@ -80,8 +81,8 @@ export function effortCatalog(tool: Tool): string {
 
 export function advisorCatalog(): string {
   return [
-    `Available claude advisor states (advisorModel; verified ${VERIFIED}):`,
-    "  on  — set advisorModel: fable",
+    `Available claude advisor states (advisorModel; verified ${ADVISOR_VERIFIED}):`,
+    "  on  — set advisorModel: opus",
     "  off  — unset advisorModel",
     "  default  — SoT: off (unset)",
   ].join("\n");

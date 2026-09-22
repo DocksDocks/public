@@ -42,6 +42,50 @@ describe("SoT omp tree", () => {
     );
   });
 
+  // The shared catalog serves `claude-opus-5-5` as a stub with null limits and
+  // zero cost. Without this override, reserve-based compaction has no context
+  // window to size against and cost reporting reads zero. Deleting the block
+  // must fail here, not in a live session.
+  it("supplies Opus 5.5 limits and prices the shared catalog still omits", () => {
+    const models = parse(mergeOmpModels(readSot("models.yml"), "")) as unknown;
+    expect(models).toHaveProperty(
+      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "contextWindow"],
+      1000000,
+    );
+    expect(models).toHaveProperty(
+      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "maxTokens"],
+      128000,
+    );
+    expect(models).toHaveProperty(
+      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "cost"],
+      { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
+    );
+    expect(models).toHaveProperty(
+      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "thinking", "efforts"],
+      ["low", "medium", "high", "xhigh", "max"],
+    );
+  });
+
+  // Every Anthropic role and every Anthropic retry entry moved from Opus 5 to
+  // Opus 5.5 at the same levels. A leftover `claude-opus-5:` selector would
+  // silently keep one role on the retired model.
+  it("selects Opus 5.5 for every Anthropic role and retry entry", () => {
+    const config = ompConfig();
+    const roles = config["modelRoles"] as Record<string, string>;
+    expect(roles["default"]).toBe("anthropic/claude-opus-5-5:high");
+    expect(roles["slow"]).toBe("anthropic/claude-opus-5-5:xhigh");
+    expect(roles["plan"]).toBe("anthropic/claude-opus-5-5:xhigh");
+    expect(roles["designer"]).toBe("anthropic/claude-opus-5-5:high");
+    expect(roles["vision"]).toBe("anthropic/claude-opus-5-5:medium");
+    const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"] as Record<
+      string,
+      Array<string>
+    >;
+    const selectors = [...Object.values(roles), ...Object.values(chains).flat()];
+    expect(selectors.some((s) => s.startsWith("anthropic/claude-opus-5-5:"))).toBe(true);
+    expect(selectors.filter((s) => /claude-opus-5(?::|$)/.test(s))).toEqual([]);
+  });
+
   it("reaches Astra as the last model-switcher stop", () => {
     const config = ompConfig();
     expect(config["cycleOrder"]).toEqual(["smol", "default", "slow", "fable", "astra"]);
@@ -60,7 +104,7 @@ describe("SoT omp tree", () => {
   it("keeps Astra off every subagent role", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
-    expect(roles["task"]).toBe("openai-codex/gpt-5.6-sol:high");
+    expect(roles["task"]).toBe("openai-codex/gpt-6-sol:high");
     for (const [role, selector] of Object.entries(roles)) {
       if (role !== "astra") expect(selector).not.toContain("gpt-6-astra");
     }
@@ -95,8 +139,9 @@ describe("SoT omp tree", () => {
   // omp retired `providers.webSearchOrder`. It expands the key in memory into
   // `modelRoles.web` plus `retry.fallbackChains.web` and then drops it, and it
   // never writes that expansion back. The kit declares both keys instead. An
-  // explicit chain replaces omp's built-in web order wholesale, so a shortened
-  // list drops providers rather than reordering them.
+  // explicit chain replaces omp's built-in web order wholesale. The owner
+  // removed every older-model entry on purpose; any other shortened list drops
+  // providers rather than reordering them.
   it("declares the web role instead of the retired webSearchOrder key", () => {
     const config = ompConfig();
     expect(config["providers"]).not.toHaveProperty("webSearchOrder");
@@ -106,15 +151,8 @@ describe("SoT omp tree", () => {
     expect(web).toEqual([
       "web/exa",
       "web/perplexity",
-      "google/gemini-2.5-flash",
-      "openai-codex/gpt-5.6-luna",
+      "openai-codex/gpt-6-luna",
       "web/parallel",
-      "google-antigravity/gemini-2.5-flash",
-      "anthropic/claude-haiku-4-5",
-      "openai-codex/gpt-5.6",
-      "openai-codex/gpt-5.5",
-      "xai/grok-4.5",
-      "xai-oauth/grok-4.5",
       "web/zai",
       "web/tinyfish",
       "web/jina",

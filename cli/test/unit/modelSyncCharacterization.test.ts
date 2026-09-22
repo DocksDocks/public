@@ -14,22 +14,22 @@ const NATIVE = { nativeHost: true } as const;
 
 const EXPECTED_CATALOGS = {
   claude: {
-    verified: "2026-07-27",
+    verified: "2026-09-22",
     models: [
       {
         id: "best",
         kind: "alias",
-        note: "Fable 5 where the org has access, latest Opus otherwise (Claude Code >=2.1.170)",
+        note: "Fable 5.1 where the org has access, latest Opus otherwise (Claude Code >=2.1.257; Claude apps gateway sessions still resolve Fable 5)",
       },
       {
         id: "opus",
         kind: "alias",
-        note: "latest Opus — the kit SoT default (Opus 5 on the Anthropic API from Claude Code >=2.1.219; Opus 4.6 on Microsoft Foundry)",
+        note: "latest Opus — the kit SoT default (Opus 5.5 from Claude Code >=2.1.280)",
       },
       {
         id: "fable",
         kind: "alias",
-        note: "Fable 5 — advisor opt-in default; needs org access + Claude Code >=2.1.170",
+        note: "Fable 5.1 — needs org access + Claude Code >=2.1.257 (Claude apps gateway sessions still resolve Fable 5)",
       },
       { id: "sonnet", kind: "alias", note: "latest Sonnet (currently Sonnet 5)" },
       { id: "haiku", kind: "alias", note: "latest Haiku (currently Haiku 4.5)" },
@@ -38,23 +38,28 @@ const EXPECTED_CATALOGS = {
         kind: "alias",
         note: "engine pseudo-value: deletes the deployed model key so the account default applies",
       },
-      { id: "claude-fable-5", kind: "id", note: "Fable 5" },
-      { id: "claude-opus-5", kind: "id", note: "Opus 5 — needs Claude Code >=2.1.219" },
-      { id: "claude-opus-4-8", kind: "id", note: "Opus 4.8" },
+      { id: "claude-opus-5-5", kind: "id", note: "Opus 5.5 — needs Claude Code >=2.1.280" },
+      { id: "claude-fable-5-1", kind: "id", note: "Fable 5.1 — needs Claude Code >=2.1.257" },
+      { id: "claude-fable-5", kind: "id", note: "Fable 5 (legacy)" },
+      { id: "claude-opus-5", kind: "id", note: "Opus 5 (legacy)" },
+      { id: "claude-opus-4-8", kind: "id", note: "Opus 4.8 (legacy)" },
       { id: "claude-sonnet-5", kind: "id", note: "Sonnet 5" },
       { id: "claude-haiku-4-5-20251001", kind: "id", note: "Haiku 4.5" },
     ],
   },
   codex: {
-    verified: "2026-07-16",
+    verified: "2026-09-22",
     models: [
       {
-        id: "gpt-5.6-sol",
+        id: "gpt-6-sol",
         kind: "id",
-        note: "GPT-5.6 Sol — frontier, recommended default; the kit SoT pin",
+        note: "GPT-6 Sol — complex coding and agentic work, recommended default; the kit SoT pin",
       },
-      { id: "gpt-5.6-terra", kind: "id", note: "GPT-5.6 Terra — balanced tier" },
-      { id: "gpt-5.6-luna", kind: "id", note: "GPT-5.6 Luna — fast/light tier" },
+      { id: "gpt-6-luna", kind: "id", note: "GPT-6 Luna — fast/light tier" },
+      { id: "gpt-6-astra", kind: "id", note: "GPT-6 Astra — most capable, highest cost" },
+      { id: "gpt-5.6-sol", kind: "id", note: "previous generation" },
+      { id: "gpt-5.6-terra", kind: "id", note: "previous generation, balanced tier" },
+      { id: "gpt-5.6-luna", kind: "id", note: "previous generation" },
       { id: "gpt-5.5", kind: "id", note: "previous generation" },
       { id: "gpt-5.5-codex", kind: "id", note: "codex-tuned gpt-5.5" },
       { id: "gpt-5.1", kind: "id", note: "previous generation" },
@@ -141,7 +146,7 @@ describe("retained model and sync behavior", () => {
       expect(claude.permissions.allow).toContain("Read");
 
       const codex = deployedText(run.home, ".codex/config.toml");
-      expect(codex.match(/^model\s*=\s*"([^"]*)"$/m)?.[1]).toBe("gpt-5.6-sol");
+      expect(codex.match(/^model\s*=\s*"([^"]*)"$/m)?.[1]).toBe("gpt-6-sol");
       expect(codex.match(/^model_reasoning_effort\s*=\s*"([^"]*)"$/m)?.[1]).toBe("high");
       expect(codex).toMatch(/^custom_user_key = "keepme"$/m);
       expect(codex).toMatch(/^\[user_only\.table\]\nkeep = true$/m);

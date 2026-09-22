@@ -101,15 +101,15 @@ export function syncClaudeAdvisor(ctx: Ctx, state: string): void {
   syncClaudeSetting(ctx, {
     tag: "--claude-advisor",
     key: "advisorModel",
-    value: enabled ? "fable" : undefined,
-    dryRun: enabled ? "set .advisorModel=fable" : "delete .advisorModel (advisor disabled)",
+    value: enabled ? "opus" : undefined,
+    dryRun: enabled ? "set .advisorModel=opus" : "delete .advisorModel (advisor disabled)",
     changed: enabled
-      ? "Advisor: deployed settings advisorModel set to fable (SoT unchanged; flag-less sync reverts)"
+      ? "Advisor: deployed settings advisorModel set to opus (SoT unchanged; flag-less sync reverts)"
       : useDefault
         ? "Advisor: deployed settings advisorModel unset (SoT default: off)"
         : "Advisor: deployed settings advisorModel unset (--claude-advisor=off; SoT unchanged)",
     unchanged: enabled
-      ? "Advisor: deployed settings advisorModel already fable"
+      ? "Advisor: deployed settings advisorModel already opus"
       : `Advisor: deployed settings advisorModel already unset (${useDefault ? "SoT default: off" : "advisor off"})`,
   });
 }

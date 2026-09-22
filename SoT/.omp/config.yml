@@ -43,16 +43,16 @@ task:
     plan-reviewer: "@task"
 
 modelRoles:
-  smol: openai-codex/gpt-5.6-luna:medium
-  advisor: openai-codex/gpt-5.6-sol:medium
-  designer: anthropic/claude-opus-5:high
-  plan: anthropic/claude-opus-5:xhigh
-  commit: openai-codex/gpt-5.6-luna:medium
-  task: openai-codex/gpt-5.6-sol:high
-  vision: anthropic/claude-opus-5:medium
-  tiny: openai-codex/gpt-5.6-luna:low
-  default: anthropic/claude-opus-5:high
-  slow: anthropic/claude-opus-5:xhigh
+  smol: openai-codex/gpt-6-luna:medium
+  advisor: openai-codex/gpt-6-sol:medium
+  designer: anthropic/claude-opus-5-5:high
+  plan: anthropic/claude-opus-5-5:xhigh
+  commit: openai-codex/gpt-6-luna:medium
+  task: openai-codex/gpt-6-sol:high
+  vision: anthropic/claude-opus-5-5:medium
+  tiny: openai-codex/gpt-6-luna:low
+  default: anthropic/claude-opus-5-5:high
+  slow: anthropic/claude-opus-5-5:xhigh
   fable: anthropic/claude-fable-5-1:medium
   switch_fable: anthropic/claude-fable-5-1:medium
   astra: openai-codex/gpt-6-astra:xhigh
@@ -80,19 +80,19 @@ retry:
   usageAwareFallback: true
   fallbackChains:
     default:
-      - openai-codex/gpt-5.6-sol:high
+      - openai-codex/gpt-6-sol:high
     advisor:
-      - anthropic/claude-opus-5:medium
+      - anthropic/claude-opus-5-5:medium
     task:
-      - anthropic/claude-opus-5:high
+      - anthropic/claude-opus-5-5:high
     vision:
-      - openai-codex/gpt-5.6-sol:medium
+      - openai-codex/gpt-6-sol:medium
     smol:
-      - anthropic/claude-opus-5:low
+      - anthropic/claude-opus-5-5:low
     tiny:
-      - anthropic/claude-opus-5:low
+      - anthropic/claude-opus-5-5:low
     commit:
-      - anthropic/claude-opus-5:medium
+      - anthropic/claude-opus-5-5:medium
     switch_fable: []
     fable:
       - openai-codex/gpt-6-astra:xhigh
@@ -101,15 +101,8 @@ retry:
     web:
       - web/exa
       - web/perplexity
-      - google/gemini-2.5-flash
-      - openai-codex/gpt-5.6-luna
+      - openai-codex/gpt-6-luna
       - web/parallel
-      - google-antigravity/gemini-2.5-flash
-      - anthropic/claude-haiku-4-5
-      - openai-codex/gpt-5.6
-      - openai-codex/gpt-5.5
-      - xai/grok-4.5
-      - xai-oauth/grok-4.5
       - web/zai
       - web/tinyfish
       - web/jina

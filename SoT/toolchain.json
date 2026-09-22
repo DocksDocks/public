@@ -7,7 +7,7 @@
     "node":   { "kind": "check", "floor": "22.22.2",
                 "note": "hosts the npm globals installed for the Claude LSP plugins; the floor is typescript-language-server 6's engines requirement, so an older Node reports `below-floor` in `docks-kit toolchain` instead of silently installing an LSP server that cannot start" },
     "npm":    { "kind": "check", "note": "npm-global installer; also backs the intelephense version probe (`npm ls -g`)" },
-    "claude": { "kind": "check", "floor": "2.1.219", "note": "kit floor — lets the `opus` alias select the newest Opus its provider offers (Anthropic API: 5; Foundry: 4.6) and subsumes Fable 5's >=2.1.170 requirement (mirrors settings minimumVersion)" },
+    "claude": { "kind": "check", "floor": "2.1.280", "note": "kit floor — lets the `opus` alias resolve to Opus 5.5, the default Opus from Claude Code 2.1.280, and subsumes the older Fable 5.1 (>=2.1.257) and Opus 5 (>=2.1.219) requirements (mirrors settings minimumVersion)" },
     "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
     "omp":    { "kind": "check", "floor": "18.0.8", "verified": "18.0.8",
                 "note": "Oh My Pi harness (https://github.com/can1357/oh-my-pi); upstream-owned and self-updating through `omp update`, so sync never installs or upgrades it. `sync omp` needs the CLI only for the marketplace and plugin passes; the file deploys proceed without it" },

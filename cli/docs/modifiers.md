@@ -9,15 +9,15 @@ the SoT is never touched. They all share one contract:
 > profiles can instead use `~/.claude/settings.local.json`, which sync never
 > touches.
 
-Claude's embedded SoT is `model: fable`, `effortLevel: high`, with advisor
+Claude's embedded SoT is `model: opus`, `effortLevel: high`, with advisor
 off (`advisorModel` unset). Codex's embedded normal and plan reasoning effort is
 `high`.
 
 | Modifier | Deployed change | Typical use |
 |----------|-----------------|-------------|
-| `--claude-model=<m>` | `.model` in ~/.claude/settings.json (`default` deletes the key) | Override one machine while the SoT retains `fable` |
+| `--claude-model=<m>` | `.model` in ~/.claude/settings.json (`default` deletes the key) | Override one machine while the SoT retains `opus` |
 | `--claude-effort=<level>` | `.effortLevel` in ~/.claude/settings.json (`default` writes `high`) | Tune persisted Claude effort per machine; valid `low`, `medium`, `high`, `xhigh` |
-| `--claude-advisor=<state>` | `on` sets `.advisorModel = "fable"`; `off`/`default` remove it | Enable Claude advisor only on machines that need it |
+| `--claude-advisor=<state>` | `on` sets `.advisorModel = "opus"`; `off`/`default` remove it | Enable Claude advisor only on machines that need it |
 | `--claude-compact-window=<n>` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` | Disposable containers running long autonomous work (e.g. `680k`) — not host machines |
 | `--claude-permissive` | `permissions.ask = []`, `permissions.deny = []` | Sandboxes/containers where prompts stall unattended work. Never on a host — the deny list is the safety floor |
 | `--codex-model=<m>` | top-level `model = "…"` in ~/.codex/config.toml | Same as claude-model, for Codex |
@@ -29,7 +29,7 @@ selecting that positional target warns and ignores it.
 
 A flag-less Claude sync also removes the formerly kit-owned `advisorModel`
 from machines synced before advisor became opt-in. Any explicit advisor state
-owns that key for the run: `on` writes `fable`; `off` and `default` delete it.
+owns that key for the run: `on` writes `opus`; `off` and `default` delete it.
 Codex has no advisor modifier because its documented config has no advisor
 setting; `review_model` applies only to `/review`.
 
