@@ -12,7 +12,7 @@ against.
 | `slow` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 165.20 s |
 | `plan` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 165.20 s |
 | `task` | `openai-codex/gpt-6-sol` | high | 43 | $0.37 | n/a |
-| `advisor` | `openai-codex/gpt-6-sol` | medium | 40 | $0.25 | n/a |
+| `advisor` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 22.17 s |
 | `designer` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 12.49 s |
 | `vision` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 22.17 s |
 | `smol` / `commit` | `openai-codex/gpt-6-luna` | medium | 29 | $0.02 | n/a |
@@ -82,6 +82,19 @@ chains, `retry.fallbackChains.default` would send either stop to
 `openai-codex/gpt-6-sol:high`.
 Chain entries are concrete selectors, not role aliases, so this pair cannot
 recurse. The hidden `switch_fable` chain stays empty.
+
+### Why `advisor` runs Opus 5.5 medium
+
+`advisor` runs `anthropic/claude-opus-5-5:medium` with an empty fallback
+chain. On 2026-09-24, with omp 18.3.0, an Opus 5.5 session with the advisor
+on `openai-codex/gpt-6-sol:medium` looped. In one session the advisor made
+1,313 requests for 140 main-agent requests. It issued 1,272 `read` calls on
+248 distinct paths, read one 3-line slice 249 times, and never called
+`advise`. The advisor prompt averaged about 317k tokens, above the 272K
+window omp lists for GPT-6 Sol. With the advisor on Opus 5.5 medium, the
+same kind of session made about one advisor request per main-agent request
+and called `advise` normally. The owner excluded GPT-6 Sol from the advisor
+role and its fallback chain.
 
 `modelRoles.web` is `web/firecrawl`, and `retry.fallbackChains.web` lists the
 explicit 20-entry provider order that follows it. The two keys replace the

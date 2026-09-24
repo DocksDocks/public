@@ -44,7 +44,7 @@ task:
 
 modelRoles:
   smol: openai-codex/gpt-6-luna:medium
-  advisor: openai-codex/gpt-6-sol:medium
+  advisor: anthropic/claude-opus-5-5:medium
   designer: anthropic/claude-opus-5-5:high
   plan: anthropic/claude-opus-5-5:xhigh
   commit: openai-codex/gpt-6-luna:medium
@@ -81,8 +81,7 @@ retry:
   fallbackChains:
     default:
       - openai-codex/gpt-6-sol:high
-    advisor:
-      - anthropic/claude-opus-5-5:medium
+    advisor: []
     task:
       - anthropic/claude-opus-5-5:high
     vision:
