@@ -54,22 +54,31 @@ export function inTransaction<T>(db: DatabaseSync, fn: () => T): T {
     db.exec("COMMIT");
     return result;
   } catch (error) {
-    db.exec("ROLLBACK");
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      // SQLite already rolled back (for example on SQLITE_FULL); keep the original error.
+    }
     throw error;
   }
 }
 
+function tooNew(version: number): KitDbTooNewError {
+  return new KitDbTooNewError(
+    `~/.docks-kit/kit.db uses schema ${version}; this docks-kit knows schema ${KIT_DB_SCHEMA_VERSION}. Upgrade docks-kit (docks-kit update).`,
+  );
+}
+
 function migrate(db: DatabaseSync): void {
   const current = userVersion(db);
-  if (current > KIT_DB_SCHEMA_VERSION) {
-    throw new KitDbTooNewError(
-      `~/.docks-kit/kit.db uses schema ${current}; this docks-kit knows schema ${KIT_DB_SCHEMA_VERSION}. Upgrade docks-kit (docks-kit update).`,
-    );
-  }
+  if (current > KIT_DB_SCHEMA_VERSION) throw tooNew(current);
   if (current === KIT_DB_SCHEMA_VERSION) return;
   inTransaction(db, () => {
-    // Another process can migrate between the first read and the lock.
+    // Another process, possibly a newer kit, can migrate between the first
+    // read and the lock; never lower its version.
     const locked = userVersion(db);
+    if (locked > KIT_DB_SCHEMA_VERSION) throw tooNew(locked);
+    if (locked === KIT_DB_SCHEMA_VERSION) return;
     for (const sql of MIGRATIONS.slice(locked)) db.exec(sql);
     db.exec(`PRAGMA user_version = ${KIT_DB_SCHEMA_VERSION}`);
   });
@@ -80,9 +89,13 @@ interface LegacyState {
   readonly session?: { selector: string; thinking: string | null; advisorThinking: string | null };
 }
 
-// A blank or non-string level is stored as NULL.
-function nonBlankOrNull(value: unknown): string | null {
-  return typeof value === "string" && value.trim() !== "" ? value : null;
+export function isNonBlankString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}
+
+/** A blank or non-string value is stored as NULL. */
+export function nonBlankOrNull(value: unknown): string | null {
+  return isNonBlankString(value) ? value : null;
 }
 
 // Same validation the JSON store applied: root object, version 1, non-blank

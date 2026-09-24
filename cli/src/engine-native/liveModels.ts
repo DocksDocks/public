@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
 import { capture, p, which } from "./exec";
-import { isNonBlankString, LEGACY_SELECTION, readHarnessSelection } from "./harnesses";
+import { LEGACY_SELECTION, readHarnessSelection } from "./harnesses";
 import { isObject, parseJson } from "./jq";
-import { readCache, writeCache } from "./kitDb";
+import { isNonBlankString, readCache, writeCache } from "./kitDb";
 import { modelCatalog } from "./models";
 import type { CatalogSource, CatalogTool, FetchLike, ResolvedCatalog } from "./sharedTypes";
 

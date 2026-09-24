@@ -27,7 +27,7 @@ const renderTool = (t: CatalogTool, catalog: ResolvedCatalog) =>
     yield* Console.log(
       catalog.source === "curated"
         ? `${t} models (kit-verified ${catalog.verified}):`
-        : `${t} models (live — ${catalog.source}, fetched ${catalog.fetchedAt}):`,
+        : `${t} models (live — ${catalog.source}, fetched ${catalog.fetchedAt ?? "?"}):`,
     );
     if (catalog.fallbackReason !== undefined) {
       yield* Console.log(`  (live list unavailable: ${catalog.fallbackReason})`);

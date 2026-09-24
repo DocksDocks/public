@@ -13,9 +13,9 @@ metadata:
     - path: cli/src/engine-native/ompYaml.ts
       lines: "1-128"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-124"
+      lines: "1-120"
     - path: cli/src/engine-native/kitDb.ts
-      lines: "1-220"
+      lines: "1-245"
     - path: cli/src/engine-native/ompOverlay.ts
       lines: "1-211"
     - path: cli/src/commands/omp.ts

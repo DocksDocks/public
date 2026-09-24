@@ -5,7 +5,7 @@
  */
 import { homedir } from "node:os";
 
-import { inTransaction, withKitDb } from "./kitDb";
+import { inTransaction, isNonBlankString, nonBlankOrNull, withKitDb } from "./kitDb";
 import type { OmpSessionModel } from "./sharedTypes";
 
 export type Harness = "claude" | "codex" | "agents" | "omp";
@@ -75,10 +75,6 @@ export function writeHarnessSelection(home: string, selection: ReadonlyArray<Har
   );
 }
 
-export function isNonBlankString(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== "";
-}
-
 // Read the stored session model without throwing so a corrupt store falls
 // back to the default instead of breaking sync.
 export function readOmpSessionModel(home: string): OmpSessionModel | undefined {
@@ -111,8 +107,8 @@ export function writeOmpSessionModel(home: string, model: OmpSessionModel): void
   }
   // Store blank or absent levels as NULL so a switch to a level-free model
   // leaves no stale level behind.
-  const thinking = isNonBlankString(model.thinking) ? model.thinking : null;
-  const advisorThinking = isNonBlankString(model.advisorThinking) ? model.advisorThinking : null;
+  const thinking = nonBlankOrNull(model.thinking);
+  const advisorThinking = nonBlankOrNull(model.advisorThinking);
   withKitDb(home, "write", (db) =>
     db
       .prepare(
