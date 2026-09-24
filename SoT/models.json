@@ -1,5 +1,5 @@
 {
-  "$comment": "Kit-verified model catalog — single source for EngineNative validators, the docks-kit CLI (models/model commands, pickers, and bare-flag help), and docs. Entries are research-proofed: update an entry and its tool-level `verified` date when a model ships or retires. Deploy-time model flags remain permissive.",
+  "$comment": "Curated overlay for docks-kit model listings: aliases (kind alias) and notes always apply; the id rows are the fallback when the harness's live list is unavailable (harness not enabled, no login or cache, offline). Live sources: Claude via the Claude Code login against the Anthropic models API (cached 6 h in ~/.docks-kit/kit.db), Codex via ~/.codex/models_cache.json, omp via omp models --json.",
   "claude": {
     "verified": "2026-09-22",
     "models": [

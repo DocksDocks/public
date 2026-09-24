@@ -1,73 +1,22 @@
-import { readFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { writeHarnessSelection } from "../../src/engine-native/harnesses";
 import { modelCatalog } from "../../src/engine-native/models";
 import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution";
-import { FIXTURES_DIR, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
+import {
+  FIXTURES_DIR,
+  cleanupTemporaryDirs,
+  makeStubDir,
+  temporaryDir,
+} from "../lib/goldenResources";
 
 // The stub launchers and the child must agree on one host. Native pairing runs
 // the real host with its own launcher form, so these cases keep their
 // harness-CLI coverage on Windows instead of resolving a shell script the
 // host cannot execute.
 const NATIVE = { nativeHost: true } as const;
-
-const EXPECTED_CATALOGS = {
-  claude: {
-    verified: "2026-09-22",
-    models: [
-      {
-        id: "best",
-        kind: "alias",
-        note: "Fable 5.1 where the org has access, latest Opus otherwise (Claude Code >=2.1.257; Claude apps gateway sessions still resolve Fable 5)",
-      },
-      {
-        id: "opus",
-        kind: "alias",
-        note: "latest Opus — the kit SoT default (Opus 5.5 from Claude Code >=2.1.280)",
-      },
-      {
-        id: "fable",
-        kind: "alias",
-        note: "Fable 5.1 — needs org access + Claude Code >=2.1.257 (Claude apps gateway sessions still resolve Fable 5)",
-      },
-      { id: "sonnet", kind: "alias", note: "latest Sonnet (currently Sonnet 5)" },
-      { id: "haiku", kind: "alias", note: "latest Haiku (currently Haiku 4.5)" },
-      {
-        id: "default",
-        kind: "alias",
-        note: "engine pseudo-value: deletes the deployed model key so the account default applies",
-      },
-      { id: "claude-opus-5-5", kind: "id", note: "Opus 5.5 — needs Claude Code >=2.1.280" },
-      { id: "claude-fable-5-1", kind: "id", note: "Fable 5.1 — needs Claude Code >=2.1.257" },
-      { id: "claude-fable-5", kind: "id", note: "Fable 5 (legacy)" },
-      { id: "claude-opus-5", kind: "id", note: "Opus 5 (legacy)" },
-      { id: "claude-opus-4-8", kind: "id", note: "Opus 4.8 (legacy)" },
-      { id: "claude-sonnet-5", kind: "id", note: "Sonnet 5" },
-      { id: "claude-haiku-4-5-20251001", kind: "id", note: "Haiku 4.5" },
-    ],
-  },
-  codex: {
-    verified: "2026-09-22",
-    models: [
-      {
-        id: "gpt-6-sol",
-        kind: "id",
-        note: "GPT-6 Sol — complex coding and agentic work, recommended default; the kit SoT pin",
-      },
-      { id: "gpt-6-luna", kind: "id", note: "GPT-6 Luna — fast/light tier" },
-      { id: "gpt-6-astra", kind: "id", note: "GPT-6 Astra — most capable, highest cost" },
-      { id: "gpt-5.6-sol", kind: "id", note: "previous generation" },
-      { id: "gpt-5.6-terra", kind: "id", note: "previous generation, balanced tier" },
-      { id: "gpt-5.6-luna", kind: "id", note: "previous generation" },
-      { id: "gpt-5.5", kind: "id", note: "previous generation" },
-      { id: "gpt-5.5-codex", kind: "id", note: "codex-tuned gpt-5.5" },
-      { id: "gpt-5.1", kind: "id", note: "previous generation" },
-      { id: "gpt-5", kind: "id", note: "previous generation" },
-      { id: "gpt-5-codex", kind: "id", note: "codex-tuned gpt-5" },
-    ],
-  },
-} as const;
 
 afterAll(cleanupTemporaryDirs);
 
@@ -76,18 +25,97 @@ function deployedText(home: string, path: string): string {
 }
 
 describe("retained model and sync behavior", () => {
-  it("keeps the normal Claude and Codex catalogs available without a role registry", () => {
-    expect(modelCatalog("claude")).toEqual(EXPECTED_CATALOGS.claude);
-    expect(modelCatalog("codex")).toEqual(EXPECTED_CATALOGS.codex);
-
+  it("lists curated Claude and Codex models when neither login nor cache is available", () => {
     const run = runPublicCli(["models", "--json"], "home-fresh", makeStubDir());
     try {
       expect(run.exitCode).toBe(0);
-      expect(JSON.parse(run.stdout)).toEqual(EXPECTED_CATALOGS);
+      expect(JSON.parse(run.stdout)).toEqual({
+        claude: {
+          tool: "claude",
+          source: "curated",
+          verified: modelCatalog("claude").verified,
+          fallbackReason: "no Claude Code login found in ~/.claude/.credentials.json",
+          models: modelCatalog("claude").models,
+        },
+        codex: {
+          tool: "codex",
+          source: "curated",
+          verified: modelCatalog("codex").verified,
+          fallbackReason: "no Codex model cache (~/.codex/models_cache.json); run codex once",
+          models: modelCatalog("codex").models,
+        },
+      });
       expect(run.stderr).toBe("");
     } finally {
       rmSync(run.home, { recursive: true, force: true });
     }
+  });
+
+  it("lists only enabled model harnesses by default and allows an explicit tool", () => {
+    const home = temporaryDir("models-selected-home-");
+    writeHarnessSelection(home, ["agents", "omp"]);
+    const stubs = makeStubDir();
+    const options = { reuseHome: home };
+
+    const selected = runPublicCli(["models", "--json"], "home-fresh", stubs, options);
+    expect(selected.exitCode).toBe(0);
+    expect(selected.stderr).toBe("");
+    expect(Object.keys(JSON.parse(selected.stdout))).toEqual(["omp"]);
+
+    const explicit = runPublicCli(["models", "codex", "--json"], "home-fresh", stubs, options);
+    expect(explicit.exitCode).toBe(0);
+    expect(explicit.stderr).toBe("");
+    expect(JSON.parse(explicit.stdout)).toEqual({
+      codex: {
+        tool: "codex",
+        source: "curated",
+        verified: modelCatalog("codex").verified,
+        fallbackReason: "codex harness not enabled (docks-kit harnesses)",
+        models: modelCatalog("codex").models,
+      },
+    });
+  });
+
+  it("shows the curated fallback and reason with --refresh when no live cache exists", () => {
+    const run = runPublicCli(["models", "codex", "--refresh"], "home-fresh", makeStubDir());
+    try {
+      expect(run.exitCode).toBe(0);
+      expect(run.stdout).toContain(
+        `codex models (kit-verified ${modelCatalog("codex").verified}):`,
+      );
+      expect(run.stdout).toContain(
+        "  (live list unavailable: no Codex model cache (~/.codex/models_cache.json); run codex once)",
+      );
+      expect(run.stdout).not.toContain("claude models");
+      expect(run.stderr).toBe("");
+    } finally {
+      rmSync(run.home, { recursive: true, force: true });
+    }
+  });
+
+  it("shows a live Codex cache with its fetched time instead of stale curated IDs", () => {
+    const home = temporaryDir("models-live-home-");
+    mkdirSync(join(home, ".codex"));
+    writeFileSync(
+      join(home, ".codex", "models_cache.json"),
+      JSON.stringify({
+        fetched_at: "2026-09-24T12:00:00Z",
+        models: [{ slug: "gpt-demo", display_name: "Demo", visibility: "list" }],
+      }),
+    );
+    writeHarnessSelection(home, ["codex"]);
+    const run = runPublicCli(["models", "codex"], "home-fresh", makeStubDir(), {
+      reuseHome: home,
+    });
+
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toContain(
+      "codex models (live — codex-cache, fetched 2026-09-24T12:00:00Z):",
+    );
+    expect(run.stdout).toMatch(/^  gpt-demo\s+id\s+Demo$/m);
+    expect(run.stdout).not.toContain("gpt-6-sol");
+    expect(run.stdout).not.toContain("live list unavailable");
+    expect(run.stderr).toBe("");
   });
 
   it("parses ordinary model and effort modifiers through the public sync command", () => {

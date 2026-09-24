@@ -85,4 +85,14 @@ manifest's `verified` version.
 ```text
 docks-kit toolchain check                    # doctor table (also inside docks-kit status)
 docks-kit toolchain ensure bun               # ensure the only managed tool
+docks-kit toolchain outdated [--refresh]     # verified pins vs newest upstream release
 ```
+
+`docks-kit toolchain outdated` reads each tool's optional `upstream` entry in
+`SoT/toolchain.json`. An `npm` entry reads the registry `latest` tag. With a
+`line`, it reads the newest release on that major line instead, so `tsc` stays
+on 6.x. A `github` entry reads the latest release tag and strips `tagPrefix`.
+Set `GITHUB_TOKEN` or `GH_TOKEN` to raise the GitHub rate limit. Successful
+lookups cache for 24 hours in `~/.docks-kit/kit.db`; `--refresh` bypasses the
+cache. The report never installs anything and never edits a pin. A failed
+lookup prints `lookup failed: <reason>` and the command still exits 0.

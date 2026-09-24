@@ -14,7 +14,7 @@ docks-kit sync omp                  # opt-in harness
 
 Positional targets are `claude`, `codex`, `agents`, and `omp`. A flag-less
 `sync` deploys the per-machine harness selection stored in
-`~/.docks-kit/state.json`. A missing or invalid state file selects `claude`,
+`~/.docks-kit/kit.db`. A missing selection or an unreadable store selects `claude`,
 `codex`, and `agents`, and never selects `omp`. Choose the stored selection
 with `docks-kit harnesses`.
 
@@ -56,7 +56,7 @@ ignored with a warning; Claude modifiers never touch Codex config and vice versa
 
 | Flag | Effect |
 |------|--------|
-| `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost; recorded in `~/.docks-kit/state.json` under `ompSession` |
+| `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost; recorded in `~/.docks-kit/kit.db` (table `omp_session`) |
 | `--pick` | Interactive picker over free catalog models; records the choice the same way |
 
 Remaining arguments forward verbatim to omp after the launcher flags.

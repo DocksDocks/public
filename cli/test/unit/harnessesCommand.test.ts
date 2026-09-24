@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
-import { harnessStateFile, writeHarnessSelection } from "../../src/engine-native/harnesses";
+import { writeHarnessSelection } from "../../src/engine-native/harnesses";
+import { kitDbFile } from "../../src/engine-native/kitDb";
 import { runPublicCli } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir, temporaryDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
@@ -17,7 +18,7 @@ describe("harnesses command", () => {
       expect(run.stderr).toBe("");
       expect(run.stdout).toContain("Harness selection: claude, codex, agents");
       expect(run.stdout).toContain("no selection is stored yet");
-      expect(existsSync(harnessStateFile(run.home))).toBe(false);
+      expect(existsSync(kitDbFile(run.home))).toBe(false);
     },
     SPAWN_TIMEOUT_MS,
   );

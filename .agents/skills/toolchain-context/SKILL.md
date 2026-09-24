@@ -1,22 +1,22 @@
 ---
 name: toolchain-context
-description: "Use when modifying cli/src/commands/toolchain.ts MANAGED; cli/src/engine-native/modes.ts modeToolchain; cli/src/engine-native/toolchain.ts report/version probes; cli/src/engine-native/bun.ts bunBootstrap; SoT/toolchain.json tool entries; or the Bun managed install. Not for settings merge or plugin reconcile."
+description: "Use when modifying cli/src/commands/toolchain.ts MANAGED; cli/src/engine-native/modes.ts modeToolchain; cli/src/engine-native/toolchain.ts report/version probes, latestUpstream, or outdatedReport; cli/src/engine-native/bun.ts bunBootstrap; SoT/toolchain.json tool entries or their upstream field; or the Bun managed install. Not for settings merge or plugin reconcile."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/commands/toolchain.ts
-      lines: "1-43"
+      lines: "1-55"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-148"
+      lines: "1-171"
     - path: cli/src/engine-native/toolchain.ts
-      lines: "1-115"
+      lines: "1-292"
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-276"
     - path: cli/src/engine-native/bun.ts
       lines: "1-96"
     - path: SoT/toolchain.json
-      lines: "1-23"
-  updated: "2026-09-11"
+      lines: "1-38"
+  updated: "2026-09-24"
 ---
 
 # Toolchain Verified-Version Floors
@@ -58,6 +58,25 @@ Never add a kit-driven floating install. Every kit-driven install uses the exact
 5. `report` prints the installed version against the manifest `floor` and
    `verified` columns.
 
+## Outdated Report
+
+`toolchain outdated [--refresh]` runs `modeToolchain` -> `outdatedReport`.
+
+1. `outdatedReport` selects the manifest tools that have both `verified` and
+   `upstream`, in manifest order.
+2. `latestUpstream` reads the kit cache (`kitDb.ts readCache`, key
+   `upstream:<tool>`, 24 h) unless `--refresh` is set.
+3. On a miss it reads npm `latest`, the newest npm release on `upstream.line`
+   (packument with the install-v1 `Accept` header), or the GitHub latest
+   release tag with `tagPrefix` stripped. `GITHUB_TOKEN` or `GH_TOKEN` adds a
+   bearer token.
+4. Only a successful lookup is cached. A failure prints
+   `lookup failed: <reason>` in the row, and the command still exits 0.
+5. `isNewer(latest, verified)` sets `newer`; anything else is `current`.
+
+The report never installs anything and never edits a pin. `toolchain check`
+stays offline.
+
 ## Managed Install
 
 | Tool | Owner | Notes |
@@ -68,6 +87,8 @@ Never add a kit-driven floating install. Every kit-driven install uses the exact
 
 - `isNewer` is strictly newer; equal versions do not change report status.
 - `report` is read-only. It never changes an installed version.
+- `outdatedReport` uses the network. Tests inject `fetchImpl` (`FetchLike`)
+  and never call the real registry or GitHub.
 - Keep `cli/src/commands/toolchain.ts MANAGED` aligned with `modeToolchain`;
   Bun is the only supported managed tool.
 - Installer downloads and npm global packages are supply-chain sensitive. Bump

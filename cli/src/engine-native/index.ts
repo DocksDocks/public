@@ -48,7 +48,7 @@ export async function runEngineNative(
     ctx = makeCtx(runServices);
     switch (argv[0]) {
       case "model":
-        return modeModel(ctx, argv.slice(1));
+        return await modeModel(ctx, argv.slice(1));
       case "toolchain":
         return await modeToolchain(ctx, argv.slice(1));
       case "sync":

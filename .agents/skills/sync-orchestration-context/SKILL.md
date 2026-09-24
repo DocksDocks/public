@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: "Use when editing docks-kit, cli/src/main.ts, cli/src/engine.ts, cli/src/engine-native/index.ts, cli/src/engine-native/parseArgs.ts, cli/src/engine-native/modes.ts, cli/src/engine-native/models.ts, any sync flag or positional target, renamed-legacy-flag hints, default-all-three dispatch, model validation, or cross-cutting sync idempotency. Not for tool-specific JSON/TOML/plugin/skill logic."
+description: "Use when editing docks-kit, cli/src/main.ts, cli/src/engine.ts, cli/src/engine-native/index.ts, cli/src/engine-native/parseArgs.ts, cli/src/engine-native/modes.ts, cli/src/engine-native/models.ts, cli/src/engine-native/liveModels.ts, any sync flag or positional target, renamed-legacy-flag hints, default-all-three dispatch, model validation, or cross-cutting sync idempotency. Not for tool-specific JSON/TOML/plugin/skill logic."
 user-invocable: false
 metadata:
   source_files:
@@ -13,10 +13,12 @@ metadata:
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-194"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-148"
+      lines: "1-171"
     - path: cli/src/engine-native/models.ts
-      lines: "1-87"
-  updated: "2026-09-10"
+      lines: "1-98"
+    - path: cli/src/engine-native/liveModels.ts
+      lines: "1-263"
+  updated: "2026-09-24"
 ---
 
 # Sync Engine Orchestration
@@ -130,9 +132,10 @@ Partial checkouts still skip absent SoT directories; absence is not an error.
 | Invocation | Implementation | Behavior |
 |-----------|----------------|----------|
 | `model <tool> [value]` | `modeModel` | Get or set deployed Claude/Codex model; set paths reuse the deploy-time modifier functions. |
-| `models <tool>` | `printModels` | Prints the manifest catalog from `SoT/models.json`. |
+| `models <tool>` | `resolveCatalog` -> `printModels` | Prints the live list of an enabled harness with `SoT/models.json` aliases and notes, or the curated list when the live list is unavailable. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the toolchain table. |
 | `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
+| `toolchain outdated [--refresh]` | `modeToolchain` -> `outdatedReport` | Compares each `verified` pin with the newest upstream release; report only. |
 
 ### Model Validation
 

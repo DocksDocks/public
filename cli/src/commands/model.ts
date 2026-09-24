@@ -1,7 +1,8 @@
 import { Argument, Command, Flag, Prompt } from "effect/unstable/cli";
 import { Effect, Option } from "effect";
 import { bail, engine } from "../engine";
-import { modelCatalog } from "../engine-native/models";
+import { engineHome } from "../engine-native/harnesses";
+import { defaultLiveInputs, resolveCatalog } from "../engine-native/liveModels";
 import type { Tool } from "../manifests";
 
 const tool = Argument.String("tool").pipe(Argument.withDescription("Which tool: claude | codex"));
@@ -42,7 +43,9 @@ export const modelCommand = Command.make("model", { tool, value, dryRun, verbose
     // … and offer an interactive picker when attached to a terminal.
     if (!process.stdin.isTTY || !process.stdout.isTTY) return;
 
-    const catalog = modelCatalog(t);
+    const catalog = yield* Effect.promise(() =>
+      resolveCatalog(t, defaultLiveInputs(engineHome(process.env))),
+    );
     const chosen = yield* Prompt.Select({
       message: `Set the deployed ${t} model (deployed config only; a flag-less sync reverts to SoT)`,
       choices: [

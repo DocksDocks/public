@@ -8,6 +8,7 @@ import type { Ctx } from "./index";
 import { LEGACY_SELECTION, readHarnessSelection, type Harness } from "./harnesses";
 import { advisorCatalog, advisorFlagGrammar, effortCatalog, effortFlagGrammar } from "../efforts";
 import { printModels } from "./models";
+import { curatedCatalog } from "./liveModels";
 import { ExitError, printCatalog, printUsage } from "./parseHelp";
 import {
   KNOWN_CLAUDE_OPTIN_PLUGINS,
@@ -93,11 +94,11 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
         ctx.verbose = true;
         continue;
       case "--claude-model":
-        printModels(ctx, "claude");
+        printModels(ctx, curatedCatalog("claude"));
         err("--claude-model requires a value: --claude-model=<model>");
         throw new ExitError(2);
       case "--codex-model":
-        printModels(ctx, "codex");
+        printModels(ctx, curatedCatalog("codex"));
         err("--codex-model requires a value: --codex-model=<model>");
         throw new ExitError(2);
       case "--claude-effort":

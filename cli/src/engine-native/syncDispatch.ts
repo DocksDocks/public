@@ -21,7 +21,7 @@ import {
 export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { acquireTerminal, echo, err } = ctx.services.logger;
   parseArgs(ctx, args);
-  validateModifierFlags(ctx);
+  await validateModifierFlags(ctx);
   const configuredConcurrency = process.env["DOCKS_KIT_SYNC_CONCURRENCY"];
   if (configuredConcurrency === undefined || configuredConcurrency === "") {
     ctx.syncConcurrency = 3;

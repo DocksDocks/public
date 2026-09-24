@@ -1,13 +1,11 @@
 /**
- * Per-machine harness selection at ~/.docks-kit/state.json. The selection keeps
- * the omp harness opt-in. A missing or unreadable state file is represented by
- * undefined so callers resolve it to LEGACY_SELECTION and existing machines
- * keep today's behavior.
+ * Per-machine harness selection and omp session model, stored in ~/.docks-kit/kit.db (kitDb.ts).
+ * The selection keeps the omp harness opt-in. A missing or unreadable store is
+ * represented by undefined so callers resolve it to LEGACY_SELECTION.
  */
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 
-import { p } from "./exec";
+import { inTransaction, withKitDb } from "./kitDb";
 import type { OmpSessionModel } from "./sharedTypes";
 
 export type Harness = "claude" | "codex" | "agents" | "omp";
@@ -41,49 +39,21 @@ export function engineHome(env: NodeJS.ProcessEnv = process.env): string {
   return home !== undefined && home !== "" ? home : homedir();
 }
 
-export function harnessStateFile(home: string): string {
-  return p(home, ".docks-kit", "state.json");
-}
-
-// Read the whole state record so one key writer keeps sibling keys intact.
-// A corrupt file degrades to undefined so callers fall back to defaults.
-function readWholeState(home: string): Record<string, unknown> | undefined {
-  let parsed: unknown;
+/** Read the stored selection; corruption, a too-new schema, or I/O errors yield undefined. */
+export function readHarnessSelection(home: string): ReadonlyArray<Harness> | undefined {
   try {
-    parsed = JSON.parse(readFileSync(harnessStateFile(home), "utf8")) as unknown;
+    const selection = withKitDb(home, "read", (db) =>
+      normalizeHarnesses(
+        db
+          .prepare("SELECT harness FROM harness_selection")
+          .all()
+          .map((row) => row["harness"]),
+      ),
+    );
+    return selection !== undefined && selection.length > 0 ? selection : undefined;
   } catch {
     return undefined;
   }
-
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return undefined;
-  const state = parsed as Record<string, unknown>;
-  if (state["version"] !== 1) return undefined;
-  return state;
-}
-
-// Merge the patch over the stored record so independent keys never erase
-// each other when only one writer runs.
-function writeWholeState(home: string, patch: Record<string, unknown>): void {
-  const existing = readWholeState(home) ?? {};
-  const next = { ...existing, ...patch, version: 1 };
-  const directory = p(home, ".docks-kit");
-  const file = harnessStateFile(home);
-  const text = `${JSON.stringify(next, null, 2)}\n`;
-  // `mode` applies only when mkdir creates the path, so an existing permissive
-  // ~/.docks-kit would keep its mode.
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  chmodSync(directory, 0o700);
-  writeFileSync(file, text, { mode: 0o600 });
-  chmodSync(file, 0o600);
-}
-
-/** Read valid local state without allowing corruption to make sync unusable. */
-export function readHarnessSelection(home: string): ReadonlyArray<Harness> | undefined {
-  const state = readWholeState(home);
-  if (state === undefined || !Array.isArray(state["harnesses"])) return undefined;
-
-  const selection = normalizeHarnesses(state["harnesses"]);
-  return selection.length > 0 ? selection : undefined;
 }
 
 export function writeHarnessSelection(home: string, selection: ReadonlyArray<Harness>): void {
@@ -96,34 +66,41 @@ export function writeHarnessSelection(home: string, selection: ReadonlyArray<Har
     throw new Error("Harness selection must contain at least one known harness name");
   }
 
-  writeWholeState(home, { harnesses });
+  withKitDb(home, "write", (db) =>
+    inTransaction(db, () => {
+      db.exec("DELETE FROM harness_selection");
+      const insert = db.prepare("INSERT INTO harness_selection (harness) VALUES (?)");
+      for (const harness of harnesses) insert.run(harness);
+    }),
+  );
 }
 
-function isNonBlankString(value: unknown): value is string {
+export function isNonBlankString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "";
 }
 
-// Read the stored session model without throwing so a corrupt entry falls
+// Read the stored session model without throwing so a corrupt store falls
 // back to the default instead of breaking sync.
 export function readOmpSessionModel(home: string): OmpSessionModel | undefined {
-  const state = readWholeState(home);
-  if (state === undefined) return undefined;
-  const entry = state["ompSession"];
-  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return undefined;
-  const record = entry as Record<string, unknown>;
-  if (!isNonBlankString(record["selector"])) {
+  try {
+    return withKitDb(home, "read", (db) => {
+      const row = db
+        .prepare("SELECT selector, thinking, advisor_thinking FROM omp_session WHERE id = 1")
+        .get();
+      const selector = row?.["selector"];
+      if (!isNonBlankString(selector)) return undefined;
+      const thinking = row?.["thinking"];
+      const advisorThinking = row?.["advisor_thinking"];
+      const model: OmpSessionModel = {
+        selector,
+        ...(isNonBlankString(thinking) ? { thinking } : {}),
+        ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
+      };
+      return model;
+    });
+  } catch {
     return undefined;
   }
-  // Each level stands alone, so a level-free model reads back with no
-  // levels while a half-corrupt entry keeps the valid level.
-  const thinking = record["thinking"];
-  const advisorThinking = record["advisorThinking"];
-  const model: OmpSessionModel = {
-    selector: record["selector"],
-    ...(isNonBlankString(thinking) ? { thinking } : {}),
-    ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
-  };
-  return model;
 }
 
 export function writeOmpSessionModel(home: string, model: OmpSessionModel): void {
@@ -132,15 +109,16 @@ export function writeOmpSessionModel(home: string, model: OmpSessionModel): void
   if (!isNonBlankString(model.selector)) {
     throw new Error("Omp session model selector must be a non-empty string");
   }
-  // Persist only non-blank levels so a switch to a level-free model leaves
-  // no stale level behind in the stored record.
-  const thinking = model.thinking;
-  const advisorThinking = model.advisorThinking;
-  const entry: OmpSessionModel = {
-    selector: model.selector,
-    ...(isNonBlankString(thinking) ? { thinking } : {}),
-    ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
-  };
-
-  writeWholeState(home, { ompSession: entry });
+  // Store blank or absent levels as NULL so a switch to a level-free model
+  // leaves no stale level behind.
+  const thinking = isNonBlankString(model.thinking) ? model.thinking : null;
+  const advisorThinking = isNonBlankString(model.advisorThinking) ? model.advisorThinking : null;
+  withKitDb(home, "write", (db) =>
+    db
+      .prepare(
+        `INSERT INTO omp_session (id, selector, thinking, advisor_thinking) VALUES (1, ?, ?, ?)
+ON CONFLICT(id) DO UPDATE SET selector = excluded.selector, thinking = excluded.thinking, advisor_thinking = excluded.advisor_thinking`,
+      )
+      .run(model.selector, thinking, advisorThinking),
+  );
 }

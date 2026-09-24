@@ -3,32 +3,36 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   DEFAULT_OMP_SESSION_MODEL,
   HARNESSES,
   engineHome,
-  harnessStateFile,
   readHarnessSelection,
   readOmpSessionModel,
   writeHarnessSelection,
   writeOmpSessionModel,
   type Harness,
 } from "../../src/engine-native/harnesses";
+import { kitDbFile } from "../../src/engine-native/kitDb";
 
 let home = "";
 
-function writeState(content: string): void {
+function legacyFile(): string {
+  return join(home, ".docks-kit", "state.json");
+}
+
+function writeLegacyState(content: string): void {
   mkdirSync(join(home, ".docks-kit"), { recursive: true });
-  writeFileSync(harnessStateFile(home), content);
+  writeFileSync(legacyFile(), content);
 }
 
 describe("harness selection state", () => {
@@ -44,35 +48,56 @@ describe("harness selection state", () => {
     expect(readHarnessSelection(home)).toBeUndefined();
   });
 
-  it("returns undefined without throwing when the state file contains invalid JSON", () => {
-    writeState("{invalid");
+  it("imports a valid legacy state.json once and renames it", () => {
+    writeLegacyState(
+      JSON.stringify({
+        version: 1,
+        harnesses: ["omp", "unknown", "codex", "codex"],
+        ompSession: { selector: "a/b", thinking: "high" },
+      }),
+    );
 
-    expect(() => readHarnessSelection(home)).not.toThrow();
-    expect(readHarnessSelection(home)).toBeUndefined();
+    expect(readHarnessSelection(home)).toEqual(["codex", "omp"]);
+    expect(readOmpSessionModel(home)).toEqual({ selector: "a/b", thinking: "high" });
+    expect(existsSync(legacyFile())).toBe(false);
+    expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
   });
 
-  it("returns undefined when the state root is an array", () => {
-    writeState(JSON.stringify([{ version: 1, harnesses: ["claude"] }]));
+  it("imports nothing from an invalid legacy file and still renames it", () => {
+    writeLegacyState("{invalid");
 
     expect(readHarnessSelection(home)).toBeUndefined();
+    expect(existsSync(legacyFile())).toBe(false);
+    expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
   });
 
-  it("returns undefined when the state version is unsupported", () => {
-    writeState(JSON.stringify({ version: 2, harnesses: ["claude"] }));
+  it("creates no store when a read finds neither file", () => {
+    expect(readHarnessSelection(home)).toBeUndefined();
+    expect(readOmpSessionModel(home)).toBeUndefined();
+    expect(existsSync(kitDbFile(home))).toBe(false);
+  });
+
+  it("refuses a store from a newer schema", () => {
+    writeHarnessSelection(home, ["claude"]);
+    const db = new DatabaseSync(kitDbFile(home));
+    db.exec("PRAGMA user_version = 99");
+    db.close();
 
     expect(readHarnessSelection(home)).toBeUndefined();
+    expect(readOmpSessionModel(home)).toBeUndefined();
+    expect(() => writeHarnessSelection(home, ["codex"])).toThrow(/schema 99/);
   });
 
-  it("returns undefined when the state contains only unknown harness names", () => {
-    writeState(JSON.stringify({ version: 1, harnesses: ["unknown"] }));
+  it("migrates once and keeps rows across opens", () => {
+    writeHarnessSelection(home, ["agents", "claude"]);
+    writeOmpSessionModel(home, { selector: "a/b" });
 
-    expect(readHarnessSelection(home)).toBeUndefined();
-  });
-
-  it("skips unknown harness names when a known harness is present", () => {
-    writeState(JSON.stringify({ version: 1, harnesses: ["unknown", "codex"] }));
-
-    expect(readHarnessSelection(home)).toEqual(["codex"]);
+    expect(readHarnessSelection(home)).toEqual(["claude", "agents"]);
+    const db = new DatabaseSync(kitDbFile(home), { readOnly: true });
+    const version = db.prepare("PRAGMA user_version").get()?.["user_version"];
+    db.close();
+    expect(version).toBe(1);
+    expect(readOmpSessionModel(home)).toEqual({ selector: "a/b" });
   });
 
   it("writes and reads harnesses in canonical order without duplicates", () => {
@@ -91,11 +116,11 @@ describe("harness selection state", () => {
     expect(() => writeHarnessSelection(home, unknown)).toThrow(/known harness/i);
   });
 
-  it("writes the state file under the selected home with mode 0600", () => {
+  it("writes the store under the selected home with mode 0600", () => {
     writeHarnessSelection(home, ["claude"]);
 
-    const stateFile = harnessStateFile(home);
-    expect(stateFile).toBe(`${home}/.docks-kit/state.json`);
+    const stateFile = kitDbFile(home);
+    expect(stateFile).toBe(`${home}/.docks-kit/kit.db`);
     expect(existsSync(stateFile)).toBe(true);
     if (process.platform !== "win32") {
       expect(statSync(stateFile).mode & 0o777).toBe(0o600);
@@ -113,8 +138,7 @@ describe("harness selection state", () => {
   });
 
   it("keeps every state read and write inside the selected home", () => {
-    const stateFile = harnessStateFile(home);
-    expect(stateFile.startsWith(home)).toBe(true);
+    expect(kitDbFile(home).startsWith(home)).toBe(true);
 
     writeHarnessSelection(home, ["agents"]);
     expect(readHarnessSelection(home)).toEqual(["agents"]);
@@ -162,51 +186,12 @@ describe("omp session model state", () => {
     expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free", thinking: "low" });
   });
 
-  it("preserves an unknown top-level key across both writers", () => {
-    writeHarnessSelection(home, ["claude"]);
-    const stateFile = harnessStateFile(home);
-    const parsed = JSON.parse(readFileSync(stateFile, "utf8")) as Record<string, unknown>;
-    writeFileSync(
-      stateFile,
-      `${JSON.stringify({ ...parsed, futureKey: { flag: true } }, null, 2)}\n`,
-    );
-
-    writeHarnessSelection(home, ["codex"]);
-    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "high" });
-
-    const next = JSON.parse(readFileSync(stateFile, "utf8")) as Record<string, unknown>;
-    expect(next["futureKey"]).toEqual({ flag: true });
-    expect(readHarnessSelection(home)).toEqual(["codex"]);
-    expect(readOmpSessionModel(home)).toEqual({
-      selector: "provider/model-free",
-      thinking: "high",
-    });
-  });
-
   it("returns undefined for a missing state file", () => {
     expect(readOmpSessionModel(home)).toBeUndefined();
   });
 
-  it("returns undefined when ompSession is null", () => {
-    writeState(JSON.stringify({ version: 1, ompSession: null }));
-
-    expect(readOmpSessionModel(home)).toBeUndefined();
-  });
-
-  it("returns undefined when the selector is blank", () => {
-    writeState(JSON.stringify({ version: 1, ompSession: { selector: "  ", thinking: "xhigh" } }));
-
-    expect(readOmpSessionModel(home)).toBeUndefined();
-  });
-
-  it("reads a level-free model with both level fields absent", () => {
-    writeState(JSON.stringify({ version: 1, ompSession: { selector: "provider/model-free" } }));
-
-    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free" });
-  });
-
-  it("drops a blank level while keeping the valid one", () => {
-    writeState(
+  it("drops a blank legacy level while keeping the valid one on import", () => {
+    writeLegacyState(
       JSON.stringify({
         version: 1,
         ompSession: { selector: "provider/model-free", thinking: "  ", advisorThinking: "low" },
@@ -269,12 +254,12 @@ describe("omp session model state", () => {
     expect(DEFAULT_OMP_SESSION_MODEL.advisorThinking).toBe("medium");
   });
 
-  it("writes the state file and directory with private modes", () => {
+  it("writes the store and directory with private modes", () => {
     writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "xhigh" });
 
-    expect(existsSync(harnessStateFile(home))).toBe(true);
+    expect(existsSync(kitDbFile(home))).toBe(true);
     if (process.platform !== "win32") {
-      expect(statSync(harnessStateFile(home)).mode & 0o777).toBe(0o600);
+      expect(statSync(kitDbFile(home)).mode & 0o777).toBe(0o600);
       expect(statSync(join(home, ".docks-kit")).mode & 0o777).toBe(0o700);
     }
   });

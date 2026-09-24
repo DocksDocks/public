@@ -79,9 +79,10 @@ runEngineNative(argv)
 | `model claude` | `modeModel` get path | Reads deployed and SoT model plus catalog. |
 | `model claude opus` | `modeModel` set path | Validates then calls `syncClaudeModel`. |
 | `model codex gpt-5.5` | `modeModel` set path | Validates then calls `syncCodexModel`. |
-| `models claude` | `printModels` | Prints catalog from `SoT/models.json`. |
+| `models claude` | `resolveCatalog` -> `printModels` | Prints the live Anthropic list with `SoT/models.json` aliases and notes; curated fallback names its reason. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the doctor table. |
 | `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
+| `toolchain outdated [--refresh]` | `modeToolchain` -> `outdatedReport` | Compares each `verified` pin with the newest upstream release; report only. |
 
 ## Idempotency Invariants
 
