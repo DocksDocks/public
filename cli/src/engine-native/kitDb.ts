@@ -69,18 +69,20 @@ function tooNew(version: number): KitDbTooNewError {
   );
 }
 
-function migrate(db: DatabaseSync): void {
+/** Returns true when this call applied migrations. */
+function migrate(db: DatabaseSync): boolean {
   const current = userVersion(db);
   if (current > KIT_DB_SCHEMA_VERSION) throw tooNew(current);
-  if (current === KIT_DB_SCHEMA_VERSION) return;
-  inTransaction(db, () => {
+  if (current === KIT_DB_SCHEMA_VERSION) return false;
+  return inTransaction(db, () => {
     // Another process, possibly a newer kit, can migrate between the first
     // read and the lock; never lower its version.
     const locked = userVersion(db);
     if (locked > KIT_DB_SCHEMA_VERSION) throw tooNew(locked);
-    if (locked === KIT_DB_SCHEMA_VERSION) return;
+    if (locked === KIT_DB_SCHEMA_VERSION) return false;
     for (const sql of MIGRATIONS.slice(locked)) db.exec(sql);
     db.exec(`PRAGMA user_version = ${KIT_DB_SCHEMA_VERSION}`);
+    return true;
   });
 }
 
@@ -189,12 +191,15 @@ export function withKitDb<T>(
     db.exec(
       "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;",
     );
-    migrate(db);
+    const migrated = migrate(db);
     const importing = existsSync(legacy);
     if (importing) importLegacyState(db, legacy);
     const result = fn(db);
     // Fold the WAL into kit.db so a copy of kit.db alone holds every row.
-    if (access === "write" || importing) db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    // Reads can migrate or import too, so they checkpoint after writing.
+    if (access === "write" || migrated || importing) {
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    }
     return result;
   } finally {
     db.close();

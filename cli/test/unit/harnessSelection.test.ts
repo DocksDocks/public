@@ -86,6 +86,12 @@ describe("harness selection state", () => {
     expect(readHarnessSelection(home)).toBeUndefined();
     expect(readOmpSessionModel(home)).toBeUndefined();
     expect(() => writeHarnessSelection(home, ["codex"])).toThrow(/schema 99/);
+    const after = new DatabaseSync(kitDbFile(home), { readOnly: true });
+    const version = after.prepare("PRAGMA user_version").get()?.["user_version"];
+    const rows = after.prepare("SELECT harness FROM harness_selection").all();
+    after.close();
+    expect(version).toBe(99);
+    expect(rows).toEqual([{ harness: "claude" }]);
   });
 
   it("migrates once and keeps rows across opens", () => {

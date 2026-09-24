@@ -193,6 +193,23 @@ describe("live model catalogs", () => {
     });
   });
 
+  it("falls back to the curated list when the Codex cache lists no public models", async () => {
+    writeHarnessSelection(home, ["codex"]);
+    mkdirSync(join(home, ".codex"));
+    writeFileSync(
+      join(home, ".codex", "models_cache.json"),
+      JSON.stringify({
+        fetched_at: "2026-09-24T10:00:00.000Z",
+        models: [{ slug: "gpt-reserve", display_name: "Not public", visibility: "hide" }],
+      }),
+    );
+
+    expect(await resolveCatalog("codex", inputs())).toEqual({
+      ...curatedCatalog("codex"),
+      fallbackReason: "Codex model cache lists no models",
+    });
+  });
+
   it("does not look up Claude when the selected harness is only Codex", async () => {
     writeHarnessSelection(home, ["codex"]);
 
