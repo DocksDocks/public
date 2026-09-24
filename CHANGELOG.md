@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-24 - docks-kit 0.18.1: omp advisor on Opus 5.5
+
+- `modelRoles.advisor` moves from `openai-codex/gpt-6-sol:medium` to
+  `anthropic/claude-opus-5-5:medium`, and `retry.fallbackChains.advisor`
+  becomes empty. Under an Opus 5.5 session, a GPT-6 Sol advisor looped on
+  repeated `read` calls, never called `advise`, and reached the Codex usage
+  limit. Upstream report: https://github.com/can1357/oh-my-pi/issues/13206.
+  `task` stays on `openai-codex/gpt-6-sol:high`.
+
 ## 2026-09-22 - docks-kit 0.18.0: Claude Opus 5.5, GPT-6 Sol, and GPT-6 Luna
 
 - The five Anthropic omp roles (`default`, `slow`, `plan`, `designer`,
