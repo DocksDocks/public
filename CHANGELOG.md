@@ -7,10 +7,12 @@
   now publishes the same context window, output cap, reasoning levels, and
   prices. `sync omp` removes the deployed block from `~/.omp/agent/models.yml`
   while it still equals the shipped block, and it keeps an edited block.
-  The removal changes how omp asks Opus 5.5 to think. The block set
-  `thinking.mode: effort`, so omp sent a fixed thinking token budget and no
-  effort value. The catalog row sets `anthropic-adaptive`, so omp now sends
-  adaptive thinking with the role's effort level. A bare `claude-opus-5-5`
+  The removal also fixes how Opus 5.5 roles think. The block set
+  `thinking.mode: effort`, so omp sent a thinking token budget per level
+  (`medium` 8,192, `high` 16,384, `xhigh` and `max` 32,768) and no effort
+  value. The catalog row sets `anthropic-adaptive`, so omp now sends adaptive
+  thinking with the role's effort level, which is the setting the role map
+  was chosen for. A bare `claude-opus-5-5`
   selector also loses the block's `defaultLevel: high`; no kit role uses a
   bare selector.
 - `toolchain upgrade` follows links when it checks which copy of a server
