@@ -226,7 +226,7 @@ if (args[0] === "--version") {
 }`;
     const stubs = makeStubDir({ claude }, NATIVE_HOST);
     const first = runEngine(
-      ["sync", "claude", "--claude-plugin=n8n"],
+      ["sync", "claude", "--claude-plugin=n8n", "--verbose"],
       "home-fresh",
       stubs,
       NATIVE_HOST,
@@ -235,6 +235,9 @@ if (args[0] === "--version") {
       expect(first.exitCode, first.output).toBe(0);
       expect(first.output).not.toContain("--- Failures ---");
       expect(first.output).toContain("Optional plugin opted in: n8n-mcp-skills@n8n-mcp-skills");
+      expect(first.output.match(/Skipping refresh of marketplace n8n-mcp-skills: .*$/gm)).toEqual([
+        "Skipping refresh of marketplace n8n-mcp-skills: not added yet; the next sync refreshes it",
+      ]);
       const firstArgv = readArgvLog(first);
       const add = "claude\tplugin marketplace add czlonkowski/n8n-skills";
       const update = "claude\tplugin marketplace update n8n-mcp-skills";

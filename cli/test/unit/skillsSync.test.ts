@@ -246,6 +246,20 @@ describe("skills platform behavior", () => {
     expect(existsSync(join(root, ".agents", "skills", "demo"))).toBe(false);
     expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("acme/demo\n");
     expect(output.stderr.join("")).toContain("Failed to install universal skill: acme/demo");
+    // AGENTS.md: the slug precedes `-a`, which is variadic, and the package is pinned.
+    const [command, args] = mocks.spawnProcess.mock.calls[0] as [string, Array<string>];
+    expect(command).toBe("npx");
+    expect(args[1]).toMatch(/^skills@\d+\.\d+\.\d+$/);
+    expect([args[0], ...args.slice(2)]).toEqual([
+      "--yes",
+      "add",
+      "acme/demo",
+      "-g",
+      "-y",
+      "-a",
+      "claude-code",
+      "codex",
+    ]);
   });
 
   it("reuses an existing canonical skill and heals its missing Claude link", async () => {

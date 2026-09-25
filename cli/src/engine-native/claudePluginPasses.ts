@@ -129,11 +129,18 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   const addedMarketplaces = new Set<string>();
   // The official marketplace is built in; a successful add is usable before its inventory is written.
   // A missing inventory proves absence (fresh home); an unreadable one does not, so refresh as before.
+  const skippedRefresh = new Set<string>();
   const marketplaceReady = (mpName: string): boolean => {
     if (mpName === OFFICIAL_MARKETPLACE || addedMarketplaces.has(mpName)) return true;
-    if (!existsSync(knownMarketplaces)) return false;
-    const known = readJsonFile(knownMarketplaces);
-    return known === undefined || !isObject(known) || knownMarketplace(mpName);
+    const known = existsSync(knownMarketplaces) ? readJsonFile(knownMarketplaces) : {};
+    if (known === undefined || !isObject(known) || knownMarketplace(mpName)) return true;
+    if (!skippedRefresh.has(mpName)) {
+      skippedRefresh.add(mpName);
+      verbose(
+        `Skipping refresh of marketplace ${mpName}: not added yet; the next sync refreshes it`,
+      );
+    }
+    return false;
   };
 
   // Pass 1 — add missing marketplaces (SoT insertion order, like to_entries).
