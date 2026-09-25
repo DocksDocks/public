@@ -189,6 +189,15 @@ id as a stub with null limits and zero cost. On 2026-09-25 the catalog at
 and prices, so the block was removed. Sync prunes the deployed copy only while
 it still equals the shipped block.
 
+The removal is not neutral. The block set `thinking.mode: effort`, and omp
+18.3.1 sends `thinking: {type: "enabled", budget_tokens}` with no effort
+value for that mode. The catalog row sets `thinking.mode: anthropic-adaptive`,
+so omp now sends `thinking: {type: "adaptive"}` plus the effort level of the
+role. The block also set `defaultLevel: high` for a bare `claude-opus-5-5`
+selector. `SoT/.omp/config.yml` names a level on every Opus selector, so no
+kit role depends on that default. A run on
+`anthropic/claude-opus-5-5:high` after the prune answered with exit 0.
+
 ### Claude Fable 5.1 (Anthropic) - `anthropic/claude-fable-5-1`
 
 | Level | Index | Cost/task | Tokens/task | Index tokens | Speed t/s | TTFT s | TB 4.0 |
