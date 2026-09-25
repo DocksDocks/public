@@ -11,6 +11,7 @@ import { p } from "../../src/engine-native/exec";
 import { makeLogger } from "../../src/engine-native/logger";
 import { makePlatform, type EngineServices } from "../../src/engine-native/services";
 import { kitHome } from "../../src/kitHome";
+import { verifiedVersion } from "../lib/toolchainManifest";
 
 type Sinks = { readonly out: Array<string>; readonly err: Array<string> };
 
@@ -103,7 +104,9 @@ describe("LSP install under the Node floor", () => {
   it("installs the server at the Node floor", async () => {
     const { out, err } = await run("v22.22.2", ["typescript-language-server"]);
 
-    expect(out).toBe("[dry-run] would install: npm install -g typescript-language-server@6.0.0");
+    expect(out).toBe(
+      `[dry-run] would install: npm install -g typescript-language-server@${verifiedVersion("typescript-language-server")}`,
+    );
     expect(err).toBe("");
   });
 

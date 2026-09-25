@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-25 - docks-kit 0.19.2: tested toolchain pins
+
+- `SoT/toolchain.json` moves four `verified` pins to tested releases:
+  - omp 18.3.1. `sync omp`, `omp models`, and a print-mode session with the
+    deployed config ran. omp now lists `gpt-6-sol` and `gpt-6-luna`, and a
+    run on each selector served that model, so the omp roles run GPT-6.
+  - pi-intercom 0.14.0. `sync omp` upgraded an installed 0.13.0 to 0.14.0,
+    and `omp plugin doctor` passed. An omp session with 0.14.0 loaded listed
+    the intercom sessions through the running broker. A 0.14.0 broker also
+    started under Bun when run by hand. The new `busyDelivery` setting is
+    optional.
+  - typescript-language-server 6.0.1. With TypeScript 6.0.3 on Node 24, the
+    server answered hover and reported a type error.
+  - skills-cli 1.7.0. The kit's `add <slug> -g -y -a claude-code codex` call
+    gave the same `~/.agents/skills` directories and Claude symlinks as
+    1.5.25.
+- `sync --verbose` prints one line for each Claude marketplace whose refresh
+  waits because the marketplace is not added yet.
+- The Bash and PowerShell launcher host tables, the default build targets,
+  and the exact `npx skills` command line have tests again.
+
 ## 2026-09-25 - docks-kit 0.19.1: fixes from the test-suite audit
 
 - `docks-kit toolchain check <word>` and `toolchain outdated <word>` now exit

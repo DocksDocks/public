@@ -54,8 +54,11 @@ omp 18.2.9 and codex-cli 0.153.3:
   `openai-codex/gpt-6-sol:low` recorded `gpt-5.6-sol` as the serving model,
   and the Luna selector recorded `gpt-5.6-luna`. omp printed no warning.
 
-Until the omp catalog lists both ids, the omp roles run GPT-5.6. To check, run
-`omp models openai-codex`: the `gpt-6-sol` and `gpt-6-luna` rows must appear.
+On 2026-09-25, omp 18.3.1 listed `gpt-6-sol` and `gpt-6-luna` in
+`omp models openai-codex`. An `omp -p --mode json` run on each selector
+recorded `gpt-6-sol` and `gpt-6-luna` as the serving model, so the omp roles
+now run GPT-6. To check again, run `omp models openai-codex`: the `gpt-6-sol`
+and `gpt-6-luna` rows must appear.
 
 What omp's settings catalog establishes about these roles:
 
