@@ -47,9 +47,9 @@ docks-kit sync [claude] [codex] [agents] [omp]  deploy explicit targets or the m
 docks-kit harnesses                             view or change this machine's selection
 docks-kit update [--no-sync]                    self-update the kit (autodetects checkout vs global install), then sync
 docks-kit model <claude|codex> [value]          get/set the DEPLOYED model (TTY picker)
-docks-kit models [claude|codex]                 model catalogs (`--json`)
+docks-kit models [claude|codex|omp] [--refresh]  live catalogs for enabled harnesses (`--json`)
 docks-kit omp [--model <m>|--pick] [args...]    one omp session on a free model, nothing deployed changes
-docks-kit toolchain [check|ensure <tool>]       verified-version floors for external tools
+docks-kit toolchain [check|ensure <tool>|outdated]  verified-version floors for external tools
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
@@ -91,16 +91,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 - **Additive by default** — user-only settings keys, plugins, and skills
   survive a plain sync. Reconciliation toward the SoT is explicit
   (`--reconcile` / `--prune`).
-- **Per-machine selection** — `~/.docks-kit/state.json` drives a flag-less sync.
-  A missing file selects Claude Code, Codex, and universal skills. It does not
+- **Per-machine selection** — `~/.docks-kit/kit.db` drives a flag-less sync.
+  A missing selection selects Claude Code, Codex, and universal skills. It does not
   select omp. Use `docks-kit harnesses` to view or change the selection.
 - **Idempotent** — every step is safe to re-run; no-change syncs are no-ops.
 - **Toolchain floors** — `SoT/toolchain.json` records the kit-verified version
   floors for external tools (bun, bwrap, …). `docks-kit toolchain check` prints
   the full doctor table. Bun is the one managed install and is pinned to its
   verified version.
-- **Model catalog** — `SoT/models.json` is the research-verified source for
-  model validation, listings, and pickers.
+- **Model catalog** — enabled harnesses provide live Claude, Codex, or omp
+  model IDs; `SoT/models.json` supplies aliases, notes, and the offline fallback.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
   programs for statusline, SessionStart, and Notification. Quota display uses
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
@@ -115,7 +115,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, intercom.json) |
 | `SoT/.agents/` | Universal-skill manifest |
-| `SoT/models.json` | Kit-verified Claude and Codex model catalog |
+| `SoT/models.json` | Curated aliases, notes, and offline Claude/Codex fallback |
 | `SoT/toolchain.json` | Verified-version floors |
 | `cli/src/engine-native/` | EngineNative sync/model/toolchain implementation |
 | `cli/src/generated/sotPayload.ts` | Generated in-memory payload used by standalone and npm installs |

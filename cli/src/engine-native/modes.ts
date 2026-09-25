@@ -11,12 +11,13 @@ import { syncCodexModel } from "./codexToml";
 import type { Ctx } from "./index";
 import { isObject, parseJson, type Json } from "./jq";
 import { printModels, validateClaudeModel, validateCodexModel } from "./models";
+import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
-import { installedVersion, present, report } from "./toolchain";
+import { installedVersion, outdatedReport, present, report } from "./toolchain";
 
-export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
+export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { echo, err, warn } = ctx.services.logger;
-  let tool = "";
+  let tool: "claude" | "codex" | "" = "";
   let value = "";
   for (const arg of args) {
     if (arg === "--dry-run") ctx.dryRun = true;
@@ -32,7 +33,7 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
     err("Usage: model <claude|codex> [value] [--dry-run]");
     return 2;
   }
-
+  const catalog = await resolveCatalog(tool, defaultLiveInputs(ctx.home));
   if (value === "") {
     if (tool === "claude") {
       const deployed = p(ctx.home, ".claude", "settings.json");
@@ -61,20 +62,20 @@ export function modeModel(ctx: Ctx, args: ReadonlyArray<string>): number {
       echo(`deployed: ${tomlModelText(result.data)}`);
       echo(`SoT:      ${tomlModelText(payloadText("SoT/.codex/config.toml"))}`);
     }
-    printModels(ctx, tool);
+    printModels(ctx, catalog);
     return 0;
   }
 
   if (tool === "claude") {
-    if (!validateClaudeModel(ctx, value)) {
-      printModels(ctx, "claude");
+    if (!validateClaudeModel(ctx, value, catalog)) {
+      printModels(ctx, catalog);
       err(`Invalid Claude model '${value}'`);
       return 2;
     }
     syncClaudeModel(ctx, value);
   } else {
-    if (!validateCodexModel(ctx, value)) {
-      printModels(ctx, "codex");
+    if (!validateCodexModel(ctx, value, catalog)) {
+      printModels(ctx, catalog);
       err(`Invalid Codex model '${value}'`);
       return 2;
     }
@@ -133,8 +134,12 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
     await report(ctx);
     return 0;
   }
+  if (op === "outdated") {
+    await outdatedReport(ctx, { refresh: args.includes("--refresh") });
+    return 0;
+  }
   if (op !== "ensure") {
-    err("Usage: toolchain [check|ensure <tool>]");
+    err("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
     return 2;
   }
   if (tool === "") {

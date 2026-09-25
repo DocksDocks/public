@@ -1,22 +1,24 @@
 /**
- * Model-catalog helpers: manifest listing plus Claude/Codex model validation.
- * Message strings are covered by the golden suites.
+ * Model-catalog helpers: SoT parsing, listing, and Claude/Codex model validation.
+ * Curated message strings are covered by the golden suites.
  */
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
 import { payloadDisplayPath, payloadText } from "../payload";
-import type { JsonObject } from "./sharedTypes";
+import type { CatalogSource, JsonObject, ResolvedCatalog } from "./sharedTypes";
 
-export interface ModelEntry {
-  readonly id: string;
-  readonly kind: "alias" | "id";
-  readonly note?: string;
-}
+export type ModelEntry = ResolvedCatalog["models"][number];
 
 export interface ModelCatalog {
   readonly verified: string;
   readonly models: ReadonlyArray<ModelEntry>;
 }
+
+const LIVE_SOURCE_LABELS: Record<Exclude<CatalogSource, "curated">, string> = {
+  "anthropic-api": "Anthropic API via Claude Code login",
+  "codex-cache": "~/.codex/models_cache.json",
+  "omp-cli": "omp models --json",
+};
 
 function toolEntry(tool: string): JsonObject | undefined {
   const doc = parseJson(payloadText("SoT/models.json"));
@@ -49,43 +51,47 @@ export function modelCatalog(tool: string): ModelCatalog {
   return { verified: typeof verified === "string" ? verified : "?", models };
 }
 
-export function printModels(ctx: Ctx, tool: string): void {
+export function printModels(ctx: Ctx, catalog: ResolvedCatalog): void {
   const { echo, warn } = ctx.services.logger;
-  const entry = toolEntry(tool);
-  if (entry === undefined) {
+  const { tool, models, source, verified, fetchedAt } = catalog;
+  if (source === "curated" && models.length === 0) {
     warn(`Model catalog unavailable (${payloadDisplayPath("SoT/models.json")})`);
     return;
   }
-  const verified = typeof entry["verified"] === "string" ? entry["verified"] : "?";
-  const lines = [`Available ${tool} models (kit-verified ${verified} — SoT/models.json):`];
-  for (const m of modelEntries(entry)) {
-    const note = typeof m["note"] === "string" ? `  — ${m["note"]}` : "";
-    lines.push(`  ${String(m["id"] ?? "")}${note}`);
+  const header =
+    source === "curated"
+      ? `Available ${tool} models (kit-verified ${verified} — SoT/models.json):`
+      : `Available ${tool} models (live — ${LIVE_SOURCE_LABELS[source]}, fetched ${fetchedAt ?? "?"}; aliases and notes from SoT/models.json):`;
+  echo(header);
+  for (const model of models) {
+    echo(`  ${model.id}${model.note === undefined ? "" : `  — ${model.note}`}`);
   }
   if (tool === "claude")
-    lines.push("  (full claude-* model IDs outside the catalog are accepted with a warning)");
-  if (tool === "codex")
-    lines.push("  (well-formed IDs outside the catalog are accepted with a warning)");
-  for (const line of lines) echo(line);
+    echo("  (full claude-* model IDs outside the catalog are accepted with a warning)");
+  if (tool === "codex") echo("  (well-formed IDs outside the catalog are accepted with a warning)");
 }
 
-export function validateClaudeModel(ctx: Ctx, m: string): boolean {
+export function validateClaudeModel(ctx: Ctx, m: string, catalog: ResolvedCatalog): boolean {
   if (m === "") return false;
-  if (modelCatalog("claude").models.some((entry) => entry.id === m)) return true;
+  if (catalog.models.some((entry) => entry.id === m)) return true;
   if (m.startsWith("claude-")) {
     ctx.services.logger.warn(
-      `Claude model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway`,
+      catalog.source === "curated"
+        ? `Claude model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway`
+        : `Claude model '${m}' is not in the live Anthropic model list — applying anyway`,
     );
     return true;
   }
   return false;
 }
 
-export function validateCodexModel(ctx: Ctx, m: string): boolean {
+export function validateCodexModel(ctx: Ctx, m: string, catalog: ResolvedCatalog): boolean {
   if (!/^[A-Za-z0-9._-]+$/.test(m)) return false;
-  if (!modelCatalog("codex").models.some((entry) => entry.id === m)) {
+  if (!catalog.models.some((entry) => entry.id === m)) {
     ctx.services.logger.warn(
-      `Codex model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway (check ~/.codex/config.toml if Codex rejects it)`,
+      catalog.source === "curated"
+        ? `Codex model '${m}' is not in the kit-verified catalog (SoT/models.json) — applying anyway (check ~/.codex/config.toml if Codex rejects it)`
+        : `Codex model '${m}' is not in the live Codex model list — applying anyway (check ~/.codex/config.toml if Codex rejects it)`,
     );
   }
   return true;

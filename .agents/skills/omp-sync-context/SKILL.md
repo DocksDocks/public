@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
@@ -13,7 +13,9 @@ metadata:
     - path: cli/src/engine-native/ompYaml.ts
       lines: "1-128"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-146"
+      lines: "1-120"
+    - path: cli/src/engine-native/kitDb.ts
+      lines: "1-245"
     - path: cli/src/engine-native/ompOverlay.ts
       lines: "1-211"
     - path: cli/src/commands/omp.ts
@@ -22,7 +24,7 @@ metadata:
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-09-12"
+  updated: "2026-09-24"
 ---
 
 # omp Sync Context
@@ -250,22 +252,22 @@ Anchor this behavior at `ompSync.ts` — `syncMarketplace` and `syncPlugins` —
 
 ## Local State Store
 
-Store the selection at `~/.docks-kit/state.json`.
-Resolve that path from the engine home.
-Keep the state format at version `1`.
+Store the selection and the omp session model in the SQLite store
+`~/.docks-kit/kit.db`, tables `harness_selection` and `omp_session`.
+Resolve that path from the engine home with `kitDb.ts kitDbFile`.
+Open the store only through `kitDb.ts withKitDb`, which applies the migrations.
+Append a new migration to `kitDb.ts MIGRATIONS`; never edit a shipped entry.
 Normalize entries into `claude`, `codex`, `agents`, and `omp` order.
 Reject an empty or wholly unknown write.
 Write the state directory with mode `0700`.
-Write and chmod the state file with mode `0600`.
+Chmod the database file to mode `0600`.
+Never create the store on a read when neither `kit.db` nor `state.json` exists.
 
-The state record holds two independent kit-owned keys: `harnesses` and
-`ompSession`. Merge every write over the stored record.
-A writer that serializes the record from scratch drops the other key, and the
-loss is silent until the next reader falls back to a default.
-Keep the selection writer and the session-model writer on the one shared
-merge helper.
+`withKitDb` imports a legacy `~/.docks-kit/state.json` once, when both tables
+are empty, and renames it to `state.json.migrated`.
+Each table has one writer, so a write to one key cannot drop the other.
 
-Treat a missing, unreadable, malformed, or unusable file as no stored selection.
+Treat a missing, corrupt, or too-new store as no stored selection.
 Resolve no stored selection to `claude`, `codex`, and `agents`.
 Keep omp opt-in when no state exists.
 Let explicit positional targets override the stored selection.

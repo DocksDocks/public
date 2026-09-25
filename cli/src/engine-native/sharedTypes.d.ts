@@ -9,6 +9,22 @@ import type { ModifierFlag } from "./engineCtx";
 /** Manifest-record object: the `{ [key]: Json }` shape redeclared across manifest readers. */
 export type JsonObject = { [key: string]: Json };
 
+export type CatalogTool = "claude" | "codex" | "omp";
+export type CatalogSource = "anthropic-api" | "codex-cache" | "omp-cli" | "curated";
+
+export interface ResolvedCatalog {
+  readonly tool: CatalogTool;
+  readonly source: CatalogSource;
+  readonly verified: string;
+  readonly fetchedAt?: string;
+  readonly fallbackReason?: string;
+  readonly models: ReadonlyArray<{
+    readonly id: string;
+    readonly kind: "alias" | "id";
+    readonly note?: string;
+  }>;
+}
+
 /**
  * Shared core of per-tool settings-edit descriptors (Claude JSON modifiers,
  * Codex TOML passes). Each tool narrows `key` to its own vocabulary and keeps
@@ -44,3 +60,6 @@ export type ScalarModifierFlag = Exclude<
   ModifierFlag,
   "--claude-compact-window" | "--claude-permissive" | "--claude-plugin"
 >;
+
+/** Injected HTTP client: the subset of fetch the network lookups call. */
+export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;

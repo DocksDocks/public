@@ -73,6 +73,16 @@ function exitCode(run: () => void): number {
   throw new Error("expected ExitError");
 }
 
+async function exitCodeAsync(run: () => Promise<void>): Promise<number> {
+  try {
+    await run();
+  } catch (error) {
+    if (!(error instanceof ExitError)) throw error;
+    return error.code;
+  }
+  throw new Error("expected ExitError");
+}
+
 describe("arg and effort contract", () => {
   let home = "";
 
@@ -188,23 +198,23 @@ describe("arg and effort contract", () => {
     }
   });
 
-  it("rejects invalid modifier values with code 2 and accepts valid ones", () => {
+  it("rejects invalid modifier values with code 2 and accepts valid ones", async () => {
     const badEffort = makeCtx(home);
     badEffort.syncClaude = true;
     badEffort.claudeEffort = "bogus";
-    expect(exitCode(() => validateModifierFlags(badEffort))).toBe(2);
+    expect(await exitCodeAsync(() => validateModifierFlags(badEffort))).toBe(2);
 
     const badModel = makeCtx(home);
     badModel.syncCodex = true;
     badModel.codexModel = "has space";
-    expect(exitCode(() => validateModifierFlags(badModel))).toBe(2);
+    expect(await exitCodeAsync(() => validateModifierFlags(badModel))).toBe(2);
 
     const good = makeCtx(home);
     good.syncClaude = true;
     good.claudeEffort = "low";
     good.syncCodex = true;
     good.codexModel = "gpt-5.5";
-    validateModifierFlags(good);
+    await validateModifierFlags(good);
     expect(good.claudeEffort).toBe("low");
   });
 });

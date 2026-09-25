@@ -5,7 +5,8 @@ import { join } from "node:path";
 
 import type { Ctx } from "../../src/engine-native";
 import { p } from "../../src/engine-native/exec";
-import { harnessStateFile, writeHarnessSelection } from "../../src/engine-native/harnesses";
+import { writeHarnessSelection } from "../../src/engine-native/harnesses";
+import { kitDbFile } from "../../src/engine-native/kitDb";
 import { ExitError, parseArgs } from "../../src/engine-native/parseArgs";
 import { makeEngineServices } from "../../src/engine-native/services";
 import { kitHome } from "../../src/kitHome";
@@ -154,7 +155,7 @@ describe("sync target grammar", () => {
 
     parseArgs(ctx, []);
 
-    expect(existsSync(harnessStateFile(home))).toBe(false);
+    expect(existsSync(kitDbFile(home))).toBe(false);
   });
 
   it("keeps unknown positional targets on the ExitError code 2 path", () => {

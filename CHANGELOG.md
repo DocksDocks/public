@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-09-24 - docks-kit 0.19.0: live model catalogs, SQLite kit store, toolchain outdated
+
+- `docks-kit models` lists the models of each enabled harness from the
+  harness itself. Claude uses the Claude Code login against the Anthropic
+  models API, and the kit caches that list for 6 hours. Codex reads
+  `~/.codex/models_cache.json`. omp runs `omp models --json`. `SoT/models.json`
+  keeps its aliases and notes as an overlay, and its id rows are the fallback
+  when a live list is unavailable. The output names the reason for a fallback.
+  `--refresh` bypasses the cache. `models omp` is new. `docks-kit model`, the
+  `models` engine mode, and the `--claude-model` and `--codex-model`
+  validators use the same resolved list.
+- Per-machine state moves from `~/.docks-kit/state.json` to the SQLite store
+  `~/.docks-kit/kit.db` (mode 0600), with versioned, append-only migrations.
+  The first run imports `state.json` once and renames it to
+  `state.json.migrated`. To go back to an older docks-kit, rename that file
+  back; an older kit ignores `kit.db`. A store from a newer kit is refused
+  and reads fall back to the defaults.
+- `docks-kit toolchain outdated [--refresh]` compares each `verified` pin in
+  `SoT/toolchain.json` with the newest upstream release, read from the new
+  optional `upstream` field (npm, optional major line, or GitHub releases).
+  Results cache for 24 hours in `kit.db`. The report never installs anything
+  and never edits a pin.
+
 ## 2026-09-24 - docks-kit 0.18.1: omp advisor on Opus 5.5
 
 - `modelRoles.advisor` moves from `openai-codex/gpt-6-sol:medium` to

@@ -418,8 +418,8 @@ distinct ladders: 21 include `medium`, 3 stop at `low, high, max` or
 bare selectors with no `:level` suffix, because an invented level makes omp
 fail when the session starts.
 
-The choice persists per machine in `~/.docks-kit/state.json` under
-`ompSession`, next to `harnesses`. It survives across sessions. It is never
+The choice persists per machine in `~/.docks-kit/kit.db` (table
+`omp_session`), next to the harness selection. It survives across sessions. It is never
 committed. `--model <selector>` records one selector and derives both levels
 from the catalog row. `--pick` opens an interactive wizard.
 

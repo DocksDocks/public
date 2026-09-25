@@ -4,12 +4,12 @@ import { bail } from "../engine";
 import {
   engineHome,
   HARNESSES,
-  harnessStateFile,
   LEGACY_SELECTION,
   readHarnessSelection,
   writeHarnessSelection,
   type Harness,
 } from "../engine-native/harnesses";
+import { kitDbFile } from "../engine-native/kitDb";
 
 const DESCRIPTIONS: Record<Harness, string> = {
   claude: "Claude Code user configuration",
@@ -50,7 +50,7 @@ export const harnessesCommand = Command.make("harnesses", {}, () =>
     }
 
     yield* Effect.sync(() => writeHarnessSelection(home, answer));
-    yield* Console.log(`Saved harness selection: ${answer.join(", ")} (${harnessStateFile(home)})`);
+    yield* Console.log(`Saved harness selection: ${answer.join(", ")} (${kitDbFile(home)})`);
   }),
 ).pipe(
   Command.withDescription("Choose the harness selection that drives a flag-less docks-kit sync."),

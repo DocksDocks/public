@@ -17,6 +17,7 @@ import {
   isEffortModifierValue,
 } from "../efforts";
 import { printModels, validateClaudeModel, validateCodexModel } from "./models";
+import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { ExitError, printCatalog } from "./parseHelp";
 
 export const KNOWN_CLAUDE_OPTIN_PLUGINS = ["supabase", "n8n"];
@@ -169,7 +170,7 @@ export function isScalarModifierFlag(value: string): value is ScalarModifierFlag
   return SCALAR_MODIFIER_FLAGS[value as ScalarModifierFlag] === true;
 }
 
-export function validateModifierFlags(ctx: Ctx): void {
+export async function validateModifierFlags(ctx: Ctx): Promise<void> {
   const { err, warn } = ctx.services.logger;
   const supplied = (flag: ModifierFlag): boolean =>
     MODIFIER_METADATA[flag].hasValue(ctx) || ctx.modifierFlags?.has(flag) === true;
@@ -185,8 +186,9 @@ export function validateModifierFlags(ctx: Ctx): void {
   }
 
   if (supplied("--claude-model")) {
-    if (!validateClaudeModel(ctx, ctx.claudeModel)) {
-      printModels(ctx, "claude");
+    const catalog = await resolveCatalog("claude", defaultLiveInputs(ctx.home));
+    if (!validateClaudeModel(ctx, ctx.claudeModel, catalog)) {
+      printModels(ctx, catalog);
       err(`Invalid Claude model '${ctx.claudeModel}' — use an alias above or a full claude-* ID`);
       throw new ExitError(2);
     }
@@ -206,8 +208,9 @@ export function validateModifierFlags(ctx: Ctx): void {
     }
   }
   if (supplied("--codex-model")) {
-    if (!validateCodexModel(ctx, ctx.codexModel)) {
-      printModels(ctx, "codex");
+    const catalog = await resolveCatalog("codex", defaultLiveInputs(ctx.home));
+    if (!validateCodexModel(ctx, ctx.codexModel, catalog)) {
+      printModels(ctx, catalog);
       err(`Invalid Codex model '${ctx.codexModel}' — must match ^[A-Za-z0-9._-]+$`);
       throw new ExitError(2);
     }

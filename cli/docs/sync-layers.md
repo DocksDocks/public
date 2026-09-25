@@ -2,7 +2,7 @@
 
 `docks-kit sync [claude] [codex] [agents] [omp]` — targets are positional
 words; no target means this machine's harness selection in
-`~/.docks-kit/state.json`. The default is `claude codex agents`, and
+`~/.docks-kit/kit.db`. The default is `claude codex agents`, and
 `docks-kit harnesses` changes it.
 
 ## claude (→ ~/.claude, ~/.claude.json, shell rc)

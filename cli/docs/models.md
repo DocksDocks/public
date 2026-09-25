@@ -1,9 +1,17 @@
 # Models
 
-`SoT/models.json` is the kit-verified model catalog — the single source for
-the engine validators, `docks-kit models`, the interactive picker, and the
-bare-flag helper output. Each tool section carries a `verified` date; update
-the entry and date when a model ships or retires.
+`SoT/models.json` supplies aliases and notes for Claude and Codex. For each
+enabled harness, `docks-kit models` and the picker list live model IDs when
+available. Claude uses the Claude Code login to query the Anthropic models API
+and caches the result for six hours in `~/.docks-kit/kit.db`; Codex reads
+`~/.codex/models_cache.json`; omp runs `omp models --json`. The kit never needs
+omp to list Claude models.
+
+Live lists retain the curated aliases and notes, but omit curated IDs absent
+from the live source. A disabled harness, missing login/cache, or unavailable
+source falls back to the curated IDs. omp has no curated fallback models.
+The `verified` field is the curated section date, not the live fetch date.
+Bare model flags without a value print the curated list without a network call.
 
 ## Validation rules
 
@@ -33,9 +41,10 @@ the entry and date when a model ships or retires.
 ## Commands
 
 ```
-docks-kit models                  # both catalogs
-docks-kit models claude --json    # machine-readable
-docks-kit model claude            # current deployed + SoT + picker (TTY)
+docks-kit models                  # enabled Claude, Codex, and omp catalogs
+docks-kit models claude --json    # source, fetch date, and fallback reason
+docks-kit models claude --refresh # bypass the six-hour Anthropic cache
+docks-kit model claude            # current deployed + live list + picker (TTY)
 docks-kit model claude opus       # per-machine override from the Opus SoT
 docks-kit sync claude --claude-model=opus   # same, as part of a sync
 ```
