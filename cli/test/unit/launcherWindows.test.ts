@@ -153,6 +153,7 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stdout.trim()).toBe("source:probe");
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-windows-x64.exe");
     expect(result.stderr).toContain("run 'bun run build:binaries' to refresh it or delete it");
+    expect(existsSync(join(fixture.root, "cli", "dist", "docks-kit-windows-x64.exe"))).toBe(true);
   });
 
   // An unreleased change does not move package.json, so a binary compiled

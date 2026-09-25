@@ -36,16 +36,27 @@ describe("golden prove-red support", () => {
     });
   });
 
-  it("loads a version-1 golden file", () => {
+  it.each([
+    ["unsupported version", { version: 2, cases: { one: { value: 1 } } }],
+    ["array cases", { version: 1, cases: [{ value: 1 }] }],
+  ])("rejects a golden with %s", (_label, contents) => {
     const root = mkdtempSync(join(tmpdir(), "docks-golden-reader-"));
     temporaryPaths.push(root);
     const path = join(root, "nested", "golden.json");
     mkdirSync(join(root, "nested"));
-    writeFileSync(path, JSON.stringify({ version: 1, cases: { one: { value: 1 } } }));
+    writeFileSync(path, JSON.stringify(contents));
 
-    expect(readGolden<{ value: number }>(path)).toEqual({
-      version: 1,
-      cases: { one: { value: 1 } },
-    });
+    expect(() => readGolden(path)).toThrow(
+      `${path}: expected a version-1 object with object-valued cases`,
+    );
+  });
+
+  it("reports malformed golden JSON as an input error", () => {
+    const root = mkdtempSync(join(tmpdir(), "docks-golden-reader-"));
+    temporaryPaths.push(root);
+    const path = join(root, "golden.json");
+    writeFileSync(path, "{bad JSON");
+
+    expect(() => readGolden(path)).toThrow(`${path}: malformed golden JSON:`);
   });
 });

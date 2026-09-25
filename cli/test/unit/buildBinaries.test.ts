@@ -12,7 +12,6 @@ import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { hostOs } from "../../src/engine-native/os/index";
-import { HOST_TARGETS } from "../../src/engine-native/os/targets";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const roots: Array<string> = [];
@@ -88,7 +87,14 @@ describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
     const { buildScript, dist, fakeBin } = fixture();
 
     const result = runBuild(buildScript, fakeBin);
-    const expected = HOST_TARGETS.map(({ artifact }) => artifact).sort();
+    const expected = [
+      "docks-kit-darwin-arm64",
+      "docks-kit-darwin-x64",
+      "docks-kit-linux-arm64",
+      "docks-kit-linux-x64",
+      "docks-kit-windows-arm64.exe",
+      "docks-kit-windows-x64.exe",
+    ];
 
     expect(result.status, result.stderr).toBe(0);
     expect(manifestArtifacts(dist)).toEqual(expected);

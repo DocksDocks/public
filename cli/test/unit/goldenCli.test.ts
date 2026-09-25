@@ -19,23 +19,11 @@ afterEach(() => {
 });
 
 describe("golden CLI options", () => {
-  it("compiles GOLDEN_FILTER once and reuses the same RegExp for selections", () => {
-    process.env["GOLDEN_FILTER"] = "^selected-case$";
-
+  it("selects matching labels and rejects non-matching labels from GOLDEN_FILTER", () => {
+    process.env["GOLDEN_FILTER"] = "^fixture=home-fresh ";
     const options = parseArgs(["bun", "golden-suite.ts"]);
-    const compiledFilter = options.filter;
-
-    expect(compiledFilter).toBeInstanceOf(RegExp);
-    expect(labelSelected("selected-case", options.filter)).toBe(true);
-    expect(labelSelected("other-case", options.filter)).toBe(false);
-    expect(options.filter).toBe(compiledFilter);
-  });
-
-  it("selects matching labels and rejects non-matching labels", () => {
-    const filter = /^fixture=home-fresh /;
-
-    expect(labelSelected("fixture=home-fresh cmd=sync agents", filter)).toBe(true);
-    expect(labelSelected("fixture=home-existing cmd=sync agents", filter)).toBe(false);
+    expect(labelSelected("fixture=home-fresh cmd=sync agents", options.filter)).toBe(true);
+    expect(labelSelected("fixture=home-existing cmd=sync agents", options.filter)).toBe(false);
   });
 
   it("rejects unknown options", () => {

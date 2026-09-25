@@ -4,7 +4,7 @@
  * wrong field turns every run into a failing reinstall, so these rows pin the
  * install / upgrade / skip decision that the inventory drives.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -72,12 +72,15 @@ function makeRoot(): string {
   return root;
 }
 
-function makeCtx(root: string, options: { skipPluginRefresh?: boolean } = {}): Ctx {
+function makeCtx(
+  root: string,
+  options: { skipPluginRefresh?: boolean; missingTool?: "omp" | "git" } = {},
+): Ctx {
   const platform = makePlatform("linux");
   const services = {
     ...makeEngineServices({ sinks: { stderr: () => {}, stdout: () => {} } }),
     deps: makeDependencyManager(platform, {
-      commandExists: () => true,
+      commandExists: (name) => name !== options.missingTool,
       capture: async () => "",
       which: (name) => `/usr/bin/${name}`,
     }),
@@ -101,13 +104,16 @@ function ompCommands(): Array<string> {
   return mocks.spawnProcess.mock.calls.map((call) => (call[1] as ReadonlyArray<string>).join(" "));
 }
 
-function respondWithInventory(inventory: string): void {
-  mocks.spawnProcess.mockImplementation(async (_cmd: string, args: ReadonlyArray<string>) => ({
-    error: undefined,
-    exitCode: 0,
-    stdout: args[0] === "plugin" && args[1] === "list" ? inventory : "",
-    stderr: "",
-  }));
+function respondWithInventory(inventory: string, failingCommand?: string): void {
+  mocks.spawnProcess.mockImplementation(async (_cmd: string, args: ReadonlyArray<string>) => {
+    const failed = args.join(" ") === failingCommand;
+    return {
+      error: undefined,
+      exitCode: failed ? 1 : 0,
+      stdout: args[0] === "plugin" && args[1] === "list" ? inventory : "",
+      stderr: failed ? "stub omp operation failure\n" : "",
+    };
+  });
 }
 
 describe("omp plugin inventory", () => {
@@ -158,7 +164,7 @@ describe("omp plugin inventory", () => {
         ],
       }),
     );
-    await ompSync(makeCtx(makeRoot()));
+    const state = await ompSync(makeCtx(makeRoot()));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -166,6 +172,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user docks@docks",
       "plugin upgrade --scope user plan-lifecycle@docks",
     ]);
+    expect(state.pluginsInstalled).toBe(3);
   });
 
   /**
@@ -186,6 +193,25 @@ describe("omp plugin inventory", () => {
     return { root, dataHome };
   }
 
+  it("registers docks when neither XDG nor the legacy registry lists it", async () => {
+    const { root, dataHome } = makeAdoptableRoot();
+    process.env["XDG_DATA_HOME"] = dataHome;
+    writeFileSync(
+      join(root, ".omp", "marketplaces.json"),
+      JSON.stringify({ version: 1, marketplaces: [{ name: "another-marketplace" }] }),
+    );
+    respondWithInventory(INVENTORY_PRESENT);
+
+    await ompSync(makeCtx(root));
+
+    expect(ompCommands()).toEqual([
+      "plugin marketplace add https://github.com/DocksDocks/docks.git",
+      "plugin list --json",
+      "plugin upgrade --scope user docks@docks",
+      "plugin upgrade --scope user plan-lifecycle@docks",
+    ]);
+  });
+
   it("refreshes the marketplace when only the legacy registry lists docks", async () => {
     const { root, dataHome } = makeAdoptableRoot();
     process.env["XDG_DATA_HOME"] = dataHome;
@@ -193,7 +219,12 @@ describe("omp plugin inventory", () => {
 
     await ompSync(makeCtx(root));
 
-    expect(ompCommands()[0]).toBe("plugin marketplace update docks");
+    expect(ompCommands()).toEqual([
+      "plugin marketplace update docks",
+      "plugin list --json",
+      "plugin upgrade --scope user docks@docks",
+      "plugin upgrade --scope user plan-lifecycle@docks",
+    ]);
   });
 
   it("adopts the registry with a read-only list under --skip-plugin-refresh", async () => {
@@ -206,9 +237,26 @@ describe("omp plugin inventory", () => {
     expect(ompCommands()).toEqual(["plugin marketplace list", "plugin list --json"]);
   });
 
-  it("installs every plugin when the inventory is empty", async () => {
-    respondWithInventory(INVENTORY_EMPTY);
-    const state = await ompSync(makeCtx(makeRoot()));
+  it("records a failed read-only registry adoption without fetching a marketplace", async () => {
+    const { root, dataHome } = makeAdoptableRoot();
+    process.env["XDG_DATA_HOME"] = dataHome;
+    respondWithInventory(INVENTORY_PRESENT, "plugin marketplace list");
+    const ctx = makeCtx(root, { skipPluginRefresh: true });
+
+    const state = await ompSync(ctx);
+
+    expect(ompCommands()).toEqual(["plugin marketplace list", "plugin list --json"]);
+    expect(state.pluginsInstalled).toBe(3);
+    expect(ctx.failures).toEqual([
+      "omp docks marketplace adoption failed: stub omp operation failure; run manually: omp plugin marketplace list",
+    ]);
+  });
+
+  it("counts only successful installs when a marketplace plugin command fails", async () => {
+    respondWithInventory(INVENTORY_EMPTY, "plugin install --scope user docks@docks");
+    const ctx = makeCtx(makeRoot());
+
+    const state = await ompSync(ctx);
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -217,16 +265,26 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
     ]);
-    expect(state.pluginsInstalled).toBe(3);
+    expect(state.pluginsInstalled).toBe(2);
+    expect(ctx.failures).toEqual([
+      "omp plugin operation failed for docks@docks: stub omp operation failure; run manually: omp plugin install --scope user docks@docks",
+    ]);
   });
 
   it("reinstalls pi-intercom with --force when the installed version misses the pin", async () => {
     respondWithInventory(
       JSON.stringify({ npm: [{ name: "pi-intercom", version: "0.9.0" }], marketplace: [] }),
     );
-    await ompSync(makeCtx(makeRoot()));
+    const state = await ompSync(makeCtx(makeRoot()));
 
-    expect(ompCommands()).toContain(`install --force pi-intercom@${PIN}`);
+    expect(ompCommands()).toEqual([
+      "plugin marketplace update docks",
+      "plugin list --json",
+      "plugin install --scope user docks@docks",
+      "plugin install --scope user plan-lifecycle@docks",
+      `install --force pi-intercom@${PIN}`,
+    ]);
+    expect(state.pluginsInstalled).toBe(3);
   });
 
   it("skips every refresh of present plugins under --skip-plugin-refresh", async () => {
@@ -241,18 +299,32 @@ describe("omp plugin inventory", () => {
     respondWithInventory(
       JSON.stringify({ npm: [], marketplace: [{ id: "docks@docks", scope: "user", entries: [] }] }),
     );
-    await ompSync(makeCtx(makeRoot(), { skipPluginRefresh: true }));
+    const state = await ompSync(makeCtx(makeRoot(), { skipPluginRefresh: true }));
 
     expect(ompCommands()).toEqual([
       "plugin list --json",
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
     ]);
+    expect(state.pluginsInstalled).toBe(3);
+  });
+
+  it("deploys config without spawning omp plugins when git is unavailable", async () => {
+    respondWithInventory(INVENTORY_EMPTY);
+    const root = makeRoot();
+    const ctx = makeCtx(root, { missingTool: "git" });
+
+    const state = await ompSync(ctx);
+
+    expect(readFileSync(join(root, ".omp", "agent", "config.yml"), "utf8")).toBe("theme: dark\n");
+    expect(ompCommands()).toEqual([]);
+    expect(state.pluginsInstalled).toBe(0);
+    expect(ctx.failures).toEqual([]);
   });
 
   it("falls back to the full refresh path when the inventory cannot be parsed", async () => {
     respondWithInventory("not json");
-    await ompSync(makeCtx(makeRoot()));
+    const state = await ompSync(makeCtx(makeRoot()));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -261,5 +333,6 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
     ]);
+    expect(state.pluginsInstalled).toBe(3);
   });
 });

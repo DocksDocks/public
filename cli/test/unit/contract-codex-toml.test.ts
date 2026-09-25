@@ -11,17 +11,6 @@ import {
 import { topLevelTomlString } from "../../src/manifests";
 
 describe("codex TOML contract", () => {
-  // Pure replacement.
-  it("inserts the replacement for empty content with one trailing newline", () => {
-    expect(replaceTopLevelSetting("", "model", 'model = "x"')).toBe('model = "x"\n');
-  });
-
-  it("replaces one top-level key and ends with a newline", () => {
-    const next = replaceTopLevelSetting('model = "a"\nfoo = 1\n', "model", 'model = "b"');
-
-    expect(next).toBe('model = "b"\nfoo = 1\n');
-  });
-
   it("collapses duplicate top-level keys into one replacement", () => {
     const next = replaceTopLevelSetting('model = "a"\nmodel = "b"\n', "model", 'model = "c"');
 
@@ -41,17 +30,13 @@ describe("codex TOML contract", () => {
   it("inserts before the first table when the key is absent", () => {
     const next = replaceTopLevelSetting("[table]\nkey = 1\n", "model", 'model = "x"');
 
-    expect(next).toBe("[table]\nkey = 1\n".replace("[table]", 'model = "x"\n[table]'));
+    expect(next).toBe('model = "x"\n[table]\nkey = 1\n');
   });
 
-  it("treats indented keys as non-top-level and appends", () => {
-    const next = replaceTopLevelSetting('  model = "x"\n', "model", 'model = "y"');
-
-    expect(next).toContain('  model = "x"');
-    expect(next).toContain('model = "y"');
+  it("writes one trailing newline when adding a setting to an empty config", () => {
+    expect(replaceTopLevelSetting("", "model", 'model = "x"')).toBe('model = "x"\n');
   });
 
-  // File merges use temp files.
   let dir = "";
 
   beforeEach(() => {
@@ -68,23 +53,25 @@ describe("codex TOML contract", () => {
     return file;
   }
 
-  it("copies SoT top-level keys and stops before tables", () => {
-    const file = userFile('model = "old"\n[table]\nkey = 1\n');
+  it("replaces SoT top-level keys without importing table keys or deleting user settings", () => {
+    const file = userFile('model = "old"\nuser_pref = true\n[table]\nkey = 1\n');
 
     mergeTopLevelSettings('model = "new"\nother = 2\n[table]\nkey = 99\n', file);
 
-    const next = readFileSync(file, "utf8");
-    expect(next).toContain('model = "new"');
-    expect(next).toContain("other = 2");
-    expect(next).toContain("key = 1");
-    expect(next).not.toContain("key = 99");
+    expect(readFileSync(file, "utf8")).toBe(
+      'model = "new"\nuser_pref = true\nother = 2\n[table]\nkey = 1\n',
+    );
   });
 
-  it("leaves the user file alone for empty SoT text", () => {
-    const before = 'model = "keep"\n';
+  it.each([
+    ["empty", ""],
+    ["comments only", "# no managed settings\n"],
+    ["malformed header", 'not a setting\n[table]\nmodel = "other"\n'],
+  ])("leaves the user config intact when the SoT header is %s", (_case, sot) => {
+    const before = 'model = "user"\n[custom]\nkeep = true\n';
     const file = userFile(before);
 
-    mergeTopLevelSettings("", file);
+    mergeTopLevelSettings(sot, file);
 
     expect(readFileSync(file, "utf8")).toBe(before);
   });
@@ -94,25 +81,15 @@ describe("codex TOML contract", () => {
 
     mergeTableSettings('[mcp_servers.foo]\ncommand = "new"\n', file);
 
-    const next = readFileSync(file, "utf8");
-    expect(next).toContain('command = "new"');
-    expect(next).not.toContain('command = "old"');
-    expect(next).toContain("[custom]");
-    expect(next.match(/\[mcp_servers\.foo\]/g)).toHaveLength(1);
+    expect(readFileSync(file, "utf8")).toBe(
+      '[custom]\nkeep = true\n\n[mcp_servers.foo]\ncommand = "new"\n',
+    );
   });
 
-  it("leaves the user file alone for a malformed SoT header", () => {
-    const before = "[custom]\nkeep = true\n";
-    const file = userFile(before);
-
-    mergeTableSettings("[unclosed\nkey = 1\n", file);
-
-    expect(readFileSync(file, "utf8")).toBe(before);
-  });
-
-  // Line parser for top-level strings.
-  it("reads the first duplicate top-level value", () => {
-    expect(topLevelTomlString('model = "a"\nmodel = "b"\n', "model")).toBe("a");
+  it("reads the deployed top-level model rather than a table-scoped model", () => {
+    expect(
+      topLevelTomlString('  model = "user-choice" # note\n[table]\nmodel = "other"\n', "model"),
+    ).toBe("user-choice");
   });
 
   it("returns undefined for empty input and table-scoped keys", () => {
@@ -120,8 +97,7 @@ describe("codex TOML contract", () => {
     expect(topLevelTomlString('[table]\nmodel = "x"\n', "model")).toBeUndefined();
   });
 
-  it("ignores single-quoted and unquoted values", () => {
-    expect(topLevelTomlString("model = 'x'\n", "model")).toBeUndefined();
+  it("ignores a non-string model", () => {
     expect(topLevelTomlString("model = 42\n", "model")).toBeUndefined();
   });
 });

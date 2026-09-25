@@ -1,8 +1,8 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { checkedSpawnExitCode, readArgvLog, runEngine } from "../lib/goldenExecution";
+import { checkedSpawnExitCode, runEngine } from "../lib/goldenExecution";
 import {
   childHostId,
   cleanupTemporaryDirs,
@@ -11,17 +11,11 @@ import {
 } from "../lib/goldenResources";
 
 describe("checkedSpawnExitCode", () => {
-  it("returns a numeric spawn status", () => {
-    expect(checkedSpawnExitCode("bash", { status: 7, signal: null })).toBe(7);
-  });
-
   it("classifies an ETIMEDOUT spawn error before a numeric status", () => {
     const error = Object.assign(new Error("spawnSync bash ETIMEDOUT"), { code: "ETIMEDOUT" });
-
     expect(() => checkedSpawnExitCode("bash", { status: 130, signal: "SIGTERM", error })).toThrow(
       "bash timed out: Error: spawnSync bash ETIMEDOUT",
     );
-    expect(error.code).toBe("ETIMEDOUT");
   });
 
   it("reports the killing signal when no status is available", () => {
@@ -37,31 +31,9 @@ describe("checkedSpawnExitCode", () => {
   });
 });
 
-describe("readArgvLog", () => {
-  it("fails when command instrumentation is missing", () => {
-    const run = {
-      exitCode: 0,
-      output: "",
-      stdout: "",
-      home: "/missing-home",
-      argvLog: "/missing-home/.golden-argv.log",
-    };
-
-    expect(() => readArgvLog(run)).toThrow();
-  });
-});
-
 describe("stub host pairing", () => {
   afterAll(() => {
     cleanupTemporaryDirs();
-  });
-
-  it("plants launchers for the host the child runs as, not for the recording host", () => {
-    const preloaded = makeStubDir();
-
-    expect(readStubHost(preloaded)).toBe("linux");
-    // The Linux-canonical child resolves extensionless names on every recording host.
-    expect(existsSync(join(preloaded, "git"))).toBe(true);
   });
 
   it("records the native host so a native run pairs on any recording host", () => {

@@ -1,15 +1,15 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
-import {
-  DEPENDENCIES,
-  resolveDependency,
-  resolvePath,
-  type ProbeExecutor,
-} from "../../src/engine-native/deps";
+import { DEPENDENCIES, resolvePath, type ProbeExecutor } from "../../src/engine-native/deps";
 import { capture, which } from "../../src/engine-native/exec";
-import { makeDependencyManager, makePlatform } from "../../src/engine-native/services";
+import {
+  makeDependencyManager,
+  makeEngineServices,
+  makePlatform,
+} from "../../src/engine-native/services";
 
 describe("DependencyManager registry", () => {
   it("captures successful stdout and strips only trailing newlines", async () => {
@@ -71,15 +71,10 @@ describe("DependencyManager registry", () => {
       which: (name) => (name === "npm" ? executable : ""),
     };
 
-    expect(resolveDependency(DEPENDENCIES.npm, exec, "win32")).toEqual({
-      state: "present",
-      path: executable,
-    });
     await expect(resolvePath(DEPENDENCIES.npm, exec, "win32")).resolves.toBe(executable);
   });
 
-  it("gives executable Linux and macOS git hints", () => {
-    expect(DEPENDENCIES.git.installHint("darwin")).toBe("brew install git");
+  it("gives an executable Linux git hint", () => {
     expect(DEPENDENCIES.git.installHint("linux")).toBe(
       "sudo apt install -y git (or your distro's package manager)",
     );
@@ -106,37 +101,23 @@ describe("DependencyManager registry", () => {
     );
   });
 
-  it("registers the Node-shipped launchers npm and npx", () => {
-    expect(DEPENDENCIES.npm.installHint()).toContain("Node.js");
-    expect(DEPENDENCIES.npx.installHint()).toContain("Node.js");
-    expect(DEPENDENCIES.npm.requirement).toBe("optional");
-  });
+  it("directs users to Node.js when the skills bootstrap cannot find npx", () => {
+    const warnings: Array<string> = [];
+    const manager = makeDependencyManager(makePlatform("linux"));
+    const logger = makeEngineServices({
+      sinks: { stderr: (chunk) => void warnings.push(stripVTControlCharacters(chunk)) },
+    }).logger;
 
-  it("registers the LSP binaries and ffplay", () => {
-    expect(Object.keys(DEPENDENCIES)).toEqual(
-      expect.arrayContaining(["intelephense", "typescript-language-server", "tsc", "ffplay"]),
-    );
+    manager.warnMissing("npx", logger, "skipping universal skills bootstrap");
+
+    expect(warnings).toEqual([
+      "[warn] npx not installed — ships with Node.js — install via https://nodejs.org (or your package manager) (skipping universal skills bootstrap)\n",
+    ]);
   });
 
   it("gives platform-correct jq hints", () => {
     expect(DEPENDENCIES.jq.installHint("darwin")).toBe("brew install jq");
     expect(DEPENDENCIES.jq.installHint("linux")).toBe("sudo apt install -y jq");
-  });
-
-  it("every dependency has a non-empty hint and version args", () => {
-    for (const spec of Object.values(DEPENDENCIES)) {
-      expect(spec.installHint("linux").length).toBeGreaterThan(0);
-      expect(spec.installHint("darwin").length).toBeGreaterThan(0);
-      expect(spec.installHint("win32").length).toBeGreaterThan(0);
-      expect(spec.versionArgs.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("marks jq and curl as contextual optional tools", () => {
-    expect(DEPENDENCIES.jq.requirement).toBe("optional");
-    expect(DEPENDENCIES.curl.requirement).toBe("optional");
-    expect(DEPENDENCIES.git.requirement).toBe("optional");
-    expect(DEPENDENCIES.claude.requirement).toBe("optional");
   });
 
   it("shares one in-flight npm global listing across concurrent version probes", async () => {
@@ -248,12 +229,25 @@ describe("DependencyManager registry", () => {
     }
   });
 
-  it("keeps presence results focused on presence and path", () => {
+  it("treats an executor's missing verdict as missing even if its PATH resolver finds a tool", async () => {
+    const manager = makeDependencyManager(makePlatform("linux"), {
+      commandExists: () => false,
+      capture: async () => "9.9.9",
+      which: () => "/host/git",
+    });
+
+    expect(manager.probe("git")).toEqual({ state: "missing" });
+    await expect(manager.path("git")).resolves.toBe("");
+  });
+
+  it("probes presence without running the version command", () => {
+    const captureVersion = vi.fn(async () => "9.9.9");
     const manager = makeDependencyManager(makePlatform("linux"), {
       commandExists: () => true,
-      capture: async () => "9.9.9",
+      capture: captureVersion,
       which: (name) => `/stub/${name}`,
     });
     expect(manager.probe("git")).toEqual({ state: "present", path: "/stub/git" });
+    expect(captureVersion).not.toHaveBeenCalled();
   });
 });

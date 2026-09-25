@@ -96,13 +96,14 @@ describe("live model catalogs", () => {
     });
   });
 
-  it("reuses the Claude cache inside six hours and bypasses it on refresh", async () => {
+  it("reuses, refreshes, and expires Claude model cache rows", async () => {
     writeHarnessSelection(home, ["claude"]);
-    writeCredentials(NOW + 6 * 3600_000);
+    writeCredentials(NOW + 8 * 3600_000);
     let now = NOW;
+    let liveId = "claude-cache-1";
     const fetch = vi.fn(async () =>
       Response.json({
-        data: [{ id: "claude-cache-1", display_name: "Fresh model" }],
+        data: [{ id: liveId, display_name: "Fresh model" }],
         has_more: false,
       }),
     );
@@ -110,12 +111,11 @@ describe("live model catalogs", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
 
     fetch.mockClear();
+    liveId = "claude-cache-2";
     now += 3600_000;
     const cached = await resolveCatalog("claude", inputs({ fetch, now: () => now }));
     expect(fetch).not.toHaveBeenCalled();
-    expect(cached.source).toBe("anthropic-api");
-    expect(cached.fetchedAt).toBe(first.fetchedAt);
-    expect(cached.models).toEqual(first.models);
+    expect(cached).toEqual(first);
 
     const refreshed = await resolveCatalog(
       "claude",
@@ -123,11 +123,20 @@ describe("live model catalogs", () => {
     );
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(refreshed.fetchedAt).toBe(new Date(now).toISOString());
-    expect(refreshed.models).toContainEqual({
-      id: "claude-cache-1",
-      kind: "id",
-      note: "Fresh model",
-    });
+    expect(refreshed.models).toEqual([
+      ...curatedCatalog("claude").models.filter((model) => model.kind === "alias"),
+      { id: "claude-cache-2", kind: "id", note: "Fresh model" },
+    ]);
+
+    liveId = "claude-cache-3";
+    now += 6 * 3600_000 + 1;
+    const stale = await resolveCatalog("claude", inputs({ fetch, now: () => now }));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(stale.fetchedAt).toBe(new Date(now).toISOString());
+    expect(stale.models).toEqual([
+      ...curatedCatalog("claude").models.filter((model) => model.kind === "alias"),
+      { id: "claude-cache-3", kind: "id", note: "Fresh model" },
+    ]);
   });
 
   it("uses curated models without fetching when the Claude Code login has expired", async () => {
@@ -152,14 +161,40 @@ describe("live model catalogs", () => {
     );
 
     const first = await resolveCatalog("claude", inputs({ fetch }));
-    await resolveCatalog("claude", inputs({ fetch }));
-
     expect(first).toEqual({
       ...curatedCatalog("claude"),
       fallbackReason: "Anthropic API returned no models",
     });
+    expect(await resolveCatalog("claude", inputs({ fetch }))).toEqual(first);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+
+  it.each([
+    {
+      failure: "HTTP 401",
+      fetch: async () => new Response(null, { status: 401 }),
+      reason: "Anthropic API returned HTTP 401",
+    },
+    {
+      failure: "a network error",
+      fetch: async () => {
+        throw new Error("offline");
+      },
+      reason: "Anthropic API unreachable: offline",
+    },
+  ])(
+    "keeps curated IDs when Anthropic returns $failure",
+    async ({ fetch: failingFetch, reason }) => {
+      writeHarnessSelection(home, ["claude"]);
+      writeCredentials(NOW + 3600_000);
+      const fetch = vi.fn(failingFetch);
+
+      const fallback = { ...curatedCatalog("claude"), fallbackReason: reason };
+      expect(await resolveCatalog("claude", inputs({ fetch }))).toEqual(fallback);
+      expect(await resolveCatalog("claude", inputs({ fetch }))).toEqual(fallback);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it("ignores hidden Codex cache models and keeps curated notes on matching IDs", async () => {
     writeHarnessSelection(home, ["codex"]);
@@ -210,6 +245,20 @@ describe("live model catalogs", () => {
     });
   });
 
+  it.each([
+    ["invalid JSON", "{ not JSON"],
+    ["missing models array", JSON.stringify({ models: {} })],
+  ])("falls back when the Codex cache contains %s", async (_reason, cache) => {
+    writeHarnessSelection(home, ["codex"]);
+    mkdirSync(join(home, ".codex"));
+    writeFileSync(join(home, ".codex", "models_cache.json"), cache);
+
+    expect(await resolveCatalog("codex", inputs())).toEqual({
+      ...curatedCatalog("codex"),
+      fallbackReason: "Codex model cache is unreadable",
+    });
+  });
+
   it("does not look up Claude when the selected harness is only Codex", async () => {
     writeHarnessSelection(home, ["codex"]);
 
@@ -233,5 +282,54 @@ describe("live model catalogs", () => {
       fallbackReason: "omp not found on PATH",
     });
     expect(capture).not.toHaveBeenCalled();
+  });
+
+  it("keeps only usable chat selectors in the omp model list", async () => {
+    writeHarnessSelection(home, ["omp"]);
+    const capture = vi.fn(async () =>
+      JSON.stringify({
+        models: [
+          { kind: "embedding", selector: "vendor/embeddings", name: "Not a chat model" },
+          { kind: "chat", name: "Missing selector" },
+          { kind: "chat", selector: " ", name: "Blank selector" },
+          { kind: "chat", selector: "vendor/chat-one", name: "Chat One" },
+          { kind: "chat", selector: "vendor/chat-two" },
+        ],
+      }),
+    );
+
+    expect(await resolveCatalog("omp", inputs({ which: () => "/stub/omp", capture }))).toEqual({
+      tool: "omp",
+      source: "omp-cli",
+      verified: "?",
+      fetchedAt: new Date(NOW).toISOString(),
+      models: [
+        { id: "vendor/chat-one", kind: "id", note: "Chat One" },
+        { id: "vendor/chat-two", kind: "id" },
+      ],
+    });
+    expect(capture).toHaveBeenCalledExactlyOnceWith("/stub/omp", ["models", "--json"]);
+  });
+
+  it.each([
+    ["bad JSON", "{ not JSON"],
+    [
+      "no chat selectors",
+      JSON.stringify({
+        models: [
+          { kind: "embedding", selector: "vendor/embeddings" },
+          { kind: "chat", name: "Missing selector" },
+        ],
+      }),
+    ],
+  ])("falls back when omp returns %s", async (_reason, raw) => {
+    writeHarnessSelection(home, ["omp"]);
+
+    expect(
+      await resolveCatalog("omp", inputs({ which: () => "/stub/omp", capture: async () => raw })),
+    ).toEqual({
+      ...curatedCatalog("omp"),
+      fallbackReason: "'omp models --json' returned no usable catalog",
+    });
   });
 });

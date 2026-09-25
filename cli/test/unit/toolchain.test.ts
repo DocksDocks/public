@@ -1,5 +1,10 @@
 import { rmSync } from "node:fs";
+import { stripVTControlCharacters } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
+import type { Ctx } from "../../src/engine-native";
+import { modeToolchain } from "../../src/engine-native/modes";
+import { makeEngineServices } from "../../src/engine-native/services";
+import { report } from "../../src/engine-native/toolchain";
 import { runPublicCli } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
@@ -19,13 +24,46 @@ describe("toolchain report", () => {
         expect(run.exitCode).toBe(0);
         const claude = run.stdout.split("\n").find((line) => line.startsWith("claude"));
         expect(claude).toMatch(/^claude\s+check\s+\?\s+2\.1\.280\s+-\s+unknown$/);
-        expect(claude).not.toMatch(/\bok$/);
       } finally {
         rmSync(run.home, { recursive: true, force: true });
       }
     },
     SPAWN_TIMEOUT_MS,
   );
+});
+
+describe("engine toolchain version report", () => {
+  it.each([
+    ["0.0.1", "below-floor"],
+    ["999.0.0", "above-verified"],
+    ["", "unknown"],
+  ])("classifies installed Bun version %j as %s", async (version, status) => {
+    const stdout: Array<string> = [];
+    const services = makeEngineServices({ sinks: { stdout: (chunk) => void stdout.push(chunk) } });
+    const ctx = {
+      services: {
+        ...services,
+        deps: {
+          ...services.deps,
+          probe: (tool: string) =>
+            tool === "bun"
+              ? { state: "present" as const, path: "/stub/bun" }
+              : { state: "missing" as const },
+          version: async (tool: string) => (tool === "bun" ? version : ""),
+        },
+      },
+    } as Ctx;
+
+    await report(ctx);
+
+    const bun = stdout
+      .join("")
+      .split("\n")
+      .find((line) => line.startsWith("bun "));
+    const cells = bun?.trim().split(/\s+/);
+    expect(cells?.slice(0, 3)).toEqual(["bun", "managed", version || "?"]);
+    expect(cells?.at(-1)).toBe(status);
+  });
 });
 
 describe("public toolchain ensure", () => {
@@ -49,4 +87,64 @@ describe("public toolchain ensure", () => {
     },
     SPAWN_TIMEOUT_MS,
   );
+
+  it.each([
+    ["1.4.0", "1.4.0"],
+    ["", "version unknown"],
+  ])(
+    "reports a present Bun with %j version without installing it",
+    async (version, description) => {
+      const stderr: Array<string> = [];
+      const services = makeEngineServices({
+        sinks: { stderr: (chunk) => void stderr.push(chunk) },
+      });
+      const ctx = {
+        home: "/fixture-home",
+        dryRun: false,
+        services: {
+          ...services,
+          deps: {
+            ...services.deps,
+            probe: () => ({ state: "present" as const, path: "/stub/bun" }),
+            path: async () => "/stub/bun",
+            version: async () => version,
+          },
+        },
+      } as unknown as Ctx;
+
+      expect(await modeToolchain(ctx, ["ensure", "bun", "--verbose"])).toBe(0);
+      expect(stderr.map(stripVTControlCharacters)).toEqual([
+        `[ok] bun up to date (${description})\n`,
+      ]);
+    },
+  );
+});
+
+describe("engine toolchain argument errors", () => {
+  it.each([
+    {
+      args: ["invalid-op"],
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+    },
+    {
+      args: ["ensure", "not-managed"],
+      diagnostic: "toolchain ensure supports managed tools only (bun)",
+    },
+  ])("exits 2 for $args without printing a report", async ({ args, diagnostic }) => {
+    const stdout: Array<string> = [];
+    const stderr: Array<string> = [];
+    const ctx = {
+      home: "/unused-invalid-toolchain-home",
+      services: makeEngineServices({
+        sinks: {
+          stdout: (chunk) => void stdout.push(chunk),
+          stderr: (chunk) => void stderr.push(chunk),
+        },
+      }),
+    } as Ctx;
+
+    expect(await modeToolchain(ctx, args)).toBe(2);
+    expect(stdout).toEqual([]);
+    expect(stderr).toEqual([expect.stringContaining(diagnostic)]);
+  });
 });

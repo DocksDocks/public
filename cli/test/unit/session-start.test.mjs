@@ -2,15 +2,22 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { main, sessionStartLines } from "../../../SoT/.claude/bin/session-start.mjs";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const SCRIPT = resolve(REPO_DIR, "SoT", ".claude", "bin", "session-start.mjs");
 const NOW = new Date("2026-07-10T12:34:56.000Z");
 
+const originalTimezone = process.env.TZ;
+
 beforeAll(() => {
   process.env.TZ = "UTC";
+});
+
+afterAll(() => {
+  if (originalTimezone === undefined) delete process.env.TZ;
+  else process.env.TZ = originalTimezone;
 });
 
 function secondLine(overrides = {}) {
@@ -56,13 +63,14 @@ describe("SessionStart native context", () => {
   });
 
   it("preserves context, compact-window, and subagent fallbacks", () => {
-    expect(secondLine({ env: { CLAUDE_CODE_DISABLE_1M_CONTEXT: "1" } })).toContain("Context: 200K");
+    expect(secondLine({ env: { CLAUDE_CODE_DISABLE_1M_CONTEXT: "1" } })).toBe(
+      "[CONFIG] Context: 200K | Compact-window: full | Effort: high | Thinking: adaptive | Subagent: default",
+    );
     expect(
       secondLine({ env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "", CLAUDE_CODE_SUBAGENT_MODEL: "" } }),
-    ).toContain("Compact-window: full");
-    expect(
-      secondLine({ env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "", CLAUDE_CODE_SUBAGENT_MODEL: "" } }),
-    ).toContain("Subagent: default");
+    ).toBe(
+      "[CONFIG] Context: 1M | Compact-window: full | Effort: high | Thinking: adaptive | Subagent: default",
+    );
   });
 
   it("main writes one valid structured hook payload with the two context lines", async () => {

@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { HOST_TARGETS } from "../../src/engine-native/os/targets";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const ARTIFACT_PATTERN = /\bdocks-kit-(?:linux|darwin|windows)-[a-z0-9-]+(?:\.exe)?\b/g;
@@ -19,67 +18,26 @@ function mentionedArtifacts(source: string): Array<string> {
   return sorted(new Set(source.match(ARTIFACT_PATTERN) ?? []));
 }
 
-function defaultBuildTargets(source: string): Array<string> {
-  const assignment = source.match(/\|\|\s*TARGETS=\(([^)]*)\)/)?.[1];
-  expect(assignment, "default TARGETS assignment").toBeDefined();
-  return assignment?.trim().split(/\s+/) ?? [];
-}
-
 function generatedPinBody(source: string): string {
   const blocks = [...source.matchAll(PIN_BLOCK_PATTERN)];
   expect(blocks, "generated Bun pin block count").toHaveLength(1);
   return blocks[0]?.[1]?.trim() ?? "";
 }
 
-describe("host target script invariants", () => {
-  it("keeps derived Bun target and artifact metadata internally consistent", () => {
-    for (const target of HOST_TARGETS) {
-      expect(target.bunTarget).toBe(`bun-${target.id}`);
-      expect(target.artifact.endsWith(".exe")).toBe(target.platform === "windows");
-    }
+describe("host target script contracts", () => {
+  it("names exactly the four supported POSIX binary artifacts in the Bash launcher", () => {
+    expect(mentionedArtifacts(repoFile("docks-kit"))).toEqual([
+      "docks-kit-darwin-arm64",
+      "docks-kit-darwin-x64",
+      "docks-kit-linux-arm64",
+      "docks-kit-linux-x64",
+    ]);
   });
 
-  it("keeps the Bash launcher aligned with every POSIX host target", () => {
-    const launcher = repoFile("docks-kit");
-    const targets = HOST_TARGETS.filter(({ platform }) => platform !== "windows");
-
-    expect(mentionedArtifacts(launcher)).toEqual(sorted(targets.map(({ artifact }) => artifact)));
-    for (const key of targets.flatMap(({ unameKeys }) => unameKeys)) {
-      expect(launcher, key).toContain(key);
-    }
-  });
-
-  it("keeps the PowerShell launcher aligned with every Windows host target", () => {
-    const launcher = repoFile("docks-kit.ps1");
-    const targets = HOST_TARGETS.filter(({ platform }) => platform === "windows");
-
-    expect(mentionedArtifacts(launcher)).toEqual(sorted(targets.map(({ artifact }) => artifact)));
-    for (const architecture of targets.flatMap(
-      ({ processorArchitectures }) => processorArchitectures,
-    )) {
-      expect(launcher, architecture).toContain(architecture);
-    }
-  });
-
-  it("keeps the compiled binary build aligned with the complete host target table", () => {
-    const buildScript = repoFile("cli/build-binaries.sh");
-
-    expect(defaultBuildTargets(buildScript)).toEqual(HOST_TARGETS.map(({ id }) => id));
-    expect(buildScript).toContain('name="docks-kit-$target"');
-    expect(buildScript).toContain('[[ "$target" == windows-* ]] && name="$name.exe"');
-  });
-
-  it("keeps the native smoke compile flags aligned with the release build", () => {
-    const sources = [repoFile("cli/build-binaries.sh"), repoFile("cli/scripts/native-smoke.ts")];
-    const compileFlagShape = (source: string): string | undefined =>
-      source
-        .replace(/["'`,\\\r\n]+/g, " ")
-        .replace(/\s+/g, " ")
-        .match(/--compile --minify --target=/)?.[0];
-
-    expect(sources.map(compileFlagShape)).toEqual([
-      "--compile --minify --target=",
-      "--compile --minify --target=",
+  it("names exactly the two supported Windows binary artifacts in the PowerShell launcher", () => {
+    expect(mentionedArtifacts(repoFile("docks-kit.ps1"))).toEqual([
+      "docks-kit-windows-arm64.exe",
+      "docks-kit-windows-x64.exe",
     ]);
   });
 

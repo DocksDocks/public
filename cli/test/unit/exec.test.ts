@@ -49,14 +49,19 @@ describe("spawnProcess host resolution", () => {
     expect(result.error?.message).toBe("command not found on PATH: docks-kit-absent-tool");
   });
 
-  it("spawns a resolved suffix shim instead of refusing it", async () => {
+  it("rejects an unrepresentable argument after resolving a Windows command shim", async () => {
     const result = await withPath(["docks-kit-probe.cmd"], () =>
-      spawnProcess("docks-kit-probe", ["--version"], { host: hostOs("windows") }),
+      spawnProcess("docks-kit-probe", ["bad%arg"], { host: hostOs("windows") }),
     );
 
-    // Host-independent: cmd.exe runs the shim on Windows and is absent on POSIX,
-    // so the only shared fact is that resolution did not refuse the name.
-    expect(result.error?.message ?? "").not.toContain("command not found on PATH");
+    expect(result).toMatchObject({
+      exitCode: null,
+      stdout: "",
+      stderr: "",
+      error: expect.objectContaining({
+        message: expect.stringContaining('argument "bad%arg" contains a percent sign (%)'),
+      }),
+    });
   });
 
   it("hands a POSIX host's command through unchanged", async () => {
@@ -70,5 +75,22 @@ describe("spawnProcess host resolution", () => {
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toBe("ok");
     expect(result.error).toBeUndefined();
+  });
+
+  it("returns the child's exit status and both captured streams on failure", async () => {
+    const result = await spawnProcess(
+      process.execPath,
+      [
+        "-e",
+        "process.stdout.write('before'); process.stderr.write('failure'); process.exitCode = 4",
+      ],
+      { host: hostOs("linux"), stdio: ["ignore", "pipe", "pipe"] },
+    );
+
+    expect(result).toEqual({
+      exitCode: 4,
+      stdout: "before",
+      stderr: "failure",
+    });
   });
 });

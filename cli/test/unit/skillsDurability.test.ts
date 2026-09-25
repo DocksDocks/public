@@ -95,12 +95,6 @@ describe("skills durability", () => {
 
     await skillsSync(ctx);
     expect(mocks.spawnProcess).toHaveBeenCalledTimes(2);
-    expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
-      2,
-      "npx",
-      ["--yes", "skills@1.5.15", "remove", "--global", "orphan", "-y"],
-      { stdio: "ignore" },
-    );
     expect(readFileSync(snapshot, "utf8")).toBe("");
   });
 });

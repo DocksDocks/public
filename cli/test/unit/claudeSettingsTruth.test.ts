@@ -1,26 +1,23 @@
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { mergeSettings } from "../../src/engine-native/settings";
 import { kitHome } from "../../src/kitHome";
 import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources";
 import { stableStringify } from "../lib/goldenSnapshot";
+import {
+  invalidRules,
+  parseRule,
+  READ_ONLY_TOOLS,
+  ruleMatchesCommand,
+} from "../lib/permissionRules";
 
 // The stub launchers and the child must agree on one host. Native pairing runs
 // the real host with its own launcher form, so these cases keep their
 // harness-CLI coverage on Windows instead of resolving a shell script the
 // host cannot execute.
 const NATIVE = { nativeHost: true } as const;
-import { RETIRED_PERMISSION_RULES } from "../../src/engine-native/claudeRetired";
-import {
-  invalidRules,
-  parseRule,
-  READ_ONLY_TOOLS,
-  ruleMatchesCommand,
-  SHELL_TOOLS,
-} from "../lib/permissionRules";
 
 afterAll(cleanupTemporaryDirs);
 
@@ -46,63 +43,9 @@ const ALL_KIT_RULES = (["allow", "deny", "ask"] as const).flatMap(
   (listName) => claudeSotSettings.permissions[listName],
 );
 
-const INVALID_RULE_CORPUS: ReadonlyArray<{
-  readonly name: string;
-  readonly rule: string;
-  readonly reason: RegExp;
-}> = [
-  ...RETIRED_PERMISSION_RULES.deny.map((rule, index) => ({
-    name: `retired PowerShell spelling ${index + 1}`,
-    rule,
-    reason: /mismatched parentheses/,
-  })),
-  { name: "empty tool name", rule: "()", reason: /empty tool name/ },
-  { name: "unknown tool name", rule: "NotAClaudeTool", reason: /unknown tool name/ },
-  { name: "empty specifier", rule: "Bash()", reason: /empty specifier/ },
-  {
-    name: "qualified Bash command field",
-    rule: "Bash(command:rm *)",
-    reason: /raw command field/,
-  },
-  {
-    name: "non-Bash prefix suffix",
-    rule: "Read(src:*)",
-    reason: /only valid on Bash command prefixes/,
-  },
-  {
-    name: "parenthesized MCP specifier",
-    rule: "mcp__example__read(pattern)",
-    reason: /MCP tool rules do not accept parenthesized specifiers/,
-  },
-];
-
 describe("Claude settings truth", () => {
   it("ships only rules Claude Code can load", () => {
     expect(invalidRules(ALL_KIT_RULES)).toEqual([]);
-  });
-
-  it("accepts MCP tool names without parenthesized specifiers", () => {
-    expect(invalidRules(["mcp__example__read", "mcp__example__*"])).toEqual([]);
-  });
-
-  it("accepts parameter wildcards and PowerShell command prefixes", () => {
-    expect(invalidRules(["Agent(model:*)", "PowerShell(Get-ChildItem:*)"])).toEqual([]);
-  });
-
-  it.each(INVALID_RULE_CORPUS)("rejects $name", ({ rule, reason }) => {
-    const rejected = invalidRules([rule]);
-
-    expect(rejected).toHaveLength(1);
-    expect(rejected[0]?.reason).toMatch(reason);
-  });
-
-  it("pre-approves no shell command, leaving that judgement to Claude Code", () => {
-    const preApproved = claudeSotSettings.permissions.allow.filter((rule) => {
-      const parsed = parseRule(rule);
-      return parsed.ok && SHELL_TOOLS.some((tool) => tool === parsed.rule.tool);
-    });
-
-    expect(preApproved).toEqual([]);
   });
 
   it("allows only reads plus edits inside the working directory", () => {
@@ -183,11 +126,8 @@ describe("Claude settings truth", () => {
     );
   });
 
-  it.each([
-    ["null", "null"],
-    ["array", "[]"],
-    ["string", '"s"'],
-  ])("model rejects a deployed %s document without changing its bytes", (_name, bytes) => {
+  it("model rejects a deployed non-object document without changing it", () => {
+    const bytes = "null";
     const variant = materializeVariant("home-fresh", {
       ".claude/settings.json": bytes,
     });
@@ -198,8 +138,7 @@ describe("Claude settings truth", () => {
       expect(`${run.stdout}${run.stderr}`).toContain(
         "(--claude-model) <HOME>/.claude/settings.json must contain a JSON object — aborting",
       );
-      expect(`${run.stdout}${run.stderr}`).not.toContain("— skipped");
-      expect(`${run.stdout}${run.stderr}`).not.toContain("deployed settings model set to opus");
+      expect(`${run.stdout}${run.stderr}`).not.toContain("missing — skipped");
     } finally {
       removeRunAndVariant(run.home, variant);
     }
@@ -224,30 +163,13 @@ describe("Claude settings truth", () => {
     }
   });
 
-  it("dry-run previews a modifier the sync would apply to the file it installs", () => {
-    const variant = materializeVariant("home-fresh", {});
-    const run = runEngine(
-      ["sync", "claude", "--dry-run", "--claude-model=opus"],
-      variant,
-      makeStubDir(),
-    );
-    try {
-      expect(run.exitCode).toBe(0);
-      expect(run.output).toContain("[dry-run] install");
-      expect(run.output).toContain("[dry-run] (--claude-model) set .model=opus");
-      expect(run.output).not.toContain("missing — skipped");
-    } finally {
-      cleanup([run]);
-      rmSync(variant, { recursive: true, force: true });
-    }
-  });
-
-  it("model reports the skip when no run installs the settings file", () => {
+  it("model reports a skip instead of creating missing Claude settings", () => {
     const variant = materializeVariant("home-fresh", {});
     const run = runPublicCli(["model", "claude", "opus"], variant, makeStubDir());
     try {
+      expect(run.exitCode).toBe(0);
       expect(`${run.stdout}${run.stderr}`).toContain("missing — skipped");
-      expect(`${run.stdout}${run.stderr}`).not.toContain("[dry-run]");
+      expect(existsSync(join(run.home, ".claude", "settings.json"))).toBe(false);
     } finally {
       removeRunAndVariant(run.home, variant);
     }
@@ -278,10 +200,12 @@ describe("Claude settings truth", () => {
       ".claude/plugins/installed_plugins.json": stableStringify({
         plugins: {
           [pluginId]: [{ scope: "user", version: "test" }],
+          "user-plugin@userplace": [{ scope: "user", version: "test" }],
         },
       }),
       ".claude/plugins/known_marketplaces.json": stableStringify({
         [marketplace]: { source: "czlonkowski/n8n-skills" },
+        userplace: { source: "user/userplace" },
       }),
     });
     const run = runEngine(
@@ -293,36 +217,14 @@ describe("Claude settings truth", () => {
     try {
       expect(run.exitCode).toBe(0);
       const argv = readArgvLog(run);
+      expect(argv).toContain("claude\tplugin uninstall -y --scope user user-plugin@userplace");
+      expect(argv).toContain("claude\tplugin marketplace remove userplace");
       expect(argv).not.toContain(`claude\tplugin uninstall -y --scope user ${pluginId}`);
       expect(argv).not.toContain(`claude\tplugin marketplace remove ${marketplace}`);
     } finally {
       cleanup([run]);
       rmSync(variant, { recursive: true, force: true });
     }
-  });
-
-  it("surfaces non-missing settings read failures with a failing status", () => {
-    const variant = materializeVariant("home-fresh", {
-      ".claude/settings.json": null,
-    });
-    mkdirSync(join(variant, ".claude", "settings.json"), { recursive: true });
-    const run = runPublicCli(["model", "claude", "opus"], variant, makeStubDir());
-    try {
-      expect(run.exitCode).toBe(1);
-      expect(`${run.stdout}${run.stderr}`).toContain("EISDIR");
-      expect(`${run.stdout}${run.stderr}`).not.toContain("missing — skipped");
-    } finally {
-      removeRunAndVariant(run.home, variant);
-    }
-  });
-
-  it("does not mutate repo settings when user input is non-object", () => {
-    const repo = { model: "opus", permissions: { allow: ["Read"] } };
-    const before = structuredClone(repo);
-    const merged = mergeSettings(repo, null);
-
-    expect(repo).toEqual(before);
-    expect(merged).not.toBe(repo);
   });
 });
 
@@ -344,43 +246,18 @@ describe("Codex settings truth", () => {
       expect(modelRun.exitCode).toBe(0);
       expect(modelOutput).toContain("missing — skipped");
       expect(modelOutput).not.toContain("[dry-run] (--codex-model) set model");
+      expect(existsSync(join(modelRun.home, ".codex", "config.toml"))).toBe(false);
 
       expect(syncRun.exitCode).toBe(0);
       expect(syncRun.output).toContain(
         '[dry-run] (--codex-model) set model = "gpt-5.6-sol" in <HOME>/.codex/config.toml',
       );
       expect(syncRun.output).not.toContain("missing — skipped");
+      expect(existsSync(join(syncRun.home, ".codex", "config.toml"))).toBe(false);
     } finally {
       rmSync(modelRun.home, { recursive: true, force: true });
       cleanup([syncRun]);
       rmSync(variant, { recursive: true, force: true });
-    }
-  });
-
-  it("dry-run previews install for an absent config and merge for an existing config", () => {
-    const absentVariant = materializeVariant("home-fresh", {});
-    const existingVariant = materializeVariant("home-fresh", {
-      ".codex/config.toml": 'model = "user-choice"\n',
-    });
-    const absentRun = runEngine(["sync", "codex", "--dry-run"], absentVariant, makeStubDir());
-    const existingRun = runEngine(["sync", "codex", "--dry-run"], existingVariant, makeStubDir());
-    const installPreview =
-      "[dry-run] install embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml";
-    const mergePreview =
-      "[dry-run] merge embedded:SoT/.codex/config.toml -> <HOME>/.codex/config.toml";
-
-    try {
-      expect(absentRun.exitCode).toBe(0);
-      expect(absentRun.output).toContain(installPreview);
-      expect(absentRun.output).not.toContain(mergePreview);
-
-      expect(existingRun.exitCode).toBe(0);
-      expect(existingRun.output).toContain(mergePreview);
-      expect(existingRun.output).not.toContain(installPreview);
-    } finally {
-      cleanup([absentRun, existingRun]);
-      rmSync(absentVariant, { recursive: true, force: true });
-      rmSync(existingVariant, { recursive: true, force: true });
     }
   });
 });

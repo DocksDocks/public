@@ -230,6 +230,10 @@ describe("golden temporary resources", () => {
       mtimeMs: NOW_MS - 2 * 60 * 60 * 1000,
       uid: mocks.ownerUid + 1,
     });
+    const nextPath = addDirectory("golden-home-next", {
+      mtimeMs: NOW_MS,
+      ownerPid: deadPid,
+    });
     vi.spyOn(process, "kill").mockImplementation(() => {
       throw Object.assign(new Error("process missing"), { code: "ESRCH" });
     });
@@ -239,8 +243,9 @@ describe("golden temporary resources", () => {
 
     sweepStaleTemporaryDirs(NOW_MS);
 
-    expect(mocks.rmSync).toHaveBeenCalledTimes(1);
-    expect(mocks.lstatSync).toHaveBeenCalledWith(foreignPath);
+    expect(mocks.rmSync).toHaveBeenCalledWith(ownedPath, { recursive: true, force: true });
+    expect(mocks.rmSync).not.toHaveBeenCalledWith(foreignPath, expect.anything());
+    expect(mocks.rmSync).toHaveBeenCalledWith(nextPath, { recursive: true, force: true });
   });
 
   it("rejects unknown stub override names", () => {
@@ -250,26 +255,28 @@ describe("golden temporary resources", () => {
   });
 
   it("drops an inherited key that differs only in case from an override", () => {
+    const original = process.env["UserProfile"];
     process.env["UserProfile"] = "C:\\inherited";
     try {
       const env = childEnv({ USERPROFILE: "C:\\fixture" });
-
-      // One spelling survives, and it is the override's.
       expect(Object.keys(env).filter((name) => name.toUpperCase() === "USERPROFILE")).toEqual([
         "USERPROFILE",
       ]);
       expect(env["USERPROFILE"]).toBe("C:\\fixture");
     } finally {
-      delete process.env["UserProfile"];
+      if (original === undefined) delete process.env["UserProfile"];
+      else process.env["UserProfile"] = original;
     }
   });
 
   it("keeps every inherited key that no override shadows", () => {
+    const original = process.env["GOLDEN_UNRELATED"];
     process.env["GOLDEN_UNRELATED"] = "kept";
     try {
       expect(childEnv({ HOME: "/fixture" })["GOLDEN_UNRELATED"]).toBe("kept");
     } finally {
-      delete process.env["GOLDEN_UNRELATED"];
+      if (original === undefined) delete process.env["GOLDEN_UNRELATED"];
+      else process.env["GOLDEN_UNRELATED"] = original;
     }
   });
 });

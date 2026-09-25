@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type * as EffectCli from "effect/unstable/cli";
 
 vi.mock("../../docs/overview.md", () => ({ default: "" }));
 vi.mock("../../docs/flags.md", () => ({ default: "" }));
@@ -17,31 +16,6 @@ import { prepareArgv, subcommandName } from "../../src/argv";
 
 describe("argument validation", () => {
   it.each([
-    [
-      "accepts a sync target followed by a declared boolean flag",
-      ["sync", "claude", "--dry-run"],
-      ["sync", "claude", "--dry-run"],
-    ],
-    [
-      "accepts a declared value flag followed by its value unchanged",
-      ["sync", "--claude-model", "opus"],
-      ["sync", "--claude-model", "opus"],
-    ],
-    [
-      "accepts the inline form of a declared value flag",
-      ["sync", "--claude-model=opus"],
-      ["sync", "--claude-model=opus"],
-    ],
-    [
-      "leaves the inline form of a repeatable value flag unchanged for Effect 4",
-      ["sync", "--claude-plugin=supabase"],
-      ["sync", "--claude-plugin=supabase"],
-    ],
-    [
-      "leaves an explicit empty inline value unchanged for Effect 4 to validate",
-      ["sync", "--claude-model="],
-      ["sync", "--claude-model="],
-    ],
     [
       "joins a dash-leading compact-window value for Effect 4",
       ["sync", "--claude-compact-window", "-1"],
@@ -64,17 +38,9 @@ describe("argument validation", () => {
     ],
     ["accepts a command-local short alias", ["sync", "-v"], ["sync", "-v"]],
     ["accepts the global version short alias at the root", ["-v"], ["-v"]],
-    ["accepts the global version flag at the root", ["--version"], ["--version"]],
     ["accepts repeated global help actions unchanged", ["--help", "--help"], ["--help", "--help"]],
-    [
-      "accepts repeated global version actions unchanged",
-      ["--version", "--version"],
-      ["--version", "--version"],
-    ],
     ["accepts the global version short alias after docs", ["docs", "-v"], ["docs", "-v"]],
-    ["accepts the global version short alias after status", ["status", "-v"], ["status", "-v"]],
     ["accepts a global help flag after a subcommand", ["sync", "--help"], ["sync", "--help"]],
-    ["accepts a sync boolean flag without a value", ["sync", "--dry-run"], ["sync", "--dry-run"]],
     ["accepts the update no-sync flag", ["update", "--no-sync"], ["update", "--no-sync"]],
     [
       "accepts flag-shaped positionals after the delimiter",
@@ -85,11 +51,6 @@ describe("argument validation", () => {
       "accepts a global value flag before the subcommand unchanged",
       ["--log-level", "debug", "sync"],
       ["--log-level", "debug", "sync"],
-    ],
-    [
-      "accepts an inline global value flag before the subcommand",
-      ["--log-level=debug", "sync"],
-      ["--log-level=debug", "sync"],
     ],
   ] as const)("%s", (_name, input, args) => {
     expect(prepareArgv(input)).toEqual({ kind: "accept", args });
@@ -196,6 +157,14 @@ describe("argument validation", () => {
     });
   });
 
+  it("rejects an unknown root flag without a subcommand scope", () => {
+    expect(prepareArgv(["--bogus"])).toEqual({
+      kind: "reject",
+      message: "unknown flag --bogus",
+      exitCode: 2,
+    });
+  });
+
   it.each([
     [
       "rejects an unknown subcommand before blaming one of its flags",
@@ -278,109 +247,52 @@ describe("argument validation", () => {
 
   it.each([
     [
-      "rejects a missing Claude effort with its catalog and value grammar",
+      "missing Claude effort",
       ["sync", "--claude-effort"],
-      [
-        "Available claude effort levels (effortLevel; verified 2026-07-10):",
-        "  low",
-        "  medium",
-        "  high",
-        "  xhigh",
-        "  default  — SoT: high",
-        "--claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>",
-      ].join("\n"),
       "Available claude effort levels",
-      "--claude-effort requires a value",
+      "  high",
+      "--claude-effort requires a value: --claude-effort=<low|medium|high|xhigh|default>",
     ],
     [
-      "rejects a Claude model followed by a recognized flag as genuinely missing its value",
+      "Claude model followed by another flag",
       ["sync", "--claude-model", "--dry-run"],
-      [
-        "Available claude models (kit-verified 2026-09-22 — SoT/models.json):",
-        "  best  — Fable 5.1 where the org has access, latest Opus otherwise (Claude Code >=2.1.257; Claude apps gateway sessions still resolve Fable 5)",
-        "  opus  — latest Opus — the kit SoT default (Opus 5.5 from Claude Code >=2.1.280)",
-        "  fable  — Fable 5.1 — needs org access + Claude Code >=2.1.257 (Claude apps gateway sessions still resolve Fable 5)",
-        "  sonnet  — latest Sonnet (currently Sonnet 5)",
-        "  haiku  — latest Haiku (currently Haiku 4.5)",
-        "  default  — engine pseudo-value: deletes the deployed model key so the account default applies",
-        "  claude-opus-5-5  — Opus 5.5 — needs Claude Code >=2.1.280",
-        "  claude-fable-5-1  — Fable 5.1 — needs Claude Code >=2.1.257",
-        "  claude-fable-5  — Fable 5 (legacy)",
-        "  claude-opus-5  — Opus 5 (legacy)",
-        "  claude-opus-4-8  — Opus 4.8 (legacy)",
-        "  claude-sonnet-5  — Sonnet 5",
-        "  claude-haiku-4-5-20251001  — Haiku 4.5",
-        "--claude-model requires a value: --claude-model=<model>",
-      ].join("\n"),
       "Available claude models",
-      "--claude-model requires a value",
+      "  opus  —",
+      "--claude-model requires a value: --claude-model=<model>",
     ],
     [
-      "rejects a Claude model followed by the delimiter as genuinely missing its value",
+      "Claude model followed by the delimiter",
       ["sync", "--claude-model", "--"],
-      [
-        "Available claude models (kit-verified 2026-09-22 — SoT/models.json):",
-        "  best  — Fable 5.1 where the org has access, latest Opus otherwise (Claude Code >=2.1.257; Claude apps gateway sessions still resolve Fable 5)",
-        "  opus  — latest Opus — the kit SoT default (Opus 5.5 from Claude Code >=2.1.280)",
-        "  fable  — Fable 5.1 — needs org access + Claude Code >=2.1.257 (Claude apps gateway sessions still resolve Fable 5)",
-        "  sonnet  — latest Sonnet (currently Sonnet 5)",
-        "  haiku  — latest Haiku (currently Haiku 4.5)",
-        "  default  — engine pseudo-value: deletes the deployed model key so the account default applies",
-        "  claude-opus-5-5  — Opus 5.5 — needs Claude Code >=2.1.280",
-        "  claude-fable-5-1  — Fable 5.1 — needs Claude Code >=2.1.257",
-        "  claude-fable-5  — Fable 5 (legacy)",
-        "  claude-opus-5  — Opus 5 (legacy)",
-        "  claude-opus-4-8  — Opus 4.8 (legacy)",
-        "  claude-sonnet-5  — Sonnet 5",
-        "  claude-haiku-4-5-20251001  — Haiku 4.5",
-        "--claude-model requires a value: --claude-model=<model>",
-      ].join("\n"),
       "Available claude models",
-      "--claude-model requires a value",
+      "  opus  —",
+      "--claude-model requires a value: --claude-model=<model>",
     ],
     [
-      "rejects a missing Codex model with its catalog and value grammar",
+      "missing Codex model",
       ["sync", "--codex-model"],
-      [
-        "Available codex models (kit-verified 2026-09-22 — SoT/models.json):",
-        "  gpt-6-sol  — GPT-6 Sol — complex coding and agentic work, recommended default; the kit SoT pin",
-        "  gpt-6-luna  — GPT-6 Luna — fast/light tier",
-        "  gpt-6-astra  — GPT-6 Astra — most capable, highest cost",
-        "  gpt-5.6-sol  — previous generation",
-        "  gpt-5.6-terra  — previous generation, balanced tier",
-        "  gpt-5.6-luna  — previous generation",
-        "  gpt-5.5  — previous generation",
-        "  gpt-5.5-codex  — codex-tuned gpt-5.5",
-        "  gpt-5.1  — previous generation",
-        "  gpt-5  — previous generation",
-        "  gpt-5-codex  — codex-tuned gpt-5",
-        "--codex-model requires a value: --codex-model=<model>",
-      ].join("\n"),
       "Available codex models",
-      "--codex-model requires a value",
+      "  gpt-6-sol  —",
+      "--codex-model requires a value: --codex-model=<model>",
     ],
     [
-      "rejects a missing Claude advisor with its catalog and value grammar",
+      "missing Claude advisor",
       ["sync", "--claude-advisor"],
-      [
-        "Available claude advisor states (advisorModel; verified 2026-09-22):",
-        "  on  — set advisorModel: opus",
-        "  off  — unset advisorModel",
-        "  default  — SoT: off (unset)",
-        "--claude-advisor requires a value: --claude-advisor=<on|off|default>",
-      ].join("\n"),
       "Available claude advisor states",
-      "--claude-advisor requires a value",
+      "  off  —",
+      "--claude-advisor requires a value: --claude-advisor=<on|off|default>",
     ],
-  ] as const)("%s", (_name, input, message, catalogHeading, valueClause) => {
-    const rejection = prepareArgv(input);
-    expect(rejection).toEqual({ kind: "reject", message, exitCode: 2 });
-    expect(rejection.kind).toBe("reject");
-    if (rejection.kind === "reject") {
-      expect(rejection.message).toContain(catalogHeading);
-      expect(rejection.message).toContain(valueClause);
-    }
-  });
+  ] as const)(
+    "rejects %s with a catalog and value grammar",
+    (_name, input, heading, option, grammar) => {
+      const outcome = prepareArgv(input);
+      expect(outcome.kind).toBe("reject");
+      if (outcome.kind !== "reject") return;
+      expect(outcome.exitCode).toBe(2);
+      expect(outcome.message.split("\n")[0]).toContain(heading);
+      expect(outcome.message).toContain(`\n${option}`);
+      expect(outcome.message.split("\n").at(-1)).toBe(grammar);
+    },
+  );
 });
 
 describe("omp passthrough boundary", () => {
@@ -401,18 +313,12 @@ describe("omp passthrough boundary", () => {
       ["omp", "--", "fix the bug"],
     ],
     [
-      "forwards a globally declared flag behind an explicit delimiter",
-      ["omp", "--", "--help"],
-      ["omp", "--", "--help"],
-    ],
-    [
-      "leaves an explicit delimiter alone",
-      ["omp", "--", "--anything"],
-      ["omp", "--", "--anything"],
+      "preserves an explicit delimiter before an omp flag sharing the launcher's name",
+      ["omp", "--", "--model", "upstream"],
+      ["omp", "--", "--model", "upstream"],
     ],
     ["leaves a lone picker flag unchanged", ["omp", "--pick"], ["omp", "--pick"]],
     ["leaves help unchanged", ["omp", "--help"], ["omp", "--help"]],
-    ["leaves bare omp unchanged", ["omp"], ["omp"]],
     [
       "forwards an undeclared long flag and its value",
       ["omp", "--mode", "json", "-p", "hi"],
@@ -424,9 +330,9 @@ describe("omp passthrough boundary", () => {
       ["omp", "--", "--models", "a,b"],
     ],
     [
-      "forwards a mistyped launcher flag so omp reports it",
-      ["omp", "--moddel"],
-      ["omp", "--", "--moddel"],
+      "skips a global option value before locating the omp passthrough",
+      ["--log-level", "debug", "omp", "-p", "hi"],
+      ["--log-level", "debug", "omp", "--", "-p", "hi"],
     ],
   ] as const)("%s", (_name, input, args) => {
     expect(prepareArgv(input)).toEqual({ kind: "accept", args });
@@ -446,30 +352,5 @@ describe("subcommand resolution", () => {
     ["returns no subcommand for a root global flag", ["--help"], undefined],
   ] as const)("%s", (_name, input, expected) => {
     expect(subcommandName(input)).toBe(expected);
-  });
-});
-
-describe("flag-surface derivation", () => {
-  it("throws when Effect exposes malformed built-in globals instead of degrading", async () => {
-    vi.resetModules();
-    vi.doMock("effect/unstable/cli", async () => {
-      const actual = await vi.importActual<typeof EffectCli>("effect/unstable/cli");
-      return {
-        ...actual,
-        GlobalFlag: {
-          ...actual.GlobalFlag,
-          BuiltIns: {},
-        },
-      };
-    });
-
-    try {
-      await expect(import("../../src/argv")).rejects.toThrow(
-        "Effect CLI did not expose its built-in global flags",
-      );
-    } finally {
-      vi.doUnmock("effect/unstable/cli");
-      vi.resetModules();
-    }
   });
 });

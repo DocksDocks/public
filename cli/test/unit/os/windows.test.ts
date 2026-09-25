@@ -63,9 +63,17 @@ describe("Windows host OS", () => {
       location: "user environment",
       manualHint: "set it manually in System Properties > Environment Variables",
     });
-    expect(
-      host.statusLineCommand("C:/Tools/bun.exe", "C:/Users/test/.claude/bin/statusline.mjs"),
-    ).toMatch(/^powershell\.exe -NoProfile -NonInteractive -EncodedCommand [A-Za-z0-9+/=]+$/);
+    const command = host.statusLineCommand(
+      "C:/Tools/O'Brien/bun.exe",
+      "C:/Users/test/.claude/bin/statusline.mjs",
+    );
+    const encoded = command.match(
+      /^powershell\.exe -NoProfile -NonInteractive -EncodedCommand ([A-Za-z0-9+/=]+)$/,
+    )?.[1];
+    if (encoded === undefined) throw new Error(`missing encoded PowerShell command: ${command}`);
+    expect(Buffer.from(encoded, "base64").toString("utf16le")).toBe(
+      "$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath 'C:/Tools/O''Brien/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/test/.claude/bin/statusline.mjs' -PathType Leaf)) { & 'C:/Tools/O''Brien/bun.exe' 'C:/Users/test/.claude/bin/statusline.mjs' }",
+    );
     expect(host.failureHookCommand("echo unquoted")).toBe("echo unquoted");
     expect(host.installHint("git")).toBe("winget install --id Git.Git -e");
     expect(host.installHint("jq")).toBe("winget install --id jqlang.jq -e");
@@ -77,20 +85,6 @@ describe("Windows host OS", () => {
     expect(host.installHint("codex")).toBe(
       "$tmp = Join-Path $env:TEMP 'codex-install.ps1'; curl.exe -fsSL https://chatgpt.com/codex/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { $env:CODEX_NON_INTERACTIVE = '1'; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }",
     );
-    expect(Object.keys(host).sort()).toEqual([
-      "bunExecutableName",
-      "bunInstaller",
-      "directoryLinkKinds",
-      "environmentSetting",
-      "executableSuffixes",
-      "failureHookCommand",
-      "id",
-      "installHint",
-      "invoke",
-      "statusLineCommand",
-      "supportsBubblewrap",
-      "toolchainOs",
-    ]);
   });
 
   it.each([

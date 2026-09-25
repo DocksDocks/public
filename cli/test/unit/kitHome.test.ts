@@ -13,15 +13,13 @@ const createKitRoot = (dir: string, ...nestedDirs: string[]): void => {
 };
 
 describe("kitHome", () => {
-  it("describes the package-root requirement for invalid DOCKS_KIT_HOME", () => {
+  it("rejects a misidentified DOCKS_KIT_HOME rather than falling back to the install", () => {
     const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"));
     writeFileSync(join(dir, "package.json"), '{"name":"another-package"}');
     const previous = process.env["DOCKS_KIT_HOME"];
     process.env["DOCKS_KIT_HOME"] = dir;
     try {
-      expect(() => kitHome()).toThrow(
-        `DOCKS_KIT_HOME=${dir} is not a docks-kit package root (package.json name must be "docks-kit")`,
-      );
+      expect(() => kitHome()).toThrow(/is not a docks-kit package root/);
     } finally {
       if (previous === undefined) delete process.env["DOCKS_KIT_HOME"];
       else process.env["DOCKS_KIT_HOME"] = previous;
@@ -29,38 +27,33 @@ describe("kitHome", () => {
     }
   });
 
-  it("reports a missing explicit-home manifest instead of a package-name mismatch", () => {
-    const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"));
-    try {
-      expect(() =>
-        resolveKitHome({
-          env: dir,
-          moduleDir: undefined,
-          execPath: join(dir, "bin", "docks-kit"),
-          cwd: dir,
-        }),
-      ).toThrow(`DOCKS_KIT_HOME=${dir} does not contain package.json`);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+  it.each([
+    ["a missing manifest", undefined, /does not contain package\.json/],
+    ["invalid JSON", "{", /contains invalid JSON/],
+  ] as const)(
+    "rejects an explicit home with %s even when an install exists",
+    (_case, manifest, error) => {
+      const dir = realpathSync(mkdtempSync(join(tmpdir(), "docks-kit-home-")));
+      try {
+        const invalidRoot = join(dir, "invalid");
+        const validRoot = join(dir, "valid");
+        mkdirSync(invalidRoot);
+        createKitRoot(validRoot, "cli/src");
+        if (manifest !== undefined) writeFileSync(join(invalidRoot, "package.json"), manifest);
 
-  it("reports invalid JSON in an explicit-home manifest", () => {
-    const dir = mkdtempSync(join(tmpdir(), "docks-kit-home-"));
-    writeFileSync(join(dir, "package.json"), "{");
-    try {
-      expect(() =>
-        resolveKitHome({
-          env: dir,
-          moduleDir: undefined,
-          execPath: join(dir, "bin", "docks-kit"),
-          cwd: dir,
-        }),
-      ).toThrow(`DOCKS_KIT_HOME=${dir} package.json contains invalid JSON`);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
+        expect(() =>
+          resolveKitHome({
+            env: invalidRoot,
+            moduleDir: join(validRoot, "cli", "src"),
+            execPath: join(validRoot, "bin", "docks-kit"),
+            cwd: validRoot,
+          }),
+        ).toThrow(error);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe("resolveKitHome", () => {
@@ -89,7 +82,7 @@ describe("resolveKitHome", () => {
     }
   });
 
-  it("prefers the running install over a checkout the process merely runs inside", () => {
+  it("ignores a blank DOCKS_KIT_HOME and prefers the running install over the checkout", () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "docks-kit-resolve-")));
     try {
       const installRoot = join(dir, "install");
@@ -99,7 +92,7 @@ describe("resolveKitHome", () => {
 
       expect(
         resolveKitHome({
-          env: undefined,
+          env: "",
           moduleDir: join(installRoot, "cli", "src"),
           execPath: join(dir, "bin", "docks-kit"),
           cwd: join(checkoutRoot, "work", "tree"),
@@ -110,7 +103,7 @@ describe("resolveKitHome", () => {
     }
   });
 
-  it("prefers the exec path ancestor over a competing cwd kit root", () => {
+  it("prefers the exec path over cwd when the module path is virtual or absent", () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "docks-kit-resolve-")));
     try {
       const root = join(dir, "checkout");
@@ -118,52 +111,38 @@ describe("resolveKitHome", () => {
       createKitRoot(root, "cli/dist");
       createKitRoot(cwdRoot, "work/tree");
 
-      expect(
-        resolveKitHome({
-          env: undefined,
-          moduleDir: "/$bunfs/root",
-          execPath: join(root, "cli", "dist", "docks-kit-linux-x64"),
-          cwd: join(cwdRoot, "work", "tree"),
-        }),
-      ).toBe(root);
+      for (const moduleDir of ["/$bunfs/root", undefined]) {
+        expect(
+          resolveKitHome({
+            env: undefined,
+            moduleDir,
+            execPath: join(root, "cli", "dist", "docks-kit-linux-x64"),
+            cwd: join(cwdRoot, "work", "tree"),
+          }),
+        ).toBe(root);
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("uses cwd only when the running sources are outside a kit root", () => {
+  it("ignores a non-kit module package and finds the working directory kit root", () => {
     const dir = realpathSync(mkdtempSync(join(tmpdir(), "docks-kit-resolve-")));
     try {
       const cwdRoot = join(dir, "checkout");
+      const unrelatedRoot = join(dir, "unrelated");
       createKitRoot(cwdRoot, "work/tree");
+      mkdirSync(join(unrelatedRoot, "lib"), { recursive: true });
+      writeFileSync(join(unrelatedRoot, "package.json"), '{"name":"other-package"}');
 
       expect(
         resolveKitHome({
           env: undefined,
-          moduleDir: join(dir, "virtual", "module"),
+          moduleDir: join(unrelatedRoot, "lib"),
           execPath: join(dir, "bin", "docks-kit"),
           cwd: join(cwdRoot, "work", "tree"),
         }),
       ).toBe(cwdRoot);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it("skips the module source when the loader leaves it undefined", () => {
-    const dir = realpathSync(mkdtempSync(join(tmpdir(), "docks-kit-resolve-")));
-    try {
-      const execRoot = join(dir, "install");
-      createKitRoot(execRoot, "bin");
-
-      expect(
-        resolveKitHome({
-          env: undefined,
-          moduleDir: undefined,
-          execPath: join(execRoot, "bin", "docks-kit"),
-          cwd: join(dir, "outside"),
-        }),
-      ).toBe(execRoot);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

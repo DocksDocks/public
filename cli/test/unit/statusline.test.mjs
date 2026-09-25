@@ -73,8 +73,9 @@ describe("statusline native formatter", () => {
       cwd: "/tmp",
       nowMs: NOW_MS,
     });
-    expect(capped).toContain("ctx 60%");
-    expect(capped).toContain("(50k/83k)");
+    expect(capped).toBe(
+      `${plainPrefix("Sonnet 4.6", "project")}${PIPE}\x1b[38;2;130;160;230mctx 60%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(50k/83k)\x1b[0m`,
+    );
 
     const tooSmall = formatStatusline(input, {
       env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "999" },
@@ -82,8 +83,9 @@ describe("statusline native formatter", () => {
       cwd: "/tmp",
       nowMs: NOW_MS,
     });
-    expect(tooSmall).toContain("ctx 25%");
-    expect(tooSmall).toContain("(50k/200k)");
+    expect(tooSmall).toBe(
+      `${plainPrefix("Sonnet 4.6", "project")}${PIPE}\x1b[38;2;130;160;230mctx 25%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(50k/200k)\x1b[0m`,
+    );
   });
 
   it("keeps integral and fractional million token formatting", () => {
@@ -95,7 +97,9 @@ describe("statusline native formatter", () => {
       },
       { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS },
     );
-    expect(integral).toContain("(1M/1M)");
+    expect(integral).toBe(
+      `${plainPrefix("Test", "tokens")}${PIPE}\x1b[38;2;130;160;230mctx 100%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(1M/1M)\x1b[0m`,
+    );
 
     const fractional = formatStatusline(
       {
@@ -105,19 +109,12 @@ describe("statusline native formatter", () => {
       },
       { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS },
     );
-    expect(fractional).toContain("(1.2M/1.2M)");
+    expect(fractional).toBe(
+      `${plainPrefix("Test", "tokens")}${PIPE}\x1b[38;2;130;160;230mctx 100%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(1.2M/1.2M)\x1b[0m`,
+    );
   });
 
-  it("degrades each nullable rate-limit and context field independently", () => {
-    const absent = formatStatusline(fixture("no-rate-limits.json"), {
-      branch: "",
-      cwd: "/tmp",
-      env: {},
-      nowMs: NOW_MS,
-    });
-    expect(absent).not.toContain("5h ");
-    expect(absent).not.toContain("7d ");
-
+  it("degrades nullable rate-limit and context fields independently", () => {
     const early = formatStatusline(fixture("early-null.json"), {
       branch: "",
       cwd: "/tmp",
@@ -134,9 +131,9 @@ describe("statusline native formatter", () => {
       },
       { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS },
     );
-    expect(fiveOnly).toContain("5h 0%");
-    expect(fiveOnly).not.toContain(" • ");
-    expect(fiveOnly).not.toContain("(");
+    expect(fiveOnly).toBe(
+      `${plainPrefix("Test", "quota")}${PIPE}\x1b[38;2;100;200;200m5h 0%\x1b[0m`,
+    );
 
     const sevenOnly = formatStatusline(
       {
@@ -149,9 +146,9 @@ describe("statusline native formatter", () => {
       },
       { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS },
     );
-    expect(sevenOnly).not.toContain("5h ");
-    expect(sevenOnly).toContain("7d 100%");
-    expect(sevenOnly).not.toContain("(");
+    expect(sevenOnly).toBe(
+      `${plainPrefix("Test", "quota")}${PIPE}\x1b[38;2;230;180;90m7d 100%\x1b[0m`,
+    );
   });
 
   it("uses integer epoch seconds when now has nonzero milliseconds", () => {
@@ -163,8 +160,9 @@ describe("statusline native formatter", () => {
       },
       { branch: "", cwd: "/tmp", env: {}, nowMs: NOW_MS },
     );
-    expect(output).toContain("5h 50%");
-    expect(output).toContain("(1m)");
+    expect(output).toBe(
+      `${plainPrefix("Test", "reset")}${PIPE}\x1b[38;2;100;200;200m5h 50%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(1m)\x1b[0m`,
+    );
   });
 
   it("narrows non-finite and malformed field values without widening the boundary", () => {
