@@ -12,7 +12,7 @@ $BunPin = "1.4.2"
 # END GENERATED BUN PIN
 
 # BEGIN GENERATED BUN FLOOR
-$BunFloor = "1.4.0"
+$BunFloor = "1.4.2"
 # END GENERATED BUN FLOOR
 
 $ProcessorArchitecture = if (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {

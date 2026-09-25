@@ -12,6 +12,15 @@ const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
  * a fixture argument, keeps passing while it proves nothing.
  */
 export function verifiedVersion(tool: string): string {
+  return manifestVersion(tool, "verified");
+}
+
+/** Read a tool's `floor` version from `SoT/toolchain.json`, for the same reason. */
+export function floorVersion(tool: string): string {
+  return manifestVersion(tool, "floor");
+}
+
+function manifestVersion(tool: string, key: "verified" | "floor"): string {
   const manifest: unknown = JSON.parse(
     readFileSync(join(REPO_DIR, "SoT", "toolchain.json"), "utf8"),
   );
@@ -23,12 +32,12 @@ export function verifiedVersion(tool: string): string {
     throw new Error(`toolchain manifest has no ${tool} entry`);
   }
   const entry = (tools as Record<string, unknown>)[tool];
-  if (entry === null || typeof entry !== "object" || !("verified" in entry)) {
-    throw new Error(`toolchain entry ${tool} has no verified version`);
+  if (entry === null || typeof entry !== "object" || !(key in entry)) {
+    throw new Error(`toolchain entry ${tool} has no ${key} version`);
   }
-  const verified = (entry as Record<string, unknown>)["verified"];
-  if (typeof verified !== "string" || verified === "") {
-    throw new Error(`toolchain entry ${tool} has a non-string verified version`);
+  const version = (entry as Record<string, unknown>)[key];
+  if (typeof version !== "string" || version === "") {
+    throw new Error(`toolchain entry ${tool} has a non-string ${key} version`);
   }
-  return verified;
+  return version;
 }
