@@ -74,10 +74,12 @@ describe("Codex plugin inventory fallback", () => {
 } else if (args[0] === "plugin" && args[1] === "list") {
   console.log('{"installed":"unavailable"}')
 }`;
+    const nativeHost = { nativeHost: true } as const;
     const run = runEngine(
       ["sync", "codex", "--skip-plugin-refresh"],
       "home-fresh",
-      makeStubDir({ codex: badInventory }, { nativeHost: true }),
+      makeStubDir({ codex: badInventory }, nativeHost),
+      nativeHost,
     );
 
     try {
