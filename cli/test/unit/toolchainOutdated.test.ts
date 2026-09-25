@@ -100,7 +100,7 @@ describe("toolchain outdated", () => {
       const address = String(url);
       if (address.includes("/repos/oven-sh/bun/")) return jsonResponse({ tag_name: "bun-v1.4.3" });
       if (address.includes("/repos/can1357/oh-my-pi/"))
-        return jsonResponse({ tag_name: "v18.0.8" });
+        return jsonResponse({ tag_name: `v${verifiedVersion("omp")}` });
       if (address === "https://registry.npmjs.org/typescript")
         return jsonResponse({ versions: { "6.0.3": {} } });
       return jsonResponse({ version: "0.0.1" });
@@ -110,8 +110,12 @@ describe("toolchain outdated", () => {
     expect(await outdatedReport(makeCtx(stdout), { refresh: false, fetchImpl })).toBe(0);
     const output = stdout.join("");
     expect(output).toMatch(/^bun\s+managed\s+1\.4\.2\s+1\.4\.3\s+newer\s+github oven-sh\/bun$/m);
+    const ompPin = verifiedVersion("omp").replaceAll(".", "\\.");
     expect(output).toMatch(
-      /^omp\s+check\s+18\.0\.8\s+18\.0\.8\s+current\s+github can1357\/oh-my-pi$/m,
+      new RegExp(
+        `^omp\\s+check\\s+${ompPin}\\s+${ompPin}\\s+current\\s+github can1357/oh-my-pi$`,
+        "m",
+      ),
     );
   });
 
