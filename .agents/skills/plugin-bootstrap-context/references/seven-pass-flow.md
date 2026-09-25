@@ -56,6 +56,8 @@ added in this run, and absent from an existing, readable
 is present. An unreadable inventory cannot prove absence, so the refresh runs.
 This lets a first `--claude-plugin=n8n` opt-in add its marketplace before any
 refresh, because Claude Code exits 1 on update of an unknown marketplace.
+Each skipped name prints one `--verbose` line, `Skipping refresh of
+marketplace <name>: not added yet; the next sync refreshes it`.
 
 ## Pass 4: Plugin Updates
 
