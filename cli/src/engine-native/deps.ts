@@ -132,7 +132,8 @@ const resolveBun = (exec: ProbeExecutor): ProbeResult => {
 
 const npmGlobalCache = new WeakMap<ProbeExecutor, Promise<{ [k: string]: string }>>();
 
-const npmGlobalVersions = (exec: ProbeExecutor): Promise<{ [k: string]: string }> => {
+/** npm-global package name → version, from `npm ls -g`; memoized per executor. */
+export const npmGlobalVersions = (exec: ProbeExecutor): Promise<{ [k: string]: string }> => {
   const hit = npmGlobalCache.get(exec);
   if (hit !== undefined) return hit;
   const pending = (async (): Promise<{ [k: string]: string }> => {

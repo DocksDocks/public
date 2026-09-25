@@ -13,7 +13,7 @@ metadata:
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-194"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-167"
+      lines: "1-173"
     - path: cli/src/engine-native/models.ts
       lines: "1-98"
     - path: cli/src/engine-native/liveModels.ts

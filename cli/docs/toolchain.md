@@ -60,11 +60,28 @@ The rustup channel follows the same rule. Sync adds the component only when the
 an old component.
 
 A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
-it, upgrade Node to 22.22.2 or newer, then install the pinned version by hand:
+the npm servers to their `verified` pins, run:
 
 ```bash
-npm install -g typescript-language-server@6.0.0
+docks-kit toolchain upgrade --dry-run   # print the npm command
+docks-kit toolchain upgrade             # run it
 ```
+
+`toolchain upgrade` (`claudeLsp.ts upgradeLspServers`) reads `npm ls -g` to see
+which of `intelephense`, `typescript-language-server`, and `typescript` npm
+owns. It runs one `npm install -g <pkg>@<verified>` for each npm-owned package
+below its pin. A package already at or above its pin stays as it is. It leaves
+these alone and warns:
+
+- A binary on PATH that npm does not own. It came from another installer, so
+  upgrade it with that installer.
+- `typescript-language-server` when Node is older than the `node` floor.
+
+When the PATH copy of an npm-owned server is outside `npm prefix -g`, it warns
+that the upgrade changes only the npm copy. A package that is not installed
+stays missing, because `sync claude` owns first installs. A failed npm call
+exits 1. After the install, it reads `npm ls -g` again and exits 1 when a
+package is not at its pin.
 
 ## Supply-chain stance
 
@@ -86,6 +103,7 @@ manifest's `verified` version.
 docks-kit toolchain check                    # doctor table (also inside docks-kit status)
 docks-kit toolchain ensure bun               # ensure the only managed tool
 docks-kit toolchain outdated [--refresh]     # verified pins vs newest upstream release
+docks-kit toolchain upgrade [--dry-run]      # npm LSP servers below verified -> verified
 ```
 
 `docks-kit toolchain outdated` reads each tool's optional `upstream` entry in

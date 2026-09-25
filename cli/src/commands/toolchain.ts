@@ -5,7 +5,7 @@ import { bail, engine } from "../engine";
 const MANAGED = ["bun"];
 
 const op = Argument.String("op").pipe(
-  Argument.withDescription("check (default) | ensure <tool> | outdated"),
+  Argument.withDescription("check (default) | ensure <tool> | outdated | upgrade"),
   Argument.optional,
 );
 const tool = Argument.String("tool").pipe(
@@ -21,10 +21,14 @@ const refresh = Flag.Boolean("refresh").pipe(
   Flag.withDescription("outdated: bypass the 24 h cache"),
   Flag.withDefault(false),
 );
+const dryRun = Flag.Boolean("dry-run").pipe(
+  Flag.withDescription("upgrade: print the npm command without running it"),
+  Flag.withDefault(false),
+);
 
 export const toolchainCommand = Command.make(
   "toolchain",
-  { op, tool, verbose, refresh },
+  { op, tool, verbose, refresh, dryRun },
   (config) =>
     Effect.gen(function* () {
       const operation = Option.getOrElse(config.op, () => "check");
@@ -49,14 +53,22 @@ export const toolchainCommand = Command.make(
             ...words,
             ...(config.refresh ? ["--refresh"] : []),
           ]);
+        case "upgrade":
+          return yield* engine([
+            "toolchain",
+            "upgrade",
+            ...words,
+            ...flags,
+            ...(config.dryRun ? ["--dry-run"] : []),
+          ]);
         default:
           return yield* bail(
-            `Unknown toolchain op '${operation}' (valid: check, ensure, outdated)`,
+            `Unknown toolchain op '${operation}' (valid: check, ensure, outdated, upgrade)`,
           );
       }
     }),
 ).pipe(
   Command.withDescription(
-    "Verified-version floors for external tools (SoT/toolchain.json): check prints the doctor table; ensure installs one managed tool when it is missing; outdated compares verified pins with the newest upstream release (network, report only).",
+    "Verified-version floors for external tools (SoT/toolchain.json): check prints the doctor table; ensure installs one managed tool when it is missing; outdated compares verified pins with the newest upstream release (network, report only); upgrade moves npm-installed LSP servers below their verified pin to that pin.",
   ),
 );

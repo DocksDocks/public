@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-25 - docks-kit 0.20.0: toolchain upgrade
+
+- `docks-kit toolchain upgrade [--dry-run]` moves the npm-installed language
+  servers (`intelephense`, `typescript-language-server`, `typescript`) that
+  sit below their `verified` pin to that exact pin, in one `npm install -g`
+  call. It reads `npm ls -g` to see which copies npm owns. It skips, with a
+  warning, a binary that another installer put on PATH, and
+  `typescript-language-server` when Node is below the `node` floor. It warns
+  when the PATH copy is not the npm copy. After the install it reads
+  `npm ls -g` again and exits 1 when a pin did not land. It never
+  downgrades. Sync still installs only missing servers and never upgrades
+  them.
+- Codex has a floor: 0.157.0, the release installed on the owner's machine
+  on 2026-09-25. `docks-kit toolchain` marks an older Codex `below-floor`.
+
 ## 2026-09-25 - docks-kit 0.19.3: Bun and omp floors
 
 - The Bun floor is 1.4.2, the same as the verified pin and the CI Bun. The

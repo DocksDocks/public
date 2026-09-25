@@ -8,7 +8,7 @@
                 "note": "hosts the npm globals installed for the Claude LSP plugins; the floor is typescript-language-server 6's engines requirement, so an older Node reports `below-floor` in `docks-kit toolchain` instead of silently installing an LSP server that cannot start" },
     "npm":    { "kind": "check", "note": "npm-global installer; also backs the intelephense version probe (`npm ls -g`)" },
     "claude": { "kind": "check", "floor": "2.1.280", "note": "kit floor — lets the `opus` alias resolve to Opus 5.5, the default Opus from Claude Code 2.1.280, and subsumes the older Fable 5.1 (>=2.1.257) and Opus 5 (>=2.1.219) requirements (mirrors settings minimumVersion)" },
-    "codex":  { "kind": "check", "note": "upstream-owned; standalone installer prints when missing" },
+    "codex":  { "kind": "check", "floor": "0.157.0", "note": "upstream-owned; standalone installer prints when missing. The floor is the Codex release installed on the owner machine on 2026-09-25, by owner decision; no older release was checked against the keys in SoT/.codex/config.toml" },
     "omp":    { "kind": "check", "floor": "18.3.1", "verified": "18.3.1",
                 "upstream": { "github": "can1357/oh-my-pi", "tagPrefix": "v" },
                 "note": "Oh My Pi harness (https://github.com/can1357/oh-my-pi); upstream-owned and self-updating through `omp update`, so sync never installs or upgrades it. The floor is the oldest release the kit tested: 18.3.1 lists and serves gpt-6-sol and gpt-6-luna, while 18.2.9 fuzzy-matched both selectors to GPT-5.6. `sync omp` needs the CLI only for the marketplace and plugin passes; the file deploys proceed without it" },

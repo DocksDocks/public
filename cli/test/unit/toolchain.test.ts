@@ -43,7 +43,9 @@ describe("public toolchain operands", () => {
       try {
         expect(run.exitCode).toBe(2);
         expect(run.stdout).toBe("");
-        expect(run.stderr).toContain("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
+        expect(run.stderr).toContain(
+          "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+        );
       } finally {
         rmSync(run.home, { recursive: true, force: true });
       }
@@ -144,19 +146,19 @@ describe("engine toolchain argument errors", () => {
   it.each([
     {
       args: ["invalid-op"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["check", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["outdated", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["ensure", "bun", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["ensure", "not-managed"],
