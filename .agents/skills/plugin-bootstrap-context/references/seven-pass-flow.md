@@ -49,7 +49,13 @@ silent refresh failure leaves the marketplace clone pinned at an old commit
 while install and enable-state still look clean. Pass 2 refreshes each source
 marketplace once before its install and records the same way; pass 3 skips a
 name already in `refreshedMarketplaces`, so one marketplace is fetched at most
-once per run and one failure produces one ledger row.
+once per run and one failure produces one ledger row. Passes 2 and 3 skip a
+marketplace that is not present: not built in (`claude-plugins-official`), not
+added in this run, and absent from an existing, readable
+`known_marketplaces.json`. A missing inventory means a fresh home, so nothing
+is present. An unreadable inventory cannot prove absence, so the refresh runs.
+This lets a first `--claude-plugin=n8n` opt-in add its marketplace before any
+refresh, because Claude Code exits 1 on update of an unknown marketplace.
 
 ## Pass 4: Plugin Updates
 

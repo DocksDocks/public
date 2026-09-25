@@ -19,6 +19,9 @@ import {
 import { payloadText } from "../payload";
 import type { JsonObject } from "./sharedTypes";
 
+/** Claude Code's built-in marketplace: always present, never added or pruned by the kit. */
+const OFFICIAL_MARKETPLACE = "claude-plugins-official";
+
 export async function cli(
   args: Array<string>,
 ): Promise<{ ok: boolean; out: string; detail: string }> {
@@ -113,20 +116,31 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     ? repoObj["extraKnownMarketplaces"]
     : {};
   const sotPlugins = isObject(repoObj["enabledPlugins"]) ? repoObj["enabledPlugins"] : {};
-
-  // Pass 1 — add missing marketplaces (SoT insertion order, like to_entries).
-  let addedMp = 0;
-  let f1 = 0;
-  for (const [mpName, mpValue] of Object.entries(sotMarketplaces)) {
+  const knownMarketplace = (mpName: string): boolean => {
     const known = readJsonFile(knownMarketplaces);
-    if (
+    return (
       known !== undefined &&
       isObject(known) &&
       known[mpName] !== undefined &&
       known[mpName] !== null &&
       known[mpName] !== false
-    )
-      continue;
+    );
+  };
+  const addedMarketplaces = new Set<string>();
+  // The official marketplace is built in; a successful add is usable before its inventory is written.
+  // A missing inventory proves absence (fresh home); an unreadable one does not, so refresh as before.
+  const marketplaceReady = (mpName: string): boolean => {
+    if (mpName === OFFICIAL_MARKETPLACE || addedMarketplaces.has(mpName)) return true;
+    if (!existsSync(knownMarketplaces)) return false;
+    const known = readJsonFile(knownMarketplaces);
+    return known === undefined || !isObject(known) || knownMarketplace(mpName);
+  };
+
+  // Pass 1 — add missing marketplaces (SoT insertion order, like to_entries).
+  let addedMp = 0;
+  let f1 = 0;
+  for (const [mpName, mpValue] of Object.entries(sotMarketplaces)) {
+    if (knownMarketplace(mpName)) continue;
     const repo =
       isObject(mpValue) && isObject(mpValue["source"])
         ? String((mpValue["source"] as JsonObject)["repo"] ?? "")
@@ -136,6 +150,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     clearProgress();
     if (marketplaceResult.ok) {
       addedMp++;
+      addedMarketplaces.add(mpName);
     } else {
       recordFailure(
         ctx,
@@ -156,7 +171,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     if (pluginUserScopeInstalled(installedPlugins, pluginId)) continue;
     const separator = pluginId.lastIndexOf("@");
     const mpName = separator > 0 ? pluginId.slice(separator + 1) : "";
-    if (mpName !== "" && !refreshedMarketplaces.has(mpName)) {
+    if (mpName !== "" && marketplaceReady(mpName) && !refreshedMarketplaces.has(mpName)) {
       progress(`Refreshing marketplace ${mpName}...`);
       const refreshResult = await cli(["plugin", "marketplace", "update", mpName]);
       clearProgress();
@@ -207,7 +222,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   // would duplicate one failure in the ledger and in the failed-operation count.
   if (!ctx.skipPluginRefresh) {
     for (const mpName of [...kitMarketplaces].sort(compareCodepoints)) {
-      if (refreshedMarketplaces.has(mpName)) continue;
+      if (refreshedMarketplaces.has(mpName) || !marketplaceReady(mpName)) continue;
       progress(`Refreshing marketplace ${mpName}...`);
       const refreshResult = await cli(["plugin", "marketplace", "update", mpName]);
       clearProgress();
@@ -263,7 +278,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     // Pass 6 — prune-gated marketplace removal.
     const known = readJsonFile(knownMarketplaces);
     for (const mpName of sortedKeys(known)) {
-      if (mpName === "claude-plugins-official") continue;
+      if (mpName === OFFICIAL_MARKETPLACE) continue;
       if (nonUserMarketplaces.has(mpName)) continue;
       if (kitMarketplaces.has(mpName)) continue;
       progress(`Removing marketplace ${mpName}...`);

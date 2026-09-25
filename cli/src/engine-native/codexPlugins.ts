@@ -14,6 +14,7 @@ import {
 
 import { payloadDisplayPath } from "../payload";
 import { PLUGIN_TABLE_HEADER } from "./codexConfig";
+import { isTomlHeaderLine } from "./codexToml";
 import { p, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
@@ -107,20 +108,20 @@ function mergeMarketplace(repo: Json, user: Json): Json {
 // -------------------------------------------------------------- plugins ----
 
 /** codex::_marketplace_source — first `source =` inside [marketplaces.<name>]. */
-function marketplaceSource(marketplace: string, configFile: string): string {
+export function marketplaceSource(marketplace: string, configFile: string): string {
   if (!existsSync(configFile)) return "";
   let inMarketplace = false;
   for (const line of readFileSync(configFile, "utf8").split("\n")) {
-    if (line === `[marketplaces.${marketplace}]`) {
+    if (line.trim() === `[marketplaces.${marketplace}]`) {
       inMarketplace = true;
       continue;
     }
-    if (line.startsWith("[")) inMarketplace = false;
+    if (isTomlHeaderLine(line)) inMarketplace = false;
     if (inMarketplace && /^[ \t]*source[ \t]*=/.test(line)) {
       return line
         .replace(/^[^=]+=[ \t]*/, "")
         .replace(/[ \t]*#.*/, "")
-        .replace(/^"|"$/g, "");
+        .replace(/^(["'])(.*)\1$/, "$2");
     }
   }
   return "";
@@ -175,7 +176,7 @@ function enabledPluginIdsFromText(configText: string): Array<string> {
       enabled = false;
       continue;
     }
-    if (line.startsWith("[")) {
+    if (isTomlHeaderLine(line)) {
       flush();
       plugin = "";
       enabled = false;

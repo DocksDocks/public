@@ -23,8 +23,8 @@ export const deployedClaudeSettings = (): any | undefined => {
 export function topLevelTomlString(text: string, setting: string): string | undefined {
   for (const line of text.split(/\r?\n/)) {
     if (/^\s*\[/.test(line)) return undefined;
-    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"/);
-    if (assignment?.[1] === setting) return assignment[2];
+    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]+)"|'([^']*)')/);
+    if (assignment?.[1] === setting) return assignment[2] ?? assignment[3];
   }
   return undefined;
 }

@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -201,6 +201,102 @@ describe("project-scoped plugin preservation", () => {
     } finally {
       cleanup([run]);
       rmSync(variant, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("first-time optional Claude marketplace", () => {
+  it("adds n8n before its marketplace can be refreshed", () => {
+    const claude = `const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs")
+const { dirname, join } = process.getBuiltinModule("node:path")
+const knownFile = join(process.env["HOME"] ?? "", ".claude", "plugins", "known_marketplaces.json")
+const known = existsSync(knownFile) ? JSON.parse(readFileSync(knownFile, "utf8")) : {}
+if (args[0] === "--version") {
+  console.log("2.1.280 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add") {
+  const name = args[3] === "czlonkowski/n8n-skills" ? "n8n-mcp-skills" : "docks"
+  known[name] = { source: args[3] }
+  mkdirSync(dirname(knownFile), { recursive: true })
+  writeFileSync(knownFile, JSON.stringify(known))
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "update") {
+  if (args[3] !== "claude-plugins-official" && !Object.hasOwn(known, args[3])) {
+    console.error(\`Marketplace '\${args[3]}' not found\`)
+    process.exitCode = 1
+  }
+}`;
+    const stubs = makeStubDir({ claude }, NATIVE_HOST);
+    const first = runEngine(
+      ["sync", "claude", "--claude-plugin=n8n"],
+      "home-fresh",
+      stubs,
+      NATIVE_HOST,
+    );
+    try {
+      expect(first.exitCode, first.output).toBe(0);
+      expect(first.output).not.toContain("--- Failures ---");
+      expect(first.output).toContain("Optional plugin opted in: n8n-mcp-skills@n8n-mcp-skills");
+      const firstArgv = readArgvLog(first);
+      const add = "claude\tplugin marketplace add czlonkowski/n8n-skills";
+      const update = "claude\tplugin marketplace update n8n-mcp-skills";
+      expect(firstArgv).toContain(add);
+      expect(firstArgv).not.toContain(update);
+      expect(firstArgv.indexOf(add)).toBeLessThan(
+        firstArgv.indexOf("claude\tplugin install n8n-mcp-skills@n8n-mcp-skills"),
+      );
+
+      const second = runEngine(["sync", "claude", "--claude-plugin=n8n"], "home-fresh", stubs, {
+        ...NATIVE_HOST,
+        reuseHome: first.home,
+      });
+      expect(second.exitCode, second.output).toBe(0);
+      expect(second.output).not.toContain("--- Failures ---");
+      const secondArgv = readArgvLog(second);
+      expect(secondArgv).toContain(update);
+      expect(secondArgv).not.toContain(add);
+      expect(`${firstArgv}${secondArgv}`.indexOf(add)).toBeLessThan(
+        `${firstArgv}${secondArgv}`.indexOf(update),
+      );
+    } finally {
+      cleanup([first]);
+    }
+  });
+
+  it("still refreshes a marketplace when the inventory exists but cannot be read", () => {
+    const claude = `const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs")
+const { dirname, join } = process.getBuiltinModule("node:path")
+const knownFile = join(process.env["HOME"] ?? "", ".claude", "plugins", "known_marketplaces.json")
+let known = {}
+let readable = true
+if (existsSync(knownFile)) {
+  try { known = JSON.parse(readFileSync(knownFile, "utf8")) } catch { readable = false }
+}
+if (args[0] === "--version") {
+  console.log("2.1.280 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && readable) {
+  known[args[3] === "czlonkowski/n8n-skills" ? "n8n-mcp-skills" : "docks"] = { source: args[3] }
+  mkdirSync(dirname(knownFile), { recursive: true })
+  writeFileSync(knownFile, JSON.stringify(known))
+}`;
+    const stubs = makeStubDir({ claude }, NATIVE_HOST);
+    const first = runEngine(
+      ["sync", "claude", "--claude-plugin=n8n"],
+      "home-fresh",
+      stubs,
+      NATIVE_HOST,
+    );
+    try {
+      expect(first.exitCode, first.output).toBe(0);
+      writeFileSync(
+        join(first.home, ".claude", "plugins", "known_marketplaces.json"),
+        "{not json\n",
+      );
+      const second = runEngine(["sync", "claude", "--claude-plugin=n8n"], "home-fresh", stubs, {
+        ...NATIVE_HOST,
+        reuseHome: first.home,
+      });
+      expect(readArgvLog(second)).toContain("claude\tplugin marketplace update n8n-mcp-skills");
+    } finally {
+      cleanup([first]);
     }
   });
 });

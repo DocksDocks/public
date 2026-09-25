@@ -5,9 +5,9 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/commands/toolchain.ts
-      lines: "1-55"
+      lines: "1-62"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-171"
+      lines: "1-167"
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-292"
     - path: cli/src/engine-native/claudeSync.ts

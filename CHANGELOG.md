@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-09-25 - docks-kit 0.19.1: fixes from the test-suite audit
+
+- `docks-kit toolchain check <word>` and `toolchain outdated <word>` now exit
+  2 with the usage line. Before, the extra word was ignored and the report
+  ran. Only `ensure` takes a tool name.
+- `docks-kit update` detects a Bun global install when `BUN_INSTALL_GLOBAL_DIR`
+  or `BUN_INSTALL` ends with a slash, and on Windows when the path case
+  differs. Before, both cases updated through npm.
+- The Codex `config.toml` scanners follow TOML's rule that indentation before
+  a key or a table header does not matter. Retired-plugin cleanup no longer
+  deletes an indented user table that follows a retired table. A setting
+  replacement no longer adds a second copy of an indented key. An indented
+  table no longer counts as part of the plugin table before it.
+- `docks-kit model codex` and `status` read a single-quoted TOML string such
+  as `model = 'gpt-6-sol'`. `model codex` no longer reads a `model` key from
+  inside a table.
+- A first `sync claude --claude-plugin=n8n` no longer fails. The plugin pass
+  refreshed the `n8n-mcp-skills` marketplace before the optional step added
+  it, and Claude Code rejects an update of a marketplace that is not added.
+  The kit now skips the refresh of a marketplace that is absent from Claude
+  Code's `known_marketplaces.json`. When that file exists but cannot be read,
+  the refresh runs as before.
+- The unit suite now holds 641 tests (from 681), including regression tests
+  for the fixes above. Tests that pinned wiring, mock calls, copied SoT text,
+  or a duplicate path are gone. Error, boundary, and Windows path cases are
+  added.
+
 ## 2026-09-24 - docks-kit 0.19.0: live model catalogs, SQLite kit store, toolchain outdated
 
 - `docks-kit models` lists the models of each enabled harness from the

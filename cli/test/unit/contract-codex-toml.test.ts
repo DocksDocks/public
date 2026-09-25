@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { spawnSync as nodeSpawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,12 +10,46 @@ import {
   replaceTopLevelSetting,
 } from "../../src/engine-native/codexToml";
 import { topLevelTomlString } from "../../src/manifests";
+import { marketplaceSource } from "../../src/engine-native/codexPlugins";
+
+function parseToml(content: string): Record<string, unknown> {
+  const parsed = nodeSpawnSync(
+    "bun",
+    ["-e", "console.log(JSON.stringify(Bun.TOML.parse(await Bun.stdin.text())))"],
+    { input: content, encoding: "utf8" },
+  );
+  expect(parsed.status, parsed.stderr).toBe(0);
+  return JSON.parse(parsed.stdout) as Record<string, unknown>;
+}
 
 describe("codex TOML contract", () => {
+  it("reads a marketplace source under an indented header and stops at an indented table", () => {
+    const dir = mkdtempSync(join(tmpdir(), "codex-marketplace-source-"));
+    const config = join(dir, "config.toml");
+    try {
+      writeFileSync(
+        config,
+        "  [marketplaces.docks]\n  source = 'DocksDocks/docks' # legacy\n  [other]\n  source = \"x\"\n",
+      );
+      expect(marketplaceSource("docks", config)).toBe("DocksDocks/docks");
+      writeFileSync(config, '[marketplaces.docks]\n  [other]\nsource = "x"\n');
+      expect(marketplaceSource("docks", config)).toBe("");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("collapses duplicate top-level keys into one replacement", () => {
     const next = replaceTopLevelSetting('model = "a"\nmodel = "b"\n', "model", 'model = "c"');
 
     expect(next).toBe('model = "c"\n');
+  });
+
+  it("replaces an indented top-level key without leaving a duplicate", () => {
+    const next = replaceTopLevelSetting('  model = "x"\n', "model", 'model = "y"');
+
+    expect(next).toBe('model = "y"\n');
+    expect(parseToml(next)).toEqual({ model: "y" });
   });
 
   it("keeps a table-scoped key while replacing the top-level key", () => {
@@ -31,6 +66,16 @@ describe("codex TOML contract", () => {
     const next = replaceTopLevelSetting("[table]\nkey = 1\n", "model", 'model = "x"');
 
     expect(next).toBe('model = "x"\n[table]\nkey = 1\n');
+  });
+
+  it.each([
+    ["table", "  [table]\nvalue = 1\n", { model: "x", table: { value: 1 } }],
+    ["array of tables", "  [[items]]\nvalue = 1\n", { model: "x", items: [{ value: 1 }] }],
+  ])("inserts a top-level key before an indented %s", (_kind, content, parsed) => {
+    const next = replaceTopLevelSetting(content, "model", 'model = "x"');
+
+    expect(next).toBe(`model = "x"\n${content}`);
+    expect(parseToml(next)).toEqual(parsed);
   });
 
   it("writes one trailing newline when adding a setting to an empty config", () => {
@@ -61,6 +106,26 @@ describe("codex TOML contract", () => {
     expect(readFileSync(file, "utf8")).toBe(
       'model = "new"\nuser_pref = true\nother = 2\n[table]\nkey = 1\n',
     );
+  });
+
+  it("copies an indented SoT key but stops at an indented SoT table", () => {
+    const file = userFile("  [custom]\nkeep = true\n");
+
+    mergeTopLevelSettings('  model = "kit"\n  [managed]\nrogue = 9\n', file);
+
+    const next = readFileSync(file, "utf8");
+    expect(next).toBe('  model = "kit"\n  [custom]\nkeep = true\n');
+    expect(parseToml(next)).toEqual({ model: "kit", custom: { keep: true } });
+  });
+
+  it("replaces an indented deployed key before an indented table", () => {
+    const file = userFile('  model = "user"\n  [custom]\nkeep = true\n');
+
+    mergeTopLevelSettings('model = "kit"\n', file);
+
+    const next = readFileSync(file, "utf8");
+    expect(next).toBe('model = "kit"\n  [custom]\nkeep = true\n');
+    expect(parseToml(next)).toEqual({ model: "kit", custom: { keep: true } });
   });
 
   it.each([
