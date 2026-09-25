@@ -151,6 +151,22 @@ describe("skills platform behavior", () => {
     );
   });
 
+  it("copies the canonical skill when both symlink and junction creation fail", () => {
+    const root = makeRoot();
+    const target = createCanonical(root);
+    const link = join(root, ".claude", "skills", "demo");
+    mkdirSync(dirname(link), { recursive: true });
+    mocks.symlinkSync.mockImplementation(() => {
+      throw new Error("directory links denied");
+    });
+
+    expect(linkOrCopy(relative(dirname(link), target), link, ["symlink", "junction"])).toBe("copy");
+    expect(mocks.symlinkSync).toHaveBeenNthCalledWith(2, resolve(target), link, "junction");
+    expect(lstatSync(link).isDirectory()).toBe(true);
+    expect(readFileSync(join(link, "SKILL.md"), "utf8")).toBe("# demo\n");
+    expect(existsSync(join(link, COPY_MARKER))).toBe(true);
+  });
+
   it("falls through from a failed symlink to an absolute-target junction", () => {
     const root = makeRoot();
     const target = createCanonical(root);
@@ -210,6 +226,43 @@ describe("skills platform behavior", () => {
     expect(preservedOutput.stderr.join("")).toContain(
       "~/.claude/skills/demo exists as a real path (not a symlink) — leaving alone; remove manually if it's stale",
     );
+  });
+
+  it("reports an npx install failure without claiming the skill is installed", async () => {
+    const root = makeRoot();
+    const output = { stderr: [] as Array<string>, stdout: [] as Array<string> };
+    mocks.spawnProcess.mockResolvedValueOnce({
+      error: new Error("npx unavailable"),
+      exitCode: 1,
+      stdout: "",
+      stderr: "",
+    });
+
+    const ctx = makeCtx(root, output);
+    const state = await skillsSync(ctx);
+
+    expect(state.present).toBe(0);
+    expect(ctx.nextStepTriggers.skillsRestart).toBe(false);
+    expect(existsSync(join(root, ".agents", "skills", "demo"))).toBe(false);
+    expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("acme/demo\n");
+    expect(output.stderr.join("")).toContain("Failed to install universal skill: acme/demo");
+  });
+
+  it("reuses an existing canonical skill and heals its missing Claude link", async () => {
+    const root = makeRoot();
+    const canonical = createCanonical(root);
+    const output = { stderr: [] as Array<string>, stdout: [] as Array<string> };
+    const ctx = makeCtx(root, output);
+
+    const state = await skillsSync(ctx);
+    const link = join(root, ".claude", "skills", "demo");
+
+    expect(state.present).toBe(1);
+    expect(ctx.nextStepTriggers.skillsRestart).toBe(true);
+    expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# demo\n");
+    expect(readlinkSync(link)).toBe(relative(dirname(link), canonical));
+    expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("acme/demo\n");
   });
 
   it("prunes only managed Claude entries and reports them during dry-run", async () => {

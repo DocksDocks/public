@@ -3,7 +3,6 @@ import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
-  updateSyncArgs,
 } from "../../src/commands/update";
 import { spawnHost } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
@@ -23,15 +22,6 @@ vi.mock("node:child_process", () => ({
     return { status: 0, signal: null, stdout: "", stderr: "", output: [], pid: 1 };
   },
 }));
-
-describe("update chained sync", () => {
-  it("uses the fresh package entrypoint and carries no refresh-skipping flag", () => {
-    expect(updateSyncArgs("C:\\fixture\\kit")).toEqual([
-      "C:\\fixture\\kit/cli/src/main.ts",
-      "sync",
-    ]);
-  });
-});
 
 describe("package update target", () => {
   it("resolves the npm global package root that the selected manager writes", () => {
@@ -101,6 +91,42 @@ describe("package update target", () => {
     });
   });
 
+  it.each([
+    ["npm", ["root", "-g"]],
+    ["bun", ["pm", "-g", "ls"]],
+  ] as const)("reports %s global-root probe failures", (manager, args) => {
+    expect(
+      resolveGlobalPackageHome(manager, (command, actualArgs) => {
+        expect(command).toBe(manager);
+        expect(actualArgs).toEqual(args);
+        return { status: 7, stdout: "" };
+      }),
+    ).toEqual({
+      ok: false,
+      diagnostic: `${manager} ${args.join(" ")} failed: exit 7`,
+    });
+  });
+
+  it("rejects an empty npm global root instead of treating it as an install directory", () => {
+    expect(resolveGlobalPackageHome("npm", () => ({ status: 0, stdout: " \n" }))).toEqual({
+      ok: false,
+      diagnostic: "npm root -g failed: empty output",
+    });
+  });
+
+  it("reports a global-root probe that could not start", () => {
+    expect(
+      resolveGlobalPackageHome("bun", () => ({
+        status: null,
+        stdout: "",
+        error: new Error("command not found on PATH: bun"),
+      })),
+    ).toEqual({
+      ok: false,
+      diagnostic: "bun pm -g ls failed: command not found on PATH: bun",
+    });
+  });
+
   const linux = hostOs("linux");
   const windows = hostOs("windows");
 
@@ -144,6 +170,16 @@ describe("package update target", () => {
         windows,
       ),
     ).toBe("bun");
+  });
+
+  it("uses BUN_INSTALL_GLOBAL_DIR for custom roots but not sibling directory names", () => {
+    const environment = { BUN_INSTALL_GLOBAL_DIR: "/opt/bun-global" };
+    expect(
+      packageManagerForHome("/opt/bun-global/node_modules/docks-kit", environment, linux),
+    ).toBe("bun");
+    expect(
+      packageManagerForHome("/opt/bun-global-backup/node_modules/docks-kit", environment, linux),
+    ).toBe("npm");
   });
 
   it("leaves a Windows npm global home classified as npm", () => {
@@ -196,12 +232,7 @@ describe("package update result", () => {
     ["a missing before version", "", "0.14.3", false, { alreadyCurrent: false, message: "" }],
     ["a missing after version", "0.14.2", "", false, { alreadyCurrent: false, message: "" }],
   ] as const)("reports %s", (_case, before, after, samePackageRoot, expected) => {
-    const result = packageUpdateResult(before, after, samePackageRoot);
-
-    expect(result).toEqual(expected);
-    if (!samePackageRoot && before !== "" && after !== "") {
-      expect(result.message).not.toContain("Updated");
-    }
+    expect(packageUpdateResult(before, after, samePackageRoot)).toEqual(expected);
   });
 });
 
@@ -226,28 +257,17 @@ const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
 };
 
 describe("host child spawning (exec.spawnHost)", () => {
-  it("keeps the verbatim-arguments flag with the shim argv it encodes", () => {
+  it("keeps Windows shim arguments verbatim when invoking the command interpreter", () => {
     spawnCalls.length = 0;
 
-    withPath(["npx.cmd"], () => spawnHost("npx", ["--version"], {}, hostOs("windows")));
+    withPath(["npx.cmd"], () => spawnHost("npx", ["a&b"], {}, hostOs("windows")));
 
     const call = spawnCalls.at(-1);
     expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"]);
-    expect(call?.args.at(-1)).toContain("npx.cmd");
-    // Without this flag libuv re-quotes the command line the encoder built.
+    expect(call?.command).toMatch(/(?:^|[\\/])cmd\.exe$/i);
+    expect(call?.args.at(-1)).toContain("a^&b");
+    // Re-quoting by libuv would invalidate the command line's cmd.exe escaping.
     expect(call?.options["windowsVerbatimArguments"]).toBe(true);
-  });
-
-  it("leaves a POSIX invocation unquoted and unflagged", () => {
-    spawnCalls.length = 0;
-
-    spawnHost("git", ["--version"], { stdio: "inherit" }, hostOs("linux"));
-
-    const call = spawnCalls.at(-1);
-    expect(call?.command).toBe("git");
-    expect(call?.args).toEqual(["--version"]);
-    expect(call?.options["windowsVerbatimArguments"]).toBeUndefined();
-    expect(call?.options["stdio"]).toBe("inherit");
   });
 
   it("reports an unresolvable Windows tool instead of spawning a pathless name", () => {

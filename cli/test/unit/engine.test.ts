@@ -1,10 +1,12 @@
 import { Effect } from "effect";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
+  const originalBun = Object.getOwnPropertyDescriptor(globalThis, "Bun");
   const bun = { isStandaloneExecutable: false };
   Object.defineProperty(globalThis, "Bun", { configurable: true, value: bun });
   return {
+    originalBun,
     bun,
     runEngineNative: vi.fn(),
     spawnSync: vi.fn(),
@@ -20,6 +22,8 @@ import { EngineServicesLive } from "../../src/services";
 beforeEach(() => {
   mocks.runEngineNative.mockReset();
   mocks.spawnSync.mockReset();
+  vi.stubEnv("DOCKS_KIT_ENGINE", "");
+  vi.stubEnv("DOCKS_KIT_HOME", "");
   vi.spyOn(process, "platform", "get").mockReturnValue("win32");
   vi.spyOn(process, "arch", "get").mockReturnValue("x64");
   vi.spyOn(process, "exit").mockImplementation((code) => {
@@ -31,42 +35,60 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
-describe("compiled runtime detection", () => {
-  it("uses Bun's standalone-executable predicate", async () => {
-    mocks.bun.isStandaloneExecutable = true;
-    try {
-      vi.resetModules();
-      // Re-evaluate the module after changing the runtime predicate; a static import runs before test setup.
-      const { compiled } = await import("../../src/engine");
+afterAll(() => {
+  if (mocks.originalBun === undefined) Reflect.deleteProperty(globalThis, "Bun");
+  else Object.defineProperty(globalThis, "Bun", mocks.originalBun);
+});
 
-      expect(compiled).toBe(true);
+describe("compiled runtime capture", () => {
+  it("runs a standalone executable without prepending the source entrypoint", async () => {
+    mocks.bun.isStandaloneExecutable = true;
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, "compiled result\n", null],
+      pid: 123,
+      signal: null,
+      status: 0,
+      stderr: null,
+      stdout: "compiled result\n",
+    });
+    try {
+      // Static imports evaluate before this runtime predicate changes.
+      vi.resetModules();
+      const { engineCapture: standaloneCapture } = await import("../../src/engine");
+      await expect(Effect.runPromise(standaloneCapture(["status"]))).resolves.toBe(
+        "compiled result\n",
+      );
+      expect(mocks.spawnSync).toHaveBeenCalledWith(
+        process.execPath,
+        ["status"],
+        expect.objectContaining({
+          env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-raw" }),
+        }),
+      );
     } finally {
       mocks.bun.isStandaloneExecutable = false;
+      vi.resetModules();
     }
   });
 });
 
 describe("supported host boundary", () => {
-  it.each(["x64", "arm64"] as const)("admits win32/%s to EngineNative", async (arch) => {
-    vi.spyOn(process, "arch", "get").mockReturnValue(arch);
-    mocks.runEngineNative.mockResolvedValue(0);
+  it.each(["x64", "arm64"] as const)(
+    "admits win32/%s and exits with the native engine's failure code",
+    async (arch) => {
+      vi.spyOn(process, "arch", "get").mockReturnValue(arch);
+      mocks.runEngineNative.mockResolvedValue(37);
 
-    await expect(
-      Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive)),
-    ).resolves.toBeUndefined();
-    expect(console.error).not.toHaveBeenCalled();
-    expect(mocks.runEngineNative).toHaveBeenCalledWith(
-      ["status"],
-      expect.objectContaining({
-        deps: expect.any(Object),
-        logger: expect.any(Object),
-        platform: expect.any(Object),
-      }),
-    );
-    expect(mocks.spawnSync).not.toHaveBeenCalled();
-  });
+      await expect(
+        Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive)),
+      ).rejects.toThrow("exit 37");
+      expect(console.error).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("unsupported host boundary", () => {
@@ -92,13 +114,16 @@ describe("EngineNative Effect seam", () => {
     vi.spyOn(process, "arch", "get").mockReturnValue("x64");
   });
 
-  it("completes successfully when EngineNative resolves zero", async () => {
-    mocks.runEngineNative.mockResolvedValue(0);
+  it("rejects a removed Bash engine before running the native engine", async () => {
+    vi.stubEnv("DOCKS_KIT_ENGINE", "bash");
 
     await expect(
       Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive)),
-    ).resolves.toBeUndefined();
-    expect(console.error).not.toHaveBeenCalled();
+    ).rejects.toThrow("exit 2");
+    expect(console.error).toHaveBeenCalledWith(
+      "bash engine removed — recover at tag bash-engine-final",
+    );
+    expect(mocks.runEngineNative).not.toHaveBeenCalled();
   });
 
   it("exits with the EngineNative non-zero code", async () => {
@@ -120,6 +145,43 @@ describe("EngineNative Effect seam", () => {
     });
   });
 
+  it("reports the default operation and unknown cause when the native engine rejects silently", async () => {
+    mocks.runEngineNative.mockRejectedValue(new Error(""));
+
+    await expect(
+      Effect.runPromise(Effect.provide(engine([]), EngineServicesLive)),
+    ).rejects.toMatchObject({
+      _tag: "UserError",
+      message: "engine operation 'default' failed: unknown error",
+    });
+  });
+
+  it("returns the captured stdout and invokes the raw child with isolated output channels", async () => {
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, '{"toolchain":[]}\n', null],
+      pid: 123,
+      signal: null,
+      status: 0,
+      stderr: null,
+      stdout: '{"toolchain":[]}\n',
+    });
+
+    await expect(Effect.runPromise(engineCapture(["toolchain", "check", "--json"]))).resolves.toBe(
+      '{"toolchain":[]}\n',
+    );
+    expect(mocks.spawnSync).toHaveBeenCalledWith(
+      process.execPath,
+      [expect.stringMatching(/\/cli\/src\/main\.ts$/), "toolchain", "check", "--json"],
+      expect.objectContaining({
+        encoding: "utf8",
+        env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-raw" }),
+        stdio: ["ignore", "pipe", "inherit"],
+      }),
+    );
+    expect(process.stderr.write).not.toHaveBeenCalled();
+  });
+
   it("fails capture with the child status instead of returning plausible stdout", async () => {
     const diagnostic = "engine capture failed for 'toolchain check --json': exit 7";
     mocks.spawnSync.mockReturnValue({
@@ -139,7 +201,7 @@ describe("EngineNative Effect seam", () => {
       code: 7,
       diagnostic,
     } satisfies Partial<EngineCaptureError>);
-    expect(process.stderr.write).toHaveBeenCalledWith(expect.stringContaining(diagnostic));
+    expect(process.stderr.write).toHaveBeenCalledWith(`\x1b[1;31m[err]\x1b[0m ${diagnostic}\n`);
   });
 
   it("includes the spawn error message in capture diagnostics", async () => {
@@ -155,7 +217,7 @@ describe("EngineNative Effect seam", () => {
 
     await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toMatchObject({
       code: 1,
-      diagnostic: expect.stringContaining("spawn error: spawn docks-kit ENOENT"),
+      diagnostic: "engine capture failed for 'status': spawn error: spawn docks-kit ENOENT",
     });
   });
 
@@ -172,7 +234,7 @@ describe("EngineNative Effect seam", () => {
 
     await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toMatchObject({
       code: 1,
-      diagnostic: expect.stringContaining("signal SIGTERM"),
+      diagnostic: "engine capture failed for 'status': signal SIGTERM",
     });
   });
 });

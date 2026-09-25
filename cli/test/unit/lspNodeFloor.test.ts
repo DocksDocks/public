@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import type { Ctx } from "../../src/engine-native";
 import { syncLspServers } from "../../src/engine-native/claudeLsp";
@@ -82,35 +83,27 @@ describe("LSP install under the Node floor", () => {
     return { out: sinks.out.join("\n"), err: sinks.err.join("\n") };
   };
 
-  it("refuses the server install on a Node below the floor and names the remedy", async () => {
+  it("refuses the server install below the Node floor and names the remedy", async () => {
     const { out, err } = await run("v20.19.0", ["typescript-language-server"]);
 
-    expect(err).toContain("Skipping typescript-language-server install");
-    expect(err).toContain("Node 20.19.0 is older than the 22.22.2");
-    expect(out).not.toContain("typescript-language-server");
+    expect(stripVTControlCharacters(err)).toBe(
+      "[warn] Skipping typescript-language-server install: Node 20.19.0 is older than the 22.22.2 that version requires. Upgrade Node, then re-run sync.",
+    );
+    expect(out).toBe("");
   });
 
-  it("still installs the tools the floor does not govern", async () => {
+  it("still installs tools not governed by the Node floor", async () => {
     const { out } = await run("v20.19.0", ["typescript-language-server", "tsc", "intelephense"]);
 
-    expect(out).toContain("[dry-run] would install: npm install -g intelephense@");
-    expect(out).toContain("typescript@");
-    expect(out).not.toContain("typescript-language-server@");
+    expect(out).toBe(
+      "[dry-run] would install: npm install -g intelephense@1.18.5 typescript@6.0.3",
+    );
   });
 
-  it("installs the server on a Node at or above the floor", async () => {
+  it("installs the server at the Node floor", async () => {
     const { out, err } = await run("v22.22.2", ["typescript-language-server"]);
 
-    expect(out).toContain(
-      "[dry-run] would install: npm install -g typescript-language-server@6.0.0",
-    );
-    expect(err).not.toContain("Skipping");
-  });
-
-  it("never probes Node when the server binary is already present", async () => {
-    const { out, err } = await run("", []);
-
-    expect(out).toContain("[dry-run] LSP server binaries present");
+    expect(out).toBe("[dry-run] would install: npm install -g typescript-language-server@6.0.0");
     expect(err).toBe("");
   });
 

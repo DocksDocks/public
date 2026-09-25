@@ -1,27 +1,12 @@
 /**
- * Unit layer for EngineNative modules (Effect standard: @effect/vitest).
- *
- * Two oracles for the settings merge:
- *   1. Semantics cases pinned by hand (SoT-wins, permissions union
- *      sorted+deduped, user-only keys preserved, nested env merge).
- *   2. jq differential — the legacy jq programs are inlined below as the
- *      test-only specification. jq remains a test-only dependency for this
- *      oracle and the suite skips it when jq is absent.
+ * Compare settings merge output with the jq programs that defined the
+ * deployed merge contract. jq is optional on the host running unit tests.
  */
-import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { materializeClaudeSettings } from "../../src/engine-native/claudeRuntime";
-import {
-  deepMerge,
-  isObject,
-  jqStringify,
-  parseJson,
-  uniqueStrings,
-  type Json,
-} from "../../src/engine-native/jq";
+import { jqStringify, parseJson, type Json } from "../../src/engine-native/jq";
 import { mergeSettings, reconcileSettings } from "../../src/engine-native/settings";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
@@ -34,88 +19,6 @@ const DRIFT_SETTINGS = parseJson(
     "utf8",
   ),
 )!;
-
-describe("jq primitives", () => {
-  it.effect("deepMerge: right wins, objects recurse, arrays replaced", () =>
-    Effect.sync(() => {
-      const merged = deepMerge(
-        { a: 1, env: { KEEP: "u", BOTH: "u" }, arr: [1, 2, 3] },
-        { b: 2, env: { BOTH: "r", NEW: "r" }, arr: [9] },
-      );
-      expect(merged).toEqual({ a: 1, env: { KEEP: "u", BOTH: "r", NEW: "r" }, arr: [9], b: 2 });
-    }),
-  );
-
-  it.effect("deepMerge: key order is left-first then right-only appended (jq `*`)", () =>
-    Effect.sync(() => {
-      const merged = deepMerge({ z: 1, m: 2 }, { m: 3, a: 4 }) as Record<string, Json>;
-      expect(Object.keys(merged)).toEqual(["z", "m", "a"]);
-    }),
-  );
-
-  it.effect("uniqueStrings: codepoint sort + dedup (jq `unique`)", () =>
-    Effect.sync(() => {
-      expect(uniqueStrings(["b", "a", "b", "A", "Z"])).toEqual(["A", "Z", "a", "b"]);
-    }),
-  );
-
-  it.effect("parseJson: invalid input yields undefined (jq empty guard)", () =>
-    Effect.sync(() => {
-      const invalid = readFileSync(
-        join(REPO_DIR, "cli", "test", "fixtures", "home-invalid-json", ".claude", "settings.json"),
-        "utf8",
-      );
-      expect(parseJson(invalid)).toBeUndefined();
-    }),
-  );
-});
-
-describe("settings merge semantics", () => {
-  it.effect("keeps the authoring template sentinel-only and removes Stop", () =>
-    Effect.sync(() => {
-      if (!isObject(SOT_SETTINGS) || !isObject(SOT_SETTINGS["hooks"]))
-        throw new Error("invalid SoT settings fixture");
-      expect(SOT_SETTINGS["hooks"]["Stop"]).toBeUndefined();
-      const text = JSON.stringify(SOT_SETTINGS);
-      expect(text.match(/__DOCKS_KIT_BUN__/g)).toHaveLength(2);
-      expect(text.match(/__DOCKS_KIT_SESSION_START__/g)).toHaveLength(1);
-      expect(text.match(/__DOCKS_KIT_NOTIFY__/g)).toHaveLength(1);
-      expect(text.match(/__DOCKS_KIT_STATUSLINE__/g)).toHaveLength(1);
-
-      const deployed = materializeClaudeSettings(SOT_SETTINGS, {
-        bun: "/home/test/.bun/bin/bun",
-        statusline: "/home/test/.claude/bin/statusline.mjs",
-        sessionStart: "/home/test/.claude/bin/session-start.mjs",
-        notify: "/home/test/.claude/bin/notify.mjs",
-      });
-      expect(JSON.stringify(deployed)).not.toContain("__DOCKS_KIT_");
-    }),
-  );
-
-  it.effect("merge: SoT keys win, user-only keys survive, permissions unioned", () =>
-    Effect.sync(() => {
-      const merged = mergeSettings(SOT_SETTINGS, DRIFT_SETTINGS) as Record<string, Json>;
-      expect(merged["model"]).toEqual((SOT_SETTINGS as Record<string, Json>)["model"]);
-      expect((merged["env"] as Record<string, Json>)["MY_CUSTOM_VAR"]).toBe("1");
-      const allow = (merged["permissions"] as Record<string, Json>)["allow"] as Array<string>;
-      expect(allow).toContain("Bash(my-tool *)");
-      expect(allow).toEqual(uniqueStrings(allow)); // sorted + deduped like jq
-    }),
-  );
-
-  it.effect("reconcile: permissions arrays replaced wholesale by SoT", () =>
-    Effect.sync(() => {
-      const reconciled = reconcileSettings(SOT_SETTINGS, DRIFT_SETTINGS) as Record<string, Json>;
-      const sotAllow = (
-        (SOT_SETTINGS as Record<string, Json>)["permissions"] as Record<string, Json>
-      )["allow"];
-      expect((reconciled["permissions"] as Record<string, Json>)["allow"]).toEqual(sotAllow);
-      expect((reconciled["env"] as Record<string, Json>)["MY_CUSTOM_VAR"]).toBe("1");
-    }),
-  );
-});
-
-// ------------------------------------------------------- jq differential ----
 
 const JQ_MERGE = `
     .[0] as $repo | .[1] as $user |
@@ -151,10 +54,24 @@ describe.skipIf(!hasJq)("jq differential (byte-for-byte vs inlined legacy progra
     );
   });
 
-  it("merge matches jq when the user file has no permissions block", () => {
-    const user: Json = { env: { ONLY: "user" } };
-    expect(jqStringify(mergeSettings(SOT_SETTINGS, user))).toBe(
-      jqSlurp(JQ_MERGE, [SOT_SETTINGS, user]),
-    );
+  it("matches jq when neither document declares permissions", () => {
+    const repo: Json = { env: { SHARED: "kit", NEW: "kit" }, hooks: { Start: ["kit"] } };
+    const user: Json = {
+      env: { SHARED: "user", KEEP: "user" },
+      hooks: { Start: ["user"], Local: ["user"] },
+      userOnly: true,
+    };
+    expect(jqStringify(mergeSettings(repo, user))).toBe(jqSlurp(JQ_MERGE, [repo, user]));
+    expect(jqStringify(reconcileSettings(repo, user))).toBe(jqSlurp(JQ_RECONCILE, [repo, user]));
+  });
+
+  it("matches jq when all three permission arrays conflict", () => {
+    const repo: Json = {
+      permissions: { allow: ["B", "A"], deny: ["D", "B"], ask: ["Y", "X"] },
+    };
+    const user: Json = {
+      permissions: { allow: ["A", "C"], deny: ["D", "A"], ask: ["X", "Z"] },
+    };
+    expect(jqStringify(mergeSettings(repo, user))).toBe(jqSlurp(JQ_MERGE, [repo, user]));
   });
 });

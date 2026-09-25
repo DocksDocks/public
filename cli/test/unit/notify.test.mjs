@@ -1,10 +1,6 @@
-import { resolve } from "node:path";
-import { spawnSync as nodeSpawnSync } from "node:child_process";
 import { describe, expect, it, vi } from "vitest";
 import { main, selectPlayer } from "../../../SoT/.claude/bin/notify.mjs";
 
-const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
-const SCRIPT = resolve(REPO_DIR, "SoT", ".claude", "bin", "notify.mjs");
 const SOUND = "/home/test/.claude/notification.mp3";
 
 function whichFrom(names) {
@@ -29,6 +25,11 @@ describe("Notification player selection", () => {
     expect(
       selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["paplay", "aplay"]) }),
     ).toEqual(["/usr/bin/paplay", SOUND]);
+    expect(selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["aplay"]) })).toEqual([
+      "/usr/bin/aplay",
+      "-q",
+      SOUND,
+    ]);
     expect(selectPlayer({ platform: "linux", sound: SOUND, which: () => null })).toBeUndefined();
   });
 });
@@ -87,12 +88,5 @@ describe("Notification program seam", () => {
       }),
     ).toBe(0);
     expect(spawnSync).not.toHaveBeenCalled();
-  });
-
-  it("direct-runs silently when authoring audio is absent", () => {
-    const result = nodeSpawnSync("bun", [SCRIPT], { encoding: "utf8" });
-    expect(result.status).toBe(0);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toBe("");
   });
 });

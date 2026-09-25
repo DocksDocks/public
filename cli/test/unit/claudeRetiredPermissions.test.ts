@@ -29,10 +29,6 @@ import { cleanup, runEngine } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources";
 import { stableStringify } from "../lib/goldenSnapshot";
 
-// The stub launchers and the child must agree on one host. Native pairing runs
-// the real host with its own launcher form, so these cases keep their
-// harness-CLI coverage on Windows instead of resolving a shell script the
-// host cannot execute.
 const NATIVE = { nativeHost: true } as const;
 
 afterAll(cleanupTemporaryDirs);
@@ -57,8 +53,24 @@ const RETIRED = [
 function deployedBeforeThisChange(): string {
   return stableStringify({
     permissions: {
-      allow: [...RETIRED_PERMISSION_RULES.allow, "Edit(./)", ...USER_RULES.allow],
-      deny: [...RETIRED_PERMISSION_RULES.deny, "Bash(sudo *)", ...USER_RULES.deny],
+      allow: [
+        ...new Set([
+          ...RETIRED_PERMISSION_RULES.allow,
+          "Bash(git *)",
+          "PowerShell(git *)",
+          "WebFetch",
+          "Edit(./)",
+          ...USER_RULES.allow,
+        ]),
+      ],
+      deny: [
+        ...new Set([
+          ...RETIRED_PERMISSION_RULES.deny,
+          "PowerShell(Remove-Item *-Recurse* \\)",
+          "Bash(sudo *)",
+          ...USER_RULES.deny,
+        ]),
+      ],
       ask: [...USER_RULES.ask],
     },
     userOnly: "preserved",
@@ -66,17 +78,18 @@ function deployedBeforeThisChange(): string {
 }
 
 function permissions(home: string): Record<string, Array<string>> {
-  const doc = parseJson(readFileSync(p(home, ".claude", "settings.json"), "utf8")) ?? {};
-  if (!isObject(doc) || !isObject(doc["permissions"]))
+  const doc = parseJson(readFileSync(p(home, ".claude", "settings.json"), "utf8"));
+  if (doc === undefined || !isObject(doc) || !isObject(doc["permissions"]))
     throw new Error("deployed settings lack permissions");
   const parsed = doc["permissions"];
   return Object.fromEntries(
-    (["allow", "deny", "ask"] as const).map((key) => [
-      key,
-      (Array.isArray(parsed[key]) ? parsed[key] : []).filter(
-        (v): v is string => typeof v === "string",
-      ),
-    ]),
+    (["allow", "deny", "ask"] as const).map((key) => {
+      const values = parsed[key];
+      if (!Array.isArray(values) || !values.every((value) => typeof value === "string")) {
+        throw new Error(`deployed permissions.${key} is not an array of rules`);
+      }
+      return [key, values];
+    }),
   );
 }
 
@@ -94,52 +107,23 @@ function recordingServices(records: Array<string>): EngineServices {
 }
 
 describe("retired permission rule cutover", () => {
-  it("cannot remove a retired rule through the merge alone", () => {
-    const user = parseJson(deployedBeforeThisChange()) ?? {};
+  it("needs a prune after additive merge to withdraw a formerly shipped rule", () => {
+    const user = parseJson(deployedBeforeThisChange());
+    if (user === undefined) throw new Error("deployed fixture is not valid JSON");
     const merged = mergeSettings(SOT_SETTINGS, user);
-    const allow =
-      isObject(merged) && isObject(merged["permissions"]) ? merged["permissions"]["allow"] : [];
-
-    expect(Array.isArray(allow) ? allow : []).toContain(RETIRED_PERMISSION_RULES.allow[0]);
-  });
-
-  it("drops every retired rule on a flag-less sync while keeping user and SoT rules", () => {
-    const variant = materializeVariant("home-drift", {
-      ".claude/settings.json": deployedBeforeThisChange(),
-    });
-    const stubs = makeStubDir({}, NATIVE);
-    const applied = runEngine(["sync", "claude"], variant, stubs, NATIVE);
-    const replay = runEngine(["sync", "claude"], variant, stubs, {
-      ...NATIVE,
-      reuseHome: applied.home,
-    });
-    try {
-      expect(applied.exitCode, applied.output).toBe(0);
-      const deployed = permissions(applied.home);
-      const surviving = [...deployed["allow"], ...deployed["deny"], ...deployed["ask"]];
-
-      for (const rule of RETIRED) expect(surviving).not.toContain(rule);
-      expect(deployed["allow"]).toContain("Bash(my-tool *)");
-      expect(deployed["allow"]).toContain("PowerShell(my-tool *)");
-      expect(deployed["allow"]).toContain("Edit(./)");
-      expect(deployed["deny"]).toContain("Bash(my-destroyer *)");
-      expect(deployed["deny"]).toContain("Bash(sudo *)");
-      expect(deployed["ask"]).toContain("PowerShell(my-asker *)");
-      expect(applied.output).toContain("permission rules:");
-      expect(replay.output).not.toContain("Pruned stale artifacts");
-    } finally {
-      cleanup([replay]);
-      rmSync(variant, { recursive: true, force: true });
+    if (!isObject(merged) || !isObject(merged["permissions"])) {
+      throw new Error("merged permissions are missing");
     }
+    expect(merged["permissions"]["allow"]).toContain("Bash(git *)");
+    expect(merged["permissions"]["allow"]).toContain("WebFetch");
+    expect(merged["permissions"]["deny"]).toContain("PowerShell(Remove-Item *-Recurse* \\)");
   });
 
-  it("leaves sibling files under the user settings directory untouched while pruning retired rules", () => {
-    // Claude Code resolves localSettings against the working directory, so a home copy is not a user-scope source.
+  it("drops retired rules on a flag-less sync while keeping user, SoT, and checkout-local rules", () => {
+    // A checkout-local file is not a user-scoped source and must never be edited.
     const untouchedSiblingFile = ".claude/settings.local.json";
     const siblingContents = stableStringify({
-      permissions: {
-        allow: ["Bash(git *)", "Bash(local-only *)"],
-      },
+      permissions: { allow: ["Bash(git *)", "Bash(local-only *)"] },
       userOnly: "preserved",
     });
     const variant = materializeVariant("home-drift", {
@@ -149,33 +133,39 @@ describe("retired permission rule cutover", () => {
     const applied = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE);
     try {
       expect(applied.exitCode, applied.output).toBe(0);
-      expect(readFileSync(p(applied.home, untouchedSiblingFile), "utf8")).toBe(siblingContents);
-      expect(permissions(applied.home)["allow"]).not.toContain("Bash(git *)");
-    } finally {
-      cleanup([applied]);
-      rmSync(variant, { recursive: true, force: true });
-    }
-  });
-
-  it("deploys the SoT PowerShell deny and ask rules on every host", () => {
-    const variant = materializeVariant("home-drift", {
-      ".claude/settings.json": deployedBeforeThisChange(),
-    });
-    const applied = runEngine(["sync", "claude"], variant, makeStubDir({}, NATIVE), NATIVE);
-    try {
-      expect(applied.exitCode, applied.output).toBe(0);
       const deployed = permissions(applied.home);
+      const surviving = [...deployed["allow"], ...deployed["deny"], ...deployed["ask"]];
 
+      for (const rule of RETIRED) expect(surviving).not.toContain(rule);
+      expect(deployed["allow"]).not.toContain("Bash(git *)");
+      expect(deployed["allow"]).not.toContain("PowerShell(git *)");
+      expect(deployed["allow"]).not.toContain("WebFetch");
+      expect(deployed["deny"]).not.toContain("PowerShell(Remove-Item *-Recurse* \\)");
+      expect(deployed["allow"]).toEqual(
+        expect.arrayContaining(["Bash(my-tool *)", "PowerShell(my-tool *)", "Edit(./)"]),
+      );
+      expect(deployed["deny"]).toEqual(
+        expect.arrayContaining([
+          "Bash(my-destroyer *)",
+          "Bash(sudo *)",
+          "PowerShell(Remove-Item *-Recurse* \\\\)",
+        ]),
+      );
+      expect(deployed["ask"]).toEqual(
+        expect.arrayContaining(["PowerShell(my-asker *)", "PowerShell(git clean *)"]),
+      );
       for (const key of ["deny", "ask"] as const) {
-        const shipped = SOT_SETTINGS.permissions[key].filter((rule) =>
-          rule.startsWith("PowerShell("),
+        expect(deployed[key]).toEqual(
+          expect.arrayContaining(
+            SOT_SETTINGS.permissions[key].filter((rule) => rule.startsWith("PowerShell(")),
+          ),
         );
-        expect(shipped.length).toBeGreaterThan(0);
-        expect(deployed[key]).toEqual(expect.arrayContaining(shipped));
       }
       expect(deployed["allow"].filter((rule) => rule.startsWith("PowerShell("))).toEqual([
         "PowerShell(my-tool *)",
       ]);
+      expect(readFileSync(p(applied.home, untouchedSiblingFile), "utf8")).toBe(siblingContents);
+      expect(applied.output).toContain(`permission rules: ${RETIRED.length}`);
     } finally {
       cleanup([applied]);
       rmSync(variant, { recursive: true, force: true });

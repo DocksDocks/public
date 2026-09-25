@@ -12,14 +12,14 @@ vi.mock("../../src/payload", () => ({
 import { modelCatalog } from "../../src/engine-native/models";
 
 describe("modelCatalog typed boundary", () => {
-  it("keeps well-formed entries in document order and drops malformed ones", () => {
+  it("keeps valid IDs in order and discards malformed rows and notes", () => {
     mocks.payloadText.mockReturnValue(
       JSON.stringify({
         claude: {
           verified: "2026-01-01",
           models: [
             { id: "opus", kind: "alias", note: "latest" },
-            { id: "claude-opus-5", kind: "id" },
+            { id: "claude-opus-5", kind: "id", note: { text: "bad note" } },
             { id: 42, kind: "id" },
             { id: "bad-kind", kind: "pinned" },
             { kind: "alias" },

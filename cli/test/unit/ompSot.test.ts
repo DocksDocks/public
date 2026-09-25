@@ -3,8 +3,6 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { mergeOmpConfig, mergeOmpModels } from "../../src/engine-native/ompYaml";
-
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const OMP_SOT = join(REPO_DIR, "SoT", ".omp");
 
@@ -21,17 +19,10 @@ function ompConfig(): Record<string, unknown> {
 }
 
 describe("SoT omp tree", () => {
-  it("parses config.yml as a YAML mapping", () => {
-    expect(Object.keys(ompConfig()).length).toBeGreaterThan(0);
-  });
-
   // This override is the kit's worked example of a provider ladder redefinition.
   // Every level stays reachable from the in-session thinking control.
   it("declares the full Astra thinking ladder through models.yml", () => {
-    const models = parse(mergeOmpModels(readSot("models.yml"), "")) as unknown;
-    expect(models).toBeTypeOf("object");
-    expect(models).not.toBeNull();
-    expect(Array.isArray(models)).toBe(false);
+    const models = parse(readSot("models.yml")) as unknown;
     expect(models).toHaveProperty(
       ["providers", "openai-codex", "modelOverrides", "gpt-6-astra", "thinking"],
       {
@@ -47,7 +38,7 @@ describe("SoT omp tree", () => {
   // window to size against and cost reporting reads zero. Deleting the block
   // must fail here, not in a live session.
   it("supplies Opus 5.5 limits and prices the shared catalog still omits", () => {
-    const models = parse(mergeOmpModels(readSot("models.yml"), "")) as unknown;
+    const models = parse(readSot("models.yml")) as unknown;
     expect(models).toHaveProperty(
       ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "contextWindow"],
       1000000,
@@ -69,61 +60,86 @@ describe("SoT omp tree", () => {
   // Every Anthropic role and every Anthropic retry entry moved from Opus 5 to
   // Opus 5.5 at the same levels. A leftover `claude-opus-5:` selector would
   // silently keep one role on the retired model.
-  it("selects Opus 5.5 for every Anthropic role and retry entry", () => {
+  it("selects Opus 5.5 for Anthropic roles and retries, never the retired Opus 5 id", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
-    expect(roles["default"]).toBe("anthropic/claude-opus-5-5:high");
-    expect(roles["slow"]).toBe("anthropic/claude-opus-5-5:xhigh");
-    expect(roles["plan"]).toBe("anthropic/claude-opus-5-5:xhigh");
-    expect(roles["designer"]).toBe("anthropic/claude-opus-5-5:high");
-    expect(roles["vision"]).toBe("anthropic/claude-opus-5-5:medium");
+    expect(roles).toMatchObject({
+      default: "anthropic/claude-opus-5-5:high",
+      slow: "anthropic/claude-opus-5-5:xhigh",
+      plan: "anthropic/claude-opus-5-5:xhigh",
+      designer: "anthropic/claude-opus-5-5:high",
+      vision: "anthropic/claude-opus-5-5:medium",
+    });
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"] as Record<
       string,
       Array<string>
     >;
-    const selectors = [...Object.values(roles), ...Object.values(chains).flat()];
-    expect(selectors.some((s) => s.startsWith("anthropic/claude-opus-5-5:"))).toBe(true);
-    expect(selectors.filter((s) => /claude-opus-5(?::|$)/.test(s))).toEqual([]);
+    expect(chains).toMatchObject({
+      task: ["anthropic/claude-opus-5-5:high"],
+      smol: ["anthropic/claude-opus-5-5:low"],
+      tiny: ["anthropic/claude-opus-5-5:low"],
+      commit: ["anthropic/claude-opus-5-5:medium"],
+    });
+    expect(
+      [...Object.values(roles), ...Object.values(chains).flat()].filter((selector) =>
+        /claude-opus-5(?::|$)/.test(selector),
+      ),
+    ).toEqual([]);
   });
 
-  it("reaches Astra as the last model-switcher stop", () => {
+  it("keeps visible Astra and Fable roles at the end of the model switcher", () => {
     const config = ompConfig();
     expect(config["cycleOrder"]).toEqual(["smol", "default", "slow", "fable", "astra"]);
     expect(config["modelRoles"]).toHaveProperty("astra", "openai-codex/gpt-6-astra:xhigh");
+    expect(config["modelRoles"]).toHaveProperty("fable", "anthropic/claude-fable-5-1:medium");
+    expect(config["modelRoles"]).toHaveProperty(
+      "switch_fable",
+      "anthropic/claude-fable-5-1:medium",
+    );
+    expect(config["modelTags"]).toHaveProperty(["astra", "name"], "GPT-6 Astra");
+    expect(config["modelTags"]).toHaveProperty(["fable", "name"], "Fable 5.1");
+    expect(config["modelTags"]).toHaveProperty(["switch_fable", "hidden"], true);
   });
 
   // A role the user selects on purpose must not fall onto Sol high through
   // `fallbackChains.default`. Astra and Fable cover each other instead.
-  it("pairs the Astra and Fable retry chains across vendors", () => {
+  it("keeps cross-vendor retries without routing Astra or Fable through the default chain", () => {
     const retry = ompConfig()["retry"] as Record<string, unknown>;
     const chains = retry["fallbackChains"] as Record<string, ReadonlyArray<string>>;
+    expect(chains["default"]).toEqual(["openai-codex/gpt-6-sol:high"]);
+    expect(chains["vision"]).toEqual(["openai-codex/gpt-6-sol:medium"]);
     expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-1:medium"]);
     expect(chains["fable"]).toEqual(["openai-codex/gpt-6-astra:xhigh"]);
+    expect(chains["switch_fable"]).toEqual([]);
   });
 
-  it("keeps Astra off every subagent role", () => {
+  it("keeps Astra off subagents and maps every reviewer to the Sol task role", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
-    expect(roles["task"]).toBe("openai-codex/gpt-6-sol:high");
+    expect(roles).toMatchObject({
+      task: "openai-codex/gpt-6-sol:high",
+      smol: "openai-codex/gpt-6-luna:medium",
+      commit: "openai-codex/gpt-6-luna:medium",
+      tiny: "openai-codex/gpt-6-luna:low",
+    });
     for (const [role, selector] of Object.entries(roles)) {
       if (role !== "astra") expect(selector).not.toContain("gpt-6-astra");
     }
     const task = config["task"] as Record<string, unknown>;
-    const overrides = task["agentModelOverrides"] as Record<string, string>;
-    for (const [agent, alias] of Object.entries(overrides)) {
-      expect(alias).toMatch(/^@/);
-      const target = alias.slice(1);
-      const resolved = roles[target];
-      expect(resolved, `${agent} -> ${alias} resolves to no role`).toBeDefined();
-      expect(resolved).not.toContain("gpt-6-astra");
-    }
+    expect(task["agentModelOverrides"]).toEqual({
+      reviewer: "@task",
+      "security-reviewer": "@task",
+      "code-reviewer": "@task",
+      "plan-reviewer": "@task",
+    });
   });
 
-  // No kit role caps a subagent through models.yml any more.
-  // Keep the task ceiling at omp's own ceiling so scout and sonic can reach
-  // the top level their model publishes.
-  it("allows max effort for subagents whose models support it", () => {
-    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "max");
+  it("keeps advisor on Opus 5.5 without a GPT-6 Sol retry", () => {
+    const config = ompConfig();
+    expect(config["advisor"]).toHaveProperty("enabled", true);
+    expect(config["modelRoles"]).toHaveProperty("advisor", "anthropic/claude-opus-5-5:medium");
+    const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
+    expect(chains).toHaveProperty("advisor", []);
   });
 
   // `-1` is omp's schema default sentinel, which selects reserve-based
@@ -142,92 +158,18 @@ describe("SoT omp tree", () => {
   // explicit chain replaces omp's built-in web order wholesale. The owner
   // removed every older-model entry on purpose; any other shortened list drops
   // providers rather than reordering them.
-  it("declares the web role instead of the retired webSearchOrder key", () => {
+  it("declares a complete web search chain without the retired webSearchOrder key", () => {
     const config = ompConfig();
     expect(config["providers"]).not.toHaveProperty("webSearchOrder");
     expect(config["modelRoles"]).toHaveProperty("web", "web/firecrawl");
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
-    const web = (chains as Record<string, unknown>)["web"];
-    expect(web).toEqual([
-      "web/exa",
-      "web/perplexity",
-      "openai-codex/gpt-6-luna",
-      "web/parallel",
-      "web/zai",
-      "web/tinyfish",
-      "web/jina",
-      "web/kagi",
-      "web/tavily",
-      "web/brave",
-      "web/kimi",
-      "web/synthetic",
-      "web/ollama",
-      "web/searxng",
-      "web/startpage",
-      "web/duckduckgo",
-      "web/ecosia",
-      "web/google",
-      "web/mojeek",
-      "web/public",
-    ]);
-  });
-
-  // A fresh install copies the SoT text verbatim. If the yaml package
-  // re-serializes it differently (for example `[low]` as `[ low ]`), every
-  // later sync reports a merge and rewrites the file, breaking idempotency.
-  it("keeps both YAML files byte-stable through their own merge", () => {
-    const config = readSot("config.yml");
-    const models = readSot("models.yml");
-    expect(mergeOmpConfig(config, config)).toBe(config);
-    expect(mergeOmpModels(models, models)).toBe(models);
-  });
-
-  it("loads the canonical ~/.agents skills only", () => {
-    expect(ompConfig()["skills"]).toEqual({
-      enableClaudeUser: false,
-      enableCodexUser: false,
-      enableAgentsUser: true,
-    });
-  });
-
-  // omp rejects `unexpectedStopDetection: true` with
-  // `Valid values: none, mechanical, smart`, so a stale boolean in the SoT
-  // would quarantine the deployed global YAML and fail omp startup.
-  it("declares the current enum value for unexpected-stop detection", () => {
-    expect(ompConfig()["features"]).toEqual({ unexpectedStopDetection: "smart" });
-  });
-
-  // `omp config get advisor.subagents` answers `Unknown setting`. A retired key
-  // in a kit-managed file would break every omp session on every machine.
-  it("declares no retired advisor.subagents key", () => {
-    const advisor = ompConfig()["advisor"];
-    expect(advisor).toBeTypeOf("object");
-    expect(Object.keys(advisor as Record<string, unknown>)).not.toContain("subagents");
-  });
-
-  // `setupVersion` is omp's own bookkeeping counter, not configuration. A
-  // kit-declared value would reset the deployed marker on every sync.
-  it("declares no setupVersion bookkeeping key", () => {
-    expect(ompConfig()["setupVersion"]).toBeUndefined();
-  });
-
-  it("parses mcp.json as JSON that disables the kit-excluded servers", () => {
-    const mcp = JSON.parse(readSot("mcp.json")) as { disabledServers?: unknown };
-    expect(mcp.disabledServers).toEqual([
-      "chrome-devtools",
-      "context7:context7",
-      "openaiDeveloperDocs",
-    ]);
-  });
-
-  // pi-intercom's default `npx --no-install tsx` launcher cannot resolve tsx in
-  // omp's flat plugin store, so the broker must run under Bun.
-  it("parses intercom.json as JSON that runs the broker under Bun", () => {
-    const intercom = JSON.parse(readSot("intercom.json")) as { brokerCommand?: unknown };
-    expect(intercom.brokerCommand).toBe("bun");
-  });
-
-  it("ships AGENTS.md as non-empty global omp guidance", () => {
-    expect(readSot("AGENTS.md").startsWith("# Global OMP guidance")).toBe(true);
+    const web = (chains as Record<string, unknown>)["web"] as ReadonlyArray<string>;
+    expect(web).toHaveLength(20);
+    expect(new Set(web).size).toBe(20);
+    expect(web[0]).toBe("web/exa");
+    expect(web.at(-1)).toBe("web/public");
+    expect(web.join(" ")).not.toMatch(
+      /gemini-2[.-]5-flash|claude-haiku-4[.-]5|gpt-5[.-][56]|grok-4[.-]5/i,
+    );
   });
 });

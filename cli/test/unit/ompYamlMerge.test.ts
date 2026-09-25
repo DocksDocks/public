@@ -87,22 +87,21 @@ describe("omp YAML merge", () => {
     });
   });
 
-  it("returns the SoT text byte for byte for an empty deployed file", () => {
+  it.each([
+    ["empty", ""],
+    ["whitespace-only", " \n\t\n"],
+    ["null scalar", "null\n"],
+  ])("returns SoT bytes for a %s deployed file", (_case, deployed) => {
     const sotText = "# managed\nvalue: 1\n";
 
-    expect(mergeOmpConfig(sotText, "")).toBe(sotText);
+    expect(mergeOmpConfig(sotText, deployed)).toBe(sotText);
   });
 
-  it("returns the SoT text byte for byte for a whitespace-only deployed file", () => {
-    const sotText = "# managed\nvalue: 1\n";
-
-    expect(mergeOmpConfig(sotText, " \n\t\n")).toBe(sotText);
-  });
-
-  it("preserves SoT comments", () => {
+  it("preserves a SoT comment on its managed key while merging user settings", () => {
     const merged = mergeOmpConfig("# managed by docks-kit\nvalue: 1\n", "userOnly: true\n");
 
-    expect(merged).toContain("# managed by docks-kit");
+    expect(merged).toContain("# managed by docks-kit\nvalue: 1");
+    expect(parse(merged)).toEqual({ value: 1, userOnly: true });
   });
 
   it("throws for invalid deployed YAML", () => {
@@ -127,10 +126,6 @@ describe("omp YAML merge", () => {
     expect(parse(mergeOmpModels(sot, deployed))).toEqual({
       providers: { "openai-codex": { modelOverrides: {} }, mine: { apiKey: "secret" } },
       retry: { fallbackChains: { "openai/*": ["b"] } },
-    });
-    expect(parse(mergeOmpConfig(sot, deployed))).toEqual({
-      providers: { "openai-codex": { modelOverrides: {} }, mine: { apiKey: "secret" } },
-      retry: { fallbackChains: {} },
     });
   });
 

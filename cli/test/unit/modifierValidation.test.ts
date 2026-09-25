@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -54,6 +54,7 @@ const ENV_KEYS = [
   "AGENTS_DIR",
   "DRY_RUN",
   "DOCKS_KIT_VERBOSE",
+  "DOCKS_KIT_INTERACTIVE",
   "SKIP_BUBBLEWRAP",
   "RECONCILE",
   "PRUNE",
@@ -111,24 +112,28 @@ describe("modifier field validation", () => {
     expect(
       await runEngineNative(["sync", "agents", "--dry-run"], stubServices(invalidRecords)),
     ).toBe(2);
-    expect(invalidRecords).toContainEqual({
-      level: "err",
-      message: "CLAUDE_COMPACT_WINDOW expects a token count (e.g. 680000 or 680k)",
-    });
+    expect(invalidRecords).toEqual([
+      {
+        level: "err",
+        message: "CLAUDE_COMPACT_WINDOW expects a token count (e.g. 680000 or 680k)",
+      },
+    ]);
   });
 
-  it("rejects every invalid CLAUDE_PLUGINS token", async () => {
+  it("rejects an invalid CLAUDE_PLUGINS token after a valid one", async () => {
     process.env["CLAUDE_PLUGINS"] = "supabase arbitrary n8n";
     const records: Array<LogRecord> = [];
 
     expect(await runEngineNative(["sync", "agents", "--dry-run"], stubServices(records))).toBe(2);
-    expect(records).toContainEqual({
-      level: "err",
-      message: "Unknown opt-in plugin 'arbitrary'. Known: supabase, n8n",
-    });
+    expect(records).toEqual([
+      {
+        level: "err",
+        message: "Unknown opt-in plugin 'arbitrary'. Known: supabase, n8n",
+      },
+    ]);
   });
 
-  it("warns for every explicit Claude modifier when Claude is deselected", async () => {
+  it("warns when explicitly supplied Claude modifiers are deselected", async () => {
     const records: Array<LogRecord> = [];
 
     expect(
@@ -151,32 +156,69 @@ describe("modifier field validation", () => {
     ]);
   });
 
-  it("fails when deployed model configuration exists but cannot be read", async () => {
-    mkdirSync(join(root, ".claude", "settings.json"), { recursive: true });
+  it.each([
+    ["claude", ".claude", "settings.json"],
+    ["codex", ".codex", "config.toml"],
+  ] as const)("fails when deployed %s configuration cannot be read", async (tool, dir, file) => {
+    mkdirSync(join(root, dir, file), { recursive: true });
     const records: Array<LogRecord> = [];
 
-    expect(await runEngineNative(["model", "claude"], stubServices(records))).toBe(1);
-    expect(records).toContainEqual({
-      level: "err",
-      message: expect.stringContaining("Failed to read ~/.claude/settings.json:"),
-    });
-    expect(records).not.toContainEqual({
-      level: "warn",
-      message: "~/.claude/settings.json missing",
-    });
+    expect(await runEngineNative(["model", tool], stubServices(records))).toBe(1);
+    expect(records).toEqual([
+      {
+        level: "err",
+        message: expect.stringContaining(`Failed to read ~/${dir}/${file}:`),
+      },
+    ]);
   });
 
-  it("derives toolchain operation and tool only from positional words", async () => {
-    const checkRecords: Array<LogRecord> = [];
-    expect(await runEngineNative(["toolchain", "--verbose"], stubServices(checkRecords))).toBe(0);
+  it.each([
+    ["claude", "bogus", ".claude/settings.json", "Invalid Claude model 'bogus'"],
+    ["codex", "bad model", ".codex/config.toml", "Invalid Codex model 'bad model'"],
+  ] as const)(
+    "rejects invalid %s models without changing deployment",
+    async (tool, model, file, error) => {
+      const records: Array<LogRecord> = [];
 
-    const ensureRecords: Array<LogRecord> = [];
-    expect(
-      await runEngineNative(["toolchain", "--verbose", "ensure"], stubServices(ensureRecords)),
-    ).toBe(2);
-    expect(ensureRecords).toContainEqual({
-      level: "err",
-      message: "Usage: toolchain ensure <tool>",
-    });
+      expect(await runEngineNative(["model", tool, model], stubServices(records))).toBe(2);
+      expect(records.filter(({ level }) => level === "err")).toEqual([
+        { level: "err", message: error },
+      ]);
+      expect(records).toContainEqual({
+        level: "echo",
+        message: expect.stringContaining(`Available ${tool} models`),
+      });
+      expect(existsSync(join(root, file))).toBe(false);
+    },
+  );
+
+  it.each([
+    ["claude", "--claude-model=bogus", ".claude/settings.json", "Invalid Claude model 'bogus'"],
+    ["codex", "--codex-model=bad model", ".codex/config.toml", "Invalid Codex model 'bad model'"],
+  ] as const)(
+    "rejects an invalid %s sync modifier before creating deployment",
+    async (tool, flag, file, diagnostic) => {
+      const records: Array<LogRecord> = [];
+
+      expect(await runEngineNative(["sync", tool, flag], stubServices(records))).toBe(2);
+      expect(records).toContainEqual({
+        level: "err",
+        message: expect.stringContaining(diagnostic),
+      });
+      expect(records).toContainEqual({
+        level: "echo",
+        message: expect.stringContaining(`Available ${tool} models`),
+      });
+      expect(existsSync(join(root, file))).toBe(false);
+    },
+  );
+
+  it("ignores flags when selecting a toolchain operation", async () => {
+    const records: Array<LogRecord> = [];
+
+    expect(await runEngineNative(["toolchain", "--verbose", "ensure"], stubServices(records))).toBe(
+      2,
+    );
+    expect(records).toEqual([{ level: "err", message: "Usage: toolchain ensure <tool>" }]);
   });
 });

@@ -159,6 +159,7 @@ describe("per-run Bun bootstrap", () => {
   it("returns and memoizes an existing resolved executable", async () => {
     const test = rig("linux", { curl: true, installed: false, pathBun: "/usr/local/bin/bun" });
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun");
+    test.state.pathBun = undefined;
     expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe("/usr/local/bin/bun");
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
   });
@@ -172,7 +173,6 @@ describe("per-run Bun bootstrap", () => {
       { kind: "deferred", reason: "missing-curl" },
       { kind: "deferred", reason: "missing-curl" },
     ]);
-    expect(test.lines.join("")).toContain("curl not installed");
     expect(test.lines.join("").match(/curl not installed/g)).toHaveLength(1);
     expect(test.lines.join("")).toContain(
       "cannot bootstrap Bun; install Bun manually, then re-run sync",
@@ -222,20 +222,18 @@ describe("per-run Bun bootstrap", () => {
     {
       hostName: "POSIX",
       platformId: "linux",
-      hostId: "linux",
       installerName: "install.sh",
       expectedExecutable: "/home/test/.bun/bin/bun",
     },
     {
       hostName: "Windows",
       platformId: "win32",
-      hostId: "windows",
       installerName: "install.ps1",
       expectedExecutable: "/home/test/.bun/bin/bun.exe",
     },
   ] as const)(
     "uses a fresh private directory and never follows the predictable shared-temp symlink on $hostName",
-    async ({ platformId, hostId, installerName, expectedExecutable }) => {
+    async ({ platformId, installerName, expectedExecutable }) => {
       const fs = await vi.importActual<typeof FsModule>("node:fs");
       const os = await vi.importActual<typeof OsModule>("node:os");
       const testRoot = fs.mkdtempSync(join(os.tmpdir(), "docks-kit-bun-security-"));
@@ -285,26 +283,43 @@ describe("per-run Bun bootstrap", () => {
 
       try {
         expect(expectReady(await bunBootstrap(test.ctx, test.services))).toBe(expectedExecutable);
-        const installer = hostOs(hostId).bunInstaller(VERIFIED_BUN, privateDirectory);
+        const scriptPath = `${privateDirectory}/${installerName}`;
         expect(mocks.mkdtempSync).toHaveBeenCalledWith(`${testRoot}/docks-kit-bun-`);
         expect(
           privateDirectory.startsWith(`${testRoot}/`) ||
             privateDirectory.startsWith(`${testRoot}${sep}`),
         ).toBe(true);
         expect(basename(privateDirectory)).toMatch(/^docks-kit-bun-.+$/);
-        expect(downloadedTo).toBe(installer.scriptPath);
+        expect(downloadedTo).toBe(scriptPath);
         expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
           1,
-          installer.download.command,
-          installer.download.args,
+          "curl",
+          [
+            "-fsSL",
+            platformId === "win32" ? "https://bun.sh/install.ps1" : "https://bun.sh/install",
+            "-o",
+            scriptPath,
+          ],
           { stdio: ["ignore", "ignore", "pipe"] },
         );
         expect(mocks.spawnProcess).toHaveBeenNthCalledWith(
           2,
-          installer.run.command,
-          installer.run.args,
+          platformId === "win32" ? "powershell.exe" : "bash",
+          platformId === "win32"
+            ? [
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                scriptPath,
+                "-Version",
+                VERIFIED_BUN,
+              ]
+            : [scriptPath, `bun-v${VERIFIED_BUN}`],
           { stdio: ["ignore", "ignore", "pipe"] },
         );
+        expect(mocks.spawnProcess).toHaveBeenCalledTimes(2);
         expect(privateDirectory).not.toBe(predictableSymlink);
         expect(downloadedTo).not.toBe(predictableSymlink);
         expect(fs.readFileSync(sentinel, "utf8")).toBe("unchanged");

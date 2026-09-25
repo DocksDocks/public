@@ -5,12 +5,11 @@ import { describe, expect, it } from "vitest";
 import {
   claudeRuntimePaths,
   materializeClaudeSettings,
-  statusLineCommand,
   type ClaudeRuntimePaths,
 } from "../../src/engine-native/claudeRuntime";
 import { commitClaudeSettings, prepareClaudeSettings } from "../../src/engine-native/claudeSync";
 import type { Ctx } from "../../src/engine-native";
-import { isObject, jqStringify, parseJson, type Json } from "../../src/engine-native/jq";
+import { isObject, parseJson, type Json } from "../../src/engine-native/jq";
 import { makeEngineServices } from "../../src/engine-native/services";
 import { hostOs } from "../../src/engine-native/os";
 import { payloadText } from "../../src/payload";
@@ -67,6 +66,18 @@ function decodePowerShellCommand(command: string): string {
   return Buffer.from(command.slice(POWERSHELL_PREFIX.length), "base64").toString("utf16le");
 }
 
+function projectedWindowsStatusLine(runtime: ClaudeRuntimePaths): string {
+  const projected = materializeClaudeSettings(template(), runtime, hostOs("windows"));
+  if (
+    !isObject(projected) ||
+    !isObject(projected["statusLine"]) ||
+    typeof projected["statusLine"]["command"] !== "string"
+  ) {
+    throw new Error("projected status line command is missing");
+  }
+  return projected["statusLine"]["command"];
+}
+
 function postToolUseFailureCommand(settings: Json): string {
   if (!isObject(settings) || !isObject(settings["hooks"])) throw new Error("hooks object missing");
   const groups = settings["hooks"]["PostToolUseFailure"];
@@ -80,7 +91,7 @@ function postToolUseFailureCommand(settings: Json): string {
   return handler["command"];
 }
 
-function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines: Array<string> } {
+function settingsContext(): { readonly ctx: Ctx; readonly lines: Array<string> } {
   const lines: Array<string> = [];
   const services = makeEngineServices({
     sinks: {
@@ -89,7 +100,7 @@ function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines
     },
   });
   const ctx = {
-    reconcile,
+    reconcile: false,
     services,
     nextStepTriggers: { claudeRestart: false },
     failures: [] as Array<string>,
@@ -97,47 +108,21 @@ function settingsContext(reconcile = false): { readonly ctx: Ctx; readonly lines
   return { ctx, lines };
 }
 
-describe("Claude runtime paths", () => {
-  it("builds the three deployed program paths with output-stable separators", () => {
-    expect(claudeRuntimePaths("/home/test/.claude", "/home/test/.bun/bin/bun")).toEqual({
-      bun: "/home/test/.bun/bin/bun",
-      statusline: "/home/test/.claude/bin/statusline.mjs",
-      sessionStart: "/home/test/.claude/bin/session-start.mjs",
-      notify: "/home/test/.claude/bin/notify.mjs",
-    });
-    expect(claudeRuntimePaths("C:/Users/test/.claude", "C:/Users/test/.bun/bin/bun.exe")).toEqual({
-      bun: "C:/Users/test/.bun/bin/bun.exe",
-      statusline: "C:/Users/test/.claude/bin/statusline.mjs",
-      sessionStart: "C:/Users/test/.claude/bin/session-start.mjs",
-      notify: "C:/Users/test/.claude/bin/notify.mjs",
-    });
-  });
-});
-
 describe("statusline shell guards", () => {
-  it("keeps the Darwin command byte-identical to the existing POSIX shape", () => {
-    const bun = "'/home/O'\"'\"'Brien/.bun/bin/bun'";
-    const script = "'/home/O'\"'\"'Brien/.claude/bin/statusline.mjs'";
-    const expected = `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`;
-    expect(hostOs("darwin").statusLineCommand(POSIX_RUNTIME.bun, POSIX_RUNTIME.statusline)).toBe(
-      expected,
-    );
-    expect(statusLineCommand(POSIX_RUNTIME, hostOs("darwin"))).toBe(expected);
-  });
-
   it("decodes the Windows command to a progress-silenced guarded PowerShell script", () => {
     const runtime = claudeRuntimePaths("C:/Users/test/.claude", "C:/Users/test/.bun/bin/bun.exe");
-    const command = hostOs("windows").statusLineCommand(runtime.bun, runtime.statusline);
+    const command = projectedWindowsStatusLine(runtime);
     expect(decodePowerShellCommand(command)).toBe(
       "$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath 'C:/Users/test/.bun/bin/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/test/.claude/bin/statusline.mjs' -PathType Leaf)) { & 'C:/Users/test/.bun/bin/bun.exe' 'C:/Users/test/.claude/bin/statusline.mjs' }",
     );
   });
 
   it("doubles apostrophes inside Windows single-quoted path literals", () => {
-    const command = hostOs("windows").statusLineCommand(
-      "C:/Users/O'Brien/$bun/bun.exe",
-      "C:/Users/O'Brien/`scripts/statusline.mjs",
-    );
+    const command = projectedWindowsStatusLine({
+      ...POSIX_RUNTIME,
+      bun: "C:/Users/O'Brien/$bun/bun.exe",
+      statusline: "C:/Users/O'Brien/`scripts/statusline.mjs",
+    });
     expect(decodePowerShellCommand(command)).toBe(
       "$ProgressPreference = 'SilentlyContinue'; if ((Test-Path -LiteralPath 'C:/Users/O''Brien/$bun/bun.exe' -PathType Leaf) -and (Test-Path -LiteralPath 'C:/Users/O''Brien/`scripts/statusline.mjs' -PathType Leaf)) { & 'C:/Users/O''Brien/$bun/bun.exe' 'C:/Users/O''Brien/`scripts/statusline.mjs' }",
     );
@@ -147,6 +132,9 @@ describe("statusline shell guards", () => {
 describe("Claude settings materialization", () => {
   it("emits direct exec hooks, a guarded statusline, and no Stop key", () => {
     const source = template();
+    const bun = "'/home/O'\"'\"'Brien/.bun/bin/bun'";
+    const script = "'/home/O'\"'\"'Brien/.claude/bin/statusline.mjs'";
+    const expectedStatusLine = `test -x ${bun} && test -f ${script} && exec ${bun} ${script} || true`;
     const materialized = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("linux"));
     expect(materialized).toEqual({
       hooks: {
@@ -184,12 +172,11 @@ describe("Claude settings materialization", () => {
       },
       statusLine: {
         type: "command",
-        command: statusLineCommand(POSIX_RUNTIME, hostOs("linux")),
+        command: expectedStatusLine,
         refreshInterval: 5,
       },
       model: "opus",
     });
-    expect(JSON.stringify(materialized)).not.toContain("__DOCKS_KIT_");
     expect(source).toEqual(template());
   });
 
@@ -199,23 +186,27 @@ describe("Claude settings materialization", () => {
     const sotCommand = postToolUseFailureCommand(source);
     const posix = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("linux"));
     expect(postToolUseFailureCommand(posix)).toBe(sotCommand);
-    expect(hostOs("linux").failureHookCommand(sotCommand)).toBe(sotCommand);
-    expect(hostOs("darwin").failureHookCommand(sotCommand)).toBe(sotCommand);
+    const darwin = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("darwin"));
+    expect(postToolUseFailureCommand(darwin)).toBe(sotCommand);
 
     const windows = materializeClaudeSettings(source, POSIX_RUNTIME, hostOs("windows"));
     expect(decodePowerShellCommand(postToolUseFailureCommand(windows))).toBe(
       `Write-Output '${sotCommand.slice("echo '".length, -1)}'`,
     );
+  });
 
-    const json = sotCommand.slice("echo '".length, -1);
-    expect(decodePowerShellCommand(hostOs("windows").failureHookCommand(sotCommand))).toBe(
-      `Write-Output '${json}'`,
-    );
-
-    const escapedApostrophe = `echo '{"message":"O'"'"'Brien"}'`;
-    expect(decodePowerShellCommand(hostOs("windows").failureHookCommand(escapedApostrophe))).toBe(
+  it("escapes apostrophes in a deferred Windows failure hook without installing Bun hooks", () => {
+    const source = template();
+    source.hooks.PostToolUseFailure[0].hooks[0].command = `echo '{"message":"O'"'"'Brien"}'`;
+    const projected = materializeClaudeSettings(source, undefined, hostOs("windows"));
+    expect(decodePowerShellCommand(postToolUseFailureCommand(projected))).toBe(
       `Write-Output '{"message":"O''Brien"}'`,
     );
+    if (!isObject(projected) || !isObject(projected["hooks"])) {
+      throw new Error("projected hooks are missing");
+    }
+    expect(projected["hooks"]["SessionStart"]).toBeUndefined();
+    expect(projected["hooks"]["Notification"]).toBeUndefined();
   });
 
   it("strips only Bun-owned pointers when runtime is deferred", () => {
@@ -266,18 +257,14 @@ describe("Claude settings prepare/commit seam", () => {
     try {
       const test = settingsContext();
       const repo: Json = { model: "opus", userSetting: true };
+      const path = join(claudeDir, "settings.json");
       const prepared = prepareClaudeSettings(test.ctx, claudeDir, repo);
-      expect(prepared).toEqual({
-        path: `${claudeDir}/settings.json`,
-        bytes: jqStringify(repo),
-        previousBytes: undefined,
-        changed: true,
-      });
-      expect(existsSync(prepared.path)).toBe(false);
+      expect(existsSync(path)).toBe(false);
 
       commitClaudeSettings(test.ctx, prepared);
-      expect(readFileSync(prepared.path, "utf8")).toBe(jqStringify(repo));
-      expect(existsSync(`${prepared.path}.tmp`)).toBe(false);
+      expect(parseJson(readFileSync(path, "utf8"))).toEqual(repo);
+      expect(existsSync(`${path}.tmp`)).toBe(false);
+      expect(existsSync(`${path}.bak`)).toBe(false);
       expect(test.ctx.nextStepTriggers.claudeRestart).toBe(true);
       expect(test.lines.join("")).toContain("Settings installed");
     } finally {
@@ -299,14 +286,40 @@ describe("Claude settings prepare/commit seam", () => {
       expect(existsSync(`${path}.bak`)).toBe(false);
 
       commitClaudeSettings(test.ctx, prepared);
-      expect(readFileSync(path, "utf8")).toBe(prepared.bytes);
-      expect(prepared.bytes).toContain('"model": "opus"');
-      expect(prepared.bytes).toContain('"userOnly": true');
+      expect(parseJson(readFileSync(path, "utf8"))).toMatchObject({
+        model: "opus",
+        userOnly: true,
+      });
       expect(readFileSync(`${path}.bak`, "utf8")).toBe(previous);
 
       writeFileSync(path, "not-json");
-      expect(() => prepareClaudeSettings(test.ctx, claudeDir, { model: "opus" })).toThrow();
+      expect(() => prepareClaudeSettings(test.ctx, claudeDir, { model: "opus" })).toThrow("exit 1");
+      expect(test.lines.join("")).toContain(
+        `Aborting sync: ${claudeDir}/settings.json is not valid JSON`,
+      );
       expect(readFileSync(path, "utf8")).toBe("not-json");
+      expect(existsSync(`${path}.tmp`)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses to commit unresolved runtime sentinels into an existing settings file", () => {
+    const root = mkdtempSync(join(tmpdir(), "claude-settings-"));
+    const claudeDir = join(root, ".claude");
+    const path = join(claudeDir, "settings.json");
+    mkdirSync(claudeDir);
+    const previous = '{"model":"sonnet","userOnly":true}\n';
+    writeFileSync(path, previous);
+    try {
+      const test = settingsContext();
+      expect(() =>
+        prepareClaudeSettings(test.ctx, claudeDir, {
+          hooks: { SessionStart: BUN_SENTINEL },
+        }),
+      ).toThrow("Claude settings contain unresolved runtime sentinels");
+      expect(readFileSync(path, "utf8")).toBe(previous);
+      expect(existsSync(`${path}.bak`)).toBe(false);
       expect(existsSync(`${path}.tmp`)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });

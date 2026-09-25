@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import type { Ctx } from "../../src/engine-native";
 import { syncLspServers } from "../../src/engine-native/claudeLsp";
@@ -96,40 +97,32 @@ describe("rust-analyzer LSP server install", () => {
   it("installs the component through rustup when the host has rustup", async () => {
     const { out, err } = await run(["rust-analyzer"]);
 
-    expect(out).toContain("[dry-run] would install: rustup component add rust-analyzer");
-    expect(out).not.toContain("npm install -g");
+    expect(out).toBe("[dry-run] would install: rustup component add rust-analyzer");
     expect(err).toBe("");
   });
 
   it("stays silent on a host without rustup", async () => {
     const { out, err } = await run(["rust-analyzer", "rustup"]);
 
-    expect(out).toContain("[dry-run] LSP server binaries present");
-    expect(out).not.toContain("rustup component add");
+    expect(out).toBe("[dry-run] LSP server binaries present");
     expect(err).toBe("");
   });
 
   it("names the skipped component under --verbose", async () => {
     const { out, err } = await run(["rust-analyzer", "rustup"], true);
 
-    expect(err).toContain("Skipping rust-analyzer: rustup is not installed");
-    expect(out).toContain("[dry-run] LSP server binaries present");
-    expect(out).not.toContain("rustup component add");
+    expect(stripVTControlCharacters(err)).toBe(
+      "[ok] Skipping rust-analyzer: rustup is not installed, so the rust-analyzer-lsp plugin stays a no-op",
+    );
+    expect(out).toBe("[dry-run] LSP server binaries present");
   });
 
   it("reports both channels when npm and rustup tools are missing together", async () => {
     const { out } = await run(["intelephense", "rust-analyzer"]);
 
-    expect(out).toContain("[dry-run] would install: npm install -g intelephense@");
-    expect(out).toContain("[dry-run] would install: rustup component add rust-analyzer");
-  });
-
-  it("reports nothing to install when every server binary is present", async () => {
-    const { out, err } = await run([]);
-
-    expect(out).toContain("[dry-run] LSP server binaries present");
-    expect(out).not.toContain("rust-analyzer");
-    expect(err).toBe("");
+    expect(out).toBe(
+      "[dry-run] would install: npm install -g intelephense@1.18.5\n[dry-run] would install: rustup component add rust-analyzer",
+    );
   });
 
   afterAll(() => {

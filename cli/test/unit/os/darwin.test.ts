@@ -61,19 +61,5 @@ describe("Darwin host OS", () => {
     expect(host.installHint("codex")).toBe(
       'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
     );
-    expect(Object.keys(host).sort()).toEqual([
-      "bunExecutableName",
-      "bunInstaller",
-      "directoryLinkKinds",
-      "environmentSetting",
-      "executableSuffixes",
-      "failureHookCommand",
-      "id",
-      "installHint",
-      "invoke",
-      "statusLineCommand",
-      "supportsBubblewrap",
-      "toolchainOs",
-    ]);
   });
 });

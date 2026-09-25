@@ -125,6 +125,9 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
       "ignoring stale cli/dist/docks-kit-linux-x64 0.4.0; checkout is",
     );
     expect(catalog.stderr).toContain("run 'bun run build:binaries' to refresh it or delete it");
+    expect(
+      readFileSync(join(fixture.root, "cli", "dist", "docks-kit-linux-x64"), "utf8"),
+    ).toContain("compiled:");
   });
 
   it("falls through to source when the compiled binary prints no version", () => {
@@ -133,6 +136,9 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toBe("source:probe");
+    expect(
+      readFileSync(join(fixture.root, "cli", "dist", "docks-kit-linux-x64"), "utf8"),
+    ).toContain("compiled:");
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 <unknown>");
   });
 

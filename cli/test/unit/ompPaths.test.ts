@@ -68,16 +68,28 @@ describe("omp path resolution", () => {
     );
   });
 
-  it("treats an explicitly empty OMP_PROFILE as the default instead of using PI_PROFILE", () => {
-    expect(paths({ OMP_PROFILE: "", PI_PROFILE: "legacy" }).profile).toBeUndefined();
-    expect(paths({ PI_PROFILE: "legacy" }).profile).toBe("legacy");
-    expect(paths({ OMP_PROFILE: "primary", PI_PROFILE: "legacy" }).profile).toBe("primary");
+  it("prefers OMP_PROFILE even when empty, and otherwise falls back to PI_PROFILE", () => {
+    expect(paths({ OMP_PROFILE: "", PI_PROFILE: "legacy" })).toEqual(
+      expectedDefault(`${home}/.omp`),
+    );
+    expect(paths({ PI_PROFILE: "legacy" })).toEqual({
+      profile: "legacy",
+      configRoot: `${home}/.omp/profiles/legacy`,
+      agentDir: `${home}/.omp/profiles/legacy/agent`,
+      dataRoot: `${home}/.omp/profiles/legacy`,
+    });
+    expect(paths({ OMP_PROFILE: "primary", PI_PROFILE: "legacy" })).toEqual({
+      profile: "primary",
+      configRoot: `${home}/.omp/profiles/primary`,
+      agentDir: `${home}/.omp/profiles/primary/agent`,
+      dataRoot: `${home}/.omp/profiles/primary`,
+    });
   });
 
   it.each(["   ", "default", "..", "trailing.", "Upper", "has space", "CON", "nul.txt"])(
-    "degrades the invalid or reserved profile %j to the default profile",
+    "degrades the invalid or reserved profile %j to the default paths",
     (profile) => {
-      expect(paths({ OMP_PROFILE: profile }).profile).toBeUndefined();
+      expect(paths({ OMP_PROFILE: profile })).toEqual(expectedDefault(`${home}/.omp`));
     },
   );
 

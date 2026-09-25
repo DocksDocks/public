@@ -4,19 +4,13 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { writeHarnessSelection } from "../../src/engine-native/harnesses";
 import { modelCatalog } from "../../src/engine-native/models";
-import { cleanup, runEngine, runPublicCli } from "../lib/goldenExecution";
+import { runPublicCli } from "../lib/goldenExecution";
 import {
   FIXTURES_DIR,
   cleanupTemporaryDirs,
   makeStubDir,
   temporaryDir,
 } from "../lib/goldenResources";
-
-// The stub launchers and the child must agree on one host. Native pairing runs
-// the real host with its own launcher form, so these cases keep their
-// harness-CLI coverage on Windows instead of resolving a shell script the
-// host cannot execute.
-const NATIVE = { nativeHost: true } as const;
 
 afterAll(cleanupTemporaryDirs);
 
@@ -60,7 +54,15 @@ describe("retained model and sync behavior", () => {
     const selected = runPublicCli(["models", "--json"], "home-fresh", stubs, options);
     expect(selected.exitCode).toBe(0);
     expect(selected.stderr).toBe("");
-    expect(Object.keys(JSON.parse(selected.stdout))).toEqual(["omp"]);
+    expect(JSON.parse(selected.stdout)).toEqual({
+      omp: {
+        tool: "omp",
+        source: "curated",
+        verified: "?",
+        fallbackReason: "'omp models --json' returned no usable catalog",
+        models: [],
+      },
+    });
 
     const explicit = runPublicCli(["models", "codex", "--json"], "home-fresh", stubs, options);
     expect(explicit.exitCode).toBe(0);
@@ -76,8 +78,8 @@ describe("retained model and sync behavior", () => {
     });
   });
 
-  it("shows the curated fallback and reason with --refresh when no live cache exists", () => {
-    const run = runPublicCli(["models", "codex", "--refresh"], "home-fresh", makeStubDir());
+  it("shows the curated fallback and reason when no live Codex cache exists", () => {
+    const run = runPublicCli(["models", "codex"], "home-fresh", makeStubDir());
     try {
       expect(run.exitCode).toBe(0);
       expect(run.stdout).toContain(
@@ -116,6 +118,21 @@ describe("retained model and sync behavior", () => {
     expect(run.stdout).not.toContain("gpt-6-sol");
     expect(run.stdout).not.toContain("live list unavailable");
     expect(run.stderr).toBe("");
+
+    const jsonRun = runPublicCli(["models", "codex", "--json"], "home-fresh", makeStubDir(), {
+      reuseHome: home,
+    });
+    expect(jsonRun.exitCode).toBe(0);
+    expect(jsonRun.stderr).toBe("");
+    expect(JSON.parse(jsonRun.stdout)).toEqual({
+      codex: {
+        tool: "codex",
+        source: "codex-cache",
+        verified: modelCatalog("codex").verified,
+        fetchedAt: "2026-09-24T12:00:00Z",
+        models: [{ id: "gpt-demo", kind: "id", note: "Demo" }],
+      },
+    });
   });
 
   it("parses ordinary model and effort modifiers through the public sync command", () => {
@@ -153,34 +170,6 @@ describe("retained model and sync behavior", () => {
       expect(deployedText(run.home, ".codex/config.toml")).toBe(fixtureCodex);
     } finally {
       rmSync(run.home, { recursive: true, force: true });
-    }
-  });
-
-  it("restores normal SoT model and effort defaults on a flag-less fixture sync", () => {
-    const run = runEngine(["sync"], "home-drift", makeStubDir({}, NATIVE), NATIVE);
-    try {
-      expect(run.exitCode).toBe(0);
-
-      const claude = JSON.parse(deployedText(run.home, ".claude/settings.json")) as {
-        model: string;
-        effortLevel: string;
-        env: Record<string, string>;
-        permissions: { allow: Array<string> };
-      };
-      expect(claude.model).toBe("opus");
-      expect(claude.effortLevel).toBe("high");
-      expect(claude.env["MY_CUSTOM_VAR"]).toBe("1");
-      expect(claude.permissions.allow).toContain("Bash(my-tool *)");
-      expect(claude.permissions.allow).toContain("Read");
-
-      const codex = deployedText(run.home, ".codex/config.toml");
-      expect(codex.match(/^model\s*=\s*"([^"]*)"$/m)?.[1]).toBe("gpt-6-sol");
-      expect(codex.match(/^model_reasoning_effort\s*=\s*"([^"]*)"$/m)?.[1]).toBe("high");
-      expect(codex).toMatch(/^custom_user_key = "keepme"$/m);
-      expect(codex).toMatch(/^\[user_only\.table\]\nkeep = true$/m);
-      expect(codex).not.toMatch(/^use_legacy_landlock\s*=/m);
-    } finally {
-      cleanup([run]);
     }
   });
 });

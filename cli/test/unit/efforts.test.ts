@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  CLAUDE_ADVISOR_STATES,
-  CLAUDE_EFFORT_LEVELS,
-  CODEX_REASONING_EFFORTS,
   advisorCatalog,
   effortCatalog,
-  effortModifierValues,
   isEffortModifierValue,
   resolveEffort,
   sotEffort,
@@ -14,34 +10,7 @@ import {
 } from "../../src/efforts";
 
 describe("deploy-time effort catalogs", () => {
-  it("keeps the researched per-tool enums distinct and ordered", () => {
-    expect(CLAUDE_EFFORT_LEVELS).toEqual(["low", "medium", "high", "xhigh"]);
-    expect(CODEX_REASONING_EFFORTS).toEqual([
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-      "ultra",
-    ]);
-    expect(CLAUDE_ADVISOR_STATES).toEqual(["on", "off", "default"]);
-    expect(effortModifierValues("claude")).toEqual(["low", "medium", "high", "xhigh", "default"]);
-    expect(effortModifierValues("codex")).toEqual([
-      "none",
-      "minimal",
-      "low",
-      "medium",
-      "high",
-      "xhigh",
-      "max",
-      "ultra",
-      "default",
-    ]);
-  });
-
-  it("validates the vocabulary without pretending the tools share it", () => {
+  it("accepts each tool's distinct limits and rejects unknown efforts", () => {
     expect(isEffortModifierValue("claude", "xhigh")).toBe(true);
     expect(isEffortModifierValue("claude", "ultra")).toBe(false);
     expect(isEffortModifierValue("codex", "ultra")).toBe(true);
@@ -49,13 +18,20 @@ describe("deploy-time effort catalogs", () => {
     expect(isEffortModifierValue("codex", "future")).toBe(false);
   });
 
-  it("resolves default from each embedded SoT and rejects invalid embedded values", () => {
+  it("resolves embedded defaults and rejects invalid explicit efforts", () => {
     expect(sotEffort("claude")).toBe("high");
     expect(sotEffort("codex")).toBe("high");
-    expect(resolveEffort("claude", "default")).toBe(sotEffort("claude"));
-    expect(resolveEffort("codex", "default")).toBe(sotEffort("codex"));
+    expect(resolveEffort("claude", "default")).toBe("high");
+    expect(resolveEffort("codex", "default")).toBe("high");
     expect(resolveEffort("claude", "low")).toBe("low");
     expect(resolveEffort("codex", "ultra")).toBe("ultra");
+    expect(() => resolveEffort("claude", "ultra")).toThrow("Invalid claude effort 'ultra'");
+    expect(() => resolveEffort("codex", "future")).toThrow("Invalid codex effort 'future'");
+  });
+
+  it("rejects missing or out-of-catalog embedded defaults", () => {
+    expect(validateEffortDefault("claude", "low")).toBe("low");
+    expect(validateEffortDefault("codex", "ultra")).toBe("ultra");
     expect(() => validateEffortDefault("claude", "max")).toThrow(
       "Embedded SoT Claude effortLevel 'max' is outside the verified catalog",
     );
@@ -72,7 +48,7 @@ describe("deploy-time effort catalogs", () => {
         "  medium",
         "  high",
         "  xhigh",
-        `  default  — SoT: ${sotEffort("claude")}`,
+        "  default  — SoT: high",
       ].join("\n"),
     );
     expect(effortCatalog("codex")).toBe(
@@ -86,7 +62,7 @@ describe("deploy-time effort catalogs", () => {
         "  xhigh",
         "  max",
         "  ultra",
-        `  default  — SoT: ${sotEffort("codex")}`,
+        "  default  — SoT: high",
         "  (support is model-dependent)",
       ].join("\n"),
     );

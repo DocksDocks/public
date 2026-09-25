@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parse } from "yaml";
 import type * as ExecModule from "../../src/engine-native/exec";
 
 const mocks = vi.hoisted(() => ({
@@ -105,16 +106,14 @@ describe("retired omp config keys", () => {
     const { file, root } = deployConfig("symbolPreset: unicode\nsteeringMode: all\n");
 
     expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
-    const after = readFileSync(file, "utf8");
-    expect(after).not.toContain("symbolPreset");
-    expect(after).toContain("steeringMode: all");
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ steeringMode: "all" });
   });
 
   it("keeps a retired key the user changed away from the shipped value", () => {
     const { file, root } = deployConfig("theme:\n  dark: nord\n");
 
     expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
-    expect(readFileSync(file, "utf8")).toContain("dark: nord");
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ theme: { dark: "nord" } });
   });
 
   it("prunes an outright-retired key at a value the kit never shipped", () => {
@@ -123,9 +122,7 @@ describe("retired omp config keys", () => {
     );
 
     expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
-    const after = readFileSync(file, "utf8");
-    expect(after).not.toContain("webSearchOrder");
-    expect(after).toContain("fetch: auto");
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ providers: { fetch: "auto" } });
   });
 
   it("removes a mapping emptied by pruning and keeps one that still holds a key", () => {
@@ -134,11 +131,9 @@ describe("retired omp config keys", () => {
     );
 
     expect(syncOmpRemovals(testCtx(root), file)).toBe(3);
-    const after = readFileSync(file, "utf8");
-    expect(after).not.toContain("tui:");
-    expect(after).toContain("statusLine:");
-    expect(after).toContain("compactThinkingLevel: false");
-    expect(after).not.toContain("transparent");
+    expect(parse(readFileSync(file, "utf8"))).toEqual({
+      statusLine: { compactThinkingLevel: false },
+    });
   });
 
   // A comment separated by a blank line belongs to the document and must
@@ -244,16 +239,15 @@ describe("retired omp config keys", () => {
     writeFileSync(file, "symbolPreset: unicode\nproviders:\n  webSearchOrder:\n    - brave\n");
 
     const ctx = testCtx(root);
-    await ompSync({ ...ctx, home: root });
-
-    for (const [key, value] of Object.entries(restore)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
+    try {
+      await ompSync({ ...ctx, home: root });
+    } finally {
+      for (const [key, value] of Object.entries(restore)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
     }
 
-    const after = readFileSync(file, "utf8");
-    expect(after).not.toContain("symbolPreset");
-    expect(after).not.toContain("webSearchOrder");
-    expect(after).toContain("steeringMode: all");
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ steeringMode: "all" });
   });
 });

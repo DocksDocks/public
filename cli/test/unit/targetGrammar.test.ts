@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 import type { Ctx } from "../../src/engine-native";
 import { p } from "../../src/engine-native/exec";
@@ -11,7 +12,12 @@ import { ExitError, parseArgs } from "../../src/engine-native/parseArgs";
 import { makeEngineServices } from "../../src/engine-native/services";
 import { kitHome } from "../../src/kitHome";
 
-function targetCtx(home: string, interactive: boolean, echoes: Array<string>): Ctx {
+function targetCtx(
+  home: string,
+  interactive: boolean,
+  echoes: Array<string>,
+  errors: Array<string> = [],
+): Ctx {
   return {
     repoDir: kitHome(),
     home,
@@ -34,7 +40,7 @@ function targetCtx(home: string, interactive: boolean, echoes: Array<string>): C
     syncConcurrency: 3,
     services: makeEngineServices({
       sinks: {
-        stderr: () => {},
+        stderr: (chunk) => void errors.push(stripVTControlCharacters(chunk)),
         stdout: (chunk) => void echoes.push(chunk.replace(/\n$/, "")),
       },
     }),
@@ -90,12 +96,13 @@ describe("sync target grammar", () => {
     expect(selectedTargets(ctx)).toEqual({ claude: true, codex: true, agents: false, omp: false });
   });
 
-  it("ignores a stored selection when an explicit target is present", () => {
+  it("keeps an explicit target after a modifier ahead of a stored selection", () => {
     writeHarnessSelection(home, ["omp"]);
     const ctx = targetCtx(home, false, []);
 
-    parseArgs(ctx, ["claude"]);
+    parseArgs(ctx, ["--dry-run", "claude"]);
 
+    expect(ctx.dryRun).toBe(true);
     expect(selectedTargets(ctx)).toEqual({ claude: true, codex: false, agents: false, omp: false });
   });
 
@@ -147,6 +154,8 @@ describe("sync target grammar", () => {
 
     parseArgs(ctx, []);
 
+    expect(selectedTargets(ctx)).toEqual({ claude: false, codex: false, agents: false, omp: true });
+
     expect(echoes).toEqual([]);
   });
 
@@ -158,8 +167,9 @@ describe("sync target grammar", () => {
     expect(existsSync(kitDbFile(home))).toBe(false);
   });
 
-  it("keeps unknown positional targets on the ExitError code 2 path", () => {
-    const ctx = targetCtx(home, false, []);
+  it("reports unknown positional targets on stderr with exit code 2", () => {
+    const errors: Array<string> = [];
+    const ctx = targetCtx(home, false, [], errors);
     let thrown: unknown;
 
     try {
@@ -170,5 +180,54 @@ describe("sync target grammar", () => {
 
     expect(thrown).toBeInstanceOf(ExitError);
     expect((thrown as ExitError).code).toBe(2);
+    expect(errors).toEqual(["[err] Unknown arg: bogus\n"]);
+  });
+
+  it.each([
+    ["--claude-model", "Available claude models", "--claude-model requires a value"],
+    ["--codex-model", "Available codex models", "--codex-model requires a value"],
+    ["--claude-effort", "Available claude effort levels", "--claude-effort requires a value"],
+    ["--codex-effort", "Available codex effort levels", "--codex-effort requires a value"],
+    ["--claude-advisor", "Available claude advisor states", "--claude-advisor requires a value"],
+  ])(
+    "prints the catalog and exits 2 for a bare %s on the native CLI",
+    (flag, catalog, diagnostic) => {
+      const echoes: Array<string> = [];
+      const errors: Array<string> = [];
+      const ctx = targetCtx(home, false, echoes, errors);
+      let thrown: unknown;
+
+      try {
+        parseArgs(ctx, ["claude", flag]);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ExitError);
+      expect((thrown as ExitError).code).toBe(2);
+      expect(echoes.join("\n")).toContain(catalog);
+      expect(errors.join("")).toContain(diagnostic);
+    },
+  );
+
+  it.each([
+    ["--claude-compact-window=abc", "--claude-compact-window expects a token count"],
+    ["--claude-permissive=yes", "--claude-permissive does not take a value"],
+  ])("rejects invalid native modifier %s before applying it", (flag, diagnostic) => {
+    const errors: Array<string> = [];
+    const ctx = targetCtx(home, false, [], errors);
+    let thrown: unknown;
+
+    try {
+      parseArgs(ctx, ["claude", flag]);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(ExitError);
+    expect((thrown as ExitError).code).toBe(2);
+    expect(errors.join("")).toContain(diagnostic);
+    expect(ctx.claudeCompactWindow).toBe("");
+    expect(ctx.claudePermissive).toBe(false);
   });
 });

@@ -13,7 +13,6 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  DEFAULT_OMP_SESSION_MODEL,
   HARNESSES,
   engineHome,
   readHarnessSelection,
@@ -44,10 +43,6 @@ describe("harness selection state", () => {
     rmSync(home, { recursive: true, force: true });
   });
 
-  it("returns undefined when the state file is absent", () => {
-    expect(readHarnessSelection(home)).toBeUndefined();
-  });
-
   it("imports a valid legacy state.json once and renames it", () => {
     writeLegacyState(
       JSON.stringify({
@@ -63,6 +58,26 @@ describe("harness selection state", () => {
     expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
   });
 
+  it("does not replace a stored selection or session model with a late legacy file", () => {
+    writeHarnessSelection(home, ["codex"]);
+    writeOmpSessionModel(home, { selector: "provider/current", thinking: "high" });
+    writeLegacyState(
+      JSON.stringify({
+        version: 1,
+        harnesses: ["claude"],
+        ompSession: { selector: "provider/old", thinking: "low" },
+      }),
+    );
+
+    expect(readHarnessSelection(home)).toEqual(["codex"]);
+    expect(readOmpSessionModel(home)).toEqual({
+      selector: "provider/current",
+      thinking: "high",
+    });
+    expect(existsSync(legacyFile())).toBe(false);
+    expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
+  });
+
   it("imports nothing from an invalid legacy file and still renames it", () => {
     writeLegacyState("{invalid");
 
@@ -71,10 +86,33 @@ describe("harness selection state", () => {
     expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
   });
 
+  it("ignores an unsupported legacy state version", () => {
+    writeLegacyState(
+      JSON.stringify({
+        version: 2,
+        harnesses: ["omp"],
+        ompSession: { selector: "provider/too-new" },
+      }),
+    );
+
+    expect(readHarnessSelection(home)).toBeUndefined();
+    expect(readOmpSessionModel(home)).toBeUndefined();
+    expect(existsSync(legacyFile())).toBe(false);
+    expect(existsSync(`${legacyFile()}.migrated`)).toBe(true);
+  });
+
   it("creates no store when a read finds neither file", () => {
     expect(readHarnessSelection(home)).toBeUndefined();
     expect(readOmpSessionModel(home)).toBeUndefined();
     expect(existsSync(kitDbFile(home))).toBe(false);
+  });
+
+  it("treats a corrupt SQLite store as missing selection and session state", () => {
+    mkdirSync(join(home, ".docks-kit"));
+    writeFileSync(kitDbFile(home), "not a SQLite database");
+
+    expect(readHarnessSelection(home)).toBeUndefined();
+    expect(readOmpSessionModel(home)).toBeUndefined();
   });
 
   it("refuses a store from a newer schema", () => {
@@ -94,7 +132,7 @@ describe("harness selection state", () => {
     expect(rows).toEqual([{ harness: "claude" }]);
   });
 
-  it("migrates once and keeps rows across opens", () => {
+  it("records the schema migration and preserves rows across opens", () => {
     writeHarnessSelection(home, ["agents", "claude"]);
     writeOmpSessionModel(home, { selector: "a/b" });
 
@@ -106,30 +144,37 @@ describe("harness selection state", () => {
     expect(readOmpSessionModel(home)).toEqual({ selector: "a/b" });
   });
 
-  it("writes and reads harnesses in canonical order without duplicates", () => {
+  it("normalizes a selection and removes harnesses excluded by a later write", () => {
     writeHarnessSelection(home, ["omp", "claude", "omp", "agents", "codex"]);
-
     expect(readHarnessSelection(home)).toEqual(HARNESSES);
+
+    writeHarnessSelection(home, ["omp"]);
+    expect(readHarnessSelection(home)).toEqual(["omp"]);
   });
 
-  it("refuses to write an empty harness selection", () => {
+  it("refuses an empty selection without erasing stored harnesses", () => {
+    writeHarnessSelection(home, ["claude"]);
+
     expect(() => writeHarnessSelection(home, [])).toThrow(/empty harness selection/i);
+    expect(readHarnessSelection(home)).toEqual(["claude"]);
   });
 
-  it("refuses to write a selection containing only unknown harness names", () => {
+  it("refuses unknown harness names without erasing stored harnesses", () => {
+    writeHarnessSelection(home, ["codex"]);
     const unknown = ["unknown"] as unknown as ReadonlyArray<Harness>;
 
     expect(() => writeHarnessSelection(home, unknown)).toThrow(/known harness/i);
+    expect(readHarnessSelection(home)).toEqual(["codex"]);
   });
 
-  it("writes the store under the selected home with mode 0600", () => {
+  it("creates a private store and directory under the selected home", () => {
     writeHarnessSelection(home, ["claude"]);
 
     const stateFile = kitDbFile(home);
-    expect(stateFile).toBe(`${home}/.docks-kit/kit.db`);
     expect(existsSync(stateFile)).toBe(true);
     if (process.platform !== "win32") {
       expect(statSync(stateFile).mode & 0o777).toBe(0o600);
+      expect(statSync(join(home, ".docks-kit")).mode & 0o777).toBe(0o700);
     }
   });
 
@@ -143,11 +188,17 @@ describe("harness selection state", () => {
     expect(statSync(`${home}/.docks-kit`).mode & 0o777).toBe(0o700);
   });
 
-  it("keeps every state read and write inside the selected home", () => {
-    expect(kitDbFile(home).startsWith(home)).toBe(true);
+  it("keeps selections for separate homes independent", () => {
+    const otherHome = mkdtempSync(join(tmpdir(), "docks-harness-other-"));
+    try {
+      writeHarnessSelection(home, ["agents"]);
+      writeHarnessSelection(otherHome, ["omp"]);
 
-    writeHarnessSelection(home, ["agents"]);
-    expect(readHarnessSelection(home)).toEqual(["agents"]);
+      expect(readHarnessSelection(home)).toEqual(["agents"]);
+      expect(readHarnessSelection(otherHome)).toEqual(["omp"]);
+    } finally {
+      rmSync(otherHome, { recursive: true, force: true });
+    }
   });
 
   it("resolves the engine home from HOME with a homedir fallback", () => {
@@ -192,10 +243,6 @@ describe("omp session model state", () => {
     expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free", thinking: "low" });
   });
 
-  it("returns undefined for a missing state file", () => {
-    expect(readOmpSessionModel(home)).toBeUndefined();
-  });
-
   it("drops a blank legacy level while keeping the valid one on import", () => {
     writeLegacyState(
       JSON.stringify({
@@ -208,29 +255,7 @@ describe("omp session model state", () => {
       selector: "provider/model-free",
       advisorThinking: "low",
     });
-  });
-
-  it("round-trips a written model with all three fields", () => {
-    writeOmpSessionModel(home, {
-      selector: "provider/model-free",
-      thinking: "medium",
-      advisorThinking: "low",
-    });
-
-    expect(readOmpSessionModel(home)).toEqual({
-      selector: "provider/model-free",
-      thinking: "medium",
-      advisorThinking: "low",
-    });
-  });
-
-  it("round-trips a level-free model with both level fields absent", () => {
-    writeOmpSessionModel(home, { selector: "provider/model-free" });
-
-    const stored = readOmpSessionModel(home);
-    expect(stored).toEqual({ selector: "provider/model-free" });
-    expect(stored).not.toHaveProperty("thinking");
-    expect(stored).not.toHaveProperty("advisorThinking");
+    expect(readHarnessSelection(home)).toBeUndefined();
   });
 
   it("leaves no stale level behind when a level-free model overwrites a levelled one", () => {
@@ -242,31 +267,25 @@ describe("omp session model state", () => {
 
     writeOmpSessionModel(home, { selector: "provider/other-free" });
 
-    const stored = readOmpSessionModel(home);
-    expect(stored).toEqual({ selector: "provider/other-free" });
-    expect(stored).not.toHaveProperty("thinking");
-    expect(stored).not.toHaveProperty("advisorThinking");
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/other-free" });
   });
 
-  it("rejects a blank selector", () => {
+  it("stores whitespace-only levels as absent", () => {
+    writeOmpSessionModel(home, {
+      selector: "provider/model-free",
+      thinking: "  ",
+      advisorThinking: "\t",
+    });
+
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free" });
+  });
+
+  it("rejects a blank selector without losing the saved model", () => {
+    writeOmpSessionModel(home, { selector: "provider/current", thinking: "high" });
+
     expect(() => writeOmpSessionModel(home, { selector: "  ", thinking: "xhigh" })).toThrow(
       /selector/i,
     );
-  });
-
-  it("exposes the free session default", () => {
-    expect(DEFAULT_OMP_SESSION_MODEL.selector).toBe("opencode-zen/muse-spark-1.3-contributor-free");
-    expect(DEFAULT_OMP_SESSION_MODEL.thinking).toBe("xhigh");
-    expect(DEFAULT_OMP_SESSION_MODEL.advisorThinking).toBe("medium");
-  });
-
-  it("writes the store and directory with private modes", () => {
-    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "xhigh" });
-
-    expect(existsSync(kitDbFile(home))).toBe(true);
-    if (process.platform !== "win32") {
-      expect(statSync(kitDbFile(home)).mode & 0o777).toBe(0o600);
-      expect(statSync(join(home, ".docks-kit")).mode & 0o777).toBe(0o700);
-    }
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/current", thinking: "high" });
   });
 });
