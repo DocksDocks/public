@@ -128,8 +128,13 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   };
   const addedMarketplaces = new Set<string>();
   // The official marketplace is built in; a successful add is usable before its inventory is written.
-  const marketplaceReady = (mpName: string): boolean =>
-    mpName === OFFICIAL_MARKETPLACE || addedMarketplaces.has(mpName) || knownMarketplace(mpName);
+  // A missing inventory proves absence (fresh home); an unreadable one does not, so refresh as before.
+  const marketplaceReady = (mpName: string): boolean => {
+    if (mpName === OFFICIAL_MARKETPLACE || addedMarketplaces.has(mpName)) return true;
+    if (!existsSync(knownMarketplaces)) return false;
+    const known = readJsonFile(knownMarketplaces);
+    return known === undefined || !isObject(known) || knownMarketplace(mpName);
+  };
 
   // Pass 1 — add missing marketplaces (SoT insertion order, like to_entries).
   let addedMp = 0;

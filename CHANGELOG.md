@@ -19,8 +19,10 @@
 - A first `sync claude --claude-plugin=n8n` no longer fails. The plugin pass
   refreshed the `n8n-mcp-skills` marketplace before the optional step added
   it, and Claude Code rejects an update of a marketplace that is not added.
-  The kit now skips the refresh of any marketplace that is not present.
-- The unit suite now holds 639 tests (from 681), including regression tests
+  The kit now skips the refresh of a marketplace that is absent from Claude
+  Code's `known_marketplaces.json`. When that file exists but cannot be read,
+  the refresh runs as before.
+- The unit suite now holds 641 tests (from 681), including regression tests
   for the fixes above. Tests that pinned wiring, mock calls, copied SoT text,
   or a duplicate path are gone. Error, boundary, and Windows path cases are
   added.

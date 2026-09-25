@@ -10,6 +10,7 @@ import {
   replaceTopLevelSetting,
 } from "../../src/engine-native/codexToml";
 import { topLevelTomlString } from "../../src/manifests";
+import { marketplaceSource } from "../../src/engine-native/codexPlugins";
 
 function parseToml(content: string): Record<string, unknown> {
   const parsed = nodeSpawnSync(
@@ -22,6 +23,22 @@ function parseToml(content: string): Record<string, unknown> {
 }
 
 describe("codex TOML contract", () => {
+  it("reads a marketplace source under an indented header and stops at an indented table", () => {
+    const dir = mkdtempSync(join(tmpdir(), "codex-marketplace-source-"));
+    const config = join(dir, "config.toml");
+    try {
+      writeFileSync(
+        config,
+        "  [marketplaces.docks]\n  source = 'DocksDocks/docks' # legacy\n  [other]\n  source = \"x\"\n",
+      );
+      expect(marketplaceSource("docks", config)).toBe("DocksDocks/docks");
+      writeFileSync(config, '[marketplaces.docks]\n  [other]\nsource = "x"\n');
+      expect(marketplaceSource("docks", config)).toBe("");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("collapses duplicate top-level keys into one replacement", () => {
     const next = replaceTopLevelSetting('model = "a"\nmodel = "b"\n', "model", 'model = "c"');
 

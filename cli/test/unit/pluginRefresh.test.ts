@@ -1,4 +1,4 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -256,6 +256,45 @@ if (args[0] === "--version") {
       expect(`${firstArgv}${secondArgv}`.indexOf(add)).toBeLessThan(
         `${firstArgv}${secondArgv}`.indexOf(update),
       );
+    } finally {
+      cleanup([first]);
+    }
+  });
+
+  it("still refreshes a marketplace when the inventory exists but cannot be read", () => {
+    const claude = `const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs")
+const { dirname, join } = process.getBuiltinModule("node:path")
+const knownFile = join(process.env["HOME"] ?? "", ".claude", "plugins", "known_marketplaces.json")
+let known = {}
+let readable = true
+if (existsSync(knownFile)) {
+  try { known = JSON.parse(readFileSync(knownFile, "utf8")) } catch { readable = false }
+}
+if (args[0] === "--version") {
+  console.log("2.1.280 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && readable) {
+  known[args[3] === "czlonkowski/n8n-skills" ? "n8n-mcp-skills" : "docks"] = { source: args[3] }
+  mkdirSync(dirname(knownFile), { recursive: true })
+  writeFileSync(knownFile, JSON.stringify(known))
+}`;
+    const stubs = makeStubDir({ claude }, NATIVE_HOST);
+    const first = runEngine(
+      ["sync", "claude", "--claude-plugin=n8n"],
+      "home-fresh",
+      stubs,
+      NATIVE_HOST,
+    );
+    try {
+      expect(first.exitCode, first.output).toBe(0);
+      writeFileSync(
+        join(first.home, ".claude", "plugins", "known_marketplaces.json"),
+        "{not json\n",
+      );
+      const second = runEngine(["sync", "claude", "--claude-plugin=n8n"], "home-fresh", stubs, {
+        ...NATIVE_HOST,
+        reuseHome: first.home,
+      });
+      expect(readArgvLog(second)).toContain("claude\tplugin marketplace update n8n-mcp-skills");
     } finally {
       cleanup([first]);
     }
