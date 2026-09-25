@@ -6,9 +6,13 @@
   `anthropic.modelOverrides.claude-opus-5-5` block. The shared model catalog
   now publishes the same context window, output cap, reasoning levels, and
   prices. `sync omp` removes the deployed block from `~/.omp/agent/models.yml`
-  while it still equals the shipped block, and it keeps an edited block. The
-  block's `defaultLevel: high` applied only to a bare `claude-opus-5-5`
-  selector; every kit role names its level.
+  while it still equals the shipped block, and it keeps an edited block.
+  The removal changes how omp asks Opus 5.5 to think. The block set
+  `thinking.mode: effort`, so omp sent a fixed thinking token budget and no
+  effort value. The catalog row sets `anthropic-adaptive`, so omp now sends
+  adaptive thinking with the role's effort level. A bare `claude-opus-5-5`
+  selector also loses the block's `defaultLevel: high`; no kit role uses a
+  bare selector.
 - `toolchain upgrade` follows links when it checks which copy of a server
   PATH finds, and accepts only a file inside the npm package directory. A
   link in another PATH directory, such as `~/.local/bin`, that resolves into
