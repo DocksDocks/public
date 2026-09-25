@@ -94,8 +94,10 @@ upgradeLspServers`.
 4. `typescript-language-server` is skipped below the `node` floor, the same
    gate as the sync install.
 5. A PATH copy outside `npm prefix -g` gets a warning; only the npm copy moves.
-   The check follows links (`realpathSync`), so a link that resolves into the
-   prefix is the npm copy.
+   The check follows links (`realpathSync`) and accepts only a file inside
+   `<prefix>/lib/node_modules/<pkg>` (POSIX) or a shim in `<prefix>`
+   (Windows). Any other file under the prefix, such as a distro binary under
+   a `/usr` prefix, still warns.
 6. A failed npm call exits 1. After the install, a fresh `npm ls -g` (new
    executor object, because the inventory is memoized) must show every pin,
    or the command exits 1.

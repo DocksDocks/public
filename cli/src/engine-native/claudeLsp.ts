@@ -189,14 +189,19 @@ export async function upgradeLspServers(ctx: Ctx): Promise<number> {
       return path;
     }
   };
-  // A PATH entry is the npm copy when it, or the file it links to, lies under
-  // the npm global prefix. npm links global executables into <prefix>/bin on
-  // POSIX and writes shims into <prefix> on Windows, and a link placed in
-  // another PATH directory (such as ~/.local/bin) still resolves into it.
+  // A PATH entry is the npm copy of `pkg` when the file it resolves to lies in
+  // that package's own directory: <prefix>/lib/node_modules/<pkg> on POSIX,
+  // where npm's bin entries are links into it. Any other file under the prefix
+  // does not count, because a system Node uses /usr or /usr/local as its prefix
+  // and distro binaries live there too. npm writes Windows shims straight into
+  // <prefix> instead of linking, so there a shim in <prefix> itself counts.
   const npmRoot = prefix === "" ? "" : `${comparable(resolved(prefix))}/`;
-  const isNpmCopy = (path: string): boolean =>
-    comparable(path).startsWith(`${comparable(prefix)}/`) ||
-    comparable(resolved(path)).startsWith(npmRoot);
+  const isNpmCopy = (path: string, pkg: string): boolean => {
+    const packageDir = `${npmRoot}${windows ? "" : "lib/"}node_modules/${comparable(pkg)}/`;
+    if (comparable(resolved(path)).startsWith(packageDir)) return true;
+    const entry = comparable(path);
+    return windows && entry.slice(0, entry.lastIndexOf("/") + 1) === `${comparable(prefix)}/`;
+  };
 
   const targets: Array<readonly [string, string]> = [];
   const moves: Array<string> = [];
@@ -216,7 +221,7 @@ export async function upgradeLspServers(ctx: Ctx): Promise<number> {
       }
       continue;
     }
-    if (onPath !== "" && npmRoot !== "" && !isNpmCopy(onPath)) {
+    if (onPath !== "" && npmRoot !== "" && !isNpmCopy(onPath, pkg)) {
       warn(
         `${tool} on PATH is ${onPath}, not the npm global copy under ${prefix}; an upgrade changes only the npm copy`,
       );

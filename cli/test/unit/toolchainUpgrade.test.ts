@@ -89,47 +89,52 @@ describe("toolchain upgrade", () => {
     }
   });
 
-  // A link in another PATH directory (such as ~/.local/bin) that points into
-  // the npm prefix is the npm copy, so it must not draw the other-copy warning.
-  it.skipIf(process.platform === "win32")(
-    "treats a PATH link that resolves into the npm prefix as the npm copy",
-    () => {
-      const prefix = mkdtempSync(join(tmpdir(), "npm-prefix-"));
-      const stubs = makeStubDir(
-        {
-          npm: npmStub(
-            {
-              intelephense: INTELEPHENSE,
-              "typescript-language-server": "0.0.1",
-              typescript: TYPESCRIPT,
-            },
-            prefix,
-          ),
-        },
-        NATIVE_HOST,
+  // npm's own bin entry is a link into <prefix>/lib/node_modules/<pkg>, and a
+  // user link in another PATH directory (such as ~/.local/bin) points at that
+  // entry. Only a file inside the package directory is the npm copy: a plain
+  // file in <prefix>/bin, as a distro package leaves under a /usr prefix, is not.
+  it.skipIf(process.platform === "win32").each([
+    { layout: "npm package link", npmLayout: true },
+    { layout: "plain file in the prefix bin", npmLayout: false },
+  ])("decides the PATH copy by resolved package directory: $layout", ({ npmLayout }) => {
+    const prefix = mkdtempSync(join(tmpdir(), "npm-prefix-"));
+    const stubs = makeStubDir(
+      {
+        npm: npmStub(
+          {
+            intelephense: INTELEPHENSE,
+            "typescript-language-server": "0.0.1",
+            typescript: TYPESCRIPT,
+          },
+          prefix,
+        ),
+      },
+      NATIVE_HOST,
+    );
+    const binEntry = join(prefix, "bin", "typescript-language-server");
+    mkdirSync(join(prefix, "bin"));
+    if (npmLayout) {
+      const packageDir = join(prefix, "lib", "node_modules", "typescript-language-server", "lib");
+      mkdirSync(packageDir, { recursive: true });
+      renameSync(join(stubs, "typescript-language-server"), join(packageDir, "cli.mjs"));
+      symlinkSync(join(packageDir, "cli.mjs"), binEntry);
+    } else {
+      renameSync(join(stubs, "typescript-language-server"), binEntry);
+    }
+    symlinkSync(binEntry, join(stubs, "typescript-language-server"));
+    const run = runEngine(["toolchain", "upgrade", "--dry-run"], "home-fresh", stubs, NATIVE_HOST);
+    try {
+      expect(run.exitCode, run.output).toBe(0);
+      expect(run.output).toContain(
+        `[dry-run] would upgrade (typescript-language-server 0.0.1 -> ${TS_SERVER})`,
       );
-      mkdirSync(join(prefix, "bin"));
-      const target = join(prefix, "bin", "typescript-language-server");
-      renameSync(join(stubs, "typescript-language-server"), target);
-      symlinkSync(target, join(stubs, "typescript-language-server"));
-      const run = runEngine(
-        ["toolchain", "upgrade", "--dry-run"],
-        "home-fresh",
-        stubs,
-        NATIVE_HOST,
-      );
-      try {
-        expect(run.exitCode, run.output).toBe(0);
-        expect(run.output).toContain(
-          `[dry-run] would upgrade (typescript-language-server 0.0.1 -> ${TS_SERVER})`,
-        );
-        expect(run.output).not.toContain("typescript-language-server on PATH is");
-      } finally {
-        rmSync(run.home, { recursive: true, force: true });
-        rmSync(prefix, { recursive: true, force: true });
-      }
-    },
-  );
+      const warned = run.output.includes("typescript-language-server on PATH is");
+      expect(warned).toBe(!npmLayout);
+    } finally {
+      rmSync(run.home, { recursive: true, force: true });
+      rmSync(prefix, { recursive: true, force: true });
+    }
+  });
 
   it("previews through the public CLI and warns when PATH resolves another copy", () => {
     const stubs = makeStubDir(

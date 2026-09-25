@@ -10,8 +10,10 @@
   block's `defaultLevel: high` applied only to a bare `claude-opus-5-5`
   selector; every kit role names its level.
 - `toolchain upgrade` follows links when it checks which copy of a server
-  PATH finds. A link in another PATH directory, such as `~/.local/bin`, that
-  resolves into the npm global prefix no longer draws the other-copy warning.
+  PATH finds, and accepts only a file inside the npm package directory. A
+  link in another PATH directory, such as `~/.local/bin`, that resolves into
+  that directory no longer draws the other-copy warning. A distro binary under
+  a `/usr` npm prefix still does.
 
 ## 2026-09-25 - docks-kit 0.20.0: toolchain upgrade
 
