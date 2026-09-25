@@ -120,14 +120,14 @@ describe("omp command", () => {
       const argvLog = join(first.home, ".golden-argv.log");
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
-        `omp\t--config ${firstPath.replaceAll("\\", "/")} -p hello`,
+        `omp\t--config ${first.home}/.cache/docks-kit/${firstName} -p hello`,
       ]);
 
       const options = { ...NATIVE, reuseHome: first.home };
       const plain = runPublicCli(["omp", "-p", "again"], "home-fresh", stubDir, options);
       expect(plain.exitCode).toBe(0);
       expect(readFileSync(argvLog, "utf8").trim()).toBe(
-        `omp\t--config ${firstPath.replaceAll("\\", "/")} -p again`,
+        `omp\t--config ${first.home}/.cache/docks-kit/${firstName} -p again`,
       );
 
       const switched = runPublicCli(

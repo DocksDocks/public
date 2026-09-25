@@ -77,7 +77,7 @@ describe("Codex plugin inventory fallback", () => {
     const run = runEngine(
       ["sync", "codex", "--skip-plugin-refresh"],
       "home-fresh",
-      makeStubDir({ codex: badInventory }),
+      makeStubDir({ codex: badInventory }, { nativeHost: true }),
     );
 
     try {

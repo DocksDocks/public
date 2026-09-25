@@ -157,7 +157,7 @@ describe("retired imported Codex hooks", () => {
       expect(readFileSync(hooks, "utf8")).toBe("{broken\n");
       expect(existsSync(`${hooks}.bak`)).toBe(false);
       expect(warnings.join("")).toContain(
-        `Codex hooks file is not a valid JSON object; retired hook cleanup skipped: ${hooks}`,
+        `Codex hooks file is not a valid JSON object; retired hook cleanup skipped: ${p(root, "home", ".codex", "hooks.json")}`,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -177,7 +177,7 @@ describe("retired imported Codex hooks", () => {
       expect(readFileSync(hooks, "utf8")).toBe(before);
       expect(existsSync(`${hooks}.bak`)).toBe(false);
       expect(output.join("")).toContain(
-        `[dry-run] remove 1 retired imported docks-kit SessionStart hook(s) from ${hooks}`,
+        `[dry-run] remove 1 retired imported docks-kit SessionStart hook(s) from ${p(root, "home", ".codex", "hooks.json")}`,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

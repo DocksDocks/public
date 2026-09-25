@@ -294,7 +294,9 @@ describe("Claude settings prepare/commit seam", () => {
 
       writeFileSync(path, "not-json");
       expect(() => prepareClaudeSettings(test.ctx, claudeDir, { model: "opus" })).toThrow("exit 1");
-      expect(test.lines.join("")).toContain(`Aborting sync: ${path} is not valid JSON`);
+      expect(test.lines.join("")).toContain(
+        `Aborting sync: ${claudeDir}/settings.json is not valid JSON`,
+      );
       expect(readFileSync(path, "utf8")).toBe("not-json");
       expect(existsSync(`${path}.tmp`)).toBe(false);
     } finally {

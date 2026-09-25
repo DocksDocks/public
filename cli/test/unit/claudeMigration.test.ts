@@ -293,7 +293,7 @@ describe("Claude runtime migration transaction", () => {
     try {
       syncRemovals(removalContext(home, output, true), claudeDir, deferred);
       for (const relative of retiredCommands) expect(existsSync(join(home, relative))).toBe(true);
-      expect(output.join("")).toContain(`[dry-run] rm ${join(home, retiredCommands[0])}`);
+      expect(output.join("")).toContain(`[dry-run] rm ${home}/${retiredCommands[0]}`);
 
       output.length = 0;
       const ctx = removalContext(home, output);
