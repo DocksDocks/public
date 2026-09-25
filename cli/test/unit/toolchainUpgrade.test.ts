@@ -1,4 +1,5 @@
-import { readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution";
@@ -88,6 +89,48 @@ describe("toolchain upgrade", () => {
     }
   });
 
+  // A link in another PATH directory (such as ~/.local/bin) that points into
+  // the npm prefix is the npm copy, so it must not draw the other-copy warning.
+  it.skipIf(process.platform === "win32")(
+    "treats a PATH link that resolves into the npm prefix as the npm copy",
+    () => {
+      const prefix = mkdtempSync(join(tmpdir(), "npm-prefix-"));
+      const stubs = makeStubDir(
+        {
+          npm: npmStub(
+            {
+              intelephense: INTELEPHENSE,
+              "typescript-language-server": "0.0.1",
+              typescript: TYPESCRIPT,
+            },
+            prefix,
+          ),
+        },
+        NATIVE_HOST,
+      );
+      mkdirSync(join(prefix, "bin"));
+      const target = join(prefix, "bin", "typescript-language-server");
+      renameSync(join(stubs, "typescript-language-server"), target);
+      symlinkSync(target, join(stubs, "typescript-language-server"));
+      const run = runEngine(
+        ["toolchain", "upgrade", "--dry-run"],
+        "home-fresh",
+        stubs,
+        NATIVE_HOST,
+      );
+      try {
+        expect(run.exitCode, run.output).toBe(0);
+        expect(run.output).toContain(
+          `[dry-run] would upgrade (typescript-language-server 0.0.1 -> ${TS_SERVER})`,
+        );
+        expect(run.output).not.toContain("typescript-language-server on PATH is");
+      } finally {
+        rmSync(run.home, { recursive: true, force: true });
+        rmSync(prefix, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("previews through the public CLI and warns when PATH resolves another copy", () => {
     const stubs = makeStubDir(
       {
@@ -115,7 +158,7 @@ describe("toolchain upgrade", () => {
         `[dry-run] would upgrade (typescript-language-server 0.0.1 -> ${TS_SERVER}): npm install -g typescript-language-server@${TS_SERVER}`,
       );
       expect(output).toMatch(
-        /typescript-language-server on PATH is \S+, not the npm global copy in \S*other-npm-prefix/,
+        /typescript-language-server on PATH is \S+, not the npm global copy under \S*other-npm-prefix/,
       );
       const argv = readFileSync(join(run.home, ".golden-argv.log"), "utf8");
       expect(argv).not.toContain("npm\tinstall");
