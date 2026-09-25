@@ -29,10 +29,12 @@ export const toolchainCommand = Command.make(
     Effect.gen(function* () {
       const operation = Option.getOrElse(config.op, () => "check");
       const flags = config.verbose ? ["--verbose"] : [];
+      const operand = Option.getOrUndefined(config.tool);
+      const words = operand === undefined ? [] : [operand];
 
       switch (operation) {
         case "check":
-          return yield* engine(["toolchain", "check", ...(config.verbose ? ["--verbose"] : [])]);
+          return yield* engine(["toolchain", "check", ...words, ...flags]);
         case "ensure": {
           const t = Option.getOrUndefined(config.tool);
           if (t === undefined || !MANAGED.includes(t)) {
@@ -41,7 +43,12 @@ export const toolchainCommand = Command.make(
           return yield* engine(["toolchain", "ensure", t, ...flags]);
         }
         case "outdated":
-          return yield* engine(["toolchain", "outdated", ...(config.refresh ? ["--refresh"] : [])]);
+          return yield* engine([
+            "toolchain",
+            "outdated",
+            ...words,
+            ...(config.refresh ? ["--refresh"] : []),
+          ]);
         default:
           return yield* bail(
             `Unknown toolchain op '${operation}' (valid: check, ensure, outdated)`,

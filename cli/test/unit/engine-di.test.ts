@@ -501,6 +501,22 @@ describe("native CLI argument and output behavior", () => {
     });
   });
 
+  it("reports a single-quoted deployed Codex model and ignores table-scoped keys", async () => {
+    await withIsolatedHome(async (home) => {
+      mkdirSync(p(home, ".codex"), { recursive: true });
+      writeFileSync(
+        p(home, ".codex", "config.toml"),
+        "  model = 'gpt-literal'\n\n[profiles.x]\nmodel = \"table-scoped\"\n",
+      );
+      const stdout: Array<string> = [];
+      const services = makeEngineServices({
+        sinks: { stdout: (chunk) => void stdout.push(chunk), stderr: () => undefined },
+      });
+      expect(await runEngineNative(["model", "codex"], services)).toBe(0);
+      expect(stdout[0]).toBe("deployed: gpt-literal\n");
+    });
+  });
+
   it("rejects unsupported effort and advisor values before touching the home", async () => {
     await withIsolatedHome(async (home) => {
       for (const [target, flag, catalog, error] of [

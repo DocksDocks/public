@@ -7,7 +7,7 @@
 import { copyFileSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
 import { payloadDisplayPath } from "../payload";
-import { mergeTableSettings, mergeTopLevelSettings } from "./codexToml";
+import { isTomlHeaderLine, mergeTableSettings, mergeTopLevelSettings } from "./codexToml";
 import type { Ctx } from "./index";
 
 // --------------------------------------------------------------- config ----
@@ -68,14 +68,14 @@ function scrubDeprecatedFeaturesText(content: string): string {
   let changed = false;
   for (const line of lines) {
     if (inFeatures) {
-      if (line.startsWith("[")) {
+      if (isTomlHeaderLine(line)) {
         inFeatures = false;
         if (keep) out += `${header}\n${body}`;
         else changed = true;
         out += `${line}\n`;
         continue;
       }
-      if (/^use_legacy_landlock[ \t]*=/.test(line)) {
+      if (/^[ \t]*use_legacy_landlock[ \t]*=/.test(line)) {
         changed = true;
         continue;
       }
@@ -83,7 +83,7 @@ function scrubDeprecatedFeaturesText(content: string): string {
       if (/[^ \t\f\v\r]/.test(line)) keep = true;
       continue;
     }
-    if (/^\[features\][ \t]*$/.test(line)) {
+    if (/^[ \t]*\[features\][ \t]*$/.test(line)) {
       inFeatures = true;
       header = line;
       body = "";
@@ -111,7 +111,7 @@ function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
   change("Codex: scrubbed deprecated [features].use_legacy_landlock");
 }
 
-export const PLUGIN_TABLE_HEADER = /^\[plugins\."([^"]+)"\][ \t]*$/;
+export const PLUGIN_TABLE_HEADER = /^[ \t]*\[plugins\."([^"]+)"\][ \t]*$/;
 /** Plugin ids the kit retired; their deployed tables are stripped on every sync. */
 const RETIRED_PLUGIN_IDS: Readonly<Record<string, true>> = {
   "effect-kit@docks": true,
@@ -130,7 +130,7 @@ export function removeRetiredPluginTablesText(content: string): string {
       skipping = RETIRED_PLUGIN_IDS[header[1]!] === true;
       if (skipping) continue;
     } else if (skipping) {
-      if (!line.startsWith("[")) continue;
+      if (!isTomlHeaderLine(line)) continue;
       skipping = false;
     }
     out += `${line}\n`;

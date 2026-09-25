@@ -12,15 +12,19 @@ import { resolveEffort } from "../efforts";
 import type { Ctx } from "./index";
 import type { SettingEdit } from "./sharedTypes";
 
+export function isTomlHeaderLine(line: string): boolean {
+  return /^[ \t]*\[/.test(line);
+}
+
 export function replaceTopLevelSetting(content: string, key: string, replacement: string): string {
   const lines = content.split("\n");
   if (lines[lines.length - 1] === "") lines.pop(); // awk records exclude a trailing empty split artifact
-  const keyRe = new RegExp(`^${key}[ \\t]*=`);
+  const keyRe = new RegExp(`^[ \\t]*${key}[ \\t]*=`);
   const out: Array<string> = [];
   let inTable = false;
   let replaced = false;
   for (const line of lines) {
-    if (line.startsWith("[")) {
+    if (isTomlHeaderLine(line)) {
       if (!replaced) {
         out.push(replacement);
         replaced = true;
@@ -113,11 +117,11 @@ export function syncCodexEffort(ctx: Ctx, effort: string): void {
 
 export function mergeTopLevelSettings(sotConfigText: string, userConfig: string): void {
   for (const line of sotConfigText.split("\n")) {
-    if (line.startsWith("[")) break;
+    if (isTomlHeaderLine(line)) break;
     if (/^[ \t]*($|#)/.test(line)) continue;
-    if (!/^[A-Za-z0-9_.-]+[ \t]*=/.test(line)) continue;
-    const key = line.slice(0, line.indexOf("=")).replace(/[ \t]+$/, "");
-    replaceTopLevelSettingInFile(userConfig, key, line);
+    const setting = /^[ \t]*([A-Za-z0-9_.-]+)[ \t]*=/.exec(line);
+    if (setting === null) continue;
+    replaceTopLevelSettingInFile(userConfig, setting[1]!, line);
   }
 }
 

@@ -14,6 +14,7 @@ import {
 
 import { payloadDisplayPath } from "../payload";
 import { PLUGIN_TABLE_HEADER } from "./codexConfig";
+import { isTomlHeaderLine } from "./codexToml";
 import { p, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
@@ -175,7 +176,7 @@ function enabledPluginIdsFromText(configText: string): Array<string> {
       enabled = false;
       continue;
     }
-    if (line.startsWith("[")) {
+    if (isTomlHeaderLine(line)) {
       flush();
       plugin = "";
       enabled = false;

@@ -60,9 +60,8 @@ const capturePackageRoot: CapturePackageRoot = (command, args) => {
 
 /**
  * A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. Windows
- * reports that path with backslashes, so containment is tested on a normalized
- * copy — but only on Windows, because a backslash is a legal POSIX filename
- * character and must never be read as a separator there.
+ * reports that path with backslashes and compares it without case sensitivity.
+ * On POSIX, a backslash remains a legal filename character, not a separator.
  */
 export const packageManagerForHome = (
   home: string,
@@ -70,13 +69,14 @@ export const packageManagerForHome = (
   host: HostOs = hostOs(),
 ): PackageManager => {
   const normalize = (value: string): string =>
-    host.id === "windows" ? value.replaceAll("\\", "/") : value;
+    host.id === "windows" ? value.replaceAll("\\", "/").toLowerCase() : value;
   const normalizedHome = normalize(home);
   const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
     const root = environment[name]?.trim();
     if (root === undefined || root === "") return false;
-    const normalizedRoot = normalize(root);
-    return normalizedHome === normalizedRoot || normalizedHome.startsWith(`${normalizedRoot}/`);
+    const normalizedRoot = normalize(root).replace(/\/+$/, "") || "/";
+    const prefix = normalizedRoot.endsWith("/") ? normalizedRoot : `${normalizedRoot}/`;
+    return normalizedHome === normalizedRoot || normalizedHome.startsWith(prefix);
   };
   return normalizedHome.includes("/.bun/") ||
     underEnvironmentRoot("BUN_INSTALL_GLOBAL_DIR") ||

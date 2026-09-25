@@ -32,6 +32,26 @@ describe("toolchain report", () => {
   );
 });
 
+describe("public toolchain operands", () => {
+  it.each(["check", "outdated"])(
+    "rejects extra operands after %s before printing a report",
+    (operation) => {
+      const nativeHost = { nativeHost: true } as const;
+      const stubs = makeStubDir({}, nativeHost);
+      const run = runPublicCli(["toolchain", operation, "extra"], "home-fresh", stubs, nativeHost);
+
+      try {
+        expect(run.exitCode).toBe(2);
+        expect(run.stdout).toBe("");
+        expect(run.stderr).toContain("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
+      } finally {
+        rmSync(run.home, { recursive: true, force: true });
+      }
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+});
+
 describe("engine toolchain version report", () => {
   it.each([
     ["0.0.1", "below-floor"],
@@ -124,6 +144,18 @@ describe("engine toolchain argument errors", () => {
   it.each([
     {
       args: ["invalid-op"],
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+    },
+    {
+      args: ["check", "extra"],
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+    },
+    {
+      args: ["outdated", "extra"],
+      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
+    },
+    {
+      args: ["ensure", "bun", "extra"],
       diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]]",
     },
     {

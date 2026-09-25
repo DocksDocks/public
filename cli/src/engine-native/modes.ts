@@ -14,6 +14,7 @@ import { printModels, validateClaudeModel, validateCodexModel } from "./models";
 import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
 import { installedVersion, outdatedReport, present, report } from "./toolchain";
+import { topLevelTomlString } from "../manifests";
 
 export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { echo, err, warn } = ctx.services.logger;
@@ -59,8 +60,8 @@ export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<
         err(`Failed to read ~/.codex/config.toml: ${String(result.error)}`);
         return 1;
       }
-      echo(`deployed: ${tomlModelText(result.data)}`);
-      echo(`SoT:      ${tomlModelText(payloadText("SoT/.codex/config.toml"))}`);
+      echo(`deployed: ${topLevelTomlString(result.data, "model") ?? ""}`);
+      echo(`SoT:      ${topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model") ?? ""}`);
     }
     printModels(ctx, catalog);
     return 0;
@@ -112,15 +113,6 @@ function jsonModelText(text: string): string {
   return typeof v === "string" ? v : JSON.stringify(v);
 }
 
-/** `awk -F'"' '/^model[[:space:]]*=/{print $2; exit}'`. */
-
-function tomlModelText(text: string): string {
-  for (const line of text.split("\n")) {
-    if (/^model[ \t]*=/.test(line)) return line.split('"')[1] ?? "";
-  }
-  return "";
-}
-
 export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { echo, err, verbose } = ctx.services.logger;
   const words = args.filter((arg) => !arg.startsWith("--"));
@@ -128,6 +120,10 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
   const tool = words[1] ?? "";
   for (const arg of args) {
     if (arg === "--verbose") ctx.verbose = true;
+  }
+  if (words.length > (op === "ensure" ? 2 : 1)) {
+    err("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
+    return 2;
   }
 
   if (op === "check") {

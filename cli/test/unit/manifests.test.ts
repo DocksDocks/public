@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { spawnSync as nodeSpawnSync } from "node:child_process";
 import type * as NodeOs from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -39,7 +40,17 @@ vi.mock("../../src/payload", async () => {
 });
 
 import { sotEffort } from "../../src/efforts";
-import { pluginsView, skillsView, sotCodexModel } from "../../src/manifests";
+import { pluginsView, skillsView, sotCodexModel, topLevelTomlString } from "../../src/manifests";
+
+function parseToml(content: string): Record<string, unknown> {
+  const parsed = nodeSpawnSync(
+    "bun",
+    ["-e", "console.log(JSON.stringify(Bun.TOML.parse(await Bun.stdin.text())))"],
+    { input: content, encoding: "utf8" },
+  );
+  expect(parsed.status, parsed.stderr).toBe(0);
+  return JSON.parse(parsed.stdout) as Record<string, unknown>;
+}
 
 beforeEach(() => {
   mocks.home = mkdtempSync(join(tmpdir(), "docks-manifests-"));
@@ -54,6 +65,19 @@ afterEach(() => {
 });
 
 describe("manifest resolvers", () => {
+  it("reads a top-level TOML literal string", () => {
+    const toml = "model = 'x'\n";
+    expect(topLevelTomlString(toml, "model")).toBe("x");
+    expect(parseToml(toml)["model"]).toBe("x");
+  });
+
+  it("preserves backslashes in a TOML literal string", () => {
+    const value = String.raw`C:\models\new`;
+    const toml = `model = '${value}'\n`;
+    expect(topLevelTomlString(toml, "model")).toBe(value);
+    expect(parseToml(toml)["model"]).toBe(value);
+  });
+
   it("reads only the top-level Codex model, even when a profile overrides it", () => {
     mocks.codexConfig = 'model = "top-model"\n[profiles.audit]\nmodel = "table-model"\n';
     expect(sotCodexModel()).toBe("top-model");

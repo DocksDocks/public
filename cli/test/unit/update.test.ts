@@ -130,66 +130,93 @@ describe("package update target", () => {
   const linux = hostOs("linux");
   const windows = hostOs("windows");
 
-  it("reads a backslash as a literal POSIX filename character, never a separator", () => {
-    expect(packageManagerForHome("/tmp/package\\.bun\\node_modules/docks-kit", {}, linux)).toBe(
-      "npm",
-    );
-  });
-
-  it("classifies a POSIX Bun global home by its .bun segment", () => {
-    expect(
-      packageManagerForHome("/home/u/.bun/install/global/node_modules/docks-kit", {}, linux),
-    ).toBe("bun");
-  });
-
-  it("classifies a Windows Bun global home written with backslashes", () => {
-    expect(
-      packageManagerForHome(
-        "C:\\Users\\u\\.bun\\install\\global\\node_modules\\docks-kit",
-        {},
-        windows,
-      ),
-    ).toBe("bun");
-  });
-
-  it("classifies the mixed-separator home that the Bun capture actually returns on Windows", () => {
-    expect(
-      packageManagerForHome(
-        "C:\\Users\\u\\.bun\\install\\global/node_modules/docks-kit",
-        {},
-        windows,
-      ),
-    ).toBe("bun");
-  });
-
-  it("classifies a Windows Bun install rooted by BUN_INSTALL outside any .bun segment", () => {
-    expect(
-      packageManagerForHome(
-        "D:\\tools\\bun\\install\\global/node_modules/docks-kit",
-        { BUN_INSTALL: "D:\\tools\\bun" },
-        windows,
-      ),
-    ).toBe("bun");
-  });
-
-  it("uses BUN_INSTALL_GLOBAL_DIR for custom roots but not sibling directory names", () => {
-    const environment = { BUN_INSTALL_GLOBAL_DIR: "/opt/bun-global" };
-    expect(
-      packageManagerForHome("/opt/bun-global/node_modules/docks-kit", environment, linux),
-    ).toBe("bun");
-    expect(
-      packageManagerForHome("/opt/bun-global-backup/node_modules/docks-kit", environment, linux),
-    ).toBe("npm");
-  });
-
-  it("leaves a Windows npm global home classified as npm", () => {
-    expect(
-      packageManagerForHome(
-        "C:\\Users\\u\\AppData\\Roaming\\npm\\node_modules/docks-kit",
-        {},
-        windows,
-      ),
-    ).toBe("npm");
+  it.each([
+    {
+      name: "POSIX backslashes are filename characters",
+      home: "/tmp/package\\.bun\\node_modules/docks-kit",
+      environment: {},
+      host: linux,
+      manager: "npm",
+    },
+    {
+      name: "POSIX .bun segment",
+      home: "/home/u/.bun/install/global/node_modules/docks-kit",
+      environment: {},
+      host: linux,
+      manager: "bun",
+    },
+    {
+      name: "Windows .bun segment with backslashes",
+      home: "C:\\Users\\u\\.bun\\install\\global\\node_modules\\docks-kit",
+      environment: {},
+      host: windows,
+      manager: "bun",
+    },
+    {
+      name: "Windows .bun segment with mixed separators",
+      home: "C:\\Users\\u\\.bun\\install\\global/node_modules/docks-kit",
+      environment: {},
+      host: windows,
+      manager: "bun",
+    },
+    {
+      name: "Windows Bun install root",
+      home: "D:\\tools\\bun\\install\\global/node_modules/docks-kit",
+      environment: { BUN_INSTALL: "D:\\tools\\bun" },
+      host: windows,
+      manager: "bun",
+    },
+    {
+      name: "custom global root",
+      home: "/opt/custom/node_modules/docks-kit",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "/opt/custom" },
+      host: linux,
+      manager: "bun",
+    },
+    {
+      name: "custom global root with a trailing slash",
+      home: "/opt/custom/node_modules/docks-kit",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "/opt/custom/" },
+      host: linux,
+      manager: "bun",
+    },
+    {
+      name: "Windows custom global root with different casing",
+      home: "c:\\tools\\bun\\global\\node_modules\\docks-kit",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "C:\\Tools\\Bun\\global" },
+      host: windows,
+      manager: "bun",
+    },
+    {
+      name: "custom root itself",
+      home: "/opt/custom",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "/opt/custom/" },
+      host: linux,
+      manager: "bun",
+    },
+    {
+      name: "sibling prefix is not contained",
+      home: "/opt/custom2/node_modules/docks-kit",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "/opt/custom" },
+      host: linux,
+      manager: "npm",
+    },
+    {
+      name: "POSIX root casing remains significant",
+      home: "/opt/Custom/node_modules/docks-kit",
+      environment: { BUN_INSTALL_GLOBAL_DIR: "/opt/custom" },
+      host: linux,
+      manager: "npm",
+    },
+    {
+      name: "Windows npm global home",
+      home: "C:\\Users\\u\\AppData\\Roaming\\npm\\node_modules/docks-kit",
+      environment: {},
+      host: windows,
+      manager: "npm",
+    },
+  ] as const)("classifies $name as $manager", ({ home, environment, host, manager }) => {
+    expect(packageManagerForHome(home, environment, host)).toBe(manager);
   });
 });
 
