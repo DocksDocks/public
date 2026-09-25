@@ -1,19 +1,21 @@
 ---
 name: toolchain-context
-description: "Use when modifying cli/src/commands/toolchain.ts MANAGED; cli/src/engine-native/modes.ts modeToolchain; cli/src/engine-native/toolchain.ts report/version probes, latestUpstream, or outdatedReport; cli/src/engine-native/bun.ts bunBootstrap; SoT/toolchain.json tool entries or their upstream field; or the Bun managed install. Not for settings merge or plugin reconcile."
+description: "Use when modifying cli/src/commands/toolchain.ts MANAGED; cli/src/engine-native/modes.ts modeToolchain; cli/src/engine-native/toolchain.ts report/version probes, latestUpstream, or outdatedReport; cli/src/engine-native/claudeLsp.ts upgradeLspServers; cli/src/engine-native/bun.ts bunBootstrap; SoT/toolchain.json tool entries or their upstream field; or the Bun managed install. Not for settings merge or plugin reconcile."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/commands/toolchain.ts
-      lines: "1-62"
+      lines: "1-74"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-167"
+      lines: "1-173"
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-292"
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-276"
     - path: cli/src/engine-native/bun.ts
       lines: "1-96"
+    - path: cli/src/engine-native/claudeLsp.ts
+      lines: "1-260"
     - path: SoT/toolchain.json
       lines: "1-38"
   updated: "2026-09-24"
@@ -76,6 +78,25 @@ Never add a kit-driven floating install. Every kit-driven install uses the exact
 
 The report never installs anything and never edits a pin. `toolchain check`
 stays offline.
+
+## Upgrade
+
+`toolchain upgrade [--dry-run]` runs `modeToolchain` -> `claudeLsp.ts
+upgradeLspServers`.
+
+1. `deps.ts npmGlobalVersions` (`npm ls -g`) decides which of `intelephense`,
+   `typescript-language-server`, and `typescript` npm owns.
+2. An npm-owned package below `verified` joins one exact
+   `npm install -g <pkg>@<verified>` call. A package at or above its pin
+   stays.
+3. A PATH binary that npm does not own is skipped with a warning naming its
+   path. A missing package stays missing: `sync claude` owns first installs.
+4. `typescript-language-server` is skipped below the `node` floor, the same
+   gate as the sync install.
+5. A PATH copy outside `npm prefix -g` gets a warning; only the npm copy moves.
+6. A failed npm call exits 1. After the install, a fresh `npm ls -g` (new
+   executor object, because the inventory is memoized) must show every pin,
+   or the command exits 1.
 
 ## Managed Install
 

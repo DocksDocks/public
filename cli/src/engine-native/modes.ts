@@ -13,6 +13,7 @@ import { isObject, parseJson, type Json } from "./jq";
 import { printModels, validateClaudeModel, validateCodexModel } from "./models";
 import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
+import { upgradeLspServers } from "./claudeLsp";
 import { installedVersion, outdatedReport, present, report } from "./toolchain";
 import { topLevelTomlString } from "../manifests";
 
@@ -113,6 +114,9 @@ function jsonModelText(text: string): string {
   return typeof v === "string" ? v : JSON.stringify(v);
 }
 
+const TOOLCHAIN_USAGE =
+  "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]";
+
 export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { echo, err, verbose } = ctx.services.logger;
   const words = args.filter((arg) => !arg.startsWith("--"));
@@ -120,9 +124,10 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
   const tool = words[1] ?? "";
   for (const arg of args) {
     if (arg === "--verbose") ctx.verbose = true;
+    else if (arg === "--dry-run") ctx.dryRun = true;
   }
   if (words.length > (op === "ensure" ? 2 : 1)) {
-    err("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
+    err(TOOLCHAIN_USAGE);
     return 2;
   }
 
@@ -134,8 +139,9 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
     await outdatedReport(ctx, { refresh: args.includes("--refresh") });
     return 0;
   }
+  if (op === "upgrade") return await upgradeLspServers(ctx);
   if (op !== "ensure") {
-    err("Usage: toolchain [check|ensure <tool>|outdated [--refresh]]");
+    err(TOOLCHAIN_USAGE);
     return 2;
   }
   if (tool === "") {

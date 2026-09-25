@@ -1,13 +1,15 @@
 /**
- * EngineNative `sync claude` LSP server probes and installs. The php-lsp,
+ * EngineNative LSP server probes, `sync claude` installs, and the
+ * `toolchain upgrade` npm upgrade. The php-lsp,
  * typescript-lsp, and rust-analyzer-lsp plugins are no-ops without their
  * server binaries, so this pass installs the missing ones. Message strings
  * and spawned argv are part of the contract.
  */
-import { spawnProcess } from "./exec";
+import { defaultProbeExecutor, npmGlobalVersions, type ToolId } from "./deps";
+import { capture, p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
-import { belowFloor, field, installedVersion } from "./toolchain";
+import { belowFloor, field, installedVersion, isNewer } from "./toolchain";
 import { payloadText } from "../payload";
 
 function lspPkg(ctx: Ctx, tool: string, pkg: string): string | undefined {
@@ -151,4 +153,108 @@ export async function syncLspServers(ctx: Ctx): Promise<void> {
 
   await installNpmServers(ctx, missing);
   if (rustInstallable) await installRustAnalyzer(ctx);
+}
+
+/** Kit-pinned npm-global LSP packages: manifest tool id and npm package name. */
+const NPM_SERVERS: ReadonlyArray<readonly [ToolId, string]> = [
+  ["intelephense", "intelephense"],
+  ["typescript-language-server", "typescript-language-server"],
+  ["tsc", "typescript"],
+];
+
+/**
+ * `toolchain upgrade`: move each kit-pinned npm-global LSP package that npm
+ * owns and that sits below its `verified` pin to that exact pin. A copy that
+ * npm does not own came from another installer, so it is named and left
+ * alone. A missing package stays missing: `sync claude` owns first installs.
+ */
+export async function upgradeLspServers(ctx: Ctx): Promise<number> {
+  const { change, clearProgress, echo, err, progress, verbose, warn } = ctx.services.logger;
+  if (ctx.services.deps.probe("npm").state === "missing") {
+    err("toolchain upgrade needs npm: the kit installs its LSP servers with npm install -g");
+    return 1;
+  }
+  const owned = await npmGlobalVersions(defaultProbeExecutor);
+  const prefix = await capture("npm", ["prefix", "-g"]);
+  const windows = ctx.services.platform.name() === "windows";
+  // npm links global executables into <prefix>/bin on POSIX and into <prefix> on Windows.
+  const npmBin = prefix === "" ? "" : windows ? prefix : p(prefix, "bin");
+  const comparable = (path: string): string => {
+    const slashed = path.replaceAll("\\", "/");
+    return windows ? slashed.toLowerCase() : slashed;
+  };
+
+  const targets: Array<readonly [string, string]> = [];
+  const moves: Array<string> = [];
+  for (const [tool, pkg] of NPM_SERVERS) {
+    const verified = field(tool, "verified");
+    if (verified === "") continue;
+    const installed = owned[pkg];
+    const probe = ctx.services.deps.probe(tool);
+    const onPath = probe.state === "present" ? (probe.path ?? "") : "";
+    if (installed === undefined) {
+      if (onPath !== "") {
+        warn(
+          `Skipping ${pkg}: ${onPath} is not an npm global package. Upgrade it with the tool that installed it.`,
+        );
+      } else {
+        verbose(`${pkg} is not installed; sync claude installs it when its plugin is enabled`);
+      }
+      continue;
+    }
+    if (
+      onPath !== "" &&
+      npmBin !== "" &&
+      !comparable(onPath).startsWith(`${comparable(npmBin)}/`)
+    ) {
+      warn(
+        `${tool} on PATH is ${onPath}, not the npm global copy in ${npmBin}; an upgrade changes only the npm copy`,
+      );
+    }
+    if (!isNewer(verified, installed)) {
+      verbose(`${pkg} up to date (${installed}, verified ${verified})`);
+      continue;
+    }
+    if (tool === "typescript-language-server") {
+      const blockingNode = await nodeBelowServerFloor(ctx);
+      if (blockingNode !== "") {
+        warn(
+          `Skipping typescript-language-server upgrade: Node ${blockingNode} is older than the ${field("node", "floor")} that version requires. Upgrade Node first.`,
+        );
+        continue;
+      }
+    }
+    targets.push([pkg, verified]);
+    moves.push(`${pkg} ${installed} -> ${verified}`);
+  }
+
+  if (targets.length === 0) {
+    echo("npm LSP servers: nothing to upgrade");
+    return 0;
+  }
+  const specs = targets.map(([pkg, verified]) => `${pkg}@${verified}`);
+  const command = `npm install -g ${specs.join(" ")}`;
+  if (ctx.dryRun) {
+    echo(`[dry-run] would upgrade (${moves.join(", ")}): ${command}`);
+    return 0;
+  }
+  progress(`Upgrading LSP servers via npm: ${specs.join(" ")}...`);
+  const result = await spawnProcess("npm", ["install", "-g", ...specs], { stdio: "ignore" });
+  clearProgress();
+  if (result.exitCode !== 0) {
+    err(`${command} failed. Try manually: ${command}`);
+    return 1;
+  }
+  // npmGlobalVersions memoizes per executor, so a fresh executor object reads
+  // the inventory npm holds after the install.
+  const after = await npmGlobalVersions({ ...defaultProbeExecutor });
+  const short = targets
+    .filter(([pkg, verified]) => after[pkg] !== verified)
+    .map(([pkg, verified]) => `${pkg} is ${after[pkg] ?? "missing"}, expected ${verified}`);
+  if (short.length > 0) {
+    err(`npm install -g exited 0, but npm ls -g reports: ${short.join("; ")}`);
+    return 1;
+  }
+  change(`LSP servers upgraded (${moves.join(", ")}); restart Claude Code to load them`);
+  return 0;
 }

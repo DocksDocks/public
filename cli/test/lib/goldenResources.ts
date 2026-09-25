@@ -206,7 +206,7 @@ const STUB_BODIES: Record<string, string> = {
   jq: `if (args[0] === "--version") console.log("jq-1.7.1")`,
   claude: `if (args[0] === "--version") console.log("2.1.204 (Claude Code)")`,
   codex: `if (args[0] === "--version") {
-  console.log("codex-cli 0.144.4")
+  console.log("codex-cli 0.157.0")
 } else if (args[0] === "plugin" && args[1] === "list") {
   console.log('{"installed":[{"pluginId":"docks@docks","version":"0.12.5","installed":true,"enabled":true},{"pluginId":"effect-kit@docks","version":"0.3.0","installed":true,"enabled":true},{"pluginId":"plan-lifecycle@docks","version":"0.1.0","installed":true,"enabled":true}],"available":[]}')
 }`,

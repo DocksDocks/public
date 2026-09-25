@@ -49,7 +49,7 @@ docks-kit update [--no-sync]                    self-update the kit (autodetects
 docks-kit model <claude|codex> [value]          get/set the DEPLOYED model (TTY picker)
 docks-kit models [claude|codex|omp] [--refresh]  live catalogs for enabled harnesses (`--json`)
 docks-kit omp [--model <m>|--pick] [args...]    one omp session on a free model, nothing deployed changes
-docks-kit toolchain [check|ensure <tool>|outdated]  verified-version floors for external tools
+docks-kit toolchain [check|ensure <tool>|outdated|upgrade]  verified-version floors for external tools
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
