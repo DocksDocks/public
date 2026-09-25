@@ -189,14 +189,20 @@ id as a stub with null limits and zero cost. On 2026-09-25 the catalog at
 and prices, so the block was removed. Sync prunes the deployed copy only while
 it still equals the shipped block.
 
-The removal is not neutral. The block set `thinking.mode: effort`, and omp
-18.3.1 sends `thinking: {type: "enabled", budget_tokens}` with no effort
-value for that mode. The catalog row sets `thinking.mode: anthropic-adaptive`,
-so omp now sends `thinking: {type: "adaptive"}` plus the effort level of the
-role. The block also set `defaultLevel: high` for a bare `claude-opus-5-5`
-selector. `SoT/.omp/config.yml` names a level on every Opus selector, so no
-kit role depends on that default. A run on
-`anthropic/claude-opus-5-5:high` after the prune answered with exit 0.
+The removal fixes how the Opus role levels reach the API. The block set
+`thinking.mode: effort`. For that mode, omp 18.3.1 (`packages/ai/src/stream.ts`,
+tag `v18.3.1`) sends `thinking: {type: "enabled", budget_tokens}` and no
+`output_config.effort`. The level only picked the budget from
+`ANTHROPIC_THINKING`: `medium` 8,192, `high` 16,384, and `xhigh` and `max`
+both 32,768 tokens. So before 0.20.1 the levels in the role table above were
+not the effort levels that Artificial Analysis measured, and `xhigh` equaled
+`max`. The catalog row sets `thinking.mode: anthropic-adaptive`, so omp now
+sends `thinking: {type: "adaptive"}` with `output_config.effort` set to the
+role level. The block also set `defaultLevel: high` for a bare
+`claude-opus-5-5` selector. `SoT/.omp/config.yml` names a level on every Opus
+selector, so no kit role depends on that default. Runs on
+`anthropic/claude-opus-5-5:high` and `:max` after the prune answered with
+exit 0.
 
 ### Claude Fable 5.1 (Anthropic) - `anthropic/claude-fable-5-1`
 
