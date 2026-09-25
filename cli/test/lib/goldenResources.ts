@@ -214,7 +214,7 @@ const STUB_BODIES: Record<string, string> = {
   // path rather than the already-installed path; ompSync's present-detection
   // is covered by cli/test/unit/ompPluginInventory.test.ts instead.
   omp: `if (args[0] === "--version") {
-  console.log("omp/18.0.8")
+  console.log("omp/18.3.1")
 } else if (args[0] === "plugin" && args[1] === "list") {
   console.log('{"npm":[],"marketplace":[]}')
 }`,
