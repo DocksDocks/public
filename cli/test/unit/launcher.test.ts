@@ -13,8 +13,10 @@ import { delimiter, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import { hostOs } from "../../src/engine-native/os/index";
+import { floorVersion } from "../lib/toolchainManifest";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
+const BUN_FLOOR = floorVersion("bun");
 const CURRENT_VERSION = (
   JSON.parse(readFileSync(join(REPO_DIR, "package.json"), "utf8")) as { version: string }
 ).version;
@@ -28,7 +30,7 @@ const launcherSuiteLabel = POSIX_LAUNCHER_APPLIES
 function launcherFixture(
   binaryName: string,
   binaryVersion: string | null,
-  bunVersion = "1.4.0",
+  bunVersion = BUN_FLOOR,
   dependenciesInstalled = true,
 ): { root: string; binDir: string } {
   const root = mkdtempSync(join(tmpdir(), "docks-launcher-"));
@@ -142,7 +144,7 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     expect(result.stderr).toContain("ignoring stale cli/dist/docks-kit-linux-x64 <unknown>");
   });
 
-  it.each(["1.4.0", "1.10.0", "2.0.0", "1.4.0-canary.1+build", "unparseable"])(
+  it.each([BUN_FLOOR, "1.10.0", "2.0.0", `${BUN_FLOOR}-canary.1+build`, "unparseable"])(
     "accepts Bun %s before installing checkout dependencies",
     (bunVersion) => {
       const fixture = launcherFixture("docks-kit-linux-x64", null, bunVersion, false);
@@ -160,14 +162,14 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("Bun 1.3.14 is below the required floor 1.4.0");
-    expect(result.stderr).toContain("checkout's lockfile requires Bun 1.4.0 or newer");
+    expect(result.stderr).toContain(`Bun 1.3.14 is below the required floor ${BUN_FLOOR}`);
+    expect(result.stderr).toContain(`checkout's lockfile requires Bun ${BUN_FLOOR} or newer`);
     expect(result.stderr).toContain("Run: bun upgrade");
     expect(result.stderr).not.toContain("Installing CLI dependencies");
   });
 
   it("compares installed Bun against the floor rather than the verified install pin", () => {
-    const fixture = launcherFixture("docks-kit-linux-x64", null, "1.4.0", false);
+    const fixture = launcherFixture("docks-kit-linux-x64", null, BUN_FLOOR, false);
     const launcherPath = join(fixture.root, "docks-kit");
     const launcher = readFileSync(launcherPath, "utf8");
     const rewrittenLauncher = launcher.replace(/^BUN_PIN="[^"]*"$/m, 'BUN_PIN="9.0.0"');

@@ -224,7 +224,7 @@ const STUB_BODIES: Record<string, string> = {
 } else if (args[0] === "ls") {
   console.log('{"dependencies":{"intelephense":{"version":"1.18.5"}}}')
 }`,
-  bun: `if (args[0] === "--version") console.log("1.4.0")`,
+  bun: `if (args[0] === "--version") console.log("1.4.2")`,
   curl: ``,
   bwrap: `if (args[0] === "--version") console.log("bubblewrap 0.11.0")`,
   intelephense: ``,

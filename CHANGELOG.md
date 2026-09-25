@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-25 - docks-kit 0.19.3: Bun and omp floors
+
+- The Bun floor is 1.4.2, the same as the verified pin and the CI Bun. The
+  `docks-kit` and `docks-kit.ps1` checkout launchers now stop on Bun 1.4.0
+  and 1.4.1 before `bun install`, with exit 1 and `Run: bun upgrade`.
+- The omp floor is 18.3.1, the oldest release the kit tested with the
+  `gpt-6-sol` and `gpt-6-luna` roles. `docks-kit toolchain` marks an older
+  omp `below-floor`. Sync does not change its behavior.
+
 ## 2026-09-25 - docks-kit 0.19.2: tested toolchain pins
 
 - `SoT/toolchain.json` moves four `verified` pins to tested releases:
