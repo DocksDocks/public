@@ -22,7 +22,7 @@ vi.mock("../../src/engine-native/bun", () => ({
   bunBootstrap: async () => ({ kind: "ready", executable: "bun" }),
 }));
 
-import { syncOmpRemovals } from "../../src/engine-native/ompRemovals";
+import { syncOmpModelRemovals, syncOmpRemovals } from "../../src/engine-native/ompRemovals";
 import { ompSync } from "../../src/engine-native/ompSync";
 import { DEPENDENCIES } from "../../src/engine-native/deps";
 import { p } from "../../src/engine-native/exec";
@@ -249,5 +249,63 @@ describe("retired omp config keys", () => {
     }
 
     expect(parse(readFileSync(file, "utf8"))).toEqual({ steeringMode: "all" });
+  });
+});
+
+/** The claude-opus-5-5 override block exactly as SoT/.omp/models.yml shipped it. */
+const SHIPPED_OPUS_BLOCK = `      claude-opus-5-5:
+        name: Claude Opus 5.5
+        reasoning: true
+        input:
+          - text
+          - image
+        contextWindow: 1000000
+        maxTokens: 128000
+        cost:
+          input: 4
+          output: 20
+          cacheRead: 0.2
+          cacheWrite: 5
+        thinking:
+          mode: effort
+          efforts:
+            - low
+            - medium
+            - high
+            - xhigh
+            - max
+          defaultLevel: high
+`;
+
+function deployModels(content: string): { file: string; root: string } {
+  const { file: configFile, root } = deployConfig("");
+  const file = join(configFile, "..", "models.yml");
+  writeFileSync(file, content);
+  return { file, root };
+}
+
+describe("retired omp models.yml blocks", () => {
+  it("prunes the shipped Opus 5.5 override and the provider mapping it empties", () => {
+    const { file, root } = deployModels(
+      `providers:\n  anthropic:\n    modelOverrides:\n${SHIPPED_OPUS_BLOCK}  openai-codex:\n    baseUrl: https://example.test\n`,
+    );
+
+    expect(syncOmpModelRemovals(testCtx(root), file)).toBe(1);
+    expect(parse(readFileSync(file, "utf8"))).toEqual({
+      providers: { "openai-codex": { baseUrl: "https://example.test" } },
+    });
+  });
+
+  it("keeps an Opus 5.5 override the user edited, and a provider key beside it", () => {
+    const edited = SHIPPED_OPUS_BLOCK.replace("defaultLevel: high", "defaultLevel: max");
+    const { file, root } = deployModels(
+      `providers:\n  anthropic:\n    apiKey: secret\n    modelOverrides:\n${edited}`,
+    );
+
+    expect(syncOmpModelRemovals(testCtx(root), file)).toBe(0);
+    expect(parse(readFileSync(file, "utf8"))).toHaveProperty(
+      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "thinking", "defaultLevel"],
+      "max",
+    );
   });
 });

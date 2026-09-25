@@ -33,30 +33,6 @@ describe("SoT omp tree", () => {
     );
   });
 
-  // The shared catalog serves `claude-opus-5-5` as a stub with null limits and
-  // zero cost. Without this override, reserve-based compaction has no context
-  // window to size against and cost reporting reads zero. Deleting the block
-  // must fail here, not in a live session.
-  it("supplies Opus 5.5 limits and prices the shared catalog still omits", () => {
-    const models = parse(readSot("models.yml")) as unknown;
-    expect(models).toHaveProperty(
-      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "contextWindow"],
-      1000000,
-    );
-    expect(models).toHaveProperty(
-      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "maxTokens"],
-      128000,
-    );
-    expect(models).toHaveProperty(
-      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "cost"],
-      { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
-    );
-    expect(models).toHaveProperty(
-      ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "thinking", "efforts"],
-      ["low", "medium", "high", "xhigh", "max"],
-    );
-  });
-
   // Every Anthropic role and every Anthropic retry entry moved from Opus 5 to
   // Opus 5.5 at the same levels. A leftover `claude-opus-5:` selector would
   // silently keep one role on the retired model.

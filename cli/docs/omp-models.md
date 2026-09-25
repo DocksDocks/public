@@ -182,10 +182,12 @@ write, which the AA comparison table does not show. Context 1M, maximum output
 Index in this topic at this capture. AA has not measured speed or latency for
 max. It measures a longer TTFT for medium than for high.
 
-`SoT/.omp/models.yml` carries the Anthropic limits and prices as an `anthropic`
-`modelOverrides` block, because the shared catalog still serves this id as a
-stub with null limits and zero cost. Remove that block once the catalog
-publishes the row.
+Until 0.20.1, `SoT/.omp/models.yml` carried the Anthropic limits and prices as
+an `anthropic` `modelOverrides` block, because the shared catalog served this
+id as a stub with null limits and zero cost. On 2026-09-25 the catalog at
+`catalog.stencil.so` published the same context window, output cap, ladder,
+and prices, so the block was removed. Sync prunes the deployed copy only while
+it still equals the shipped block.
 
 ### Claude Fable 5.1 (Anthropic) - `anthropic/claude-fable-5-1`
 

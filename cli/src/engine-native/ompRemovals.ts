@@ -1,13 +1,14 @@
 /**
- * EngineNative `sync omp` retired-key pruning. `ompYaml.ts mergeOmpConfig` is
- * additive: its `mergeMappings, deployed-key retention loop` returns every
- * deployed key absent from the SoT to the merged result. Removing a key from
- * `SoT/.omp/config.yml` therefore never removes it from an existing
- * `~/.omp/agent/config.yml`. This pass force-prunes an inventory of retired
- * kit-owned keys on every sync, without `--reconcile`. Message strings and
- * prune semantics are part of the contract.
+ * EngineNative `sync omp` retired-key pruning. `ompYaml.ts mergeOmpConfig` and
+ * `mergeOmpModels` are additive: their `mergeMappings, deployed-key retention
+ * loop` returns every deployed key absent from the SoT to the merged result.
+ * Removing a key from `SoT/.omp/config.yml` or `SoT/.omp/models.yml` therefore
+ * never removes it from the deployed file. This pass force-prunes an inventory
+ * of retired kit-owned keys on every sync, without `--reconcile`. Message
+ * strings and prune semantics are part of the contract.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 import { isMap, isScalar, parseDocument, type YAMLMap } from "yaml";
 import type { Ctx } from "./index";
 
@@ -48,6 +49,37 @@ const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredScalar]> = [
  * writes that expansion back to the file.
  */
 const OMP_RETIRED_KEYS: ReadonlyArray<string> = ["providers.webSearchOrder"];
+
+/**
+ * models.yml blocks the kit used to deploy, each with the exact value it
+ * deployed. A block is pruned only while the deployed block still equals that
+ * value, so a user edit survives.
+ *
+ * `claude-opus-5-5` carried limits, ladder, and prices while the shared catalog
+ * served the id as an empty stub. The catalog now publishes the same limits,
+ * prices, and ladder. The block's `defaultLevel: high` applied only to a bare
+ * selector, and every kit selector names its level.
+ */
+const OMP_RETIRED_MODEL_BLOCKS: ReadonlyArray<readonly [string, unknown]> = [
+  [
+    "providers.anthropic.modelOverrides.claude-opus-5-5",
+    {
+      name: "Claude Opus 5.5",
+      reasoning: true,
+      input: ["text", "image"],
+      contextWindow: 1000000,
+      maxTokens: 128000,
+      cost: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
+      thinking: {
+        mode: "effort",
+        efforts: ["low", "medium", "high", "xhigh", "max"],
+        defaultLevel: "high",
+      },
+    },
+  ],
+];
+
+type RetiredEntry = readonly [string, (node: unknown) => boolean];
 
 function indexOfKey(mapping: YAMLMap, key: string): number {
   return mapping.items.findIndex((pair) => {
@@ -122,38 +154,63 @@ function deletePath(
   return true;
 }
 
-/** Prunes retired kit-owned keys from a deployed omp config.yml. */
-export function syncOmpRemovals(ctx: Ctx, configFile: string): number {
+/** Prunes each matching retired entry from one deployed omp YAML file. */
+function pruneRetired(
+  ctx: Ctx,
+  file: string,
+  label: string,
+  entries: ReadonlyArray<RetiredEntry>,
+): number {
   const { change, echo, verbose, warn } = ctx.services.logger;
-  if (!existsSync(configFile)) return 0;
+  if (!existsSync(file)) return 0;
 
-  const doc = parseDocument(readFileSync(configFile, "utf8"));
+  const doc = parseDocument(readFileSync(file, "utf8"));
   const parseError = doc.errors[0];
   if (parseError !== undefined) {
-    warn(`omp config.yml unreadable, retired keys not pruned: ${parseError.message}`);
+    warn(`omp ${label} unreadable, retired keys not pruned: ${parseError.message}`);
     return 0;
   }
   const contents = doc.contents;
   if (!isMap(contents)) return 0;
 
   const pruned: Array<string> = [];
-  for (const [path, value] of OMP_RETIRED_VALUES) {
-    const matches = (node: unknown): boolean => isScalar(node) && node.value === value;
+  for (const [path, matches] of entries) {
     if (deletePath(contents, path.split("."), matches)) pruned.push(path);
-  }
-  for (const path of OMP_RETIRED_KEYS) {
-    if (deletePath(contents, path.split("."), () => true)) pruned.push(path);
   }
 
   if (pruned.length === 0) {
-    verbose("omp config.yml carries no retired keys");
+    verbose(`omp ${label} carries no retired keys`);
     return 0;
   }
   if (ctx.dryRun) {
-    echo(`[dry-run] prune ${configFile}: ${pruned.join(", ")}`);
+    echo(`[dry-run] prune ${file}: ${pruned.join(", ")}`);
     return pruned.length;
   }
-  writeFileSync(configFile, String(doc));
-  change(`omp config.yml pruned ${pruned.length} retired key(s): ${pruned.join(", ")}`);
+  writeFileSync(file, String(doc));
+  change(`omp ${label} pruned ${pruned.length} retired key(s): ${pruned.join(", ")}`);
   return pruned.length;
+}
+
+/** Prunes retired kit-owned keys from a deployed omp config.yml. */
+export function syncOmpRemovals(ctx: Ctx, configFile: string): number {
+  return pruneRetired(ctx, configFile, "config.yml", [
+    ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
+      path,
+      (node) => isScalar(node) && node.value === value,
+    ]),
+    ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
+  ]);
+}
+
+/** Prunes retired kit-owned blocks from a deployed omp models.yml. */
+export function syncOmpModelRemovals(ctx: Ctx, modelsFile: string): number {
+  return pruneRetired(
+    ctx,
+    modelsFile,
+    "models.yml",
+    OMP_RETIRED_MODEL_BLOCKS.map(([path, block]): RetiredEntry => [
+      path,
+      (node) => isMap(node) && isDeepStrictEqual(node.toJSON(), block),
+    ]),
+  );
 }

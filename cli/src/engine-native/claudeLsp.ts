@@ -6,7 +6,8 @@
  * and spawned argv are part of the contract.
  */
 import { defaultProbeExecutor, npmGlobalVersions, type ToolId } from "./deps";
-import { capture, p, spawnProcess } from "./exec";
+import { realpathSync } from "node:fs";
+import { capture, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
 import { belowFloor, field, installedVersion, isNewer } from "./toolchain";
@@ -177,11 +178,29 @@ export async function upgradeLspServers(ctx: Ctx): Promise<number> {
   const owned = await npmGlobalVersions(defaultProbeExecutor);
   const prefix = await capture("npm", ["prefix", "-g"]);
   const windows = ctx.services.platform.name() === "windows";
-  // npm links global executables into <prefix>/bin on POSIX and into <prefix> on Windows.
-  const npmBin = prefix === "" ? "" : windows ? prefix : p(prefix, "bin");
   const comparable = (path: string): string => {
     const slashed = path.replaceAll("\\", "/");
     return windows ? slashed.toLowerCase() : slashed;
+  };
+  const resolved = (path: string): string => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return path;
+    }
+  };
+  // A PATH entry is the npm copy of `pkg` when the file it resolves to lies in
+  // that package's own directory: <prefix>/lib/node_modules/<pkg> on POSIX,
+  // where npm's bin entries are links into it. Any other file under the prefix
+  // does not count, because a system Node uses /usr or /usr/local as its prefix
+  // and distro binaries live there too. npm writes Windows shims straight into
+  // <prefix> instead of linking, so there a shim in <prefix> itself counts.
+  const npmRoot = prefix === "" ? "" : `${comparable(resolved(prefix))}/`;
+  const isNpmCopy = (path: string, pkg: string): boolean => {
+    const packageDir = `${npmRoot}${windows ? "" : "lib/"}node_modules/${comparable(pkg)}/`;
+    if (comparable(resolved(path)).startsWith(packageDir)) return true;
+    const entry = comparable(path);
+    return windows && entry.slice(0, entry.lastIndexOf("/") + 1) === `${comparable(prefix)}/`;
   };
 
   const targets: Array<readonly [string, string]> = [];
@@ -202,13 +221,9 @@ export async function upgradeLspServers(ctx: Ctx): Promise<number> {
       }
       continue;
     }
-    if (
-      onPath !== "" &&
-      npmBin !== "" &&
-      !comparable(onPath).startsWith(`${comparable(npmBin)}/`)
-    ) {
+    if (onPath !== "" && npmRoot !== "" && !isNpmCopy(onPath, pkg)) {
       warn(
-        `${tool} on PATH is ${onPath}, not the npm global copy in ${npmBin}; an upgrade changes only the npm copy`,
+        `${tool} on PATH is ${onPath}, not the npm global copy under ${prefix}; an upgrade changes only the npm copy`,
       );
     }
     if (!isNewer(verified, installed)) {

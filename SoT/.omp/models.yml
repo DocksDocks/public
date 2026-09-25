@@ -1,32 +1,4 @@
 providers:
-  # Temporary metadata for an id the shared models.dev catalog still publishes
-  # as an empty stub. Remove this block once that catalog row carries the real
-  # context window, output cap, ladder, and prices. `defaultLevel` is the kit's
-  # choice for a bare selector, not the Claude API default, which is `medium`.
-  anthropic:
-    modelOverrides:
-      claude-opus-5-5:
-        name: Claude Opus 5.5
-        reasoning: true
-        input:
-          - text
-          - image
-        contextWindow: 1000000
-        maxTokens: 128000
-        cost:
-          input: 4
-          output: 20
-          cacheRead: 0.2
-          cacheWrite: 5
-        thinking:
-          mode: effort
-          efforts:
-            - low
-            - medium
-            - high
-            - xhigh
-            - max
-          defaultLevel: high
   openai-codex:
     modelOverrides:
       gpt-6-astra:

@@ -78,7 +78,11 @@ these alone and warns:
 - `typescript-language-server` when Node is older than the `node` floor.
 
 When the PATH copy of an npm-owned server is outside `npm prefix -g`, it warns
-that the upgrade changes only the npm copy. A package that is not installed
+that the upgrade changes only the npm copy. The check follows links and
+accepts only a file inside the package directory
+(`<prefix>/lib/node_modules/<pkg>` on POSIX), so a link from another PATH
+directory into it counts as the npm copy, while a distro binary under a
+`/usr` prefix does not. On Windows, a shim in `<prefix>` counts. A package that is not installed
 stays missing, because `sync claude` owns first installs. A failed npm call
 exits 1. After the install, it reads `npm ls -g` again and exits 1 when a
 package is not at its pin.

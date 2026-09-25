@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-25 - docks-kit 0.20.1: Opus override removal, upgrade link check
+
+- `SoT/.omp/models.yml` no longer carries the temporary
+  `anthropic.modelOverrides.claude-opus-5-5` block. The shared model catalog
+  now publishes the same context window, output cap, reasoning levels, and
+  prices. `sync omp` removes the deployed block from `~/.omp/agent/models.yml`
+  while it still equals the shipped block, and it keeps an edited block. The
+  block's `defaultLevel: high` applied only to a bare `claude-opus-5-5`
+  selector; every kit role names its level.
+- `toolchain upgrade` follows links when it checks which copy of a server
+  PATH finds, and accepts only a file inside the npm package directory. A
+  link in another PATH directory, such as `~/.local/bin`, that resolves into
+  that directory no longer draws the other-copy warning. A distro binary under
+  a `/usr` npm prefix still does.
+
 ## 2026-09-25 - docks-kit 0.20.0: toolchain upgrade
 
 - `docks-kit toolchain upgrade [--dry-run]` moves the npm-installed language

@@ -21,7 +21,7 @@ import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncMarketplace } from "./ompMarketplace";
 import { syncPlugins } from "./ompPlugins";
-import { syncOmpRemovals } from "./ompRemovals";
+import { syncOmpModelRemovals, syncOmpRemovals } from "./ompRemovals";
 
 export interface OmpState {
   readonly pluginsInstalled: number;
@@ -56,6 +56,7 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   // mergeOmpConfig is additive, so the prune must run on the merged result.
   syncOmpRemovals(ctx, p(agentDir, "config.yml"));
   syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels);
+  syncOmpModelRemovals(ctx, p(agentDir, "models.yml"));
 
   const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"];
   const intercomRoot =
