@@ -53,7 +53,7 @@ docks-kit toolchain [check|ensure <tool>|outdated]  verified-version floors for 
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
-docks-kit docs [topic]                          self-documentation (10 topics)
+docks-kit docs [topic]                          self-documentation (11 topics)
 --help --version --wizard --completions    built-in
 ```
 
@@ -100,7 +100,8 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   the full doctor table. Bun is the one managed install and is pinned to its
   verified version.
 - **Model catalog** — enabled harnesses provide live Claude, Codex, or omp
-  model IDs; `SoT/models.json` supplies aliases, notes, and the offline fallback.
+  model IDs; `SoT/models.json` supplies Claude and Codex aliases, notes, and the
+  offline fallback. omp has no curated fallback list.
 - **Claude runtime** — sync materializes three dependency-free Bun `.mjs`
   programs for statusline, SessionStart, and Notification. Quota display uses
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
