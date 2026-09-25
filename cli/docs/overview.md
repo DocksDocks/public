@@ -13,7 +13,7 @@ AI-assisted dev environment on every machine.
 | `SoT/.codex/` | Codex config (config.toml, rules, AGENTS.md, marketplace) |
 | `SoT/.agents/` | Universal agent skills manifest (agentskills.io standard) |
 | `SoT/.omp/` | omp config deployed to `~/.omp/agent/` (AGENTS.md, config.yml, models.yml, mcp.json) plus `intercom.json` for pi intercom |
-| `SoT/models.json` | Kit-verified model catalog (see `docks-kit docs models`) |
+| `SoT/models.json` | Curated Claude and Codex aliases, notes, and offline fallback for the live model lists (see `docks-kit docs models`) |
 | `SoT/toolchain.json` | Verified-version floors for external tools (see `docks-kit docs toolchain`) |
 | `cli/src/generated/sotPayload.ts` | Deterministic generated payload embedded in standalone/npm execution |
 | `cli/src/engine-native/` | EngineNative mutation logic for sync/model/toolchain and the `docks-kit omp` session overlay |

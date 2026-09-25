@@ -24,8 +24,14 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
     summary: "Deploy-time modifiers and the flag-less-sync-reverts contract",
     body: modifiers,
   },
-  models: { summary: "Model catalog, validation rules, model get/set", body: models },
-  toolchain: { summary: "Verified-version floors and the doctor table", body: toolchain },
+  models: {
+    summary: "Live model lists, the curated overlay, validation, model get/set",
+    body: models,
+  },
+  toolchain: {
+    summary: "Verified-version floors, the doctor table, and the upstream outdated report",
+    body: toolchain,
+  },
   plugins: { summary: "enabledPlugins tri-state + optional plugin opt-ins", body: plugins },
   install: {
     summary: "Install paths: repo checkout, bun add -g, POSIX/Windows installers",

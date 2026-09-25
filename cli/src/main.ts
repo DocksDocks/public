@@ -32,8 +32,8 @@ const root = Command.make("docks-kit", {}, () =>
       "  docks-kit update [--no-sync]              self-update the kit, then sync",
     );
     yield* Console.log("  docks-kit model <claude|codex> [value]     get/set the deployed model");
-    yield* Console.log("  docks-kit models [tool]                    kit-verified model catalog");
-    yield* Console.log("  docks-kit toolchain [check|ensure <tool>]  verified-version floors");
+    yield* Console.log("  docks-kit models [tool] [--refresh]        live model lists per harness");
+    yield* Console.log("  docks-kit toolchain [check|ensure|outdated] verified-version floors");
     yield* Console.log("  docks-kit status                           deployed-vs-SoT doctor view");
     yield* Console.log("  docks-kit plugins list                     plugin tri-state");
     yield* Console.log("  docks-kit skills list                      universal skills");
