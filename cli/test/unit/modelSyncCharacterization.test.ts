@@ -115,7 +115,7 @@ describe("retained model and sync behavior", () => {
       "codex models (live — codex-cache, fetched 2026-09-24T12:00:00Z):",
     );
     expect(run.stdout).toMatch(/^  gpt-demo\s+id\s+Demo$/m);
-    expect(run.stdout).not.toContain("gpt-6-sol");
+    expect(run.stdout).not.toContain("gpt-6.1-sol");
     expect(run.stdout).not.toContain("live list unavailable");
     expect(run.stderr).toBe("");
 

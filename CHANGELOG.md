@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-09-29 - docks-kit 0.20.2: GPT-6.1 Sol and toolchain floors
+
+- Codex selects `gpt-6.1-sol` in `SoT/.codex/config.toml` and in the project
+  `code-reviewer` and `plan-reviewer` agents. The omp `task` role and the
+  `default` and `vision` retry chains select `gpt-6.1-sol` at the same
+  thinking levels as GPT-6 Sol.
+- `SoT/models.json` lists GPT-6.1 Sol first as the kit pin, marks GPT-6 Sol
+  the previous Sol release, and dates the curated Codex list 2026-09-29.
+- The omp floor and verified version are 18.4.4; the Codex floor is 0.159.0.
+  omp 18.4.4 listed and served `gpt-6.1-sol` through the `openai-codex`
+  provider. The Codex CLI serve check could not run because the Codex login
+  session had expired.
+- The `omp-models` docs topic uses a new Artificial Analysis capture from
+  2026-09-29 at Intelligence Index v4.3.2. The GPT-6 Sol table is gone, and a
+  GPT-6.1 Sol table replaces it. GPT-6.1 Sol high scores 50 at $0.32 per
+  index task, against 43 at $0.37 for GPT-6 Sol high. GPT-6.1 Sol max scores
+  52 at $0.72, against 48 at $1.06. AA now measures GPT-6.1 Sol latency: 57.26 s
+  TTFT at high. The other tables use the same capture. Opus 5.5 high TTFT
+  moves from 12.49 s to 52.85 s, and Astra xhigh from 188.20 s to 126.90 s.
+  The Coding Agent Index now lists 30 entries, with Opus 5.5 max at 66 and
+  Codex with GPT-6.1 Sol at 57 to 63 across its levels.
+- The omp advisor rule now excludes every GPT model, not only GPT-6 Sol. The
+  advisor stays on `anthropic/claude-opus-5-5:medium` with an empty fallback
+  chain. Astra also costs too much for this role.
+
 ## 2026-09-25 - docks-kit 0.20.1: Opus override removal, upgrade link check
 
 - `SoT/.omp/models.yml` no longer carries the temporary

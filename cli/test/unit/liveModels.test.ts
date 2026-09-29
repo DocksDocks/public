@@ -204,7 +204,7 @@ describe("live model catalogs", () => {
       JSON.stringify({
         fetched_at: "2026-09-24T10:00:00.000Z",
         models: [
-          { slug: "gpt-6-sol", display_name: "Live name", visibility: "list" },
+          { slug: "gpt-6.1-sol", display_name: "Live name", visibility: "list" },
           { slug: "gpt-reserve", display_name: "Not public", visibility: "hide" },
           { slug: "gpt-new", display_name: "New public model", visibility: "list" },
         ],
@@ -219,9 +219,9 @@ describe("live model catalogs", () => {
       fetchedAt: "2026-09-24T10:00:00.000Z",
       models: [
         {
-          id: "gpt-6-sol",
+          id: "gpt-6.1-sol",
           kind: "id",
-          note: curatedCatalog("codex").models.find((model) => model.id === "gpt-6-sol")?.note,
+          note: curatedCatalog("codex").models.find((model) => model.id === "gpt-6.1-sol")?.note,
         },
         { id: "gpt-new", kind: "id", note: "New public model" },
       ],

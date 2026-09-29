@@ -82,8 +82,8 @@ describe("SoT omp tree", () => {
   it("keeps cross-vendor retries without routing Astra or Fable through the default chain", () => {
     const retry = ompConfig()["retry"] as Record<string, unknown>;
     const chains = retry["fallbackChains"] as Record<string, ReadonlyArray<string>>;
-    expect(chains["default"]).toEqual(["openai-codex/gpt-6-sol:high"]);
-    expect(chains["vision"]).toEqual(["openai-codex/gpt-6-sol:medium"]);
+    expect(chains["default"]).toEqual(["openai-codex/gpt-6.1-sol:high"]);
+    expect(chains["vision"]).toEqual(["openai-codex/gpt-6.1-sol:medium"]);
     expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-1:medium"]);
     expect(chains["fable"]).toEqual(["openai-codex/gpt-6-astra:xhigh"]);
     expect(chains["switch_fable"]).toEqual([]);
@@ -93,7 +93,7 @@ describe("SoT omp tree", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
     expect(roles).toMatchObject({
-      task: "openai-codex/gpt-6-sol:high",
+      task: "openai-codex/gpt-6.1-sol:high",
       smol: "openai-codex/gpt-6-luna:medium",
       commit: "openai-codex/gpt-6-luna:medium",
       tiny: "openai-codex/gpt-6-luna:low",
@@ -110,7 +110,9 @@ describe("SoT omp tree", () => {
     });
   });
 
-  it("keeps advisor on Opus 5.5 without a GPT-6 Sol retry", () => {
+  // A GPT-6 Sol advisor looped on repeated reads under an Opus 5.5 session.
+  // The owner excludes every GPT model from the advisor role and its chain.
+  it("keeps advisor on Opus 5.5 with no GPT model in its role or retry chain", () => {
     const config = ompConfig();
     expect(config["advisor"]).toHaveProperty("enabled", true);
     expect(config["modelRoles"]).toHaveProperty("advisor", "anthropic/claude-opus-5-5:medium");
