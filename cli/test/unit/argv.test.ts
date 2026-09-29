@@ -271,7 +271,7 @@ describe("argument validation", () => {
       "missing Codex model",
       ["sync", "--codex-model"],
       "Available codex models",
-      "  gpt-6-sol  —",
+      "  gpt-6.1-sol  —",
       "--codex-model requires a value: --codex-model=<model>",
     ],
     [

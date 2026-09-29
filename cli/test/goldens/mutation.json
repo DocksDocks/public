@@ -202,7 +202,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -236,7 +236,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -451,7 +451,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -479,7 +479,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -507,7 +507,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:4acc3479bba988ff1cb5f11fe5900dd252a9f58e882432c0398b700c71a1bf27",
+        ".codex/config.toml": "sha256:cd8852063fab211c52d419b3815d770060c63bad420a9569c2f7a93caf34aa11",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -564,7 +564,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d",
@@ -600,7 +600,7 @@
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
-        ".codex/config.toml": "sha256:bdbd6074f70d071dbacea024f78d00b8be4e11f0e6138428999695d40704cf27",
+        ".codex/config.toml": "sha256:c3aac2abbb3d3b28ca5bf57443ff2cf9d0d4f2734abe6df900518edf4c14491a",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -640,7 +640,7 @@
         ".claude/settings.json.bak": "sha256:09bae72b6ac55850c1e3d5fa45389aaac4fa22a9cb93e241d602f21a64e860b5",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -859,7 +859,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -903,7 +903,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -920,7 +920,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -937,7 +937,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -952,7 +952,7 @@
         ".omp/": "dir",
         ".omp/agent/": "dir",
         ".omp/agent/AGENTS.md": "sha256:46785827056b6c9f1d20b2a96b49c325a443567fae1cb86795a53f72be1d6473",
-        ".omp/agent/config.yml": "sha256:9eca4b02e5d0576bf3b4a45049e20cbee8c6d238fc49aea89297195df2777be3",
+        ".omp/agent/config.yml": "sha256:a6b199e5a9268632821ad912830cdaa400298b1de83b6330e0298ffb069bb25a",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -971,7 +971,7 @@
         ".omp/": "dir",
         ".omp/agent/": "dir",
         ".omp/agent/AGENTS.md": "sha256:46785827056b6c9f1d20b2a96b49c325a443567fae1cb86795a53f72be1d6473",
-        ".omp/agent/config.yml": "sha256:9eca4b02e5d0576bf3b4a45049e20cbee8c6d238fc49aea89297195df2777be3",
+        ".omp/agent/config.yml": "sha256:a6b199e5a9268632821ad912830cdaa400298b1de83b6330e0298ffb069bb25a",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -990,7 +990,7 @@
         ".omp/": "dir",
         ".omp/agent/": "dir",
         ".omp/agent/AGENTS.md": "sha256:46785827056b6c9f1d20b2a96b49c325a443567fae1cb86795a53f72be1d6473",
-        ".omp/agent/config.yml": "sha256:9eca4b02e5d0576bf3b4a45049e20cbee8c6d238fc49aea89297195df2777be3",
+        ".omp/agent/config.yml": "sha256:a6b199e5a9268632821ad912830cdaa400298b1de83b6330e0298ffb069bb25a",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -1009,7 +1009,7 @@
         ".omp/": "dir",
         ".omp/agent/": "dir",
         ".omp/agent/AGENTS.md": "sha256:46785827056b6c9f1d20b2a96b49c325a443567fae1cb86795a53f72be1d6473",
-        ".omp/agent/config.yml": "sha256:9eca4b02e5d0576bf3b4a45049e20cbee8c6d238fc49aea89297195df2777be3",
+        ".omp/agent/config.yml": "sha256:a6b199e5a9268632821ad912830cdaa400298b1de83b6330e0298ffb069bb25a",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -1043,7 +1043,7 @@
         ".claude/settings.json.bak": "sha256:09bae72b6ac55850c1e3d5fa45389aaac4fa22a9cb93e241d602f21a64e860b5",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1071,7 +1071,7 @@
         ".claude/settings.json": "sha256:09bae72b6ac55850c1e3d5fa45389aaac4fa22a9cb93e241d602f21a64e860b5",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:0d398473c70171764a9acc59238c5cea1cfd7028029f299a01d4c44d0d37beef",
+        ".codex/config.toml": "sha256:b26da11ad6d5ce92e807d69bca54dcb93c3ce8a0d5a0b9c9f554d337e50b46a4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
       }
@@ -1080,7 +1080,7 @@
       "argvLog": "bun\t--version\nbwrap\t--version\nclaude\t--version\ncodex\t--version\ncurl\t--version\nffplay\t-version\ngit\t--version\nnpm\tls -g --depth=0 --json\njq\t--version\nnode\t--version\nnpm\t--version\nomp\t--version\nrust-analyzer\t--version\ntsc\t--version\ntypescript-language-server\t--version\n",
       "command": ["toolchain", "check"],
       "exitCode": 0,
-      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nbun                          managed   1.4.2          1.4.2     1.4.2     ok\nbwrap                        check     0.11.0         0.9.0     -         ok\nclaude                       check     2.1.204        2.1.280   -         below-floor\ncodex                        check     0.157.0        0.157.0   -         ok\ncurl                         check     ?              -         -         unknown\nffplay                       check     6.1.1          -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     1.18.5         1.18.5    1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        22.22.2   -         ok\nnpm                          check     ?              -         -         unknown\nomp                          check     18.3.1         18.3.1    18.3.1    ok\npi-intercom                  pin       (npx)          -         0.14.0    pinned\nrust-analyzer                check     1.92.0         -         -         ok\nskills-cli                   pin       (npx)          -         1.7.0     pinned\ntsc                          check     6.0.3          6.0.3     6.0.3     ok\ntypescript-language-server   check     6.0.0          6.0.0     6.0.1     ok\n",
+      "output": "TOOL                         KIND      INSTALLED      FLOOR     VERIFIED  STATUS\nbun                          managed   1.4.2          1.4.2     1.4.2     ok\nbwrap                        check     0.11.0         0.9.0     -         ok\nclaude                       check     2.1.204        2.1.280   -         below-floor\ncodex                        check     0.159.0        0.159.0   -         ok\ncurl                         check     ?              -         -         unknown\nffplay                       check     6.1.1          -         -         ok\ngit                          check     2.43.0         -         -         ok\nintelephense                 check     1.18.5         1.18.5    1.18.5    ok\njq                           check     1.7.1          -         -         ok\nnode                         check     22.23.1        22.22.2   -         ok\nnpm                          check     ?              -         -         unknown\nomp                          check     18.4.4         18.4.4    18.4.4    ok\npi-intercom                  pin       (npx)          -         0.14.0    pinned\nrust-analyzer                check     1.92.0         -         -         ok\nskills-cli                   pin       (npx)          -         1.7.0     pinned\ntsc                          check     6.0.3          6.0.3     6.0.3     ok\ntypescript-language-server   check     6.0.0          6.0.0     6.0.1     ok\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb"
       }
@@ -1127,7 +1127,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:d0ab90875c2971526f4e8dc9120885351450c3e66af220c0b6c0efd45f7eba2f",
+        ".codex/config.toml": "sha256:e625007ded77642298dad69f264edd88aadb20282c503b7f33bdf201673ca313",
         ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1156,7 +1156,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:f1985986e3adcf3226a934b0de602e7aad55b0930f1f5f105bf821df70d6405f",
+        ".codex/config.toml": "sha256:3eee06ab58d480b5efe229b272f4ff6f9f372c23ff2bc256838ac942175b7ca9",
         ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1185,7 +1185,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:185458a0fca84b9cb44e52eb8a0f8405a5888cbbd27aafe1119e5ebfbf81fd16",
+        ".codex/config.toml": "sha256:d1a151fe1daf0250381fc53c119b220e1df514ab81b7f7a9f238a23ba4410eab",
         ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1214,7 +1214,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:68bb7959a64fefba9a94ac2effdcd16b7f5b3d0bb0f9bd286a9345375baebf95",
+        ".codex/config.toml": "sha256:f3d3c0059cc156376c4eea4368347ce5190b24e8c21aac841a23455d8be33c59",
         ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1243,7 +1243,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:309fd59c3b7db687aa32fa8286afe4a1872bc15f620da11c0cbc8d4b09980fcd",
+        ".codex/config.toml": "sha256:d82cc3e0af3aca94cb9e62dc0e6e14311fce5df5911c931973b826528590501f",
         ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1272,7 +1272,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:68bb7959a64fefba9a94ac2effdcd16b7f5b3d0bb0f9bd286a9345375baebf95",
+        ".codex/config.toml": "sha256:f3d3c0059cc156376c4eea4368347ce5190b24e8c21aac841a23455d8be33c59",
         ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
@@ -1301,7 +1301,7 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:94b0bd3044121fd35a7e1530f8f237e9f88f1481fa6de37d1e33fd20f981f66f",
-        ".codex/config.toml": "sha256:7d69b9ad55d958f4ad114b2c72ef9681bd2f2b097a963b32498b72241c777cd9",
+        ".codex/config.toml": "sha256:de756311eebf7a5126010f8c9aabdc74ddb3d3094cd9e5246714f199732a8ab8",
         ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
         ".codex/rules/": "dir",
         ".codex/rules/docks.rules": "sha256:14bf596ab1d3e19052a122159c6417f20d707bc1d869b806ae7ee595e722f40d"
