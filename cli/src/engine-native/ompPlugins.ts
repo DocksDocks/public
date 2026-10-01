@@ -3,11 +3,10 @@
  * pinned pi-intercom npm plugin. Split from ompSync.ts; the orchestration
  * still lives there.
  */
-import { spawnProcess } from "./exec";
+import { processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
-import { firstOutputLine } from "./ompMarketplace";
 import { field } from "./toolchain";
 
 const MARKETPLACE_PLUGIN_IDS = ["docks@docks", "plan-lifecycle@docks"] as const;
@@ -69,7 +68,7 @@ async function runPluginCommand(
 
   recordFailure(
     ctx,
-    `omp plugin operation failed for ${plugin}: ${firstOutputLine(result)}; run manually: omp ${args.join(" ")}`,
+    `omp plugin operation failed for ${plugin}: ${processFailureSummary(result)}; run manually: omp ${args.join(" ")}`,
   );
   return false;
 }

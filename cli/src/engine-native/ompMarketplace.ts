@@ -1,11 +1,11 @@
 /**
  * EngineNative omp marketplace pass: registry detection plus register, adopt,
  * and refresh flows. Split from ompSync.ts; the orchestration still lives
- * there. `firstOutputLine` is shared with the plugin pass in ompPlugins.ts.
+ * there.
  */
 import { existsSync, readFileSync } from "node:fs";
 
-import { spawnProcess, type AsyncProcessResult } from "./exec";
+import { processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
@@ -34,11 +34,6 @@ function registryHasDocks(registryFile: string): boolean {
       ? registry["marketplaces"]
       : [];
   return entries.some((entry) => isObject(entry) && entry["name"] === MARKETPLACE_NAME);
-}
-
-export function firstOutputLine(result: AsyncProcessResult): string {
-  const output = `${result.stdout}${result.stderr}`;
-  return output.split("\n")[0] || "unknown error";
 }
 
 /**
@@ -89,7 +84,7 @@ export async function syncMarketplace(
     } else {
       recordFailure(
         ctx,
-        `omp docks marketplace registration failed: ${firstOutputLine(result)}; run manually: omp plugin marketplace add ${MARKETPLACE_SOURCE}`,
+        `omp docks marketplace registration failed: ${processFailureSummary(result)}; run manually: omp plugin marketplace add ${MARKETPLACE_SOURCE}`,
       );
     }
     return;
@@ -114,7 +109,7 @@ export async function syncMarketplace(
     } else {
       recordFailure(
         ctx,
-        `omp docks marketplace adoption failed: ${firstOutputLine(listed)}; run manually: omp plugin marketplace list`,
+        `omp docks marketplace adoption failed: ${processFailureSummary(listed)}; run manually: omp plugin marketplace list`,
       );
     }
     return;
@@ -130,7 +125,7 @@ export async function syncMarketplace(
   } else {
     recordFailure(
       ctx,
-      `omp docks marketplace update failed: ${firstOutputLine(result)}; run manually: omp plugin marketplace update ${MARKETPLACE_NAME}`,
+      `omp docks marketplace update failed: ${processFailureSummary(result)}; run manually: omp plugin marketplace update ${MARKETPLACE_NAME}`,
     );
   }
 }

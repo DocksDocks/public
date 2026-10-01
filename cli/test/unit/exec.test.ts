@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { spawnProcess } from "../../src/engine-native/exec";
+import { processFailureSummary, spawnProcess } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
 
 /** A PATH holding exactly the named shims, so resolution is the same on every host. */
@@ -92,5 +92,34 @@ describe("spawnProcess host resolution", () => {
       stdout: "before",
       stderr: "failure",
     });
+  });
+});
+
+describe("processFailureSummary", () => {
+  it("keeps git's final fatal line after a wrapped clone failure", () => {
+    const summary = processFailureSummary({
+      exitCode: 1,
+      stdout: "",
+      stderr:
+        "✘ Failed to update marketplace: VcsError: Cloning into '/tmp/clone'...\n" +
+        "fatal: unable to access 'https://github.com/DocksDocks/docks.git/': Could not resolve host: github.com\n",
+    });
+
+    expect(summary).toBe(
+      "✘ Failed to update marketplace: VcsError: Cloning into '/tmp/clone'... | " +
+        "fatal: unable to access 'https://github.com/DocksDocks/docks.git/': Could not resolve host: github.com",
+    );
+  });
+
+  it("falls back to the spawn error when the process printed nothing", () => {
+    expect(
+      processFailureSummary({
+        exitCode: null,
+        stdout: "",
+        stderr: "",
+        error: new Error("spawn omp ENOENT"),
+      }),
+    ).toBe("spawn omp ENOENT");
+    expect(processFailureSummary({ exitCode: 1, stdout: "\n", stderr: "" })).toBe("unknown error");
   });
 });
