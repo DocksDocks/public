@@ -72,6 +72,21 @@ export interface AsyncProcessResult {
   readonly error?: Error;
 }
 
+/**
+ * One-line failure text for a warning. A harness CLI that wraps git puts its own
+ * message first and git's `fatal:` line last, so keep the first and the last
+ * non-empty lines; the first line alone is often only git's `Cloning into` line.
+ */
+export function processFailureSummary(result: AsyncProcessResult): string {
+  const lines = [...result.stdout.split("\n"), ...result.stderr.split("\n")]
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const first = lines[0];
+  const last = lines.at(-1);
+  if (first === undefined) return result.error?.message ?? "unknown error";
+  return last === undefined || last === first ? first : `${first} | ${last}`;
+}
+
 export interface AsyncProcessOptions {
   readonly stdio?: SpawnOptions["stdio"];
   /** Host whose executable resolution and argv shaping apply; tests inject it. */

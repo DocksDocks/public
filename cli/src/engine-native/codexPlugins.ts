@@ -15,7 +15,7 @@ import {
 import { payloadDisplayPath } from "../payload";
 import { PLUGIN_TABLE_HEADER } from "./codexConfig";
 import { isTomlHeaderLine } from "./codexToml";
-import { p, spawnProcess } from "./exec";
+import { p, processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq";
@@ -271,10 +271,9 @@ export async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void
       );
       failed++;
     } else {
-      const failureLine = addOut.split("\n")[0] ?? "";
       recordFailure(
         ctx,
-        `Codex plugin refresh failed for ${pluginId}: ${failureLine !== "" ? failureLine : "unknown error"}; run manually: codex plugin add ${pluginId}`,
+        `Codex plugin refresh failed for ${pluginId}: ${processFailureSummary(res)}; run manually: codex plugin add ${pluginId}`,
       );
       failed++;
     }
