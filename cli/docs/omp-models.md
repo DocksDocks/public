@@ -412,8 +412,9 @@ through omp's repeatable `--config` flag. Each model gets its own file,
 because omp can re-read the overlay during a live session, and a second
 launcher on another model must not rewrite that file. The name sanitizes the
 selector for the file system and appends a digest of the exact selector, so
-two selectors that differ only in separator characters stay apart. The
-launcher never reads or writes `~/.omp/agent/config.yml` or `models.yml`. It
+two selectors that differ only in separator characters stay apart. A session
+launch never reads or writes `~/.omp/agent/config.yml` or `models.yml`; only
+`--fast`, below, edits `config.yml`. It
 never touches the SoT. The next plain `omp` run uses the paid configuration
 again.
 
@@ -500,6 +501,18 @@ constant. A ladder change needs no code change. Under `--model` both levels
 are derived from the catalog row of the chosen model, and under `--pick` the
 user chooses them from the ladder that same row publishes. Refresh the
 recorded default and the ladder counts in these docs in the same commit.
+
+## OpenAI fast mode (`docks-kit omp --fast`)
+
+`docks-kit omp --fast` toggles `tier.openai` in the deployed
+`~/.omp/agent/config.yml` between `priority` and `none`, prints the old and new
+values, and exits without starting a session. `priority` is the tier omp's
+`/fast on` selects for OpenAI and OpenAI-Codex models. `--fast` over
+`ultrafast` selects `priority`. The kit ships no Ultrafast toggle: omp honors
+`ultrafast` for a Codex model only when its catalog `serviceTiers` lists it,
+and the omp 18.4.9 catalog lists none for GPT-6.1 Sol, Astra, or Luna. The SoT
+does not declare `tier.openai`, so the additive sync merge keeps the toggled
+value. New sessions read it; a running session changes through `/fast`.
 
 ## Maintenance
 

@@ -58,16 +58,19 @@ ignored with a warning; Claude modifiers never touch Codex config and vice versa
 |------|--------|
 | `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost; recorded in `~/.docks-kit/kit.db` (table `omp_session`) |
 | `--pick` | Interactive picker over free catalog models; records the choice the same way |
+| `--fast` | Toggle `tier.openai` between `priority` and `none` in the deployed `~/.omp/agent/config.yml`, print the change, and exit; the same tier omp's `/fast on` selects for OpenAI and Codex models |
 
 Remaining arguments forward verbatim to omp after the launcher flags.
 `docks-kit omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes
 the previous session. A bare `docks-kit omp` opens an interactive session.
-The launcher changes no deployed file and never invokes `sync`.
+The launcher changes no deployed file and never invokes `sync`, except for
+`--fast`, which changes only `tier.openai` and launches nothing. `--fast` over
+`ultrafast` selects `priority`.
 The boundary opens at the first token that is neither a declared launcher
 flag nor a declared global flag. Declared flags stay with docks-kit and
 never reach omp:
 
-- `--model`, `--pick`
+- `--model`, `--pick`, `--fast`
 - `--help`, `--version`, `--log-level`, `--wizard`, `--completions`
 
 The same names on omp stay reachable behind an explicit delimiter. Use
