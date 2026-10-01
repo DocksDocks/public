@@ -3,8 +3,9 @@
 ## Unreleased - full error lines in sync failure warnings
 
 - omp marketplace, omp plugin, and Codex plugin warnings now show the first
-  and the last non-empty output lines of the failed command. Before, they kept
-  only the first line, which for a git-backed marketplace was often git's
+  output line of the failed command plus the first later `fatal:` or `error:`
+  line, or the last line when no such line exists. Before, they kept only the
+  first line, which for a git-backed marketplace was often git's
   `Cloning into` progress line, so the `fatal:` line that names the cause was
   lost. With no output, the warning shows the spawn error message.
 

@@ -96,13 +96,14 @@ describe("spawnProcess host resolution", () => {
 });
 
 describe("processFailureSummary", () => {
-  it("keeps git's final fatal line after a wrapped clone failure", () => {
+  it("keeps git's fatal line when the CLI prints more text after it", () => {
     const summary = processFailureSummary({
       exitCode: 1,
       stdout: "",
       stderr:
         "✘ Failed to update marketplace: VcsError: Cloning into '/tmp/clone'...\n" +
-        "fatal: unable to access 'https://github.com/DocksDocks/docks.git/': Could not resolve host: github.com\n",
+        "fatal: unable to access 'https://github.com/DocksDocks/docks.git/': Could not resolve host: github.com\n" +
+        "    at VcsError (marketplace.ts:42:11)\n",
     });
 
     expect(summary).toBe(
