@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-01 - docks-kit 0.20.3: omp fast mode toggle
+
+- `docks-kit omp --fast` toggles `tier.openai` in the deployed
+  `~/.omp/agent/config.yml` between `priority` and `none`, prints the old and
+  new values, and exits. `priority` is the tier omp's `/fast on` selects for
+  OpenAI and OpenAI-Codex models.
+- `SoT/.omp/config.yml` no longer declares `tier.openai`, so `sync omp` keeps
+  the toggled value. The deployed `none` stays until a toggle changes it.
+
 ## 2026-09-29 - docks-kit 0.20.2: GPT-6.1 Sol and toolchain floors
 
 - Codex selects `gpt-6.1-sol` in `SoT/.codex/config.toml` and in the project

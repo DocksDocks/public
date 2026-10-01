@@ -21,6 +21,8 @@ import {
   renderFreeOverlay,
   type CatalogModel,
 } from "../engine-native/ompOverlay";
+import { FAST_ON_TIER, toggleDeployedOpenAiFast } from "../engine-native/ompFastMode";
+import { ompPaths } from "../engine-native/ompPaths";
 
 const model = Flag.String("model").pipe(
   Flag.withDescription("Free model selector to use and remember for omp sessions"),
@@ -28,6 +30,12 @@ const model = Flag.String("model").pipe(
 );
 const pick = Flag.Boolean("pick").pipe(
   Flag.withDescription("Choose the free model interactively"),
+  Flag.withDefault(false),
+);
+const fast = Flag.Boolean("fast").pipe(
+  Flag.withDescription(
+    "Toggle fast mode (tier.openai priority/none) for OpenAI and Codex models in the deployed omp config, then exit",
+  ),
   Flag.withDefault(false),
 );
 const args: Argument.Argument<ReadonlyArray<string>> = Argument.String("args").pipe(
@@ -163,10 +171,33 @@ const pickLevels = (catalogModel: CatalogModel) =>
     return { thinking, advisorThinking };
   });
 
-export const ompCommand = Command.make("omp", { model, pick, args }, (config) =>
+export const ompCommand = Command.make("omp", { model, pick, fast, args }, (config) =>
   Effect.gen(function* () {
     if (Option.isSome(config.model) && config.pick) {
       return yield* bail("Pass either --model <selector> or --pick, not both");
+    }
+
+    if (config.fast) {
+      if (Option.isSome(config.model) || config.pick || config.args.length > 0) {
+        return yield* bail("--fast toggles fast mode and exits; pass it alone");
+      }
+      const configPath = p(
+        ompPaths({ home: engineHome(process.env), env: process.env, platform: process.platform })
+          .agentDir,
+        "config.yml",
+      );
+      const toggle = yield* Effect.try({
+        try: () => toggleDeployedOpenAiFast(configPath),
+        catch: (error) => (error instanceof Error ? error.message : String(error)),
+      }).pipe(Effect.catch((message) => bail(message)));
+      const state = toggle.next === FAST_ON_TIER ? "ON" : "OFF";
+      yield* Console.log(
+        `omp fast mode ${state} for OpenAI/Codex models: tier.openai ${toggle.previous} -> ${toggle.next} in ${configPath}`,
+      );
+      yield* Console.log(
+        "New omp sessions use it; in a running session, use /fast on|off or restart omp.",
+      );
+      return;
     }
 
     const omp = yield* Effect.sync(() => which("omp"));
@@ -274,6 +305,6 @@ export const ompCommand = Command.make("omp", { model, pick, args }, (config) =>
   }),
 ).pipe(
   Command.withDescription(
-    "Start omp with every model role overridden to the remembered free model for this run only (no deployed configuration is changed; --model or --pick remembers a new free default).",
+    "Start omp with every model role overridden to the remembered free model for this run only (no deployed configuration is changed; --model or --pick remembers a new free default). --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
   ),
 );
