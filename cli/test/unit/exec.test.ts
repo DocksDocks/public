@@ -112,6 +112,21 @@ describe("processFailureSummary", () => {
     );
   });
 
+  it("adds git's fatal line when the first line is itself an Error: line", () => {
+    const summary = processFailureSummary({
+      exitCode: 1,
+      stdout: "",
+      stderr:
+        "Error: git checkout main failed with status exit status: 128\n" +
+        "fatal: unable to read tree abc123\n" +
+        "hint: retry later\n",
+    });
+
+    expect(summary).toBe(
+      "Error: git checkout main failed with status exit status: 128 | fatal: unable to read tree abc123",
+    );
+  });
+
   it("falls back to the spawn error when the process printed nothing", () => {
     expect(
       processFailureSummary({
