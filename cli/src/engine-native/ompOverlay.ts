@@ -52,6 +52,7 @@ const ROLE_ORDER: ReadonlyArray<string> = [
   "fable",
   "switch_fable",
   "astra",
+  "reviewer",
 ];
 
 /** Retry chain keys in the order used by SoT/.omp/config.yml. */
@@ -66,6 +67,7 @@ const FALLBACK_ORDER: ReadonlyArray<string> = [
   "switch_fable",
   "fable",
   "astra",
+  "reviewer",
 ];
 
 /**

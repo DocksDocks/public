@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-09 - docks-kit 0.20.6: omp reviewer role on GPT-6.1 Sol xhigh
+
+- omp gains a kit-defined `reviewer` role, `openai-codex/gpt-6.1-sol:xhigh`,
+  hidden from the model switcher. Its retry chain falls back to
+  `anthropic/claude-opus-5-5:xhigh`.
+- All four `task.agentModelOverrides` entries (`reviewer`,
+  `security-reviewer`, `code-reviewer`, `plan-reviewer`) now point to
+  `@reviewer` instead of `@task`. The bundled `reviewer` and
+  `security-reviewer` agents now run GPT-6.1 Sol xhigh instead of Opus 5.5
+  high. `task` stays on Opus 5.5 high.
+- The `docks-kit omp` free-session overlay also sets the `reviewer` role and
+  empties its retry chain, so a free session never reaches the paid reviewer
+  model.
+
 ## 2026-10-09 - docks-kit 0.20.5: harnesses picker pre-ticks omp
 
 - With no stored selection, the `docks-kit harnesses` picker now pre-ticks
