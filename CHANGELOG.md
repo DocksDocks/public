@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - harnesses picker pre-ticks omp
+## 2026-10-09 - docks-kit 0.20.5: harnesses picker pre-ticks omp
 
 - With no stored selection, the `docks-kit harnesses` picker now pre-ticks
   all four harnesses, `omp` included, so a new machine opts out of omp
