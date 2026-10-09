@@ -16,7 +16,9 @@ Positional targets are `claude`, `codex`, `agents`, and `omp`. A flag-less
 `sync` deploys the per-machine harness selection stored in
 `~/.docks-kit/kit.db`. A missing selection or an unreadable store selects `claude`,
 `codex`, and `agents`, and never selects `omp`. Choose the stored selection
-with `docks-kit harnesses`.
+with `docks-kit harnesses`. With no stored selection, its picker pre-ticks all
+four harnesses, `omp` included; a flag-less `sync` does not change until the
+picker saves a selection.
 
 ## Global flags
 

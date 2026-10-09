@@ -94,7 +94,8 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   (`--reconcile` / `--prune`).
 - **Per-machine selection** — `~/.docks-kit/kit.db` drives a flag-less sync.
   A missing selection selects Claude Code, Codex, and universal skills. It does not
-  select omp. Use `docks-kit harnesses` to view or change the selection.
+  select omp. Use `docks-kit harnesses` to view or change the selection. With no
+  stored selection, its picker pre-ticks every harness, omp included.
 - **Idempotent** — every step is safe to re-run; no-change syncs are no-ops.
 - **Toolchain floors** — `SoT/toolchain.json` records the kit-verified version
   floors for external tools (bun, bwrap, …). `docks-kit toolchain check` prints

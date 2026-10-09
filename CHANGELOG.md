@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-09 - docks-kit 0.20.5: harnesses picker pre-ticks omp
+
+- With no stored selection, the `docks-kit harnesses` picker now pre-ticks
+  all four harnesses, `omp` included, so a new machine opts out of omp
+  instead of opting in. A flag-less `sync` still selects `claude`, `codex`,
+  and `agents` until the picker saves a selection, and a stored selection
+  still pre-ticks only its own harnesses.
+
 ## 2026-10-09 - docks-kit 0.20.4: omp task role on Opus 5.5
 
 - The omp `task` role moves from `openai-codex/gpt-6.1-sol:high` to

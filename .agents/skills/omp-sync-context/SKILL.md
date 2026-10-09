@@ -276,6 +276,8 @@ Let explicit positional targets override the stored selection.
 `sync` never writes the selection file.
 The `docks-kit harnesses` command owns prompting and persistence.
 Off a terminal, that command only prints the current selection.
+With no stored selection, its picker pre-ticks every harness in `HARNESSES`, omp included.
+The pre-tick changes no stored state until the user saves the picker.
 
 `docks-kit omp` owns the `ompSession` key and writes nothing else.
 It stores a required free model selector, an optional session thinking level,

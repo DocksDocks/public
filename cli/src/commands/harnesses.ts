@@ -41,7 +41,10 @@ export const harnessesCommand = Command.make("harnesses", {}, () =>
         title: harness,
         value: harness,
         description: DESCRIPTIONS[harness],
-        selected: selection.includes(harness),
+        // With no stored selection, pre-tick every harness, omp included, so a
+        // new machine opts out of omp instead of opting in. A flag-less sync
+        // keeps LEGACY_SELECTION until this picker saves a selection.
+        selected: (stored ?? HARNESSES).includes(harness),
       })),
     });
 
