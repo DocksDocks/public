@@ -20,6 +20,7 @@ against.
 | `fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
 | `switch_fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
 | `astra` | `openai-codex/gpt-6-astra` | xhigh | 52 | $2.31 | 126.90 s |
+| `reviewer` | `openai-codex/gpt-6.1-sol` | xhigh | 51 | $0.39 | 68.65 s |
 | `web` | `web/firecrawl` | n/a | n/a | n/a | n/a |
 
 The table reports the measured Artificial Analysis figures for each assigned
@@ -75,16 +76,20 @@ What omp's settings catalog establishes about these roles:
 - `tiny` overrides the model for lightweight background tasks: titles, memory,
   auto-thinking, and unexpected-stop detection.
 - `modelTags` carries role metadata and can introduce roles; `hidden: true`
-  keeps `switch_fable` out of the switcher list.
+  keeps `switch_fable` and `reviewer` out of the switcher list.
 
+`modelRoles.reviewer` is a kit-defined role, not an omp built-in. It runs
+`openai-codex/gpt-6.1-sol:xhigh`. omp resolves `@<name>` for any key in
+`modelRoles` (`getModelRoleAlias` in omp's `model-resolver.ts`, omp 18.8.5).
 `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
-`code-reviewer`, and `plan-reviewer` to `@task`. Only the bundled `reviewer`
-and `security-reviewer` exist as OMP agents (omp's task tool lists `scout`,
-`reviewer`, `security-reviewer`, `task`, and `sonic`), so those two inherit
-whatever `task` resolves to. The `code-reviewer` and `plan-reviewer` entries
-are dormant until an OMP agent with that name exists.
-`retry.fallbackChains.task` holds `openai-codex/gpt-6.1-sol:high` as a
-cross-vendor fallback.
+`code-reviewer`, and `plan-reviewer` to `@reviewer`, so one key sets the
+model for every reviewer. Only the bundled `reviewer` and `security-reviewer`
+exist as OMP agents (omp's task tool lists `scout`, `reviewer`,
+`security-reviewer`, `task`, and `sonic`). The `code-reviewer` and
+`plan-reviewer` entries are dormant until an OMP agent with that name exists.
+`retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:xhigh`, and
+`retry.fallbackChains.task` holds `openai-codex/gpt-6.1-sol:high`; both are
+cross-vendor fallbacks.
 
 `retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
 `retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
@@ -395,11 +400,12 @@ quick answer.
   gave `max`: on 2026-10-09, `task` spawns with `effort: hi` ran GPT-6.1 Sol
   at `max` despite the `:high` role suffix. `scout` and `sonic` run GPT-6 Luna
   `medium` by default and GPT-6 Luna `xhigh` with `effort: hi`.
-- The bundled `reviewer` and `security-reviewer` inherit `@task`, now
-  Opus 5.5 high.
+- The bundled `reviewer` and `security-reviewer` resolve `@reviewer`, which is
+  GPT-6.1 Sol xhigh. A caller `effort` still outranks the `:xhigh` suffix:
+  `med` gives `high`, and `hi` gives `xhigh` under the `task.maxEffort` cap.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.
-  Both point to `@task`, now Opus 5.5 high. omp's task tool rejects both
-  names as unknown agents, so neither can spawn.
+  Both point to `@reviewer`. omp's task tool rejects both names as unknown
+  agents, so neither can spawn.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
 predates this change. It applies to the retired Astra-low `task` configuration,
@@ -413,7 +419,7 @@ AA's 1M.
 
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
 omp session with a configuration overlay that selects a free model. The
-overlay sets all 13 model roles to that model and empties all 10 retry fallback
+overlay sets all 14 model roles to that model and empties all 11 retry fallback
 chains. Higher-precedence model selection can replace those values.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the

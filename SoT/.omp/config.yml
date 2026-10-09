@@ -36,10 +36,10 @@ task:
   maxRecursionDepth: 2
   maxRuntimeMs: 3600000
   agentModelOverrides:
-    reviewer: "@task"
-    security-reviewer: "@task"
-    code-reviewer: "@task"
-    plan-reviewer: "@task"
+    reviewer: "@reviewer"
+    security-reviewer: "@reviewer"
+    code-reviewer: "@reviewer"
+    plan-reviewer: "@reviewer"
 
 modelRoles:
   smol: openai-codex/gpt-6-luna:medium
@@ -55,6 +55,7 @@ modelRoles:
   fable: anthropic/claude-fable-5-1:medium
   switch_fable: anthropic/claude-fable-5-1:medium
   astra: openai-codex/gpt-6-astra:xhigh
+  reviewer: openai-codex/gpt-6.1-sol:xhigh
   web: web/firecrawl
 
 modelTags:
@@ -65,6 +66,9 @@ modelTags:
     hidden: true
   astra:
     name: GPT-6 Astra
+  reviewer:
+    name: Reviewer
+    hidden: true
 
 display:
   showTokenUsage: true
@@ -96,6 +100,8 @@ retry:
       - openai-codex/gpt-6-astra:xhigh
     astra:
       - anthropic/claude-fable-5-1:medium
+    reviewer:
+      - anthropic/claude-opus-5-5:xhigh
     web:
       - web/exa
       - web/perplexity

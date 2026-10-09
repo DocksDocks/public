@@ -27,6 +27,7 @@ const ROLE_KEYS = [
   "fable",
   "switch_fable",
   "astra",
+  "reviewer",
 ];
 
 const FALLBACK_KEYS = [
@@ -40,6 +41,7 @@ const FALLBACK_KEYS = [
   "switch_fable",
   "fable",
   "astra",
+  "reviewer",
 ];
 
 // Free catalog ladders can skip medium or xhigh entirely.
