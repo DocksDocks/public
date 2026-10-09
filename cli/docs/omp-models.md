@@ -11,7 +11,7 @@ against.
 | `default` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 52.85 s |
 | `slow` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 136.30 s |
 | `plan` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 136.30 s |
-| `task` | `openai-codex/gpt-6.1-sol` | high | 50 | $0.32 | 57.26 s |
+| `task` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 52.85 s |
 | `advisor` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 21.87 s |
 | `designer` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 52.85 s |
 | `vision` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 21.87 s |
@@ -83,7 +83,7 @@ and `security-reviewer` exist as OMP agents (omp's task tool lists `scout`,
 `reviewer`, `security-reviewer`, `task`, and `sonic`), so those two inherit
 whatever `task` resolves to. The `code-reviewer` and `plan-reviewer` entries
 are dormant until an OMP agent with that name exists.
-`retry.fallbackChains.task` keeps `anthropic/claude-opus-5-5:high` as a
+`retry.fallbackChains.task` holds `openai-codex/gpt-6.1-sol:high` as a
 cross-vendor fallback.
 
 `retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
@@ -317,14 +317,16 @@ baseline for the GPT-6 Luna switch.
 
 Price: $0.20 in, $1.20 out, $0.02 cache hit per 1M. Context 1M.
 
-## Why `task` runs GPT-6.1 Sol high
+## Why `task` runs Opus 5.5 high
 
-`task` runs `openai-codex/gpt-6.1-sol:high`, the same level GPT-5.6 Sol ran
-before it. The owner uses Astra only for main orchestration, so Astra has a
-dedicated `astra` cycle stop at `xhigh`. This comparison keeps the retired
-Astra-low and GPT-5.6 Sol choices beside the current Sol levels.
+`task` runs `anthropic/claude-opus-5-5:high`, the same model and level as
+`default`. The owner moved it from `openai-codex/gpt-6.1-sol:high` on
+2026-10-09. GPT-6.1 Sol high is now the `task` retry fallback. The owner uses
+Astra only for main orchestration, so Astra has a dedicated `astra` cycle stop
+at `xhigh`. This comparison keeps the retired Astra-low, GPT-5.6 Sol, and
+GPT-6.1 Sol choices beside the current Opus level.
 
-| Metric | Astra low, retired | GPT-5.6 Sol high, previous generation | GPT-6.1 Sol high, current | GPT-6.1 Sol max | Opus 5.5 high, `default` |
+| Metric | Astra low, retired | GPT-5.6 Sol high, retired | GPT-6.1 Sol high, fallback | GPT-6.1 Sol max | Opus 5.5 high, current |
 |---|---:|---:|---:|---:|---:|
 | Intelligence Index | 46 | 42 | 50 | 52 | 54 |
 | Cost per Index task | $0.82 | $0.81 | $0.32 | $0.72 | $1.82 |
@@ -349,9 +351,11 @@ $0.32 per index task. Astra low has the shorter TTFT, 2.81 s against
 
 GPT-6.1 Sol max scores two index points above high, at 52 against 50. It
 costs $0.72 against $0.32 per index task, with TTFT of 267.64 s against
-57.26 s. Opus 5.5 high scores 54 against GPT-6.1 Sol high at 50 and costs
-$1.82 against $0.32. Opus is the `default`, `designer`, and fallback model,
-not the `task` model.
+57.26 s.
+
+Opus 5.5 high scores 54 against GPT-6.1 Sol high at 50, 57% against 52% on
+Terminal-Bench 4.0, and 1705 against 1471 on AA-Briefcase. It costs $1.82
+against $0.32 per index task. Its answer TTFT is 52.85 s against 57.26 s.
 
 The `astra` cycle stop runs xhigh: index 52, $2.31 per index task, and
 126.90 s TTFT. AA publishes a Coding Agent Index entry for Astra only at
@@ -373,19 +377,28 @@ quick answer.
 
 - The bundled `scout` and `sonic` agents carry `model: "@smol"` and
   `thinking-level: medium` in their embedded frontmatter, so they run Luna,
-  not GPT-6.1 Sol or Astra. To move them, change `modelRoles.smol` or add a
+  not Opus 5.5 or Astra. To move them, change `modelRoles.smol` or add a
   `task.agentModelOverrides` entry for the agent name.
 - The bundled `task` agent carries `model: "@task"` and
-  `thinking-level: auto`. It resolves GPT-6.1 Sol high, and `auto`
-  classifies each prompt to choose a thinking level.
+  `thinking-level: auto`. It resolves Opus 5.5 high. The `:high` suffix on
+  `modelRoles.task` is an explicit level, so it outranks the agent's `auto`,
+  and the auto classifier does not run for a `task` spawn.
 - `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
-  `hi`, which overrides `auto`.
-- `task.maxEffort` is `max`, so `scout` and `sonic` run GPT-6 Luna `medium`
-  by default and GPT-6 Luna `max` with `effort: hi`.
+  `hi`. Caller effort outranks the role suffix. omp maps it onto the model's
+  own ladder, not onto level names: `lo` selects the lowest level, `med` the
+  lower middle, and `hi` the highest (`resolveTaskEffortLevel` in omp's
+  `packages/tui/src/thinking.ts`, omp 18.8.5). Then omp caps the result at
+  `task.maxEffort`.
+- `task.maxEffort` is `xhigh`. On the `low, medium, high, xhigh, max` ladder
+  that Opus 5.5, GPT-6.1 Sol, and GPT-6 Luna publish, `lo` gives `low`, `med`
+  gives `high`, and `hi` gives `xhigh`. With the former `max` ceiling, `hi`
+  gave `max`: on 2026-10-09, `task` spawns with `effort: hi` ran GPT-6.1 Sol
+  at `max` despite the `:high` role suffix. `scout` and `sonic` run GPT-6 Luna
+  `medium` by default and GPT-6 Luna `xhigh` with `effort: hi`.
 - The bundled `reviewer` and `security-reviewer` inherit `@task`, now
-  GPT-6.1 Sol high.
+  Opus 5.5 high.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.
-  Both point to `@task`, now GPT-6.1 Sol high. omp's task tool rejects both
+  Both point to `@task`, now Opus 5.5 high. omp's task tool rejects both
   names as unknown agents, so neither can spawn.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
