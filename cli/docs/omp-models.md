@@ -380,12 +380,21 @@ quick answer.
   not Opus 5.5 or Astra. To move them, change `modelRoles.smol` or add a
   `task.agentModelOverrides` entry for the agent name.
 - The bundled `task` agent carries `model: "@task"` and
-  `thinking-level: auto`. It resolves Opus 5.5 high, and `auto`
-  classifies each prompt to choose a thinking level.
+  `thinking-level: auto`. It resolves Opus 5.5 high. The `:high` suffix on
+  `modelRoles.task` is an explicit level, so it outranks the agent's `auto`,
+  and the auto classifier does not run for a `task` spawn.
 - `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
-  `hi`, which overrides `auto`.
-- `task.maxEffort` is `max`, so `scout` and `sonic` run GPT-6 Luna `medium`
-  by default and GPT-6 Luna `max` with `effort: hi`.
+  `hi`. Caller effort outranks the role suffix. omp maps it onto the model's
+  own ladder, not onto level names: `lo` selects the lowest level, `med` the
+  lower middle, and `hi` the highest (`resolveTaskEffortLevel` in omp's
+  `packages/tui/src/thinking.ts`, omp 18.8.5). Then omp caps the result at
+  `task.maxEffort`.
+- `task.maxEffort` is `xhigh`. On the `low, medium, high, xhigh, max` ladder
+  that Opus 5.5, GPT-6.1 Sol, and GPT-6 Luna publish, `lo` gives `low`, `med`
+  gives `high`, and `hi` gives `xhigh`. With the former `max` ceiling, `hi`
+  gave `max`: on 2026-10-09, `task` spawns with `effort: hi` ran GPT-6.1 Sol
+  at `max` despite the `:high` role suffix. `scout` and `sonic` run GPT-6 Luna
+  `medium` by default and GPT-6 Luna `xhigh` with `effort: hi`.
 - The bundled `reviewer` and `security-reviewer` inherit `@task`, now
   Opus 5.5 high.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.

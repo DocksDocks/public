@@ -111,6 +111,12 @@ describe("SoT omp tree", () => {
     });
   });
 
+  // omp maps a caller `effort: hi` to the top of the model ladder (`max`), and
+  // caller effort outranks the role suffix; only this ceiling stops it.
+  it("caps caller task effort at xhigh", () => {
+    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "xhigh");
+  });
+
   // A GPT-6 Sol advisor looped on repeated reads under an Opus 5.5 session.
   // The owner excludes every GPT model from the advisor role and its chain.
   it("keeps advisor on Opus 5.5 with no GPT model in its role or retry chain", () => {

@@ -9,6 +9,10 @@
 - `retry.fallbackChains.task` now falls back to
   `openai-codex/gpt-6.1-sol:high` instead of Opus 5.5 high, so a `task`
   retry still changes vendor.
+- omp `task.maxEffort` drops from `max` to `xhigh`. omp maps a caller
+  `effort: hi` to the top of the model ladder, `max`, and caller effort
+  outranks the role's `:high` suffix, so `hi` spawns ran at `max`. Now `hi`
+  stops at `xhigh`; `lo` and `med` still give `low` and `high`.
 - The `omp-models` docs topic records the change and compares Opus 5.5 high
   with GPT-6.1 Sol high: index 54 against 50, at $1.82 against $0.32 per
   index task.
