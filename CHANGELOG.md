@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased - full error lines in sync failure warnings
+## 2026-10-09 - docks-kit 0.20.4: omp task role on Opus 5.5
+
+- The omp `task` role moves from `openai-codex/gpt-6.1-sol:high` to
+  `anthropic/claude-opus-5-5:high`, the same model and level as `default`.
+  The bundled `task`, `reviewer`, and `security-reviewer` agents resolve
+  `@task`, so they now run Opus 5.5 high.
+- `retry.fallbackChains.task` now falls back to
+  `openai-codex/gpt-6.1-sol:high` instead of Opus 5.5 high, so a `task`
+  retry still changes vendor.
+- The `omp-models` docs topic records the change and compares Opus 5.5 high
+  with GPT-6.1 Sol high: index 54 against 50, at $1.82 against $0.32 per
+  index task.
+
+### Full error lines in sync failure warnings
 
 - omp marketplace, omp plugin, and Codex plugin warnings now show the first
   output line of the failed command plus the first later `fatal:` or `error:`

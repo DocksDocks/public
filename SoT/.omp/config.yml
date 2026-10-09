@@ -47,7 +47,7 @@ modelRoles:
   designer: anthropic/claude-opus-5-5:high
   plan: anthropic/claude-opus-5-5:xhigh
   commit: openai-codex/gpt-6-luna:medium
-  task: openai-codex/gpt-6.1-sol:high
+  task: anthropic/claude-opus-5-5:high
   vision: anthropic/claude-opus-5-5:medium
   tiny: openai-codex/gpt-6-luna:low
   default: anthropic/claude-opus-5-5:high
@@ -82,7 +82,7 @@ retry:
       - openai-codex/gpt-6.1-sol:high
     advisor: []
     task:
-      - anthropic/claude-opus-5-5:high
+      - openai-codex/gpt-6.1-sol:high
     vision:
       - openai-codex/gpt-6.1-sol:medium
     smol:

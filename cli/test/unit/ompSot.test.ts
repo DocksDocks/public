@@ -45,13 +45,13 @@ describe("SoT omp tree", () => {
       plan: "anthropic/claude-opus-5-5:xhigh",
       designer: "anthropic/claude-opus-5-5:high",
       vision: "anthropic/claude-opus-5-5:medium",
+      task: "anthropic/claude-opus-5-5:high",
     });
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"] as Record<
       string,
       Array<string>
     >;
     expect(chains).toMatchObject({
-      task: ["anthropic/claude-opus-5-5:high"],
       smol: ["anthropic/claude-opus-5-5:low"],
       tiny: ["anthropic/claude-opus-5-5:low"],
       commit: ["anthropic/claude-opus-5-5:medium"],
@@ -87,13 +87,14 @@ describe("SoT omp tree", () => {
     expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-1:medium"]);
     expect(chains["fable"]).toEqual(["openai-codex/gpt-6-astra:xhigh"]);
     expect(chains["switch_fable"]).toEqual([]);
+    expect(chains["task"]).toEqual(["openai-codex/gpt-6.1-sol:high"]);
   });
 
-  it("keeps Astra off subagents and maps every reviewer to the Sol task role", () => {
+  it("keeps Astra off subagents and maps every reviewer to the Opus 5.5 task role", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
     expect(roles).toMatchObject({
-      task: "openai-codex/gpt-6.1-sol:high",
+      task: "anthropic/claude-opus-5-5:high",
       smol: "openai-codex/gpt-6-luna:medium",
       commit: "openai-codex/gpt-6-luna:medium",
       tiny: "openai-codex/gpt-6-luna:low",
