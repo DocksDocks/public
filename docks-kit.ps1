@@ -1,4 +1,4 @@
-# docks-kit.ps1 — Windows launcher. Resolution order:
+# docks-kit.ps1 - Windows launcher. Resolution order:
 #   1. version-matching compiled binary in cli/dist/ (bun build --compile output)
 #   2. Bun from source (auto-installs Bun + node_modules when missing)
 # No-Bun recovery path: download a release binary for your platform.
@@ -59,11 +59,15 @@ if (Test-Path -LiteralPath $KitPath -PathType Leaf) {
     # A matching version does not prove matching content. Unreleased work does
     # not move package.json, so a binary compiled before it still reports the
     # checkout version and would silently shadow the source it predates.
+    # The binary also embeds the cli/docs topics, so scan both trees.
     $NewerSource = $null
-    $SrcDir = Join-Path $RepoDir 'cli\src'
-    if (Test-Path -LiteralPath $SrcDir -PathType Container) {
+    $ScanDirs = @(
+      @((Join-Path $RepoDir 'cli\src'), (Join-Path $RepoDir 'cli\docs')) |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+    )
+    if ($ScanDirs.Count -gt 0) {
       $BinWritten = (Get-Item -LiteralPath $KitPath).LastWriteTimeUtc
-      $NewerSource = Get-ChildItem -LiteralPath $SrcDir -Recurse -File -ErrorAction SilentlyContinue |
+      $NewerSource = Get-ChildItem -LiteralPath $ScanDirs -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.LastWriteTimeUtc -gt $BinWritten } |
         Select-Object -First 1
     }
@@ -72,11 +76,11 @@ if (Test-Path -LiteralPath $KitPath -PathType Leaf) {
       exit $LASTEXITCODE
     }
     $NewerRelative = $NewerSource.FullName.Substring($RepoDir.Length).TrimStart('\', '/')
-    [Console]::Error.WriteLine("[docks-kit] ignoring cli/dist/$KitBin; $NewerRelative is newer than the binary — running from source; run 'bun run build:binaries' to refresh it or delete it")
+    [Console]::Error.WriteLine("[docks-kit] ignoring cli/dist/$KitBin; $NewerRelative is newer than the binary - running from source; run 'bun run build:binaries' to refresh it or delete it")
   } else {
     $DisplayedBinVersion = if ([string]::IsNullOrEmpty($BinVersion)) { '<unknown>' } else { $BinVersion }
     $DisplayedCheckoutVersion = if ([string]::IsNullOrEmpty($CheckoutVersion)) { '<unknown>' } else { $CheckoutVersion }
-    [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion — running from source; run 'bun run build:binaries' to refresh it or delete it")
+    [Console]::Error.WriteLine("[docks-kit] ignoring stale cli/dist/$KitBin $DisplayedBinVersion; checkout is $DisplayedCheckoutVersion - running from source; run 'bun run build:binaries' to refresh it or delete it")
   }
 }
 
@@ -103,7 +107,7 @@ function Find-Bun {
 
 $Bun = Find-Bun
 if ($null -eq $Bun) {
-  [Console]::Error.WriteLine('[docks-kit] Bun not found — installing (download-then-run)...')
+  [Console]::Error.WriteLine('[docks-kit] Bun not found - installing (download-then-run)...')
   $TempInstaller = Join-Path ([IO.Path]::GetTempPath()) "bun-install-$([Guid]::NewGuid().ToString('N')).ps1"
   try {
     Invoke-WebRequest -Uri 'https://bun.sh/install.ps1' -OutFile $TempInstaller -UseBasicParsing
@@ -123,7 +127,7 @@ if ($null -eq $Bun) {
   }
 }
 
-# Sentinel is a real dependency dir, not bare node_modules\ — a failed or
+# Sentinel is a real dependency dir, not bare node_modules\ - a failed or
 # partial install leaves node_modules\ present and would suppress the repair.
 if (-not (Test-Path -LiteralPath (Join-Path $RepoDir 'node_modules\effect') -PathType Container)) {
   $DetectedBunVersion = ''
@@ -153,14 +157,21 @@ if (-not (Test-Path -LiteralPath (Join-Path $RepoDir 'node_modules\effect') -Pat
     exit 1
   }
   [Console]::Error.WriteLine('[docks-kit] Installing CLI dependencies (bun install --frozen-lockfile)...')
+  # Windows PowerShell 5.1 turns redirected native stderr lines into errors,
+  # and the 'Stop' preference makes them terminate the script. The exit code
+  # decides success, so scope a 'Continue' preference to the native call.
+  $PreviousPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   Push-Location $RepoDir
   try {
     & $Bun install --frozen-lockfile *> $null
-    if ($LASTEXITCODE -ne 0) {
-      exit $LASTEXITCODE
-    }
+    $InstallExit = $LASTEXITCODE
   } finally {
+    $ErrorActionPreference = $PreviousPreference
     Pop-Location
+  }
+  if ($InstallExit -ne 0) {
+    exit $InstallExit
   }
 }
 

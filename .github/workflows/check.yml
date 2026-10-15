@@ -1,8 +1,10 @@
 name: check
 
-# Fast check gate on every push and pull request: lint, typecheck, and unit
-# tests through the `check` package script. Golden-regression stays in
-# `parity.yml`; release stays in `release-cli.yml`; both are unchanged.
+# Fast check gate on every push and pull request: lint, format check,
+# typecheck, unit tests, and both golden suites through the `check` package
+# script. `parity.yml` adds the dependency audit, generated-payload check,
+# package/runtime/native smokes, source-entry goldens, and prove-red runs;
+# release stays in `release-cli.yml`.
 
 on:
   push:

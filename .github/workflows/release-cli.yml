@@ -13,7 +13,9 @@ name: release-cli
 # override would mint an attestation naming a ref that did not produce the
 # bytes. The dispatch path instead proves that every packaged file is
 # byte-identical to the tag's tree, which makes the attested ref and the
-# published content agree.
+# published content agree. It also proves that the binaries' build inputs (the
+# lockfile, the build script, and the pinned Bun setup) match the tag before
+# any of them runs.
 #
 # The dispatch path exists because a tag is burned on first push: it can never
 # be recreated, and re-running a failed run replays the workflow bytes from the
@@ -25,7 +27,7 @@ on:
     tags:
       # Kept in step with the `resolve` job's exact pattern, so a tag that
       # triggers this workflow is never rejected later as unparseable.
-      - "cli-v[0-9]*.[0-9]*.[0-9]*"
+      - "cli-v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
     inputs:
       tag:
@@ -74,6 +76,31 @@ jobs:
       # build needs; supplying a ref name would disable that assertion and
       # would resolve a same-named branch ahead of the tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A dispatch builds the binaries from the branch, so the lockfile, the
+      # build script, and the pinned Bun setup must match the tag before the
+      # job installs or compiles anything. A tag push checks out the tag, so
+      # only the tree can drift there.
+      - name: Prove the binary build inputs are the tag's content
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+          build_inputs=(bun.lock cli/build-binaries.sh .github/actions/setup-bun-cache/action.yml)
+
+          status="$(git status --porcelain -- "${build_inputs[@]}")"
+          if [[ -n "$status" ]]; then
+            echo "::error::working tree differs from HEAD across binary build inputs"
+            printf '%s\n' "$status"
+            exit 1
+          fi
+
+          if ! git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${build_inputs[@]}"; then
+            echo "::error::binary build inputs differ from ${RELEASE_TAG}"
+            git diff --name-status "refs/tags/${RELEASE_TAG}" HEAD -- "${build_inputs[@]}"
+            exit 1
+          fi
 
       - uses: ./.github/actions/setup-bun-cache
 
