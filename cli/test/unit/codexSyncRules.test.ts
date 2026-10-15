@@ -102,11 +102,20 @@ describe("Codex docks.rules contract", () => {
     [["git", "clean", "-fdx"], "prompt"],
     [["git", "reset", "--hard"], "prompt"],
     [["git", "push", "--force", "origin", "feat/x"], "prompt"],
+    [["git", "push", "-vf", "origin", "main"], "prompt"],
     [["gio", "trash", "--empty"], "prompt"],
-    [["gio", "trash", "build"], "allow"],
+    [["gio", "trash", "-f", "--empty"], "prompt"],
+    [["gio", "trash", "--force", "--empty"], "prompt"],
+    [["gio", "trash", "--restore", "trash:///build"], "prompt"],
+    [["git", "rm", "file.txt"], "prompt"],
+    [["git", "rm", "file.txt", "-f"], "prompt"],
+    [["git", "worktree", "remove", "../wt"], "prompt"],
+    [["git", "worktree", "remove", "../wt", "--force"], "prompt"],
+    [["gio", "trash", "--", "build"], "allow"],
+    [["gio", "trash", "--", "--empty"], "allow"],
     [["trash", "build"], "allow"],
-    [["git", "rm", "file.txt"], "allow"],
-    [["git", "worktree", "remove", "../wt"], "allow"],
+    // No rule matches: Codex runs these in the workspace-write sandbox.
+    [["gio", "trash", "build"], undefined],
     [["bash", "-lc", 'rm -rf "$HOME" && true'], undefined],
   ])("decides %j as %s", (argv, decision) => {
     expect(decisionFor(argv)).toBe(decision);
