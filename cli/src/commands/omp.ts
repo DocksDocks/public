@@ -78,12 +78,53 @@ export function resolveFreeSelector(
   };
 }
 
-const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>> =>
+/**
+ * The omp profile that the forwarded arguments select. omp reads
+ * `--profile <name>` or `--profile=<name>` before a `--`, the last one wins,
+ * and it rejects a missing or empty name. The catalog check must query the
+ * profile the session runs, so it reads the arguments the same way.
+ */
+export type ForwardedProfile =
+  | { readonly ok: true; readonly profile: string | undefined }
+  | { readonly ok: false; readonly message: string };
+
+export function forwardedProfile(forwarded: ReadonlyArray<string>): ForwardedProfile {
+  let profile: string | undefined;
+  for (let index = 0; index < forwarded.length; index++) {
+    const arg = forwarded[index]!;
+    if (arg === "--") break;
+    let value: string | undefined;
+    if (arg === "--profile") {
+      value = forwarded[index + 1];
+      if (value === undefined || value.startsWith("-")) value = "";
+      else index++;
+    } else if (arg.startsWith("--profile=")) {
+      value = arg.slice("--profile=".length);
+    } else {
+      continue;
+    }
+    if (value === "") return { ok: false, message: "--profile requires a profile name" };
+    profile = value;
+  }
+  return { ok: true, profile };
+}
+
+const loadFreeCatalog = (
+  omp: string,
+  profile: string | undefined,
+): Effect.Effect<ReadonlyArray<CatalogModel>> =>
   Effect.gen(function* () {
-    const raw = yield* Effect.promise(() => capture(omp, ["models", "--json"]));
+    // omp takes --profile only before its subcommand.
+    const catalogArgs = [
+      ...(profile === undefined ? [] : ["--profile", profile]),
+      "models",
+      "--json",
+    ];
+    const command = `omp ${catalogArgs.join(" ")}`;
+    const raw = yield* Effect.promise(() => capture(omp, catalogArgs));
     if (raw === "") {
       return yield* bail(
-        "'omp models --json' returned no output; verify omp runs on this host, then retry",
+        `'${command}' returned no output; verify omp runs on this host, then retry`,
       );
     }
     let parsed: unknown;
@@ -91,14 +132,12 @@ const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>
       parsed = JSON.parse(raw) as unknown;
     } catch {
       return yield* bail(
-        "'omp models --json' returned output that is not JSON; verify the omp version, then retry",
+        `'${command}' returned output that is not JSON; verify the omp version, then retry`,
       );
     }
     const free = parseFreeModels(parsed);
     if (free.length === 0) {
-      return yield* bail(
-        "'omp models --json' listed no free models; verify the omp login, then retry",
-      );
+      return yield* bail(`'${command}' listed no free models; verify the omp login, then retry`);
     }
     return free;
   });
@@ -213,8 +252,11 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
     }
     // Every launch reads the live catalog once, because a remembered or
     // default model can be renamed, repriced, or lose its provider login.
-    // omp then silently starts a paid default model instead.
-    const free = yield* loadFreeCatalog(omp);
+    // omp then silently starts a paid default model instead. The catalog
+    // comes from the profile that the forwarded arguments select.
+    const profile = forwardedProfile(config.args);
+    if (!profile.ok) return yield* bail(profile.message);
+    const free = yield* loadFreeCatalog(omp, profile.profile);
     // The value the launcher writes is the value it runs, so a concurrent
     // launcher or a failed read of kit.db cannot change this session.
     let chosen: OmpSessionModel | undefined;

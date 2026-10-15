@@ -533,7 +533,10 @@ launcher stops before omp starts. The model can be renamed, repriced, or on a
 provider that is not logged in. Without this check, omp silently starts the
 default model of the first logged-in provider, which can be paid. When the
 forwarded arguments include `--profile <name>` or `--profile=<name>`, the
-catalog check queries that same omp profile.
+catalog check queries that same omp profile with
+`omp --profile <name> models --json`. As in omp, the last such flag before a
+`--` wins, and a `--profile` without a name stops the launcher before omp
+starts.
 
 When the catalog renames the free variant, change only the default selector
 constant. Until then, a plain launch on that default stops with an error. A

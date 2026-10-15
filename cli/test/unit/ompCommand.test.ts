@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { resolveFreeSelector } from "../../src/commands/omp";
+import { forwardedProfile, resolveFreeSelector } from "../../src/commands/omp";
 import { readOmpSessionModel } from "../../src/engine-native/harnesses";
 import { kitDbFile } from "../../src/engine-native/kitDb";
 import { overlayFileName, type CatalogModel } from "../../src/engine-native/ompOverlay";
@@ -64,6 +64,31 @@ describe("resolveFreeSelector", () => {
       ok: false,
       message: "Model selector must not be empty or blank",
     });
+  });
+});
+
+describe("forwardedProfile", () => {
+  it("reads --profile <name> and --profile=<name> the way omp does, last one winning", () => {
+    expect(forwardedProfile(["-p", "hi"])).toEqual({ ok: true, profile: undefined });
+    expect(forwardedProfile(["--profile", "work", "-p", "hi"])).toEqual({
+      ok: true,
+      profile: "work",
+    });
+    expect(forwardedProfile(["--profile=work"])).toEqual({ ok: true, profile: "work" });
+    expect(forwardedProfile(["--profile", "a", "--profile=b"])).toEqual({ ok: true, profile: "b" });
+  });
+
+  it("stops at -- because omp reads no flags after it", () => {
+    expect(forwardedProfile(["--", "--profile", "work"])).toEqual({ ok: true, profile: undefined });
+  });
+
+  it("rejects a missing or empty profile name as omp does", () => {
+    for (const args of [["--profile"], ["--profile", "-p", "hi"], ["--profile="]]) {
+      expect(forwardedProfile(args)).toEqual({
+        ok: false,
+        message: "--profile requires a profile name",
+      });
+    }
   });
 });
 
@@ -238,6 +263,69 @@ describe("omp command", () => {
       expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("omp\tmodels --json\n");
       expect(existsSync(kitDbFile(run.home))).toBe(false);
       expect(existsSync(join(run.home, ".cache", "docks-kit"))).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "checks the catalog of the omp profile that the forwarded arguments select",
+    () => {
+      // Each profile has its own login and catalog. The work profile lists a
+      // free model that the default profile does not have.
+      const profiles = makeStubDir(
+        {
+          omp: `const at = args.indexOf("models");
+if (at !== -1 && args[at + 1] === "--json") {
+  const profile = args[0] === "--profile" ? args[1] : "default";
+  console.log(JSON.stringify({models:[
+    {selector:profile + "/free-model",name:"Free",thinking:["high"],contextWindow:4096,cost:{input:0,output:0}}
+  ]}))
+}`,
+        },
+        NATIVE,
+      );
+      const first = runPublicCli(
+        ["omp", "--model", "work/free-model", "--profile", "work", "-p", "hi"],
+        "home-fresh",
+        profiles,
+        NATIVE,
+      );
+      expect(first.exitCode, first.stderr).toBe(0);
+      const argvLog = join(first.home, ".golden-argv.log");
+      const [overlayName] = readdirSync(join(first.home, ".cache", "docks-kit"));
+      expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\t--profile work models --json",
+        `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile work -p hi`,
+      ]);
+
+      // A plain launch under --profile=<name> checks the remembered model
+      // against that profile's catalog too.
+      const plain = runPublicCli(["omp", "--profile=work"], "home-fresh", profiles, {
+        ...NATIVE,
+        reuseHome: first.home,
+      });
+      expect(plain.exitCode, plain.stderr).toBe(0);
+      expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\t--profile work models --json",
+        `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile=work`,
+      ]);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "rejects a forwarded --profile without a name before contacting omp",
+    () => {
+      const run = runPublicCli(
+        ["omp", "--model", "GLM", "--profile"],
+        "home-fresh",
+        stubDir,
+        NATIVE,
+      );
+      expect(run.exitCode).toBe(2);
+      expect(run.stderr).toContain("--profile requires a profile name");
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("");
+      expect(existsSync(kitDbFile(run.home))).toBe(false);
     },
     SPAWN_TIMEOUT_MS,
   );
