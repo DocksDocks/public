@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { writeHarnessSelection } from "../../src/engine-native/harnesses";
+import { readCache, writeCache } from "../../src/engine-native/kitDb";
 import {
   curatedCatalog,
   resolveCatalog,
@@ -15,9 +16,11 @@ let home: string;
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), "docks-live-models-"));
+  vi.stubEnv("CODEX_HOME", "");
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -228,6 +231,24 @@ describe("live model catalogs", () => {
     });
   });
 
+  it("reads the Codex cache from CODEX_HOME when it is set", async () => {
+    writeHarnessSelection(home, ["codex"]);
+    const codexDir = join(home, "alt-codex");
+    mkdirSync(codexDir);
+    writeFileSync(
+      join(codexDir, "models_cache.json"),
+      JSON.stringify({
+        fetched_at: "2026-09-24T10:00:00.000Z",
+        models: [{ slug: "gpt-alt", display_name: "From CODEX_HOME", visibility: "list" }],
+      }),
+    );
+    vi.stubEnv("CODEX_HOME", codexDir);
+
+    const result = await resolveCatalog("codex", inputs());
+    expect(result).toMatchObject({ tool: "codex", source: "codex-cache" });
+    expect(result.models).toContainEqual({ id: "gpt-alt", kind: "id", note: "From CODEX_HOME" });
+  });
+
   it("falls back to the curated list when the Codex cache lists no public models", async () => {
     writeHarnessSelection(home, ["codex"]);
     mkdirSync(join(home, ".codex"));
@@ -331,5 +352,14 @@ describe("live model catalogs", () => {
       ...curatedCatalog("omp"),
       fallbackReason: "'omp models --json' returned no usable catalog",
     });
+  });
+});
+
+describe("kit.db lookup cache", () => {
+  it("treats a row with a future fetched_at as stale", () => {
+    writeCache(home, "k", "v", NOW + 3600_000);
+
+    expect(readCache(home, "k", 6 * 3600_000, NOW)).toBeUndefined();
+    expect(readCache(home, "k", 6 * 3600_000, NOW + 3600_000)).toBe("v");
   });
 });

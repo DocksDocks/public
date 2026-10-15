@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -91,6 +91,15 @@ function prepareHooks(root: string, content: string): string {
 }
 
 describe("retired imported Codex hooks", () => {
+  // codexHome reads CODEX_HOME; a value from the invoking shell must not move test writes.
+  beforeEach(() => {
+    vi.stubEnv("CODEX_HOME", "");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("removes every recognized legacy handler and preserves user-authored hooks", async () => {
     const root = mkdtempSync(join(tmpdir(), "codex-retired-hooks-"));
     const before = `${JSON.stringify(

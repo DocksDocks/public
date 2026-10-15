@@ -1,6 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync as nodeSpawnSync } from "node:child_process";
-import type * as NodeOs from "node:os";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,11 +16,6 @@ const mocks = vi.hoisted<{
   claudeSettings: undefined,
   skillsManifest: undefined,
 }));
-
-vi.mock("node:os", async () => {
-  const actual = await vi.importActual<typeof NodeOs>("node:os");
-  return { ...actual, homedir: () => mocks.home };
-});
 
 vi.mock("../../src/payload", async () => {
   const actual = await vi.importActual<typeof Payload>("../../src/payload");
@@ -40,7 +34,14 @@ vi.mock("../../src/payload", async () => {
 });
 
 import { sotEffort } from "../../src/efforts";
-import { pluginsView, skillsView, sotCodexModel, topLevelTomlString } from "../../src/manifests";
+import {
+  deployedCodexModel,
+  installedPluginsState,
+  pluginsView,
+  skillsView,
+  sotCodexModel,
+  topLevelTomlString,
+} from "../../src/manifests";
 
 function parseToml(content: string): Record<string, unknown> {
   const parsed = nodeSpawnSync(
@@ -54,12 +55,16 @@ function parseToml(content: string): Record<string, unknown> {
 
 beforeEach(() => {
   mocks.home = mkdtempSync(join(tmpdir(), "docks-manifests-"));
+  vi.stubEnv("HOME", mocks.home);
+  vi.stubEnv("USERPROFILE", mocks.home);
+  vi.stubEnv("CODEX_HOME", "");
   mocks.codexConfig = undefined;
   mocks.claudeSettings = undefined;
   mocks.skillsManifest = undefined;
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   rmSync(mocks.home, { recursive: true, force: true });
   mocks.home = "";
 });
@@ -144,5 +149,48 @@ describe("manifest resolvers", () => {
       { skill: "valid", declared: true, installed: true, claudeSymlink: true },
       { skill: "wrong", declared: false, installed: true, claudeSymlink: false },
     ]);
+  });
+
+  it("reports SoT plugins as not installed when installed_plugins.json is malformed", () => {
+    mocks.claudeSettings = JSON.stringify({ enabledPlugins: { "enabled@test": true } });
+    const pluginsDir = join(mocks.home, ".claude", "plugins");
+    mkdirSync(pluginsDir, { recursive: true });
+    const installedPath = join(pluginsDir, "installed_plugins.json");
+    expect(installedPluginsState()).toBe("absent");
+
+    for (const content of ['{"plugins": {', "null", '{"plugins": null}']) {
+      writeFileSync(installedPath, content);
+      expect(pluginsView()).toEqual([{ plugin: "enabled@test", sot: "true", installed: false }]);
+      expect(installedPluginsState()).toBe("malformed");
+    }
+
+    writeFileSync(installedPath, JSON.stringify({ plugins: {} }));
+    expect(installedPluginsState()).toBe("valid");
+  });
+
+  it("names a declared skill after the @skill part of an owner/repo@skill slug", () => {
+    mocks.skillsManifest = "acme/pack@Demo\n";
+    const agentsSkills = join(mocks.home, ".agents", "skills");
+    const claudeSkills = join(mocks.home, ".claude", "skills");
+    mkdirSync(join(agentsSkills, "demo"), { recursive: true });
+    mkdirSync(claudeSkills, { recursive: true });
+    symlinkSync(join(agentsSkills, "demo"), join(claudeSkills, "demo"), "dir");
+
+    expect(skillsView()).toEqual([
+      { skill: "demo", declared: true, installed: true, claudeSymlink: true },
+    ]);
+  });
+
+  it("reads the deployed Codex model from CODEX_HOME when it is set", () => {
+    const homeCodex = join(mocks.home, ".codex");
+    const altCodex = join(mocks.home, "alt");
+    mkdirSync(homeCodex, { recursive: true });
+    mkdirSync(altCodex, { recursive: true });
+    writeFileSync(join(homeCodex, "config.toml"), 'model = "home-model"\n');
+    writeFileSync(join(altCodex, "config.toml"), 'model = "alt-model"\n');
+
+    expect(deployedCodexModel()).toBe("home-model");
+    vi.stubEnv("CODEX_HOME", altCodex);
+    expect(deployedCodexModel()).toBe("alt-model");
   });
 });

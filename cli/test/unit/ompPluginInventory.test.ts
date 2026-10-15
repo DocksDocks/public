@@ -4,7 +4,7 @@
  * wrong field turns every run into a failing reinstall, so these rows pin the
  * install / upgrade / skip decision that the inventory drives.
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -74,11 +74,19 @@ function makeRoot(): string {
 
 function makeCtx(
   root: string,
-  options: { skipPluginRefresh?: boolean; missingTool?: "omp" | "git" } = {},
+  options: {
+    skipPluginRefresh?: boolean;
+    missingTool?: "omp" | "git";
+    dryRun?: boolean;
+    output?: Array<string>;
+  } = {},
 ): Ctx {
   const platform = makePlatform("linux");
+  const write = (chunk: string): void => {
+    options.output?.push(chunk);
+  };
   const services = {
-    ...makeEngineServices({ sinks: { stderr: () => {}, stdout: () => {} } }),
+    ...makeEngineServices({ sinks: { stderr: write, stdout: write } }),
     deps: makeDependencyManager(platform, {
       commandExists: (name) => name !== options.missingTool,
       capture: async () => "",
@@ -89,7 +97,7 @@ function makeCtx(
   return {
     home: root,
     agentsDir: join(root, ".agents"),
-    dryRun: false,
+    dryRun: options.dryRun ?? false,
     verbose: false,
     prune: false,
     skipPluginRefresh: options.skipPluginRefresh ?? false,
@@ -320,6 +328,36 @@ describe("omp plugin inventory", () => {
     expect(ompCommands()).toEqual([]);
     expect(state.pluginsInstalled).toBe(0);
     expect(ctx.failures).toEqual([]);
+  });
+
+  it("previews no omp command in a dry run when omp is unavailable", async () => {
+    const root = makeRoot();
+    // An unregistered marketplace makes the marketplace pass preview its add command.
+    rmSync(join(root, ".omp", "marketplaces.json"));
+    const output: Array<string> = [];
+
+    await ompSync(makeCtx(root, { missingTool: "omp", dryRun: true, output }));
+
+    const lines = output.join("").split("\n");
+    expect(lines.filter((line) => line.startsWith("[dry-run] omp "))).toEqual([]);
+    expect(lines.filter((line) => line.includes("omp not installed"))).toHaveLength(1);
+    expect(ompCommands()).toEqual([]);
+  });
+
+  it("deploys the intercom configuration into the agent directory of a named profile", async () => {
+    respondWithInventory(INVENTORY_EMPTY);
+    const root = makeRoot();
+    process.env["OMP_PROFILE"] = "work";
+
+    await ompSync(makeCtx(root, { missingTool: "omp" }));
+
+    expect(
+      readFileSync(
+        join(root, ".omp", "profiles", "work", "agent", "intercom", "config.json"),
+        "utf8",
+      ),
+    ).toBe("{}\n");
+    expect(existsSync(join(root, ".pi", "agent", "intercom"))).toBe(false);
   });
 
   it("falls back to the full refresh path when the inventory cannot be parsed", async () => {

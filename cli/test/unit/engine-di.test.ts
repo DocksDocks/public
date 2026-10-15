@@ -440,6 +440,7 @@ describe("native CLI argument and output behavior", () => {
       "CLAUDE_PLUGINS",
       "CLAUDE_MODEL",
       "CODEX_MODEL",
+      "CODEX_HOME",
     ] as const;
     const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]])) as Record<
       (typeof keys)[number],

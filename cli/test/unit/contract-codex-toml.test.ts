@@ -82,6 +82,31 @@ describe("codex TOML contract", () => {
     expect(replaceTopLevelSetting("", "model", 'model = "x"')).toBe('model = "x"\n');
   });
 
+  it("replaces the first key of a BOM-prefixed config instead of duplicating it", () => {
+    expect(replaceTopLevelSetting('\uFEFFmodel = "a"\n', "model", 'model = "b"')).toBe(
+      'model = "b"\n',
+    );
+  });
+
+  it("treats header-like lines inside a multi-line string as string content", () => {
+    const content = 'notes = """\n[Style]\nmodel = "inner"\n"""\nmodel = "mine"\n[table]\n';
+
+    expect(replaceTopLevelSetting(content, "model", 'model = "kit"')).toBe(
+      'notes = """\n[Style]\nmodel = "inner"\n"""\nmodel = "kit"\n[table]\n',
+    );
+  });
+
+  it("drops the continuation lines of a replaced multi-line value", () => {
+    const next = replaceTopLevelSetting(
+      'model = [\n  ["a"],\n]\n[table]\n',
+      "model",
+      'model = "x"',
+    );
+
+    expect(next).toBe('model = "x"\n[table]\n');
+    expect(parseToml(next)).toEqual({ model: "x", table: {} });
+  });
+
   let dir = "";
 
   beforeEach(() => {

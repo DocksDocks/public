@@ -6,7 +6,7 @@ import { parse } from "yaml";
 import { resolveFreeSelector } from "../../src/commands/omp";
 import { readOmpSessionModel } from "../../src/engine-native/harnesses";
 import { kitDbFile } from "../../src/engine-native/kitDb";
-import type { CatalogModel } from "../../src/engine-native/ompOverlay";
+import { overlayFileName, type CatalogModel } from "../../src/engine-native/ompOverlay";
 import { runPublicCli } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
@@ -105,7 +105,9 @@ describe("omp command", () => {
 
       const overlayDir = join(first.home, ".cache", "docks-kit");
       const [firstName] = readdirSync(overlayDir);
-      expect(firstName).toMatch(/^omp-free-[A-Za-z0-9._-]+\.yml$/);
+      expect(firstName).toBe(
+        overlayFileName({ selector, thinking: "high", advisorThinking: "low" }),
+      );
       const firstPath = join(overlayDir, firstName!);
       if (process.platform !== "win32") {
         expect(statSync(overlayDir).mode & 0o777).toBe(0o700);
@@ -126,9 +128,11 @@ describe("omp command", () => {
       const options = { ...NATIVE, reuseHome: first.home };
       const plain = runPublicCli(["omp", "-p", "again"], "home-fresh", stubDir, options);
       expect(plain.exitCode).toBe(0);
-      expect(readFileSync(argvLog, "utf8").trim()).toBe(
+      // Every plain launch checks the remembered model against the live catalog.
+      expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
         `omp\t--config ${first.home}/.cache/docks-kit/${firstName} -p again`,
-      );
+      ]);
 
       const switched = runPublicCli(
         ["omp", "--model", levelFreeSelector],
@@ -141,6 +145,12 @@ describe("omp command", () => {
         `Starting omp with ${levelFreeSelector} at the model default thinking level (session only; deployed config unchanged)`,
       );
       expect(readOmpSessionModel(first.home)).toEqual({ selector: levelFreeSelector });
+      // The session runs the --model value it wrote, not a re-read of kit.db,
+      // which held the earlier model before this run.
+      expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
+        `omp\t--config ${first.home}/.cache/docks-kit/${overlayFileName({ selector: levelFreeSelector })}`,
+      ]);
       const names = readdirSync(overlayDir);
       expect(names).toHaveLength(2);
       const secondPath = join(
@@ -166,6 +176,49 @@ describe("omp command", () => {
       expect(run.stderr).toContain("Picking needs a terminal; pass --model <selector> instead");
       expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("");
       expect(existsSync(kitDbFile(run.home))).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "refuses a plain launch whose default model is not in the free catalog",
+    () => {
+      // The stub catalog does not list DEFAULT_OMP_SESSION_MODEL, as on a host
+      // with no opencode login.
+      const run = runPublicCli(["omp", "-p", "hello"], "home-fresh", stubDir, NATIVE);
+      expect(run.exitCode).toBe(2);
+      expect(run.stderr).toContain(
+        "free model 'opencode-zen/muse-spark-1.3-contributor-free' is not available in the omp catalog (renamed, repriced, or provider not logged in); log in to its provider or choose another with --model or --pick",
+      );
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("omp\tmodels --json\n");
+      expect(existsSync(join(run.home, ".cache", "docks-kit"))).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "refuses a plain launch whose remembered model left the free catalog",
+    () => {
+      const first = runPublicCli(["omp", "--model", "GLM"], "home-fresh", stubDir, NATIVE);
+      expect(first.exitCode).toBe(0);
+      const repriced = makeStubDir(
+        {
+          omp: `if (args[0] === "models" && args[1] === "--json") {
+  console.log(JSON.stringify({models:[
+    {selector:"${selector}",name:"GLM",thinking:["low","high"],contextWindow:204800,cost:{input:1,output:1}},
+    {selector:"${levelFreeSelector}",name:"Level Free",thinking:[],contextWindow:4096,cost:{input:0,output:0}}
+  ]}))
+}`,
+        },
+        NATIVE,
+      );
+      const run = runPublicCli(["omp"], "home-fresh", repriced, {
+        ...NATIVE,
+        reuseHome: first.home,
+      });
+      expect(run.exitCode).toBe(2);
+      expect(run.stderr).toContain(`free model '${selector}' is not available in the omp catalog`);
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("omp\tmodels --json\n");
     },
     SPAWN_TIMEOUT_MS,
   );

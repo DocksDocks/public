@@ -37,13 +37,15 @@ describe("Linux host OS", () => {
       ".zshrc",
       ".bashrc",
       ".bash_profile",
+      ".bash_login",
       ".profile",
       ".zshenv",
     ]);
-    expect(setting.target(undefined)).toBe(".bashrc");
-    expect(setting.target("/bin/zsh")).toBe(".zshrc");
-    expect(setting.target("/usr/local/bin/bash")).toBe(".bashrc");
-    expect(setting.target("/bin/fish")).toBe(".profile");
+    const all = (): boolean => true;
+    expect(setting.target(undefined, all)).toBe(".bashrc");
+    expect(setting.target("/bin/zsh", all)).toBe(".zshrc");
+    expect(setting.target("/usr/local/bin/bash", all)).toBe(".bashrc");
+    expect(setting.target("/bin/fish", all)).toBe(".profile");
     expect(setting.line).toBe("export ENABLE_CLAUDEAI_MCP_SERVERS=false");
     expect(
       host.statusLineCommand("/home/test/.bun/bin/bun", "/home/test/.claude/bin/statusline.mjs"),
@@ -58,7 +60,7 @@ describe("Linux host OS", () => {
     expect(host.installHint("curl")).toBe("sudo apt install -y curl");
     expect(host.installHint("ffplay")).toBe("sudo apt install -y ffmpeg");
     expect(host.installHint("claude")).toBe(
-      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+      'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
     );
     expect(host.installHint("codex")).toBe(
       'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',

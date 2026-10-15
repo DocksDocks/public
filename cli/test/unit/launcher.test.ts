@@ -226,6 +226,23 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
     expect(result.stderr).toContain("cli/src/main.ts is newer than the binary");
   });
 
+  // The compiled binary embeds the cli/docs topics through text imports, so a
+  // docs-only change also makes a version-matching binary stale.
+  it("ignores a version-matching binary that predates a docs topic", () => {
+    const fixture = launcherFixture("docks-kit-linux-x64", CURRENT_VERSION);
+    const topic = join(fixture.root, "cli", "docs", "overview.md");
+    mkdirSync(join(fixture.root, "cli", "docs"), { recursive: true });
+    writeFileSync(topic, "# overview\n");
+    const future = new Date(Date.now() + 60_000);
+    utimesSync(topic, future, future);
+
+    const result = runLauncher(fixture, { system: "Linux", machine: "x86_64" }, ["probe"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe("source:probe");
+    expect(result.stderr).toContain("cli/docs/overview.md is newer than the binary");
+  });
+
   it.each([
     ["MINGW64_NT-10.0-19045", "x86_64"],
     ["Linux", "i686"],

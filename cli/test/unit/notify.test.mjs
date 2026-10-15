@@ -14,7 +14,7 @@ describe("Notification player selection", () => {
     ).toEqual(["/usr/bin/afplay", SOUND]);
   });
 
-  it("uses ffplay then paplay then aplay priority elsewhere", () => {
+  it("uses ffplay then paplay priority elsewhere", () => {
     expect(
       selectPlayer({
         platform: "linux",
@@ -25,11 +25,9 @@ describe("Notification player selection", () => {
     expect(
       selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["paplay", "aplay"]) }),
     ).toEqual(["/usr/bin/paplay", SOUND]);
-    expect(selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["aplay"]) })).toEqual([
-      "/usr/bin/aplay",
-      "-q",
-      SOUND,
-    ]);
+    expect(
+      selectPlayer({ platform: "linux", sound: SOUND, which: whichFrom(["aplay"]) }),
+    ).toBeUndefined();
     expect(selectPlayer({ platform: "linux", sound: SOUND, which: () => null })).toBeUndefined();
   });
 });

@@ -1,0 +1,9 @@
+[agents]
+max_threads = 4
+
+# Old server, re-enable when needed
+# [mcp_servers.old]
+# command = "old"
+
+[mcp_servers.x]
+command = "x"

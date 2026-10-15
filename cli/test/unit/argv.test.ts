@@ -52,6 +52,11 @@ describe("argument validation", () => {
       ["--log-level", "debug", "sync"],
       ["--log-level", "debug", "sync"],
     ],
+    [
+      "accepts a target word after a boolean flag",
+      ["sync", "--dry-run", "claude"],
+      ["sync", "--dry-run", "claude"],
+    ],
   ] as const)("%s", (_name, input, args) => {
     expect(prepareArgv(input)).toEqual({ kind: "accept", args });
   });
@@ -165,6 +170,14 @@ describe("argument validation", () => {
     });
   });
 
+  it("rejects an unknown flag on harnesses and names its scope", () => {
+    expect(prepareArgv(["harnesses", "--bogus"])).toEqual({
+      kind: "reject",
+      message: "unknown flag --bogus for 'harnesses'",
+      exitCode: 2,
+    });
+  });
+
   it.each([
     [
       "rejects an unknown subcommand before blaming one of its flags",
@@ -193,6 +206,26 @@ describe("argument validation", () => {
     ],
     ["rejects an inline value for the sync prune boolean", ["sync", "--prune=true"], "--prune"],
     ["rejects an inline value for the status JSON boolean", ["status", "--json=false"], "--json"],
+    [
+      "rejects a separate boolean literal after the sync dry-run boolean",
+      ["sync", "--dry-run", "false"],
+      "--dry-run",
+    ],
+    [
+      "rejects a separate numeric literal after a target and the dry-run boolean",
+      ["sync", "claude", "--dry-run", "0"],
+      "--dry-run",
+    ],
+    [
+      "rejects a separate boolean literal after the prune boolean",
+      ["sync", "--prune", "no"],
+      "--prune",
+    ],
+    [
+      "rejects a separate boolean literal after the update no-sync boolean",
+      ["update", "--no-sync", "false"],
+      "--no-sync",
+    ],
   ] as const)("%s", (_name, input, flag) => {
     expect(prepareArgv(input)).toEqual({
       kind: "reject",

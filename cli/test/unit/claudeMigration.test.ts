@@ -1,4 +1,13 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -26,7 +35,18 @@ const LEGACY_SETTINGS: { [key: string]: Json } = {
     Notification: [
       { hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] },
     ],
-    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }],
+    Stop: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "bash $HOME/.claude/fetch-usage.sh",
+            timeout: 5,
+            async: true,
+          },
+        ],
+      },
+    ],
   },
   statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
   userOnly: "preserved",
@@ -37,6 +57,23 @@ const LEGACY_FILES = {
   ".claude/fetch-usage.sh": "legacy-fetch-marker\n",
   ".claude/hooks/notify.sh": "legacy-notify-marker\n",
 } as const;
+
+/** The `hooks/notify.sh` that the kit shipped before the Bun runtime cutover. */
+const SHIPPED_NOTIFY = `#!/bin/bash
+set -euo pipefail
+
+SOUND="$HOME/.claude/notification.mp3"
+[ -f "$SOUND" ] || exit 0
+
+if [ "$(uname)" = "Darwin" ]; then
+  command -v afplay >/dev/null 2>&1 && exec afplay "$SOUND"
+fi
+
+command -v ffplay >/dev/null 2>&1 && exec ffplay -nodisp -autoexit -loglevel quiet "$SOUND"
+command -v paplay >/dev/null 2>&1 && exec paplay "$SOUND"
+command -v aplay  >/dev/null 2>&1 && exec aplay -q "$SOUND"
+exit 0
+`;
 
 const RUNTIME_FILES = [
   ".claude/bin/statusline.mjs",
@@ -215,6 +252,129 @@ describe("Claude runtime migration transaction", () => {
       rmSync(home, { recursive: true, force: true });
     }
   });
+
+  it("removes only the retired kit hook handlers and keeps user PreToolUse and Stop handlers", () => {
+    const userGuard: Json = {
+      matcher: "Bash",
+      hooks: [{ type: "command", command: "/home/me/guard.sh" }],
+    };
+    const userStop: Json = { type: "command", command: "/home/me/done.sh" };
+    const original = {
+      hooks: {
+        PreToolUse: [
+          userGuard,
+          { matcher: "Bash", hooks: [{ type: "command", command: "rtk hook claude" }] },
+        ],
+        Stop: [
+          {
+            hooks: [
+              userStop,
+              {
+                type: "command",
+                command: "bash $HOME/.claude/fetch-usage.sh",
+                timeout: 5,
+                async: true,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const home = removalHome(original);
+    const claudeDir = join(home, ".claude");
+    const settingsPath = join(claudeDir, "settings.json");
+    const originalText = readFileSync(settingsPath, "utf8");
+    const output: Array<string> = [];
+    try {
+      syncRemovals(removalContext(home, output), claudeDir, {
+        kind: "deferred",
+        reason: "bun-unavailable",
+      });
+      expect(hooksObject(settingsObject(home))).toEqual({
+        PreToolUse: [userGuard],
+        Stop: original.hooks.Stop,
+      });
+      expect(readFileSync(`${settingsPath}.bak`, "utf8")).toBe(originalText);
+      expect(output.join("")).toContain("retired hook handlers: 1");
+
+      output.length = 0;
+      syncRemovals(removalContext(home, output), claudeDir, {
+        kind: "ready",
+        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+      });
+      expect(hooksObject(settingsObject(home))).toEqual({
+        PreToolUse: [userGuard],
+        Stop: [{ hooks: [userStop] }],
+      });
+      expect(output.join("")).toContain("retired hook handlers: 1");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps user-written legacy-named runtime scripts as .bak on a ready migration", () => {
+    const home = removalHome({ userOnly: true });
+    const claudeDir = join(home, ".claude");
+    const userStatusline = "#!/bin/sh\necho mine\n";
+    const userNotify = "#!/bin/sh\necho notify mine\n";
+    mkdirSync(join(claudeDir, "hooks"), { recursive: true });
+    writeFileSync(join(claudeDir, "statusline.sh"), userStatusline);
+    writeFileSync(join(claudeDir, "hooks", "notify.sh"), userNotify);
+    const output: Array<string> = [];
+    try {
+      syncRemovals(removalContext(home, output), claudeDir, {
+        kind: "ready",
+        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+      });
+      expect(existsSync(join(claudeDir, "statusline.sh"))).toBe(false);
+      expect(readFileSync(join(claudeDir, "statusline.sh.bak"), "utf8")).toBe(userStatusline);
+      expect(existsSync(join(claudeDir, "hooks", "notify.sh"))).toBe(false);
+      expect(readFileSync(join(claudeDir, "hooks", "notify.sh.bak"), "utf8")).toBe(userNotify);
+      expect(output.join("")).toContain("preserved as .bak: 2");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("removes a shipped notify.sh copy and the emptied hooks directory", () => {
+    const home = removalHome({ userOnly: true });
+    const claudeDir = join(home, ".claude");
+    mkdirSync(join(claudeDir, "hooks"), { recursive: true });
+    writeFileSync(join(claudeDir, "hooks", "notify.sh"), SHIPPED_NOTIFY);
+    const output: Array<string> = [];
+    try {
+      syncRemovals(removalContext(home, output), claudeDir, {
+        kind: "ready",
+        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+      });
+      expect(existsSync(join(claudeDir, "hooks"))).toBe(false);
+      expect(output.join("")).toContain("Pruned stale artifacts (hooks: 1, files: 0");
+      expect(output.join("")).not.toContain("preserved as .bak");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "removes a dangling retired command symlink from ~/.local/bin",
+    () => {
+      const home = removalHome({ userOnly: true });
+      const link = join(home, ".local", "bin", "effect-solutions");
+      mkdirSync(join(home, ".local", "bin"), { recursive: true });
+      symlinkSync(join(home, ".bun", "bin", "effect-solutions"), link);
+      const output: Array<string> = [];
+      try {
+        syncRemovals(removalContext(home, output), join(home, ".claude"), {
+          kind: "deferred",
+          reason: "bun-unavailable",
+        });
+        expect(() => lstatSync(link)).toThrow();
+        expect(output.join("")).toContain("files: 1");
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+  );
 
   it("prunes withdrawn plugin keys but leaves user and shipped plugins enabled as configured", () => {
     const home = removalHome({

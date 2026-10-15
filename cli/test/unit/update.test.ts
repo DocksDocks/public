@@ -3,6 +3,8 @@ import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
+  samePackageHome,
+  updateBunCommand,
 } from "../../src/commands/update";
 import { spawnHost } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
@@ -263,6 +265,47 @@ describe("package update result", () => {
   });
 });
 
+describe("package home comparison", () => {
+  it("matches a Windows kit home against the mixed-separator updated home", () => {
+    expect(
+      samePackageHome(
+        "C:\\Users\\u\\.bun\\install\\global\\node_modules\\docks-kit",
+        "c:\\Users\\u\\.bun\\install\\global/node_modules/docks-kit",
+        hostOs("windows"),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps a POSIX backslash as a filename character", () => {
+    expect(samePackageHome("/a\\b", "/a/b", hostOs("linux"))).toBe(false);
+  });
+});
+
+describe("checkout dependency reinstall Bun", () => {
+  it("uses the running Bun for the source path without consulting PATH", async () => {
+    const resolveBun = vi.fn(async () => "/usr/bin/bun");
+    expect(await updateBunCommand(false, "/x/.bun/bin/bun", "/kit", resolveBun)).toEqual({
+      ok: true,
+      command: "/x/.bun/bin/bun",
+    });
+    expect(resolveBun).not.toHaveBeenCalled();
+  });
+
+  it("uses the resolved Bun for a compiled binary", async () => {
+    expect(
+      await updateBunCommand(true, "/opt/docks-kit", "/kit", async () => "/x/.bun/bin/bun"),
+    ).toEqual({ ok: true, command: "/x/.bun/bin/bun" });
+  });
+
+  it("names the manual reinstall when a compiled binary finds no Bun", async () => {
+    expect(await updateBunCommand(true, "/opt/docks-kit", "/kit", async () => "")).toEqual({
+      ok: false,
+      diagnostic:
+        "dependencies changed but Bun was not found - run 'bun install --frozen-lockfile' in /kit, then docks-kit sync",
+    });
+  });
+});
+
 /** A PATH holding exactly the named shims, so resolution is the same on every host. */
 const withPath = <A>(names: ReadonlyArray<string>, use: () => A): A => {
   const dir = mkdtempSync(join(tmpdir(), "docks-update-spawn-"));
@@ -292,7 +335,7 @@ describe("host child spawning (exec.spawnHost)", () => {
     const call = spawnCalls.at(-1);
     expect(call?.args.slice(0, 4)).toEqual(["/d", "/v:off", "/s", "/c"]);
     expect(call?.command).toMatch(/(?:^|[\\/])cmd\.exe$/i);
-    expect(call?.args.at(-1)).toContain("a^&b");
+    expect(call?.args.at(-1)).toContain("a^^^&b");
     // Re-quoting by libuv would invalidate the command line's cmd.exe escaping.
     expect(call?.options["windowsVerbatimArguments"]).toBe(true);
   });

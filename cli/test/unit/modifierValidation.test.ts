@@ -90,7 +90,9 @@ describe("modifier field validation", () => {
     process.env["CLAUDE_COMPACT_WINDOW"] = "680k";
     const environmentRecords: Array<LogRecord> = [];
     expect(
-      await runEngineNative(["sync", "claude", "--dry-run"], stubServices(environmentRecords)),
+      await runEngineNative(["sync", "claude", "--dry-run"], stubServices(environmentRecords), {
+        envGlobals: true,
+      }),
     ).toBe(0);
 
     delete process.env["CLAUDE_COMPACT_WINDOW"];
@@ -110,7 +112,9 @@ describe("modifier field validation", () => {
     process.env["CLAUDE_COMPACT_WINDOW"] = "junk";
     const invalidRecords: Array<LogRecord> = [];
     expect(
-      await runEngineNative(["sync", "agents", "--dry-run"], stubServices(invalidRecords)),
+      await runEngineNative(["sync", "agents", "--dry-run"], stubServices(invalidRecords), {
+        envGlobals: true,
+      }),
     ).toBe(2);
     expect(invalidRecords).toEqual([
       {
@@ -124,13 +128,42 @@ describe("modifier field validation", () => {
     process.env["CLAUDE_PLUGINS"] = "supabase arbitrary n8n";
     const records: Array<LogRecord> = [];
 
-    expect(await runEngineNative(["sync", "agents", "--dry-run"], stubServices(records))).toBe(2);
+    expect(
+      await runEngineNative(["sync", "agents", "--dry-run"], stubServices(records), {
+        envGlobals: true,
+      }),
+    ).toBe(2);
     expect(records).toEqual([
       {
         level: "err",
         message: "Unknown opt-in plugin 'arbitrary'. Known: supabase, n8n",
       },
     ]);
+  });
+
+  it("ignores env globals unless the raw channel enables them", async () => {
+    process.env["CLAUDE_PERMISSIVE"] = "1";
+    process.env["PRUNE"] = "1";
+    process.env["CLAUDE_COMPACT_WINDOW"] = "junk";
+    const mentions = (records: Array<LogRecord>, flag: string): boolean =>
+      records.some(({ message }) => message.includes(`(${flag})`));
+
+    const publicRecords: Array<LogRecord> = [];
+    expect(
+      await runEngineNative(["sync", "claude", "--dry-run"], stubServices(publicRecords)),
+    ).toBe(0);
+    expect(mentions(publicRecords, "--claude-permissive")).toBe(false);
+    expect(mentions(publicRecords, "--prune")).toBe(false);
+
+    delete process.env["CLAUDE_COMPACT_WINDOW"];
+    const rawRecords: Array<LogRecord> = [];
+    expect(
+      await runEngineNative(["sync", "claude", "--dry-run"], stubServices(rawRecords), {
+        envGlobals: true,
+      }),
+    ).toBe(0);
+    expect(mentions(rawRecords, "--claude-permissive")).toBe(true);
+    expect(mentions(rawRecords, "--prune")).toBe(true);
   });
 
   it("warns when explicitly supplied Claude modifiers are deselected", async () => {
@@ -167,7 +200,9 @@ describe("modifier field validation", () => {
     expect(records).toEqual([
       {
         level: "err",
-        message: expect.stringContaining(`Failed to read ~/${dir}/${file}:`),
+        message: expect.stringContaining(
+          `Failed to read ${tool === "codex" ? root : "~"}/${dir}/${file}:`,
+        ),
       },
     ]);
   });

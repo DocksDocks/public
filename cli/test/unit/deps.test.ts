@@ -1,6 +1,6 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import { DEPENDENCIES, resolvePath, type ProbeExecutor } from "../../src/engine-native/deps";
@@ -63,6 +63,26 @@ describe("DependencyManager registry", () => {
     }
   });
 
+  it("strips one pair of double quotes from a Windows PATH entry only", () => {
+    const directory = mkdtempSync(join(tmpdir(), "docks-exec-"));
+    const previousPath = process.env["PATH"];
+    const windowsTool = join(directory, "docks-windows-tool.cmd");
+    const posixTool = join(directory, "docks-posix-tool");
+    try {
+      writeFileSync(windowsTool, "@echo off\r\n");
+      writeFileSync(posixTool, "#!/bin/sh\nexit 0\n");
+      chmodSync(posixTool, 0o755);
+      process.env["PATH"] = [`"${directory}"`, "/docks-missing-dir"].join(delimiter);
+
+      expect(which("docks-windows-tool", [".exe", ".cmd", ".bat", ""])).toBe(windowsTool);
+      expect(which("docks-posix-tool", [""])).toBe("");
+    } finally {
+      if (previousPath === undefined) delete process.env["PATH"];
+      else process.env["PATH"] = previousPath;
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("preserves a resolved Windows shim path in dependency probes", async () => {
     const executable = "C:/tools/npm.cmd";
     const exec: ProbeExecutor = {
@@ -82,10 +102,10 @@ describe("DependencyManager registry", () => {
 
   it("gives platform-correct agent CLI hints", () => {
     expect(DEPENDENCIES.claude.installHint("linux")).toBe(
-      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+      'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
     );
     expect(DEPENDENCIES.claude.installHint("darwin")).toBe(
-      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+      'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
     );
     expect(DEPENDENCIES.claude.installHint("win32")).toBe(
       "$tmp = Join-Path $env:TEMP 'claude-install.ps1'; curl.exe -fsSL https://claude.ai/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }",

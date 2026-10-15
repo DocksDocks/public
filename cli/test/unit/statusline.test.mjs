@@ -14,10 +14,10 @@ const PIPE = "\x1b[90m | \x1b[0m";
 const DOT = "\x1b[90m • \x1b[0m";
 const FOLDER = "\x1b[1m\x1b[38;2;76;208;222mrepo\x1b[22m\x1b[0m";
 const BRANCH = "\x1b[1m\x1b[38;2;192;103;222mfeature/native\x1b[22m\x1b[0m";
-const CONTEXT = "\x1b[38;2;130;160;230mctx 54%\x1b[0m";
+const CONTEXT = "\x1b[38;2;130;160;230mctx 25%\x1b[0m";
 const FIVE_HOUR = "\x1b[38;2;100;200;200m5h 22%\x1b[0m";
 const SEVEN_DAY = "\x1b[38;2;230;180;90m7d 24%\x1b[0m";
-const DIM_45_83 = " \x1b[2m\x1b[38;2;156;162;175m(45k/83k)\x1b[0m";
+const DIM_45_183 = " \x1b[2m\x1b[38;2;156;162;175m(45k/183k)\x1b[0m";
 const DIM_1H = " \x1b[2m\x1b[38;2;156;162;175m(1h)\x1b[0m";
 const DIM_2D = " \x1b[2m\x1b[38;2;156;162;175m(2d)\x1b[0m";
 
@@ -38,13 +38,13 @@ describe("statusline native formatter", () => {
   it("renders the pinned full ANSI layout from native fields", () => {
     expect(
       formatStatusline(fixture("full-input.json"), {
-        env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "83001" },
+        env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "183001" },
         nowMs: NOW_MS,
         cwd: "/ignored",
         branch: "feature/native",
       }),
     ).toBe(
-      `${MODEL}${PIPE}${FOLDER}${DOT}${BRANCH}${PIPE}${CONTEXT}${DIM_45_83}${PIPE}${FIVE_HOUR}${DIM_1H}${DOT}${SEVEN_DAY}${DIM_2D}`,
+      `${MODEL}${PIPE}${FOLDER}${DOT}${BRANCH}${PIPE}${CONTEXT}${DIM_45_183}${PIPE}${FIVE_HOUR}${DIM_1H}${DOT}${SEVEN_DAY}${DIM_2D}`,
     );
   });
 
@@ -65,25 +65,29 @@ describe("statusline native formatter", () => {
     expect(output).toContain(`5h ${rounded}%`);
   });
 
-  it("floors a non-thousand compact cap and ignores a sub-1000 cap", () => {
+  it("clamps a sub-100K cap to Claude's 100K minimum", () => {
     const input = fixture("no-rate-limits.json");
-    const capped = formatStatusline(input, {
-      env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "83001" },
-      branch: "",
-      cwd: "/tmp",
-      nowMs: NOW_MS,
-    });
-    expect(capped).toBe(
-      `${plainPrefix("Sonnet 4.6", "project")}${PIPE}\x1b[38;2;130;160;230mctx 60%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(50k/83k)\x1b[0m`,
-    );
+    const clamped = `${plainPrefix("Sonnet 4.6", "project")}${PIPE}\x1b[38;2;130;160;230mctx 50%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(50k/100k)\x1b[0m`;
+    for (const value of ["83001", "999"]) {
+      expect(
+        formatStatusline(input, {
+          env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: value },
+          branch: "",
+          cwd: "/tmp",
+          nowMs: NOW_MS,
+        }),
+      ).toBe(clamped);
+    }
+  });
 
-    const tooSmall = formatStatusline(input, {
-      env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "999" },
+  it("ignores a zero compact cap", () => {
+    const output = formatStatusline(fixture("no-rate-limits.json"), {
+      env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "0" },
       branch: "",
       cwd: "/tmp",
       nowMs: NOW_MS,
     });
-    expect(tooSmall).toBe(
+    expect(output).toBe(
       `${plainPrefix("Sonnet 4.6", "project")}${PIPE}\x1b[38;2;130;160;230mctx 25%\x1b[0m \x1b[2m\x1b[38;2;156;162;175m(50k/200k)\x1b[0m`,
     );
   });

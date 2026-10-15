@@ -262,11 +262,36 @@ describe("Claude settings prepare/commit seam", () => {
       expect(existsSync(path)).toBe(false);
 
       commitClaudeSettings(test.ctx, prepared);
-      expect(parseJson(readFileSync(path, "utf8"))).toEqual(repo);
+      expect(parseJson(readFileSync(path, "utf8"))).toEqual({
+        model: "opus",
+        userSetting: true,
+        permissions: { allow: [], deny: [], ask: [] },
+      });
       expect(existsSync(`${path}.tmp`)).toBe(false);
       expect(existsSync(`${path}.bak`)).toBe(false);
       expect(test.ctx.nextStepTriggers.claudeRestart).toBe(true);
       expect(test.lines.join("")).toContain("Settings installed");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("installs the merged form, so a second sync with the same SoT finds no change", () => {
+    const root = mkdtempSync(join(tmpdir(), "claude-settings-"));
+    const claudeDir = join(root, ".claude");
+    mkdirSync(claudeDir);
+    try {
+      const test = settingsContext();
+      const repo: Json = {
+        model: "opus",
+        permissions: {
+          allow: ["Read", "Glob", "Edit(./)"],
+          deny: ["Write(x)", "Read(y)"],
+          ask: [],
+        },
+      };
+      commitClaudeSettings(test.ctx, prepareClaudeSettings(test.ctx, claudeDir, repo));
+      expect(prepareClaudeSettings(test.ctx, claudeDir, repo).changed).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

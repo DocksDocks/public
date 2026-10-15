@@ -17,6 +17,7 @@ vi.mock("node:child_process", () => ({ spawnSync: mocks.spawnSync }));
 vi.mock("../../src/engine-native", () => ({ runEngineNative: mocks.runEngineNative }));
 
 import { EngineCaptureError, engine, engineCapture } from "../../src/engine";
+import { ENV_GLOBAL_KEYS } from "../../src/engine-native/engineCtx";
 import { EngineServicesLive } from "../../src/services";
 
 beforeEach(() => {
@@ -180,6 +181,37 @@ describe("EngineNative Effect seam", () => {
       }),
     );
     expect(process.stderr.write).not.toHaveBeenCalled();
+  });
+
+  it("runs the public engine with env globals disabled", async () => {
+    mocks.runEngineNative.mockResolvedValue(0);
+
+    await Effect.runPromise(Effect.provide(engine(["sync", "claude"]), EngineServicesLive));
+    expect(mocks.runEngineNative).toHaveBeenCalledWith(["sync", "claude"], expect.anything(), {
+      envGlobals: false,
+    });
+  });
+
+  it("strips env globals from the raw capture child and keeps the other variables", async () => {
+    for (const key of ENV_GLOBAL_KEYS) vi.stubEnv(key, "1");
+    vi.stubEnv("DOCKS_KIT_SYNC_CONCURRENCY", "2");
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, "", null],
+      pid: 123,
+      signal: null,
+      status: 0,
+      stderr: null,
+      stdout: "",
+    });
+
+    await expect(Effect.runPromise(engineCapture(["toolchain", "check"]))).resolves.toBe("");
+    const options = mocks.spawnSync.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv };
+    for (const key of ENV_GLOBAL_KEYS) expect(options.env).not.toHaveProperty(key);
+    expect(options.env).toMatchObject({
+      DOCKS_KIT_ENGINE: "native-raw",
+      DOCKS_KIT_SYNC_CONCURRENCY: "2",
+    });
   });
 
   it("fails capture with the child status instead of returning plausible stdout", async () => {
