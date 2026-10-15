@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   HARNESSES,
   engineHome,
+  loadHarnessSelection,
   readHarnessSelection,
   readOmpSessionModel,
   writeHarnessSelection,
@@ -113,6 +114,13 @@ describe("harness selection state", () => {
 
     expect(readHarnessSelection(home)).toBeUndefined();
     expect(readOmpSessionModel(home)).toBeUndefined();
+    expect(loadHarnessSelection(home)).toMatchObject({ kind: "unreadable" });
+  });
+
+  it("separates a missing store from an unreadable store", () => {
+    expect(loadHarnessSelection(home)).toEqual({ kind: "missing" });
+    writeHarnessSelection(home, ["omp"]);
+    expect(loadHarnessSelection(home)).toEqual({ kind: "stored", selection: ["omp"] });
   });
 
   it("refuses a store from a newer schema", () => {
@@ -123,6 +131,10 @@ describe("harness selection state", () => {
 
     expect(readHarnessSelection(home)).toBeUndefined();
     expect(readOmpSessionModel(home)).toBeUndefined();
+    expect(loadHarnessSelection(home)).toEqual({
+      kind: "unreadable",
+      reason: expect.stringMatching(/schema 99.*Upgrade docks-kit/s),
+    });
     expect(() => writeHarnessSelection(home, ["codex"])).toThrow(/schema 99/);
     const after = new DatabaseSync(kitDbFile(home), { readOnly: true });
     const version = after.prepare("PRAGMA user_version").get()?.["user_version"];
@@ -188,6 +200,17 @@ describe("harness selection state", () => {
     expect(statSync(`${home}/.docks-kit`).mode & 0o777).toBe(0o700);
   });
 
+  it("reads an existing store without changing its permissions", () => {
+    if (process.platform === "win32") return;
+    writeHarnessSelection(home, ["omp"]);
+    chmodSync(`${home}/.docks-kit`, 0o755);
+    chmodSync(kitDbFile(home), 0o644);
+
+    expect(readHarnessSelection(home)).toEqual(["omp"]);
+    expect(statSync(`${home}/.docks-kit`).mode & 0o777).toBe(0o755);
+    expect(statSync(kitDbFile(home)).mode & 0o777).toBe(0o644);
+  });
+
   it("keeps selections for separate homes independent", () => {
     const otherHome = mkdtempSync(join(tmpdir(), "docks-harness-other-"));
     try {
@@ -202,9 +225,17 @@ describe("harness selection state", () => {
   });
 
   it("resolves the engine home from HOME with a homedir fallback", () => {
-    expect(engineHome({ HOME: "/fixture/home" })).toBe("/fixture/home");
-    expect(engineHome({})).toBe(homedir());
-    expect(engineHome({ HOME: "" })).toBe(homedir());
+    expect(engineHome({ HOME: "/fixture/home" }, "linux")).toBe("/fixture/home");
+    expect(engineHome({}, "linux")).toBe(homedir());
+    expect(engineHome({ HOME: "" }, "darwin")).toBe(homedir());
+  });
+
+  it("resolves the engine home from USERPROFILE on Windows and ignores HOME", () => {
+    expect(engineHome({ HOME: "C:\\msys64\\home\\u", USERPROFILE: "C:\\Users\\u" }, "win32")).toBe(
+      "C:\\Users\\u",
+    );
+    expect(engineHome({ HOME: "C:\\msys64\\home\\u" }, "win32")).toBe(homedir());
+    expect(engineHome({ HOME: "C:\\msys64\\home\\u", USERPROFILE: "" }, "win32")).toBe(homedir());
   });
 });
 

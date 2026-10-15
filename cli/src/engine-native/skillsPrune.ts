@@ -2,27 +2,35 @@
  * EngineNative kit-managed skill prune (`--prune` reconcile against the
  * snapshot) and snapshot write. Split from skillsSync.ts; the orchestration
  * still lives there.
+ *
+ * The prune deletes only what the kit created: the canonical skill directory
+ * and the kit-managed Claude entry. It does not call `skills remove`, because
+ * that command deletes the same-named directory of every known agent.
  */
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { p, spawnProcess, writeTextIfChanged } from "./exec";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { p, writeTextIfChanged } from "./exec";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
-import { skillsCli } from "./skillsInstall";
 import { isKitOwnedCopy, lstat, removeKitOwnedCopy, removeLink } from "./skillsLinks";
-import { normalizeManifest } from "./skillsManifest";
+import { normalizeManifest, skillBase } from "./skillsManifest";
 
 // ----------------------------------------------------- prune + snapshot ----
 
-function readSlugs(file: string): Array<string> {
+export function readSlugs(file: string): Array<string> {
   return existsSync(file) ? normalizeManifest(readFileSync(file, "utf8")) : [];
 }
 
-export async function reconcileRemovals(
-  ctx: Ctx,
-  manifest: string,
-  snapshot: string,
-): Promise<Array<string>> {
-  const { change, clearProgress, echo, progress, warn } = ctx.services.logger;
+function removeCanonical(path: string): boolean {
+  try {
+    rmSync(path, { recursive: true, force: true });
+    return true;
+  } catch {
+    return lstat(path) === undefined;
+  }
+}
+
+export function reconcileRemovals(ctx: Ctx, manifest: string, snapshot: string): Array<string> {
+  const { change, echo, warn } = ctx.services.logger;
   if (!existsSync(snapshot)) {
     if (ctx.dryRun) {
       echo(
@@ -33,14 +41,18 @@ export async function reconcileRemovals(
   }
 
   const current = normalizeManifest(manifest);
-  const currentBases = new Set(current.map((slug) => slug.slice(slug.lastIndexOf("/") + 1)));
+  const currentBases = new Set(current.map(skillBase));
   let removed = 0;
   let failed = 0;
   const failedSlugs: Array<string> = [];
   for (const slug of readSlugs(snapshot)) {
     if (current.includes(slug)) continue;
-    const base = slug.slice(slug.lastIndexOf("/") + 1);
+    const base = skillBase(slug);
     if (currentBases.has(base)) continue;
+    const canonical = p(ctx.agentsDir, "skills", base);
+    // The skills CLI installs a canonical skill as a real directory that holds SKILL.md.
+    const installedCanonical =
+      lstat(canonical)?.isDirectory() === true && existsSync(p(canonical, "SKILL.md"));
     const claudeEntry = p(ctx.home, ".claude", "skills", base);
     const managedClaudeEntry =
       lstat(claudeEntry)?.isSymbolicLink() === true || isKitOwnedCopy(claudeEntry);
@@ -51,16 +63,7 @@ export async function reconcileRemovals(
       }
       continue;
     }
-    progress(`Removing universal skill ${base}...`);
-    const res = await spawnProcess(
-      "npx",
-      ["--yes", skillsCli(ctx), "remove", "--global", base, "-y"],
-      {
-        stdio: "ignore",
-      },
-    );
-    clearProgress();
-    if (res.error !== undefined || res.exitCode !== 0) {
+    if (installedCanonical && !removeCanonical(canonical)) {
       warn(`Failed to remove kit-managed skill: ${base}`);
       failed++;
       failedSlugs.push(slug);
@@ -87,21 +90,25 @@ export async function reconcileRemovals(
   }
   if (failed > 0)
     warn(
-      `${failed} skill remove(s) failed — re-run with --prune or run: npx skills remove --global <name> -y`,
+      `${failed} skill remove(s) failed — re-run with --prune, or delete ~/.agents/skills/<name> and the ~/.claude/skills/<name> link manually`,
     );
   return failedSlugs;
 }
 
+/**
+ * Writes the declared slugs plus `retainedSlugs`. A slug leaves the snapshot
+ * only after a successful --prune removes it.
+ */
 export function updateSnapshot(
   ctx: Ctx,
   manifest: string,
   snapshot: string,
-  failedRemovals: ReadonlyArray<string>,
+  retainedSlugs: ReadonlyArray<string>,
 ): void {
   if (ctx.dryRun) return;
 
   mkdirSync(ctx.agentsDir, { recursive: true });
-  const sorted = [...new Set([...normalizeManifest(manifest), ...failedRemovals])].sort(
+  const sorted = [...new Set([...normalizeManifest(manifest), ...retainedSlugs])].sort(
     compareCodepoints,
   );
   writeTextIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "");

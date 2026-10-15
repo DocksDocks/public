@@ -235,6 +235,21 @@ export interface ScannedArgv {
   readonly normalizations: ReadonlyArray<ArgvNormalization>;
 }
 
+// Mirrors effect Schema.TrueLiterals/FalseLiterals (case-sensitive): Effect 4 lets a
+// Boolean flag consume the next token as its value when that token is one of these.
+const EFFECT_BOOLEAN_LITERALS: Readonly<Record<string, true>> = {
+  true: true,
+  yes: true,
+  on: true,
+  "1": true,
+  y: true,
+  false: true,
+  no: true,
+  off: true,
+  "0": true,
+  n: true,
+};
+
 export const scanArgv = (
   args: ReadonlyArray<string>,
   commandSurface: FlagSurface | undefined,
@@ -274,6 +289,14 @@ export const scanArgv = (
             token: `${token}=${next}`,
           });
         }
+        index++;
+      }
+    }
+
+    if (canonicalName !== undefined && !takesValue && !hasValue) {
+      const next = args[index + 1];
+      if (next !== undefined && Object.hasOwn(EFFECT_BOOLEAN_LITERALS, next)) {
+        hasValue = true;
         index++;
       }
     }

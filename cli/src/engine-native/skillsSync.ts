@@ -14,7 +14,7 @@ import { payloadText } from "../payload";
 import { p } from "./exec";
 import type { Ctx } from "./index";
 import { syncUniversal, type SkillsState } from "./skillsInstall";
-import { reconcileRemovals, updateSnapshot } from "./skillsPrune";
+import { readSlugs, reconcileRemovals, updateSnapshot } from "./skillsPrune";
 
 export type { SkillsState } from "./skillsInstall";
 export { COPY_MARKER, linkOrCopy, type LinkOutcome } from "./skillsLinks";
@@ -29,8 +29,11 @@ export async function skillsSync(ctx: Ctx): Promise<SkillsState> {
   if (!ctx.dryRun) mkdirSync(skillsDir, { recursive: true });
 
   await syncUniversal(ctx, state, skillsDir, manifest);
-  const failedRemovals = ctx.prune ? await reconcileRemovals(ctx, manifest, snapshot) : [];
-  updateSnapshot(ctx, manifest, snapshot, failedRemovals);
+  // A tracked slug leaves the snapshot only after a successful --prune removes it.
+  const retainedSlugs = ctx.prune
+    ? reconcileRemovals(ctx, manifest, snapshot)
+    : readSlugs(snapshot);
+  updateSnapshot(ctx, manifest, snapshot, retainedSlugs);
   return state;
 }
 

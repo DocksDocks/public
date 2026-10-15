@@ -1,0 +1,9 @@
+developer_instructions = """
+[Style] Prefer short answers.
+[agents]
+max_threads = 1
+"""
+model = "mine"
+
+[mcp_servers.x]
+command = "x"

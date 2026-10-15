@@ -73,6 +73,20 @@ describe("SessionStart native context", () => {
     );
   });
 
+  it("reports Claude's effective compact window after the clamp", () => {
+    expect(
+      secondLine({
+        env: { CLAUDE_CODE_DISABLE_1M_CONTEXT: "1", CLAUDE_CODE_AUTO_COMPACT_WINDOW: "468000" },
+      }),
+    ).toContain("Context: 200K | Compact-window: full |");
+    expect(secondLine({ env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "80000" } })).toContain(
+      "Context: 1M | Compact-window: 100000 |",
+    );
+    expect(secondLine({ env: { CLAUDE_CODE_AUTO_COMPACT_WINDOW: "0" } })).toContain(
+      "Compact-window: full |",
+    );
+  });
+
   it("main writes one valid structured hook payload with the two context lines", async () => {
     const writes = [];
     expect(

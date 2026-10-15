@@ -78,12 +78,53 @@ export function resolveFreeSelector(
   };
 }
 
-const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>> =>
+/**
+ * The omp profile that the forwarded arguments select. omp reads
+ * `--profile <name>` or `--profile=<name>` before a `--`, the last one wins,
+ * and it rejects a missing or empty name. The catalog check must query the
+ * profile the session runs, so it reads the arguments the same way.
+ */
+export type ForwardedProfile =
+  | { readonly ok: true; readonly profile: string | undefined }
+  | { readonly ok: false; readonly message: string };
+
+export function forwardedProfile(forwarded: ReadonlyArray<string>): ForwardedProfile {
+  let profile: string | undefined;
+  for (let index = 0; index < forwarded.length; index++) {
+    const arg = forwarded[index]!;
+    if (arg === "--") break;
+    let value: string | undefined;
+    if (arg === "--profile") {
+      value = forwarded[index + 1];
+      if (value === undefined || value.startsWith("-")) value = "";
+      else index++;
+    } else if (arg.startsWith("--profile=")) {
+      value = arg.slice("--profile=".length);
+    } else {
+      continue;
+    }
+    if (value === "") return { ok: false, message: "--profile requires a profile name" };
+    profile = value;
+  }
+  return { ok: true, profile };
+}
+
+const loadFreeCatalog = (
+  omp: string,
+  profile: string | undefined,
+): Effect.Effect<ReadonlyArray<CatalogModel>> =>
   Effect.gen(function* () {
-    const raw = yield* Effect.promise(() => capture(omp, ["models", "--json"]));
+    // omp takes --profile only before its subcommand.
+    const catalogArgs = [
+      ...(profile === undefined ? [] : ["--profile", profile]),
+      "models",
+      "--json",
+    ];
+    const command = `omp ${catalogArgs.join(" ")}`;
+    const raw = yield* Effect.promise(() => capture(omp, catalogArgs));
     if (raw === "") {
       return yield* bail(
-        "'omp models --json' returned no output; verify omp runs on this host, then retry",
+        `'${command}' returned no output; verify omp runs on this host, then retry`,
       );
     }
     let parsed: unknown;
@@ -91,14 +132,12 @@ const loadFreeCatalog = (omp: string): Effect.Effect<ReadonlyArray<CatalogModel>
       parsed = JSON.parse(raw) as unknown;
     } catch {
       return yield* bail(
-        "'omp models --json' returned output that is not JSON; verify the omp version, then retry",
+        `'${command}' returned output that is not JSON; verify the omp version, then retry`,
       );
     }
     const free = parseFreeModels(parsed);
     if (free.length === 0) {
-      return yield* bail(
-        "'omp models --json' listed no free models; verify the omp login, then retry",
-      );
+      return yield* bail(`'${command}' listed no free models; verify the omp login, then retry`);
     }
     return free;
   });
@@ -206,31 +245,33 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
     }
 
     const home = engineHome(process.env);
+    // Check the terminal before the catalog spawn, so a non-interactive run
+    // fails with the actionable message instead of an omp subprocess first.
+    if (config.pick && (!process.stdin.isTTY || !process.stdout.isTTY)) {
+      return yield* bail("Picking needs a terminal; pass --model <selector> instead");
+    }
+    // Every launch reads the live catalog once, because a remembered or
+    // default model can be renamed, repriced, or lose its provider login.
+    // omp then silently starts a paid default model instead. The catalog
+    // comes from the profile that the forwarded arguments select.
+    const profile = forwardedProfile(config.args);
+    if (!profile.ok) return yield* bail(profile.message);
+    const free = yield* loadFreeCatalog(omp, profile.profile);
+    // The value the launcher writes is the value it runs, so a concurrent
+    // launcher or a failed read of kit.db cannot change this session.
+    let chosen: OmpSessionModel | undefined;
     if (Option.isSome(config.model)) {
-      const free = yield* loadFreeCatalog(omp);
       const resolved = resolveFreeSelector(config.model.value, free);
       if (!resolved.ok) return yield* bail(resolved.message);
-      // Compute both levels once from the catalog row so a plain launch
-      // never needs the catalog again.
-      const thinking = ladderCeiling(resolved.model.thinking);
-      const advisorThinking = advisorLevelFor(resolved.model.thinking);
-      yield* Effect.sync(() =>
-        writeOmpSessionModel(home, {
-          selector: resolved.model.selector,
-          thinking,
-          advisorThinking,
-        }),
-      );
+      chosen = {
+        selector: resolved.model.selector,
+        thinking: ladderCeiling(resolved.model.thinking),
+        advisorThinking: advisorLevelFor(resolved.model.thinking),
+      };
     }
 
     if (config.pick) {
-      // Check the terminal before the catalog spawn, so a non-interactive run
-      // fails with the actionable message instead of an omp subprocess first.
-      if (!process.stdin.isTTY || !process.stdout.isTTY) {
-        return yield* bail("Picking needs a terminal; pass --model <selector> instead");
-      }
-      const free = yield* loadFreeCatalog(omp);
-      const chosen = yield* Prompt.Select({
+      const pickedSelector = yield* Prompt.Select({
         message: "Choose the free model for this omp session",
         choices: free.map((candidate) => {
           const ceiling = ladderCeiling(candidate.thinking);
@@ -244,27 +285,37 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
           };
         }),
       });
-      const match = free.find((candidate) => candidate.selector === chosen);
-      if (match === undefined) return yield* bail(`Model '${chosen}' is not in the free catalog`);
+      const match = free.find((candidate) => candidate.selector === pickedSelector);
+      if (match === undefined) {
+        return yield* bail(`Model '${pickedSelector}' is not in the free catalog`);
+      }
       const chosenLevels = yield* pickLevels(match);
-      yield* Effect.sync(() =>
-        writeOmpSessionModel(home, {
-          selector: match.selector,
-          thinking: chosenLevels.thinking,
-          advisorThinking: chosenLevels.advisorThinking,
-        }),
-      );
+      chosen = {
+        selector: match.selector,
+        thinking: chosenLevels.thinking,
+        advisorThinking: chosenLevels.advisorThinking,
+      };
+    }
+
+    if (chosen !== undefined) {
+      const remembered = chosen;
+      yield* Effect.sync(() => writeOmpSessionModel(home, remembered));
     }
 
     const session: OmpSessionModel =
-      (yield* Effect.sync(() => readOmpSessionModel(home))) ?? DEFAULT_OMP_SESSION_MODEL;
+      chosen ?? (yield* Effect.sync(() => readOmpSessionModel(home))) ?? DEFAULT_OMP_SESSION_MODEL;
+    if (!free.some((candidate) => candidate.selector === session.selector)) {
+      return yield* bail(
+        `free model '${session.selector}' is not available in the omp catalog (renamed, repriced, or provider not logged in); log in to its provider or choose another with --model or --pick`,
+      );
+    }
 
     // A stable cache path, not a temp file deleted at exit, because omp may
-    // re-read the overlay during a live session. The name carries the model,
-    // so a second launcher on another model cannot rewrite the file a running
-    // session still reads.
+    // re-read the overlay during a live session. The name carries a digest of
+    // the rendered overlay, so a second launcher on another model or level
+    // cannot rewrite the file a running session still reads.
     const directory = p(home, ".cache", "docks-kit");
-    const overlayPath = p(directory, overlayFileName(session.selector));
+    const overlayPath = p(directory, overlayFileName(session));
     yield* Effect.sync(() => {
       // `mode` applies only when mkdir creates the path, so an existing
       // permissive cache directory keeps its mode until the chmod below.
@@ -305,6 +356,6 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
   }),
 ).pipe(
   Command.withDescription(
-    "Start omp with every model role overridden to the remembered free model for this run only (no deployed configuration is changed; --model or --pick remembers a new free default). --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
+    "Start omp with every chat-model role set to the remembered free model for this run only. The web-search role keeps the deployed provider order, which can include a paid model. No deployed configuration changes; --model or --pick remembers a new free default. Every launch checks the model against the live free catalog. --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
   ),
 );

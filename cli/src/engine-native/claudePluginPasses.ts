@@ -3,7 +3,9 @@
  * inside `syncPlugins` is load-bearing and golden-tested; message strings
  * and spawned argv are part of the contract.
  */
-import { existsSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { replaceFile } from "./atomicWrite";
 import { p, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
@@ -19,23 +21,50 @@ import {
 import { payloadText } from "../payload";
 import type { JsonObject } from "./sharedTypes";
 
-/** Claude Code's built-in marketplace: always present, never added or pruned by the kit. */
+/**
+ * Claude Code's official marketplace: protected from prune, and added on demand
+ * when a kit plugin comes from it and the marketplace is not registered yet.
+ */
 const OFFICIAL_MARKETPLACE = "claude-plugins-official";
+const OFFICIAL_MARKETPLACE_REPO = "anthropics/claude-plugins-official";
+
+/**
+ * Success text of `claude plugin update` when the version changed, e.g.
+ * `Plugin "x" updated from 1.0.0 to 1.0.1 for scope user`. The text for an
+ * up-to-date plugin ("already at the latest version") does not match.
+ */
+const PLUGIN_UPDATED_RE = /\bupdated from \S+ to \S+ for scope\b/;
+
+/** First non-empty trimmed line of a stream, or undefined when it has none. */
+function firstLine(text: string): string | undefined {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line !== "");
+}
 
 export async function cli(
   args: Array<string>,
 ): Promise<{ ok: boolean; out: string; detail: string }> {
-  const res = await spawnProcess("claude", args, { stdio: ["ignore", "pipe", "pipe"] });
+  // A `claude plugin` command without `--scope` also edits the project
+  // settings of its working directory. A neutral working directory keeps
+  // every command on the user scope, whatever directory the user runs sync from.
+  const res = await spawnProcess("claude", args, {
+    stdio: ["ignore", "pipe", "pipe"],
+    cwd: tmpdir(),
+  });
   // A spawn error carries its cause in `error`, not in either stream, and that
   // is the case a failure message cannot afford to drop: it names an
   // unresolvable launcher instead of a rejected command.
-  const out = res.error !== undefined ? res.error.message : `${res.stdout}${res.stderr}`;
-  const detail =
-    out
-      .split("\n")
-      .map((line) => line.trim())
-      .find((line) => line !== "") ?? "unknown error";
-  return { ok: res.error === undefined && res.exitCode === 0, out, detail };
+  if (res.error !== undefined) {
+    const out = res.error.message;
+    return { ok: false, out, detail: firstLine(out) ?? "unknown error" };
+  }
+  // The CLI prints progress lines on stdout and the cause on stderr, so the
+  // failure detail reads stderr first.
+  const out = `${res.stdout}${res.stderr}`;
+  const detail = firstLine(res.stderr) ?? firstLine(res.stdout) ?? "unknown error";
+  return { ok: res.exitCode === 0, out, detail };
 }
 
 /** Failure message tail: the cause, then the command to re-run by hand. */
@@ -127,11 +156,11 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     );
   };
   const addedMarketplaces = new Set<string>();
-  // The official marketplace is built in; a successful add is usable before its inventory is written.
+  // A successful add is usable before its inventory is written.
   // A missing inventory proves absence (fresh home); an unreadable one does not, so refresh as before.
   const skippedRefresh = new Set<string>();
   const marketplaceReady = (mpName: string): boolean => {
-    if (mpName === OFFICIAL_MARKETPLACE || addedMarketplaces.has(mpName)) return true;
+    if (addedMarketplaces.has(mpName)) return true;
     const known = existsSync(knownMarketplaces) ? readJsonFile(knownMarketplaces) : {};
     if (known === undefined || !isObject(known) || knownMarketplace(mpName)) return true;
     if (!skippedRefresh.has(mpName)) {
@@ -142,6 +171,11 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
     }
     return false;
   };
+
+  // Kit-owned plugin IDs: SoT-declared plus this run's --claude-plugin opt-ins.
+  const kitPluginIds = new Set<string>(Object.keys(sotPlugins));
+  if (ctx.claudePlugins.includes("supabase")) kitPluginIds.add("supabase@claude-plugins-official");
+  if (ctx.claudePlugins.includes("n8n")) kitPluginIds.add("n8n-mcp-skills@n8n-mcp-skills");
 
   // Pass 1 — add missing marketplaces (SoT insertion order, like to_entries).
   let addedMp = 0;
@@ -162,6 +196,32 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
       recordFailure(
         ctx,
         `Failed to add marketplace: ${mpName} (${repo}): ${manually(marketplaceResult.detail, ["plugin", "marketplace", "add", repo])}`,
+      );
+      f1++;
+    }
+  }
+
+  // Claude Code registers its official marketplace only in an interactive
+  // session. A fresh home therefore needs the kit to add it before any install.
+  const needsOfficial = [...kitPluginIds].some((pluginId) =>
+    pluginId.endsWith(`@${OFFICIAL_MARKETPLACE}`),
+  );
+  if (
+    needsOfficial &&
+    !addedMarketplaces.has(OFFICIAL_MARKETPLACE) &&
+    !knownMarketplace(OFFICIAL_MARKETPLACE)
+  ) {
+    const addArgs = ["plugin", "marketplace", "add", OFFICIAL_MARKETPLACE_REPO];
+    progress(`Adding marketplace ${OFFICIAL_MARKETPLACE}...`);
+    const officialResult = await cli(addArgs);
+    clearProgress();
+    if (officialResult.ok) {
+      addedMp++;
+      addedMarketplaces.add(OFFICIAL_MARKETPLACE);
+    } else {
+      recordFailure(
+        ctx,
+        `Failed to add marketplace: ${OFFICIAL_MARKETPLACE} (${OFFICIAL_MARKETPLACE_REPO}): ${manually(officialResult.detail, addArgs)}`,
       );
       f1++;
     }
@@ -210,10 +270,6 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
   const installedKeys =
     installedDoc !== undefined && isObject(installedDoc) ? sortedKeys(installedDoc["plugins"]) : [];
   const nonUserMarketplaces = nonUserScopeMarketplaces(installedDoc);
-  // Kit-owned plugin IDs: SoT-declared plus this run's --claude-plugin opt-ins.
-  const kitPluginIds = new Set<string>(Object.keys(sotPlugins));
-  if (ctx.claudePlugins.includes("supabase")) kitPluginIds.add("supabase@claude-plugins-official");
-  if (ctx.claudePlugins.includes("n8n")) kitPluginIds.add("n8n-mcp-skills@n8n-mcp-skills");
 
   // Kit-owned marketplaces: SoT-declared plus every marketplace those plugins come from.
   const kitMarketplaces = new Set<string>(Object.keys(sotMarketplaces));
@@ -254,7 +310,7 @@ export async function syncPlugins(ctx: Ctx, claudeDir: string): Promise<void> {
           `Failed to update plugin: ${pluginId}: ${manually(updateResult.detail, ["plugin", "update", pluginId, "--scope", "user"])}`,
         );
         f4++;
-      } else if (updateResult.out.includes("Successfully updated")) {
+      } else if (PLUGIN_UPDATED_RE.test(updateResult.out)) {
         updatedPl++;
       }
     }
@@ -341,13 +397,14 @@ async function reassertEnabledState(
         ? (user["enabledPlugins"] as JsonObject)[pluginId]
         : undefined;
     if (enabled !== true) continue;
-    const disableResult = await cli(["plugin", "disable", pluginId]);
+    const disableArgs = ["plugin", "disable", pluginId, "--scope", "user"];
+    const disableResult = await cli(disableArgs);
     if (disableResult.ok) {
       cliDisabled = true;
     } else {
       recordFailure(
         ctx,
-        `Failed to disable SoT-false plugin: ${pluginId} (will retry next sync): ${manually(disableResult.detail, ["plugin", "disable", pluginId])}`,
+        `Failed to disable SoT-false plugin: ${pluginId} (will retry next sync): ${manually(disableResult.detail, disableArgs)}`,
       );
     }
   }
@@ -364,7 +421,6 @@ async function reassertEnabledState(
   );
   const out = jqStringify(user);
   if (out === beforeCanonical) return cliDisabled;
-  writeFileSync(`${userSettingsFile}.tmp`, out);
-  renameSync(`${userSettingsFile}.tmp`, userSettingsFile);
+  replaceFile(userSettingsFile, out);
   return true;
 }

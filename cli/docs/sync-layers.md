@@ -35,13 +35,20 @@ Order matters — runtime readiness and settings form one transaction:
 The statusline reads Claude's native `rate_limits`. There is no OAuth request,
 usage cache, jq/curl runtime dependency, or Stop fetch hook.
 
-## codex (→ ~/.codex, ~/.agents/plugins)
+## codex (→ Codex home, ~/.agents/plugins)
 
-bubblewrap check (Linux), config.toml merge (top-level keys replaced
-per-key, [table] blocks replaced wholesale, user-only keys/tables preserved,
-and retired kit-owned `[plugins."<id>"]` tables stripped), `--codex-model`
-then `--codex-effort` modifiers, rules, AGENTS.md, personal marketplace file,
-and `codex plugin add` refresh.
+bubblewrap bootstrap (Linux): when `bwrap` is missing, sync runs
+`sudo apt-get|dnf|pacman|zypper install bubblewrap` (a sudo prompt may appear)
+and then probes unprivileged user namespaces; `--skip-bubblewrap` only warns,
+and `--dry-run` only prints the step. Then config.toml merge (top-level keys
+replaced per-key, [table] blocks replaced wholesale, user-only keys/tables
+preserved, and retired kit-owned `[plugins."<id>"]` tables stripped),
+`--codex-model` then `--codex-effort` modifiers, rules, AGENTS.md, personal
+marketplace file, and `codex plugin add` refresh.
+
+The Codex home is `$CODEX_HOME` when that variable is set and not empty, else
+`~/.codex`. Like Codex, the kit resolves a relative `CODEX_HOME` against the
+current directory. Every kit read or write of Codex state uses this directory.
 
 ## agents (→ ~/.agents/skills, ~/.claude/skills symlinks)
 
@@ -50,9 +57,15 @@ kit-managed snapshot that `--prune` reconciles against.
 
 ## omp (→ resolved agent dir, intercom root)
 
-AGENTS.md, mcp.json, and intercom config.json are whole-file deploys;
-config.yml is deep-merged (SoT keys win, mapping nodes merge, deployed-only
-keys survive, stale slash-bearing `retry.fallbackChains` wildcards pruned).
+AGENTS.md, mcp.json, and intercom config.json are whole-file deploys.
+config.yml and models.yml are deep-merged (SoT keys win, mapping nodes merge,
+deployed-only keys survive; config.yml also drops stale slash-bearing
+`retry.fallbackChains` wildcards). After each merge, every sync (no
+`--reconcile` needed) force-prunes the `ompRemovals.ts` retired-key inventory:
+config.yml keys whose deployed value still equals the value the kit used to
+ship, `providers.webSearchOrder` at any value, and the retired
+`anthropic.modelOverrides.claude-opus-5-5` block in models.yml while it still
+matches the shipped block.
 Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
 registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
 through `omp plugin`, and `pi-intercom` is installed at its

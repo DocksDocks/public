@@ -91,6 +91,8 @@ export function processFailureSummary(result: AsyncProcessResult): string {
 
 export interface AsyncProcessOptions {
   readonly stdio?: SpawnOptions["stdio"];
+  /** Working directory for the child; the parent's when absent. */
+  readonly cwd?: string;
   /** Host whose executable resolution and argv shaping apply; tests inject it. */
   readonly host?: HostOs;
 }
@@ -123,6 +125,7 @@ export function spawnProcess(
     const invocation = host.invoke(executablePath, args);
     child = spawn(invocation.command, [...invocation.args], {
       stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
+      ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
       windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     });
   } catch (cause) {
@@ -167,6 +170,27 @@ export async function capture(cmd: string, args: ReadonlyArray<string>): Promise
   return res.stdout.replace(/[\r\n]+$/, "");
 }
 
+/**
+ * Splits a Windows PATH on semicolons outside double quotes, then removes one
+ * enclosing quote pair from each entry. cmd.exe and libuv read PATH this way.
+ */
+function windowsPathEntries(path: string): Array<string> {
+  const entries: Array<string> = [];
+  let entry = "";
+  let quoted = false;
+  for (const char of path) {
+    if (char === '"') quoted = !quoted;
+    if (char === ";" && !quoted) {
+      entries.push(entry);
+      entry = "";
+    } else {
+      entry += char;
+    }
+  }
+  entries.push(entry);
+  return entries.map((value) => (/^".*"$/.test(value) ? value.slice(1, -1) : value));
+}
+
 /** `command -v` — resolve an executable name on PATH. */
 export function which(
   name: string,
@@ -181,7 +205,10 @@ export function which(
   };
 
   if (isAbsolute(name) || name.includes("/")) return runnableCandidate(name);
-  for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
+  const path = process.env["PATH"] ?? "";
+  // Windows rules (a non-empty suffix) read quoted PATH entries; POSIX keeps the literal split.
+  const windowsRules = suffixes.some((suffix) => suffix !== "");
+  for (const dir of windowsRules ? windowsPathEntries(path) : path.split(delimiter)) {
     if (dir === "") continue;
     const candidate = runnableCandidate(join(dir, name));
     if (candidate !== "") return candidate;

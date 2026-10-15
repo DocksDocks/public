@@ -175,13 +175,16 @@ describe("retired permission rule cutover", () => {
   it("counts the stale rules it would delete in dry-run", async () => {
     const home = mkdtempSync(join(tmpdir(), "claude-perms-dryrun-"));
     const previousHome = process.env["HOME"];
+    const previousUserProfile = process.env["USERPROFILE"];
     const previousAgents = process.env["AGENTS_DIR"];
     const records: Array<string> = [];
     mkdirSync(p(home, ".claude"), { recursive: true });
     writeFileSync(p(home, ".claude", "settings.json"), deployedBeforeThisChange());
 
     try {
+      // engineHome reads USERPROFILE on win32, so both keys point at the temp home.
       process.env["HOME"] = home;
+      process.env["USERPROFILE"] = home;
       process.env["AGENTS_DIR"] = p(home, ".agents");
       expect(
         await runEngineNative(["sync", "claude", "--dry-run"], recordingServices(records)),
@@ -195,6 +198,8 @@ describe("retired permission rule cutover", () => {
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
       else process.env["HOME"] = previousHome;
+      if (previousUserProfile === undefined) delete process.env["USERPROFILE"];
+      else process.env["USERPROFILE"] = previousUserProfile;
       if (previousAgents === undefined) delete process.env["AGENTS_DIR"];
       else process.env["AGENTS_DIR"] = previousAgents;
       rmSync(home, { recursive: true, force: true });

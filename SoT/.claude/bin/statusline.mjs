@@ -30,6 +30,8 @@ const ESC = "\x1b["
 const PIPE = `${ESC}90m | ${ESC}0m`
 const DOT = `${ESC}90m • ${ESC}0m`
 const DIM = `${ESC}2m${ESC}38;2;156;162;175m`
+const MIN_COMPACT_WINDOW = 100_000
+const MAX_COMPACT_WINDOW = 1_000_000
 
 /**
  * @param {object | string | number | boolean | null | undefined} value
@@ -104,7 +106,8 @@ function compactWindow(env, total) {
   const raw = env.CLAUDE_CODE_AUTO_COMPACT_WINDOW
   if (typeof raw !== "string" || !/^[0-9]+$/.test(raw)) return total
   const parsed = Number(raw)
-  return Number.isSafeInteger(parsed) && parsed >= 1000 && parsed < total ? parsed : total
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return total
+  return Math.min(total, Math.max(MIN_COMPACT_WINDOW, Math.min(parsed, MAX_COMPACT_WINDOW)))
 }
 
 /**

@@ -1,7 +1,38 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
+import type * as ExecModule from "../../src/engine-native/exec";
+import type * as Payload from "../../src/payload";
 
+const mocks = vi.hoisted(() => ({
+  claudeSettings: undefined as string | undefined,
+  spawnProcess: vi.fn<typeof ExecModule.spawnProcess>(),
+}));
+
+// The payload mock passes through unless a case sets `claudeSettings`. Only the
+// in-process plugin pass case spawns a child, and it sets the spawn behavior.
+vi.mock("../../src/payload", async () => {
+  const actual = await vi.importActual<typeof Payload>("../../src/payload");
+  return {
+    ...actual,
+    payloadText: (path: Parameters<typeof actual.payloadText>[0]) =>
+      path === "SoT/.claude/settings.json" && mocks.claudeSettings !== undefined
+        ? mocks.claudeSettings
+        : actual.payloadText(path),
+  };
+});
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec");
+  return { ...actual, spawnProcess: mocks.spawnProcess };
+});
+
+import type { Ctx } from "../../src/engine-native";
+import { syncPlugins } from "../../src/engine-native/claudePluginPasses";
+import { DEPENDENCIES } from "../../src/engine-native/deps";
+import { p } from "../../src/engine-native/exec";
+import { makeLogger } from "../../src/engine-native/logger";
+import { makePlatform, type EngineServices } from "../../src/engine-native/services";
 import { kitHome } from "../../src/kitHome";
 import { cleanup, readArgvLog, runEngine, runPublicCli } from "../lib/goldenExecution";
 import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../lib/goldenResources";
@@ -258,6 +289,95 @@ describe("Codex settings truth", () => {
       rmSync(modelRun.home, { recursive: true, force: true });
       cleanup([syncRun]);
       rmSync(variant, { recursive: true, force: true });
+    }
+  });
+});
+
+/** A non-dry-run sync context for one in-process plugin pass; every tool is present. */
+function pluginCtx(home: string): Ctx {
+  const services: EngineServices = {
+    logger: makeLogger({ stderr: () => {}, progress: () => {}, stdout: () => {} }),
+    platform: makePlatform("linux"),
+    deps: {
+      spec: (id) => DEPENDENCIES[id],
+      probe: () => ({ state: "present" }),
+      version: async () => "",
+      path: async () => "",
+      warnMissing: () => {},
+    },
+  };
+  return {
+    repoDir: kitHome(),
+    home,
+    agentsDir: p(home, ".agents"),
+    interactive: false,
+    dryRun: false,
+    verbose: false,
+    skipBubblewrap: false,
+    skipPluginRefresh: false,
+    reconcile: false,
+    prune: false,
+    claudeCompactWindow: "",
+    claudePermissive: false,
+    claudePlugins: [],
+    claudeModel: "",
+    claudeEffort: "",
+    claudeAdvisor: "",
+    codexModel: "",
+    codexEffort: "",
+    syncConcurrency: 1,
+    failures: [],
+    targetFilterSet: true,
+    syncClaude: true,
+    syncCodex: false,
+    syncAgents: false,
+    syncOmp: false,
+    nextStepTriggers: {
+      claudePlugins: false,
+      claudeRestart: false,
+      codexRestart: false,
+      skillsRestart: false,
+      ompRestart: false,
+    },
+    services,
+  };
+}
+
+describe("Claude plugin enable-state truth", () => {
+  it("disables a SoT-false plugin at user scope from a neutral directory", async () => {
+    const pluginId = "x@mp";
+    const home = mkdtempSync(join(tmpdir(), "docks-plugin-disable-"));
+    const claudeDir = p(home, ".claude");
+    const settingsFile = p(claudeDir, "settings.json");
+    mkdirSync(p(claudeDir, "plugins"), { recursive: true });
+    writeFileSync(settingsFile, JSON.stringify({ enabledPlugins: { [pluginId]: true } }));
+    writeFileSync(
+      p(claudeDir, "plugins", "installed_plugins.json"),
+      JSON.stringify({ plugins: { [pluginId]: [{ scope: "user", version: "1.0.0" }] } }),
+    );
+    const spawns: Array<{ readonly argv: string; readonly cwd: string | undefined }> = [];
+    mocks.claudeSettings = JSON.stringify({ enabledPlugins: { [pluginId]: false } });
+    mocks.spawnProcess.mockImplementation(async (cmd, args, options) => {
+      spawns.push({ argv: [cmd, ...args].join(" "), cwd: options?.cwd });
+      return { exitCode: 0, stdout: "", stderr: "" };
+    });
+    const ctx = pluginCtx(home);
+    try {
+      await syncPlugins(ctx, claudeDir);
+
+      expect(ctx.failures).toEqual([]);
+      expect(spawns.map((spawn) => spawn.argv)).toContain(
+        `claude plugin disable ${pluginId} --scope user`,
+      );
+      expect(spawns.map((spawn) => spawn.cwd)).toEqual(spawns.map(() => tmpdir()));
+      const settings = JSON.parse(readFileSync(settingsFile, "utf8")) as {
+        enabledPlugins: Record<string, boolean>;
+      };
+      expect(settings.enabledPlugins[pluginId]).toBe(false);
+    } finally {
+      mocks.claudeSettings = undefined;
+      mocks.spawnProcess.mockReset();
+      rmSync(home, { recursive: true, force: true });
     }
   });
 });

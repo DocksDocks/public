@@ -4,14 +4,8 @@
  * plugins. Message strings, guard order, JSON semantics, and spawned argv are
  * golden-tested.
  */
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { replaceFile } from "./atomicWrite";
 import { bunBootstrap } from "./bun";
 import { syncClaudeAdvisor, syncClaudeEffort, syncClaudeModel } from "./claudeSettingsModifiers";
 import {
@@ -74,12 +68,13 @@ export async function claudeSync(ctx: Ctx): Promise<ClaudeRuntimeState> {
 
   syncClaudeRuntime(ctx, runtime);
   syncClaudeMd(ctx, claudeDir);
+  let settingsBackedUp = false;
   if (ctx.dryRun) {
     describeSettingsSync(ctx, claudeDir);
   } else {
-    commitClaudeSettings(ctx, prepared);
+    settingsBackedUp = commitClaudeSettings(ctx, prepared);
   }
-  syncRemovals(ctx, claudeDir, runtime);
+  syncRemovals(ctx, claudeDir, runtime, settingsBackedUp);
   syncCompactWindow(ctx, claudeDir);
   syncPermissive(ctx, claudeDir);
   syncClaudeModel(ctx, ctx.claudeModel);
@@ -140,8 +135,12 @@ function syncClaudeMd(ctx: Ctx, claudeDir: string): void {
   }
 
   const source = payloadText("SoT/.claude/CLAUDE.md");
-  if (writeTextIfChanged(p(claudeDir, "CLAUDE.md"), source)) {
-    change("CLAUDE.md synced");
+  const target = p(claudeDir, "CLAUDE.md");
+  // A first sync can find the user's own global instructions here; keep them.
+  const replaced = existsSync(target) && readFileSync(target, "utf8") !== source;
+  if (replaced) copyFileSync(target, `${target}.bak`);
+  if (writeTextIfChanged(target, source)) {
+    change(`CLAUDE.md synced${replaced ? " (backup at CLAUDE.md.bak)" : ""}`);
   } else {
     verbose("CLAUDE.md already in sync");
   }
@@ -189,13 +188,13 @@ function syncClaudeJson(ctx: Ctx): void {
     if (out === before) {
       changed = false;
     } else {
-      writeFileSync(`${claudeJson}.tmp`, out);
-      renameSync(`${claudeJson}.tmp`, claudeJson);
+      replaceFile(claudeJson, out);
     }
   } else {
     const obj: JsonObject = {};
     applyFilter(obj);
-    writeFileSync(claudeJson, jqStringify(obj));
+    // The file holds MCP server credentials, so a new file is private to the user.
+    replaceFile(claudeJson, jqStringify(obj), { mode: 0o600 });
   }
   if (changed) {
     change(`~/.claude.json updated (showTurnDuration${haveMcp ? ", mcpServers" : ""})`);
@@ -227,7 +226,10 @@ async function syncConnectorEnv(ctx: Ctx): Promise<void> {
         }
       }
 
-      const target = p(ctx.home, setting.target(process.env["SHELL"]));
+      const target = p(
+        ctx.home,
+        setting.target(process.env["SHELL"], (f) => existsSync(p(ctx.home, f))),
+      );
       if (ctx.dryRun) {
         echo(`[dry-run] append '${setting.line}' to ${target}`);
         return;

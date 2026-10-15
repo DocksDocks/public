@@ -32,17 +32,17 @@ Research the codebase before editing. Never change code you have not read.
 
 **4. Trace symbols.** Before modifying a symbol, trace it to its definitions and all usages. Don't assume a function's behavior or a type's shape from the call site alone.
 
-**5. Linter-loop 3-strike rule.** Don't loop more than 3 times fixing linter errors on the same file. On the third attempt, stop and ask the user — repeated failure usually means the diagnosis is wrong, not the code.
+**5. Linter-loop 3-strike rule.** Don't loop more than 3 times fixing linter errors on the same file. On the third attempt, stop and ask the user.
 
-**6. Read-before-Edit TTL.** If you haven't read a file with the Read tool in the last ~5 messages, re-read it before editing. Cached file content goes stale silently when the user edits between turns.
+**6. Read-before-Edit TTL.** If you haven't read a file with the Read tool in the last ~5 messages, re-read it before editing.
 
-**7. Big-file rule.** For files >1000 lines, prefer Grep + scoped Read (`offset` + `limit`) over reading the entire file. Whole-file reads bloat context; targeted reads keep the working set small.
+**7. Big-file rule.** For files >1000 lines, prefer Grep + scoped Read (`offset` + `limit`) over reading the entire file.
 
 **8. Todo hygiene.** Use TaskCreate for items with meaningful outcome (≥5 min, distinct deliverable). Never include operational sub-actions (linting, testing, searching, examining the codebase) as their own todos — those are sub-steps in service of higher-level tasks. Mark complete immediately when done, never in batches.
 
-**9. Literal-instruction rule.** Current frontier models follow instructions literally — they do not silently generalize from intent. Phrase requirements as explicit checklists with success criteria, not narrative.
+**9. Literal-instruction rule.** Treat explicit user requirements as checklists with success criteria; do not silently broaden scope. Write subagent prompts as explicit checklists with success criteria, not narrative.
 
-**10. Context hygiene.** Prefer `/clear` at task boundaries and `/rewind` for wrong-path detours over carrying rot forward (corrections accumulate noise; rewinds preserve the prefix and discard the bad branch). On a continuing task, run `/compact` with steering before context quality degrades. Never stop, summarize, or suggest a new session on account of context limits.
+**10. Context hygiene.** On a long task, write the state a fresh session would need to the running notes file before context quality degrades. Never stop, summarize, or suggest a new session on account of context limits.
 
 **11. Autonomy calibration.** For minor choices (naming, formatting, default values, which of two equivalent approaches), pick a reasonable option and note it — don't ask. Ask first only for scope changes, destructive actions, or decisions that change the deliverable. When the user is describing a problem or asking a question rather than requesting a change, the deliverable is your assessment — report findings and stop; don't apply fixes until asked. Don't close a finished task with "Want me to also…?" — run the obvious verification, then stop cleanly.
 

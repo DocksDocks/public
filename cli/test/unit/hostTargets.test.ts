@@ -77,4 +77,11 @@ describe("host target script contracts", () => {
       expect(generatedPinBody(repoFile(path)), path).toBe(assignment);
     }
   });
+
+  // Windows PowerShell 5.1 reads a script without a BOM in the ANSI code page,
+  // where a UTF-8 em dash decodes to a closing quote and breaks the parse.
+  it.each(["docks-kit.ps1", "install.ps1"])("keeps %s pure ASCII", (path) => {
+    const bytes = readFileSync(resolve(REPO_DIR, path));
+    expect([...bytes].some((byte) => byte > 0x7f)).toBe(false);
+  });
 });

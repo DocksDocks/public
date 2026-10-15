@@ -50,8 +50,7 @@ package with the pinned `effect`.
 ## 3. curl installer (POSIX)
 
 ```
-curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
-bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh
+tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; (exit "$rc")
 ```
 
 Download-then-run, never `curl | bash` — stream truncation has bitten this
@@ -70,8 +69,15 @@ Remove-Item "$env:TEMP\docks-kit-install.ps1"
 
 Download the script before execution. Never stream it into PowerShell. The
 installer bootstraps Bun when absent. It then runs
-`bun add -g docks-kit@latest` and copies the CLI plus Bun into
-`%USERPROFILE%\.local\bin`.
+`bun add -g docks-kit@latest` and runs `docks-kit --version` from Bun's global
+bin directory (`%USERPROFILE%\.bun\bin` by default). The CLI stays in that
+directory, because Bun's `docks-kit.exe` shim cannot run without the
+`docks-kit.bunx` file next to it. When the directory is not on `PATH`, the
+installer prints the command that adds it. The installer removes a copy of
+`docks-kit.exe` that an earlier installer left in `%USERPROFILE%\.local\bin`
+when the copy is identical to the current shim. When another `docks-kit`
+executable earlier on `PATH` shadows Bun's shim, the installer names that file.
+It also prints the command that removes the file and exits with status 1.
 
 ## Keeping the kit up to date
 
@@ -99,11 +105,13 @@ docks-kit checkout. `DOCKS_KIT_HOME` lets you target a specific checkout on
 purpose.
 
 Autodetection: a kit home with `.git` is a checkout (requires a clean
-worktree and an upstream; `git pull --ff-only`, re-runs
-`bun install --frozen-lockfile` when the lockfile changed); a kit home
-under `node_modules` is a global package (`bun add -g` /
-`npm install -g docks-kit@latest`). The chained sync skips refresh-only work
-for already-installed Claude/Codex plugins but still installs missing ones.
+worktree and an upstream; `git pull --ff-only`, then re-runs
+`bun install --frozen-lockfile` when the pull changed `bun.lock` or
+`package.json`); a kit home under `node_modules` is a global package
+(`bun add -g` / `npm install -g docks-kit@latest`). The chained sync is a
+plain flag-less `docks-kit sync`. It refreshes plugin marketplaces and
+installed plugins even when the kit is already current. Pass `--no-sync`, then
+run `docks-kit sync --skip-plugin-refresh` to skip the refresh-only work.
 A compiled binary inside a checkout updates the checkout; on the next invocation
 the launcher bypasses that now-stale binary and uses updated source until rebuilt.
 Every `docks-kit sync` also does a best-effort behind-upstream check and
@@ -155,7 +163,10 @@ sync/config reads.
 - Node/npm for npm-global LSP servers
 - rustup is optional and needed only for the Rust language server
 - jq is optional doctor/test tooling; sync has no jq runtime dependency
-- curl is required only when a source launcher must download Bun. The POSIX
-  launchers run `install.sh`; Windows runs `install.ps1` through PowerShell.
-  An already-present Bun does not require curl.
+- curl is needed only to download Bun's upstream installer when Bun is absent:
+  by the POSIX `docks-kit` launcher, by the POSIX `install.sh`, and by sync's
+  Bun bootstrap on every host, release binaries included
+  (`docks-kit toolchain ensure bun` too). `docks-kit.ps1` and `install.ps1`
+  download Bun's installer with Invoke-WebRequest. An already-present Bun needs
+  no curl.
 - See `docks-kit toolchain check` for the full picture on this machine

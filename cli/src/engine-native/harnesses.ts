@@ -33,14 +33,27 @@ function normalizeHarnesses(selection: ReadonlyArray<unknown>): Array<Harness> {
   return HARNESSES.filter((harness) => selected.has(harness));
 }
 
-/** Resolve the engine home root from HOME with the platform home as fallback. */
-export function engineHome(env: NodeJS.ProcessEnv = process.env): string {
-  const home = env["HOME"];
+/**
+ * Resolve the engine home root the way the harnesses resolve `~`. On Windows,
+ * USERPROFILE applies and HOME is ignored. Elsewhere, HOME applies. The
+ * platform home is the fallback.
+ */
+export function engineHome(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const home = platform === "win32" ? env["USERPROFILE"] : env["HOME"];
   return home !== undefined && home !== "" ? home : homedir();
 }
 
-/** Read the stored selection; corruption, a too-new schema, or I/O errors yield undefined. */
-export function readHarnessSelection(home: string): ReadonlyArray<Harness> | undefined {
+/** Result of a read of the stored selection that keeps the failure reason. */
+export type StoredSelection =
+  | { kind: "stored"; selection: ReadonlyArray<Harness> }
+  | { kind: "missing" }
+  | { kind: "unreadable"; reason: string };
+
+/** Read the stored selection; corruption, a too-new schema, or I/O errors yield "unreadable". */
+export function loadHarnessSelection(home: string): StoredSelection {
   try {
     const selection = withKitDb(home, "read", (db) =>
       normalizeHarnesses(
@@ -50,10 +63,21 @@ export function readHarnessSelection(home: string): ReadonlyArray<Harness> | und
           .map((row) => row["harness"]),
       ),
     );
-    return selection !== undefined && selection.length > 0 ? selection : undefined;
-  } catch {
-    return undefined;
+    return selection !== undefined && selection.length > 0
+      ? { kind: "stored", selection }
+      : { kind: "missing" };
+  } catch (error) {
+    return {
+      kind: "unreadable",
+      reason: error instanceof Error ? error.message : String(error),
+    };
   }
+}
+
+/** Read the stored selection; corruption, a too-new schema, or I/O errors yield undefined. */
+export function readHarnessSelection(home: string): ReadonlyArray<Harness> | undefined {
+  const stored = loadHarnessSelection(home);
+  return stored.kind === "stored" ? stored.selection : undefined;
 }
 
 export function writeHarnessSelection(home: string, selection: ReadonlyArray<Harness>): void {

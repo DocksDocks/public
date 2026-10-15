@@ -1,6 +1,6 @@
 ---
 name: plugin-bootstrap-agent
-description: Use when editing `cli/src/engine-native/claudePlugins.ts` plugin functions (`syncPlugins`, `pluginUserScopeInstalled`, `syncOptionalPlugins`, `enableOptionalPlugin`, `syncLspServers`) or `cli/src/engine-native/codexSync.ts` marketplace/plugin functions (`syncMarketplace`, `removeLegacyDocksMarketplace`, `enabledPluginIds`, plugin refresh). Not for settings merge or universal skill install.
+description: Use when editing `cli/src/engine-native/claudePluginPasses.ts` (`syncPlugins`, `pluginUserScopeInstalled`), `claudeOptionalPlugins.ts` (`syncOptionalPlugins`, `enableOptionalPlugin`), `claudeLsp.ts` (`syncLspServers`, `installNpmServers`, `installRustAnalyzer`), or `cli/src/engine-native/codexPlugins.ts` (`syncMarketplace`, `mergeMarketplace`, `removeLegacyDocksMarketplace`, `marketplaceSource`, `enabledPluginIds`, `syncPlugins` plugin refresh). Not for settings merge or universal skill install.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -13,7 +13,8 @@ refresh.
 
 <constraint>
 Claude plugin prune uses key presence in SoT `enabledPlugins`, not truthiness.
-`false` means installed but globally disabled and must be kept.
+`false` means installed but globally disabled and must be kept. A plugin that
+this run opts in with `--claude-plugin` is also kept.
 </constraint>
 
 <constraint>
@@ -46,14 +47,14 @@ and no `missingToolCount` entry.
 
 | Concern | Symbol |
 |---------|--------|
-| Claude reconcile | `syncPlugins` |
-| User-scope installed predicate | `pluginUserScopeInstalled` |
-| Optional plugins | `syncOptionalPlugins`, `enableOptionalPlugin` |
-| LSP binaries, npm channel | `syncLspServers`, `installNpmServers` |
-| LSP binaries, rustup channel | `syncLspServers`, `installRustAnalyzer` |
-| Codex marketplace | `syncMarketplace`, `mergeMarketplace` |
-| Codex legacy cleanup | `removeLegacyDocksMarketplace`, `marketplaceSource` |
-| Codex plugin ids | `enabledPluginIds` |
+| Claude reconcile | `claudePluginPasses.ts syncPlugins` |
+| User-scope installed predicate | `claudePluginPasses.ts pluginUserScopeInstalled` |
+| Optional plugins | `claudeOptionalPlugins.ts syncOptionalPlugins, enableOptionalPlugin` |
+| LSP binaries, npm channel | `claudeLsp.ts syncLspServers, installNpmServers` |
+| LSP binaries, rustup channel | `claudeLsp.ts syncLspServers, installRustAnalyzer` |
+| Codex marketplace | `codexPlugins.ts syncMarketplace, mergeMarketplace` |
+| Codex legacy cleanup | `codexPlugins.ts removeLegacyDocksMarketplace, marketplaceSource` |
+| Codex plugin ids | `codexPlugins.ts enabledPluginIds` |
 
 ## Success Criteria
 

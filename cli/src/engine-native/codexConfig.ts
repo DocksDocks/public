@@ -4,10 +4,16 @@
  * be a behavior change. Guard order, message strings, and backup behavior
  * are golden-tested.
  */
-import { copyFileSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 import { payloadDisplayPath } from "../payload";
-import { isTomlHeaderLine, mergeTableSettings, mergeTopLevelSettings } from "./codexToml";
+import { replaceFile } from "./atomicWrite";
+import {
+  isTomlHeaderLine,
+  mergeTableSettings,
+  mergeTopLevelSettings,
+  tomlContinuationLines,
+} from "./codexToml";
 import type { Ctx } from "./index";
 
 // --------------------------------------------------------------- config ----
@@ -37,21 +43,26 @@ export function syncConfig(ctx: Ctx, sotConfigText: string, userConfig: string):
   // overwrite the recovery copy with already-merged content.
   const before = readFileSync(userConfig, "utf8");
   const staging = `${userConfig}.merge.tmp`;
-  // Normalize once before record transforms because CR bytes change table-header identity.
-  writeFileSync(staging, before.replace(/\r\n/g, "\n"));
+  // Normalize once before record transforms: a BOM hides the first key or
+  // header, and CR bytes change table-header identity.
+  writeFileSync(staging, before.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n"));
 
   scrubDeprecatedFeatures(ctx, staging);
   removeRetiredPluginTables(ctx, staging);
+  removeRetiredTopLevelSettings(ctx, staging);
   mergeTopLevelSettings(sotConfigText, staging);
   mergeTableSettings(sotConfigText, staging);
 
-  if (readFileSync(staging, "utf8") === before) {
-    rmSync(staging, { force: true });
+  const merged = readFileSync(staging, "utf8");
+  rmSync(staging, { force: true });
+  if (merged === before) {
     verbose("Codex config already in sync");
   } else {
     copyFileSync(userConfig, `${userConfig}.bak`);
-    renameSync(staging, userConfig);
-    change("Codex config merged (backup at config.toml.bak; user-only keys/tables preserved)");
+    replaceFile(userConfig, merged);
+    change(
+      "Codex config merged (backup at config.toml.bak; SoT tables replaced wholesale; user-only top-level keys and tables preserved)",
+    );
     ctx.nextStepTriggers.codexRestart = true;
   }
 }
@@ -106,8 +117,7 @@ function scrubDeprecatedFeatures(ctx: Ctx, userConfig: string): void {
   const next = scrubDeprecatedFeaturesText(content);
   if (next === content) return;
 
-  writeFileSync(`${userConfig}.tmp`, next);
-  renameSync(`${userConfig}.tmp`, userConfig);
+  replaceFile(userConfig, next);
   change("Codex: scrubbed deprecated [features].use_legacy_landlock");
 }
 
@@ -152,7 +162,57 @@ export function removeRetiredPluginTables(ctx: Ctx, userConfig: string): void {
   const present = retiredPluginTables(content);
   if (present.length === 0) return;
 
-  writeFileSync(`${userConfig}.tmp`, removeRetiredPluginTablesText(content));
-  renameSync(`${userConfig}.tmp`, userConfig);
+  replaceFile(userConfig, removeRetiredPluginTablesText(content));
   for (const id of present) change(`Codex: removed retired plugin table [plugins."${id}"]`);
+}
+
+/**
+ * Top-level settings the kit retired. Each sync removes a deployed top-level
+ * line that holds exactly the retired kit value. A different user value stays.
+ */
+const RETIRED_TOP_LEVEL_SETTINGS: ReadonlyArray<{
+  readonly setting: string;
+  readonly pattern: RegExp;
+}> = [
+  // Codex 0.159.0 deprecated `personality`; "pragmatic" no longer selects a style.
+  {
+    setting: 'personality = "pragmatic"',
+    pattern: /^[ \t]*personality[ \t]*=[ \t]*"pragmatic"[ \t]*$/,
+  },
+];
+
+/** Drop top-level lines that hold a retired kit setting; returns the text and the removed settings. */
+function removeRetiredTopLevelSettingsText(content: string): {
+  readonly text: string;
+  readonly removed: ReadonlyArray<string>;
+} {
+  const lines = content.split("\n");
+  const continuation = tomlContinuationLines(lines);
+  const removed: Array<string> = [];
+  const kept: Array<string> = [];
+  let inTable = false;
+  for (const [index, line] of lines.entries()) {
+    if (continuation[index] !== true && !inTable) {
+      if (isTomlHeaderLine(line)) {
+        inTable = true;
+      } else {
+        const retired = RETIRED_TOP_LEVEL_SETTINGS.find(({ pattern }) => pattern.test(line));
+        if (retired !== undefined) {
+          removed.push(retired.setting);
+          continue;
+        }
+      }
+    }
+    kept.push(line);
+  }
+  return { text: removed.length === 0 ? content : kept.join("\n"), removed };
+}
+
+function removeRetiredTopLevelSettings(ctx: Ctx, userConfig: string): void {
+  const { change } = ctx.services.logger;
+  const { text, removed } = removeRetiredTopLevelSettingsText(readFileSync(userConfig, "utf8"));
+  if (removed.length === 0) return;
+
+  replaceFile(userConfig, text);
+  for (const setting of removed) change(`Codex: removed retired top-level setting ${setting}`);
 }

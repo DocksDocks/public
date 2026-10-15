@@ -4,8 +4,9 @@
 enabled harness, `docks-kit models` and the picker list live model IDs when
 available. Claude uses the Claude Code login to query the Anthropic models API
 and caches the result for six hours in `~/.docks-kit/kit.db`; Codex reads
-`~/.codex/models_cache.json`; omp runs `omp models --json`. The kit never needs
-omp to list Claude models.
+`models_cache.json` in the Codex home (`$CODEX_HOME` when set, else
+`~/.codex`); omp runs `omp models --json`. The kit never needs omp to list
+Claude models.
 
 Live lists retain the curated aliases and notes, but omit curated IDs absent
 from the live source. A disabled harness, missing login/cache, or unavailable

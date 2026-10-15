@@ -7,9 +7,7 @@
 
 ## Asking me things
 
-A question typed in prose is just text I may or may not act on. The `ask` tool renders a
-blocking picker, waits indefinitely (`ask.timeout = 0`), and records my answer in the
-transcript. If you actually need an answer, it MUST go through `ask`.
+If you need an answer from me, it MUST go through `ask`; do not ask in prose.
 
 MUST use `ask` before:
 - Anything irreversible or destructive: deleting/overwriting files or data you did not create,
@@ -48,8 +46,7 @@ such rule. In another language, follow the normal grammar of that language. Port
 Spanish, French, Italian, and German merge a preposition with an article, and that merge
 is required, not optional.
 
-Treat the word limits as approximate outside English. Some languages need more words to
-carry the same content.
+Treat the word limits as approximate outside English.
 
 - Use the simplest precise technical term.
 - Use each term consistently.

@@ -1,11 +1,13 @@
 import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pluginUserScopeInstalled } from "./engine-native/claudePluginPasses";
+import { codexHome } from "./engine-native/codexPaths";
+import { engineHome } from "./engine-native/harnesses";
+import { isObject, readJsonFile } from "./engine-native/jq";
+import type { JsonObject } from "./engine-native/sharedTypes";
+import { skillBase } from "./engine-native/skillsManifest";
 import { COPY_MARKER } from "./engine-native/skillsSync";
 import { payloadText } from "./payload";
-
-export { homedir };
 
 export type Tool = "claude" | "codex";
 
@@ -16,7 +18,7 @@ const readJsonText = (text: string): any => JSON.parse(text);
 export const sotClaudeSettings = (): any => readJsonText(payloadText("SoT/.claude/settings.json"));
 
 export const deployedClaudeSettings = (): any | undefined => {
-  const p = join(homedir(), ".claude", "settings.json");
+  const p = join(engineHome(), ".claude", "settings.json");
   return existsSync(p) ? readJson(p) : undefined;
 };
 
@@ -38,7 +40,25 @@ export const sotCodexModel = (): string | undefined =>
   topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model");
 
 export const deployedCodexModel = (): string | undefined =>
-  tomlModel(join(homedir(), ".codex", "config.toml"));
+  tomlModel(join(codexHome(engineHome()), "config.toml"));
+
+const installedPluginsPath = (): string =>
+  join(engineHome(), ".claude", "plugins", "installed_plugins.json");
+
+/** Read the user-scope plugin records; a missing or malformed file yields `undefined`. */
+const readInstalledPlugins = (path: string): JsonObject | undefined => {
+  const doc = readJsonFile(path);
+  if (doc === undefined || !isObject(doc)) return undefined;
+  const plugins = doc["plugins"];
+  return plugins !== undefined && isObject(plugins) ? plugins : undefined;
+};
+
+/** State of ~/.claude/plugins/installed_plugins.json: missing, an object with object `plugins`, or not. */
+export const installedPluginsState = (): "absent" | "valid" | "malformed" => {
+  const path = installedPluginsPath();
+  if (!existsSync(path)) return "absent";
+  return readInstalledPlugins(path) === undefined ? "malformed" : "valid";
+};
 
 /** Installed plugins (user scope) vs SoT enabledPlugins tri-state. */
 export const pluginsView = (): Array<{
@@ -47,10 +67,8 @@ export const pluginsView = (): Array<{
   installed: boolean;
 }> => {
   const sot: Record<string, boolean> = sotClaudeSettings().enabledPlugins ?? {};
-  const installedPath = join(homedir(), ".claude", "plugins", "installed_plugins.json");
-  const installed: Record<string, unknown> = existsSync(installedPath)
-    ? (readJson(installedPath).plugins ?? {})
-    : {};
+  const installedPath = installedPluginsPath();
+  const installed: Record<string, unknown> = readInstalledPlugins(installedPath) ?? {};
   const names = new Set([...Object.keys(sot), ...Object.keys(installed)]);
   return [...names].sort().map((plugin) => ({
     plugin,
@@ -71,8 +89,8 @@ export const skillsView = (): Array<{
     .split("\n")
     .map((l) => l.replace(/#.*$/, "").trim())
     .filter((l) => l.length > 0)
-    .map((slug) => slug.split("/").pop() as string);
-  const home = homedir();
+    .map(skillBase);
+  const home = engineHome();
   const skillsDir = join(home, ".agents", "skills");
   const installed = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })

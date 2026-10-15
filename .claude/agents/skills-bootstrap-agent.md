@@ -1,6 +1,6 @@
 ---
 name: skills-bootstrap-agent
-description: Use when editing `cli/src/engine-native/skillsSync.ts` (`skillsSync`, `syncUniversal`, `healClaudeSymlink`, `reconcileRemovals`, `updateSnapshot`, `normalizeManifest`) or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain reporting or version probes, or plugin reconcile.
+description: Use when editing `cli/src/engine-native/skillsSync.ts` (orchestration), `skillsInstall.ts` (`syncUniversal`, `skillsCli`), `skillsLinks.ts` (`healClaudeSymlink`, `linkOrCopy`, `COPY_MARKER`), `skillsPrune.ts` (`reconcileRemovals`, `updateSnapshot`), `skillsManifest.ts` (`normalizeManifest`, `skillBase`), or `SoT/.agents/skills.txt`. Not for Bun bootstrap, SKILL.md authoring, toolchain reporting or version probes, or plugin reconcile.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -35,17 +35,19 @@ Always install for both `claude-code` and `codex` so the canonical
 
 | Concern | Symbol |
 |---------|--------|
-| Overall skills sync | `skillsSync` |
-| Manifest parser | `normalizeManifest` |
-| Universal install | `syncUniversal` |
-| Claude symlink repair | `healClaudeSymlink`, `linkOrCopy` |
-| Prune removals | `reconcileRemovals` |
-| Snapshot | `updateSnapshot` |
+| Overall skills sync | `skillsSync.ts skillsSync` |
+| Manifest parser | `skillsManifest.ts normalizeManifest` |
+| Slug to directory name | `skillsManifest.ts skillBase` |
+| Universal install | `skillsInstall.ts syncUniversal` |
+| Claude symlink repair | `skillsLinks.ts healClaudeSymlink`, `linkOrCopy` |
+| Prune removals | `skillsPrune.ts reconcileRemovals` |
+| Snapshot | `skillsPrune.ts updateSnapshot` |
 | Bun dependency | `bun.ts bunBootstrap` (toolchain owner; do not duplicate) |
 
 ## Success Criteria
 
-- Slugs follow `<owner>/<repo>`.
+- Each slug names one installed skill: `<owner>/<repo>@<skill-name>`, or a path
+  to one skill directory.
 - Install command keeps slug before `-a` and names both agents.
 - Snapshot is still written last.
 - `bun run golden:mutation` and `bun x tsc --noEmit -p cli` pass when behavior
@@ -53,6 +55,10 @@ Always install for both `claude-code` and `codex` so the canonical
 
 ## Gotchas
 
-- Slug after `-a` can exit successfully while installing nothing.
-- Real directories at `~/.claude/skills/<name>` are user content; warn, do not
-  delete automatically.
+- With the slug after `-a`, the variadic flag takes the slug as an agent name,
+  and skills@1.7.0 exits 1 with `Missing required argument: source`.
+- Unmarked real directories at `~/.claude/skills/<name>` are user content; warn,
+  do not delete automatically. A copy marked with `.docks-kit-copied-skill` is
+  kit-owned: sync replaces it, and `--prune` reclaims it.
+- `--prune` must not call `skills remove`. In skills@1.7.0, that command
+  deletes the same-named skill directory of every known agent.

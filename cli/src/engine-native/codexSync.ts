@@ -5,6 +5,7 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
+import { resolveEffort } from "../efforts";
 import {
   payloadBytes,
   payloadDisplayPath,
@@ -14,8 +15,9 @@ import {
 } from "../payload";
 import { syncConfig } from "./codexConfig";
 import { removeRetiredImportedHooks } from "./codexHooks";
+import { codexHome } from "./codexPaths";
 import { removeLegacyDocksMarketplace, syncMarketplace, syncPlugins } from "./codexPlugins";
-import { syncCodexEffort, syncCodexModel } from "./codexToml";
+import { replaceTopLevelSetting, syncCodexEffort, syncCodexModel } from "./codexToml";
 import { p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
@@ -25,25 +27,49 @@ export { removeRetiredPluginTablesText } from "./codexConfig";
 export { codexNextSteps, codexSummary } from "./codexStatus";
 
 export async function codexSync(ctx: Ctx): Promise<void> {
-  const codexDir = p(ctx.home, ".codex");
+  const codexDir = codexHome(ctx.home);
   const sotConfig = payloadText("SoT/.codex/config.toml");
   const userConfig = p(codexDir, "config.toml");
 
+  // Merge the SoT with the --codex-model / --codex-effort values already applied.
+  // A repeated modifier run then merges to the same bytes and keeps config.toml.bak.
+  let deployedSotConfig = sotConfig;
+  if (ctx.codexModel !== "") {
+    deployedSotConfig = replaceTopLevelSetting(
+      deployedSotConfig,
+      "model",
+      `model = "${ctx.codexModel}"`,
+    );
+  }
+  if (ctx.codexEffort !== "") {
+    deployedSotConfig = replaceTopLevelSetting(
+      deployedSotConfig,
+      "model_reasoning_effort",
+      `model_reasoning_effort = "${resolveEffort("codex", ctx.codexEffort)}"`,
+    );
+  }
+
   await ensureBubblewrap(ctx);
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true });
-  syncConfig(ctx, sotConfig, userConfig);
+  // Only a real sync compares against this text; a dry run reads nothing.
+  const deployedBefore = ctx.dryRun
+    ? undefined
+    : existsSync(userConfig)
+      ? readFileSync(userConfig, "utf8")
+      : "";
+  syncConfig(ctx, deployedSotConfig, userConfig);
   removeRetiredImportedHooks(ctx, codexDir);
-  syncCodexModel(ctx, ctx.codexModel);
-  syncCodexEffort(ctx, ctx.codexEffort);
+  syncCodexModel(ctx, ctx.codexModel, deployedBefore);
+  syncCodexEffort(ctx, ctx.codexEffort, deployedBefore);
   syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"));
   syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"));
-  syncMarketplace(
+  const unresolvedMarketplace = syncMarketplace(
     ctx,
     payloadText("SoT/.codex/plugins/marketplace.json"),
     p(ctx.agentsDir, "plugins", "marketplace.json"),
   );
   await removeLegacyDocksMarketplace(ctx, userConfig);
-  await syncPlugins(ctx, sotConfig);
+  await syncPlugins(ctx, sotConfig, unresolvedMarketplace);
 }
 
 // ---------------------------------------------------------- bubblewrap ----

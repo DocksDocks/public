@@ -1,13 +1,13 @@
 /**
  * EngineNative universal-skill install pass (`npx skills@<pin> add`) with
  * Claude symlink healing. Split from skillsSync.ts; the orchestration still
- * lives there. The prune pass (skillsPrune.ts) shares `skillsCli`.
+ * lives there.
  */
 import { p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { ExitError } from "./parseArgs";
 import { healClaudeSymlink, isDir } from "./skillsLinks";
-import { normalizeManifest } from "./skillsManifest";
+import { normalizeManifest, skillBase } from "./skillsManifest";
 import { field } from "./toolchain";
 
 export interface SkillsState {
@@ -15,7 +15,7 @@ export interface SkillsState {
 }
 
 /** skills::_skills_cli — the pinned npx package spec. */
-export function skillsCli(ctx: Ctx): string {
+function skillsCli(ctx: Ctx): string {
   const version = field("skills-cli", "verified");
   if (version !== "") return `skills@${version}`;
   ctx.services.logger.err(
@@ -46,7 +46,7 @@ export async function syncUniversal(
   let healed = 0;
 
   for (const slug of normalizeManifest(manifest)) {
-    const base = slug.slice(slug.lastIndexOf("/") + 1);
+    const base = skillBase(slug);
 
     if (ctx.dryRun) {
       if (isDir(p(skillsDir, base))) {
@@ -75,6 +75,11 @@ export async function syncUniversal(
     clearProgress();
     if (res.error === undefined && res.exitCode === 0) {
       added++;
+      if (!isDir(p(skillsDir, base))) {
+        warn(
+          `Installed skill name differs from slug ${slug}; declare it as <owner>/<repo>@<skill-name>`,
+        );
+      }
     } else {
       warn(`Failed to install universal skill: ${slug}`);
       failed++;
@@ -99,7 +104,7 @@ export async function syncUniversal(
   }
   if (failed > 0) {
     warn(
-      `${failed} skill install(s) failed — re-run sync or install manually with: npx skills add <slug> -g -y -a claude-code codex`,
+      `${failed} skill install(s) failed — re-run sync or install manually with: npx --yes ${skillsCli(ctx)} add <slug> -g -y -a claude-code codex`,
     );
   }
 }

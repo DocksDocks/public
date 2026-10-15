@@ -31,11 +31,16 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
   materialized settings, writes runtime assets, commits settings, then performs
   readiness-gated legacy cleanup. Modifiers run after the base commit, removals
   before plugins, and LSP checks after plugin state.
-- **Pipeline concurrency is bounded.** Selected Claude, Codex, and skills
-  pipelines overlap through one input-ordered pool. The production default is
-  3; `DOCKS_KIT_SYNC_CONCURRENCY=1` restores serial execution for golden tests
-  and debugging (`2` allows two-way overlap). Each individual pipeline remains
-  serial, and summaries retain canonical Claude, Codex, skills order.
+- **Pipeline concurrency is bounded.** Selected Claude, Codex, skills, and omp
+  pipelines run through one input-ordered pool (`syncConcurrency.ts`
+  `runBounded`). The production default cap is 3. When all four pipelines are
+  selected, omp starts only after an earlier pipeline settles. After the first
+  rejection, started pipelines drain and queued pipelines never start.
+  `DOCKS_KIT_SYNC_CONCURRENCY=1` restores serial execution for golden tests
+  and debugging (`2` allows two-way overlap). A populated skills manifest with
+  the `claude` and `agents` targets selected forces serial execution
+  (`syncConcurrencyForManifest`). Each individual pipeline remains serial, and
+  summaries keep the Claude, Codex, skills, omp order.
 - **External CLIs stay external.** `claude`, `codex`, `npx`, `npm`, `bun`,
   `curl`, and platform package managers are spawned with argv arrays,
   not shell command strings except where an external installer contract
@@ -50,7 +55,8 @@ explicit removed-engine diagnostic and exits 2 with the recovery tag message.
 
 The default run reads like a change report: only actual changes, actionable
 warnings, and the summary. Status-quo confirmations exist but are opt-in.
-(Rationale + full call-site audit: `docs/plans/active/cli-log-ux-overhaul.md`.)
+(Rationale: the plan record shipped in commit 13214bc. Recover it with
+`git log -- docs/plans/finished/`.)
 
 ### Channels and levels
 
@@ -116,46 +122,61 @@ changed → restart line; skills changed → discovery line) or under `--verbose
 
 ### Platform seam
 
-All host detection routes through `os/index.ts`, which holds the engine's only
-`process.platform` read and keeps platform normalization injectable for tests.
+All host detection routes through `os/index.ts`. Its `rawPlatform` function
+holds the engine's host-detection `process.platform` read and keeps platform
+normalization injectable for tests. Two direct reads remain: the POSIX-only
+`chmod` guard in `kitDb.ts` and the default `platform` argument of
+`harnesses.ts` `engineHome`.
 Per-OS facts live in `os/linux.ts`, `os/darwin.ts`, and `os/windows.ts` behind
 `HostOs`; consumers select those facts through the package rather than branching
 on the host directly.
 
 ### Verbosity plumbing
 
-`--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands;
-`DOCKS_KIT_VERBOSE=1` selects it on the harness-private raw channel (same
-`${VAR:-default}` contract as the other `Ctx` env globals). The default
-service factory returns a raw Logger. `runEngineNative` wraps the default or
-injected Logger with explicit delegates and owns the sole `ctx.verbose` gate.
+`--verbose` / `-v` on the public `sync`, `model`, and `toolchain` commands
+selects verbose output. On the harness-private raw channel,
+`DOCKS_KIT_VERBOSE=1` also selects it. Only the raw channel honors the
+unprefixed `Ctx` env globals (`engineCtx.ts` `ENV_GLOBAL_KEYS`, with the
+`${VAR:-default}` contract). `main.ts` passes `{ envGlobals: true }` to
+`runEngineNative` only on that channel. The public `engine()` seam ignores
+these variables, and `engineCapture` removes them from the child environment.
+The default service factory returns a raw Logger. `runEngineNative` wraps the
+default or injected Logger with explicit delegates and owns the sole
+`ctx.verbose` gate.
 There is no factory-level verbosity callback, module-global verbosity flag, or
 active logger binding.
 
 ## Module Map
 
-| Module             | Owns                                                                                                                                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `parseArgs.ts`     | engine usage, target selection, flag parsing, legacy rename hints, model flag validation                                                                                                           |
-| `index.ts`         | sync orchestration, target dispatch, run summary and next-step blocks                                                                                                                              |
-| `../payload.ts`    | generated text/byte payload reads and presentation-only source labels                                                                                                                              |
-| `claudeSync.ts`    | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries |
-| `bun.ts`           | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure                                                                                                 |
-| `claudeRuntime.ts` | sentinel validation, absolute runtime paths, no-cutover settings projection, and per-host statusline and failure-hook command materialization                                                      |
-| `settings.ts`      | pure Claude settings merge/reconcile semantics and permission-array union                                                                                                                          |
-| `claudeModel.ts`   | deployed Claude model modifier and direct `model claude` write path                                                                                                                                |
-| `codexSync.ts`     | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh                                                                                             |
-| `codexToml.ts`     | line-based top-level TOML replacement and deployed Codex model modifier                                                                                                                            |
-| `skillsSync.ts`    | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot                                                                                |
-| `toolchain.ts`     | tool presence/version probes, verified-version floor reporting, report table                                                                                                                       |
-| `modes.ts`         | direct `model` and `toolchain` modes                                                                                                                                                               |
-| `models.ts`        | model catalog listing and validation                                                                                                                                                               |
-| `jq.ts`            | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it                                                                                       |
-| `exec.ts`          | slash-stable path helpers, host-aware PATH probes and invocation, capture/spawn wrappers, and change-detecting write/copy helpers                                                                  |
-| `logger.ts`        | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts`                                                                                            |
-| `deps.ts`          | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing`          |
-| `os/`              | host reader, injected platform normalization, and per-OS `HostOs` fact modules                                                                                                                     |
-| `services.ts`      | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative`                     |
+| Module                       | Owns                                                                                                                                                                                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parseArgs.ts`               | engine usage, target selection, argv dispatch loop, legacy rename hints; re-exports the `parseHelp.ts` help text and early-exit error                                                                                                    |
+| `parseModifiers.ts`          | deploy-time modifier metadata, scalar modifier setters, compact-window and opt-in plugin parsing, modifier and model flag validation                                                                                                     |
+| `index.ts`                   | entry routing (`model`/`toolchain`/`sync`) and the run-scoped verbosity gate                                                                                                                                                             |
+| `engineCtx.ts`               | `Ctx` shape and `makeCtx`; the unprefixed env globals (`ENV_GLOBAL_KEYS`) apply only on the native-raw channel                                                                                                                           |
+| `syncDispatch.ts`            | pipeline selection, pool dispatch, run summary, next-step blocks, and the `--- Failures ---` ledger                                                                                                                                      |
+| `syncConcurrency.ts`         | input-ordered bounded pool (`runBounded`) and the manifest-driven serial rule (`syncConcurrencyForManifest`)                                                                                                                             |
+| `../payload.ts`              | generated text/byte payload reads and presentation-only source labels                                                                                                                                                                    |
+| `claudeSync.ts`              | Claude pipeline: Bun bootstrap, prepared settings transaction, runtime assets, deploy-time modifiers, `~/.claude.json`, readiness-gated removed artifacts, plugins, optional plugins, LSP binaries                                       |
+| `bun.ts`                     | per-run memoized Bun resolution/bootstrap shared by the Claude runtime and direct toolchain ensure                                                                                                                                       |
+| `claudeRuntime.ts`           | sentinel validation, absolute runtime paths, no-cutover settings projection, and per-host statusline and failure-hook command materialization                                                                                            |
+| `settings.ts`                | pure Claude settings merge/reconcile semantics and permission-array union                                                                                                                                                                |
+| `claudeSettings.ts`          | Claude settings preflight, prepare/commit transaction, dry-run description, and the compact-window and permissive modifiers                                                                                                              |
+| `claudeSettingsModifiers.ts` | atomic top-level Claude settings modifiers (model, effort, advisor) and the direct `model claude` write path                                                                                                                             |
+| `claudeRemovals.ts`          | force-prune of retired Claude artifacts and the `claudeRetired.ts` permission inventory without `--reconcile`                                                                                                                            |
+| `codexSync.ts`               | Codex pipeline: bubblewrap check, config merge, rules, AGENTS.md, personal marketplace, plugin refresh                                                                                                                                   |
+| `codexToml.ts`               | line-based top-level TOML replacement and deployed Codex model modifier                                                                                                                                                                  |
+| `skillsSync.ts`              | universal skill install/prune, ordered symlink/junction/copy fallback, Claude entry healing, managed-skill snapshot                                                                                                                      |
+| `ompSync.ts`                 | omp pipeline orchestration and summary; `ompFileDeploy.ts`, `ompMarketplace.ts`, `ompPlugins.ts`, and `ompRemovals.ts` own the file, marketplace, plugin, and retired-key passes; `ompPaths.ts` resolves roots; `ompYaml.ts` merges YAML |
+| `toolchain.ts`               | tool presence/version probes, verified-version floor reporting, report table                                                                                                                                                             |
+| `modes.ts`                   | direct `model` and `toolchain` modes                                                                                                                                                                                                     |
+| `models.ts`                  | model catalog listing and validation                                                                                                                                                                                                     |
+| `jq.ts`                      | JSON helpers that preserve jq-style merge/order/stringify behavior where the deployed file contract needs it                                                                                                                             |
+| `exec.ts`                    | slash-stable path helpers, host-aware PATH probes and invocation, capture/spawn wrappers, and change-detecting write/copy helpers                                                                                                        |
+| `logger.ts`                  | Logger shape + stable raw stdout/stderr sink factory; the run-scoped verbosity gate lives in `index.ts`                                                                                                                                  |
+| `deps.ts`                    | external-tool registry: identity, requirement class, presence probe, supported-host install hints, per-manager missing-tool dedup; callers supply the current run Logger to `warnMissing`                                                |
+| `os/`                        | host reader, injected platform normalization, and per-OS `HostOs` fact modules                                                                                                                                                           |
+| `services.ts`                | shared raw-Logger + DependencyManager + Platform factory; wrapped in Effect Layers at `cli/src/services.ts`, with the run-scoped Logger gate applied only by `runEngineNative`                                                           |
 
 ## Platform Support
 

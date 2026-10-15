@@ -1,5 +1,6 @@
 import { GlobalFlag } from "effect/unstable/cli";
 import { docsCommand } from "./commands/docs";
+import { harnessesCommand } from "./commands/harnesses";
 import { modelCommand } from "./commands/model";
 import { modelsCommand } from "./commands/models";
 import { pluginsCommand } from "./commands/plugins";
@@ -26,6 +27,7 @@ export type ArgvOutcome =
 
 const COMMANDS: ReadonlyArray<CommandValue> = [
   syncCommand,
+  harnessesCommand,
   updateCommand,
   modelCommand,
   toolchainCommand,

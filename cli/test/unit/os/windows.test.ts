@@ -88,10 +88,10 @@ describe("Windows host OS", () => {
   });
 
   it.each([
-    ["C:/Program Files/npx.cmd", String.raw`"C:\Program^ Files\npx.cmd ^"--version^""`],
-    ["C:/R&D/npx.cmd", String.raw`"C:\R^&D\npx.cmd ^"--version^""`],
-    ["C:/O'Brien/npx.cmd", String.raw`"C:\O'Brien\npx.cmd ^"--version^""`],
-    ["C:/工具/npx.cmd", String.raw`"C:\工具\npx.cmd ^"--version^""`],
+    ["C:/Program Files/npx.cmd", String.raw`"C:\Program^ Files\npx.cmd ^^^"--version^^^""`],
+    ["C:/R&D/npx.cmd", String.raw`"C:\R^&D\npx.cmd ^^^"--version^^^""`],
+    ["C:/O'Brien/npx.cmd", String.raw`"C:\O'Brien\npx.cmd ^^^"--version^^^""`],
+    ["C:/工具/npx.cmd", String.raw`"C:\工具\npx.cmd ^^^"--version^^^""`],
   ])("normalizes and escapes the Windows command shim path: %s", (path, commandLine) => {
     expect(hostOs("windows").invoke(path, ["--version"])).toEqual({
       command: commandInterpreter,
@@ -101,16 +101,18 @@ describe("Windows host OS", () => {
   });
 
   it.each([
-    ['a "quoted" value', String.raw`"C:\tools\npx.cmd ^"a^ \^"quoted\^"^ value^""`],
-    ["a & b", String.raw`"C:\tools\npx.cmd ^"a^ ^&^ b^""`],
-    ["a | b", String.raw`"C:\tools\npx.cmd ^"a^ ^|^ b^""`],
-    ["a > b", String.raw`"C:\tools\npx.cmd ^"a^ ^>^ b^""`],
-    ["a ^ b", String.raw`"C:\tools\npx.cmd ^"a^ ^^^ b^""`],
-    ["a ! b", String.raw`"C:\tools\npx.cmd ^"a^ ^!^ b^""`],
-    ["trailing\\", String.raw`"C:\tools\npx.cmd ^"trailing\\^""`],
-    ["two  spaces", String.raw`"C:\tools\npx.cmd ^"two^ ^ spaces^""`],
-    ["工具", String.raw`"C:\tools\npx.cmd ^"工具^""`],
-    ["", String.raw`"C:\tools\npx.cmd ^"^""`],
+    ['a "quoted" value', String.raw`"C:\tools\npx.cmd ^^^"a^^^ \^^^"quoted\^^^"^^^ value^^^""`],
+    ["a & b", String.raw`"C:\tools\npx.cmd ^^^"a^^^ ^^^&^^^ b^^^""`],
+    ["a | b", String.raw`"C:\tools\npx.cmd ^^^"a^^^ ^^^|^^^ b^^^""`],
+    ["a > b", String.raw`"C:\tools\npx.cmd ^^^"a^^^ ^^^>^^^ b^^^""`],
+    ["a ^ b", String.raw`"C:\tools\npx.cmd ^^^"a^^^ ^^^^^^^ b^^^""`],
+    ["a ! b", String.raw`"C:\tools\npx.cmd ^^^"a^^^ ^^^!^^^ b^^^""`],
+    ["trailing\\", String.raw`"C:\tools\npx.cmd ^^^"trailing\\^^^""`],
+    ['a\\\\"b', String.raw`"C:\tools\npx.cmd ^^^"a\\\\\^^^"b^^^""`],
+    ["end\\\\", String.raw`"C:\tools\npx.cmd ^^^"end\\\\^^^""`],
+    ["two  spaces", String.raw`"C:\tools\npx.cmd ^^^"two^^^ ^^^ spaces^^^""`],
+    ["工具", String.raw`"C:\tools\npx.cmd ^^^"工具^^^""`],
+    ["", String.raw`"C:\tools\npx.cmd ^^^"^^^""`],
   ])("escapes a Windows command shim argument: %j", (argument, commandLine) => {
     expect(hostOs("windows").invoke("C:/tools/npx.cmd", [argument])).toEqual({
       command: commandInterpreter,
@@ -119,23 +121,48 @@ describe("Windows host OS", () => {
     });
   });
 
-  it("double-escapes cmd metacharacters only for node_modules command shims", () => {
-    expect(hostOs("windows").invoke("C:/project/node_modules/.bin/foo.cmd", ["a & b"])).toEqual({
+  it("doubles a trailing backslash run so the next argument stays separate", () => {
+    expect(hostOs("windows").invoke("C:/tools/npx.cmd", ["C:\\dir\\\\", "--flag"])).toEqual({
       command: commandInterpreter,
       args: [
         "/d",
         "/v:off",
         "/s",
         "/c",
-        String.raw`"C:\project\node_modules\.bin\foo.cmd ^^^"a^^^ ^^^&^^^ b^^^""`,
+        String.raw`"C:\tools\npx.cmd ^^^"C:\dir\\\\^^^" ^^^"--flag^^^""`,
       ],
       windowsVerbatimArguments: true,
     });
-    expect(hostOs("windows").invoke("C:/project/bin/foo.cmd", ["a & b"])).toEqual({
+  });
+
+  it.each([
+    ["C:/project/node_modules/.bin/foo.cmd", String.raw`C:\project\node_modules\.bin\foo.cmd`],
+    [
+      "C:/Users/dev/AppData/Roaming/npm/omp.cmd",
+      String.raw`C:\Users\dev\AppData\Roaming\npm\omp.cmd`,
+    ],
+    ["C:/Program Files/nodejs/npm.cmd", String.raw`C:\Program^ Files\nodejs\npm.cmd`],
+    ["C:/project/bin/foo.bat", String.raw`C:\project\bin\foo.bat`],
+  ])("double-escapes cmd metacharacters for the batch target %s", (path, escapedPath) => {
+    expect(hostOs("windows").invoke(path, ["a & b"])).toEqual({
       command: commandInterpreter,
-      args: ["/d", "/v:off", "/s", "/c", String.raw`"C:\project\bin\foo.cmd ^"a^ ^&^ b^""`],
+      args: ["/d", "/v:off", "/s", "/c", `"${escapedPath} ^^^"a^^^ ^^^&^^^ b^^^""`],
       windowsVerbatimArguments: true,
     });
+  });
+
+  it("doubles typographic single quotes in the PowerShell statusLine literal", () => {
+    const command = hostOs("windows").statusLineCommand(
+      "C:/Users/O’Brien/.bun/bin/bun.exe",
+      "C:/Users/test/.claude/bin/statusline.mjs",
+    );
+    const encoded = command.match(
+      /^powershell\.exe -NoProfile -NonInteractive -EncodedCommand ([A-Za-z0-9+/=]+)$/,
+    )?.[1];
+    if (encoded === undefined) throw new Error(`missing encoded PowerShell command: ${command}`);
+    expect(Buffer.from(encoded, "base64").toString("utf16le")).toContain(
+      "'C:/Users/O’’Brien/.bun/bin/bun.exe'",
+    );
   });
 
   it.each([

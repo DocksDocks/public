@@ -16,14 +16,22 @@ type Sinks = { readonly out: Array<string>; readonly err: Array<string> };
 
 /** Node is above the server floor, so the rust cases never turn on that gate. */
 const NODE_VERSION = "v22.22.2";
+/** Output of a working rust-analyzer binary; a rustup proxy without the component prints none. */
+const RUST_ANALYZER_VERSION = "rust-analyzer 1.92.0 (0d1f2e3a4 2026-08-31)";
 
 /**
  * The rust-analyzer-lsp plugin is enabled in SoT, and the probe list names the
- * absent tools. `runEngineNative` gates verbose output on `ctx.verbose`, so the
- * harness applies the same wrapper; without it the skip note would reach stderr
- * on every run.
+ * absent tools. A tool in `broken` is on PATH but reports no version, like a
+ * rustup proxy without its component. `runEngineNative` gates verbose output
+ * on `ctx.verbose`, so the harness applies the same wrapper; without it the
+ * skip note would reach stderr on every run.
  */
-function lspCtx(missing: ReadonlyArray<ToolId>, verbose: boolean, sinks: Sinks): Ctx {
+function lspCtx(
+  missing: ReadonlyArray<ToolId>,
+  verbose: boolean,
+  sinks: Sinks,
+  broken: ReadonlyArray<ToolId> = [],
+): Ctx {
   const home = mkdtempSync(join(tmpdir(), "docks-lsp-rust-"));
   const base = makeLogger({
     stderr: (chunk) => void sinks.err.push(chunk.replace(/\n$/, "")),
@@ -42,7 +50,11 @@ function lspCtx(missing: ReadonlyArray<ToolId>, verbose: boolean, sinks: Sinks):
     deps: {
       spec: (id) => DEPENDENCIES[id],
       probe: (id) => ({ state: missing.includes(id) ? "missing" : "present" }),
-      version: async (id) => (id === "node" ? NODE_VERSION : ""),
+      version: async (id) => {
+        if (broken.includes(id)) return "";
+        if (id === "node") return NODE_VERSION;
+        return id === "rust-analyzer" ? RUST_ANALYZER_VERSION : "";
+      },
       path: async () => "",
       warnMissing: () => {},
     },
@@ -86,9 +98,13 @@ function lspCtx(missing: ReadonlyArray<ToolId>, verbose: boolean, sinks: Sinks):
 
 describe("rust-analyzer LSP server install", () => {
   const homes = new Array<string>();
-  const run = async (missing: ReadonlyArray<ToolId>, verbose = false) => {
+  const run = async (
+    missing: ReadonlyArray<ToolId>,
+    verbose = false,
+    broken: ReadonlyArray<ToolId> = [],
+  ) => {
     const sinks: Sinks = { out: [], err: [] };
-    const ctx = lspCtx(missing, verbose, sinks);
+    const ctx = lspCtx(missing, verbose, sinks, broken);
     homes.push(ctx.home);
     await syncLspServers(ctx);
     return { out: sinks.out.join("\n"), err: sinks.err.join("\n") };
@@ -96,6 +112,13 @@ describe("rust-analyzer LSP server install", () => {
 
   it("installs the component through rustup when the host has rustup", async () => {
     const { out, err } = await run(["rust-analyzer"]);
+
+    expect(out).toBe("[dry-run] would install: rustup component add rust-analyzer");
+    expect(err).toBe("");
+  });
+
+  it("installs the component when the PATH hit is a rustup proxy without the component", async () => {
+    const { out, err } = await run([], false, ["rust-analyzer"]);
 
     expect(out).toBe("[dry-run] would install: rustup component add rust-analyzer");
     expect(err).toBe("");

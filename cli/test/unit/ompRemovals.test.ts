@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -95,6 +103,47 @@ function deployConfig(content: string): { file: string; root: string } {
   const file = join(dir, "config.yml");
   writeFileSync(file, content);
   return { file, root };
+}
+
+/**
+ * Runs ompSync with home at `root` and the omp env keys cleared.
+ * PI_CODING_AGENT_DIR relocates the whole agent directory, so an ambient
+ * value would send these writes outside the temporary root.
+ */
+async function runOmpSync(root: string): Promise<void> {
+  const ompEnvKeys = [
+    "XDG_DATA_HOME",
+    "OMP_PROFILE",
+    "PI_PROFILE",
+    "PI_CONFIG_DIR",
+    "PI_CODING_AGENT_DIR",
+  ] as const;
+  const restore: Record<string, string | undefined> = {};
+  for (const key of ompEnvKeys) {
+    restore[key] = process.env[key];
+    delete process.env[key];
+  }
+  mocks.payloadText.mockImplementation((path) => {
+    if (path === "SoT/.omp/config.yml") return "steeringMode: all\n";
+    if (path === "SoT/.omp/models.yml") return "providers: {}\n";
+    if (path === "SoT/.omp/AGENTS.md") return "# omp\n";
+    return "{}\n";
+  });
+  mocks.spawnProcess.mockResolvedValue({
+    error: undefined,
+    exitCode: 0,
+    stdout: "",
+    stderr: "",
+  });
+
+  try {
+    await ompSync({ ...testCtx(root), home: root });
+  } finally {
+    for (const [key, value] of Object.entries(restore)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 }
 
 afterEach(() => {
@@ -206,49 +255,35 @@ describe("retired omp config keys", () => {
   it("runs as part of ompSync, after the additive config merge", async () => {
     const root = mkdtempSync(join(tmpdir(), "omp-removals-sync-"));
     roots.push(root);
-    // PI_CODING_AGENT_DIR relocates the whole agent directory, so an ambient
-    // value would send these writes outside the temporary root.
-    const ompEnvKeys = [
-      "XDG_DATA_HOME",
-      "OMP_PROFILE",
-      "PI_PROFILE",
-      "PI_CONFIG_DIR",
-      "PI_CODING_AGENT_DIR",
-    ] as const;
-    const restore: Record<string, string | undefined> = {};
-    for (const key of ompEnvKeys) {
-      restore[key] = process.env[key];
-      delete process.env[key];
-    }
-    mocks.payloadText.mockImplementation((path) => {
-      if (path === "SoT/.omp/config.yml") return "steeringMode: all\n";
-      if (path === "SoT/.omp/models.yml") return "providers: {}\n";
-      if (path === "SoT/.omp/AGENTS.md") return "# omp\n";
-      return "{}\n";
-    });
-    mocks.spawnProcess.mockResolvedValue({
-      error: undefined,
-      exitCode: 0,
-      stdout: "",
-      stderr: "",
-    });
-
     const agentDir = join(root, ".omp", "agent");
     mkdirSync(agentDir, { recursive: true });
     const file = join(agentDir, "config.yml");
     writeFileSync(file, "symbolPreset: unicode\nproviders:\n  webSearchOrder:\n    - brave\n");
 
-    const ctx = testCtx(root);
-    try {
-      await ompSync({ ...ctx, home: root });
-    } finally {
-      for (const [key, value] of Object.entries(restore)) {
-        if (value === undefined) delete process.env[key];
-        else process.env[key] = value;
-      }
-    }
+    await runOmpSync(root);
 
     expect(parse(readFileSync(file, "utf8"))).toEqual({ steeringMode: "all" });
+  });
+
+  it("merges a symlinked config.yml into the link target and keeps the link", async () => {
+    const root = mkdtempSync(join(tmpdir(), "omp-removals-link-"));
+    roots.push(root);
+    const dotfiles = join(root, "dotfiles");
+    mkdirSync(dotfiles);
+    const linkTarget = join(dotfiles, "config.yml");
+    writeFileSync(linkTarget, "userOnly: 1\n");
+    const agentDir = join(root, ".omp", "agent");
+    mkdirSync(agentDir, { recursive: true });
+    const file = join(agentDir, "config.yml");
+    symlinkSync(linkTarget, file);
+
+    await runOmpSync(root);
+
+    expect(lstatSync(file).isSymbolicLink()).toBe(true);
+    expect(parse(readFileSync(linkTarget, "utf8"))).toEqual({
+      userOnly: 1,
+      steeringMode: "all",
+    });
   });
 });
 

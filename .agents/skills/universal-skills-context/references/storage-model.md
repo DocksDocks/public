@@ -21,7 +21,8 @@ canonical universal path and the Claude Code symlink.
 ```
 
 Codex reads `~/.agents/skills/` natively. Claude Code discovers the symlinked
-entry under `~/.claude/skills/`.
+entry under `~/.claude/skills/`. `skillsManifest.ts skillBase` derives
+`<basename>` from the slug; see the SKILL.md Storage Model.
 
 ## Two-Agent vs Single-Agent Install
 
@@ -37,20 +38,27 @@ entry under `~/.claude/skills/`.
 ~/.claude/skills/<name> -> ../../.agents/skills/<name>
 ```
 
-`healClaudeSymlink` compares the exact relative target. Correct symlinks are
-left alone, stale symlinks are replaced, and real directories are preserved with
-a warning.
+`healClaudeSymlink` accepts a link (symlink or junction) that resolves to the
+canonical directory; relative symlinks are the preferred form. Sync replaces
+stale links. `linkOrCopy` tries a relative symlink, then (Windows) an absolute
+junction, then a recursive copy marked with `.docks-kit-copied-skill`. Later
+syncs replace a marked copy, and --prune reclaims it. Sync leaves unmarked real
+directories alone with a warning.
 
 ## Snapshot Format
 
-`~/.agents/.kit-managed-skills` contains one full slug per line, sorted. It is
-written after successful real syncs and used by `--prune` to identify removed
-kit-managed skills.
+`~/.agents/.kit-managed-skills` contains one full slug per line, sorted. It
+holds the declared slugs plus previously tracked slugs that no successful
+`--prune` has removed yet. Every real sync rewrites it, and `--prune` uses it to
+identify removed kit-managed skills.
 
 ## Gotchas
 
 - User-installed skills without snapshot entries are not pruned by the kit.
+- `--prune` deletes only the kit-created canonical directory and the
+  kit-managed Claude entry. It never touches the skill directories of other
+  agents.
 - A missing Claude symlink makes a skill invisible to Claude Code even though
   Codex can see the canonical copy.
-- Real directories in `~/.claude/skills/` can diverge from canonical content;
-  sync warns but does not delete them.
+- Unmarked real directories in `~/.claude/skills/` can diverge from canonical
+  content; sync warns but does not delete them. Sync replaces a marked copy.

@@ -3,6 +3,7 @@ import { Console, Effect } from "effect";
 import { existsSync, readFileSync } from "node:fs";
 import { bail, compiled } from "../engine";
 import { kitHome } from "../kitHome";
+import { DEPENDENCIES, defaultProbeExecutor, resolvePath } from "../engine-native/deps";
 import { p, spawnHost } from "../engine-native/exec";
 import { hostOs, type HostOs } from "../engine-native/os";
 
@@ -59,22 +60,30 @@ const capturePackageRoot: CapturePackageRoot = (command, args) => {
 };
 
 /**
- * A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. Windows
- * reports that path with backslashes and compares it without case sensitivity.
- * On POSIX, a backslash remains a legal filename character, not a separator.
+ * The comparison key of a host path. Windows reports paths with backslashes
+ * and compares them without case sensitivity. On POSIX, a backslash remains a
+ * legal filename character, not a separator.
  */
+const hostPathKey = (value: string, host: HostOs): string =>
+  host.id === "windows"
+    ? value.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase()
+    : value.replace(/\/+$/, "");
+
+/** Whether two package homes name the same directory on this host. */
+export const samePackageHome = (a: string, b: string, host: HostOs = hostOs()): boolean =>
+  hostPathKey(a, host) === hostPathKey(b, host);
+
+/** A Bun global home is `<root>/.bun/install/global/node_modules/<pkg>`. */
 export const packageManagerForHome = (
   home: string,
   environment: NodeJS.ProcessEnv = process.env,
   host: HostOs = hostOs(),
 ): PackageManager => {
-  const normalize = (value: string): string =>
-    host.id === "windows" ? value.replaceAll("\\", "/").toLowerCase() : value;
-  const normalizedHome = normalize(home);
+  const normalizedHome = hostPathKey(home, host);
   const underEnvironmentRoot = (name: "BUN_INSTALL_GLOBAL_DIR" | "BUN_INSTALL"): boolean => {
     const root = environment[name]?.trim();
     if (root === undefined || root === "") return false;
-    const normalizedRoot = normalize(root).replace(/\/+$/, "") || "/";
+    const normalizedRoot = hostPathKey(root, host) || "/";
     const prefix = normalizedRoot.endsWith("/") ? normalizedRoot : `${normalizedRoot}/`;
     return normalizedHome === normalizedRoot || normalizedHome.startsWith(prefix);
   };
@@ -144,6 +153,32 @@ export const packageUpdateResult = (
   return { alreadyCurrent: false, message: `Updated ${before} -> ${after}.` };
 };
 
+export type UpdateBunCommand =
+  | { readonly ok: true; readonly command: string }
+  | { readonly ok: false; readonly diagnostic: string };
+
+/**
+ * The Bun that reinstalls checkout dependencies. The source path always runs
+ * under Bun, and the launcher may have picked a Bun that is not on PATH, so it
+ * reuses `execPath`. A compiled binary resolves Bun like the dependency probe:
+ * PATH, then $BUN_INSTALL/bin, then ~/.bun/bin.
+ */
+export const updateBunCommand = async (
+  isCompiled: boolean,
+  execPath: string,
+  home: string,
+  resolveBun: () => Promise<string> = () => resolvePath(DEPENDENCIES.bun, defaultProbeExecutor),
+): Promise<UpdateBunCommand> => {
+  if (!isCompiled) return { ok: true, command: execPath };
+  const resolved = await resolveBun();
+  return resolved === ""
+    ? {
+        ok: false,
+        diagnostic: `dependencies changed but Bun was not found - run 'bun install --frozen-lockfile' in ${home}, then docks-kit sync`,
+      }
+    : { ok: true, command: resolved };
+};
+
 const updateCheckout = (home: string, skipSync: boolean) =>
   Effect.gen(function* () {
     if (spawnHost("git", ["--version"], { stdio: "ignore" }).status !== 0) {
@@ -178,13 +213,15 @@ const updateCheckout = (home: string, skipSync: boolean) =>
 
       const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n");
       if (touched.includes("bun.lock") || touched.includes("package.json")) {
-        const res = spawnHost("bun", ["install", "--frozen-lockfile"], {
+        const bun = yield* Effect.promise(() => updateBunCommand(compiled, process.execPath, home));
+        if (!bun.ok) return yield* bail(bun.diagnostic, 1);
+        const res = spawnHost(bun.command, ["install", "--frozen-lockfile"], {
           cwd: home,
           stdio: "inherit",
         });
         if (res.error !== undefined || res.status !== 0) {
           return yield* bail(
-            "dependencies changed but 'bun install --frozen-lockfile' failed - fix that, then run docks-kit sync",
+            `dependencies changed but 'bun install --frozen-lockfile' failed - fix the error, then run 'bun install --frozen-lockfile' in ${home} and docks-kit sync`,
             1,
           );
         }
@@ -242,7 +279,11 @@ const updatePackage = (home: string, skipSync: boolean) =>
         1,
       );
     }
-    const result = packageUpdateResult(beforeVersion, afterVersion, home === updated.home);
+    const result = packageUpdateResult(
+      beforeVersion,
+      afterVersion,
+      samePackageHome(home, updated.home),
+    );
     if (result.message !== "") yield* Console.log(result.message);
     if (skipSync)
       return yield* Console.log(

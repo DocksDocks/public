@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
 import { hostOs, platformName } from "../../../src/engine-native/os";
+import { cleanup, runEngine } from "../../lib/goldenExecution";
+import { cleanupTemporaryDirs, makeStubDir, materializeVariant } from "../../lib/goldenResources";
+
+afterAll(cleanupTemporaryDirs);
 
 describe("Linux host OS", () => {
   it("maps the Node platform name", () => {
@@ -40,10 +46,11 @@ describe("Linux host OS", () => {
       ".profile",
       ".zshenv",
     ]);
-    expect(setting.target(undefined)).toBe(".bashrc");
-    expect(setting.target("/bin/zsh")).toBe(".zshrc");
-    expect(setting.target("/usr/local/bin/bash")).toBe(".bashrc");
-    expect(setting.target("/bin/fish")).toBe(".profile");
+    const all = (): boolean => true;
+    expect(setting.target(undefined, all)).toBe(".bashrc");
+    expect(setting.target("/bin/zsh", all)).toBe(".zshrc");
+    expect(setting.target("/usr/local/bin/bash", all)).toBe(".bashrc");
+    expect(setting.target("/bin/fish", all)).toBe(".profile");
     expect(setting.line).toBe("export ENABLE_CLAUDEAI_MCP_SERVERS=false");
     expect(
       host.statusLineCommand("/home/test/.bun/bin/bun", "/home/test/.claude/bin/statusline.mjs"),
@@ -58,7 +65,7 @@ describe("Linux host OS", () => {
     expect(host.installHint("curl")).toBe("sudo apt install -y curl");
     expect(host.installHint("ffplay")).toBe("sudo apt install -y ffmpeg");
     expect(host.installHint("claude")).toBe(
-      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+      'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
     );
     expect(host.installHint("codex")).toBe(
       'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
@@ -75,5 +82,27 @@ describe("Linux host OS", () => {
     expect(host.installHint("git")).toBe(
       "sudo apt install -y git (or your distro's package manager)",
     );
+  });
+
+  it("writes the connector setting to .bashrc when only a dormant .bash_login holds it", () => {
+    // A Linux bash shell does not load .bash_login, so its export does not disable the connectors.
+    const home = materializeVariant("home-fresh", {
+      ".bash_login": "export ENABLE_CLAUDEAI_MCP_SERVERS=false\n",
+    });
+    // Without a claude CLI the plugin passes are skipped, so the run only depends on
+    // the connector pass and the stubbed runtime tools.
+    const run = runEngine(["sync", "claude"], home, makeStubDir({ claude: null }), {
+      reuseHome: home,
+      env: { SHELL: "/bin/bash" },
+    });
+    try {
+      expect(run.exitCode, run.output).toBe(0);
+      expect(run.output).toContain("claude.ai connectors disabled via <HOME>/.bashrc");
+      expect(readFileSync(join(home, ".bashrc"), "utf8")).toContain(
+        "export ENABLE_CLAUDEAI_MCP_SERVERS=false",
+      );
+    } finally {
+      cleanup([run]);
+    }
   });
 });

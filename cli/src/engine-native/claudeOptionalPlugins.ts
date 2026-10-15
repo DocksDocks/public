@@ -60,15 +60,20 @@ async function enableOptionalPlugin(
       ? (settingsDoc["enabledPlugins"] as JsonObject)[pluginId] === true
       : false;
 
-  if (!(await cli(["plugin", "enable", pluginId])).ok) {
-    if (marketplaceAdded || !wasInstalled)
-      change(`Optional plugin ${pluginId}: installed (enable failed — will retry next sync)`);
-    recordFailure(ctx, `Failed to enable optional plugin ${pluginId}`);
-    return marketplaceAdded || !wasInstalled;
+  // `claude plugin install` enables the plugin at user scope, and
+  // `claude plugin enable` fails for a plugin that is already enabled.
+  if (!wasEnabled) {
+    const enableArgs = ["plugin", "enable", pluginId, "--scope", "user"];
+    if (!(await cli(enableArgs)).ok) {
+      if (marketplaceAdded || !wasInstalled)
+        change(`Optional plugin ${pluginId}: installed (enable failed — will retry next sync)`);
+      recordFailure(ctx, `Failed to enable optional plugin ${pluginId}`);
+      return marketplaceAdded || !wasInstalled;
+    }
   }
   const changed = marketplaceAdded || !wasInstalled || !wasEnabled;
   if (changed) change(`Optional plugin opted in: ${pluginId}`);
-  else verbose(`Optional plugin already opted in: ${pluginId} (enable re-asserted)`);
+  else verbose(`Optional plugin already opted in: ${pluginId}`);
   return changed;
 }
 
@@ -92,6 +97,14 @@ export async function syncOptionalPlugins(ctx: Ctx, claudeDir: string): Promise<
 
   if (ctx.services.deps.probe("claude").state === "missing") {
     warn("claude CLI not in PATH — cannot opt in optional plugins (--claude-plugin)");
+    return;
+  }
+  if (ctx.services.deps.probe("git").state === "missing") {
+    ctx.services.deps.warnMissing(
+      "git",
+      ctx.services.logger,
+      "plugin marketplaces are git repos — optional plugins (--claude-plugin) skipped; re-run sync after installing",
+    );
     return;
   }
 

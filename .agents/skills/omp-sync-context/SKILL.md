@@ -1,11 +1,19 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or index.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-77"
+    - path: cli/src/engine-native/ompFileDeploy.ts
+      lines: "1-110"
+    - path: cli/src/engine-native/ompMarketplace.ts
+      lines: "1-131"
+    - path: cli/src/engine-native/ompPlugins.ts
+      lines: "1-169"
+    - path: cli/src/engine-native/ompRemovals.ts
+      lines: "1-216"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/ompPaths.ts
@@ -24,7 +32,7 @@ metadata:
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-09-24"
+  updated: "2026-10-14"
 ---
 
 # omp Sync Context
@@ -66,7 +74,7 @@ fetches.
 </constraint>
 
 <constraint>
-`ompSync.ts syncMarketplace, probe guard` returns before any spawn when the omp
+`ompMarketplace.ts syncMarketplace, probe guard` returns before any spawn when the omp
 or git probe reports `missing`, because it runs before `syncPlugins` holds those
 probes. Without the guard a host that lacks omp records a false marketplace
 failure and the sync exits 1. Print no second skip line there: `syncPlugins`
@@ -84,7 +92,9 @@ Resolve every omp path through `ompPaths.ts ompPaths`, which mirrors upstream
 is empty; an invalid or reserved name degrades to the default profile.
 A named profile relocates the config root to `profiles/<name>`.
 `PI_CODING_AGENT_DIR` replaces the agent directory for the default profile
-only, and while it is active XDG is disabled.
+only, after `path.resolve` normalization. The default profile ignores a value
+that equals `<config root>/profiles/<PI_PROFILE>/agent`, because omp exports
+that value in a profile session. While an override is active, XDG is disabled.
 The agent directory never moves under XDG; only `dataRoot` does, on Linux and
 macOS, and only when the probed omp directory already exists.
 Deploy `AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` to `agentDir`, and read
@@ -101,7 +111,7 @@ Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 - Change omp marketplace registration or plugin reconciliation.
 - Change `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, or `writeOmpSessionModel` in `harnesses.ts`.
 - Change the free-session run overlay in `ompOverlay.ts` or the launcher in `commands/omp.ts`.
-- Change the omp pipeline branch in `index.ts` — `engineSync`.
+- Change the omp pipeline branch in `syncDispatch.ts` — `engineSync`.
 - Change default harness resolution in `parseArgs`.
 
 Use `sync-orchestration-context` for a flag or target affecting several harnesses.
@@ -119,9 +129,12 @@ Replace the other three deployed files as whole files.
 | `SoT/.omp/mcp.json` | `<agentDir>/mcp.json` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/config.yml` | `<agentDir>/config.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/models.yml` | `<agentDir>/models.yml` | Take `agentDir` from `ompPaths`. |
-| `SoT/.omp/intercom.json` | `$PI_CODING_AGENT_DIR/intercom/config.json` | Default the root to `~/.pi/agent`. |
+| `SoT/.omp/intercom.json` | `<intercomRoot>/intercom/config.json` | Use the profile `agentDir` under a named profile; otherwise use `$PI_CODING_AGENT_DIR`, defaulting to `~/.pi/agent`. |
 
-Resolve a relative `PI_CODING_AGENT_DIR` against the current working directory.
+Under a named profile (`OMP_PROFILE` or `PI_PROFILE`), use the profile `agentDir` from `ompPaths`.
+omp exports `PI_CODING_AGENT_DIR` as that profile `agentDir`, and `pi-intercom` reads that variable.
+Without a named profile, trim the `PI_CODING_AGENT_DIR` value as `pi-intercom` does.
+Resolve a relative value against the current working directory.
 Use an absolute value without modification.
 Use `~/.pi/agent` when the value is absent or empty.
 
@@ -129,7 +142,8 @@ Create `~/.omp/agent` only outside dry-run mode.
 Create the resolved intercom directory only outside dry-run mode.
 Back up a differing deployed file before replacement.
 Set every backup file to mode `0600`.
-Set a renamed `config.yml` target to mode `0600` again.
+Replace a merged `config.yml` or `models.yml` through `atomicWrite.ts replaceFile`
+with mode `0600`. The temporary file and rename keep a symlinked target as a link.
 
 ### Private Mode Pattern
 
@@ -152,7 +166,7 @@ Let Source of Truth keys win every conflict.
 Merge mapping nodes recursively when both sides contain mappings.
 Replace every other Source of Truth node, including scalars and sequences.
 Preserve deployed-only keys by default.
-`ompSync.ts syncMergedYaml`, shared YAML deployment, receives the file-specific
+`ompFileDeploy.ts syncMergedYaml`, shared YAML deployment, receives the file-specific
 merge as an argument: `mergeOmpConfig` for `config.yml` and `mergeOmpModels`
 for `models.yml`. Both wrap `ompYaml.ts mergeYamlDocuments`, the generic
 mapping merge, and name their file in every diagnostic.
@@ -230,6 +244,9 @@ docks: `add` when no registry lists it, `update` when only the legacy registry
 does, and `list` in that same state under `--skip-plugin-refresh`.
 A dry run prints all planned plugin installations.
 A dry run does not probe plugin inventory through omp.
+A dry run checks PATH for omp and git first. When either tool is missing, the
+dry run prints the same single skip warning as a real run and previews no omp
+command.
 A dry run does not use omp's own `--dry-run` option.
 
 `--skip-plugin-refresh` does not mean skip plugins.
@@ -248,7 +265,7 @@ Install every missing plugin regardless of this flag.
 | npm plugin missing | Install pinned version | Install pinned version |
 | npm plugin at wrong version | Force pinned version | Skip replacement |
 
-Anchor this behavior at `ompSync.ts` — `syncMarketplace` and `syncPlugins` — dry-run and refresh boundaries.
+Anchor this behavior at `ompMarketplace.ts syncMarketplace` and `ompPlugins.ts syncPlugins` — dry-run and refresh boundaries.
 
 ## Local State Store
 
@@ -299,7 +316,7 @@ survives a switch to a level-free model.
 Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — versioned local state over one merge helper.
 Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains.
 Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
-Anchor dispatch at `index.ts` — `engineSync` omp branch — selected pipeline execution.
+Anchor dispatch at `syncDispatch.ts` — `engineSync` omp branch — selected pipeline execution.
 
 ## Change Checklist
 

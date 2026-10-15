@@ -426,6 +426,7 @@ describe("native CLI argument and output behavior", () => {
     const home = mkdtempSync(join(tmpdir(), "engine-di-"));
     const keys = [
       "HOME",
+      "USERPROFILE",
       "AGENTS_DIR",
       "DOCKS_KIT_HOME",
       "DRY_RUN",
@@ -440,6 +441,7 @@ describe("native CLI argument and output behavior", () => {
       "CLAUDE_PLUGINS",
       "CLAUDE_MODEL",
       "CODEX_MODEL",
+      "CODEX_HOME",
     ] as const;
     const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]])) as Record<
       (typeof keys)[number],
@@ -447,7 +449,9 @@ describe("native CLI argument and output behavior", () => {
     >;
     try {
       for (const key of keys) delete process.env[key];
+      // engineHome reads USERPROFILE on win32, so both keys point at the temp home.
       process.env["HOME"] = home;
+      process.env["USERPROFILE"] = home;
       process.env["AGENTS_DIR"] = p(home, ".agents");
       process.env["DOCKS_KIT_INTERACTIVE"] = "0";
       await run(home);

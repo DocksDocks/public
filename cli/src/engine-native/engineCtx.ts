@@ -65,18 +65,46 @@ export interface Ctx {
   readonly failures: Array<string>;
 }
 
-/** Globals default from env using the historical ${VAR:-default} contract. */
-export function makeCtx(services: EngineServices): Ctx {
+/**
+ * Unprefixed env globals that seed `Ctx` with the historical ${VAR:-default}
+ * contract. Only the harness-private native-raw channel honors them; the
+ * public CLI takes the same behavior from flags.
+ */
+export const ENV_GLOBAL_KEYS = [
+  "DRY_RUN",
+  "DOCKS_KIT_VERBOSE",
+  "SKIP_BUBBLEWRAP",
+  "RECONCILE",
+  "PRUNE",
+  "CLAUDE_PERMISSIVE",
+  "CLAUDE_MODEL",
+  "CODEX_MODEL",
+  "CLAUDE_PLUGINS",
+  "CLAUDE_COMPACT_WINDOW",
+  "AGENTS_DIR",
+] as const;
+
+export interface CtxOptions {
+  /** True only on the native-raw channel: read ENV_GLOBAL_KEYS from the environment. */
+  readonly envGlobals: boolean;
+}
+
+/**
+ * Build the run context. HOME and DOCKS_KIT_INTERACTIVE apply on every path;
+ * ENV_GLOBAL_KEYS apply only when `options.envGlobals` is true.
+ */
+export function makeCtx(services: EngineServices, options: CtxOptions): Ctx {
   const env = process.env;
   const home = engineHome(env);
-  const compactWindowSource = env["CLAUDE_COMPACT_WINDOW"] ?? "";
+  const globals: NodeJS.ProcessEnv = options.envGlobals ? env : {};
+  const compactWindowSource = globals["CLAUDE_COMPACT_WINDOW"] ?? "";
   const claudeCompactWindow =
     compactWindowSource === "" ? "" : parseCompactWindow(compactWindowSource);
   if (claudeCompactWindow === undefined) {
     services.logger.err("CLAUDE_COMPACT_WINDOW expects a token count (e.g. 680000 or 680k)");
     throw new ExitError(2);
   }
-  const claudePlugins = (env["CLAUDE_PLUGINS"] ?? "")
+  const claudePlugins = (globals["CLAUDE_PLUGINS"] ?? "")
     .split(" ")
     .filter((plugin) => plugin !== "")
     .map((plugin) => parseClaudePlugin(plugin, services.logger.err));
@@ -84,27 +112,27 @@ export function makeCtx(services: EngineServices): Ctx {
     repoDir: kitHome(),
     home,
     agentsDir:
-      env["AGENTS_DIR"] !== undefined && env["AGENTS_DIR"] !== ""
-        ? env["AGENTS_DIR"]
+      globals["AGENTS_DIR"] !== undefined && globals["AGENTS_DIR"] !== ""
+        ? globals["AGENTS_DIR"]
         : p(home, ".agents"),
     interactive:
       env["DOCKS_KIT_INTERACTIVE"] === "1" ||
       (env["DOCKS_KIT_INTERACTIVE"] !== "0" &&
         process.stdout.isTTY === true &&
         process.stdin.isTTY === true),
-    dryRun: env["DRY_RUN"] === "1",
-    verbose: env["DOCKS_KIT_VERBOSE"] === "1",
-    skipBubblewrap: env["SKIP_BUBBLEWRAP"] === "1",
+    dryRun: globals["DRY_RUN"] === "1",
+    verbose: globals["DOCKS_KIT_VERBOSE"] === "1",
+    skipBubblewrap: globals["SKIP_BUBBLEWRAP"] === "1",
     skipPluginRefresh: false,
-    reconcile: env["RECONCILE"] === "1",
-    prune: env["PRUNE"] === "1",
+    reconcile: globals["RECONCILE"] === "1",
+    prune: globals["PRUNE"] === "1",
     claudeCompactWindow,
-    claudePermissive: env["CLAUDE_PERMISSIVE"] === "1",
+    claudePermissive: globals["CLAUDE_PERMISSIVE"] === "1",
     claudePlugins,
-    claudeModel: env["CLAUDE_MODEL"] ?? "",
+    claudeModel: globals["CLAUDE_MODEL"] ?? "",
     claudeEffort: "",
     claudeAdvisor: "",
-    codexModel: env["CODEX_MODEL"] ?? "",
+    codexModel: globals["CODEX_MODEL"] ?? "",
     codexEffort: "",
     modifierFlags: new Set(),
     syncConcurrency: 3,

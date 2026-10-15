@@ -9,12 +9,12 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  renameSync,
   writeFileSync,
 } from "node:fs";
 import { basename } from "node:path";
 
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload";
+import { replaceFile } from "./atomicWrite";
 import type { Ctx } from "./index";
 
 export type OmpTextPayloadPath = Extract<PayloadPath, `SoT/.omp/${string}`>;
@@ -103,9 +103,8 @@ export function syncMergedYaml(
   }
 
   backupPrivateFile(target);
-  writePrivateFile(`${target}.tmp`, merged);
-  renameSync(`${target}.tmp`, target);
-  chmodSync(target, 0o600);
+  // replaceFile writes through a symlinked config.yml or models.yml, so the link stays.
+  replaceFile(target, merged, { mode: 0o600 });
   change(`omp ${name} merged (backup at ${name}.bak)`);
   ctx.nextStepTriggers.ompRestart = true;
 }

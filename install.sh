@@ -1,8 +1,7 @@
 #!/bin/bash
 # install.sh — global docks-kit install.
 # Recommended invocation (download-then-run, never `curl | bash`):
-#   curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o /tmp/docks-kit-install.sh
-#   bash /tmp/docks-kit-install.sh && rm /tmp/docks-kit-install.sh
+#   tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; (exit "$rc")
 # Installs Bun when absent, then `bun add -g docks-kit@latest` and links the
 # CLI + bun into ~/.local/bin (the dir reliably on non-interactive PATHs).
 set -euo pipefail

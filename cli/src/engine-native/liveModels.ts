@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 
+import { codexHome } from "./codexPaths";
 import { capture, p, which } from "./exec";
 import { LEGACY_SELECTION, readHarnessSelection } from "./harnesses";
 import { isObject, parseJson } from "./jq";
@@ -208,7 +209,7 @@ const UNREADABLE_CODEX_CACHE = "Codex model cache is unreadable";
 function codexCatalog(home: string): Lookup {
   let text: string;
   try {
-    text = readFileSync(p(home, ".codex", "models_cache.json"), "utf8");
+    text = readFileSync(p(codexHome(home), "models_cache.json"), "utf8");
   } catch (error) {
     const missing =
       typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT";

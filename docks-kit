@@ -40,10 +40,13 @@ if [[ -x "$REPO_DIR/cli/dist/$KIT_BIN" ]]; then
     # A matching version does not prove matching content. Unreleased work does
     # not move package.json, so a binary compiled before it still reports the
     # checkout version and would silently shadow the source it predates.
+    # The binary also embeds the cli/docs topics, so scan both trees.
     NEWER_SOURCE=""
-    if [[ -d "$REPO_DIR/cli/src" ]]; then
-      NEWER_SOURCE="$(find "$REPO_DIR/cli/src" -type f -newer "$REPO_DIR/cli/dist/$KIT_BIN" -print -quit 2>/dev/null || true)"
-    fi
+    for scan_dir in "$REPO_DIR/cli/src" "$REPO_DIR/cli/docs"; do
+      if [[ -z "$NEWER_SOURCE" && -d "$scan_dir" ]]; then
+        NEWER_SOURCE="$(find "$scan_dir" -type f -newer "$REPO_DIR/cli/dist/$KIT_BIN" -print -quit 2>/dev/null || true)"
+      fi
+    done
     if [[ -z "$NEWER_SOURCE" ]]; then
       exec "$REPO_DIR/cli/dist/$KIT_BIN" "$@"
     fi

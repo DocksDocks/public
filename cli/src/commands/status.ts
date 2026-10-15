@@ -4,6 +4,7 @@ import { engineCapture, type EngineCaptureError } from "../engine";
 import {
   deployedClaudeSettings,
   deployedCodexModel,
+  installedPluginsState,
   pluginsView,
   skillsView,
   sotClaudeSettings,
@@ -27,6 +28,9 @@ type ClaudeDeployment =
   | { readonly state: "absent" }
   | { readonly state: "valid"; readonly settings: Record<string, unknown> }
   | { readonly state: "malformed"; readonly diagnostic: string };
+
+const MALFORMED_PLUGINS_DIAGNOSTIC =
+  "installed Claude plugins file must contain a JSON object with an object 'plugins' field";
 
 const captureToolchainStatus = () =>
   engineCapture(["toolchain", "check"]).pipe(
@@ -112,6 +116,7 @@ export const statusCommand = Command.make("status", { json }, (config) =>
   Effect.gen(function* () {
     const { drift, claudeDeployment } = gatherDrift();
     const plugins = pluginsView();
+    const pluginsState = installedPluginsState();
     const skills = skillsView();
     const toolchain = yield* captureToolchainStatus();
     const diagnostics = new Array<{ source: string; message: string; exitCode: number }>();
@@ -119,6 +124,13 @@ export const statusCommand = Command.make("status", { json }, (config) =>
       diagnostics.push({
         source: "claude.settings",
         message: claudeDeployment.diagnostic,
+        exitCode: 1,
+      });
+    }
+    if (pluginsState === "malformed") {
+      diagnostics.push({
+        source: "claude.plugins",
+        message: MALFORMED_PLUGINS_DIAGNOSTIC,
         exitCode: 1,
       });
     }
@@ -161,6 +173,9 @@ export const statusCommand = Command.make("status", { json }, (config) =>
       }
       if (claudeDeployment.state === "malformed") {
         yield* Console.log(`  ERROR claude.settings: ${claudeDeployment.diagnostic}`);
+      }
+      if (pluginsState === "malformed") {
+        yield* Console.log(`  ERROR claude.plugins: ${MALFORMED_PLUGINS_DIAGNOSTIC}`);
       }
       yield* Console.log("\nToolchain:");
       if (toolchain.state === "failed") {

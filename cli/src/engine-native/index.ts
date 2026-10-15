@@ -20,9 +20,14 @@ export type { Ctx, ModifierFlag } from "./engineCtx";
 export { runBounded, syncConcurrencyForManifest } from "./syncConcurrency";
 export type { SyncConcurrency, SyncTask } from "./syncConcurrency";
 
+/**
+ * Run one engine operation. `options.envGlobals` defaults to false; only the
+ * main.ts native-raw branch sets it, so the public CLI ignores env globals.
+ */
 export async function runEngineNative(
   argv: ReadonlyArray<string>,
   services?: EngineServices,
+  options: { readonly envGlobals?: boolean } = {},
 ): Promise<number> {
   let ctx!: Ctx;
   const baseServices = services ?? makeEngineServices();
@@ -45,7 +50,7 @@ export async function runEngineNative(
     platform: baseServices.platform,
   };
   try {
-    ctx = makeCtx(runServices);
+    ctx = makeCtx(runServices, { envGlobals: options.envGlobals === true });
     switch (argv[0]) {
       case "model":
         return await modeModel(ctx, argv.slice(1));

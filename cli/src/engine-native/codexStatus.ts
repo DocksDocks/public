@@ -1,6 +1,7 @@
 /**
  * EngineNative Codex status reporting: summary lines and next-step hints.
  */
+import { codexHome } from "./codexPaths";
 import { p } from "./exec";
 import { enabledPluginIds } from "./codexPlugins";
 import type { Ctx } from "./index";
@@ -9,7 +10,7 @@ import type { Ctx } from "./index";
 
 export function codexSummary(ctx: Ctx): void {
   const { echo } = ctx.services.logger;
-  const codexDir = p(ctx.home, ".codex");
+  const codexDir = codexHome(ctx.home);
   echo(`Codex:    ${codexDir}`);
   if (!ctx.dryRun) {
     const count = enabledPluginIds(p(codexDir, "config.toml")).length;

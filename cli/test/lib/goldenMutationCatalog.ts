@@ -22,7 +22,18 @@ const LEGACY_CLAUDE_SETTINGS = stableStringify({
     Notification: [
       { hooks: [{ type: "command", command: "legacy-notify", timeout: 10, async: true }] },
     ],
-    Stop: [{ hooks: [{ type: "command", command: "legacy-fetch", timeout: 5, async: true }] }],
+    Stop: [
+      {
+        hooks: [
+          {
+            type: "command",
+            command: "bash $HOME/.claude/fetch-usage.sh",
+            timeout: 5,
+            async: true,
+          },
+        ],
+      },
+    ],
   },
   statusLine: { type: "command", command: "legacy-statusline", refreshInterval: 5 },
   userOnly: "preserved",
@@ -185,4 +196,6 @@ export const TOML_SHAPES = [
   "05-user-tables.toml",
   "06-sot-table-replace.toml",
   "07-dotted-quoted-headers.toml",
+  "08-multiline-string.toml",
+  "09-comment-after-managed.toml",
 ];

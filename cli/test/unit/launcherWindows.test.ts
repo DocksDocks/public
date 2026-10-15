@@ -178,6 +178,32 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stderr).toContain("is newer than the binary");
   });
 
+  // The compiled binary embeds the cli/docs topics through text imports, so a
+  // docs-only change also makes a version-matching binary stale.
+  it("ignores a version-matching binary that predates a docs topic", () => {
+    const runtimeVersion = spawnSync(process.execPath, ["--version"], {
+      encoding: "utf8",
+    }).stdout.trim();
+    const fixture = launcherFixture({
+      binaryName: "docks-kit-windows-x64.exe",
+      checkoutVersion: runtimeVersion,
+      binary: "bun",
+    });
+    const topic = join(fixture.root, "cli", "docs", "overview.md");
+    mkdirSync(join(fixture.root, "cli", "docs"), { recursive: true });
+    writeFileSync(topic, "# overview\n");
+    const future = new Date(Date.now() + 60_000);
+    utimesSync(topic, future, future);
+
+    const result = runLauncher(fixture, { native: "AMD64" }, ["probe"]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim()).toBe("source:probe");
+    expect(result.stderr).toContain(
+      `${join("cli", "docs", "overview.md")} is newer than the binary`,
+    );
+  });
+
   it("falls through to Bun source on AMD64 when the compiled binary version is unparseable", () => {
     const fixture = launcherFixture({
       binaryName: "docks-kit-windows-x64.exe",

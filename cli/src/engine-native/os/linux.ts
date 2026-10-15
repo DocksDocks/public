@@ -5,6 +5,7 @@ export const linux: HostOs = posixHost({
   id: "linux",
   toolchainOs: "linux",
   supportsBubblewrap: true,
+  bashTargets: [".bashrc"],
   packageManagerHints: {
     git: "sudo apt install -y git (or your distro's package manager)",
     jq: "sudo apt install -y jq",

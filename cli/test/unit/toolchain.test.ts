@@ -1,4 +1,5 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import type { Ctx } from "../../src/engine-native";
@@ -6,7 +7,7 @@ import { modeToolchain } from "../../src/engine-native/modes";
 import { makeEngineServices } from "../../src/engine-native/services";
 import { report } from "../../src/engine-native/toolchain";
 import { runPublicCli } from "../lib/goldenExecution";
-import { cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
+import { cleanupTemporaryDirs, makeStubDir, temporaryDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
 
 afterAll(cleanupTemporaryDirs);
@@ -44,7 +45,7 @@ describe("public toolchain operands", () => {
         expect(run.exitCode).toBe(2);
         expect(run.stdout).toBe("");
         expect(run.stderr).toContain(
-          "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+          "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]",
         );
       } finally {
         rmSync(run.home, { recursive: true, force: true });
@@ -110,8 +111,33 @@ describe("public toolchain ensure", () => {
     SPAWN_TIMEOUT_MS,
   );
 
+  it(
+    "previews the Bun install under --dry-run without running the installer",
+    () => {
+      const nativeHost = { nativeHost: true } as const;
+      const stubs = makeStubDir({ bun: null }, nativeHost);
+      const bunInstall = temporaryDir("toolchain-bun-install-");
+      const run = runPublicCli(["toolchain", "ensure", "bun", "--dry-run"], "home-fresh", stubs, {
+        ...nativeHost,
+        maskTools: ["bun"],
+        env: { BUN_INSTALL: bunInstall },
+      });
+
+      try {
+        expect(run.exitCode).toBe(0);
+        expect(run.stdout).toContain("[dry-run] install Bun 1.4.2 (kit-verified)");
+        const argvLog = readFileSync(join(run.home, ".golden-argv.log"), "utf8");
+        expect(argvLog.split("\n").filter((line) => line.startsWith("curl\t"))).toEqual([]);
+      } finally {
+        rmSync(run.home, { recursive: true, force: true });
+        rmSync(bunInstall, { recursive: true, force: true });
+      }
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
   it.each([
-    ["1.4.0", "1.4.0"],
+    ["1.4.2", "1.4.2"],
     ["", "version unknown"],
   ])(
     "reports a present Bun with %j version without installing it",
@@ -135,30 +161,57 @@ describe("public toolchain ensure", () => {
       } as unknown as Ctx;
 
       expect(await modeToolchain(ctx, ["ensure", "bun", "--verbose"])).toBe(0);
-      expect(stderr.map(stripVTControlCharacters)).toEqual([
-        `[ok] bun up to date (${description})\n`,
-      ]);
+      expect(stderr.map(stripVTControlCharacters)).toEqual([`[ok] bun present (${description})\n`]);
     },
   );
+
+  it("warns about a present Bun below the kit floor without installing it", async () => {
+    const stderr: Array<string> = [];
+    const services = makeEngineServices({
+      sinks: { stderr: (chunk) => void stderr.push(chunk) },
+    });
+    const ctx = {
+      home: "/fixture-home",
+      dryRun: false,
+      services: {
+        ...services,
+        deps: {
+          ...services.deps,
+          probe: () => ({ state: "present" as const, path: "/stub/bun" }),
+          path: async () => "/stub/bun",
+          version: async () => "1.4.0",
+        },
+      },
+    } as unknown as Ctx;
+
+    expect(await modeToolchain(ctx, ["ensure", "bun"])).toBe(0);
+    expect(stderr.map(stripVTControlCharacters)).toEqual([
+      "[warn] bun 1.4.0 is below the kit floor 1.4.2; run bun upgrade\n",
+    ]);
+  });
 });
 
 describe("engine toolchain argument errors", () => {
   it.each([
     {
       args: ["invalid-op"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+      diagnostic:
+        "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["check", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+      diagnostic:
+        "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["outdated", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+      diagnostic:
+        "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["ensure", "bun", "extra"],
-      diagnostic: "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]",
+      diagnostic:
+        "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]",
     },
     {
       args: ["ensure", "not-managed"],

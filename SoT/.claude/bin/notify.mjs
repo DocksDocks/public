@@ -37,8 +37,6 @@ export function selectPlayer(options = {}) {
   }
   const paplay = which("paplay")
   if (typeof paplay === "string" && paplay !== "") return [paplay, sound]
-  const aplay = which("aplay")
-  if (typeof aplay === "string" && aplay !== "") return [aplay, "-q", sound]
   return undefined
 }
 

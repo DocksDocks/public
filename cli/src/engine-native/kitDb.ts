@@ -178,15 +178,20 @@ export function withKitDb<T>(
   if (access === "read" && !existsSync(file) && !existsSync(legacy)) return undefined;
 
   const directory = p(home, ".docks-kit");
-  // `mode` applies only when mkdir creates the path, so an existing permissive
-  // ~/.docks-kit would keep its mode.
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  chmodSync(directory, 0o700);
+  // A read of an existing kit.db changes no permissions, so it works on a
+  // home that cannot be written.
+  const secure = access === "write" || !existsSync(file);
+  if (secure) {
+    // `mode` applies only when mkdir creates the path, so an existing permissive
+    // ~/.docks-kit would keep its mode.
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    chmodSync(directory, 0o700);
+  }
 
   const db = new DatabaseSync(file);
   try {
     // SQLite gives the -wal and -shm files the mode of the main file.
-    if (process.platform !== "win32") chmodSync(file, 0o600);
+    if (secure && process.platform !== "win32") chmodSync(file, 0o600);
     // busy_timeout first: the switch to WAL needs a lock.
     db.exec(
       "PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;",
@@ -225,7 +230,8 @@ export function readCache(
       const payload = row?.["payload"];
       if (row?.["fingerprint"] !== CACHE_FINGERPRINT) return undefined;
       if (typeof fetchedAt !== "number" || typeof payload !== "string") return undefined;
-      return now - fetchedAt <= maxAgeMs ? payload : undefined;
+      const age = now - fetchedAt;
+      return age >= 0 && age <= maxAgeMs ? payload : undefined;
     });
   } catch {
     return undefined;

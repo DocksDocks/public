@@ -13,6 +13,9 @@
 import { readFileSync } from "node:fs"
 import { homedir } from "node:os"
 
+const MIN_COMPACT_WINDOW = 100_000
+const MAX_COMPACT_WINDOW = 1_000_000
+
 /**
  * @param {object | string | number | boolean | null | undefined} value
  * @returns {value is JsonRecord}
@@ -64,6 +67,19 @@ function localZone(now) {
 }
 
 /**
+ * @param {JsonValue} raw
+ * @param {number} contextTokens
+ * @returns {string}
+ */
+function effectiveCompactWindow(raw, contextTokens) {
+  if (typeof raw !== "string" || !/^[0-9]+$/.test(raw)) return "full"
+  const parsed = Number(raw)
+  if (parsed <= 0) return "full"
+  const clamped = Math.min(contextTokens, Math.max(MIN_COMPACT_WINDOW, Math.min(parsed, MAX_COMPACT_WINDOW)))
+  return clamped === contextTokens ? "full" : String(clamped)
+}
+
+/**
  * @param {SessionStartOptions} [options]
  * @returns {string[]}
  */
@@ -76,8 +92,9 @@ export function sessionStartLines(options = {}) {
   const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
   const time = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
   const effort = nonEmpty(env.CLAUDE_CODE_EFFORT_LEVEL, configuredEffort(home, readText))
-  const context = env.CLAUDE_CODE_DISABLE_1M_CONTEXT === "1" ? "200K" : "1M"
-  const compactWindow = nonEmpty(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW, "full")
+  const contextTokens = env.CLAUDE_CODE_DISABLE_1M_CONTEXT === "1" ? 200_000 : 1_000_000
+  const context = contextTokens === 200_000 ? "200K" : "1M"
+  const compactWindow = effectiveCompactWindow(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW, contextTokens)
   const subagent = nonEmpty(env.CLAUDE_CODE_SUBAGENT_MODEL, "default")
   return [
     `[CONTEXT] Current date: ${weekday}, ${date} ${time} ${localZone(now)}`,

@@ -156,7 +156,7 @@ function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Arr
         problems.push("  migration: deployed settings contain a sentinel");
       if (
         !run.output.includes(
-          "Pruned stale artifacts (hooks: 1, files: 2, settings keys: 1, claude.json keys: 0)",
+          "Pruned stale artifacts (hooks: 0, files: 0, settings keys: 0, claude.json keys: 0, retired hook handlers: 1, preserved as backup: 3 (hooks/notify.sh.bak, statusline.sh.bak, fetch-usage.sh.bak))",
         )
       ) {
         problems.push("  migration: aggregate readiness-gated prune line missing");
@@ -206,6 +206,16 @@ function runAdvisorMigrationCase(
     ];
     const first = runEngine(command, fixture, defaultStubs);
     try {
+      if (first.exitCode !== 0) {
+        throw new Error(
+          `first advisor migration run failed for '${command.join(" ")}' with exit code ${first.exitCode}`,
+        );
+      }
+      if (!first.output.includes("--- Sync complete ---")) {
+        throw new Error(
+          `first advisor migration run for '${command.join(" ")}' produced no sync completion summary`,
+        );
+      }
       const second = runEngine(command, fixture, defaultStubs, { reuseHome: first.home });
       const problems: Array<string> = [];
       const firstChangedByRemoval = first.output.includes("Pruned stale artifacts");
@@ -579,9 +589,16 @@ function tomlInvariantProblems(shape: string, fixtureHome: string): Array<string
   if (!existsSync(join(fixtureHome, ".codex", "config.toml.bak"))) {
     problems.push("  invariant: config.toml.bak backup missing");
   }
-  const topLevel = result.split(/^\[/m)[0] ?? "";
-  if ((topLevel.match(/^model[ \t]*=/gm) ?? []).length !== 1) {
-    problems.push("  invariant: top-level model line count != 1");
+  // A parse rejects a duplicated key or table, and it reads multi-line strings
+  // whose lines look like table headers, which a line split cannot.
+  let parsed: Record<string, unknown> | undefined;
+  try {
+    parsed = Bun.TOML.parse(result) as Record<string, unknown>;
+  } catch (error) {
+    problems.push(`  invariant: merged config.toml is not valid TOML: ${String(error)}`);
+  }
+  if (parsed !== undefined && typeof parsed["model"] !== "string") {
+    problems.push("  invariant: merged config.toml has no top-level model");
   }
   if (
     readFileSync(join(TOML_DIR, shape), "utf8").includes("[user_only.table]") &&

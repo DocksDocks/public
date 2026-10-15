@@ -32,7 +32,11 @@ function lspCtx(nodeVersion: string, missing: ReadonlyArray<ToolId>, sinks: Sink
     deps: {
       spec: (id) => DEPENDENCIES[id],
       probe: (id) => ({ state: missing.includes(id) ? "missing" : "present" }),
-      version: async (id) => (id === "node" ? nodeVersion : ""),
+      // rust-analyzer reports a version, so a PATH hit counts as a working binary.
+      version: async (id) => {
+        if (id === "node") return nodeVersion;
+        return id === "rust-analyzer" ? "rust-analyzer 1.92.0 (0d1f2e3a4 2026-08-31)" : "";
+      },
       path: async () => "",
       warnMissing: () => {},
     },

@@ -68,6 +68,16 @@ describe("omp path resolution", () => {
     );
   });
 
+  it("ignores a default-profile override that equals the PI_PROFILE agent directory", () => {
+    expect(
+      paths({
+        OMP_PROFILE: "",
+        PI_PROFILE: "work",
+        PI_CODING_AGENT_DIR: `${home}/.omp/profiles/work/agent`,
+      }),
+    ).toEqual(expectedDefault(`${home}/.omp`));
+  });
+
   it("prefers OMP_PROFILE even when empty, and otherwise falls back to PI_PROFILE", () => {
     expect(paths({ OMP_PROFILE: "", PI_PROFILE: "legacy" })).toEqual(
       expectedDefault(`${home}/.omp`),
@@ -136,6 +146,18 @@ describe("omp path resolution", () => {
     expect(paths({ XDG_DATA_HOME: dataHome, PI_CODING_AGENT_DIR: override }).dataRoot).toBe(
       `${home}/.omp`,
     );
+  });
+
+  it("normalizes an absolute override that names the default agent directory and keeps XDG", () => {
+    const dataHome = join(sandbox, "xdg-data");
+    mkdirSync(join(dataHome, "omp"), { recursive: true });
+
+    expect(paths({ XDG_DATA_HOME: dataHome, PI_CODING_AGENT_DIR: `${home}/.omp/agent/` })).toEqual({
+      profile: undefined,
+      configRoot: `${home}/.omp`,
+      agentDir: `${home}/.omp/agent`,
+      dataRoot: `${dataHome}/omp`,
+    });
   });
 
   it("keeps XDG active when PI_CONFIG_DIR renames the config root", () => {

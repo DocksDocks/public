@@ -1,11 +1,17 @@
 ---
 name: settings-merge-context
-description: "Use when modifying cli/src/engine-native/claudeSync.ts prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive; claudeSettingsModifiers.ts syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; settings.ts mergeSettings/reconcileSettings; or claudeRetired.ts RETIRED_PERMISSION_RULES. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, retired-rule pruning, and readiness-gated pruning."
+description: "Use when modifying cli/src/engine-native/claudeSync.ts syncClaudeJson, syncConnectorEnv; claudeSettings.ts prepareClaudeSettings, commitClaudeSettings, syncCompactWindow, syncPermissive; claudeRemovals.ts syncRemovals; claudeSettingsModifiers.ts syncClaudeModel; cli/src/engine-native/claudeRuntime.ts materializeClaudeSettings; settings.ts mergeSettings/reconcileSettings; or claudeRetired.ts RETIRED_PERMISSION_RULES. Covers runtime-sentinel materialization, atomic settings commit, permissions modes, retired-rule pruning, retired hook-handler pruning, and readiness-gated pruning."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-276"
+      lines: "1-310"
+    - path: cli/src/engine-native/claudeSettings.ts
+      lines: "1-174"
+    - path: cli/src/engine-native/claudeRemovals.ts
+      lines: "1-195"
+    - path: cli/src/engine-native/claudeRuntime.ts
+      lines: "1-157"
     - path: cli/src/engine-native/claudeSettingsModifiers.ts
       lines: "1-115"
     - path: cli/src/engine-native/settings.ts
@@ -16,14 +22,18 @@ metadata:
       lines: "1-372"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-3"
-  updated: "2026-09-11"
+  updated: "2026-10-14"
 ---
 
 # Settings Merge
 
-EngineNative owns Claude settings deployment in `claudeSync.ts`, with pure merge
-helpers in `settings.ts`. The old jq programs remain useful as the behavioral
-spec and are inlined in tests; production logic is TypeScript.
+EngineNative owns Claude settings deployment. `claudeSync.ts claudeSync`
+orchestrates the passes. `claudeSettings.ts` owns the settings transaction and
+the `syncCompactWindow` and `syncPermissive` modifiers.
+`claudeSettingsModifiers.ts` owns `syncClaudeModel`, `syncClaudeEffort`, and
+`syncClaudeAdvisor`. `claudeRemovals.ts` owns retired-artifact pruning.
+Pure merge helpers live in `settings.ts`. The old jq programs remain useful as
+the behavioral spec and are inlined in tests; production logic is TypeScript.
 
 <constraint>
 Always write through a temporary file and replace the target only after the new
@@ -60,15 +70,15 @@ left untouched and reported; never merge into a parse failure.
 | Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
 | `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
-User-only top-level keys survive both merge modes. `claudeSync.ts syncRemovals,
+User-only top-level keys survive both merge modes. `claudeRemovals.ts syncRemovals,
 curated removed-manifest pass` force-prunes only manifest-listed settings keys,
-exact permission-array members, and stale files.
+exact permission-array members, exact retired kit hook handlers, and stale files.
 
 ## Retired Rules
 
 `claudeRetired.ts RETIRED_PERMISSION_RULES, exact retired-rule inventory` names
 the rules the kit once shipped and no longer does: the broad shell allow rules,
-`WebFetch`, and the malformed single-backslash deny spellings. `claudeSync.ts
+`WebFetch`, and the malformed single-backslash deny spellings. `claudeRemovals.ts
 syncRemovals, retired-permission pass` force-prunes those exact strings from the
 kit-managed `~/.claude/settings.json` on every sync. Without that pass,
 `settings.ts mergeSettings, permission-array union` would retain a rule after
@@ -108,10 +118,14 @@ prune. An exact checkout-only override belongs in that checkout's
 | Standard env, hooks, permissions, plugins | `~/.claude/settings.json` | `prepareClaudeSettings` then `commitClaudeSettings` |
 | `showTurnDuration` | `~/.claude.json` | `syncClaudeJson` |
 | User-scoped `mcpServers` | `~/.claude.json` | `syncClaudeJson` merging `SoT/.claude/mcp-servers.json` |
-| Claude.ai cloud connector disable | Shell rc export | `syncConnectorEnv` |
+| Claude.ai cloud connector disable | POSIX: shell profile export (target chosen from `$SHELL`); Windows: `HKCU\Environment` user variable | `syncConnectorEnv` via `hostOs().environmentSetting` |
 
-`syncConnectorEnv` writes `ENABLE_CLAUDEAI_MCP_SERVERS=false` to a shell rc file
-when absent. No JSON setting disables those account-level cloud connectors.
+`syncConnectorEnv` persists `ENABLE_CLAUDEAI_MCP_SERVERS=false` when absent. On
+POSIX, it appends an export to a shell profile. It skips the write if any
+candidate profile already names the variable. On Windows, it probes
+`reg query HKCU\Environment` and sets the variable with `setx`. Only new shells
+or terminals see it. No JSON setting disables those account-level cloud
+connectors.
 
 ## Deploy-Time Modifiers
 
@@ -132,16 +146,27 @@ SoT values, except user-only keys that the SoT does not declare.
 - Permission union is sorted/deduped to match the legacy jq `unique` behavior.
 - `syncClaudeJson` is a patcher, not a wholesale replacer; it must preserve
   Claude Code's project state and user keys.
-- `claudeSync.ts syncRemovals, curated removed-manifest pass` is the narrow
-  exception to additive-by-default. Its `settingsKeys` name retired plugin keys
-  under `enabledPlugins`; `claudeSync.ts pruneJsonKeys, dotted-path
-  removal` splits each manifest key on `.` and walks the resulting path.
+- `claudeRemovals.ts syncRemovals, curated removed-manifest pass` is the narrow
+  exception to additive-by-default. Its `settingsKeys` name retired kit-owned
+  keys, such as plugin keys under `enabledPlugins`; `claudeRemovals.ts
+  pruneJsonKeys, dotted-path removal` splits each manifest key on `.` and walks
+  the resulting path. Never list a whole hook event, such as `hooks.PreToolUse`
+  or `hooks.Stop`, because user handlers share that key.
+- `claudeRemovals.ts pruneRetiredHookHandlers, retired hook-handler pass`
+  removes only handlers whose `command` exactly equals a command the kit once
+  shipped. These are the legacy RTK rewrite handler under `hooks.PreToolUse`
+  and the legacy `fetch-usage.sh` handler under `hooks.Stop`. The Stop removal
+  runs only when the runtime is ready. The pass drops a group with no handlers
+  left, and an event key with no groups left or with a null or non-array value.
+  It copies `settings.json` to `settings.json.bak` before it writes. The
+  "Pruned stale artifacts" line reports the retired hook handler count. User
+  `PreToolUse` and `Stop` handlers survive.
 - The manifest's `homeFiles` are home-relative artifacts the kit installed
-  outside `~/.claude`, one entry per retired kit-owned command. `claudeSync.ts
+  outside `~/.claude`, one entry per retired kit-owned command. `claudeRemovals.ts
   syncRemovals, unconditional home-file loop` deletes them outside the
   `runtimeReady` branch and increments the shared `filesRemoved` counter.
 - Exact permission-rule entries remove only the listed strings and preserve all
-  other user rules. `claudeSync.ts syncRemovals, runtime-ready manifest
+  other user rules. `claudeRemovals.ts syncRemovals, runtime-ready manifest
   expansion` gates only the legacy statusline/Notification/Stop subset; baseline
   stale entries remain unconditional.
 - The authoring `SoT/.claude/settings.json` contains named sentinels. Only

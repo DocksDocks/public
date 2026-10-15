@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
@@ -12,6 +14,13 @@ import {
 } from "../../src/engine-native/ompOverlay";
 
 const FREE_SELECTOR = "opencode-zen/muse-spark-1.3-contributor-free";
+
+const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
+
+// Keys the overlay leaves to the deployed config on purpose. The `web` role
+// and its chain keep the deployed web-search provider order. The launcher
+// docs state that this order can include a paid model.
+const DEPLOYED_ONLY_KEYS = ["web"];
 
 const ROLE_KEYS = [
   "smol",
@@ -28,6 +37,8 @@ const ROLE_KEYS = [
   "switch_fable",
   "astra",
   "reviewer",
+  "memory",
+  "judge",
 ];
 
 const FALLBACK_KEYS = [
@@ -42,6 +53,8 @@ const FALLBACK_KEYS = [
   "fable",
   "astra",
   "reviewer",
+  "memory",
+  "judge",
 ];
 
 // Free catalog ladders can skip medium or xhigh entirely.
@@ -139,12 +152,38 @@ describe("omp free-session overlay", () => {
           cost: { input: 0, output: 1 },
         },
         { selector: "unpriced/model" },
+        // omp prices usage-billed and plan-included models at zero cost.
+        {
+          selector: "cursor/default",
+          name: "Auto",
+          thinking: [],
+          contextWindow: 100,
+          cost: { input: 0, output: 0 },
+          pricingStatus: "variable",
+        },
+        {
+          selector: "plan/included",
+          name: "Included",
+          thinking: [],
+          contextWindow: 100,
+          cost: { input: 0, output: 0 },
+          pricingStatus: "included",
+        },
+        {
+          selector: "status/unknown",
+          name: "Unknown status",
+          thinking: [],
+          contextWindow: 100,
+          cost: { input: 0, output: 0 },
+          pricingStatus: "unknown",
+        },
         {
           selector: FREE_SELECTOR,
           name: "Muse Spark 1.3 Free",
           thinking: ["minimal", "low", "medium", "high", "xhigh", "ultra"],
           contextWindow: 1048576,
           cost: { input: 0, output: 0 },
+          pricingStatus: "free",
         },
         "not-a-row",
         { selector: "", cost: { input: 0, output: 0 } },
@@ -157,18 +196,57 @@ describe("omp free-session overlay", () => {
         thinking: ["minimal", "low", "medium", "high", "xhigh"],
         contextWindow: 1048576,
       },
+      { selector: "status/unknown", name: "Unknown status", thinking: [], contextWindow: 100 },
     ]);
     expect(parseFreeModels(undefined)).toEqual([]);
     expect(parseFreeModels({})).toEqual([]);
   });
 
-  it("keeps distinct selectors in separate, repeatable overlay files", () => {
-    const name = overlayFileName("opencode-zen/muse");
+  it("keeps distinct models and levels in separate, repeatable overlay files", () => {
+    const high = { selector: "opencode-zen/muse", thinking: "high", advisorThinking: "low" };
+    const name = overlayFileName(high);
     expect(name).toMatch(/^omp-free-[A-Za-z0-9._-]+\.yml$/);
-    expect(overlayFileName("opencode-zen/muse")).toBe(name);
+    expect(overlayFileName({ ...high })).toBe(name);
+    // A running session reloads its overlay when the file changes, so another
+    // level for the same model must not share the file.
+    expect(
+      overlayFileName({
+        selector: "opencode-zen/muse",
+        thinking: "xhigh",
+        advisorThinking: "medium",
+      }),
+    ).not.toBe(name);
     // These selectors have the same sanitized spelling but must not overwrite
     // each other's live-session overlay.
-    expect(overlayFileName("opencode-zen/muse")).not.toBe(overlayFileName("opencode-zen-muse"));
+    expect(overlayFileName({ selector: "opencode-zen/muse" })).not.toBe(
+      overlayFileName({ selector: "opencode-zen-muse" }),
+    );
+  });
+
+  it("covers every deployed role and retry chain or declares it deployed-only", () => {
+    const sot = parse(readFileSync(join(REPO_DIR, "SoT", ".omp", "config.yml"), "utf8")) as Record<
+      string,
+      unknown
+    >;
+    const overlay = parse(
+      renderFreeOverlay({ selector: FREE_SELECTOR, thinking: "xhigh", advisorThinking: "medium" }),
+    ) as Record<string, unknown>;
+    const overlayRoles = Object.keys(overlay["modelRoles"] as Record<string, unknown>);
+    const overlayChains = Object.keys(fallbackChains(overlay));
+    const sotRoles = Object.keys(sot["modelRoles"] as Record<string, unknown>);
+    const sotChains = Object.keys(fallbackChains(sot));
+    expect(
+      sotRoles.filter((key) => !overlayRoles.includes(key) && !DEPLOYED_ONLY_KEYS.includes(key)),
+    ).toEqual([]);
+    expect(
+      sotChains.filter((key) => !overlayChains.includes(key) && !DEPLOYED_ONLY_KEYS.includes(key)),
+    ).toEqual([]);
+    // A deployed-only key must stay out of the overlay, or the docs that
+    // describe it as deployed would be wrong.
+    for (const key of DEPLOYED_ONLY_KEYS) {
+      expect(overlayRoles).not.toContain(key);
+      expect(overlayChains).not.toContain(key);
+    }
   });
 
   it("asks nothing when the model publishes no usable ladder", () => {

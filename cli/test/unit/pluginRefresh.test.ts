@@ -27,6 +27,78 @@ function claudeInstalledPlugins(): string {
   });
 }
 
+/** Stub expression: the marketplace name `claude plugin marketplace add <repo>` registers. */
+const STUB_MARKETPLACE_NAMES = `({
+  "DocksDocks/docks": "docks",
+  "anthropics/claude-plugins-official": "claude-plugins-official",
+  "czlonkowski/n8n-skills": "n8n-mcp-skills",
+})`;
+
+/**
+ * A claude stub that keeps the plugin state Claude Code 2.1.284 keeps. A
+ * marketplace exists only after `marketplace add`. `install` resolves only
+ * from a known marketplace and enables the plugin at user scope. `enable`
+ * fails for a plugin that is already enabled.
+ */
+const CLAUDE_REGISTRY_STUB = `const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs")
+const { dirname, join } = process.getBuiltinModule("node:path")
+const claudeDir = join(process.env["HOME"] ?? "", ".claude")
+const knownFile = join(claudeDir, "plugins", "known_marketplaces.json")
+const installedFile = join(claudeDir, "plugins", "installed_plugins.json")
+const settingsFile = join(claudeDir, "settings.json")
+const readJson = (file) => (existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {})
+const writeJson = (file, doc) => {
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, JSON.stringify(doc))
+}
+const known = readJson(knownFile)
+const verb = args.slice(0, 3).join(" ")
+if (args[0] === "--version") {
+  console.log("2.1.284 (Claude Code)")
+} else if (verb === "plugin marketplace add") {
+  known[${STUB_MARKETPLACE_NAMES}[args[3]]] = { source: args[3] }
+  writeJson(knownFile, known)
+} else if (verb === "plugin marketplace update") {
+  if (!Object.hasOwn(known, args[3])) {
+    console.error(\`Marketplace '\${args[3]}' not found\`)
+    process.exitCode = 1
+  }
+} else if (args[0] === "plugin" && args[1] === "install") {
+  const id = args[2]
+  if (!Object.hasOwn(known, id.slice(id.lastIndexOf("@") + 1))) {
+    console.error(\`Plugin "\${id}" not found in marketplace\`)
+    process.exitCode = 1
+  } else {
+    const installed = readJson(installedFile)
+    installed.plugins = { ...(installed.plugins ?? {}), [id]: [{ scope: "user", version: "1.0.0" }] }
+    writeJson(installedFile, installed)
+    const settings = readJson(settingsFile)
+    settings.enabledPlugins = { ...(settings.enabledPlugins ?? {}), [id]: true }
+    writeJson(settingsFile, settings)
+  }
+} else if (args[0] === "plugin" && args[1] === "enable") {
+  const settings = readJson(settingsFile)
+  if (settings.enabledPlugins?.[args[2]] === true) {
+    console.error(\`Failed to enable plugin "\${args[2]}": Plugin "\${args[2]}" is already enabled\`)
+    process.exitCode = 1
+  } else {
+    settings.enabledPlugins = { ...(settings.enabledPlugins ?? {}), [args[2]]: true }
+    writeJson(settingsFile, settings)
+  }
+}`;
+
+/** A home where every SoT plugin and every kit marketplace is already present. */
+function warmClaudeHome(): string {
+  return materializeVariant("home-drift", {
+    ".claude/plugins/installed_plugins.json": claudeInstalledPlugins(),
+    ".claude/plugins/known_marketplaces.json": stableStringify({
+      "claude-plugins-official": { source: "anthropics/claude-plugins-official" },
+      docks: { source: "DocksDocks/docks" },
+      userplace: { source: "user/userplace" },
+    }),
+  });
+}
+
 describe("refresh-only plugin skip", () => {
   it("skips warmed refreshes through the public CLI without skipping inventory", () => {
     const variant = materializeVariant("home-drift", {
@@ -214,12 +286,12 @@ const known = existsSync(knownFile) ? JSON.parse(readFileSync(knownFile, "utf8")
 if (args[0] === "--version") {
   console.log("2.1.280 (Claude Code)")
 } else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add") {
-  const name = args[3] === "czlonkowski/n8n-skills" ? "n8n-mcp-skills" : "docks"
+  const name = ${STUB_MARKETPLACE_NAMES}[args[3]]
   known[name] = { source: args[3] }
   mkdirSync(dirname(knownFile), { recursive: true })
   writeFileSync(knownFile, JSON.stringify(known))
 } else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "update") {
-  if (args[3] !== "claude-plugins-official" && !Object.hasOwn(known, args[3])) {
+  if (!Object.hasOwn(known, args[3])) {
     console.error(\`Marketplace '\${args[3]}' not found\`)
     process.exitCode = 1
   }
@@ -276,7 +348,7 @@ if (existsSync(knownFile)) {
 if (args[0] === "--version") {
   console.log("2.1.280 (Claude Code)")
 } else if (args[0] === "plugin" && args[1] === "marketplace" && args[2] === "add" && readable) {
-  known[args[3] === "czlonkowski/n8n-skills" ? "n8n-mcp-skills" : "docks"] = { source: args[3] }
+  known[${STUB_MARKETPLACE_NAMES}[args[3]]] = { source: args[3] }
   mkdirSync(dirname(knownFile), { recursive: true })
   writeFileSync(knownFile, JSON.stringify(known))
 }`;
@@ -331,6 +403,131 @@ describe("optional Claude plugin failures", () => {
       expect(argv).not.toContain("claude\tplugin enable n8n-mcp-skills@n8n-mcp-skills");
     } finally {
       cleanup([run]);
+    }
+  });
+});
+
+describe("official Claude marketplace", () => {
+  it("adds the official marketplace on a fresh home before installing its plugins", () => {
+    const run = runEngine(
+      ["sync", "claude"],
+      "home-fresh",
+      makeStubDir({ claude: CLAUDE_REGISTRY_STUB }, NATIVE_HOST),
+      NATIVE_HOST,
+    );
+    try {
+      expect(run.exitCode, run.output).toBe(0);
+      expect(run.output).not.toContain("--- Failures ---");
+      const argv = readArgvLog(run);
+      const add = "claude\tplugin marketplace add anthropics/claude-plugins-official";
+      expect(argv).toContain(add);
+      expect(argv.indexOf(add)).toBeLessThan(
+        argv.indexOf("claude\tplugin install php-lsp@claude-plugins-official"),
+      );
+    } finally {
+      cleanup([run]);
+    }
+  });
+});
+
+describe("optional Claude plugin enable", () => {
+  it("does not re-enable a plugin that its install already enabled", () => {
+    const stubs = makeStubDir({ claude: CLAUDE_REGISTRY_STUB }, NATIVE_HOST);
+    const first = runEngine(
+      ["sync", "claude", "--claude-plugin=n8n"],
+      "home-fresh",
+      stubs,
+      NATIVE_HOST,
+    );
+    try {
+      expect(first.exitCode, first.output).toBe(0);
+      expect(first.output).not.toContain("--- Failures ---");
+      expect(first.output).toContain("Optional plugin opted in: n8n-mcp-skills@n8n-mcp-skills");
+      expect(readArgvLog(first)).not.toContain("claude\tplugin enable");
+
+      const second = runEngine(["sync", "claude", "--claude-plugin=n8n"], "home-fresh", stubs, {
+        ...NATIVE_HOST,
+        reuseHome: first.home,
+      });
+      expect(second.exitCode, second.output).toBe(0);
+      expect(second.output).not.toContain("--- Failures ---");
+    } finally {
+      cleanup([first]);
+    }
+  });
+
+  it("skips optional plugins with a warning when git is missing", () => {
+    const run = runEngine(
+      ["sync", "claude", "--claude-plugin=n8n"],
+      "home-fresh",
+      makeStubDir({ git: null }, NATIVE_HOST),
+      { ...NATIVE_HOST, maskTools: ["git"] },
+    );
+    try {
+      expect(run.exitCode, run.output).toBe(0);
+      expect(run.output).toContain("git not installed");
+      expect(run.output).not.toContain("--- Failures ---");
+      expect(readArgvLog(run)).not.toContain("claude\tplugin marketplace add");
+    } finally {
+      cleanup([run]);
+    }
+  });
+});
+
+describe("Claude plugin update results", () => {
+  it("counts a plugin whose version changed as updated", () => {
+    const claude = `if (args[0] === "--version") {
+  console.log("2.1.284 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "update") {
+  console.log(\`Checking for updates for plugin "\${args[2]}" at user scope...\`)
+  console.log(
+    args[2] === "docks@docks"
+      ? 'Plugin "docks" updated from 1.0.0 to 1.0.1 for scope user. Restart to apply changes.'
+      : \`\${args[2]} is already at the latest version (1.0.1).\`,
+  )
+}`;
+    const variant = warmClaudeHome();
+    const run = runEngine(
+      ["sync", "claude"],
+      variant,
+      makeStubDir({ claude }, NATIVE_HOST),
+      NATIVE_HOST,
+    );
+    try {
+      expect(run.exitCode, run.output).toBe(0);
+      expect(run.output).toContain("plugins: +0 ~1 -0");
+      expect(run.output).toContain("In a Claude Code session, run /reload-plugins");
+    } finally {
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
+    }
+  });
+
+  it("records the stderr cause of a failed update, not the stdout progress line", () => {
+    const claude = `if (args[0] === "--version") {
+  console.log("2.1.284 (Claude Code)")
+} else if (args[0] === "plugin" && args[1] === "update" && args[2] === "docks@docks") {
+  console.log(\`Checking for updates for plugin "\${args[2]}" at user scope...\`)
+  console.error(\`Failed to update plugin "\${args[2]}": boom\`)
+  process.exitCode = 1
+}`;
+    const variant = warmClaudeHome();
+    const run = runEngine(
+      ["sync", "claude"],
+      variant,
+      makeStubDir({ claude }, NATIVE_HOST),
+      NATIVE_HOST,
+    );
+    try {
+      expect(run.exitCode).toBe(1);
+      expect(run.output).toContain("--- Failures ---");
+      expect(run.output).toContain(
+        'Failed to update plugin: docks@docks: Failed to update plugin "docks@docks": boom; run manually: claude plugin update docks@docks --scope user',
+      );
+      expect(run.output).not.toContain("Checking for updates");
+    } finally {
+      cleanup([run]);
+      rmSync(variant, { recursive: true, force: true });
     }
   });
 });

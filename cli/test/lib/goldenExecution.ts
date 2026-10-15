@@ -99,6 +99,8 @@ interface RunOpts {
   readonly env?: Record<string, string>;
   /** Exercise the recording host instead of the Linux-canonical golden preload. */
   readonly nativeHost?: boolean;
+  /** Working directory of the child; the repository root by default. */
+  readonly cwd?: string;
 }
 
 function childArgv(args: ReadonlyArray<string>, opts: RunOpts): Array<string> {
@@ -179,7 +181,7 @@ export function runEngine(
   let result: SpawnSyncReturns<string>;
   try {
     result = spawnSync(BUN_RUNTIME, argv, {
-      cwd: REPO_DIR,
+      cwd: opts.cwd ?? REPO_DIR,
       env: {
         ...runEnv(home, stubDir, argvLog, opts),
         DOCKS_KIT_ENGINE: "native-raw",
@@ -220,7 +222,7 @@ export function runEngineSplit(
   const argv = childArgv(args, opts);
   const command = [BUN_RUNTIME, ...argv].join(" ");
   const result = spawnSync(BUN_RUNTIME, argv, {
-    cwd: REPO_DIR,
+    cwd: opts.cwd ?? REPO_DIR,
     env: {
       ...runEnv(home, stubDir, argvLog, opts),
       DOCKS_KIT_ENGINE: "native-raw",
@@ -254,7 +256,7 @@ export function runPublicCli(
   const argv = childArgv(args, opts);
   const command = [BUN_RUNTIME, ...argv].join(" ");
   const result = spawnSync(BUN_RUNTIME, argv, {
-    cwd: REPO_DIR,
+    cwd: opts.cwd ?? REPO_DIR,
     env: runEnv(home, stubDir, argvLog, opts),
     stdio: ["ignore", "pipe", "pipe"],
     encoding: "utf8",

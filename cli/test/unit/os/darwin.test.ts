@@ -37,13 +37,15 @@ describe("Darwin host OS", () => {
       ".zshrc",
       ".bashrc",
       ".bash_profile",
+      ".bash_login",
       ".profile",
       ".zshenv",
     ]);
-    expect(setting.target(undefined)).toBe(".bashrc");
-    expect(setting.target("/bin/zsh")).toBe(".zshrc");
-    expect(setting.target("/usr/local/bin/bash")).toBe(".bashrc");
-    expect(setting.target("/bin/fish")).toBe(".profile");
+    const none = (): boolean => false;
+    expect(setting.target(undefined, none)).toBe(".bash_profile");
+    expect(setting.target("/bin/zsh", none)).toBe(".zshrc");
+    expect(setting.target("/usr/local/bin/bash", none)).toBe(".bash_profile");
+    expect(setting.target("/bin/fish", none)).toBe(".profile");
     expect(setting.line).toBe("export ENABLE_CLAUDEAI_MCP_SERVERS=false");
     expect(
       host.statusLineCommand("/Users/test/.bun/bin/bun", "/Users/test/.claude/bin/statusline.mjs"),
@@ -56,10 +58,24 @@ describe("Darwin host OS", () => {
     expect(host.installHint("curl")).toBe("brew install curl");
     expect(host.installHint("ffplay")).toBe("brew install ffmpeg");
     expect(host.installHint("claude")).toBe(
-      "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+      'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
     );
     expect(host.installHint("codex")).toBe(
       'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
     );
+  });
+
+  it.each<[ReadonlyArray<string>, string]>([
+    [[], ".bash_profile"],
+    [[".profile"], ".profile"],
+    [[".bash_login", ".profile"], ".bash_login"],
+    [[".bash_profile", ".bash_login", ".profile"], ".bash_profile"],
+    [[".bashrc"], ".bash_profile"],
+  ])("writes a login-shell bash setting to the first existing file of %j", (existing, target) => {
+    const setting = hostOs("darwin").environmentSetting("ENABLE_CLAUDEAI_MCP_SERVERS", "false");
+    if (setting.kind !== "profile") throw new Error("expected a profile environment setting");
+    const exists = (file: string): boolean => existing.includes(file);
+    expect(setting.target("/bin/bash", exists)).toBe(target);
+    expect(setting.target("/bin/zsh", exists)).toBe(".zshrc");
   });
 });

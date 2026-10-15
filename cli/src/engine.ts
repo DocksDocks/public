@@ -2,6 +2,7 @@ import { CliError } from "effect/unstable/cli";
 import { Console, Effect } from "effect";
 import { spawnSync } from "node:child_process";
 import { runEngineNative } from "./engine-native";
+import { ENV_GLOBAL_KEYS } from "./engine-native/engineCtx";
 import { ExitError } from "./engine-native/parseArgs";
 import { makeEngineServices } from "./engine-native/services";
 import { targetForHost } from "./engine-native/os/targets";
@@ -57,7 +58,7 @@ export const engine = (args: ReadonlyArray<string>) =>
     const deps = yield* DependencyManagerService;
     const platform = yield* PlatformService;
     const code = yield* Effect.tryPromise({
-      try: () => runEngineNative(args, { logger, deps, platform }),
+      try: () => runEngineNative(args, { logger, deps, platform }, { envGlobals: false }),
       catch: (error) =>
         new CliError.UserError({
           cause: error,
@@ -69,6 +70,27 @@ export const engine = (args: ReadonlyArray<string>) =>
     }
   });
 
+// The capture child must not inherit the env globals or a caller's channel
+// selection in any spelling.
+const CAPTURE_DROPPED_KEYS: ReadonlyArray<string> = [...ENV_GLOBAL_KEYS, "DOCKS_KIT_ENGINE"];
+
+/**
+ * Build the capture child environment. Windows environment names are
+ * case-insensitive, so a key such as `claude_compact_window` also matches
+ * there. POSIX names stay case-sensitive.
+ */
+const captureChildEnv = (): NodeJS.ProcessEnv => {
+  const foldCase = process.platform === "win32";
+  const env: NodeJS.ProcessEnv = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+    if (CAPTURE_DROPPED_KEYS.includes(foldCase ? name.toUpperCase() : name)) continue;
+    env[name] = value;
+  }
+  env["DOCKS_KIT_ENGINE"] = "native-capture";
+  return env;
+};
+
 /** Run the engine capturing stdout (engine logs/warns go to stderr and pass through). */
 export const engineCapture = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -76,14 +98,18 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
     if (bashEngineRequested()) {
       return yield* bail(bashRemovedMessage, 2);
     }
+    // The child runs the native-capture channel, which ignores env globals even
+    // when Bun reloads them from a project `.env`. The child environment also
+    // omits them, so a captured public command behaves like an in-process one.
+    const childEnv = captureChildEnv();
     const res = yield* Effect.sync(() =>
-      // Child process (raw channel): runEngineNative writes straight to
+      // Child process (capture channel): runEngineNative writes straight to
       // process.stdout, so in-process capture is not possible.
       spawnSync(
         process.execPath,
         compiled ? [...args] : [`${kitHome()}/cli/src/main.ts`, ...args],
         {
-          env: { ...process.env, DOCKS_KIT_ENGINE: "native-raw" },
+          env: childEnv,
           encoding: "utf8",
           stdio: ["ignore", "pipe", "inherit"],
         },

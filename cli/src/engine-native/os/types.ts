@@ -24,8 +24,8 @@ export type EnvironmentSetting =
       readonly kind: "profile";
       /** Home-relative files scanned for an existing setting. */
       readonly candidates: ReadonlyArray<string>;
-      /** Home-relative file that receives the write for this shell. */
-      readonly target: (shell: string | undefined) => string;
+      /** Home-relative file that receives the write for this shell; `exists` tests a home-relative file. */
+      readonly target: (shell: string | undefined, exists: (file: string) => boolean) => string;
       /** Line appended to the target file. */
       readonly line: string;
     }

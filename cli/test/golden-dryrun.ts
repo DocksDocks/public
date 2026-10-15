@@ -80,6 +80,7 @@ const PUBLIC_COMMANDS: Array<Array<string>> = [
   ["status", "--no-json"],
   ["update", "--no-no-sync"],
   ["sync", "--bogus", "--claude-model", "opus"],
+  ["docs", "constructor"],
 ];
 interface DryRunMatrixRow {
   readonly fixture: string;

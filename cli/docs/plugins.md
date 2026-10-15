@@ -14,7 +14,8 @@ is absent from user settings.
 
 ## Sync passes (idempotent, via the `claude plugin` CLI)
 
-1. Add SoT marketplaces not yet known
+1. Add SoT marketplaces not yet known, plus `anthropics/claude-plugins-official`
+   when a kit plugin needs it and Claude Code has not registered it yet
 2. Install SoT-declared plugins missing at user scope, refreshing each
    plugin's source marketplace once first
 3. Refresh the remaining kit-owned marketplaces (skipped by
@@ -22,11 +23,14 @@ is absent from user settings.
 4. Update the kit-owned installed plugins (skipped by `--skip-plugin-refresh`)
 5. (`--prune` only) uninstall user-scope plugins that are neither
    SoT-declared nor opted in on this run
-6. (`--prune` only) remove marketplaces no kit-owned plugin needs (built-in
-   `claude-plugins-official` and marketplaces behind project- or local-scope
+6. (`--prune` only) remove marketplaces no kit-owned plugin needs
+   (`claude-plugins-official` and marketplaces behind project- or local-scope
    installs are never removed)
 7. Re-assert SoT enabled-state (undoes install's enable side effect on
    false-keyed plugins)
+
+Every `claude plugin` command runs from the system temp directory, so a sync
+started inside a project never edits that project's `.claude` settings.
 
 ## Failed operations fail the sync
 
@@ -34,10 +38,11 @@ A marketplace or plugin command that exits non-zero is warned in place AND
 recorded, then listed under a `--- Failures ---` block after the summary; the
 sync exits 1. A stale plugin therefore no longer looks like a clean sync.
 
-Not a failure: a missing harness CLI, missing git, a missing
-`SoT/toolchain.json` pin, and an unavailable plugin inventory. Those stay
-warn-and-skip with exit 0, so a host without Claude, Codex, or omp installed
-still syncs its deployed config cleanly.
+Not a failure: a missing harness CLI, missing git, and a missing
+`SoT/toolchain.json` pin. Those stay warn-and-skip with exit 0, so a host
+without Claude, Codex, or omp installed still syncs its deployed config
+cleanly. An unavailable plugin inventory warns without a ledger row and falls
+back to the full refresh, whose failed commands are recorded.
 
 ## Optional opt-ins
 

@@ -90,12 +90,19 @@ No current role model has a window below 272,000, so the hazard was latent
 rather than live. Not pinning removes it entirely, including for any future
 model with a smaller window.
 
+## Idle compaction is a kit-set value
+
+`SoT/.omp/config.yml` sets `compaction.idleEnabled: true`. The omp default is
+`false` in omp 18.4.4 through 18.10.4. Idle compaction fires below the
+reserve-based trigger on both lanes. A compaction whose reason is `idle`
+skips the progress guard. Keep the key. The merge is additive, so a dropped
+key turns idle compaction off on fresh installs.
+
 ## Related settings left at their omp defaults
 
 | Setting | Value | Reason |
 |---|---|---|
-| `extendedContext` | `false` | omp 17.4.0 added the setting defaulting on, and a later release flipped the default to off. It caps a model carrying a premium long-context price tier at that model's standard-pricing window, so `openai-codex/gpt-5.6-sol` reports 272,000 rather than about 1,050,000. Enabling it makes a Codex window overrun structurally impossible. The cost is a cliff rather than a marginal rate: any request above the 272,000 threshold bills the whole request at input $10 instead of $4, cache read $1.00 instead of $0.40, and cache write $12.50 instead of $5.00. |
-| `compaction.idleEnabled` | `true` | omp default. Idle compaction fires below the reserve-based trigger on both lanes. A compaction whose reason is `idle` skips the progress guard. |
+| `extendedContext` | `false` | omp 17.4.0 added the setting with the default on, and a later release changed the default to off. The setting controls the window omp reports for a model with a long-context limit. On omp 18.10.4, `omp models openai-codex` lists `openai-codex/gpt-6.1-sol` at 500,000 tokens with the setting off and 922,000 tokens with it on. The Codex lane uses this model for the `default`, `task`, and `vision` fallbacks and for the `reviewer` role. OpenAI bills the whole request at the long-prompt rate when the input is above 272,000 tokens. That rate is input $4.00 instead of $2.00, cache read $0.20 instead of $0.10, cache write $5.00 instead of $2.50, and output $15.00 instead of $10.00. The cost is a cliff rather than a marginal rate. Keeping the setting off keeps the smaller window, so fewer requests cross that cliff. |
 | `compaction.idleThresholdTokens` | `200000` | omp default. |
 | `compaction.idleTimeoutSeconds` | `300` | omp default. |
 | `compaction.methodOrder` | `["remote","snapcompact","handoff","shake","soft"]` | omp default, remote first. Since omp 18.1.18 the Anthropic server-side lane handles Anthropic models, so snapcompact is a fallback rather than the primary path. |

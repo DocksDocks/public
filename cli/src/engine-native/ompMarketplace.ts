@@ -54,6 +54,15 @@ export async function syncMarketplace(
   const adoptable =
     !registered && legacyRegistryFile !== undefined && registryHasDocks(legacyRegistryFile);
 
+  // syncPlugins owns the single skip message for both missing CLIs, and it runs
+  // right after this pass. Without omp no marketplace command can run at all,
+  // and without git a marketplace clone cannot resolve, so both are deliberate
+  // skips: return silently instead of spawning and recording a failure. The
+  // probes run before the dry-run branch, so a dry run previews only the
+  // commands that a real run on this host would run.
+  if (ctx.services.deps.probe("omp").state === "missing") return;
+  if (ctx.services.deps.probe("git").state === "missing") return;
+
   if (ctx.dryRun) {
     if (adoptable) {
       echo(
@@ -65,13 +74,6 @@ export async function syncMarketplace(
     else echo(`[dry-run] omp plugin marketplace add ${MARKETPLACE_SOURCE}`);
     return;
   }
-
-  // syncPlugins owns the single skip message for both missing CLIs, and it runs
-  // right after this pass. Without omp no marketplace command can run at all,
-  // and without git a marketplace clone cannot resolve, so both are deliberate
-  // skips: return silently instead of spawning and recording a failure.
-  if (ctx.services.deps.probe("omp").state === "missing") return;
-  if (ctx.services.deps.probe("git").state === "missing") return;
 
   if (!registered && !adoptable) {
     progress("Registering omp docks marketplace...");

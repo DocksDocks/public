@@ -3,16 +3,10 @@
  * merge, legacy marketplace removal, and enabled-plugin refresh. Message
  * strings and backup behavior are golden-tested.
  */
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import { payloadDisplayPath } from "../payload";
+import { replaceFile } from "./atomicWrite";
 import { PLUGIN_TABLE_HEADER } from "./codexConfig";
 import { isTomlHeaderLine } from "./codexToml";
 import { p, processFailureSummary, spawnProcess } from "./exec";
@@ -23,12 +17,18 @@ import type { JsonObject } from "./sharedTypes";
 
 // ---------------------------------------------------------- marketplace ----
 
+/**
+ * Merge the SoT marketplace into the deployed personal marketplace. Codex
+ * resolves a plugin id `<plugin>@<marketplace>` through the file's top-level
+ * `name`. When the deployed file has a different name, the file stays as it is
+ * and the SoT marketplace name comes back, because kit plugin ids cannot resolve.
+ */
 export function syncMarketplace(
   ctx: Ctx,
   sotMarketplaceText: string,
   userMarketplace: string,
-): void {
-  const { change, echo, verbose } = ctx.services.logger;
+): string | undefined {
+  const { change, echo, verbose, warn } = ctx.services.logger;
   const sotMarketplace = payloadDisplayPath("SoT/.codex/plugins/marketplace.json");
   const repo = parseJson(sotMarketplaceText);
   if (repo === undefined) throw new Error(`invalid SoT marketplace JSON: ${sotMarketplace}`);
@@ -39,6 +39,18 @@ export function syncMarketplace(
     throw new Error(
       `invalid deployed Codex marketplace JSON: ${userMarketplace}. Fix or delete it.`,
     );
+  }
+
+  const sotName = isObject(repo) && typeof repo["name"] === "string" ? repo["name"] : undefined;
+  const userName =
+    user !== undefined && isObject(user) && typeof user["name"] === "string"
+      ? user["name"]
+      : undefined;
+  if (sotName !== undefined && userName !== undefined && userName !== sotName) {
+    warn(
+      `Codex personal marketplace ${userMarketplace} is named "${userName}", but kit plugins need "${sotName}". Rename it to "${sotName}" and update your [plugins."<plugin>@${userName}"] tables, or move your plugins to a different marketplace. Then run sync again.`,
+    );
+    return sotName;
   }
   const out = user === undefined ? undefined : jqStringify(mergeMarketplace(repo, user));
 
@@ -52,25 +64,26 @@ export function syncMarketplace(
         `[dry-run] merge ${sotMarketplace} -> ${userMarketplace} (backup at ${userMarketplace}.bak)`,
       );
     }
-    return;
+    return undefined;
   }
 
   mkdirSync(p(ctx.agentsDir, "plugins"), { recursive: true });
   if (userText !== undefined && out !== undefined) {
     if (out === userText) {
       verbose("Codex marketplace already in sync");
-      return;
+      return undefined;
     }
     copyFileSync(userMarketplace, `${userMarketplace}.bak`);
-    writeFileSync(`${userMarketplace}.tmp`, out);
-    renameSync(`${userMarketplace}.tmp`, userMarketplace);
+    replaceFile(userMarketplace, out);
     change("Codex marketplace merged (backup at marketplace.json.bak)");
     ctx.nextStepTriggers.codexRestart = true;
   } else {
-    writeFileSync(userMarketplace, sotMarketplaceText);
+    // Install the merge form, so the next sync merges to the same bytes.
+    writeFileSync(userMarketplace, jqStringify(mergeMarketplace(repo, {})));
     change("Codex marketplace installed");
     ctx.nextStepTriggers.codexRestart = true;
   }
+  return undefined;
 }
 
 /**
@@ -190,11 +203,9 @@ function enabledPluginIdsFromText(configText: string): Array<string> {
   return ids;
 }
 
-function manualPluginRefreshCommand(sotConfigText: string): string {
-  const first = enabledPluginIdsFromText(sotConfigText)[0];
-  return first !== undefined
-    ? `codex plugin add ${first}`
-    : "codex plugin add <plugin@marketplace>";
+function manualPluginRefreshHint(pluginIds: ReadonlyArray<string>): string {
+  const first = pluginIds[0];
+  return first !== undefined ? `; then run: codex plugin add ${first}` : "";
 }
 
 async function installedPluginIdsFromCli(): Promise<Set<string> | undefined> {
@@ -214,9 +225,23 @@ async function installedPluginIdsFromCli(): Promise<Set<string> | undefined> {
   return ids;
 }
 
-export async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void> {
+/**
+ * Add the SoT-enabled plugins through the Codex CLI. `unresolvedMarketplace`
+ * names a marketplace that syncMarketplace could not deploy; ids from it are
+ * skipped, because `codex plugin add` cannot resolve them.
+ */
+export async function syncPlugins(
+  ctx: Ctx,
+  sotConfigText: string,
+  unresolvedMarketplace?: string,
+): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
+  const desiredPluginIds = enabledPluginIdsFromText(sotConfigText).filter(
+    (pluginId) =>
+      unresolvedMarketplace === undefined || !pluginId.endsWith(`@${unresolvedMarketplace}`),
+  );
   if (ctx.dryRun) {
+    if (desiredPluginIds.length === 0) return;
     echo(
       ctx.skipPluginRefresh
         ? "[dry-run] add missing enabled Codex plugins from SoT; skip refresh-only plugin updates"
@@ -227,10 +252,11 @@ export async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void
 
   if (ctx.services.deps.probe("codex").state === "missing") {
     warn(
-      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfigText)}`,
+      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli${manualPluginRefreshHint(desiredPluginIds)}`,
     );
     return;
   }
+  if (desiredPluginIds.length === 0) return;
   if (ctx.services.deps.probe("git").state === "missing") {
     ctx.services.deps.warnMissing(
       "git",
@@ -240,7 +266,6 @@ export async function syncPlugins(ctx: Ctx, sotConfigText: string): Promise<void
     return;
   }
 
-  const desiredPluginIds = enabledPluginIdsFromText(sotConfigText);
   let pluginIds = desiredPluginIds;
   if (ctx.skipPluginRefresh) {
     progress("Checking installed Codex plugins...");

@@ -22,7 +22,8 @@ Their generated Bun floor is intentionally separate from the generated `verified
   shared by the Claude runtime and direct `toolchain ensure bun` on every
   supported host. The POSIX modules download `install.sh` with curl and run it
   with Bash. The Windows module downloads `install.ps1` with curl and runs it
-  through `powershell.exe`.
+  through `powershell.exe`. When Bun is already present, `toolchain ensure bun`
+  installs nothing and warns if that Bun is below the `floor`.
 
 jq and curl are `check` rows, not global prerequisites. jq is not consumed by
 normal sync. curl is checked only when a requested Bun bootstrap must download
@@ -50,14 +51,15 @@ the installed version and judges nothing.
 
 ## Language-server upgrades
 
-`claudeSync syncLspServers` installs `intelephense`, `typescript-language-server`,
+`claudeLsp.ts syncLspServers` installs `intelephense`, `typescript-language-server`,
 `typescript`, and `rust-analyzer` only when the binary is missing. It never
 upgrades a server that is already present. A `verified` bump therefore reaches
 a fresh host immediately and leaves an existing install alone.
 
 The rustup channel follows the same rule. Sync adds the component only when the
-`rust-analyzer` binary is missing, and `rustup update` is the user's remedy for
-an old component.
+`rust-analyzer` binary is missing or is a rustup proxy that cannot run because
+the component is not installed. `rustup update` is the user's remedy for an old
+component.
 
 A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
 the npm servers to their `verified` pins, run:
@@ -106,6 +108,7 @@ manifest's `verified` version.
 ```text
 docks-kit toolchain check                    # doctor table (also inside docks-kit status)
 docks-kit toolchain ensure bun               # ensure the only managed tool
+docks-kit toolchain ensure bun --dry-run     # preview the Bun install
 docks-kit toolchain outdated [--refresh]     # verified pins vs newest upstream release
 docks-kit toolchain upgrade [--dry-run]      # npm LSP servers below verified -> verified
 ```
