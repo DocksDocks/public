@@ -110,15 +110,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
   or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
   working legacy hook/statusline setup and reports that migration is deferred.
-- **Command guards** — omp, Claude Code, and Codex share one policy for
-  destructive shell commands; to remove, agents use the trash
+- **Command guards** — omp, Claude Code, and Codex share one fail-closed
+  policy for destructive shell commands; to remove, agents use the trash
   (`gio trash -- <path>`, or `trash <path>` on macOS). `rm` of the home
   directory or `/` and `HOME` reassignment are denied. omp also denies every
   recursive `rm` and asks before any other `rm`. `find -delete`, `git clean`,
-  `git reset --hard`, force pushes, and forced `git rm` ask; Claude Code and
-  Codex also ask before a recursive `rm`. An omp subagent cannot answer an
-  ask, so omp rejects it; a Codex ask can go to its `auto_review` reviewer.
-  Details and per-tool gaps: `docks-kit docs command-guards`.
+  `git reset --hard`, any `git push` that could force, and `git rm` other
+  than `git rm -- <path>` ask; Claude Code and Codex also ask before a
+  recursive `rm` and every `git rm`. An omp subagent cannot answer an ask, so
+  omp rejects it; a Codex ask can go to its `auto_review` reviewer. Details,
+  per-tool differences, and gaps: `docks-kit docs command-guards`.
 
 ## Repository map
 

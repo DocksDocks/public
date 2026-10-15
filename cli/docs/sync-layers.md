@@ -61,9 +61,9 @@ AGENTS.md, mcp.json, and intercom config.json are whole-file deploys.
 config.yml and models.yml are deep-merged (SoT keys win, mapping nodes merge,
 deployed-only keys survive; config.yml also drops stale slash-bearing
 `retry.fallbackChains` wildcards). A SoT list replaces the deployed list, except
-config.yml `bash.patterns`: the merge keeps user rules and groups all rules by
-approval (kit deny, user deny, kit prompt, user prompt, other user rules, kit
-allow), so the first match is the strictest (see
+config.yml `bash.patterns`: the merge keeps user rules and groups all rules as
+kit deny, user deny, user prompt, kit allow exceptions (the `-- *` forms), kit
+prompt, other user rules, and kit allow, so no allow loosens a deny or a prompt (see
 `docks-kit docs command-guards`). After each merge, every sync (no
 `--reconcile` needed) force-prunes the `ompRemovals.ts` retired-key inventory:
 config.yml keys whose deployed value still equals the value the kit used to

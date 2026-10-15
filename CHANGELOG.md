@@ -6,21 +6,24 @@ On 2026-10-14 an omp subagent ran `rm -rf "$HOME"` after an
 `export HOME=$(mktemp -d)` in an earlier, separate bash call, and deleted the
 home directory. omp, Claude Code, and Codex now share one three-tier policy for
 destructive shell commands. The rule for agents is: to remove, use the trash
-(`gio trash -- <path>` on Linux, `trash <path>` on macOS).
-`docks-kit docs command-guards` has the per-tool table and the gaps.
+(`gio trash -- <path>` on Linux, `trash <path>` on macOS), and to remove a path
+from the git index, use `git rm -- <path>`. The policy fails closed: only a
+canonical form that is safe by construction is allowed, and every other form
+that could force, empty, or delete asks. `docks-kit docs command-guards` has
+the per-tool tables and the gaps.
 
 ### Deny
 
 - `rm` of `/`, `~`, `~/`, `$HOME`, and `${HOME}`, quoted or with a trailing `/`,
   and `HOME=`, `export HOME=`, and `env HOME=` reassignment. Claude Code also
-  denies `rm /*` and the `/bin/rm` forms. The old Claude `Bash(rm -rf $HOME)`
-  rule never matched the quoted `rm -rf "$HOME"`; the kit now lists each
-  quoted spelling.
-- omp denies every recursive `rm`, `sudo rm`, and any `rm` with an option
-  before an absolute path. omp's built-in critical-command check turns a
-  prompt for those commands into an allow under the kit's yolo mode, in
-  subagents too, so only a deny stops them. The user runs a recursive deletion
-  by hand.
+  denies `rm /*`, the `/bin/rm` forms, and `sudo` called by its path. The old
+  Claude `Bash(rm -rf $HOME)` rule never matched the quoted `rm -rf "$HOME"`;
+  the kit now lists each quoted spelling.
+- omp denies every recursive `rm`, `sudo` anywhere before `rm` (also as
+  `/usr/bin/sudo`), and any `rm` with an `r` or `f` option before an absolute
+  path. omp's built-in critical-command check turns a prompt for those
+  commands into an allow under the kit's yolo mode, in subagents too, so only
+  a deny stops them. The user runs a recursive deletion by hand.
 - omp also denies a force push to `origin main` or `origin master`, as Claude
   Code and Codex already did.
 - Codex denies `rm` of `/` as argv and the exact home and root scripts, because
@@ -34,35 +37,39 @@ destructive shell commands. The rule for agents is: to remove, use the trash
 - Claude Code asks before a recursive `rm` and an `rm` with a glob, and before
   `Remove-Item -Recurse` and its aliases in PowerShell.
 - All three tools ask before `find -delete`, `find -exec rm`, `git clean`,
-  `git reset --hard`, a force push to any branch (option clusters such as `-vf`
-  included), `git rm --force`, `git worktree remove --force`,
-  `gio trash --empty`, and `gio trash --restore`.
-- Codex already prompted for every `rm`, `find`, `git push`, `git reset`, and
-  `git clean`. It now also prompts for every `git rm` and
-  `git worktree remove`, because a prefix rule cannot see a later `--force`.
-  A Codex prompt goes to the `auto_review` reviewer subagent, not always to a
+  `git reset --hard`, and any `git push` that could force: a `+` refspec, a
+  `--f*` option (`--force`, `--force-with-lease`, abbreviations such as
+  `--for`, and `--follow-tags` as an accepted false positive), `--mirror`, and
+  `-f` or a short-option cluster such as `-vf`, `-vvf`, or `-uvfq`.
+- omp asks before every `git rm`, `git worktree remove`, and `gio trash` form
+  except `-- <path>`. Claude Code asks before every `git rm` and
+  `git worktree remove`, and before `gio trash --empty` or `--restore`. Codex
+  asks before every `rm`, `git rm`, `git worktree remove`, and `gio trash`.
+  Claude Code and Codex rank an ask above an allow, so they cannot exempt the
+  `--` form.
+- A Codex prompt goes to the `auto_review` reviewer subagent, not always to a
   person.
 
 ### Allow
 
-- `gio trash -- <path>` (Linux) and `trash <path>` (macOS 15 and later) run
-  without a prompt in all three tools. The `--` ends option parsing, so no path
-  can empty the trash.
-- `git rm` and `git worktree remove` without `--force` run without a prompt in
-  omp and Claude Code. Without `--force`, git refuses to drop changes it has
-  not recorded; `git worktree remove` still deletes the worktree's ignored
-  files.
-- The deployed agent prompts tell agents to use the trash, to ask before a
-  recursive or bulk deletion, and to write literal paths instead of `~` or
-  `$HOME`.
+- `trash <path>` (macOS 15 and later) runs without a prompt in all three
+  tools. `gio trash -- <path>` runs without a prompt in omp and Claude Code.
+  The `--` ends option parsing, so no path can empty the trash.
+- `git rm -- <path>` and `git worktree remove -- <path>` run without a prompt
+  in omp. After `--`, git reads every argument as a path, so no option can
+  force. Without force, git refuses to drop changes it has not recorded;
+  `git worktree remove` still deletes the worktree's ignored files.
+- The deployed agent prompts tell agents to use the trash, to use the `--`
+  forms, to ask before a recursive or bulk deletion, and to write literal paths
+  instead of `~` or `$HOME`.
 
 ### Sync
 
 - The omp `config.yml` merge keeps user `bash.patterns` rules and groups all
-  rules by approval (kit deny, user deny, kit prompt, user prompt, other user
-  rules, kit allow). The first match is then always the strictest matching
-  rule, so a user deny stays ahead of a kit prompt. A repeat sync changes
-  nothing.
+  rules as kit deny, user deny, user prompt, kit allow exceptions (the `-- *`
+  forms), kit prompt, other user rules, and kit allow. A user deny or prompt
+  thus precedes every kit allow, and no allow loosens a deny or a prompt. A
+  repeat sync changes nothing.
 - New tests port omp's pattern matcher, its critical-command check, and the
   yolo resolution, and assert each command's final outcome. The Claude
   oracle now matches deny and ask rules past a leading assignment and
