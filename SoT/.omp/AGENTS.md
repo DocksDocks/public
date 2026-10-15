@@ -34,6 +34,15 @@ NEVER use `ask` for:
 Batch every open question into one `ask` call with multiple questions; do not serialize
 round trips. Being overruled ends the discussion — execute my call without relitigating.
 
+## Removing files
+
+- To remove a file or a directory, move it to the trash with `gio trash <path>` on Linux or `trash <path>` on macOS.
+- Use `rm <file>` without flags only for one file that you created.
+- Do not delete recursively or in bulk yourself (`rm -r`, `find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
+- A subagent cannot get approval. In a subagent, put the paths in your final report.
+- Write literal absolute paths. Do not use `~` or `$HOME` in a command.
+- Do not set or export `HOME`.
+
 ## Output Standard
 
 Apply Simplified Technical English to all agent text. This includes responses, messages,

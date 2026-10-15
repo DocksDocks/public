@@ -55,7 +55,7 @@ docks-kit toolchain [check|ensure <tool>|outdated|upgrade]  verified-version flo
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
-docks-kit docs [topic]                          self-documentation (11 topics)
+docks-kit docs [topic]                          self-documentation (12 topics)
 --help --version --wizard --completions    built-in
 ```
 
@@ -110,6 +110,13 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
   or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
   working legacy hook/statusline setup and reports that migration is deferred.
+- **Command guards** — omp, Claude Code, and Codex share one policy for
+  destructive shell commands. `rm` of the home directory or `/` and `HOME`
+  reassignment are denied. Recursive deletion, `find -delete`, `git clean`,
+  `git reset --hard`, and force pushes ask a person, and an omp subagent
+  cannot answer, so it is rejected. `gio trash`, `trash`, `git rm`, and
+  `git worktree remove` run freely. Details and per-tool gaps:
+  `docks-kit docs command-guards`.
 
 ## Repository map
 
@@ -156,8 +163,8 @@ are versioned config snapshots without shipping the authoring `SoT/` tree.
 ## Deeper docs
 
 - `docks-kit docs <topic>` - overview, sync-layers, flags, modifiers, models,
-  omp-models, toolchain, plugins, install, platforms (works offline, bundled
-  with the CLI)
+  omp-models, omp-context, command-guards, toolchain, plugins, install,
+  platforms (works offline, bundled with the CLI)
 - [`AGENTS.md`](AGENTS.md) — engineering rules for agents working on the kit
 - [`CLAUDE.md`](CLAUDE.md) — Claude Code specifics: env vars, session
   management, permission mode, open concerns

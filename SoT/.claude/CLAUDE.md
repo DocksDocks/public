@@ -22,6 +22,13 @@ Do not:
 Research the codebase before editing. Never change code you have not read.
 </constraint>
 
+## Removing Files
+
+- Move a file or directory to the trash: `gio trash <path>` on Linux, `trash <path>` on macOS.
+- Use plain `rm <file>`, without flags, only for a single file you created.
+- Never delete recursively or in bulk (`rm -r`, `find -delete`, `git clean`, `git reset --hard`) without the user's approval. If you cannot ask, list the paths in your final report instead.
+- Write literal absolute paths in commands; never `~` or `$HOME`. Never set or export `HOME`.
+
 ## Agentic Harness Heuristics
 
 **1. Persistence.** Keep going until the user's query is completely resolved. Only yield when sure the problem is solved. Before ending a turn, check the last paragraph: if it is a plan, a question you can answer yourself, or a promise of work not done ("I'll…"), do that work now.
