@@ -138,7 +138,7 @@ describe("Codex personal marketplace", () => {
       const deployed = join(run.home, ".agents", "plugins", "marketplace.json");
       expect(run.exitCode, run.output).toBe(0);
       expect(run.output).toContain(
-        'Codex personal marketplace <HOME>/.agents/plugins/marketplace.json is named "personal", but kit plugins need "docks".',
+        `Codex personal marketplace ${p(join("<HOME>", ".agents"), "plugins", "marketplace.json")} is named "personal", but kit plugins need "docks".`,
       );
       expect(readFileSync(deployed, "utf8")).toBe(personal);
       expect(existsSync(`${deployed}.bak`)).toBe(false);

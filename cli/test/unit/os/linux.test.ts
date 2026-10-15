@@ -89,7 +89,9 @@ describe("Linux host OS", () => {
     const home = materializeVariant("home-fresh", {
       ".bash_login": "export ENABLE_CLAUDEAI_MCP_SERVERS=false\n",
     });
-    const run = runEngine(["sync", "claude"], home, makeStubDir(), {
+    // Without a claude CLI the plugin passes are skipped, so the run only depends on
+    // the connector pass and the stubbed runtime tools.
+    const run = runEngine(["sync", "claude"], home, makeStubDir({ claude: null }), {
       reuseHome: home,
       env: { SHELL: "/bin/bash" },
     });

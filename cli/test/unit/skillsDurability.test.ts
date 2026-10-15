@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type * as FsModule from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ExecModule from "../../src/engine-native/exec";
@@ -24,7 +24,12 @@ vi.mock("node:fs", async () => {
   return {
     ...actual,
     rmSync: (path: FsModule.PathLike, options?: FsModule.RmOptions) => {
-      if (path === mocks.failRemovalOf) throw new Error("EBUSY: resource busy");
+      // The engine joins with "/" while the test joins natively; compare resolved paths.
+      if (
+        mocks.failRemovalOf !== undefined &&
+        resolve(String(path)) === resolve(mocks.failRemovalOf)
+      )
+        throw new Error("EBUSY: resource busy");
       actual.rmSync(path, options);
     },
   };

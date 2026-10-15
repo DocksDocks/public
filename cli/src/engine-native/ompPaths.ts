@@ -79,10 +79,16 @@ export function ompPaths({ home, env, platform }: OmpPathInputs): OmpPaths {
     profile === undefined &&
     legacyProfile !== undefined &&
     agentOverride === p(baseRoot, "profiles", legacyProfile, "agent");
-  const agentDir =
+  const resolvedOverride =
     profile === undefined && !overrideIgnored && agentOverride !== undefined && agentOverride !== ""
       ? resolve(agentOverride)
-      : defaultAgentDir;
+      : undefined;
+  // resolve() rewrites separators on Windows, so an override that names the
+  // default directory is compared in resolved form and keeps the default path.
+  const agentDir =
+    resolvedOverride === undefined || resolvedOverride === resolve(defaultAgentDir)
+      ? defaultAgentDir
+      : resolvedOverride;
 
   return {
     profile,
