@@ -2,11 +2,12 @@ import { spawnSync } from "node:child_process";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 import { p } from "../../src/engine-native/exec";
 import { cliEntry } from "../lib/cliEntry";
-import { childEnv } from "../lib/goldenResources";
+import { runPublicCli } from "../lib/goldenExecution";
+import { childEnv, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
@@ -52,6 +53,8 @@ const fakeCommand = (directory: string, name: string, script: string): void => {
     chmodSync(executable, 0o755);
   }
 };
+
+afterAll(cleanupTemporaryDirs);
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -331,6 +334,25 @@ process.exit(9);
       expect(result.stderr).toContain(
         `kit home ${home} is neither a git checkout nor a global package install`,
       );
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+});
+
+describe("status capture child", () => {
+  it(
+    "ignores engine globals that Bun reloads from a project .env (R09)",
+    () => {
+      // Bun loads `.env` from the working directory into every Bun process,
+      // including the child that status spawns for `toolchain check`.
+      const project = temporaryDirectory("docks-status-dotenv-");
+      writeFileSync(join(project, ".env"), "CLAUDE_COMPACT_WINDOW=junk\n");
+      const native = { nativeHost: true } as const;
+      const stubs = makeStubDir({}, native);
+
+      const run = runPublicCli(["status"], "home-fresh", stubs, { ...native, cwd: project });
+      expect(run.stderr).not.toContain("engine capture failed");
+      expect(run.exitCode, run.stderr).toBe(0);
     },
     SPAWN_TIMEOUT_MS,
   );
