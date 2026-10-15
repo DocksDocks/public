@@ -1,5 +1,116 @@
 # Changelog
 
+## 2026-10-14 - docks-kit 0.20.7: verified audit fixes
+
+A multi-agent audit found these defects, and a second agent verified each one.
+Every code fix has a regression test.
+
+### Data safety
+
+- Claude sync no longer deletes whole `hooks.PreToolUse` and `hooks.Stop`
+  arrays. It removes only the kit's retired handlers by exact command, keeps
+  user handlers, and writes `settings.json.bak` first.
+- Sync deletes a legacy `statusline.sh`, `fetch-usage.sh`, or `hooks/notify.sh`
+  only when its content matches a version the kit shipped. It keeps any other
+  content as `<path>.bak`.
+- `sync claude` copies a different `~/.claude/CLAUDE.md` to `CLAUDE.md.bak`
+  before it deploys the SoT copy.
+- `sync --prune` no longer runs `skills remove --global`, which deleted
+  same-named skill directories for every agent. It deletes only the
+  kit-created canonical directory and the kit-managed Claude link.
+- Rewritten Claude, Codex, and omp files keep their permission bits. A
+  symlinked omp `config.yml` or `models.yml` stays a link.
+- A sync without `--prune` keeps tracking skills that SoT dropped, so a later
+  `--prune` still removes them.
+
+### Security
+
+- The Codex rules no longer allow `sort`, `uniq`, `tree`, `git diff`,
+  `git log`, `git show`, and `git grep` outside the sandbox, because their
+  flags can write files or run commands. `git mv` now prompts.
+- The documented POSIX install command and the Claude installer hint use
+  `mktemp` instead of a fixed `/tmp` path.
+- On Windows, every `.cmd` and `.bat` target gets two caret layers, and a run
+  of backslashes before a quote is escaped correctly.
+- The public CLI ignores the unprefixed `DRY_RUN`, `PRUNE`, `RECONCILE`,
+  `CLAUDE_PERMISSIVE`, `CLAUDE_MODEL`, `CODEX_MODEL`, and related variables.
+  Only the internal test channel reads them.
+- `sync --dry-run false` and other boolean flags followed by a separate
+  literal are rejected instead of running a real sync.
+- `toolchain ensure bun --dry-run` previews the install instead of running it.
+
+### Claude
+
+- Sync registers `anthropics/claude-plugins-official` when a kit plugin needs
+  it and Claude Code has not registered it yet.
+- `--claude-plugin` no longer fails when the install already enabled the
+  plugin. A host without git skips optional plugins with a warning.
+- Every `claude plugin` command runs from the temp directory, so a sync started
+  in a project never edits that project's `.claude` settings.
+  `plugin disable` passes `--scope user`.
+- Plugin update counts and the `/reload-plugins` hint work with the current
+  Claude Code output. A failed command reports its stderr cause.
+- Sync adds the rustup `rust-analyzer` component when the PATH entry is a
+  rustup proxy without the component.
+- A fresh install writes the merged settings form, so the next sync reports no
+  change.
+- When `~/.claude/settings.json` is not valid JSON, sync stops before any
+  pipeline starts and prints the failure list.
+- The statusline and the SessionStart line apply Claude Code's compact-window
+  clamp (100K to 1M, capped at the model window).
+- The notification hook no longer plays the MP3 through `aplay`, which played
+  noise.
+
+### Codex
+
+- Sync honors `CODEX_HOME`.
+- The `config.toml` merge handles header-like lines in multi-line strings,
+  comments after a managed table, and a UTF-8 byte order mark.
+- A repeated `--codex-model` or `--codex-effort` run keeps `config.toml.bak`,
+  and the second sync no longer rewrites the marketplace file.
+- Sync leaves a personal marketplace with a different name alone, warns, and
+  skips `codex plugin add` for the kit plugins.
+- SoT no longer sets the inert `personality = "pragmatic"`, and sync removes
+  that line from deployed files.
+
+### omp
+
+- `docks-kit omp` checks the free catalog on every launch. It refuses a
+  remembered model that is no longer free, instead of letting omp fall back
+  to a paid default.
+- The model picker excludes zero-cost models whose pricing is `variable` or
+  `included`.
+- The free overlay also sets the `judge` and `memory` roles. Its file name
+  covers both thinking levels, so a second launcher cannot change a running
+  session.
+- Under a named profile, sync deploys the intercom configuration into the
+  profile's agent directory. `PI_CODING_AGENT_DIR` resolves as omp resolves
+  it.
+- A dry run on a host without omp or git previews no omp command.
+- The docs say omp updates through `omp update` or through the tool that
+  manages the install, such as Tern.
+
+### Other
+
+- A read of `~/.docks-kit/kit.db` no longer changes permissions, so a
+  read-only home still reads the stored selection. A cache row with a future
+  time counts as stale.
+- `docks-kit harnesses` reports a corrupt or newer store, and it opens the
+  picker only when stdin and stdout are terminals.
+- `docks-kit status` reports a malformed `installed_plugins.json` as a
+  diagnostic instead of crashing. `docs constructor` is an unknown topic.
+- On Windows, the engine home is `USERPROFILE`, `which` strips quotes from
+  PATH entries, the PowerShell scripts are ASCII for Windows PowerShell 5.1,
+  and `install.ps1` keeps the CLI in Bun's bin directory.
+- On macOS, bash connector settings go to the first existing login file.
+- `update` reinstalls dependencies with the running Bun and compares package
+  homes correctly on Windows.
+- The launchers also count newer `cli/docs` files as evidence of a stale
+  binary.
+- The release workflow's tag filter matches the resolve job, and the dispatch
+  path checks the binary build inputs against the tag.
+- Docs, kit-mechanic skills, and wrapper agents now match the code.
+
 ## 2026-10-09 - docks-kit 0.20.6: omp reviewer role on GPT-6.1 Sol xhigh
 
 - omp gains a kit-defined `reviewer` role, `openai-codex/gpt-6.1-sol:xhigh`,
