@@ -68,12 +68,13 @@ export async function claudeSync(ctx: Ctx): Promise<ClaudeRuntimeState> {
 
   syncClaudeRuntime(ctx, runtime);
   syncClaudeMd(ctx, claudeDir);
+  let settingsBackedUp = false;
   if (ctx.dryRun) {
     describeSettingsSync(ctx, claudeDir);
   } else {
-    commitClaudeSettings(ctx, prepared);
+    settingsBackedUp = commitClaudeSettings(ctx, prepared);
   }
-  syncRemovals(ctx, claudeDir, runtime);
+  syncRemovals(ctx, claudeDir, runtime, settingsBackedUp);
   syncCompactWindow(ctx, claudeDir);
   syncPermissive(ctx, claudeDir);
   syncClaudeModel(ctx, ctx.claudeModel);

@@ -50,7 +50,16 @@ export function posixHost(inputs: PosixHostInputs): HostOs {
     },
     environmentSetting: (name, value) => ({
       kind: "profile",
-      candidates: [".zshrc", ".bashrc", ".bash_profile", ".bash_login", ".profile", ".zshenv"],
+      // Bash reads .bash_login only as a login file. Only a host that writes to it
+      // scans it, so a dormant copy cannot block the write to the loaded file.
+      candidates: [
+        ".zshrc",
+        ".bashrc",
+        ".bash_profile",
+        ...(inputs.bashTargets.includes(".bash_login") ? [".bash_login"] : []),
+        ".profile",
+        ".zshenv",
+      ],
       target: (shell, exists) => {
         const shellPath = shell ?? "bash";
         const shellName = shellPath.slice(shellPath.lastIndexOf("/") + 1);

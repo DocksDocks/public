@@ -531,7 +531,9 @@ live free catalog once. A plain launch checks the remembered model, or the
 default model, against that catalog. When the model is not there, the
 launcher stops before omp starts. The model can be renamed, repriced, or on a
 provider that is not logged in. Without this check, omp silently starts the
-default model of the first logged-in provider, which can be paid.
+default model of the first logged-in provider, which can be paid. When the
+forwarded arguments include `--profile <name>` or `--profile=<name>`, the
+catalog check queries that same omp profile.
 
 When the catalog renames the free variant, change only the default selector
 constant. Until then, a plain launch on that default stops with an error. A

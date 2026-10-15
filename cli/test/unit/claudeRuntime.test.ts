@@ -261,7 +261,7 @@ describe("Claude settings prepare/commit seam", () => {
       const prepared = prepareClaudeSettings(test.ctx, claudeDir, repo);
       expect(existsSync(path)).toBe(false);
 
-      commitClaudeSettings(test.ctx, prepared);
+      expect(commitClaudeSettings(test.ctx, prepared)).toBe(false);
       expect(parseJson(readFileSync(path, "utf8"))).toEqual({
         model: "opus",
         userSetting: true,
@@ -310,7 +310,7 @@ describe("Claude settings prepare/commit seam", () => {
       expect(readFileSync(path, "utf8")).toBe(previous);
       expect(existsSync(`${path}.bak`)).toBe(false);
 
-      commitClaudeSettings(test.ctx, prepared);
+      expect(commitClaudeSettings(test.ctx, prepared)).toBe(true);
       expect(parseJson(readFileSync(path, "utf8"))).toMatchObject({
         model: "opus",
         userOnly: true,

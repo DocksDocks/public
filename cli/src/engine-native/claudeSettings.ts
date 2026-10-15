@@ -75,15 +75,19 @@ export function prepareClaudeSettings(
   return { path, bytes, previousBytes, changed: bytes !== previousBytes };
 }
 
-/** Commit a fully prepared document; callers must finish runtime preparation first. */
-export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings): void {
+/**
+ * Commit a fully prepared document; callers must finish runtime preparation first.
+ * Returns true when the commit copied the previous settings to settings.json.bak.
+ */
+export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings): boolean {
   const { change, verbose } = ctx.services.logger;
   if (!prepared.changed) {
     verbose("Settings already in sync");
-    return;
+    return false;
   }
 
-  if (prepared.previousBytes !== undefined) copyFileSync(prepared.path, `${prepared.path}.bak`);
+  const backedUp = prepared.previousBytes !== undefined;
+  if (backedUp) copyFileSync(prepared.path, `${prepared.path}.bak`);
   replaceFile(prepared.path, prepared.bytes);
   ctx.nextStepTriggers.claudeRestart = true;
   if (prepared.previousBytes === undefined) {
@@ -95,6 +99,7 @@ export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings)
   } else {
     change("Settings merged (backup at settings.json.bak)");
   }
+  return backedUp;
 }
 
 export function describeSettingsSync(ctx: Ctx, claudeDir: string): void {

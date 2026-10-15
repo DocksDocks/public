@@ -70,6 +70,27 @@ export const engine = (args: ReadonlyArray<string>) =>
     }
   });
 
+// The capture child must not inherit the env globals or a caller's channel
+// selection in any spelling.
+const CAPTURE_DROPPED_KEYS: ReadonlyArray<string> = [...ENV_GLOBAL_KEYS, "DOCKS_KIT_ENGINE"];
+
+/**
+ * Build the capture child environment. Windows environment names are
+ * case-insensitive, so a key such as `claude_compact_window` also matches
+ * there. POSIX names stay case-sensitive.
+ */
+const captureChildEnv = (): NodeJS.ProcessEnv => {
+  const foldCase = process.platform === "win32";
+  const env: NodeJS.ProcessEnv = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+    if (CAPTURE_DROPPED_KEYS.includes(foldCase ? name.toUpperCase() : name)) continue;
+    env[name] = value;
+  }
+  env["DOCKS_KIT_ENGINE"] = "native-capture";
+  return env;
+};
+
 /** Run the engine capturing stdout (engine logs/warns go to stderr and pass through). */
 export const engineCapture = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -77,12 +98,12 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
     if (bashEngineRequested()) {
       return yield* bail(bashRemovedMessage, 2);
     }
-    // The child runs the raw channel, which honors env globals; strip them so
-    // a captured public command behaves like an in-process one.
-    const childEnv: NodeJS.ProcessEnv = { ...process.env, DOCKS_KIT_ENGINE: "native-raw" };
-    for (const key of ENV_GLOBAL_KEYS) delete childEnv[key];
+    // The child runs the native-capture channel, which ignores env globals even
+    // when Bun reloads them from a project `.env`. The child environment also
+    // omits them, so a captured public command behaves like an in-process one.
+    const childEnv = captureChildEnv();
     const res = yield* Effect.sync(() =>
-      // Child process (raw channel): runEngineNative writes straight to
+      // Child process (capture channel): runEngineNative writes straight to
       // process.stdout, so in-process capture is not possible.
       spawnSync(
         process.execPath,

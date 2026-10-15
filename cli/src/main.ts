@@ -74,17 +74,23 @@ const bareVersionFormatter: CliOutput.Formatter = {
   formatVersion: (_name, version) => `${version}\n`,
 };
 
-// Harness-private raw channel:
+// Harness-private raw channels:
 // `DOCKS_KIT_ENGINE=native-raw` bypasses effect/unstable/cli and hands the raw engine
 // argv to EngineNative so golden tests drive the internal vocabulary directly.
 // Only this channel honors the unprefixed env globals (DRY_RUN, PRUNE, and so on).
+// `DOCKS_KIT_ENGINE=native-capture` is the engine.ts engineCapture child. It takes
+// the same raw argv but ignores the env globals. Bun can reload those globals from
+// a project `.env` file, so removing them from the child environment is not enough.
 // PUBLIC engine execution lives at the engine.ts seam after the CLI has
 // parsed/normalized pickers, --flag value forms, and non-engine commands.
-if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
+const rawChannel = process.env["DOCKS_KIT_ENGINE"];
+if (rawChannel === "native-raw" || rawChannel === "native-capture") {
   const rawArgs = process.argv.slice(2);
   const rawOperation = rawArgs.join(" ") || "default";
   try {
-    process.exit(await runEngineNative(rawArgs, undefined, { envGlobals: true }));
+    process.exit(
+      await runEngineNative(rawArgs, undefined, { envGlobals: rawChannel === "native-raw" }),
+    );
   } catch (error) {
     let detail = "unknown error";
     if (error instanceof Error && error.message !== "") detail = error.message;
