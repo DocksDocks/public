@@ -3,8 +3,9 @@
  * docks-kit retired before Codex could import them safely. Guard order,
  * message strings, and backup behavior are golden-tested.
  */
-import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
 
+import { replaceFile } from "./atomicWrite";
 import { p } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, jqStringify, parseJson, type Json } from "./jq";
@@ -82,8 +83,7 @@ export function removeRetiredImportedHooks(ctx: Ctx, codexDir: string): void {
   }
 
   copyFileSync(hooksFile, `${hooksFile}.bak`);
-  writeFileSync(`${hooksFile}.tmp`, jqStringify(result.value));
-  renameSync(`${hooksFile}.tmp`, hooksFile);
+  replaceFile(hooksFile, jqStringify(result.value));
   change(
     `Codex: removed ${result.removed} retired imported docks-kit SessionStart hook(s) (backup at hooks.json.bak)`,
   );

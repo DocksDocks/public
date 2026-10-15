@@ -116,11 +116,18 @@ export async function syncLspServers(ctx: Ctx): Promise<void> {
   const tsServerMissing =
     hasTs && ctx.services.deps.probe("typescript-language-server").state === "missing";
   const tscMissing = hasTs && ctx.services.deps.probe("tsc").state === "missing";
-  const rustMissing = hasRust && ctx.services.deps.probe("rust-analyzer").state === "missing";
+  const rustupPresent = ctx.services.deps.probe("rustup").state === "present";
+  // rustup links a rust-analyzer proxy into ~/.cargo/bin even when the
+  // component is not installed, and that proxy reports no version. With
+  // rustup present, a PATH hit without a version counts as missing.
+  const rustMissing =
+    hasRust &&
+    (ctx.services.deps.probe("rust-analyzer").state === "missing" ||
+      (rustupPresent && (await ctx.services.deps.version("rust-analyzer")) === ""));
   // A host without rustup does no Rust work, so the plugin has nothing to
   // serve there. Installing is impossible and warning every sync would name no
   // action the user wants, so that host is not counted as missing a tool.
-  const rustInstallable = rustMissing && ctx.services.deps.probe("rustup").state === "present";
+  const rustInstallable = rustMissing && rustupPresent;
   if (rustMissing && !rustInstallable) {
     verbose(
       "Skipping rust-analyzer: rustup is not installed, so the rust-analyzer-lsp plugin stays a no-op",

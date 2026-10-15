@@ -1,7 +1,10 @@
 /**
  * Run overlay for `docks-kit omp`. The overlay merges over the deployed omp
- * config for one run only, so every key that can cause paid spend is set here
- * and every other key falls through to the deployed paid config.
+ * config for one run only. It sets every chat-model role to the free model
+ * and empties the retry chain of each role it sets. The `web` role and its
+ * retry chain are not in the overlay, so the deployed web-search provider
+ * order applies, and that order can include a paid chat model. Every other
+ * key falls through to the deployed config.
  */
 import { createHash } from "node:crypto";
 import type { OmpSessionModel } from "./harnesses";
@@ -24,20 +27,26 @@ export const THINKING_LADDER: ReadonlyArray<string> = [
 ];
 
 /**
- * One overlay file per model, so a second launcher on another model cannot
- * rewrite the file a running session still reads. A selector carries a slash
- * and may carry other characters a host rejects in a file name, so unsafe
- * characters become hyphens. That mapping alone is not injective, because
- * `a/b` and `a-b` both fold to `a-b`, so a digest of the exact selector keeps
- * two distinct models on two distinct files.
+ * One overlay file per distinct model and level combination, so a second
+ * launcher cannot rewrite the file a running session still reads. omp
+ * reloads a changed overlay mid-session, so the digest covers the exact
+ * rendered overlay: the selector, both levels, and every rendered key. A
+ * selector carries a slash and may carry other characters a host rejects in
+ * a file name, so unsafe characters in the readable prefix become hyphens.
  */
-export function overlayFileName(selector: string): string {
-  const safe = selector.replace(/[^A-Za-z0-9._-]/g, "-");
-  const digest = createHash("sha256").update(selector).digest("hex").slice(0, 8);
+export function overlayFileName(model: OmpSessionModel): string {
+  const safe = model.selector.replace(/[^A-Za-z0-9._-]/g, "-");
+  const digest = createHash("sha256").update(renderFreeOverlay(model)).digest("hex").slice(0, 8);
   return `omp-free-${safe}-${digest}.yml`;
 }
 
-/** Role keys in the order used by SoT/.omp/config.yml for readable diffs. */
+/**
+ * Role keys in the order used by SoT/.omp/config.yml for readable diffs. The
+ * SoT does not set `memory` and `judge`, so they come last. An unset role
+ * falls back to the omp built-in priority chain, which can name a paid model.
+ * The `web` role is left out on purpose, so the deployed web-search provider
+ * order applies.
+ */
 const ROLE_ORDER: ReadonlyArray<string> = [
   "smol",
   "advisor",
@@ -53,9 +62,15 @@ const ROLE_ORDER: ReadonlyArray<string> = [
   "switch_fable",
   "astra",
   "reviewer",
+  "memory",
+  "judge",
 ];
 
-/** Retry chain keys in the order used by SoT/.omp/config.yml. */
+/**
+ * Retry chain keys in the order used by SoT/.omp/config.yml, then `memory` and
+ * `judge`. An explicit empty chain stops omp from using its built-in priority
+ * chain. The `web` chain is left out, so the deployed chain applies.
+ */
 const FALLBACK_ORDER: ReadonlyArray<string> = [
   "default",
   "advisor",
@@ -68,6 +83,8 @@ const FALLBACK_ORDER: ReadonlyArray<string> = [
   "fable",
   "astra",
   "reviewer",
+  "memory",
+  "judge",
 ];
 
 /**
@@ -91,6 +108,10 @@ export function parseFreeModels(catalogJson: unknown): ReadonlyArray<CatalogMode
     if (typeof cost !== "object" || cost === null || Array.isArray(cost)) continue;
     const charges = cost as Record<string, unknown>;
     if (charges["input"] !== 0 || charges["output"] !== 0) continue;
+    // omp prices a usage-billed or plan-included model at zero, so a zero
+    // cost is not proof of a free model. Older omp output has no status.
+    const status = record["pricingStatus"];
+    if (typeof status === "string" && status !== "free" && status !== "unknown") continue;
     const rawName = record["name"];
     const name = typeof rawName === "string" && rawName.length > 0 ? rawName : selector;
     const rawLevels = record["thinking"];

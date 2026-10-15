@@ -81,7 +81,7 @@ export const docsCommand = Command.make("docs", { topic, json }, (config) =>
       return;
     }
 
-    const entry = TOPICS[requested];
+    const entry = Object.hasOwn(TOPICS, requested) ? TOPICS[requested] : undefined;
     if (entry === undefined) {
       return yield* bail(`Unknown topic '${requested}'. Valid: ${Object.keys(TOPICS).join(", ")}`);
     }

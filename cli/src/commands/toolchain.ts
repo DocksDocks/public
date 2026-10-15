@@ -22,7 +22,7 @@ const refresh = Flag.Boolean("refresh").pipe(
   Flag.withDefault(false),
 );
 const dryRun = Flag.Boolean("dry-run").pipe(
-  Flag.withDescription("upgrade: print the npm command without running it"),
+  Flag.withDescription("ensure/upgrade: preview without installing or running npm"),
   Flag.withDefault(false),
 );
 
@@ -44,7 +44,13 @@ export const toolchainCommand = Command.make(
           if (t === undefined || !MANAGED.includes(t)) {
             return yield* bail(`toolchain ensure needs a managed tool: ${MANAGED.join(", ")}`);
           }
-          return yield* engine(["toolchain", "ensure", t, ...flags]);
+          return yield* engine([
+            "toolchain",
+            "ensure",
+            t,
+            ...flags,
+            ...(config.dryRun ? ["--dry-run"] : []),
+          ]);
         }
         case "outdated":
           return yield* engine([

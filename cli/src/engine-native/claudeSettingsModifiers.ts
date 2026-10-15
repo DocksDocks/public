@@ -1,6 +1,7 @@
 /** Atomic top-level Claude settings modifiers, including direct model mode. */
 import { p } from "./exec";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
+import { replaceFile } from "./atomicWrite";
 
 import { resolveEffort } from "../efforts";
 import type { Ctx } from "./index";
@@ -59,8 +60,7 @@ function syncClaudeSetting(ctx: Ctx, edit: ClaudeSettingEdit): void {
     verbose(edit.unchanged);
     return;
   }
-  writeFileSync(`${userSettings}.tmp`, out);
-  renameSync(`${userSettings}.tmp`, userSettings);
+  replaceFile(userSettings, out);
   change(edit.changed);
   ctx.nextStepTriggers.claudeRestart = true;
 }

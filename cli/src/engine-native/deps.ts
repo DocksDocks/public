@@ -7,10 +7,10 @@
  * install; this registry owns WHICH external tools exist, whether they are
  * required, and the one-line command that installs a missing one.
  */
-import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 
 import { capture, commandExists, p, which } from "./exec";
+import { engineHome } from "./harnesses";
 import { isObject, parseJson } from "./jq";
 import { hostOs, platformName, rawPlatform } from "./os";
 
@@ -99,11 +99,6 @@ const versionProbe =
   async (exec) =>
     parse(await exec.capture(id, versionArgs));
 
-const home = (): string => {
-  const envHome = process.env["HOME"];
-  return envHome !== undefined && envHome !== "" ? envHome : homedir();
-};
-
 /**
  * The resolved path gets persisted into global direct-exec hooks, so a
  * relative `which` hit (relative PATH entry, relative BUN_INSTALL) would
@@ -117,8 +112,8 @@ const findBun = (exec: ProbeExecutor): { command: string; path: string } | undef
   const root =
     process.env["BUN_INSTALL"] !== undefined && process.env["BUN_INSTALL"] !== ""
       ? process.env["BUN_INSTALL"]!
-      : p(home(), ".bun");
-  for (const candidate of [p(root, "bin", "bun"), p(home(), ".bun", "bin", "bun")]) {
+      : p(engineHome(), ".bun");
+  for (const candidate of [p(root, "bin", "bun"), p(engineHome(), ".bun", "bin", "bun")]) {
     const found = exec.which(candidate);
     if (found !== "" && isAbsolute(found)) return { command: found, path: found };
   }
@@ -213,7 +208,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "omp",
     "optional",
     () =>
-      "install omp from https://github.com/can1357/oh-my-pi (an existing install self-updates with `omp update`)",
+      "install omp from https://github.com/can1357/oh-my-pi (an existing install updates with `omp update`, or through the tool that manages it, such as Tern)",
     { version: versionProbe("omp", ["--version"], (out) => out.trim().replace(/^omp[/v]/, "")) },
   ),
   bun: spec("bun", "optional", () => "curl -fsSL https://bun.sh/install | bash", {

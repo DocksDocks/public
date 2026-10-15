@@ -8,7 +8,7 @@
  * dry run stays free of omp subcommands.
  */
 import { existsSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import { p } from "./exec";
 
@@ -51,11 +51,6 @@ function normalizeProfile(value: string | undefined): string | undefined {
   return name;
 }
 
-/** Upstream applies `path.resolve` to PI_CODING_AGENT_DIR, so cwd anchors a relative value. */
-function resolveAgentOverride(value: string): string {
-  return isAbsolute(value) ? value : resolve(process.cwd(), value);
-}
-
 export function ompPaths({ home, env, platform }: OmpPathInputs): OmpPaths {
   // OMP_PROFILE wins whenever it is defined, including when explicitly empty;
   // PI_PROFILE is only the legacy fallback.
@@ -72,11 +67,21 @@ export function ompPaths({ home, env, platform }: OmpPathInputs): OmpPaths {
   const configRoot = profile === undefined ? baseRoot : p(baseRoot, "profiles", profile);
 
   // A named profile derives its own agent directory and ignores the override.
+  // The default profile also ignores an override that equals the agent
+  // directory of the PI_PROFILE profile, because omp exports that value in a
+  // profile session. Upstream compares the raw string here.
+  // Upstream applies `path.resolve` to a used override. The call anchors a
+  // relative value at cwd and normalizes an absolute value.
   const agentOverride = env["PI_CODING_AGENT_DIR"];
   const defaultAgentDir = p(configRoot, "agent");
+  const legacyProfile = normalizeProfile(env["PI_PROFILE"]);
+  const overrideIgnored =
+    profile === undefined &&
+    legacyProfile !== undefined &&
+    agentOverride === p(baseRoot, "profiles", legacyProfile, "agent");
   const agentDir =
-    profile === undefined && agentOverride !== undefined && agentOverride !== ""
-      ? resolveAgentOverride(agentOverride)
+    profile === undefined && !overrideIgnored && agentOverride !== undefined && agentOverride !== ""
+      ? resolve(agentOverride)
       : defaultAgentDir;
 
   return {

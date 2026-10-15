@@ -4,12 +4,15 @@
  * from existing installations without `--reconcile`. Message strings and
  * prune semantics are part of the contract.
  */
-import { existsSync, readFileSync, renameSync, rmdirSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, readFileSync, renameSync, rmdirSync, rmSync } from "node:fs";
+import { replaceFile } from "./atomicWrite";
 import type { ClaudeRuntimeState } from "./claudeSync";
 import { RETIRED_PERMISSION_RULES } from "./claudeRetired";
 import { p } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, jqStringify, parseJson, type Json } from "./jq";
+import { lstat } from "./skillsLinks";
 
 const REMOVED_MANIFEST = {
   hooks: ["disable-claudeai-connectors.sh"],
@@ -25,7 +28,6 @@ const REMOVED_MANIFEST = {
     "env.CLAUDE_CODE_EFFORT_LEVEL",
     "enabledPlugins.effect-kit@docks",
     "enabledPlugins.session-relay@docks",
-    "hooks.PreToolUse",
   ],
   permissionRules: {
     allow: ["Write(./)", "Bash(rtk *)", ...RETIRED_PERMISSION_RULES.allow],
@@ -43,9 +45,81 @@ const REMOVED_MANIFEST = {
   runtimeReady: {
     hooks: ["notify.sh"],
     files: ["statusline.sh", "fetch-usage.sh"],
-    settingsKeys: ["hooks.Stop"],
   },
 };
+
+/**
+ * Hook handler commands that the kit shipped in SoT/.claude/settings.json and
+ * then retired. The pass removes only these handlers, so user handlers on the
+ * same events stay. The Stop pass runs only after the Bun runtime cutover.
+ */
+const RETIRED_HOOK_COMMANDS = {
+  PreToolUse: ["$HOME/.claude/hooks/rtk-rewrite.sh", "rtk hook claude"],
+  Stop: [
+    "bash $HOME/.claude/fetch-usage.sh",
+    "ffplay -nodisp -autoexit ~/.claude/alert_bubble.mp3",
+    "ffplay -nodisp -autoexit https://raw.githubusercontent.com/DocksDocks/public/main/alert_bubble.mp3",
+  ],
+} as const;
+
+type RetiredHookEvent = keyof typeof RETIRED_HOOK_COMMANDS;
+
+/**
+ * SHA-256 of every version of the runtime-ready artifacts that the kit
+ * shipped, keyed by the path under ~/.claude. A copy with another hash is the
+ * user's file, so the prune keeps it as `<path>.bak`.
+ */
+const LEGACY_ARTIFACT_HASHES: Readonly<Record<string, ReadonlyArray<string>>> = {
+  "statusline.sh": [
+    "292df944d7f28bacde854105891a270fbbe1a114172d0000d8d2c4366097c18d",
+    "3a3ec8911c3916a1ba1fdf8ac5a8c4d8231ecc7dcd1f7355c7787603b9734efe",
+    "8189f5fb83dfbbf864737a4613062912c0120659f01f56f61b0a3ed7ed69949c",
+    "8dd0d6db2fcb9cec042756f9d14e09ee0214041b9d85fa5e26b8c99a06b65cd9",
+    "b97abaf97874c7bc0b6052eb8f14f73bccff20c3b79f7d6b2ff79137daef360d",
+    "baec096cbcf70245613a9ea10fe7cbdb50b16d02106b3cb6a0861a783b2de97c",
+    "c7233f4006f603ee5431d02daf896a58167d20461171f9a1a329f8127ced4835",
+  ],
+  "fetch-usage.sh": [
+    "304f5a17d9c4356ed7f3eedf7f38766b8e8e7fce91a80a6efbad0b8a6b43654d",
+    "35531c6941d2e203f385baf6db9a9a17f57471ceadf91c6ee252b2f1aee0b456",
+    "9b8fcac8bc3a45d505c58ca48013f4949a3a3d1cf5064872871286c2a81196f9",
+    "ceaa5b5241edf639ca873439e1f1013b7e0d902a23d2bf831317e064a3ccab46",
+  ],
+  "hooks/notify.sh": [
+    "2beb02119bd9bad3045341e12022fb7234b53b02c08908e4a9949968980f6e69",
+    "90261530799aaf978949572521d2a73105a4104a47c86132a3815c26f0078216",
+  ],
+};
+
+/** What retireArtifact did with one path. */
+type ArtifactRetirement = "absent" | "removed" | "preserved";
+
+/**
+ * Retire one artifact. A path in LEGACY_ARTIFACT_HASHES is removed only when
+ * its content matches a shipped version; other content moves to `<path>.bak`.
+ * A path without hashes has a kit-only name and is removed. The presence
+ * check uses lstat, so a dangling symlink is removed too.
+ */
+function retireArtifact(
+  ctx: Ctx,
+  path: string,
+  shipped: ReadonlyArray<string> | undefined,
+): ArtifactRetirement {
+  const stats = lstat(path);
+  if (stats === undefined) return "absent";
+  const owned =
+    shipped === undefined ||
+    (stats.isFile() &&
+      shipped.includes(createHash("sha256").update(readFileSync(path)).digest("hex")));
+  if (ctx.dryRun) {
+    ctx.services.logger.echo(owned ? `[dry-run] rm ${path}` : `[dry-run] mv ${path} ${path}.bak`);
+  } else if (owned) {
+    rmSync(path, { force: true });
+  } else {
+    renameSync(path, `${path}.bak`);
+  }
+  return owned ? "removed" : "preserved";
+}
 
 /** claude::_prune_json_keys — present-count; deletes when !dryRun. */
 function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
@@ -74,8 +148,7 @@ function pruneJsonKeys(ctx: Ctx, file: string, keys: Array<string>): number {
       }
       if (isObject(cur)) delete cur[path[path.length - 1]!];
     }
-    writeFileSync(`${file}.tmp`, jqStringify(doc));
-    renameSync(`${file}.tmp`, file);
+    replaceFile(file, jqStringify(doc));
   }
   return presentKeys.length;
 }
@@ -98,41 +171,84 @@ function prunePermissionRules(
     if (!ctx.dryRun)
       permissions[key] = values.filter((value) => typeof value !== "string" || !removed.has(value));
   }
-  if (present > 0 && !ctx.dryRun) {
-    writeFileSync(`${file}.tmp`, jqStringify(doc));
-    renameSync(`${file}.tmp`, file);
-  }
+  if (present > 0 && !ctx.dryRun) replaceFile(file, jqStringify(doc));
   return present;
+}
+
+/**
+ * Remove the retired kit handlers from the named hook events. A group that
+ * loses all its handlers is dropped, and an event with no groups left is
+ * dropped. A null or non-array event value is dropped too. The file is copied
+ * to `<file>.bak` before the write. Returns the count of removed entries.
+ */
+function pruneRetiredHookHandlers(
+  ctx: Ctx,
+  file: string,
+  events: ReadonlyArray<RetiredHookEvent>,
+): number {
+  if (!existsSync(file)) return 0;
+  const doc = parseJson(readFileSync(file, "utf8"));
+  if (doc === undefined || !isObject(doc) || !isObject(doc["hooks"])) return 0;
+  const hooks = doc["hooks"];
+  let removed = 0;
+  for (const event of events) {
+    const groups = hooks[event];
+    if (groups === undefined) continue;
+    if (!Array.isArray(groups)) {
+      delete hooks[event];
+      removed++;
+      continue;
+    }
+    const retired: ReadonlyArray<string> = RETIRED_HOOK_COMMANDS[event];
+    let removedFromEvent = 0;
+    const kept: Array<Json> = [];
+    for (const group of groups) {
+      if (!isObject(group) || !Array.isArray(group["hooks"])) {
+        kept.push(group);
+        continue;
+      }
+      const handlers = group["hooks"].filter(
+        (handler) =>
+          !isObject(handler) ||
+          handler["type"] !== "command" ||
+          typeof handler["command"] !== "string" ||
+          !retired.includes(handler["command"]),
+      );
+      const count = group["hooks"].length - handlers.length;
+      removedFromEvent += count;
+      if (count === 0) kept.push(group);
+      else if (handlers.length > 0) kept.push({ ...group, hooks: handlers });
+    }
+    if (removedFromEvent === 0) continue;
+    removed += removedFromEvent;
+    if (kept.length > 0) hooks[event] = kept;
+    else delete hooks[event];
+  }
+  if (removed > 0 && !ctx.dryRun) {
+    copyFileSync(file, `${file}.bak`);
+    replaceFile(file, jqStringify(doc));
+  }
+  return removed;
 }
 
 export function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntimeState): void {
   const { change, echo } = ctx.services.logger;
+  const ready = runtime.kind === "ready";
   let hooksRemoved = 0;
   let filesRemoved = 0;
-  const hooks = [
-    ...REMOVED_MANIFEST.hooks,
-    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.hooks : []),
-  ];
-  const files = [
-    ...REMOVED_MANIFEST.files,
-    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.files : []),
-  ];
-  const settingsKeys = [
-    ...REMOVED_MANIFEST.settingsKeys.filter(
-      (key) => key !== "advisorModel" || ctx.claudeAdvisor === "",
-    ),
-    ...(runtime.kind === "ready" ? REMOVED_MANIFEST.runtimeReady.settingsKeys : []),
-  ];
+  let preserved = 0;
+  const hooks = [...REMOVED_MANIFEST.hooks, ...(ready ? REMOVED_MANIFEST.runtimeReady.hooks : [])];
+  const files = [...REMOVED_MANIFEST.files, ...(ready ? REMOVED_MANIFEST.runtimeReady.files : [])];
+  const settingsKeys = REMOVED_MANIFEST.settingsKeys.filter(
+    (key) => key !== "advisorModel" || ctx.claudeAdvisor === "",
+  );
+  const hookEvents: Array<RetiredHookEvent> = ready ? ["PreToolUse", "Stop"] : ["PreToolUse"];
 
   for (const name of hooks) {
-    const path = p(claudeDir, "hooks", name);
-    if (!existsSync(path)) continue;
-    if (ctx.dryRun) {
-      echo(`[dry-run] rm ${path}`);
-    } else {
-      rmSync(path, { force: true });
-      hooksRemoved++;
-    }
+    const shipped = LEGACY_ARTIFACT_HASHES[`hooks/${name}`];
+    const result = retireArtifact(ctx, p(claudeDir, "hooks", name), shipped);
+    if (result === "removed") hooksRemoved++;
+    else if (result === "preserved") preserved++;
   }
   if (!ctx.dryRun && hooksRemoved > 0) {
     try {
@@ -142,26 +258,14 @@ export function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntime
     }
   }
 
-  for (const rel of files) {
-    const path = p(claudeDir, rel);
-    if (!existsSync(path)) continue;
-    if (ctx.dryRun) {
-      echo(`[dry-run] rm ${path}`);
-    } else {
-      rmSync(path, { force: true });
-      filesRemoved++;
-    }
-  }
-
-  for (const rel of REMOVED_MANIFEST.homeFiles) {
-    const path = p(ctx.home, rel);
-    if (!existsSync(path)) continue;
-    if (ctx.dryRun) {
-      echo(`[dry-run] rm ${path}`);
-    } else {
-      rmSync(path, { force: true });
-      filesRemoved++;
-    }
+  const filePaths = [
+    ...files.map((rel) => ({ path: p(claudeDir, rel), shipped: LEGACY_ARTIFACT_HASHES[rel] })),
+    ...REMOVED_MANIFEST.homeFiles.map((rel) => ({ path: p(ctx.home, rel), shipped: undefined })),
+  ];
+  for (const { path, shipped } of filePaths) {
+    const result = retireArtifact(ctx, path, shipped);
+    if (result === "removed") filesRemoved++;
+    else if (result === "preserved") preserved++;
   }
 
   const skeys = pruneJsonKeys(ctx, p(claudeDir, "settings.json"), settingsKeys);
@@ -170,6 +274,7 @@ export function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntime
     p(claudeDir, "settings.json"),
     REMOVED_MANIFEST.permissionRules,
   );
+  const hookHandlers = pruneRetiredHookHandlers(ctx, p(claudeDir, "settings.json"), hookEvents);
   const cjkeys = pruneJsonKeys(ctx, p(ctx.home, ".claude.json"), REMOVED_MANIFEST.claudeJsonKeys);
 
   if (ctx.dryRun) {
@@ -180,15 +285,23 @@ export function syncRemovals(ctx: Ctx, claudeDir: string, runtime: ClaudeRuntime
         `[dry-run] del ${permissionRules} stale permission rule(s) from ${p(claudeDir, "settings.json")}`,
       );
     }
+    if (hookHandlers > 0) {
+      echo(
+        `[dry-run] del ${hookHandlers} retired hook handler(s) from ${p(claudeDir, "settings.json")}`,
+      );
+    }
     if (cjkeys > 0)
       echo(`[dry-run] del ${cjkeys} stale key(s) from ${p(ctx.home, ".claude.json")}`);
     return;
   }
 
-  if (hooksRemoved + filesRemoved + skeys + permissionRules + cjkeys > 0) {
+  const artifacts = hooksRemoved + filesRemoved + preserved;
+  if (artifacts + skeys + permissionRules + hookHandlers + cjkeys > 0) {
     const permissionSummary = permissionRules > 0 ? `, permission rules: ${permissionRules}` : "";
+    const handlerSummary = hookHandlers > 0 ? `, retired hook handlers: ${hookHandlers}` : "";
+    const preservedSummary = preserved > 0 ? `, preserved as .bak: ${preserved}` : "";
     change(
-      `Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys}${permissionSummary})`,
+      `Pruned stale artifacts (hooks: ${hooksRemoved}, files: ${filesRemoved}, settings keys: ${skeys}, claude.json keys: ${cjkeys}${permissionSummary}${handlerSummary}${preservedSummary})`,
     );
     ctx.nextStepTriggers.claudeRestart = true;
   }

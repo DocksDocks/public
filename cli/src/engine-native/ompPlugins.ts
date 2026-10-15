@@ -76,21 +76,6 @@ async function runPluginCommand(
 export async function syncPlugins(ctx: Ctx): Promise<number> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
 
-  if (ctx.dryRun) {
-    const piIntercomPin = field("pi-intercom", "verified");
-    for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
-      echo(`[dry-run] omp plugin install --scope user ${pluginId}`);
-    }
-    if (piIntercomPin === "") {
-      warn(
-        "pi-intercom install skipped because SoT/toolchain.json has no verified pi-intercom pin",
-      );
-    } else {
-      echo(`[dry-run] omp install pi-intercom@${piIntercomPin}`);
-    }
-    return 0;
-  }
-
   if (ctx.services.deps.probe("omp").state === "missing") {
     ctx.services.deps.warnMissing(
       "omp",
@@ -107,6 +92,22 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     );
     return 0;
   }
+
+  if (ctx.dryRun) {
+    const piIntercomPin = field("pi-intercom", "verified");
+    for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
+      echo(`[dry-run] omp plugin install --scope user ${pluginId}`);
+    }
+    if (piIntercomPin === "") {
+      warn(
+        "pi-intercom install skipped because SoT/toolchain.json has no verified pi-intercom pin",
+      );
+    } else {
+      echo(`[dry-run] omp install pi-intercom@${piIntercomPin}`);
+    }
+    return 0;
+  }
+
   const piIntercomPin = field("pi-intercom", "verified");
 
   progress("Checking installed omp plugins...");

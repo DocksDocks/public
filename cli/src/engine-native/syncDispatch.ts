@@ -6,6 +6,7 @@
  */
 import { payloadText } from "../payload";
 import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } from "./claudeSync";
+import { preflightClaudeSettings } from "./claudeSettings";
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync";
 import type { Ctx } from "./index";
 import { ompNextSteps, ompSummary, ompSync, type OmpState } from "./ompSync";
@@ -35,6 +36,8 @@ export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise
     err("DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3");
     throw new ExitError(2);
   }
+  // An abort-class check runs before any pipeline starts, so the abort stops the whole sync.
+  preflightClaudeSettings(ctx);
 
   type PipelineResult =
     | { readonly kind: "claude"; readonly runtime: ClaudeRuntimeState }
@@ -86,20 +89,26 @@ export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise
   const remaining = new Set(selected.map(({ name }) => name));
   const lease = acquireTerminal(`Syncing ${[...remaining].join(", ")}...`);
   ctx.terminalLease = lease;
+  const tasks = selected.map(({ name, run }): SyncTask<PipelineResult> => async () => {
+    try {
+      return await run();
+    } finally {
+      remaining.delete(name);
+      if (remaining.size > 0) lease.update(`Syncing ${[...remaining].join(", ")}...`);
+    }
+  });
   let results: Array<PipelineResult>;
   try {
-    const tasks = selected.map(({ name, run }): SyncTask<PipelineResult> => async () => {
-      try {
-        return await run();
-      } finally {
-        remaining.delete(name);
-        if (remaining.size > 0) lease.update(`Syncing ${[...remaining].join(", ")}...`);
-      }
-    });
-    results = await runBounded(tasks, ctx.syncConcurrency);
-  } finally {
-    lease.release();
-    ctx.terminalLease = undefined;
+    try {
+      results = await runBounded(tasks, ctx.syncConcurrency);
+    } finally {
+      lease.release();
+      ctx.terminalLease = undefined;
+    }
+  } catch (error) {
+    // A rejected pipeline skips the summary. Print the failures that the other pipelines recorded.
+    printFailures(ctx);
+    throw error;
   }
 
   const claudeRan = ctx.syncClaude;
@@ -131,11 +140,16 @@ export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise
     echo("");
     for (const line of advice) echo(line);
   }
-  if (ctx.failures.length > 0) {
-    echo("");
-    echo("--- Failures ---");
-    for (const failure of ctx.failures) echo(`- ${failure}`);
-    return 1;
-  }
+  if (printFailures(ctx)) return 1;
   return 0;
+}
+
+/** Print the `--- Failures ---` ledger. Returns true when the ledger has entries. */
+function printFailures(ctx: Ctx): boolean {
+  const { echo } = ctx.services.logger;
+  if (ctx.failures.length === 0) return false;
+  echo("");
+  echo("--- Failures ---");
+  for (const failure of ctx.failures) echo(`- ${failure}`);
+  return true;
 }

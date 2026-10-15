@@ -2,7 +2,7 @@
  *
  * `mergeSettings` unions the deployed arrays with the SoT arrays, so dropping a
  * rule from `SoT/.claude/settings.json` never removes it from a file an earlier
- * sync already wrote. `claudeSync.ts syncRemovals` force-prunes this exact-string
+ * sync already wrote. `claudeRemovals.ts syncRemovals` force-prunes this exact-string
  * inventory on every host so the retirement reaches existing installations
  * without `--reconcile`.
  *

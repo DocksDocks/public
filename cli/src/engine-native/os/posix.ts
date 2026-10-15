@@ -10,8 +10,7 @@ function posixLiteral(value: string): string {
 export type PackageManagerHints = Readonly<Record<Exclude<HintedTool, "claude" | "codex">, string>>;
 
 const UPSTREAM_INSTALLER_HINTS: Readonly<Record<"claude" | "codex", string>> = {
-  claude:
-    "curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh && bash /tmp/claude-install.sh",
+  claude: 'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o "$tmp" && bash "$tmp"',
   codex:
     'tmp=$(mktemp) && curl -fsSL https://chatgpt.com/codex/install.sh -o "$tmp" && CODEX_NON_INTERACTIVE=1 sh "$tmp"',
 };
@@ -21,6 +20,8 @@ interface PosixHostInputs {
   readonly toolchainOs: HostOs["toolchainOs"];
   readonly supportsBubblewrap: boolean;
   readonly packageManagerHints: PackageManagerHints;
+  /** Home-relative bash startup files in read order; the first existing one gets the write, else the first entry. */
+  readonly bashTargets: readonly [string, ...string[]];
 }
 
 /** Members shared by every POSIX host; linux and darwin differ only in the inputs. */
@@ -49,11 +50,13 @@ export function posixHost(inputs: PosixHostInputs): HostOs {
     },
     environmentSetting: (name, value) => ({
       kind: "profile",
-      candidates: [".zshrc", ".bashrc", ".bash_profile", ".profile", ".zshenv"],
-      target: (shell) => {
+      candidates: [".zshrc", ".bashrc", ".bash_profile", ".bash_login", ".profile", ".zshenv"],
+      target: (shell, exists) => {
         const shellPath = shell ?? "bash";
         const shellName = shellPath.slice(shellPath.lastIndexOf("/") + 1);
-        return shellName === "zsh" ? ".zshrc" : shellName === "bash" ? ".bashrc" : ".profile";
+        if (shellName === "zsh") return ".zshrc";
+        if (shellName !== "bash") return ".profile";
+        return inputs.bashTargets.find(exists) ?? inputs.bashTargets[0];
       },
       line: `export ${name}=${value}`,
     }),

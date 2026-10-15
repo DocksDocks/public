@@ -90,9 +90,9 @@ export const validateScannedArgv = (
   }
 
   for (const flag of flags) {
-    if (!flag.token.includes("=") || flag.takesValue) continue;
-    // These booleans are presence-based; Effect 4 would otherwise let
-    // `--dry-run=false` read as a dry run while performing a real mutating sync.
+    if (!flag.hasValue || flag.takesValue) continue;
+    // These booleans are presence-based; Effect 4 would otherwise let `--dry-run=false`
+    // or `--dry-run false` read as no dry run while performing a real mutating sync.
     return `flag ${flag.name} does not take a value`;
   }
 

@@ -6,6 +6,7 @@ import { p } from "./exec";
 import { readFileSync } from "node:fs";
 import { payloadText } from "../payload";
 
+import { codexHome } from "./codexPaths";
 import { syncClaudeModel } from "./claudeSettingsModifiers";
 import { syncCodexModel } from "./codexToml";
 import type { Ctx } from "./index";
@@ -14,7 +15,7 @@ import { printModels, validateClaudeModel, validateCodexModel } from "./models";
 import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
 import { upgradeLspServers } from "./claudeLsp";
-import { installedVersion, outdatedReport, present, report } from "./toolchain";
+import { belowFloor, field, installedVersion, outdatedReport, present, report } from "./toolchain";
 import { topLevelTomlString } from "../manifests";
 
 export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
@@ -51,14 +52,14 @@ export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<
       echo(`deployed: ${jsonModelText(result.data)}`);
       echo(`SoT:      ${jsonModelText(payloadText("SoT/.claude/settings.json"))}`);
     } else {
-      const deployed = p(ctx.home, ".codex", "config.toml");
+      const deployed = p(codexHome(ctx.home), "config.toml");
       const result = readConfig(deployed);
       if (result.kind === "missing") {
-        warn("~/.codex/config.toml missing");
+        warn(`${deployed} missing`);
         return 0;
       }
       if (result.kind === "read-error") {
-        err(`Failed to read ~/.codex/config.toml: ${String(result.error)}`);
+        err(`Failed to read ${deployed}: ${String(result.error)}`);
         return 1;
       }
       echo(`deployed: ${topLevelTomlString(result.data, "model") ?? ""}`);
@@ -115,10 +116,10 @@ function jsonModelText(text: string): string {
 }
 
 const TOOLCHAIN_USAGE =
-  "Usage: toolchain [check|ensure <tool>|outdated [--refresh]|upgrade [--dry-run]]";
+  "Usage: toolchain [check|ensure <tool> [--dry-run]|outdated [--refresh]|upgrade [--dry-run]]";
 
 export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
-  const { echo, err, verbose } = ctx.services.logger;
+  const { echo, err, verbose, warn } = ctx.services.logger;
   const words = args.filter((arg) => !arg.startsWith("--"));
   const op = words[0] ?? "check";
   const tool = words[1] ?? "";
@@ -158,11 +159,15 @@ export async function modeToolchain(ctx: Ctx, args: ReadonlyArray<string>): Prom
       if (alreadyInstalled) {
         // A present tool whose --version cannot be read reports `unknown` in the
         // doctor table; keep the same vocabulary rather than an empty pair of
-        // parentheses.
+        // parentheses. `ensure` never upgrades (policy `present`), but a Bun
+        // below the kit floor is a real problem, so it warns on every run.
         const probed = await installedVersion(ctx, "bun");
-        const installed = probed === "" ? "version unknown" : probed;
-        if (ctx.dryRun) echo(`[dry-run] bun up to date (${installed})`);
-        else verbose(`bun up to date (${installed})`);
+        const floor = field("bun", "floor");
+        const label = probed === "" ? "version unknown" : probed;
+        if (belowFloor(probed, floor)) {
+          warn(`bun ${probed} is below the kit floor ${floor}; run bun upgrade`);
+        } else if (ctx.dryRun) echo(`[dry-run] bun present (${label})`);
+        else verbose(`bun present (${label})`);
       }
       return 0;
     }

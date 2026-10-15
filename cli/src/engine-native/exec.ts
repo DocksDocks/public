@@ -91,6 +91,8 @@ export function processFailureSummary(result: AsyncProcessResult): string {
 
 export interface AsyncProcessOptions {
   readonly stdio?: SpawnOptions["stdio"];
+  /** Working directory for the child; the parent's when absent. */
+  readonly cwd?: string;
   /** Host whose executable resolution and argv shaping apply; tests inject it. */
   readonly host?: HostOs;
 }
@@ -123,6 +125,7 @@ export function spawnProcess(
     const invocation = host.invoke(executablePath, args);
     child = spawn(invocation.command, [...invocation.args], {
       stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
+      ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
       windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     });
   } catch (cause) {
@@ -181,7 +184,10 @@ export function which(
   };
 
   if (isAbsolute(name) || name.includes("/")) return runnableCandidate(name);
-  for (const dir of (process.env["PATH"] ?? "").split(delimiter)) {
+  // Windows PATH entries may be double-quoted; cmd.exe and libuv strip one surrounding pair.
+  const quotedEntries = suffixes.some((suffix) => suffix !== "");
+  for (const entry of (process.env["PATH"] ?? "").split(delimiter)) {
+    const dir = quotedEntries && /^".*"$/.test(entry) ? entry.slice(1, -1) : entry;
     if (dir === "") continue;
     const candidate = runnableCandidate(join(dir, name));
     if (candidate !== "") return candidate;

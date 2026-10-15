@@ -58,13 +58,18 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels);
   syncOmpModelRemovals(ctx, p(agentDir, "models.yml"));
 
-  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"];
+  // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
+  // and pi-intercom reads the trimmed value. Without a profile, the kit uses
+  // the PI_CODING_AGENT_DIR value when it is set, else ~/.pi/agent.
+  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]?.trim();
   const intercomRoot =
-    intercomRootSetting !== undefined && intercomRootSetting !== ""
-      ? isAbsolute(intercomRootSetting)
-        ? intercomRootSetting
-        : resolve(process.cwd(), intercomRootSetting)
-      : p(ctx.home, ".pi", "agent");
+    paths.profile !== undefined
+      ? paths.agentDir
+      : intercomRootSetting !== undefined && intercomRootSetting !== ""
+        ? isAbsolute(intercomRootSetting)
+          ? intercomRootSetting
+          : resolve(process.cwd(), intercomRootSetting)
+        : p(ctx.home, ".pi", "agent");
   const intercomDir = p(intercomRoot, "intercom");
   if (!ctx.dryRun) ensureDirectory(intercomDir);
   syncWholeFile(

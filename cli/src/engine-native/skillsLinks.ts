@@ -10,6 +10,7 @@ import {
   lstatSync,
   mkdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -47,7 +48,7 @@ export function healClaudeSymlink(ctx: Ctx, skillsDir: string, base: string): bo
   const linkStat = lstat(claudeLink);
   if (linkStat?.isSymbolicLink() === true) {
     const current = safeReadlink(claudeLink);
-    if (current === relTarget) return false;
+    if (current === relTarget || pointsAt(claudeLink, canonical)) return false;
     if (ctx.dryRun) {
       echo(
         `[dry-run] would replace stale Claude symlink: ~/.claude/skills/${base} -> ${current}  (correct: ${relTarget})`,
@@ -131,6 +132,18 @@ function safeReadlink(path: string): string {
     return readlinkSync(path);
   } catch {
     return "";
+  }
+}
+
+/**
+ * True when `link` resolves to `target`. A junction stores an absolute target,
+ * so the link text never equals the relative form that a symlink uses.
+ */
+function pointsAt(link: string, target: string): boolean {
+  try {
+    return realpathSync.native(link) === realpathSync.native(target);
+  } catch {
+    return false;
   }
 }
 

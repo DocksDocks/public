@@ -3,7 +3,7 @@ import { p } from "../exec";
 import type { HostOs } from "./types";
 
 function powershellLiteral(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`;
+  return `'${value.replace(/['\u2018\u2019\u201A\u201B]/g, "$&$&")}'`;
 }
 
 function encodedPowerShellCommand(script: string): string {
@@ -14,8 +14,8 @@ function encodedPowerShellCommand(script: string): string {
 /**
  * Windows shim encoding handles three hazards: Windows argv parsing, cmd
  * metacharacter parsing, and percent/newline values that cmd cannot escape.
- * The encoders are ported from cross-spawn's escape.js and its parseNonShell
- * assembly, based on:
+ * The caret encoders are ported from cross-spawn's escape.js and its
+ * parseNonShell assembly; the backslash encoder is a linear MSVCRT pass. Based on:
  * https://github.com/moxystudio/node-cross-spawn
  * https://qntm.org/cmd
  * https://flatt.tech/research/posts/batbadbut-you-cant-securely-execute-commands-on-windows/
@@ -27,15 +27,27 @@ function escapeCommand(arg: string): string {
   return arg.replace(metaCharsRegExp, "^$1");
 }
 
-function escapeArgument(arg: string, doubleEscapeMetaChars: boolean): string {
-  arg = `${arg}`;
-  arg = arg.replace(/(?=(\\+?)?)\1"/g, '$1$1\\"');
-  arg = arg.replace(/(?=(\\+?)?)\1$/, "$1$1");
-  arg = `"${arg}"`;
-  arg = arg.replace(metaCharsRegExp, "^$1");
-  if (doubleEscapeMetaChars) {
-    arg = arg.replace(metaCharsRegExp, "^$1");
+function escapeArgument(arg: string): string {
+  // One linear pass applies the MSVCRT argv rules: a backslash run before a
+  // quote doubles and gains one escape, and a trailing run doubles before the
+  // closing quote. A greedy regex would be quadratic on long backslash runs.
+  let out = "";
+  let run = 0;
+  for (const ch of arg) {
+    if (ch === "\\") {
+      run++;
+      continue;
+    }
+    out += ch === '"' ? `${"\\".repeat(2 * run + 1)}"` : `${"\\".repeat(run)}${ch}`;
+    run = 0;
   }
+  arg = out + "\\".repeat(2 * run);
+  arg = `"${arg}"`;
+  // Two caret layers: the outer cmd removes one layer, and a batch file that
+  // forwards `%*` parses the arguments again. The kit cannot see which batch
+  // files forward `%*`, so every .cmd/.bat argument gets both layers.
+  arg = arg.replace(metaCharsRegExp, "^$1");
+  arg = arg.replace(metaCharsRegExp, "^$1");
   return arg;
 }
 
@@ -77,11 +89,7 @@ function commandShimInvocation(executablePath: string, args: ReadonlyArray<strin
   for (const arg of args) assertCommandLineValue(arg, "argument");
 
   const normalizedPath = win32.normalize(executablePath);
-  const doubleEscapeMetaChars = /node_modules[\\/]\.bin[\\/][^\\/]+\.cmd$/i.test(normalizedPath);
-  const commandLine = [
-    escapeCommand(normalizedPath),
-    ...args.map((arg) => escapeArgument(arg, doubleEscapeMetaChars)),
-  ].join(" ");
+  const commandLine = [escapeCommand(normalizedPath), ...args.map(escapeArgument)].join(" ");
   return {
     command: commandInterpreter(),
     args: ["/d", "/v:off", "/s", "/c", `"${commandLine}"`],
@@ -89,7 +97,7 @@ function commandShimInvocation(executablePath: string, args: ReadonlyArray<strin
   } as const;
 }
 
-// Authored now, but unreachable until the supported-host admission gate opens.
+// Host module for the windows-x64 and windows-arm64 targets admitted in os/targets.ts.
 export const windows: HostOs = {
   id: "windows",
   toolchainOs: "windows",

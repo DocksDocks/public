@@ -5,7 +5,7 @@ import {
   engineHome,
   HARNESSES,
   LEGACY_SELECTION,
-  readHarnessSelection,
+  loadHarnessSelection,
   writeHarnessSelection,
   type Harness,
 } from "../engine-native/harnesses";
@@ -21,7 +21,11 @@ const DESCRIPTIONS: Record<Harness, string> = {
 export const harnessesCommand = Command.make("harnesses", {}, () =>
   Effect.gen(function* () {
     const home = engineHome(process.env);
-    const stored = yield* Effect.sync(() => readHarnessSelection(home));
+    const loaded = yield* Effect.sync(() => loadHarnessSelection(home));
+    if (loaded.kind === "unreadable") {
+      return yield* bail(`Cannot read ${kitDbFile(home)}: ${loaded.reason}`, 1);
+    }
+    const stored = loaded.kind === "stored" ? loaded.selection : undefined;
     const selection = stored ?? LEGACY_SELECTION;
     const names = selection.join(", ");
 
@@ -33,7 +37,7 @@ export const harnessesCommand = Command.make("harnesses", {}, () =>
       yield* Console.log(`Harness selection: ${names}`);
     }
 
-    if (!process.stdout.isTTY) return;
+    if (!process.stdin.isTTY || !process.stdout.isTTY) return;
 
     const answer = yield* Prompt.MultiSelect({
       message: "Choose the harnesses for a flag-less docks-kit sync",
@@ -52,7 +56,14 @@ export const harnessesCommand = Command.make("harnesses", {}, () =>
       return yield* bail("Select at least one harness. The stored selection was not changed.");
     }
 
-    yield* Effect.sync(() => writeHarnessSelection(home, answer));
+    yield* Effect.try({
+      try: () => writeHarnessSelection(home, answer),
+      catch: (error) => (error instanceof Error ? error.message : String(error)),
+    }).pipe(
+      Effect.catch((reason) =>
+        bail(`Cannot save the harness selection to ${kitDbFile(home)}: ${reason}`, 1),
+      ),
+    );
     yield* Console.log(`Saved harness selection: ${answer.join(", ")} (${kitDbFile(home)})`);
   }),
 ).pipe(

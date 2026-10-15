@@ -77,13 +77,14 @@ const bareVersionFormatter: CliOutput.Formatter = {
 // Harness-private raw channel:
 // `DOCKS_KIT_ENGINE=native-raw` bypasses effect/unstable/cli and hands the raw engine
 // argv to EngineNative so golden tests drive the internal vocabulary directly.
+// Only this channel honors the unprefixed env globals (DRY_RUN, PRUNE, and so on).
 // PUBLIC engine execution lives at the engine.ts seam after the CLI has
 // parsed/normalized pickers, --flag value forms, and non-engine commands.
 if (process.env["DOCKS_KIT_ENGINE"] === "native-raw") {
   const rawArgs = process.argv.slice(2);
   const rawOperation = rawArgs.join(" ") || "default";
   try {
-    process.exit(await runEngineNative(rawArgs));
+    process.exit(await runEngineNative(rawArgs, undefined, { envGlobals: true }));
   } catch (error) {
     let detail = "unknown error";
     if (error instanceof Error && error.message !== "") detail = error.message;

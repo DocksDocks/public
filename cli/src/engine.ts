@@ -2,6 +2,7 @@ import { CliError } from "effect/unstable/cli";
 import { Console, Effect } from "effect";
 import { spawnSync } from "node:child_process";
 import { runEngineNative } from "./engine-native";
+import { ENV_GLOBAL_KEYS } from "./engine-native/engineCtx";
 import { ExitError } from "./engine-native/parseArgs";
 import { makeEngineServices } from "./engine-native/services";
 import { targetForHost } from "./engine-native/os/targets";
@@ -57,7 +58,7 @@ export const engine = (args: ReadonlyArray<string>) =>
     const deps = yield* DependencyManagerService;
     const platform = yield* PlatformService;
     const code = yield* Effect.tryPromise({
-      try: () => runEngineNative(args, { logger, deps, platform }),
+      try: () => runEngineNative(args, { logger, deps, platform }, { envGlobals: false }),
       catch: (error) =>
         new CliError.UserError({
           cause: error,
@@ -76,6 +77,10 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
     if (bashEngineRequested()) {
       return yield* bail(bashRemovedMessage, 2);
     }
+    // The child runs the raw channel, which honors env globals; strip them so
+    // a captured public command behaves like an in-process one.
+    const childEnv: NodeJS.ProcessEnv = { ...process.env, DOCKS_KIT_ENGINE: "native-raw" };
+    for (const key of ENV_GLOBAL_KEYS) delete childEnv[key];
     const res = yield* Effect.sync(() =>
       // Child process (raw channel): runEngineNative writes straight to
       // process.stdout, so in-process capture is not possible.
@@ -83,7 +88,7 @@ export const engineCapture = (args: ReadonlyArray<string>) =>
         process.execPath,
         compiled ? [...args] : [`${kitHome()}/cli/src/main.ts`, ...args],
         {
-          env: { ...process.env, DOCKS_KIT_ENGINE: "native-raw" },
+          env: childEnv,
           encoding: "utf8",
           stdio: ["ignore", "pipe", "inherit"],
         },

@@ -3,13 +3,15 @@
  * with the runtime cutover and deploy-time modifiers is load-bearing and
  * golden-tested; message strings and JSON semantics are part of the contract.
  */
-import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync } from "node:fs";
+import { replaceFile } from "./atomicWrite";
 import { p } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, jqStringify, parseJson, type Json } from "./jq";
 import { ExitError } from "./parseArgs";
 import { mergeSettings, reconcileSettings } from "./settings";
 import { payloadDisplayPath } from "../payload";
+import type { JsonObject } from "./sharedTypes";
 
 export interface PreparedClaudeSettings {
   readonly path: string;
@@ -23,6 +25,33 @@ function assertMaterializedSettings(bytes: string): void {
     throw new Error("Claude settings contain unresolved runtime sentinels");
 }
 
+/**
+ * Read the deployed settings document. An unparsable or non-object document
+ * aborts the sync, because a merge would replace the user's settings.
+ */
+function readDeployedSettings(ctx: Ctx, path: string): { text: string; doc: JsonObject } {
+  const text = readFileSync(path, "utf8");
+  const doc = parseJson(text);
+  if (doc === undefined || !isObject(doc)) {
+    const reason = doc === undefined ? "is not valid JSON" : "must contain a JSON object";
+    ctx.services.logger.err(
+      `Aborting sync: ${path} ${reason}. Fix it manually or delete it to reinstall.`,
+    );
+    throw new ExitError(1);
+  }
+  return { text, doc };
+}
+
+/**
+ * Check the deployed settings before any sync pipeline starts. A document
+ * that cannot merge stops the whole sync, so no other harness changes first.
+ */
+export function preflightClaudeSettings(ctx: Ctx): void {
+  if (!ctx.syncClaude) return;
+  const path = p(ctx.home, ".claude", "settings.json");
+  if (existsSync(path)) readDeployedSettings(ctx, path);
+}
+
 /** Build the candidate settings bytes before the readiness-gated runtime cutover mutates disk. */
 export function prepareClaudeSettings(
   ctx: Ctx,
@@ -31,20 +60,15 @@ export function prepareClaudeSettings(
 ): PreparedClaudeSettings {
   const path = p(claudeDir, "settings.json");
   if (!existsSync(path)) {
-    const bytes = jqStringify(repo);
+    // Write the form the next sync produces, so a second sync finds no change.
+    const canonical = ctx.reconcile ? reconcileSettings(repo, {}) : mergeSettings(repo, {});
+    const bytes = jqStringify(canonical);
     assertMaterializedSettings(bytes);
     return { path, bytes, previousBytes: undefined, changed: true };
   }
 
-  const previousBytes = readFileSync(path, "utf8");
-  const user = parseJson(previousBytes);
-  if (user === undefined || !isObject(user)) {
-    const reason = user === undefined ? "is not valid JSON" : "must contain a JSON object";
-    ctx.services.logger.err(
-      `Aborting sync: ${path} ${reason}. Fix it manually or delete it to reinstall.`,
-    );
-    throw new ExitError(1);
-  }
+  // engineSync runs this check in preflightClaudeSettings; it stays here for other callers.
+  const { text: previousBytes, doc: user } = readDeployedSettings(ctx, path);
   const merged = ctx.reconcile ? reconcileSettings(repo, user) : mergeSettings(repo, user);
   const bytes = jqStringify(merged);
   assertMaterializedSettings(bytes);
@@ -60,8 +84,7 @@ export function commitClaudeSettings(ctx: Ctx, prepared: PreparedClaudeSettings)
   }
 
   if (prepared.previousBytes !== undefined) copyFileSync(prepared.path, `${prepared.path}.bak`);
-  writeFileSync(`${prepared.path}.tmp`, prepared.bytes);
-  renameSync(`${prepared.path}.tmp`, prepared.path);
+  replaceFile(prepared.path, prepared.bytes);
   ctx.nextStepTriggers.claudeRestart = true;
   if (prepared.previousBytes === undefined) {
     change("Settings installed");
@@ -114,8 +137,7 @@ function jqEditSettings(
   edit(doc);
   const out = jqStringify(doc);
   if (out === before) return false;
-  writeFileSync(`${userSettings}.tmp`, out);
-  renameSync(`${userSettings}.tmp`, userSettings);
+  replaceFile(userSettings, out);
   return true;
 }
 

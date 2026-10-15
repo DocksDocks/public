@@ -165,15 +165,15 @@ export const syncCommand = Command.make(
       Option.map(config.codexModel, (m) => args.push(`--codex-model=${m}`));
       Option.map(config.codexEffort, (level) => args.push(`--codex-effort=${level}`));
       for (const occurrence of config.claudePlugin) {
-        if (occurrence.trim() === "") {
+        const names = occurrence
+          .split(",")
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0);
+        if (names.length === 0) {
           args.push("--claude-plugin=");
           continue;
         }
-        occurrence
-          .split(",")
-          .map((p) => p.trim())
-          .filter((p) => p.length > 0)
-          .forEach((p) => args.push(`--claude-plugin=${p}`));
+        for (const name of names) args.push(`--claude-plugin=${name}`);
       }
 
       // Not on --dry-run: the nudge's git fetch writes FETCH_HEAD/remote
