@@ -34,6 +34,22 @@ NEVER use `ask` for:
 Batch every open question into one `ask` call with multiple questions; do not serialize
 round trips. Being overruled ends the discussion — execute my call without relitigating.
 
+## Removing files
+
+To remove, use the trash.
+
+- To remove a file or a directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
+- `gio trash` can refuse a path in `/tmp`, because it does not trash on system mounts. Leave temporary files there; the system clears them.
+- To remove a path from the git index, run `git rm -- <path>`. To remove a worktree, run `git worktree remove -- <path>`.
+- Write the `--` exactly as shown. omp asks me before any other form of `gio trash`, `git rm`, or `git worktree remove`.
+- Do not use `rm`. omp denies a recursive `rm` and asks me before any other `rm`.
+- A subagent cannot get my approval, so omp rejects every ask in a subagent.
+- Do not delete in bulk yourself (`find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
+- If a deletion needs `rm -r` or a bulk command, put the paths in your report. I run that deletion myself.
+- Do not use `--force`, `-f`, or an abbreviation of it with `git rm`, `git worktree remove`, or `git push`.
+- Write literal absolute paths. Do not use `~` or `$HOME` in a command.
+- Do not set or export `HOME`.
+
 ## Output Standard
 
 Apply Simplified Technical English to all agent text. This includes responses, messages,

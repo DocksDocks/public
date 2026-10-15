@@ -12,6 +12,7 @@ import install from "../../docs/install.md" with { type: "text" };
 import platforms from "../../docs/platforms.md" with { type: "text" };
 import ompModels from "../../docs/omp-models.md" with { type: "text" };
 import ompContext from "../../docs/omp-context.md" with { type: "text" };
+import commandGuards from "../../docs/command-guards.md" with { type: "text" };
 
 const TOPICS: Record<string, { summary: string; body: string }> = {
   overview: { summary: "What docks-kit is and how the pieces fit", body: overview },
@@ -48,6 +49,10 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
   "omp-context": {
     summary: "omp compaction trigger, the reserve-based default, and context-window lanes",
     body: ompContext,
+  },
+  "command-guards": {
+    summary: "Deny, ask, and allow tiers for destructive shell commands in omp, Claude, and Codex",
+    body: commandGuards,
   },
 };
 

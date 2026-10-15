@@ -11,6 +11,13 @@
  *   for a literal backslash. Every other backslash stays literal, so
  *   `Remove-Item \ *-Recurse*` matches a command that deletes the drive root
  *   `\`, and `*` matches any text.
+ * - A trailing ` *` that is the only wildcard also matches the bare command,
+ *   as https://code.claude.com/docs/en/permissions documents.
+ * - PowerShell rules match case-insensitively, as the same page documents.
+ * - `permissionDecision` applies the documented precedence: deny, then ask,
+ *   then allow, and matches Bash deny and ask rules past leading variable
+ *   assignments. It matches one simple command; it does not split compound
+ *   commands or strip wrappers such as `timeout` or `nice`.
  *
  * The oracle lets the settings tests assert "Claude Code can load every rule the
  * kit ships, and the deny list stops these commands" instead of restating the
@@ -259,10 +266,76 @@ export function ruleMatchesCommand(rule: string, tool: string, command: string):
     held += specifier[i];
   }
 
-  const pattern = held
+  // A trailing ` *` that is the rule's only wildcard also matches the bare
+  // command, so `Bash(git push --force origin main *)` stops
+  // `git push --force origin main` (https://code.claude.com/docs/en/permissions).
+  const bareSuffix = held.endsWith(" *") && held.indexOf("*") === held.length - 1;
+  const pattern = (bareSuffix ? held.slice(0, -2) : held)
     .replace(/[.+?^${}()|[\]\\'"]/g, "\\$&")
     .replaceAll("*", ".*")
     .replaceAll(STAR, "\\*")
     .replaceAll(BACKSLASH, "\\\\");
-  return new RegExp(`^${pattern}$`, "s").test(command.trim());
+  return new RegExp(
+    `^${pattern}${bareSuffix ? "(?: .*)?" : ""}$`,
+    tool === "PowerShell" ? "si" : "s",
+  ).test(command.trim());
+}
+
+export type PermissionDecision = "deny" | "ask" | "allow";
+
+const ASSIGNMENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+/**
+ * The Bash command after its leading `NAME=value` assignments. A value may hold
+ * quotes or a `$(...)` substitution with spaces. Returns the input unchanged when
+ * no command follows the assignments.
+ */
+function withoutLeadingAssignments(command: string): string {
+  let rest = command.trim();
+  while (ASSIGNMENT_NAME.test(rest)) {
+    let depth = 0;
+    let quote: "'" | '"' | undefined;
+    let end = rest.length;
+    for (let i = 0; i < rest.length; i++) {
+      const ch = rest[i];
+      if (quote !== undefined) {
+        if (ch === quote) quote = undefined;
+      } else if (ch === "'" || ch === '"') quote = ch;
+      else if (ch === "(") depth++;
+      else if (ch === ")") depth--;
+      else if (depth === 0 && /\s/.test(ch ?? "")) {
+        end = i;
+        break;
+      }
+    }
+    const next = rest.slice(end).trim();
+    if (next === "") return command.trim();
+    rest = next;
+  }
+  return rest;
+}
+
+/**
+ * Claude Code's outcome for one command: deny rules first, then ask rules, then
+ * allow rules; the first list with a matching rule decides, whatever its order or
+ * specificity. Undefined means no rule matched, so the permission mode decides
+ * (the auto-mode classifier under the kit's `defaultMode: auto`).
+ *
+ * Claude Code matches deny and ask rules past any leading variable assignment,
+ * and an allow rule only past known-safe ones. The oracle therefore matches a
+ * Bash deny or ask rule against the command without its leading assignments,
+ * and an allow rule against the raw text. `Bash(HOME=*)` therefore matches a
+ * bare `HOME=...` line but not `HOME=... cmd`, which only the classifier sees.
+ */
+export function permissionDecision(
+  permissions: Readonly<Record<PermissionDecision, ReadonlyArray<string>>>,
+  tool: string,
+  command: string,
+): PermissionDecision | undefined {
+  const restricted = tool === "Bash" ? withoutLeadingAssignments(command) : command;
+  return (["deny", "ask", "allow"] as const).find((list) =>
+    permissions[list].some((rule) =>
+      ruleMatchesCommand(rule, tool, list === "allow" ? command : restricted),
+    ),
+  );
 }

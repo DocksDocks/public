@@ -55,7 +55,7 @@ docks-kit toolchain [check|ensure <tool>|outdated|upgrade]  verified-version flo
 docks-kit status [--json]                       deployed-vs-SoT drift + toolchain + counts
 docks-kit plugins list [--json]                 enabledPlugins tri-state vs installed
 docks-kit skills list [--json]                  universal skills vs manifest
-docks-kit docs [topic]                          self-documentation (11 topics)
+docks-kit docs [topic]                          self-documentation (12 topics)
 --help --version --wizard --completions    built-in
 ```
 
@@ -110,6 +110,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
   or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
   working legacy hook/statusline setup and reports that migration is deferred.
+- **Command guards** — omp, Claude Code, and Codex share one fail-closed
+  policy for destructive shell commands; to remove, agents use the trash
+  (`gio trash -- <path>`, or `trash <path>` on macOS). `rm` of the home
+  directory or `/` and `HOME` reassignment are denied. omp also denies every
+  recursive `rm` and asks before any other `rm`. `find -delete`, `git clean`,
+  `git reset --hard`, any `git push` that could force, and `git rm` other
+  than `git rm -- <path>` ask; Claude Code and Codex also ask before a
+  recursive `rm` and every `git rm`. An omp subagent cannot answer an ask, so
+  omp rejects it; a Codex ask can go to its `auto_review` reviewer. Details,
+  per-tool differences, and gaps: `docks-kit docs command-guards`.
 
 ## Repository map
 
@@ -156,8 +166,8 @@ are versioned config snapshots without shipping the authoring `SoT/` tree.
 ## Deeper docs
 
 - `docks-kit docs <topic>` - overview, sync-layers, flags, modifiers, models,
-  omp-models, toolchain, plugins, install, platforms (works offline, bundled
-  with the CLI)
+  omp-models, omp-context, command-guards, toolchain, plugins, install,
+  platforms (works offline, bundled with the CLI)
 - [`AGENTS.md`](AGENTS.md) — engineering rules for agents working on the kit
 - [`CLAUDE.md`](CLAUDE.md) — Claude Code specifics: env vars, session
   management, permission mode, open concerns

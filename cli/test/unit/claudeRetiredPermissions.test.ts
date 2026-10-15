@@ -107,6 +107,15 @@ function recordingServices(records: Array<string>): EngineServices {
 }
 
 describe("retired permission rule cutover", () => {
+  it("ships no rule the retired inventory prunes", () => {
+    const retired = new Set<string>(RETIRED);
+    const shipped = (["allow", "deny", "ask"] as const).flatMap(
+      (key) => SOT_SETTINGS.permissions[key],
+    );
+
+    expect(shipped.filter((rule) => retired.has(rule))).toEqual([]);
+  });
+
   it("needs a prune after additive merge to withdraw a formerly shipped rule", () => {
     const user = parseJson(deployedBeforeThisChange());
     if (user === undefined) throw new Error("deployed fixture is not valid JSON");
@@ -154,12 +163,10 @@ describe("retired permission rule cutover", () => {
       expect(deployed["ask"]).toEqual(
         expect.arrayContaining(["PowerShell(my-asker *)", "PowerShell(git clean *)"]),
       );
-      for (const key of ["deny", "ask"] as const) {
-        expect(deployed[key]).toEqual(
-          expect.arrayContaining(
-            SOT_SETTINGS.permissions[key].filter((rule) => rule.startsWith("PowerShell(")),
-          ),
-        );
+      // Every rule the SoT ships, the destructive-command guards included,
+      // survives the retired-rule prune next to the user's own rules.
+      for (const key of ["allow", "deny", "ask"] as const) {
+        expect(deployed[key]).toEqual(expect.arrayContaining(SOT_SETTINGS.permissions[key]));
       }
       expect(deployed["allow"].filter((rule) => rule.startsWith("PowerShell("))).toEqual([
         "PowerShell(my-tool *)",
