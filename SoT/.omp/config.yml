@@ -166,11 +166,15 @@ tools:
 
 bash:
   # First match wins: deny rules, then prompt rules, then allow rules.
-  # omp also checks deny and prompt rules against each quote-stripped segment,
-  # so `cd x && rm -rf "$HOME"` matches `rm * $HOME`. `*` matches any text.
+  # omp checks deny and prompt rules against the whole line and each
+  # quote-stripped segment, so `rm -rf "$HOME"` matches `rm * $HOME`.
+  # `*` matches any text, spaces included; no escape spells a literal `*`.
+  # omp's critical-command check turns a prompt into an allow under yolo,
+  # so every rm shape it can flag is denied, not prompted.
   patterns:
-    # Deny: rm of the home directory or the filesystem root, HOME reassignment,
-    # and a force push to main or master.
+    # Deny: rm of the home directory or the filesystem root, sudo rm, rm
+    # with an option before an absolute path, recursive rm, HOME
+    # reassignment, and a force push to main or master.
     - { match: "rm /", approval: deny }
     - { match: "rm / *", approval: deny }
     - { match: "rm * /", approval: deny }
@@ -255,6 +259,109 @@ bash:
     - { match: "*/rm ${HOME}/ *", approval: deny }
     - { match: "*/rm * ${HOME}/", approval: deny }
     - { match: "*/rm * ${HOME}/ *", approval: deny }
+    - { match: "sudo rm", approval: deny }
+    - { match: "sudo rm *", approval: deny }
+    - { match: "sudo * rm *", approval: deny }
+    - { match: "* sudo rm *", approval: deny }
+    - { match: "sudo */rm *", approval: deny }
+    - { match: "rm -* /*", approval: deny }
+    - { match: "* rm -* /*", approval: deny }
+    - { match: "*/rm -* /*", approval: deny }
+    - { match: "rm *--no-preserve-root*", approval: deny }
+    - { match: "* rm *--no-preserve-root*", approval: deny }
+    - { match: "*/rm *--no-preserve-root*", approval: deny }
+    - { match: "rm *-r *", approval: deny }
+    - { match: "rm *-r", approval: deny }
+    - { match: "rm *-rf *", approval: deny }
+    - { match: "rm *-rf", approval: deny }
+    - { match: "rm *-fr *", approval: deny }
+    - { match: "rm *-fr", approval: deny }
+    - { match: "rm *-rv *", approval: deny }
+    - { match: "rm *-rv", approval: deny }
+    - { match: "rm *-vr *", approval: deny }
+    - { match: "rm *-vr", approval: deny }
+    - { match: "rm *-rfv *", approval: deny }
+    - { match: "rm *-rfv", approval: deny }
+    - { match: "rm *-rvf *", approval: deny }
+    - { match: "rm *-rvf", approval: deny }
+    - { match: "rm *-frv *", approval: deny }
+    - { match: "rm *-frv", approval: deny }
+    - { match: "rm *-fvr *", approval: deny }
+    - { match: "rm *-fvr", approval: deny }
+    - { match: "rm *-vrf *", approval: deny }
+    - { match: "rm *-vrf", approval: deny }
+    - { match: "rm *-vfr *", approval: deny }
+    - { match: "rm *-vfr", approval: deny }
+    - { match: "rm *-R *", approval: deny }
+    - { match: "rm *-R", approval: deny }
+    - { match: "rm *-Rf *", approval: deny }
+    - { match: "rm *-Rf", approval: deny }
+    - { match: "rm *-fR *", approval: deny }
+    - { match: "rm *-fR", approval: deny }
+    - { match: "rm *-Rv *", approval: deny }
+    - { match: "rm *-Rv", approval: deny }
+    - { match: "rm *-vR *", approval: deny }
+    - { match: "rm *-vR", approval: deny }
+    - { match: "rm *-Rfv *", approval: deny }
+    - { match: "rm *-Rfv", approval: deny }
+    - { match: "rm *-Rvf *", approval: deny }
+    - { match: "rm *-Rvf", approval: deny }
+    - { match: "rm *-fRv *", approval: deny }
+    - { match: "rm *-fRv", approval: deny }
+    - { match: "rm *-fvR *", approval: deny }
+    - { match: "rm *-fvR", approval: deny }
+    - { match: "rm *-vRf *", approval: deny }
+    - { match: "rm *-vRf", approval: deny }
+    - { match: "rm *-vfR *", approval: deny }
+    - { match: "rm *-vfR", approval: deny }
+    - { match: "rm *--recursive *", approval: deny }
+    - { match: "rm *--recursive", approval: deny }
+    - { match: "*/rm *-r *", approval: deny }
+    - { match: "*/rm *-r", approval: deny }
+    - { match: "*/rm *-rf *", approval: deny }
+    - { match: "*/rm *-rf", approval: deny }
+    - { match: "*/rm *-fr *", approval: deny }
+    - { match: "*/rm *-fr", approval: deny }
+    - { match: "*/rm *-rv *", approval: deny }
+    - { match: "*/rm *-rv", approval: deny }
+    - { match: "*/rm *-vr *", approval: deny }
+    - { match: "*/rm *-vr", approval: deny }
+    - { match: "*/rm *-rfv *", approval: deny }
+    - { match: "*/rm *-rfv", approval: deny }
+    - { match: "*/rm *-rvf *", approval: deny }
+    - { match: "*/rm *-rvf", approval: deny }
+    - { match: "*/rm *-frv *", approval: deny }
+    - { match: "*/rm *-frv", approval: deny }
+    - { match: "*/rm *-fvr *", approval: deny }
+    - { match: "*/rm *-fvr", approval: deny }
+    - { match: "*/rm *-vrf *", approval: deny }
+    - { match: "*/rm *-vrf", approval: deny }
+    - { match: "*/rm *-vfr *", approval: deny }
+    - { match: "*/rm *-vfr", approval: deny }
+    - { match: "*/rm *-R *", approval: deny }
+    - { match: "*/rm *-R", approval: deny }
+    - { match: "*/rm *-Rf *", approval: deny }
+    - { match: "*/rm *-Rf", approval: deny }
+    - { match: "*/rm *-fR *", approval: deny }
+    - { match: "*/rm *-fR", approval: deny }
+    - { match: "*/rm *-Rv *", approval: deny }
+    - { match: "*/rm *-Rv", approval: deny }
+    - { match: "*/rm *-vR *", approval: deny }
+    - { match: "*/rm *-vR", approval: deny }
+    - { match: "*/rm *-Rfv *", approval: deny }
+    - { match: "*/rm *-Rfv", approval: deny }
+    - { match: "*/rm *-Rvf *", approval: deny }
+    - { match: "*/rm *-Rvf", approval: deny }
+    - { match: "*/rm *-fRv *", approval: deny }
+    - { match: "*/rm *-fRv", approval: deny }
+    - { match: "*/rm *-fvR *", approval: deny }
+    - { match: "*/rm *-fvR", approval: deny }
+    - { match: "*/rm *-vRf *", approval: deny }
+    - { match: "*/rm *-vRf", approval: deny }
+    - { match: "*/rm *-vfR *", approval: deny }
+    - { match: "*/rm *-vfR", approval: deny }
+    - { match: "*/rm *--recursive *", approval: deny }
+    - { match: "*/rm *--recursive", approval: deny }
     - { match: "HOME=*", approval: deny }
     - { match: "export HOME=*", approval: deny }
     - { match: "env HOME=*", approval: deny }
@@ -267,28 +374,35 @@ bash:
     - { match: "git push -f origin main *", approval: deny }
     - { match: "git push -f origin master", approval: deny }
     - { match: "git push -f origin master *", approval: deny }
-    # Prompt: recursive or bulk deletion, rm of a ~/ or $HOME/ path, and
-    # history-destroying git. A subagent cannot answer a prompt, so omp rejects it.
-    - { match: "rm -*r*", approval: prompt }
-    - { match: "rm -*R*", approval: prompt }
-    - { match: "rm * -*r*", approval: prompt }
-    - { match: "rm * -*R*", approval: prompt }
-    - { match: "*/rm -*r*", approval: prompt }
-    - { match: "*/rm -*R*", approval: prompt }
-    - { match: "*/rm * -*r*", approval: prompt }
-    - { match: "*/rm * -*R*", approval: prompt }
-    - { match: "rm ~/*", approval: prompt }
-    - { match: "rm * ~/*", approval: prompt }
-    - { match: "rm $HOME/*", approval: prompt }
-    - { match: "rm * $HOME/*", approval: prompt }
-    - { match: "rm ${HOME}/*", approval: prompt }
-    - { match: "rm * ${HOME}/*", approval: prompt }
-    - { match: "*/rm ~/*", approval: prompt }
-    - { match: "*/rm * ~/*", approval: prompt }
-    - { match: "*/rm $HOME/*", approval: prompt }
-    - { match: "*/rm * $HOME/*", approval: prompt }
-    - { match: "*/rm ${HOME}/*", approval: prompt }
-    - { match: "*/rm * ${HOME}/*", approval: prompt }
+    # Prompt: every other rm, bulk deletion, history-destroying git, forced
+    # git removal, and emptying or restoring the trash. A subagent cannot
+    # answer a prompt, so omp rejects it.
+    - { match: "rm", approval: prompt }
+    - { match: "rm *", approval: prompt }
+    - { match: "*/rm", approval: prompt }
+    - { match: "*/rm *", approval: prompt }
+    - { match: "xargs rm", approval: prompt }
+    - { match: "xargs rm *", approval: prompt }
+    - { match: "xargs * rm", approval: prompt }
+    - { match: "xargs * rm *", approval: prompt }
+    - { match: "env * rm", approval: prompt }
+    - { match: "env * rm *", approval: prompt }
+    - { match: "command rm", approval: prompt }
+    - { match: "command rm *", approval: prompt }
+    - { match: "exec rm", approval: prompt }
+    - { match: "exec rm *", approval: prompt }
+    - { match: "nohup rm", approval: prompt }
+    - { match: "nohup rm *", approval: prompt }
+    - { match: "nice rm", approval: prompt }
+    - { match: "nice rm *", approval: prompt }
+    - { match: "nice * rm", approval: prompt }
+    - { match: "nice * rm *", approval: prompt }
+    - { match: "time rm", approval: prompt }
+    - { match: "time rm *", approval: prompt }
+    - { match: "timeout * rm", approval: prompt }
+    - { match: "timeout * rm *", approval: prompt }
+    - { match: "stdbuf * rm", approval: prompt }
+    - { match: "stdbuf * rm *", approval: prompt }
     - { match: "find -delete*", approval: prompt }
     - { match: "find * -delete*", approval: prompt }
     - { match: "find -exec*rm *", approval: prompt }
@@ -296,16 +410,62 @@ bash:
     - { match: "git clean", approval: prompt }
     - { match: "git clean *", approval: prompt }
     - { match: "git reset *--hard*", approval: prompt }
-    - { match: "git push *--force*", approval: prompt }
     - { match: "git push -f*", approval: prompt }
     - { match: "git push * -f*", approval: prompt }
-    - { match: "git push -uf*", approval: prompt }
-    - { match: "git push * -uf*", approval: prompt }
+    - { match: "git push *--force*", approval: prompt }
     - { match: "git push * +*", approval: prompt }
+    - { match: "git push *-uf *", approval: prompt }
+    - { match: "git push *-uf", approval: prompt }
+    - { match: "git push *-vf *", approval: prompt }
+    - { match: "git push *-vf", approval: prompt }
+    - { match: "git push *-qf *", approval: prompt }
+    - { match: "git push *-qf", approval: prompt }
+    - { match: "git push *-ufv *", approval: prompt }
+    - { match: "git push *-ufv", approval: prompt }
+    - { match: "git push *-uvf *", approval: prompt }
+    - { match: "git push *-uvf", approval: prompt }
+    - { match: "git push *-ufq *", approval: prompt }
+    - { match: "git push *-ufq", approval: prompt }
+    - { match: "git push *-uqf *", approval: prompt }
+    - { match: "git push *-uqf", approval: prompt }
+    - { match: "git push *-vfu *", approval: prompt }
+    - { match: "git push *-vfu", approval: prompt }
+    - { match: "git push *-vuf *", approval: prompt }
+    - { match: "git push *-vuf", approval: prompt }
+    - { match: "git push *-vfq *", approval: prompt }
+    - { match: "git push *-vfq", approval: prompt }
+    - { match: "git push *-vqf *", approval: prompt }
+    - { match: "git push *-vqf", approval: prompt }
+    - { match: "git push *-qfu *", approval: prompt }
+    - { match: "git push *-qfu", approval: prompt }
+    - { match: "git push *-quf *", approval: prompt }
+    - { match: "git push *-quf", approval: prompt }
+    - { match: "git push *-qfv *", approval: prompt }
+    - { match: "git push *-qfv", approval: prompt }
+    - { match: "git push *-qvf *", approval: prompt }
+    - { match: "git push *-qvf", approval: prompt }
+    - { match: "git rm -f*", approval: prompt }
+    - { match: "git rm * -f*", approval: prompt }
+    - { match: "git rm *--force*", approval: prompt }
+    - { match: "git rm *-rf *", approval: prompt }
+    - { match: "git rm *-rf", approval: prompt }
+    - { match: "git rm *-qf *", approval: prompt }
+    - { match: "git rm *-qf", approval: prompt }
+    - { match: "git rm *-rfq *", approval: prompt }
+    - { match: "git rm *-rfq", approval: prompt }
+    - { match: "git rm *-rqf *", approval: prompt }
+    - { match: "git rm *-rqf", approval: prompt }
+    - { match: "git rm *-qfr *", approval: prompt }
+    - { match: "git rm *-qfr", approval: prompt }
+    - { match: "git rm *-qrf *", approval: prompt }
+    - { match: "git rm *-qrf", approval: prompt }
+    - { match: "git worktree remove -f*", approval: prompt }
+    - { match: "git worktree remove * -f*", approval: prompt }
+    - { match: "git worktree remove *--force*", approval: prompt }
     - { match: "gio trash *--empty*", approval: prompt }
-    # Allow: reversible or small removal.
-    - { match: "gio trash *", approval: allow }
+    - { match: "gio trash *--restore*", approval: prompt }
+    # Allow: moving to the trash, and git removals without --force.
+    - { match: "gio trash -- *", approval: allow }
     - { match: "trash *", approval: allow }
-    - { match: "rm *", approval: allow }
     - { match: "git rm *", approval: allow }
     - { match: "git worktree remove *", approval: allow }

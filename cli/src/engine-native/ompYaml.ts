@@ -9,7 +9,8 @@
  * provider credentials and custom models the kit never declares.
  *
  * A SoT sequence replaces the deployed sequence, except `bash.patterns` in
- * config.yml: `mergeBashPatterns` keeps the user's command rules.
+ * config.yml: `mergeBashPatterns` keeps the user's command rules and groups all
+ * rules by approval.
  */
 import { isMap, isScalar, isSeq, parseDocument, type YAMLMap, type YAMLSeq } from "yaml";
 
@@ -56,26 +57,37 @@ function bashPatternKey(node: unknown): string | undefined {
 
 /**
  * omp evaluates `bash.patterns` in order, and the first matching rule wins. The
- * merged list holds the kit deny and prompt rules, then every user rule in its
- * deployed order, then the kit allow rules. A user rule can thus tighten any
- * command the kit allows, and no rule can loosen a kit deny or prompt rule. A
- * deployed rule equal to a kit rule is the kit copy, so a re-sync changes
- * nothing. A rule the kit stops shipping stays as a user rule.
+ * merge groups the rules by approval: kit deny, user deny, kit prompt, user
+ * prompt, the other user rules in their deployed order, then kit allow. The
+ * first matching rule is then always the strictest one, as in Claude Code and
+ * Codex: a user deny is never shadowed by a kit prompt, and no allow loosens a
+ * deny or a prompt. A deployed rule equal to a kit rule is the kit copy, so a
+ * re-sync changes nothing. A rule the kit stops shipping stays as a user rule.
  */
 const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
   if (path.length !== 2 || path[0] !== "bash" || path[1] !== "patterns") return;
   const kitKeys = new Set(sotSeq.items.map(bashPatternKey));
-  const kitRestrictions: Array<unknown> = [];
-  const kitAllows: Array<unknown> = [];
-  for (const item of sotSeq.items) {
-    if (bashPatternKey(item)?.startsWith("allow\u0000") === true) kitAllows.push(item);
-    else kitRestrictions.push(item);
-  }
-  const userRules = deployedSeq.items.filter((item) => {
+  const groups: Record<"kit" | "user", Record<"deny" | "prompt" | "other", Array<unknown>>> = {
+    kit: { deny: [], prompt: [], other: [] },
+    user: { deny: [], prompt: [], other: [] },
+  };
+  const place = (owner: "kit" | "user", item: unknown): void => {
+    const approval = bashPatternKey(item)?.split("\u0000")[0];
+    groups[owner][approval === "deny" || approval === "prompt" ? approval : "other"].push(item);
+  };
+  for (const item of sotSeq.items) place("kit", item);
+  for (const item of deployedSeq.items) {
     const key = bashPatternKey(item);
-    return key === undefined || !kitKeys.has(key);
-  });
-  sotSeq.items = [...kitRestrictions, ...userRules, ...kitAllows];
+    if (key === undefined || !kitKeys.has(key)) place("user", item);
+  }
+  sotSeq.items = [
+    ...groups.kit.deny,
+    ...groups.user.deny,
+    ...groups.kit.prompt,
+    ...groups.user.prompt,
+    ...groups.user.other,
+    ...groups.kit.other,
+  ];
 };
 
 function pruneMapping(mapping: YAMLMap, path: ReadonlyArray<string>, drop: DropDeployedKey): void {
