@@ -7,11 +7,17 @@
  * wildcards ahead of role chains, so a stale wildcard would silently override
  * the kit-managed role chains. models.yml drops nothing; a user file may carry
  * provider credentials and custom models the kit never declares.
+ *
+ * A SoT sequence replaces the deployed sequence, except `bash.patterns` in
+ * config.yml: `mergeBashPatterns` keeps the user's command rules.
  */
-import { isMap, isScalar, parseDocument, type YAMLMap } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, type YAMLMap, type YAMLSeq } from "yaml";
 
 /** Decides whether a deployed-only key at `path` is dropped instead of kept. */
 type DropDeployedKey = (path: ReadonlyArray<string>, key: string) => boolean;
+
+/** Merges the deployed sequence at `path` into the SoT sequence in place. */
+type MergeSequence = (path: ReadonlyArray<string>, sotSeq: YAMLSeq, deployedSeq: YAMLSeq) => void;
 
 const fallbackChainsPath = ["retry", "fallbackChains"] as const;
 
@@ -32,6 +38,45 @@ const dropFallbackWildcard: DropDeployedKey = (path, key) =>
   key.includes("/");
 
 const keepEveryKey: DropDeployedKey = () => false;
+
+const keepSotSequence: MergeSequence = () => {};
+
+/**
+ * Identity of one `bash.patterns` rule, normalized the way omp reads it: the
+ * approval is trimmed and lowercased, and whitespace runs in `match` collapse to
+ * one space. Returns undefined for an entry omp would ignore.
+ */
+function bashPatternKey(node: unknown): string | undefined {
+  if (!isMap(node)) return undefined;
+  const match = node.get("match");
+  const approval = node.get("approval");
+  if (typeof match !== "string" || typeof approval !== "string") return undefined;
+  return `${approval.trim().toLowerCase()}\u0000${match.trim().replace(/\s+/gu, " ")}`;
+}
+
+/**
+ * omp evaluates `bash.patterns` in order, and the first matching rule wins. The
+ * merged list holds the kit deny and prompt rules, then every user rule in its
+ * deployed order, then the kit allow rules. A user rule can thus tighten any
+ * command the kit allows, and no rule can loosen a kit deny or prompt rule. A
+ * deployed rule equal to a kit rule is the kit copy, so a re-sync changes
+ * nothing. A rule the kit stops shipping stays as a user rule.
+ */
+const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
+  if (path.length !== 2 || path[0] !== "bash" || path[1] !== "patterns") return;
+  const kitKeys = new Set(sotSeq.items.map(bashPatternKey));
+  const kitRestrictions: Array<unknown> = [];
+  const kitAllows: Array<unknown> = [];
+  for (const item of sotSeq.items) {
+    if (bashPatternKey(item)?.startsWith("allow\u0000") === true) kitAllows.push(item);
+    else kitRestrictions.push(item);
+  }
+  const userRules = deployedSeq.items.filter((item) => {
+    const key = bashPatternKey(item);
+    return key === undefined || !kitKeys.has(key);
+  });
+  sotSeq.items = [...kitRestrictions, ...userRules, ...kitAllows];
+};
 
 function pruneMapping(mapping: YAMLMap, path: ReadonlyArray<string>, drop: DropDeployedKey): void {
   for (let index = mapping.items.length - 1; index >= 0; index--) {
@@ -55,6 +100,7 @@ function mergeMappings(
   deployedMapping: YAMLMap,
   path: ReadonlyArray<string>,
   drop: DropDeployedKey,
+  mergeSequence: MergeSequence,
 ): void {
   for (const sotPair of sotMapping.items) {
     const key = stringKey(sotPair.key);
@@ -64,7 +110,10 @@ function mergeMappings(
       (candidate) => stringKey(candidate.key) === key,
     );
     if (deployedPair !== undefined && isMap(sotPair.value) && isMap(deployedPair.value)) {
-      mergeMappings(sotPair.value, deployedPair.value, [...path, key], drop);
+      mergeMappings(sotPair.value, deployedPair.value, [...path, key], drop, mergeSequence);
+    }
+    if (deployedPair !== undefined && isSeq(sotPair.value) && isSeq(deployedPair.value)) {
+      mergeSequence([...path, key], sotPair.value, deployedPair.value);
     }
   }
 
@@ -87,6 +136,7 @@ function mergeYamlDocuments(
   deployedText: string,
   name: string,
   drop: DropDeployedKey,
+  mergeSequence: MergeSequence,
 ): string {
   const deployedDoc = parseDocument(deployedText);
   const deployedError = deployedDoc.errors[0];
@@ -115,16 +165,25 @@ function mergeYamlDocuments(
     throw new Error(`SoT omp ${name} YAML root must be a mapping`);
   }
 
-  mergeMappings(sotDoc.contents, deployedContents, [], drop);
+  mergeMappings(sotDoc.contents, deployedContents, [], drop, mergeSequence);
   return sotDoc.toString();
 }
 
-/** config.yml merge: keeps user-only keys, drops stale fallback-chain wildcards. */
+/**
+ * config.yml merge: keeps user-only keys and user `bash.patterns` rules, drops
+ * stale fallback-chain wildcards.
+ */
 export function mergeOmpConfig(sotText: string, deployedText: string): string {
-  return mergeYamlDocuments(sotText, deployedText, "config.yml", dropFallbackWildcard);
+  return mergeYamlDocuments(
+    sotText,
+    deployedText,
+    "config.yml",
+    dropFallbackWildcard,
+    mergeBashPatterns,
+  );
 }
 
 /** models.yml merge: keeps every user-only key, including credentials and custom models. */
 export function mergeOmpModels(sotText: string, deployedText: string): string {
-  return mergeYamlDocuments(sotText, deployedText, "models.yml", keepEveryKey);
+  return mergeYamlDocuments(sotText, deployedText, "models.yml", keepEveryKey, keepSotSequence);
 }

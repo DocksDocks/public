@@ -163,3 +163,149 @@ startup:
 
 tools:
   approvalMode: yolo
+
+bash:
+  # First match wins: deny rules, then prompt rules, then allow rules.
+  # omp also checks deny and prompt rules against each quote-stripped segment,
+  # so `cd x && rm -rf "$HOME"` matches `rm * $HOME`. `*` matches any text.
+  patterns:
+    # Deny: rm of the home directory or the filesystem root, HOME reassignment,
+    # and a force push to main or master.
+    - { match: "rm /", approval: deny }
+    - { match: "rm / *", approval: deny }
+    - { match: "rm * /", approval: deny }
+    - { match: "rm * / *", approval: deny }
+    - { match: "rm ~", approval: deny }
+    - { match: "rm ~ *", approval: deny }
+    - { match: "rm * ~", approval: deny }
+    - { match: "rm * ~ *", approval: deny }
+    - { match: "rm ~/", approval: deny }
+    - { match: "rm ~/ *", approval: deny }
+    - { match: "rm * ~/", approval: deny }
+    - { match: "rm * ~/ *", approval: deny }
+    - { match: "rm $HOME", approval: deny }
+    - { match: "rm $HOME *", approval: deny }
+    - { match: "rm * $HOME", approval: deny }
+    - { match: "rm * $HOME *", approval: deny }
+    - { match: "rm $HOME/", approval: deny }
+    - { match: "rm $HOME/ *", approval: deny }
+    - { match: "rm * $HOME/", approval: deny }
+    - { match: "rm * $HOME/ *", approval: deny }
+    - { match: "rm ${HOME}", approval: deny }
+    - { match: "rm ${HOME} *", approval: deny }
+    - { match: "rm * ${HOME}", approval: deny }
+    - { match: "rm * ${HOME} *", approval: deny }
+    - { match: "rm ${HOME}/", approval: deny }
+    - { match: "rm ${HOME}/ *", approval: deny }
+    - { match: "rm * ${HOME}/", approval: deny }
+    - { match: "rm * ${HOME}/ *", approval: deny }
+    - { match: "* rm /", approval: deny }
+    - { match: "* rm / *", approval: deny }
+    - { match: "* rm * /", approval: deny }
+    - { match: "* rm * / *", approval: deny }
+    - { match: "* rm ~", approval: deny }
+    - { match: "* rm ~ *", approval: deny }
+    - { match: "* rm * ~", approval: deny }
+    - { match: "* rm * ~ *", approval: deny }
+    - { match: "* rm ~/", approval: deny }
+    - { match: "* rm ~/ *", approval: deny }
+    - { match: "* rm * ~/", approval: deny }
+    - { match: "* rm * ~/ *", approval: deny }
+    - { match: "* rm $HOME", approval: deny }
+    - { match: "* rm $HOME *", approval: deny }
+    - { match: "* rm * $HOME", approval: deny }
+    - { match: "* rm * $HOME *", approval: deny }
+    - { match: "* rm $HOME/", approval: deny }
+    - { match: "* rm $HOME/ *", approval: deny }
+    - { match: "* rm * $HOME/", approval: deny }
+    - { match: "* rm * $HOME/ *", approval: deny }
+    - { match: "* rm ${HOME}", approval: deny }
+    - { match: "* rm ${HOME} *", approval: deny }
+    - { match: "* rm * ${HOME}", approval: deny }
+    - { match: "* rm * ${HOME} *", approval: deny }
+    - { match: "* rm ${HOME}/", approval: deny }
+    - { match: "* rm ${HOME}/ *", approval: deny }
+    - { match: "* rm * ${HOME}/", approval: deny }
+    - { match: "* rm * ${HOME}/ *", approval: deny }
+    - { match: "*/rm /", approval: deny }
+    - { match: "*/rm / *", approval: deny }
+    - { match: "*/rm * /", approval: deny }
+    - { match: "*/rm * / *", approval: deny }
+    - { match: "*/rm ~", approval: deny }
+    - { match: "*/rm ~ *", approval: deny }
+    - { match: "*/rm * ~", approval: deny }
+    - { match: "*/rm * ~ *", approval: deny }
+    - { match: "*/rm ~/", approval: deny }
+    - { match: "*/rm ~/ *", approval: deny }
+    - { match: "*/rm * ~/", approval: deny }
+    - { match: "*/rm * ~/ *", approval: deny }
+    - { match: "*/rm $HOME", approval: deny }
+    - { match: "*/rm $HOME *", approval: deny }
+    - { match: "*/rm * $HOME", approval: deny }
+    - { match: "*/rm * $HOME *", approval: deny }
+    - { match: "*/rm $HOME/", approval: deny }
+    - { match: "*/rm $HOME/ *", approval: deny }
+    - { match: "*/rm * $HOME/", approval: deny }
+    - { match: "*/rm * $HOME/ *", approval: deny }
+    - { match: "*/rm ${HOME}", approval: deny }
+    - { match: "*/rm ${HOME} *", approval: deny }
+    - { match: "*/rm * ${HOME}", approval: deny }
+    - { match: "*/rm * ${HOME} *", approval: deny }
+    - { match: "*/rm ${HOME}/", approval: deny }
+    - { match: "*/rm ${HOME}/ *", approval: deny }
+    - { match: "*/rm * ${HOME}/", approval: deny }
+    - { match: "*/rm * ${HOME}/ *", approval: deny }
+    - { match: "HOME=*", approval: deny }
+    - { match: "export HOME=*", approval: deny }
+    - { match: "env HOME=*", approval: deny }
+    - { match: "env * HOME=*", approval: deny }
+    - { match: "git push --force origin main", approval: deny }
+    - { match: "git push --force origin main *", approval: deny }
+    - { match: "git push --force origin master", approval: deny }
+    - { match: "git push --force origin master *", approval: deny }
+    - { match: "git push -f origin main", approval: deny }
+    - { match: "git push -f origin main *", approval: deny }
+    - { match: "git push -f origin master", approval: deny }
+    - { match: "git push -f origin master *", approval: deny }
+    # Prompt: recursive or bulk deletion, rm of a ~/ or $HOME/ path, and
+    # history-destroying git. A subagent cannot answer a prompt, so omp rejects it.
+    - { match: "rm -*r*", approval: prompt }
+    - { match: "rm -*R*", approval: prompt }
+    - { match: "rm * -*r*", approval: prompt }
+    - { match: "rm * -*R*", approval: prompt }
+    - { match: "*/rm -*r*", approval: prompt }
+    - { match: "*/rm -*R*", approval: prompt }
+    - { match: "*/rm * -*r*", approval: prompt }
+    - { match: "*/rm * -*R*", approval: prompt }
+    - { match: "rm ~/*", approval: prompt }
+    - { match: "rm * ~/*", approval: prompt }
+    - { match: "rm $HOME/*", approval: prompt }
+    - { match: "rm * $HOME/*", approval: prompt }
+    - { match: "rm ${HOME}/*", approval: prompt }
+    - { match: "rm * ${HOME}/*", approval: prompt }
+    - { match: "*/rm ~/*", approval: prompt }
+    - { match: "*/rm * ~/*", approval: prompt }
+    - { match: "*/rm $HOME/*", approval: prompt }
+    - { match: "*/rm * $HOME/*", approval: prompt }
+    - { match: "*/rm ${HOME}/*", approval: prompt }
+    - { match: "*/rm * ${HOME}/*", approval: prompt }
+    - { match: "find -delete*", approval: prompt }
+    - { match: "find * -delete*", approval: prompt }
+    - { match: "find -exec*rm *", approval: prompt }
+    - { match: "find * -exec*rm *", approval: prompt }
+    - { match: "git clean", approval: prompt }
+    - { match: "git clean *", approval: prompt }
+    - { match: "git reset *--hard*", approval: prompt }
+    - { match: "git push *--force*", approval: prompt }
+    - { match: "git push -f*", approval: prompt }
+    - { match: "git push * -f*", approval: prompt }
+    - { match: "git push -uf*", approval: prompt }
+    - { match: "git push * -uf*", approval: prompt }
+    - { match: "git push * +*", approval: prompt }
+    - { match: "gio trash *--empty*", approval: prompt }
+    # Allow: reversible or small removal.
+    - { match: "gio trash *", approval: allow }
+    - { match: "trash *", approval: allow }
+    - { match: "rm *", approval: allow }
+    - { match: "git rm *", approval: allow }
+    - { match: "git worktree remove *", approval: allow }
