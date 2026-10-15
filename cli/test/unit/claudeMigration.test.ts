@@ -531,3 +531,100 @@ describe("contextual dependency degradation", () => {
     }
   });
 });
+
+describe("Claude removals backups", () => {
+  const retiredRtk: Json = {
+    matcher: "Bash",
+    hooks: [{ type: "command", command: "rtk hook claude" }],
+  };
+  const userGuard: Json = {
+    matcher: "Bash",
+    hooks: [{ type: "command", command: "/home/me/guard.sh" }],
+  };
+  const deferred = { kind: "deferred", reason: "bun-unavailable" } as const;
+
+  it("keeps the settings backup an earlier pass of the same sync wrote (R01)", () => {
+    const home = removalHome({ hooks: { PreToolUse: [userGuard, retiredRtk] } });
+    const claudeDir = join(home, ".claude");
+    const backupPath = join(claudeDir, "settings.json.bak");
+    // commitClaudeSettings already copied the pre-merge document here.
+    writeFileSync(backupPath, "pre-merge settings\n");
+    const output: Array<string> = [];
+    try {
+      syncRemovals(removalContext(home, output), claudeDir, deferred, true);
+      expect(hooksObject(settingsObject(home))).toEqual({ PreToolUse: [userGuard] });
+      expect(output.join("")).toContain("retired hook handlers: 1");
+      expect(readFileSync(backupPath, "utf8")).toBe("pre-merge settings\n");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("backs up the original bytes before the first removal pass writes (R01)", () => {
+    const home = removalHome({
+      enabledPlugins: { "effect-kit@docks": true, "docks@docks": true },
+      hooks: { PreToolUse: [userGuard, retiredRtk] },
+    });
+    const claudeDir = join(home, ".claude");
+    const settingsPath = join(claudeDir, "settings.json");
+    const originalText = readFileSync(settingsPath, "utf8");
+    try {
+      syncRemovals(removalContext(home, []), claudeDir, deferred, false);
+      const settings = settingsObject(home);
+      expect(settings["enabledPlugins"]).toEqual({ "docks@docks": true });
+      expect(hooksObject(settings)).toEqual({ PreToolUse: [userGuard] });
+      // The key prune writes first; the backup must hold the bytes before it.
+      expect(readFileSync(`${settingsPath}.bak`, "utf8")).toBe(originalText);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("moves an unknown legacy script to the first free backup name (R06)", () => {
+    const home = removalHome({ userOnly: true });
+    const claudeDir = join(home, ".claude");
+    const userStatusline = "#!/bin/sh\necho mine\n";
+    writeFileSync(join(claudeDir, "statusline.sh"), userStatusline);
+    writeFileSync(join(claudeDir, "statusline.sh.bak"), "earlier backup\n");
+    const output: Array<string> = [];
+    try {
+      syncRemovals(
+        removalContext(home, output),
+        claudeDir,
+        { kind: "ready", paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun") },
+        false,
+      );
+      expect(existsSync(join(claudeDir, "statusline.sh"))).toBe(false);
+      expect(readFileSync(join(claudeDir, "statusline.sh.bak"), "utf8")).toBe("earlier backup\n");
+      expect(readFileSync(join(claudeDir, "statusline.sh.bak.1"), "utf8")).toBe(userStatusline);
+      expect(output.join("")).toContain("preserved as backup: 1 (statusline.sh.bak.1)");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "treats a dangling symlink as an occupied backup name (R06)",
+    () => {
+      const home = removalHome({ userOnly: true });
+      const claudeDir = join(home, ".claude");
+      const userNotify = "#!/bin/sh\necho notify mine\n";
+      mkdirSync(join(claudeDir, "hooks"), { recursive: true });
+      writeFileSync(join(claudeDir, "hooks", "notify.sh"), userNotify);
+      const occupied = join(claudeDir, "hooks", "notify.sh.bak");
+      symlinkSync(join(home, "missing-target"), occupied);
+      try {
+        syncRemovals(
+          removalContext(home, []),
+          claudeDir,
+          { kind: "ready", paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun") },
+          false,
+        );
+        expect(lstatSync(occupied).isSymbolicLink()).toBe(true);
+        expect(readFileSync(join(claudeDir, "hooks", "notify.sh.bak.1"), "utf8")).toBe(userNotify);
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    },
+  );
+});
