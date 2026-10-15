@@ -24,6 +24,11 @@ import { resolve } from "node:path";
  * compares the content at teardown. That catches an overwrite of a file that
  * was already modified before the run.
  *
+ * Without git, or outside a git work tree, the guard compares the top-level
+ * names instead. When git is present but `git status` fails, the guard fails
+ * the run instead of falling back, because the name list misses nested
+ * changes.
+ *
  * The guard never deletes: parallel agents and editors also write in this
  * checkout, so an added line is a report, not proof of ownership. Remove the
  * reported path by hand after you repair the test that wrote it.
@@ -40,16 +45,51 @@ type Snapshot = {
 
 type Porcelain = { readonly lines: ReadonlyArray<string>; readonly paths: ReadonlyArray<string> };
 
+// One NUL-terminated entry per untracked file can exceed Node's default 1 MiB
+// stdout cap on a large untracked tree; spawnSync then fails with ENOBUFS.
+const STATUS_MAX_BUFFER = 256 * 1024 * 1024;
+
+// Vitest reports a teardown throw as "error during close" but still exits 0,
+// so every guard failure sets the failing status itself. Otherwise the
+// tripwire is decorative.
+function fail(message: string): never {
+  process.exitCode = 1;
+  throw new Error(message);
+}
+
 // A checkout without git, and a source tree unpacked from an archive, still
 // have to run the suite, so the guard falls back to the top-level name list.
-function porcelainEntries(): Porcelain | undefined {
+// Only those two cases fall back. Once git reports a work tree, a failed status
+// is a guard failure: the name list would miss every nested change.
+function insideGitWorkTree(): boolean {
+  const probe = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  if (probe.error !== undefined) {
+    if ((probe.error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    fail(`The root guard could not run git in ${ROOT}: ${probe.error.message}`);
+  }
+  return probe.status === 0 && probe.stdout.trim() === "true";
+}
+
+function porcelainEntries(): Porcelain {
   // -z keeps paths with spaces or unicode unquoted; per-file untracked
   // entries stop git from folding new files into an existing `?? dir/`.
   const result = spawnSync("git", ["status", "--porcelain", "-z", "--untracked-files=all"], {
     cwd: ROOT,
     encoding: "utf8",
+    maxBuffer: STATUS_MAX_BUFFER,
   });
-  if (result.error !== undefined || result.status !== 0) return undefined;
+  if (result.error !== undefined || result.status !== 0) {
+    const exit = result.status === null ? `signal ${result.signal}` : `exit code ${result.status}`;
+    const stderr = result.stderr.trim();
+    const cause = result.error?.message ?? (stderr === "" ? exit : `${exit}: ${stderr}`);
+    fail(
+      `The root guard could not read git status in ${ROOT} (${cause}), so it cannot check ` +
+        "the checkout for stray test writes. Fix the git error and rerun the suite.",
+    );
+  }
   const fields = result.stdout.split("\0");
   const lines: string[] = [];
   const paths: string[] = [];
@@ -71,11 +111,10 @@ function porcelainEntries(): Porcelain | undefined {
 }
 
 function takeSnapshot(): Snapshot {
-  const entries = porcelainEntries();
-  if (entries === undefined) {
+  if (!insideGitWorkTree()) {
     return { kind: "names", lines: readdirSync(ROOT).sort(), paths: [] };
   }
-  return { kind: "porcelain", ...entries };
+  return { kind: "porcelain", ...porcelainEntries() };
 }
 
 // A missing path, a directory, or a dangling link all read as "absent".
@@ -109,12 +148,9 @@ export function teardown(): void {
   const reported = [...added, ...modified];
   if (reported.length === 0) return;
   const subject = after.kind === "porcelain" ? "working tree change(s)" : "root entry(s)";
-  const message =
+  fail(
     `The checkout gained ${reported.length} ${subject} during the unit run:\n${reported.join("\n")}\n` +
-    "A test probably wrote to a path relative to the working directory. Build the path from the " +
-    "test's own temporary directory, assert the target before you write, then remove the entry.";
-  // Vitest reports a teardown throw as "error during close" but still exits 0,
-  // so set the failing status here. Otherwise the tripwire is decorative.
-  process.exitCode = 1;
-  throw new Error(message);
+      "A test probably wrote to a path relative to the working directory. Build the path from the " +
+      "test's own temporary directory, assert the target before you write, then remove the entry.",
+  );
 }

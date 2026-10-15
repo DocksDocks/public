@@ -2,7 +2,7 @@
  * `mergeSettings` unions the deployed permissions arrays with the SoT arrays, so
  * dropping a rule from `SoT/.claude/settings.json` never removes it from a
  * machine an earlier sync already wrote. `claudeRetired.ts
- * RETIRED_PERMISSION_RULES` plus `claudeSync.ts syncRemovals` are the cutover:
+ * RETIRED_PERMISSION_RULES` plus `claudeRemovals.ts syncRemovals` are the cutover:
  * exact strings, force-pruned on every sync, user rules untouched.
  *
  * The kit deploys its `PowerShell(...)` deny and ask rules on every host. The
