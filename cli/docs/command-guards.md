@@ -133,9 +133,11 @@ A prompt rule then never meets a critical command.
   `git commit -m "rm -f /tmp/x"`. Write such a message with `git commit -F`.
 - **Option clusters**: omp and Claude Code match only the listed short-option
   clusters:
-  - recursive `rm`: `r` or `R` with `f` and `v`;
-  - `git push`: `f` with `u`, `v`, and `q`;
-  - `git rm`: `f` with `r` and `q`.
+  - recursive `rm`: `r` or `R` alone or with `f` and `v`, in any order;
+  - `git push`: any cluster that starts with `f`, and two- or three-letter
+    clusters of `f` with `u`, `v`, or `q`, such as `-vf` or `-ufv`;
+  - `git rm`: any cluster that starts with `f`, and two- or three-letter
+    clusters of `f` with `r` or `q`, such as `-rf`.
 
   Another cluster, such as `rm -ri`, falls back to the tool's next tier. In
   omp, that tier is ask. In Claude Code, the classifier decides.
