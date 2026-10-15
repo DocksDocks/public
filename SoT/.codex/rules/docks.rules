@@ -114,12 +114,12 @@ prefix_rule(pattern=["git", "push", "-f", "origin", "master"], decision="forbidd
 
 # Destructive-command guards. Codex applies the strictest matching rule
 # (forbidden > prompt > allow), so an allow rule in another .rules file cannot
-# loosen them. The rm, find, git push, git reset, and git clean prompt rules
-# above already make every recursive or bulk deletion and every
-# history-destroying git command prompt. Codex prefix rules cannot see a
-# recursive flag after other flags, so every rm prompts, a single-file rm too.
-# A prompt goes to the approvals reviewer in config.toml (auto_review), not
-# always to a person.
+# loosen them, and a narrow allow cannot carve an exception out of a prompt.
+# The rm, find, git push, git reset, and git clean prompt rules above already
+# make every recursive or bulk deletion and every history-destroying git
+# command prompt. Codex prefix rules cannot see an option after an operand,
+# so every rm prompts, a single-file rm too. A prompt goes to the approvals
+# reviewer in config.toml (auto_review), not always to a person.
 #
 # rm of the filesystem root as Codex runs it: argv tokens, or a plain script
 # that Codex splits into argv tokens.
@@ -150,9 +150,8 @@ prefix_rule(pattern=[["bash", "sh", "zsh"], ["-c", "-lc"], ["export HOME=$(mktem
 prefix_rule(pattern=["git", "rm"], decision="prompt", justification="git rm --force and git worktree remove --force discard uncommitted changes. A prefix rule cannot see a later --force, so every git rm and git worktree remove asks.")
 prefix_rule(pattern=["git", "worktree", "remove"], decision="prompt", justification="git rm --force and git worktree remove --force discard uncommitted changes. A prefix rule cannot see a later --force, so every git rm and git worktree remove asks.")
 
-# Moving to the trash. allow runs outside the sandbox, which gio trash and
-# trash need to reach the user trash folder. Only the option-terminated
-# gio trash -- <path> form is allowed: after --, every argument is a path.
-prefix_rule(pattern=["gio", "trash", "--"], decision="allow")
-prefix_rule(pattern=["gio", "trash", ["-f", "--force", "--empty", "--restore"]], decision="prompt", justification="Emptying the trash deletes its contents permanently, and --restore --force overwrites the original path. Use gio trash -- <path>.")
+# gio trash can empty the trash or overwrite a restored path, and the prefix
+# cannot tell those forms from gio trash -- <path>, so every gio trash asks.
+# The macOS trash command has no such option.
+prefix_rule(pattern=["gio", "trash"], decision="prompt", justification="gio trash -f --empty, -ff --empty, and --restore --force delete or overwrite data, and a prefix rule cannot tell them from gio trash -- <path>, so every gio trash asks.")
 prefix_rule(pattern=["trash"], decision="allow")

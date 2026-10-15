@@ -103,19 +103,27 @@ describe("Codex docks.rules contract", () => {
     [["git", "reset", "--hard"], "prompt"],
     [["git", "push", "--force", "origin", "feat/x"], "prompt"],
     [["git", "push", "-vf", "origin", "main"], "prompt"],
+    [["git", "push", "-vvf", "origin", "main"], "prompt"],
+    [["git", "push", "--for", "origin", "feat/x"], "prompt"],
+    // Every gio trash form asks: a prefix rule cannot separate `--` from the
+    // forms that empty the trash, such as `-ff --empty`.
+    [["gio", "trash", "--", "build"], "prompt"],
+    [["gio", "trash", "build"], "prompt"],
     [["gio", "trash", "--empty"], "prompt"],
     [["gio", "trash", "-f", "--empty"], "prompt"],
+    [["gio", "trash", "-ff", "--empty"], "prompt"],
     [["gio", "trash", "--force", "--empty"], "prompt"],
     [["gio", "trash", "--restore", "trash:///build"], "prompt"],
     [["git", "rm", "file.txt"], "prompt"],
+    [["git", "rm", "--", "file.txt"], "prompt"],
+    [["git", "rm", "--for", "file.txt"], "prompt"],
     [["git", "rm", "file.txt", "-f"], "prompt"],
     [["git", "worktree", "remove", "../wt"], "prompt"],
     [["git", "worktree", "remove", "../wt", "--force"], "prompt"],
-    [["gio", "trash", "--", "build"], "allow"],
-    [["gio", "trash", "--", "--empty"], "allow"],
+    [["sudo", "rm", "-rf", "build"], "forbidden"],
     [["trash", "build"], "allow"],
-    // No rule matches: Codex runs these in the workspace-write sandbox.
-    [["gio", "trash", "build"], undefined],
+    // No kit rule matches this script: Codex's built-in forced-rm heuristic
+    // prompts for it instead.
     [["bash", "-lc", 'rm -rf "$HOME" && true'], undefined],
   ])("decides %j as %s", (argv, decision) => {
     expect(decisionFor(argv)).toBe(decision);
