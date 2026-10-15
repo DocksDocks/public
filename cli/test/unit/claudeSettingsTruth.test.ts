@@ -78,17 +78,13 @@ const ALL_KIT_RULES = (["allow", "deny", "ask"] as const).flatMap(
 
 /**
  * The only shell commands the allow list pre-approves: moving a path to the
- * trash, and git removals without `--force`, which git refuses when the path
- * holds changes git has not recorded. A forced form asks, and a plain
- * `rm <file>` stays with the auto-mode classifier, because an allow rule skips
- * the classifier for any file anywhere.
+ * trash. `gio trash -- <path>` reads every argument after `--` as a path, so no
+ * allowed form can empty the trash. Every `git rm` and `git worktree remove`
+ * asks, because Claude Code checks ask rules before allow rules and a glob
+ * cannot exclude the `--` form. A plain `rm <file>` stays with the auto-mode
+ * classifier, because an allow rule skips the classifier for any file anywhere.
  */
-const FREE_REMOVALS = [
-  "Bash(gio trash -- *)",
-  "Bash(trash *)",
-  "Bash(git rm *)",
-  "Bash(git worktree remove *)",
-];
+const FREE_REMOVALS = ["Bash(gio trash -- *)", "Bash(trash *)"];
 
 /** Bash commands and the tier each one must get; undefined leaves the classifier to decide. */
 const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined]> = [
@@ -110,6 +106,7 @@ const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined
   ["export HOME=$(mktemp -d)", "deny"],
   ["HOME=$(mktemp -d)", "deny"],
   ["env HOME=/tmp/fake bun test", "deny"],
+  ["/usr/bin/sudo rm -rf user-data", "deny"],
   ["git push --force origin main", "deny"],
   ["rm -rf build", "ask"],
   ["rm -r build", "ask"],
@@ -133,33 +130,54 @@ const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined
   ["git push -f origin feat/x", "ask"],
   ["git push --force-with-lease origin feat/x", "ask"],
   ["git push origin +feat/x", "ask"],
+  ["git push --fo origin feat/x", "ask"],
+  ["git push --for origin feat/x", "ask"],
+  ["git push --forc origin feat/x", "ask"],
+  ["git push --mirror origin", "ask"],
   ["git push -vf origin main", "ask"],
+  ["git push -vvf origin main", "ask"],
+  ["git push -uvfq origin feat/x", "ask"],
   ["git push -uf origin feat/x", "ask"],
   ["git push -fu origin feat/x", "ask"],
   ["git push -ufv origin feat/x", "ask"],
+  ["git push -4f origin feat/x", "ask"],
   ["git push origin feat/x -vf", "ask"],
+  ['git push "-vf" origin feat/x', "ask"],
+  ["git push origin '-f'", "ask"],
+  ["git push origin $BRANCH", "ask"],
+  // Accepted false positive: --follow-tags shares the --f prefix.
+  ["git push --follow-tags origin feat/x", "ask"],
   ["gio trash --empty", "ask"],
   ["gio trash -f --empty", "ask"],
+  ["gio trash -ff --empty", "ask"],
   ["gio trash -- build --empty", "ask"],
   ["gio trash --restore -f trash:///build", "ask"],
+  ["git rm file.txt", "ask"],
+  ["git rm -- file.txt", "ask"],
+  ["git rm -r --cached dist", "ask"],
   ["git rm -f file.txt", "ask"],
   ["git rm file.txt -f", "ask"],
   ["git rm --force file.txt", "ask"],
+  ["git rm --for file.txt", "ask"],
+  ["git rm -rff dir", "ask"],
+  ['git rm "-f" file.txt', "ask"],
   ["git rm -rf dir", "ask"],
+  ["git worktree remove ../wt", "ask"],
+  ["git worktree remove -- ../wt", "ask"],
   ["git worktree remove --force ../wt", "ask"],
+  ["git worktree remove --for ../wt", "ask"],
   ["git worktree remove -f ../wt", "ask"],
+  ['git worktree remove "-f" ../wt', "ask"],
   ["git worktree remove ../wt --force", "ask"],
   ["gio trash -- build", "allow"],
   ["trash build", "allow"],
-  ["git rm file.txt", "allow"],
-  ["git rm -r --cached dist", "allow"],
-  ["git worktree remove ../wt", "allow"],
-  ["git worktree remove ../wt-foo", "allow"],
   ["rm file.txt", undefined],
   ["rm -f readme.md", undefined],
   ["rm a.txt b.txt", undefined],
   ["gio trash build", undefined],
   ["git push -u origin feat/fix-flaky", undefined],
+  ["git push -u origin feat/cache-vf", undefined],
+  ["git push -v origin main", undefined],
   // Documented gap: Claude Code matches deny rules past a leading assignment,
   // so `Bash(HOME=*)` does not guarantee a denial when a command follows.
   ["HOME=/tmp/fake bun test", undefined],
