@@ -15,13 +15,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ac3ba00103a4a12ae27929c778756e0ca25ea74aaeec7af57f9724dbfc2a9665",
+        ".claude/settings.json": "sha256:e5ae02ed290494d31b0de80b0c5ab3313400e7383712e98e76e4d57d8f90888d",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -43,13 +43,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ac3ba00103a4a12ae27929c778756e0ca25ea74aaeec7af57f9724dbfc2a9665",
+        ".claude/settings.json": "sha256:e5ae02ed290494d31b0de80b0c5ab3313400e7383712e98e76e4d57d8f90888d",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -71,13 +71,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ac3ba00103a4a12ae27929c778756e0ca25ea74aaeec7af57f9724dbfc2a9665",
+        ".claude/settings.json": "sha256:e5ae02ed290494d31b0de80b0c5ab3313400e7383712e98e76e4d57d8f90888d",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -99,13 +99,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:969692661cdef2e77970d84ab33c3493efc21bb244af0892622222f67f2932ed",
+        ".claude/settings.json": "sha256:0d1a4377c6d67fe992b08f24d51611d42074c0444cfdeb816f80d78937ffab5a",
         ".claude/settings.json.bak": "sha256:5132c4844df7c023a64ea763bf50abad15467676f9b730564f456cb4b3c1b9ff",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -196,21 +196,21 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee86c6e65eb30b4b36fffe4ffa853e21022cbc9a1d8989d1e0856ca747668c90",
+        ".claude/settings.json": "sha256:3af6598754c5bc4bb5c244ac2e80c4d154e4bd8b82d25937117418f4052d2e43",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-drift cmd=sync --reconcile": {
@@ -231,21 +231,21 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:3619d92c86fbfe182deb95cc60ab83529405ae9f13a2a0cde396ad12bd3c1a3f",
+        ".claude/settings.json": "sha256:50f6403a5ebd765bf295a521475ab766264d39422291c835dbbc978846bb4f48",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-drift cmd=sync agents": {
@@ -286,13 +286,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee86c6e65eb30b4b36fffe4ffa853e21022cbc9a1d8989d1e0856ca747668c90",
+        ".claude/settings.json": "sha256:3af6598754c5bc4bb5c244ac2e80c4d154e4bd8b82d25937117418f4052d2e43",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -314,13 +314,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:1b3f6607b46e1323ef4c2d682ddb0e5fb92a962578b9d2cc73b1cc3d5a416b88",
+        ".claude/settings.json": "sha256:da864ff31bb6713c8c67d7124f8f5a2bfbcf24b5778e8235804169794c5f7561",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -342,13 +342,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee86c6e65eb30b4b36fffe4ffa853e21022cbc9a1d8989d1e0856ca747668c90",
+        ".claude/settings.json": "sha256:3af6598754c5bc4bb5c244ac2e80c4d154e4bd8b82d25937117418f4052d2e43",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -378,13 +378,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:a3b743b9691bf1c7f50ee0590f12a22f9445eb033a5814a9393dd3a1b630fbf9",
+        ".claude/settings.json": "sha256:6e1b90a3ffb6d623aed313e72db0957e5096d06d799dd1526ac116fa9c735513",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -406,13 +406,13 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee86c6e65eb30b4b36fffe4ffa853e21022cbc9a1d8989d1e0856ca747668c90",
+        ".claude/settings.json": "sha256:3af6598754c5bc4bb5c244ac2e80c4d154e4bd8b82d25937117418f4052d2e43",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
         ".codex/AGENTS.md": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
@@ -460,12 +460,12 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a",
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824",
         ".local/bin/session-relay": "sha256:45e8b5263ea946dd3fd17c3d3960125c191a66d7f41f1a35af6df9ca6b8b9d2d"
       }
     },
@@ -488,12 +488,12 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a",
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824",
         ".local/bin/session-relay": "sha256:45e8b5263ea946dd3fd17c3d3960125c191a66d7f41f1a35af6df9ca6b8b9d2d"
       }
     },
@@ -516,12 +516,12 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:e02b0688e46fbaf6bb1598aaf6cc02e42faf231dd452414e7fe7024bc2c2bc69",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a",
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824",
         ".local/bin/session-relay": "sha256:45e8b5263ea946dd3fd17c3d3960125c191a66d7f41f1a35af6df9ca6b8b9d2d"
       }
     },
@@ -544,12 +544,12 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:f661beb29a8fe43cc94fba2c58e10377b567cc45c49f76ab85a63f49616a2a49",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a",
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824",
         ".local/bin/session-relay": "sha256:45e8b5263ea946dd3fd17c3d3960125c191a66d7f41f1a35af6df9ca6b8b9d2d"
       }
     },
@@ -572,12 +572,12 @@
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
         ".claude/settings.json": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a",
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824",
         ".local/bin/session-relay": "sha256:45e8b5263ea946dd3fd17c3d3960125c191a66d7f41f1a35af6df9ca6b8b9d2d"
       }
     },
@@ -599,21 +599,21 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/CLAUDE.md.bak": "sha256:75ce0324073a131965a575b9c4c190c8fdab2acabfcadaf0b38b5bc5c8e2e8c2",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
         ".claude/plugins/": "dir",
         ".claude/plugins/installed_plugins.json": "sha256:b34211fe502b434057072d05f01488d644b14475f872e58d47f8f9eedb405ce8",
         ".claude/plugins/known_marketplaces.json": "sha256:9c35b13a5fa313e7140359abda7ec4241ea57c54c82bc00f3d062ae58a049810",
-        ".claude/settings.json": "sha256:ee86c6e65eb30b4b36fffe4ffa853e21022cbc9a1d8989d1e0856ca747668c90",
+        ".claude/settings.json": "sha256:3af6598754c5bc4bb5c244ac2e80c4d154e4bd8b82d25937117418f4052d2e43",
         ".claude/settings.json.bak": "sha256:050ef44b0eddbc817a58bbd47f8dc9bdec37272e1ca6c77d7f051d528a383696",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/AGENTS.md.bak": "sha256:77c87347399fb01ed13208401df08b051be5aa330934358de3738bdef7a781ce",
         ".codex/config.toml": "sha256:8052922c5adecc953f6d60c97ed3c69deaf8bb62bd3a858f554afcebd9d5871b",
         ".codex/config.toml.bak": "sha256:591a4b6144d9f791b3f9df3be13f1f782225233664847df88d4d14eedd097dc7",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=model codex gpt-5.5": {
@@ -643,14 +643,14 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87",
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync agents": {
@@ -706,9 +706,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87"
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276"
       }
     },
     "fixture=home-fresh cmd=sync claude --claude-advisor": {
@@ -778,9 +778,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:f50565f7f3323f3963ced4e6342d2af4d634b43ffa1045c1121eb8d5363f645b"
+        ".claude/settings.json": "sha256:191786f02fe836a3adc71d540e3a9c132f5e31694502b07c0cee3ef074640007"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=claude": {
@@ -796,9 +796,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87"
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=claude variant=marketplace-refresh-failure": {
@@ -814,9 +814,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87"
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=git": {
@@ -832,9 +832,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87"
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276"
       }
     },
     "fixture=home-fresh cmd=sync claude stubs=jq variant=jq-absent-bun-hooks": {
@@ -850,9 +850,9 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87"
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276"
       }
     },
     "fixture=home-fresh cmd=sync codex": {
@@ -866,10 +866,10 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync codex --codex-effort": {
@@ -910,10 +910,10 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync codex stubs=git": {
@@ -927,10 +927,10 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync codex stubs=jq variant=jq-absent-native-sync": {
@@ -944,10 +944,10 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync omp": {
@@ -959,8 +959,8 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".omp/": "dir",
         ".omp/agent/": "dir",
-        ".omp/agent/AGENTS.md": "sha256:e4ba9180d2661ccd028f8cb6fa3c1e87a485ed8caced49c5f6cdfad80a934846",
-        ".omp/agent/config.yml": "sha256:05c60eeecf94b4152decd5324a19b1d2a639c28fbf87c4204457a24b661abc8a",
+        ".omp/agent/AGENTS.md": "sha256:bbf6c31da6a46ba80dedc5b4b813bb24e6e57bfa02262c72e8c8a85b3b0e929d",
+        ".omp/agent/config.yml": "sha256:2deb44de1f9d1cbd6a83d856c94a6876ee6abc38d9dd98bdc4b8e607322dafc7",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -978,8 +978,8 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".omp/": "dir",
         ".omp/agent/": "dir",
-        ".omp/agent/AGENTS.md": "sha256:e4ba9180d2661ccd028f8cb6fa3c1e87a485ed8caced49c5f6cdfad80a934846",
-        ".omp/agent/config.yml": "sha256:05c60eeecf94b4152decd5324a19b1d2a639c28fbf87c4204457a24b661abc8a",
+        ".omp/agent/AGENTS.md": "sha256:bbf6c31da6a46ba80dedc5b4b813bb24e6e57bfa02262c72e8c8a85b3b0e929d",
+        ".omp/agent/config.yml": "sha256:2deb44de1f9d1cbd6a83d856c94a6876ee6abc38d9dd98bdc4b8e607322dafc7",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -997,8 +997,8 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".omp/": "dir",
         ".omp/agent/": "dir",
-        ".omp/agent/AGENTS.md": "sha256:e4ba9180d2661ccd028f8cb6fa3c1e87a485ed8caced49c5f6cdfad80a934846",
-        ".omp/agent/config.yml": "sha256:05c60eeecf94b4152decd5324a19b1d2a639c28fbf87c4204457a24b661abc8a",
+        ".omp/agent/AGENTS.md": "sha256:bbf6c31da6a46ba80dedc5b4b813bb24e6e57bfa02262c72e8c8a85b3b0e929d",
+        ".omp/agent/config.yml": "sha256:2deb44de1f9d1cbd6a83d856c94a6876ee6abc38d9dd98bdc4b8e607322dafc7",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -1016,8 +1016,8 @@
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".omp/": "dir",
         ".omp/agent/": "dir",
-        ".omp/agent/AGENTS.md": "sha256:e4ba9180d2661ccd028f8cb6fa3c1e87a485ed8caced49c5f6cdfad80a934846",
-        ".omp/agent/config.yml": "sha256:05c60eeecf94b4152decd5324a19b1d2a639c28fbf87c4204457a24b661abc8a",
+        ".omp/agent/AGENTS.md": "sha256:bbf6c31da6a46ba80dedc5b4b813bb24e6e57bfa02262c72e8c8a85b3b0e929d",
+        ".omp/agent/config.yml": "sha256:2deb44de1f9d1cbd6a83d856c94a6876ee6abc38d9dd98bdc4b8e607322dafc7",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
         ".omp/agent/models.yml": "sha256:e3e4b29c8a4e296bb3799b1a9e96ef1b2d8d201e885ebeb08b7921cfb2eb5eb3",
         ".pi/": "dir",
@@ -1044,14 +1044,14 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87",
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=sync stubs=git": {
@@ -1072,14 +1072,14 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:7d941344cdbda32b5f1c5ec8a10613b2b515258a40a85b5db6a21bb041014b87",
+        ".claude/settings.json": "sha256:2eda0652aa639aa558355b821bb61d40dbee22bbb1b27b2ae8e299a70a188276",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:260f258b3366ade61d48cab4b74a1983f6c453670149693c4c62e0522139309e",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "fixture=home-fresh cmd=toolchain check": {
@@ -1115,12 +1115,12 @@
         ".claude/bin/notify.mjs": "sha256:578dfe2cf9d95ea8269a1e9c91dd5ad316dd85dcc80216a701a22881202a7731",
         ".claude/bin/session-start.mjs": "sha256:273b2193252190d8e86af166924c9c0cbd7ca7f9ab0838e2ee57b7bdebe7762b",
         ".claude/bin/statusline.mjs": "sha256:25ea5b7c924d06df628cdcb7a98edc7c33e80de6e7e877ca8e1b36231979c17d",
-        ".claude/CLAUDE.md": "sha256:c5c34bf8d9274b54ea10aa13131d6e3b929944474d8a698a5bd9401cad5a8d68",
+        ".claude/CLAUDE.md": "sha256:6269a1808540903a432f331be4b9db8f783465fcb69b19320ea0cecd71f9ea5f",
         ".claude/fetch-usage.sh.bak": "sha256:b50efa77dd3a350368e24b38bc16e92938d49113914dc7c149a95251c781ec83",
         ".claude/hooks/": "dir",
         ".claude/hooks/notify.sh.bak": "sha256:d4664b16ff14c85373d9ed890aad08513c7cbd655a923c0c37188d7a9e19ceb0",
         ".claude/notification.mp3": "sha256:053a2fe627916e048af1ce04b356988f3844754f370ea169f16bdf8f72eb0d07",
-        ".claude/settings.json": "sha256:cce5cb5b4705b88473c7bc18eea577647e77d19207cd04c2af95f57307ccdaab",
+        ".claude/settings.json": "sha256:6c8277b75068328949872fc8d8af60cf8a7301777417a003b0fbc73e7dbe6518",
         ".claude/settings.json.bak": "sha256:53b7f410f23093634310db89dbf4cf9152d8ca0b90eac5db6f91b588bd15998b",
         ".claude/statusline.sh.bak": "sha256:13f3139d34408aadd4beb12dcf2c291f82ccde9dd532f717d6ffc470a8dda745"
       }
@@ -1136,11 +1136,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:9a6f02da57d10db8f32803574b45ad8b8860d0b23b7ee07b2f89e3e730969eb8",
         ".codex/config.toml.bak": "sha256:93c55d4d4c84cf319a5718c9be0d34e2cb76e269c8c6d3bed9815ab81eb36184",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=01-top-level-comments.toml model codex": {
@@ -1165,11 +1165,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:c0e477004f3978b7295daffb7d1cb22174ad4d2f9bd6fa814229bf22f4efa166",
         ".codex/config.toml.bak": "sha256:d72e741e5d9050a55ce8baff9de7222ea7a2c32a0fedbe7e3ab7ae78ad09f0f4",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=02-first-table-insert.toml model codex": {
@@ -1194,11 +1194,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:76d334408b2b632b5c1e83ada5fc8630d6c36af8f0ce250541e931e3c4958927",
         ".codex/config.toml.bak": "sha256:2657fdf0b3fe077e271dee3b630fc133f44e9f89c2b8844a6badaf52d834b418",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=03-features-only-landlock.toml model codex": {
@@ -1223,11 +1223,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:c00b0be07c1fa906ead75d3d39fe420c156e7aefad02b4a839fd953612ae5eb0",
         ".codex/config.toml.bak": "sha256:519431e1d96df4d0f0aec9dd8c3e5ab89276585acbf657835b5166ffc345b78d",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=04-features-extra-keys.toml model codex": {
@@ -1252,11 +1252,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:b69c038b510b301cb3af0dff288e89a889e212ec2ad551971c2ac125bd0b74aa",
         ".codex/config.toml.bak": "sha256:b9061308af8969861a812a494115fe20d3c1cfd3dd5ba4bce6c19e18c8979e7b",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=05-user-tables.toml model codex": {
@@ -1281,11 +1281,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:c00b0be07c1fa906ead75d3d39fe420c156e7aefad02b4a839fd953612ae5eb0",
         ".codex/config.toml.bak": "sha256:c645aee9c0b3fdde450bef23d4700c8f2ddaf29e88e3a930fe75176440957b24",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=06-sot-table-replace.toml model codex": {
@@ -1310,11 +1310,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:aee16fdb7f66e946c4d4138e290f272f7accbdeef49576a7ef4589375d5360d0",
         ".codex/config.toml.bak": "sha256:b22669d181155825637d44573c6ed830626a98ffc8d4fc31ed620299ac775c9a",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=07-dotted-quoted-headers.toml model codex": {
@@ -1339,11 +1339,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:d93eab3d01aaa850b9bf29894d4f8c664d88a1d462e9a637c69b2f51e770cd45",
         ".codex/config.toml.bak": "sha256:3fcdb46bdd145749ef9c4f0d90897df35fd73b78ebb2380a542c1ce1bb9d7ca1",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=08-multiline-string.toml model codex": {
@@ -1368,11 +1368,11 @@
         ".agents/plugins/marketplace.json": "sha256:1dc0b13bacf4cad6a397bca9d9c9223ef1f8a48bbc9d829746d446e7a0eb144f",
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".codex/": "dir",
-        ".codex/AGENTS.md": "sha256:8d4bd80e86cb4cde1657f4621e40dab1af4700b6c78cbadd37fd5b4b4d0ab479",
+        ".codex/AGENTS.md": "sha256:beefc6e9e0a02f207d9d1cdc69f26bf91bec5f678f602664f95538baaf3417f5",
         ".codex/config.toml": "sha256:d61df192c7b4be8c12fa74005b95f60600f6c2fa93327a3b132496fc8ed123f0",
         ".codex/config.toml.bak": "sha256:44fc50dccf730191fafcd0c98bb12c33fe5d8c895ec5d24390a04afd10147bcd",
         ".codex/rules/": "dir",
-        ".codex/rules/docks.rules": "sha256:d3a8e6d08920cb26bdaeab996fc0bb388b51b4009fb4f464eaf793ea32f9ff5a"
+        ".codex/rules/docks.rules": "sha256:13b8f81bc9647a538f3c57b4c9c4d79de4a67bad881b0d84173b85d804b2c824"
       }
     },
     "toml=09-comment-after-managed.toml model codex": {
