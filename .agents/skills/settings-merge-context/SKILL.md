@@ -29,7 +29,9 @@ metadata:
 
 EngineNative owns Claude settings deployment. `claudeSync.ts claudeSync`
 orchestrates the passes. `claudeSettings.ts` owns the settings transaction and
-the deploy-time modifiers. `claudeRemovals.ts` owns retired-artifact pruning.
+the `syncCompactWindow` and `syncPermissive` modifiers.
+`claudeSettingsModifiers.ts` owns `syncClaudeModel`, `syncClaudeEffort`, and
+`syncClaudeAdvisor`. `claudeRemovals.ts` owns retired-artifact pruning.
 Pure merge helpers live in `settings.ts`. The old jq programs remain useful as
 the behavioral spec and are inlined in tests; production logic is TypeScript.
 

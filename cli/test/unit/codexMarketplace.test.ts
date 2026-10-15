@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { Ctx } from "../../src/engine-native";
-import { syncMarketplace } from "../../src/engine-native/codexPlugins";
+import { syncMarketplace, syncPlugins } from "../../src/engine-native/codexPlugins";
 import { DEPENDENCIES } from "../../src/engine-native/deps";
 import { p } from "../../src/engine-native/exec";
 import { makePlatform, type Logger } from "../../src/engine-native/services";
@@ -24,6 +24,8 @@ const sotMarketplaceText = readFileSync(
   join(kitHome(), "SoT", ".codex", "plugins", "marketplace.json"),
   "utf8",
 );
+
+const sotConfigText = readFileSync(join(kitHome(), "SoT", ".codex", "config.toml"), "utf8");
 
 function testCtx(home: string, records: Array<LogRecord>): Ctx {
   const logger: Logger = {
@@ -144,6 +146,47 @@ describe("Codex personal marketplace", () => {
     } finally {
       cleanup([run]);
       rmSync(fixture, { recursive: true, force: true });
+    }
+  });
+
+  it("previews no kit plugin add in dry-run when the kit marketplace is unresolved", async () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-plugins-dry-run-"));
+    const records: Array<LogRecord> = [];
+    const ctx = { ...testCtx(home, records), dryRun: true };
+
+    try {
+      await syncPlugins(ctx, sotConfigText);
+      expect(records).toContainEqual({
+        level: "echo",
+        message: "[dry-run] add enabled Codex plugins from SoT",
+      });
+
+      records.length = 0;
+      await syncPlugins(ctx, sotConfigText, "docks");
+      expect(records).toEqual([]);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("gives no manual kit plugin add command without codex when the kit marketplace is unresolved", async () => {
+    const home = mkdtempSync(join(tmpdir(), "codex-plugins-missing-codex-"));
+    const records: Array<LogRecord> = [];
+    const ctx = testCtx(home, records);
+
+    try {
+      await syncPlugins(ctx, sotConfigText);
+      expect(records.map(({ message }) => message).join("\n")).toContain(
+        "then run: codex plugin add docks@docks",
+      );
+
+      records.length = 0;
+      await syncPlugins(ctx, sotConfigText, "docks");
+      const output = records.map(({ message }) => message).join("\n");
+      expect(output).toContain("codex CLI not in PATH");
+      expect(output).not.toContain("codex plugin add");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
     }
   });
 });

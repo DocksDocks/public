@@ -50,7 +50,7 @@ package with the pinned `effect`.
 ## 3. curl installer (POSIX)
 
 ```
-tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o "$tmp" && bash "$tmp"; rm -f "$tmp"
+tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; (exit "$rc")
 ```
 
 Download-then-run, never `curl | bash` — stream truncation has bitten this
@@ -73,8 +73,11 @@ installer bootstraps Bun when absent. It then runs
 bin directory (`%USERPROFILE%\.bun\bin` by default). The CLI stays in that
 directory, because Bun's `docks-kit.exe` shim cannot run without the
 `docks-kit.bunx` file next to it. When the directory is not on `PATH`, the
-installer prints the command that adds it. A copy of `docks-kit.exe` that an
-earlier installer left in `%USERPROFILE%\.local\bin` is removed.
+installer prints the command that adds it. The installer removes a copy of
+`docks-kit.exe` that an earlier installer left in `%USERPROFILE%\.local\bin`
+when the copy is identical to the current shim. When another `docks-kit`
+executable earlier on `PATH` shadows Bun's shim, the installer names that file.
+It also prints the command that removes the file and exits with status 1.
 
 ## Keeping the kit up to date
 

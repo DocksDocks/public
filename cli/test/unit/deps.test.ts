@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
@@ -63,18 +63,25 @@ describe("DependencyManager registry", () => {
     }
   });
 
-  it("strips one pair of double quotes from a Windows PATH entry only", () => {
+  it("splits a Windows PATH on semicolons outside quotes and strips one quote pair", () => {
     const directory = mkdtempSync(join(tmpdir(), "docks-exec-"));
     const previousPath = process.env["PATH"];
     const windowsTool = join(directory, "docks-windows-tool.cmd");
     const posixTool = join(directory, "docks-posix-tool");
+    const semicolonDirectory = join(directory, "Tools;WithSemicolon");
+    const semicolonTool = join(semicolonDirectory, "docks-semicolon-tool.exe");
     try {
       writeFileSync(windowsTool, "@echo off\r\n");
       writeFileSync(posixTool, "#!/bin/sh\nexit 0\n");
       chmodSync(posixTool, 0o755);
-      process.env["PATH"] = [`"${directory}"`, "/docks-missing-dir"].join(delimiter);
+      mkdirSync(semicolonDirectory);
+      writeFileSync(semicolonTool, "");
+      const quoted = [`"${semicolonDirectory}"`, `"${directory}"`, "/docks-missing-dir"];
+      process.env["PATH"] = quoted.join(";");
 
+      expect(which("docks-semicolon-tool", [".exe", ".cmd", ".bat", ""])).toBe(semicolonTool);
       expect(which("docks-windows-tool", [".exe", ".cmd", ".bat", ""])).toBe(windowsTool);
+      process.env["PATH"] = [`"${directory}"`, "/docks-missing-dir"].join(delimiter);
       expect(which("docks-posix-tool", [""])).toBe("");
     } finally {
       if (previousPath === undefined) delete process.env["PATH"];
@@ -218,9 +225,12 @@ describe("DependencyManager registry", () => {
 
   it("rejects relative POSIX bun paths from PATH and BUN_INSTALL fallbacks", () => {
     const previousHome = process.env["HOME"];
+    const previousUserProfile = process.env["USERPROFILE"];
     const previousBunInstall = process.env["BUN_INSTALL"];
     try {
+      // engineHome reads USERPROFILE on Windows and HOME elsewhere.
       process.env["HOME"] = "/fixture-home";
+      process.env["USERPROFILE"] = "/fixture-home";
       process.env["BUN_INSTALL"] = "relative-bun";
       const fallback = "/fixture-home/.bun/bin/bun";
       const withFallback = makeDependencyManager(makePlatform("linux"), {
@@ -244,6 +254,8 @@ describe("DependencyManager registry", () => {
     } finally {
       if (previousHome === undefined) delete process.env["HOME"];
       else process.env["HOME"] = previousHome;
+      if (previousUserProfile === undefined) delete process.env["USERPROFILE"];
+      else process.env["USERPROFILE"] = previousUserProfile;
       if (previousBunInstall === undefined) delete process.env["BUN_INSTALL"];
       else process.env["BUN_INSTALL"] = previousBunInstall;
     }

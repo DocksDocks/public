@@ -1,10 +1,13 @@
 /**
  * Run overlay for `docks-kit omp`. The overlay merges over the deployed omp
- * config for one run only. It sets every chat-model role to the free model
- * and empties the retry chain of each role it sets. The `web` role and its
- * retry chain are not in the overlay, so the deployed web-search provider
- * order applies, and that order can include a paid chat model. Every other
- * key falls through to the deployed config.
+ * config for one run only. It sets the 16 roles in ROLE_ORDER to the free
+ * model and empties the 13 retry chains in FALLBACK_ORDER. omp merges the
+ * overlay key by key, so each deployed retry chain that is not in
+ * FALLBACK_ORDER stays as deployed. The `web` role and its retry chain are
+ * not in the overlay, so the deployed web-search provider order applies, and
+ * that order can include a paid chat model. A deployed `plan`, `slow`, or
+ * `designer` chain also stays and can name a paid model. Every other key
+ * falls through to the deployed config.
  */
 import { createHash } from "node:crypto";
 import type { OmpSessionModel } from "./harnesses";

@@ -3,7 +3,7 @@
 ## 2026-10-14 - docks-kit 0.20.7: verified audit fixes
 
 A multi-agent audit found these defects, and a second agent verified each one.
-Every code fix has a regression test.
+Every runtime code fix has a regression test.
 
 ### Data safety
 
@@ -18,8 +18,9 @@ Every code fix has a regression test.
 - `sync --prune` no longer runs `skills remove --global`, which deleted
   same-named skill directories for every agent. It deletes only the
   kit-created canonical directory and the kit-managed Claude link.
-- Rewritten Claude, Codex, and omp files keep their permission bits. A
-  symlinked omp `config.yml` or `models.yml` stays a link.
+- Rewritten Claude and Codex files keep their permission bits, and rewritten
+  omp files stay private (mode 0600). A symlinked omp `config.yml` or
+  `models.yml` stays a link.
 - A sync without `--prune` keeps tracking skills that SoT dropped, so a later
   `--prune` still removes them.
 

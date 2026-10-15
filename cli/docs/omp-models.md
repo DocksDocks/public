@@ -419,13 +419,17 @@ AA's 1M.
 
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
 omp session with a configuration overlay that selects a free model. The
-overlay sets 16 chat-model roles to that model and empties 13 retry fallback
-chains. These roles include `memory` and `judge`. The SoT does not set them,
-but omp otherwise uses its built-in priority chain for them, and that chain
-can name a paid model. The overlay does not set the `web` role or its retry
-chain. The deployed web-search provider order therefore applies, and that
-order includes the paid `openai-codex/gpt-6-luna` entry. Higher-precedence
-model selection can replace the overlay values.
+overlay sets the 16 chat-model roles in `ompOverlay.ts ROLE_ORDER` to that
+model and empties the 13 retry fallback chains in `ompOverlay.ts
+FALLBACK_ORDER`. These roles include `memory` and `judge`. The SoT does
+not set them, but omp otherwise uses its built-in priority chain for them,
+and that chain can name a paid model. The overlay does not set the `web` role
+or its retry chain. The deployed web-search provider order therefore applies,
+and that order includes the paid `openai-codex/gpt-6-luna` entry. omp merges
+the overlay key by key. Each other deployed retry chain, such as a `plan`,
+`slow`, or `designer` chain, therefore stays as deployed. Such a chain can name
+a paid model. Higher-precedence model selection can replace the overlay
+values.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.
@@ -495,11 +499,12 @@ The picker lists only models the live `omp models --json` catalog reports at
 zero input and output cost with `pricingStatus` `free` or `unknown` (26
 entries on 2026-09-11). A zero-cost row with another status, such as
 `variable` or `included`, is billed outside the token price, so the picker
-leaves it out. The resulting overlay sets every chat-model role to the chosen
-free model and empties their retry chains. The `web` role and its chain keep
-the deployed values. Higher-precedence model selection can replace those
-values. The catalog can advertise a free model that the account cannot call;
-omp reports that provider error unchanged.
+leaves it out. The resulting overlay sets the 16 `ROLE_ORDER` roles to the
+chosen free model and empties the 13 `FALLBACK_ORDER` chains. The `web` role,
+its chain, and each other deployed chain keep the deployed values.
+Higher-precedence model selection can replace those values. The catalog can
+advertise a free model that the account cannot call; omp reports that
+provider error unchanged.
 
 After the model, the wizard asks about thinking levels. `ompOverlay.ts
 planEffortChoice` decides which questions apply, because omp accepts a

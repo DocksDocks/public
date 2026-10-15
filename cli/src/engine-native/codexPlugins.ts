@@ -203,11 +203,9 @@ function enabledPluginIdsFromText(configText: string): Array<string> {
   return ids;
 }
 
-function manualPluginRefreshCommand(sotConfigText: string): string {
-  const first = enabledPluginIdsFromText(sotConfigText)[0];
-  return first !== undefined
-    ? `codex plugin add ${first}`
-    : "codex plugin add <plugin@marketplace>";
+function manualPluginRefreshHint(pluginIds: ReadonlyArray<string>): string {
+  const first = pluginIds[0];
+  return first !== undefined ? `; then run: codex plugin add ${first}` : "";
 }
 
 async function installedPluginIdsFromCli(): Promise<Set<string> | undefined> {
@@ -238,7 +236,12 @@ export async function syncPlugins(
   unresolvedMarketplace?: string,
 ): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
+  const desiredPluginIds = enabledPluginIdsFromText(sotConfigText).filter(
+    (pluginId) =>
+      unresolvedMarketplace === undefined || !pluginId.endsWith(`@${unresolvedMarketplace}`),
+  );
   if (ctx.dryRun) {
+    if (desiredPluginIds.length === 0) return;
     echo(
       ctx.skipPluginRefresh
         ? "[dry-run] add missing enabled Codex plugins from SoT; skip refresh-only plugin updates"
@@ -249,10 +252,11 @@ export async function syncPlugins(
 
   if (ctx.services.deps.probe("codex").state === "missing") {
     warn(
-      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli; then run: ${manualPluginRefreshCommand(sotConfigText)}`,
+      `codex CLI not in PATH - deployed config/marketplace only; install Codex with: ${standaloneInstallCommand(ctx)} | docs: https://developers.openai.com/codex/cli${manualPluginRefreshHint(desiredPluginIds)}`,
     );
     return;
   }
+  if (desiredPluginIds.length === 0) return;
   if (ctx.services.deps.probe("git").state === "missing") {
     ctx.services.deps.warnMissing(
       "git",
@@ -262,11 +266,6 @@ export async function syncPlugins(
     return;
   }
 
-  const desiredPluginIds = enabledPluginIdsFromText(sotConfigText).filter(
-    (pluginId) =>
-      unresolvedMarketplace === undefined || !pluginId.endsWith(`@${unresolvedMarketplace}`),
-  );
-  if (desiredPluginIds.length === 0) return;
   let pluginIds = desiredPluginIds;
   if (ctx.skipPluginRefresh) {
     progress("Checking installed Codex plugins...");

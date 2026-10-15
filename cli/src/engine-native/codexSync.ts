@@ -51,7 +51,12 @@ export async function codexSync(ctx: Ctx): Promise<void> {
 
   await ensureBubblewrap(ctx);
   if (!ctx.dryRun) mkdirSync(codexDir, { recursive: true });
-  const deployedBefore = existsSync(userConfig) ? readFileSync(userConfig, "utf8") : "";
+  // Only a real sync compares against this text; a dry run reads nothing.
+  const deployedBefore = ctx.dryRun
+    ? undefined
+    : existsSync(userConfig)
+      ? readFileSync(userConfig, "utf8")
+      : "";
   syncConfig(ctx, deployedSotConfig, userConfig);
   removeRetiredImportedHooks(ctx, codexDir);
   syncCodexModel(ctx, ctx.codexModel, deployedBefore);

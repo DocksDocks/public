@@ -49,6 +49,12 @@ function Test-SameFile([string]$First, [string]$Second) {
   return [IO.Path]::GetFullPath($First) -ieq [IO.Path]::GetFullPath($Second)
 }
 
+function Test-SameDirectory([string]$First, [string]$Second) {
+  $FirstPath = [IO.Path]::GetFullPath($First).TrimEnd('\')
+  $SecondPath = [IO.Path]::GetFullPath($Second).TrimEnd('\')
+  return $FirstPath -ieq $SecondPath
+}
+
 function Test-PathEntry([string]$Entry) {
   $NormalizedEntry = [IO.Path]::GetFullPath($Entry).TrimEnd('\')
   foreach ($Candidate in ([string]$env:PATH -split ';')) {
@@ -132,7 +138,8 @@ if ($null -eq $KitSource) {
 
 # Bun links the CLI as a shim docks-kit.exe plus a docks-kit.bunx metadata
 # file. The shim reads the .bunx file next to itself, so a copy of the shim in
-# another directory cannot run. Earlier installs made such a copy; remove it.
+# another directory cannot run. Earlier installs made such a copy. Remove the
+# copy only when it is identical to the current shim.
 $InstallBin = Join-Path $env:USERPROFILE '.local\bin'
 $StaleShim = Join-Path $InstallBin 'docks-kit.exe'
 $BunShim = Join-Path $GlobalBin 'docks-kit.exe'
@@ -161,11 +168,30 @@ if ($KitExit -ne 0) {
 }
 Write-Ok "docks-kit installed in '$GlobalBin'"
 
-if (Test-PathEntry $GlobalBin) {
-  Write-Ok 'docks-kit ready'
-  Write-Ok 'Next: docks-kit sync   (or docks-kit docs overview)'
-} else {
+# Another docks-kit executable earlier on PATH can shadow Bun's shim. The
+# installer cannot identify such a file, so it names the file and stops.
+$ResolvedKit = Get-Command docks-kit -CommandType Application, ExternalScript -ErrorAction SilentlyContinue | Select-Object -First 1
+$ShadowKit = $null
+if ($null -ne $ResolvedKit -and -not (Test-SameDirectory (Split-Path -Parent $ResolvedKit.Source) $GlobalBin)) {
+  $ShadowKit = $ResolvedKit.Source
+}
+
+$GlobalBinOnPath = Test-PathEntry $GlobalBin
+if (-not $GlobalBinOnPath) {
   Write-Warn "Add '$GlobalBin' to PATH before running docks-kit:"
   $EscapedGlobalBin = $GlobalBin.Replace("'", "''")
   [Console]::Error.WriteLine("[Environment]::SetEnvironmentVariable('Path', '$EscapedGlobalBin;' + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')")
+}
+
+if ($null -ne $ShadowKit) {
+  Write-Warn "The docks-kit command on PATH runs '$ShadowKit' instead of '$KitSource'."
+  Write-Warn 'Remove that file with this command, then run docks-kit sync:'
+  $EscapedShadowKit = $ShadowKit.Replace("'", "''")
+  [Console]::Error.WriteLine("Remove-Item -LiteralPath '$EscapedShadowKit'")
+  exit 1
+}
+
+if ($GlobalBinOnPath) {
+  Write-Ok 'docks-kit ready'
+  Write-Ok 'Next: docks-kit sync   (or docks-kit docs overview)'
 }

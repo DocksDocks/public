@@ -51,6 +51,7 @@ function stubServices(records: Array<LogRecord>): EngineServices {
 
 const ENV_KEYS = [
   "HOME",
+  "USERPROFILE",
   "AGENTS_DIR",
   "DRY_RUN",
   "DOCKS_KIT_VERBOSE",
@@ -74,7 +75,9 @@ describe("modifier field validation", () => {
     root = mkdtempSync(join(tmpdir(), "modifier-validation-"));
     previous = new Map(ENV_KEYS.map((key) => [key, process.env[key]]));
     for (const key of ENV_KEYS) delete process.env[key];
+    // engineHome reads USERPROFILE on win32, so both keys point at the temp home.
     process.env["HOME"] = root;
+    process.env["USERPROFILE"] = root;
     process.env["AGENTS_DIR"] = join(root, ".agents");
   });
 
