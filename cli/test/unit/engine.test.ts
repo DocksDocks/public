@@ -67,7 +67,7 @@ describe("compiled runtime capture", () => {
         process.execPath,
         ["status"],
         expect.objectContaining({
-          env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-raw" }),
+          env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-capture" }),
         }),
       );
     } finally {
@@ -176,7 +176,7 @@ describe("EngineNative Effect seam", () => {
       [expect.stringMatching(/\/cli\/src\/main\.ts$/), "toolchain", "check", "--json"],
       expect.objectContaining({
         encoding: "utf8",
-        env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-raw" }),
+        env: expect.objectContaining({ DOCKS_KIT_ENGINE: "native-capture" }),
         stdio: ["ignore", "pipe", "inherit"],
       }),
     );
@@ -209,7 +209,7 @@ describe("EngineNative Effect seam", () => {
     const options = mocks.spawnSync.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv };
     for (const key of ENV_GLOBAL_KEYS) expect(options.env).not.toHaveProperty(key);
     expect(options.env).toMatchObject({
-      DOCKS_KIT_ENGINE: "native-raw",
+      DOCKS_KIT_ENGINE: "native-capture",
       DOCKS_KIT_SYNC_CONCURRENCY: "2",
     });
   });

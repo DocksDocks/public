@@ -242,10 +242,15 @@ describe("Claude runtime migration transaction", () => {
     const claudeDir = join(home, ".claude");
     const ctx = removalContext(home, []);
     try {
-      syncRemovals(ctx, claudeDir, {
-        kind: "ready",
-        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
-      });
+      syncRemovals(
+        ctx,
+        claudeDir,
+        {
+          kind: "ready",
+          paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+        },
+        false,
+      );
       expect(hooksObject(settingsObject(home))).toEqual({ SessionStart: [{ hooks: [] }] });
       expect(ctx.nextStepTriggers.claudeRestart).toBe(true);
     } finally {
@@ -286,10 +291,15 @@ describe("Claude runtime migration transaction", () => {
     const originalText = readFileSync(settingsPath, "utf8");
     const output: Array<string> = [];
     try {
-      syncRemovals(removalContext(home, output), claudeDir, {
-        kind: "deferred",
-        reason: "bun-unavailable",
-      });
+      syncRemovals(
+        removalContext(home, output),
+        claudeDir,
+        {
+          kind: "deferred",
+          reason: "bun-unavailable",
+        },
+        false,
+      );
       expect(hooksObject(settingsObject(home))).toEqual({
         PreToolUse: [userGuard],
         Stop: original.hooks.Stop,
@@ -298,10 +308,15 @@ describe("Claude runtime migration transaction", () => {
       expect(output.join("")).toContain("retired hook handlers: 1");
 
       output.length = 0;
-      syncRemovals(removalContext(home, output), claudeDir, {
-        kind: "ready",
-        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
-      });
+      syncRemovals(
+        removalContext(home, output),
+        claudeDir,
+        {
+          kind: "ready",
+          paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+        },
+        false,
+      );
       expect(hooksObject(settingsObject(home))).toEqual({
         PreToolUse: [userGuard],
         Stop: [{ hooks: [userStop] }],
@@ -322,15 +337,22 @@ describe("Claude runtime migration transaction", () => {
     writeFileSync(join(claudeDir, "hooks", "notify.sh"), userNotify);
     const output: Array<string> = [];
     try {
-      syncRemovals(removalContext(home, output), claudeDir, {
-        kind: "ready",
-        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
-      });
+      syncRemovals(
+        removalContext(home, output),
+        claudeDir,
+        {
+          kind: "ready",
+          paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+        },
+        false,
+      );
       expect(existsSync(join(claudeDir, "statusline.sh"))).toBe(false);
       expect(readFileSync(join(claudeDir, "statusline.sh.bak"), "utf8")).toBe(userStatusline);
       expect(existsSync(join(claudeDir, "hooks", "notify.sh"))).toBe(false);
       expect(readFileSync(join(claudeDir, "hooks", "notify.sh.bak"), "utf8")).toBe(userNotify);
-      expect(output.join("")).toContain("preserved as .bak: 2");
+      expect(output.join("")).toContain(
+        "preserved as backup: 2 (hooks/notify.sh.bak, statusline.sh.bak)",
+      );
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
@@ -343,13 +365,18 @@ describe("Claude runtime migration transaction", () => {
     writeFileSync(join(claudeDir, "hooks", "notify.sh"), SHIPPED_NOTIFY);
     const output: Array<string> = [];
     try {
-      syncRemovals(removalContext(home, output), claudeDir, {
-        kind: "ready",
-        paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
-      });
+      syncRemovals(
+        removalContext(home, output),
+        claudeDir,
+        {
+          kind: "ready",
+          paths: claudeRuntimePaths(claudeDir, "/usr/bin/bun"),
+        },
+        false,
+      );
       expect(existsSync(join(claudeDir, "hooks"))).toBe(false);
       expect(output.join("")).toContain("Pruned stale artifacts (hooks: 1, files: 0");
-      expect(output.join("")).not.toContain("preserved as .bak");
+      expect(output.join("")).not.toContain("preserved as backup");
     } finally {
       rmSync(home, { recursive: true, force: true });
     }
@@ -364,10 +391,15 @@ describe("Claude runtime migration transaction", () => {
       symlinkSync(join(home, ".bun", "bin", "effect-solutions"), link);
       const output: Array<string> = [];
       try {
-        syncRemovals(removalContext(home, output), join(home, ".claude"), {
-          kind: "deferred",
-          reason: "bun-unavailable",
-        });
+        syncRemovals(
+          removalContext(home, output),
+          join(home, ".claude"),
+          {
+            kind: "deferred",
+            reason: "bun-unavailable",
+          },
+          false,
+        );
         expect(() => lstatSync(link)).toThrow();
         expect(output.join("")).toContain("files: 1");
       } finally {
@@ -386,10 +418,15 @@ describe("Claude runtime migration transaction", () => {
       },
     });
     try {
-      syncRemovals(removalContext(home, []), join(home, ".claude"), {
-        kind: "deferred",
-        reason: "bun-unavailable",
-      });
+      syncRemovals(
+        removalContext(home, []),
+        join(home, ".claude"),
+        {
+          kind: "deferred",
+          reason: "bun-unavailable",
+        },
+        false,
+      );
       expect(settingsObject(home)["enabledPlugins"]).toEqual({
         "docks@docks": true,
         "personal@my-marketplace": false,
@@ -413,12 +450,12 @@ describe("Claude runtime migration transaction", () => {
     const output: Array<string> = [];
     const deferred = { kind: "deferred", reason: "bun-unavailable" } as const;
     try {
-      syncRemovals(removalContext(home, output, true), claudeDir, deferred);
+      syncRemovals(removalContext(home, output, true), claudeDir, deferred, false);
       expect(readFileSync(join(claudeDir, "settings.json"), "utf8")).toBe(original);
       expect(output.join("")).toContain("[dry-run] del 4 stale permission rule(s)");
 
       output.length = 0;
-      syncRemovals(removalContext(home, output), claudeDir, deferred);
+      syncRemovals(removalContext(home, output), claudeDir, deferred, false);
       const settings = settingsObject(home);
       expect(permissionRules(settings, "allow")).toEqual(["Edit(./)", "Write(user-owned/**)"]);
       expect(permissionRules(settings, "deny")).toEqual([
@@ -428,7 +465,7 @@ describe("Claude runtime migration transaction", () => {
       expect(output.join("")).toContain("permission rules: 4");
 
       output.length = 0;
-      syncRemovals(removalContext(home, output), claudeDir, deferred);
+      syncRemovals(removalContext(home, output), claudeDir, deferred, false);
       expect(output.join("")).not.toContain("Pruned stale artifacts");
     } finally {
       rmSync(home, { recursive: true, force: true });
@@ -451,13 +488,13 @@ describe("Claude runtime migration transaction", () => {
     const output: Array<string> = [];
     const deferred = { kind: "deferred", reason: "bun-unavailable" } as const;
     try {
-      syncRemovals(removalContext(home, output, true), claudeDir, deferred);
+      syncRemovals(removalContext(home, output, true), claudeDir, deferred, false);
       for (const relative of retiredCommands) expect(existsSync(join(home, relative))).toBe(true);
       expect(output.join("")).toContain(`[dry-run] rm ${home}/${retiredCommands[0]}`);
 
       output.length = 0;
       const ctx = removalContext(home, output);
-      syncRemovals(ctx, claudeDir, deferred);
+      syncRemovals(ctx, claudeDir, deferred, false);
       for (const relative of retiredCommands) expect(existsSync(join(home, relative))).toBe(false);
       expect(existsSync(join(claudeDir, "hooks", "disable-claudeai-connectors.sh"))).toBe(false);
       expect(readFileSync(join(claudeDir, "hooks", "my-hook.sh"), "utf8")).toBe("user\n");

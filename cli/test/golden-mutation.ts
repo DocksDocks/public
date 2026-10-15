@@ -156,7 +156,7 @@ function runLegacyMigrationCase(): MutationCaseGolden & { readonly problems: Arr
         problems.push("  migration: deployed settings contain a sentinel");
       if (
         !run.output.includes(
-          "Pruned stale artifacts (hooks: 0, files: 0, settings keys: 0, claude.json keys: 0, retired hook handlers: 1, preserved as .bak: 3)",
+          "Pruned stale artifacts (hooks: 0, files: 0, settings keys: 0, claude.json keys: 0, retired hook handlers: 1, preserved as backup: 3 (hooks/notify.sh.bak, statusline.sh.bak, fetch-usage.sh.bak))",
         )
       ) {
         problems.push("  migration: aggregate readiness-gated prune line missing");
