@@ -77,13 +77,14 @@ const ALL_KIT_RULES = (["allow", "deny", "ask"] as const).flatMap(
 );
 
 /**
- * The only shell commands the allow list pre-approves: removals a user can undo
- * (the trash) or that git keeps (`git rm`, `git worktree remove`). A plain
+ * The only shell commands the allow list pre-approves: moving a path to the
+ * trash, and git removals without `--force`, which git refuses when the path
+ * holds changes git has not recorded. A forced form asks, and a plain
  * `rm <file>` stays with the auto-mode classifier, because an allow rule skips
  * the classifier for any file anywhere.
  */
-const REVERSIBLE_REMOVALS = [
-  "Bash(gio trash *)",
+const FREE_REMOVALS = [
+  "Bash(gio trash -- *)",
   "Bash(trash *)",
   "Bash(git rm *)",
   "Bash(git worktree remove *)",
@@ -103,18 +104,26 @@ const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined
   ["rm -rf /*", "deny"],
   ["rm -r -f -- ~", "deny"],
   ['rm "$HOME"', "deny"],
+  ['/bin/rm -rf "$HOME"', "deny"],
+  ["/usr/bin/rm -rf ~", "deny"],
+  ['HOME=/tmp/fake rm -rf "$HOME"', "deny"],
   ["export HOME=$(mktemp -d)", "deny"],
-  ["HOME=/tmp/fake bun test", "deny"],
+  ["HOME=$(mktemp -d)", "deny"],
   ["env HOME=/tmp/fake bun test", "deny"],
   ["git push --force origin main", "deny"],
   ["rm -rf build", "ask"],
   ["rm -r build", "ask"],
   ["rm -R build", "ask"],
   ["rm -fr build", "ask"],
+  ["rm -rfv build", "ask"],
   ["rm --recursive build", "ask"],
   ["rm -v -r build", "ask"],
   ["rm build -rf", "ask"],
+  ["/bin/rm -rf build", "ask"],
+  ["/usr/bin/rm -r build", "ask"],
   ["rm -rf ~/projects/tmp", "ask"],
+  ["rm -f ./*", "ask"],
+  ["rm *.log", "ask"],
   ["find . -name x -delete", "ask"],
   ["find . -name '*.tmp' -exec rm {} +", "ask"],
   ["git clean -fdx", "ask"],
@@ -124,13 +133,36 @@ const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined
   ["git push -f origin feat/x", "ask"],
   ["git push --force-with-lease origin feat/x", "ask"],
   ["git push origin +feat/x", "ask"],
+  ["git push -vf origin main", "ask"],
+  ["git push -uf origin feat/x", "ask"],
+  ["git push -fu origin feat/x", "ask"],
+  ["git push -ufv origin feat/x", "ask"],
+  ["git push origin feat/x -vf", "ask"],
   ["gio trash --empty", "ask"],
-  ["gio trash build", "allow"],
+  ["gio trash -f --empty", "ask"],
+  ["gio trash -- build --empty", "ask"],
+  ["gio trash --restore -f trash:///build", "ask"],
+  ["git rm -f file.txt", "ask"],
+  ["git rm file.txt -f", "ask"],
+  ["git rm --force file.txt", "ask"],
+  ["git rm -rf dir", "ask"],
+  ["git worktree remove --force ../wt", "ask"],
+  ["git worktree remove -f ../wt", "ask"],
+  ["git worktree remove ../wt --force", "ask"],
+  ["gio trash -- build", "allow"],
   ["trash build", "allow"],
   ["git rm file.txt", "allow"],
+  ["git rm -r --cached dist", "allow"],
   ["git worktree remove ../wt", "allow"],
+  ["git worktree remove ../wt-foo", "allow"],
   ["rm file.txt", undefined],
+  ["rm -f readme.md", undefined],
+  ["rm a.txt b.txt", undefined],
+  ["gio trash build", undefined],
   ["git push -u origin feat/fix-flaky", undefined],
+  // Documented gap: Claude Code matches deny rules past a leading assignment,
+  // so `Bash(HOME=*)` does not guarantee a denial when a command follows.
+  ["HOME=/tmp/fake bun test", undefined],
 ];
 
 describe("Claude settings truth", () => {
@@ -138,12 +170,12 @@ describe("Claude settings truth", () => {
     expect(invalidRules(ALL_KIT_RULES)).toEqual([]);
   });
 
-  it("allows only reads, edits inside the working directory, and reversible removals", () => {
+  it("allows only reads, edits inside the working directory, and safe removals", () => {
     const overreaching = claudeSotSettings.permissions.allow.filter((rule) => {
       const parsed = parseRule(rule);
       if (!parsed.ok) return true;
       if (READ_ONLY_TOOLS.some((tool) => tool === parsed.rule.tool)) return false;
-      return rule !== "Edit(./)" && !REVERSIBLE_REMOVALS.includes(rule);
+      return rule !== "Edit(./)" && !FREE_REMOVALS.includes(rule);
     });
 
     expect(overreaching).toEqual([]);
