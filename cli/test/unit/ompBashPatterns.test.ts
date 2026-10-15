@@ -84,13 +84,18 @@ const DENIED = [
   "rm -rf /home/docks/projects/cache",
   "rm -f /tmp/x.json",
   "rm -f /tmp/*",
-  "rm -- /tmp/x.json",
   "rm --no-preserve-root -r build",
-  "sudo rm -rf build",
-  "sudo rm notes.txt",
   "find . -exec rm -rf /tmp/x {} +",
   "xargs rm -f /tmp/a",
   'bash -c "rm -rf /tmp/x"',
+  "git rm -rf /home/docks/projects/x/dir",
+  // sudo as a word anywhere before rm, plain or by path.
+  "sudo rm -rf build",
+  "sudo rm notes.txt",
+  "sudo -u root rm notes.txt",
+  "/usr/bin/sudo rm -rf user-data",
+  "/usr/bin/sudo /bin/rm notes.txt",
+  "env PATH=/usr/bin sudo rm notes.txt",
   // Force push to main or master.
   "git push --force origin main",
 ];
@@ -99,6 +104,7 @@ const PROMPTED = [
   // Every other rm: the kit allows no rm, so a subagent uses the trash.
   "rm file.txt",
   "rm /home/docks/projects/x/file.txt",
+  "rm -- /tmp/x.json",
   "rm -f file.txt",
   "rm -f readme.md",
   "rm a.txt b.txt",
@@ -117,42 +123,66 @@ const PROMPTED = [
   "git clean -fdx",
   "git reset --hard",
   "git reset --hard HEAD~1",
+  // Every git push spelling that could force.
   "git push --force origin feat/x",
   "git push -f origin feat/x",
   "git push --force-with-lease origin feat/x",
+  "git push --fo origin feat/x",
+  "git push --for origin feat/x",
+  "git push --forc origin feat/x",
+  "git push --mirror origin",
   "git push origin +feat/x",
   "git push -vf origin main",
+  "git push -vvf origin main",
+  "git push -uvfq origin feat/x",
   "git push -uf origin feat/x",
   "git push -fu origin feat/x",
   "git push -ufv origin feat/x",
+  "git push -4f origin feat/x",
   "git push origin feat/x -vf",
-  // Emptying or restoring the trash.
+  'git push "-vf" origin feat/x',
+  "git push origin $BRANCH",
+  // Accepted false positive: --follow-tags shares the --f prefix.
+  "git push --follow-tags origin feat/x",
+  // Every gio trash form other than gio trash -- <path>.
+  "gio trash build",
   "gio trash --empty",
   "gio trash -f --empty",
-  "gio trash build --empty",
+  "gio trash -ff --empty",
   "gio trash --restore -f trash:///build",
-  // Forced git removal discards uncommitted changes.
+  // Every git rm and git worktree remove form other than the -- form.
+  "git rm file.txt",
+  "git rm -r --cached dist",
   "git rm -f file.txt",
   "git rm file.txt -f",
   "git rm --force file.txt",
-  "git rm -rf dir",
+  "git rm --for file.txt",
+  "git rm -rff dir",
+  'git rm "-f" file.txt',
   "git rm -q -f file.txt",
+  "git rm -f -- file.txt",
+  "git worktree remove ../wt",
   "git worktree remove --force ../wt",
+  "git worktree remove --for ../wt",
   "git worktree remove -f ../wt",
-  "git worktree remove -ff ../wt",
+  'git worktree remove "-f" ../wt',
   "git worktree remove ../wt --force",
 ];
 
 const ALLOWED = [
   "gio trash -- build",
   "gio trash -- /home/docks/projects/x/build",
+  "gio trash -- build --empty",
   "trash build",
-  "git rm file.txt",
-  "git rm -r --cached dist",
-  "git worktree remove ../wt",
-  "git worktree remove ../wt-foo",
+  "git rm -- file.txt",
+  "git rm -- /home/docks/projects/x/file.txt",
+  "git rm -- -f",
+  "git worktree remove -- ../wt",
+  "git worktree remove -- /home/docks/projects/wt",
   // No rule matches these, and yolo runs them.
   "git push -u origin feat/fix-flaky",
+  "git push -u origin feat/cache-vf",
+  "git push -v origin main",
   "git push origin feat/x",
   "ls ~",
 ];
@@ -185,11 +215,18 @@ describe("omp bash.patterns policy under yolo", () => {
     expect(ompYoloOutcome(promptOnly, "rm -rf build")).toBe("prompt");
   });
 
-  // First match wins, so a deny must come before every allow and prompt rule.
-  it("orders every deny rule before every prompt rule and every prompt rule before every allow rule", () => {
-    const rank: Record<OmpApproval, number> = { deny: 0, prompt: 1, allow: 2 };
-    const ranks = KIT_RULES.map(({ approval }) => rank[approval]);
-    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  // First match wins. Every deny precedes every other rule. The only allows
+  // ahead of a prompt are option-terminated exceptions: after `--`, every
+  // argument is a path, and a glob cannot exclude that form from `git rm *`.
+  it("orders denies first, and only `-- *` exceptions before the prompts", () => {
+    const firstNonDeny = KIT_RULES.findIndex(({ approval }) => approval !== "deny");
+    const lastPrompt = KIT_RULES.map(({ approval }) => approval).lastIndexOf("prompt");
+    expect(KIT_RULES.slice(firstNonDeny).filter(({ approval }) => approval === "deny")).toEqual([]);
+    expect(
+      KIT_RULES.slice(0, lastPrompt)
+        .filter(({ approval }) => approval === "allow")
+        .map(({ match }) => match),
+    ).toEqual(["git rm -- *", "git worktree remove -- *", "gio trash -- *"]);
   });
 
   it("allows no rm", () => {
@@ -206,7 +243,7 @@ describe("omp bash.patterns sync merge", () => {
     "  patterns:",
     '    - match: "rm -rf build"',
     "      approval: allow",
-    '    - match: "gio trash *"',
+    '    - match: "gio trash -- *"',
     "      approval: prompt",
     '    - match: "curl *"',
     "      approval: prompt",
@@ -215,28 +252,33 @@ describe("omp bash.patterns sync merge", () => {
     "",
   ].join("\n");
 
-  const byApproval = (approval: OmpApproval): Array<OmpBashRule> =>
-    KIT_RULES.filter((rule) => rule.approval === approval);
+  const byApproval = (approval: OmpApproval, beforePrompts: boolean): Array<OmpBashRule> => {
+    const firstPrompt = KIT_RULES.findIndex((rule) => rule.approval === "prompt");
+    return KIT_RULES.filter(
+      (rule, index) => rule.approval === approval && index < firstPrompt === beforePrompts,
+    );
+  };
 
   it("deploys the kit rules unchanged into a config without bash.patterns", () => {
     expect(bashPatterns(mergeOmpConfig(SOT_TEXT, "userOnly: true\n"))).toEqual(KIT_RULES);
   });
 
-  it("groups kit and user rules by approval so the strictest match wins", () => {
+  it("puts user denies and prompts ahead of every kit allow, and user allows after kit prompts", () => {
     const merged = mergeOmpConfig(SOT_TEXT, userRules);
     const rules = bashPatterns(merged);
 
     expect(rules).toEqual([
-      ...byApproval("deny"),
+      ...byApproval("deny", true),
       { match: "git clean *", approval: "deny" },
-      ...byApproval("prompt"),
-      { match: "gio trash *", approval: "prompt" },
+      { match: "gio trash -- *", approval: "prompt" },
       { match: "curl *", approval: "prompt" },
+      ...byApproval("allow", true),
+      ...byApproval("prompt", false),
       { match: "rm -rf build", approval: "allow" },
-      ...byApproval("allow"),
+      ...byApproval("allow", false),
     ]);
     expect(parse(merged)).toHaveProperty(["bash", "allowCompoundCommands"], false);
-    // A user rule tightens a kit allow; a user allow cannot loosen a kit rule.
+    // A user prompt tightens a kit exception; a user allow cannot loosen a kit rule.
     expect(ompYoloOutcome(rules, "gio trash -- build")).toBe("prompt");
     expect(ompYoloOutcome(rules, "rm -rf build")).toBe("deny");
     expect(ompYoloOutcome(rules, "curl https://example.com")).toBe("prompt");

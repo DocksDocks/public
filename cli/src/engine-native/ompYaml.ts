@@ -57,36 +57,50 @@ function bashPatternKey(node: unknown): string | undefined {
 
 /**
  * omp evaluates `bash.patterns` in order, and the first matching rule wins. The
- * merge groups the rules by approval: kit deny, user deny, kit prompt, user
- * prompt, the other user rules in their deployed order, then kit allow. The
- * first matching rule is then always the strictest one, as in Claude Code and
- * Codex: a user deny is never shadowed by a kit prompt, and no allow loosens a
- * deny or a prompt. A deployed rule equal to a kit rule is the kit copy, so a
- * re-sync changes nothing. A rule the kit stops shipping stays as a user rule.
+ * merge groups the rules: kit deny, user deny, user prompt, kit exception allow,
+ * kit prompt, the other user rules in their deployed order, then kit allow. A
+ * kit exception is a kit allow that the SoT lists before its first prompt: an
+ * option-terminated form such as `git rm -- *` that a broader kit prompt
+ * (`git rm *`) would otherwise shadow, because a glob cannot exclude it. A user
+ * deny or prompt therefore always precedes every kit allow, and no user or
+ * tail allow loosens a deny or a prompt. A deployed rule equal to a kit rule is
+ * the kit copy, so a re-sync changes nothing. A rule the kit stops shipping
+ * stays as a user rule.
  */
 const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
   if (path.length !== 2 || path[0] !== "bash" || path[1] !== "patterns") return;
   const kitKeys = new Set(sotSeq.items.map(bashPatternKey));
-  const groups: Record<"kit" | "user", Record<"deny" | "prompt" | "other", Array<unknown>>> = {
-    kit: { deny: [], prompt: [], other: [] },
-    user: { deny: [], prompt: [], other: [] },
+  const kit: Record<"deny" | "exception" | "prompt" | "allow", Array<unknown>> = {
+    deny: [],
+    exception: [],
+    prompt: [],
+    allow: [],
   };
-  const place = (owner: "kit" | "user", item: unknown): void => {
+  const user: Record<"deny" | "prompt" | "other", Array<unknown>> = {
+    deny: [],
+    prompt: [],
+    other: [],
+  };
+  for (const item of sotSeq.items) {
     const approval = bashPatternKey(item)?.split("\u0000")[0];
-    groups[owner][approval === "deny" || approval === "prompt" ? approval : "other"].push(item);
-  };
-  for (const item of sotSeq.items) place("kit", item);
+    if (approval === "deny" || approval === "prompt") kit[approval].push(item);
+    else if (kit.prompt.length === 0 && approval === "allow") kit.exception.push(item);
+    else kit.allow.push(item);
+  }
   for (const item of deployedSeq.items) {
     const key = bashPatternKey(item);
-    if (key === undefined || !kitKeys.has(key)) place("user", item);
+    if (key !== undefined && kitKeys.has(key)) continue;
+    const approval = key?.split("\u0000")[0];
+    user[approval === "deny" || approval === "prompt" ? approval : "other"].push(item);
   }
   sotSeq.items = [
-    ...groups.kit.deny,
-    ...groups.user.deny,
-    ...groups.kit.prompt,
-    ...groups.user.prompt,
-    ...groups.user.other,
-    ...groups.kit.other,
+    ...kit.deny,
+    ...user.deny,
+    ...user.prompt,
+    ...kit.exception,
+    ...kit.prompt,
+    ...user.other,
+    ...kit.allow,
   ];
 };
 
