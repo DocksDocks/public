@@ -214,6 +214,43 @@ describe("EngineNative Effect seam", () => {
     });
   });
 
+  it("drops env-global keys from the capture child case-insensitively on win32 only (R04)", async () => {
+    // Windows environment names are case-insensitive, so the child would still
+    // read `claude_compact_window` as CLAUDE_COMPACT_WINDOW there.
+    vi.stubEnv("claude_compact_window", "junk");
+    vi.stubEnv("Dry_Run", "1");
+    vi.stubEnv("CLAUDE_MODEL", "opus");
+    mocks.spawnSync.mockReturnValue({
+      error: undefined,
+      output: [null, "", null],
+      pid: 123,
+      signal: null,
+      status: 0,
+      stderr: null,
+      stdout: "",
+    });
+    vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    const globalKeys = new Set<string>(ENV_GLOBAL_KEYS);
+    const childEnvOf = (call: number): NodeJS.ProcessEnv => {
+      const options = mocks.spawnSync.mock.calls[call]?.[2] as
+        | { env: NodeJS.ProcessEnv }
+        | undefined;
+      if (options === undefined) throw new Error(`spawnSync call ${call} did not happen`);
+      return options.env;
+    };
+
+    await expect(Effect.runPromise(engineCapture(["toolchain", "check"]))).resolves.toBe("");
+    expect(Object.keys(childEnvOf(0)).filter((name) => globalKeys.has(name.toUpperCase()))).toEqual(
+      [],
+    );
+
+    // POSIX names stay case-sensitive: only the exact spelling is a global.
+    vi.spyOn(process, "platform", "get").mockReturnValue("linux");
+    await expect(Effect.runPromise(engineCapture(["toolchain", "check"]))).resolves.toBe("");
+    expect(childEnvOf(1)).toMatchObject({ claude_compact_window: "junk", Dry_Run: "1" });
+    expect(childEnvOf(1)).not.toHaveProperty("CLAUDE_MODEL");
+  });
+
   it("fails capture with the child status instead of returning plausible stdout", async () => {
     const diagnostic = "engine capture failed for 'toolchain check --json': exit 7";
     mocks.spawnSync.mockReturnValue({
