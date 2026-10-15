@@ -11,6 +11,11 @@
  *   for a literal backslash. Every other backslash stays literal, so
  *   `Remove-Item \ *-Recurse*` matches a command that deletes the drive root
  *   `\`, and `*` matches any text.
+ * - A trailing ` *` that is the only wildcard also matches the bare command,
+ *   as https://code.claude.com/docs/en/permissions documents.
+ * - `permissionDecision` applies the documented precedence: deny, then ask,
+ *   then allow. It matches one simple command; it does not split compound
+ *   commands, strip wrappers, or apply case-insensitive PowerShell matching.
  *
  * The oracle lets the settings tests assert "Claude Code can load every rule the
  * kit ships, and the deny list stops these commands" instead of restating the
@@ -259,10 +264,32 @@ export function ruleMatchesCommand(rule: string, tool: string, command: string):
     held += specifier[i];
   }
 
-  const pattern = held
+  // A trailing ` *` that is the rule's only wildcard also matches the bare
+  // command, so `Bash(git push --force origin main *)` stops
+  // `git push --force origin main` (https://code.claude.com/docs/en/permissions).
+  const bareSuffix = held.endsWith(" *") && held.indexOf("*") === held.length - 1;
+  const pattern = (bareSuffix ? held.slice(0, -2) : held)
     .replace(/[.+?^${}()|[\]\\'"]/g, "\\$&")
     .replaceAll("*", ".*")
     .replaceAll(STAR, "\\*")
     .replaceAll(BACKSLASH, "\\\\");
-  return new RegExp(`^${pattern}$`, "s").test(command.trim());
+  return new RegExp(`^${pattern}${bareSuffix ? "(?: .*)?" : ""}$`, "s").test(command.trim());
+}
+
+export type PermissionDecision = "deny" | "ask" | "allow";
+
+/**
+ * Claude Code's outcome for one command: deny rules first, then ask rules, then
+ * allow rules; the first list with a matching rule decides, whatever its order or
+ * specificity. Undefined means no rule matched, so the permission mode decides
+ * (the auto-mode classifier under the kit's `defaultMode: auto`).
+ */
+export function permissionDecision(
+  permissions: Readonly<Record<PermissionDecision, ReadonlyArray<string>>>,
+  tool: string,
+  command: string,
+): PermissionDecision | undefined {
+  return (["deny", "ask", "allow"] as const).find((list) =>
+    permissions[list].some((rule) => ruleMatchesCommand(rule, tool, command)),
+  );
 }

@@ -40,8 +40,10 @@ import { stableStringify } from "../lib/goldenSnapshot";
 import {
   invalidRules,
   parseRule,
+  permissionDecision,
   READ_ONLY_TOOLS,
   ruleMatchesCommand,
+  type PermissionDecision,
 } from "../lib/permissionRules";
 
 // The stub launchers and the child must agree on one host. Native pairing runs
@@ -74,20 +76,81 @@ const ALL_KIT_RULES = (["allow", "deny", "ask"] as const).flatMap(
   (listName) => claudeSotSettings.permissions[listName],
 );
 
+/**
+ * The only shell commands the allow list pre-approves: removals a user can undo
+ * (the trash) or that git keeps (`git rm`, `git worktree remove`). A plain
+ * `rm <file>` stays with the auto-mode classifier, because an allow rule skips
+ * the classifier for any file anywhere.
+ */
+const REVERSIBLE_REMOVALS = [
+  "Bash(gio trash *)",
+  "Bash(trash *)",
+  "Bash(git rm *)",
+  "Bash(git worktree remove *)",
+];
+
+/** Bash commands and the tier each one must get; undefined leaves the classifier to decide. */
+const BASH_TIERS: ReadonlyArray<readonly [string, PermissionDecision | undefined]> = [
+  ['rm -rf "$HOME"', "deny"],
+  ["rm -rf $HOME", "deny"],
+  ['rm -rf "${HOME}"', "deny"],
+  ["rm -rf ${HOME}/", "deny"],
+  ['rm -rf "$HOME"/', "deny"],
+  ["rm -rf ~", "deny"],
+  ["rm -rf ~/", "deny"],
+  ["rm -rf /", "deny"],
+  ['rm -rf "/"', "deny"],
+  ["rm -rf /*", "deny"],
+  ["rm -r -f -- ~", "deny"],
+  ['rm "$HOME"', "deny"],
+  ["export HOME=$(mktemp -d)", "deny"],
+  ["HOME=/tmp/fake bun test", "deny"],
+  ["env HOME=/tmp/fake bun test", "deny"],
+  ["git push --force origin main", "deny"],
+  ["rm -rf build", "ask"],
+  ["rm -r build", "ask"],
+  ["rm -R build", "ask"],
+  ["rm -fr build", "ask"],
+  ["rm --recursive build", "ask"],
+  ["rm -v -r build", "ask"],
+  ["rm build -rf", "ask"],
+  ["rm -rf ~/projects/tmp", "ask"],
+  ["find . -name x -delete", "ask"],
+  ["find . -name '*.tmp' -exec rm {} +", "ask"],
+  ["git clean -fdx", "ask"],
+  ["git reset --hard", "ask"],
+  ["git reset --hard HEAD~1", "ask"],
+  ["git push --force origin feat/x", "ask"],
+  ["git push -f origin feat/x", "ask"],
+  ["git push --force-with-lease origin feat/x", "ask"],
+  ["git push origin +feat/x", "ask"],
+  ["gio trash --empty", "ask"],
+  ["gio trash build", "allow"],
+  ["trash build", "allow"],
+  ["git rm file.txt", "allow"],
+  ["git worktree remove ../wt", "allow"],
+  ["rm file.txt", undefined],
+  ["git push -u origin feat/fix-flaky", undefined],
+];
+
 describe("Claude settings truth", () => {
   it("ships only rules Claude Code can load", () => {
     expect(invalidRules(ALL_KIT_RULES)).toEqual([]);
   });
 
-  it("allows only reads plus edits inside the working directory", () => {
+  it("allows only reads, edits inside the working directory, and reversible removals", () => {
     const overreaching = claudeSotSettings.permissions.allow.filter((rule) => {
       const parsed = parseRule(rule);
       if (!parsed.ok) return true;
       if (READ_ONLY_TOOLS.some((tool) => tool === parsed.rule.tool)) return false;
-      return rule !== "Edit(./)";
+      return rule !== "Edit(./)" && !REVERSIBLE_REMOVALS.includes(rule);
     });
 
     expect(overreaching).toEqual([]);
+  });
+
+  it.each(BASH_TIERS)("gives Bash %s the %s tier", (command, tier) => {
+    expect(permissionDecision(claudeSotSettings.permissions, "Bash", command)).toBe(tier);
   });
 
   it("protects Windows wherever it protects POSIX", () => {
@@ -132,7 +195,7 @@ describe("Claude settings truth", () => {
     ).toEqual([]);
   });
 
-  it("leaves an ordinary recursive delete to the classifier", () => {
+  it("never denies an ordinary recursive delete and asks before it", () => {
     const deny = claudeSotSettings.permissions.deny;
     const ordinary: Array<[string, string]> = [
       ["PowerShell", String.raw`Remove-Item C:\Users\me\repo\node_modules -Recurse -Force`],
@@ -140,6 +203,7 @@ describe("Claude settings truth", () => {
       ["PowerShell", "Remove-Item /var/tmp/build -Recurse -Force"],
       ["PowerShell", "Remove-Item node_modules -Recurse -Force"],
       ["PowerShell", String.raw`Remove-Item -LiteralPath D:\work\dist -Recurse -Force`],
+      ["PowerShell", "rm node_modules -r"],
       ["Bash", "rm -rf node_modules"],
       ["Bash", "rm -rf ./dist"],
     ];
@@ -147,6 +211,12 @@ describe("Claude settings truth", () => {
     expect(
       ordinary.flatMap(([tool, command]) =>
         deny.filter((rule) => ruleMatchesCommand(rule, tool, command)),
+      ),
+    ).toEqual([]);
+    expect(
+      ordinary.filter(
+        ([tool, command]) =>
+          permissionDecision(claudeSotSettings.permissions, tool, command) !== "ask",
       ),
     ).toEqual([]);
   });
