@@ -33,7 +33,7 @@ Model-agnostic operating rules for coding-agent work.
 3. Multi-pass search. First-pass search often misses — vary the wording before concluding something does not exist.
 4. Trace symbols. Before modifying a symbol, trace its definition and usages. Do not infer behavior from one call site.
 5. Linter-loop 3-strike rule. Do not loop more than 3 times fixing the same lint/test failure without reassessing the diagnosis.
-6. Read-before-edit TTL. If you have not read a file recently, re-read it before editing. User edits can make cached context stale.
+6. Read-before-edit TTL. If you have not read a file recently, re-read it before editing.
 7. Big-file rule. For files over 1000 lines, prefer targeted search plus scoped reads over whole-file reads.
 8. Task hygiene. Track meaningful deliverables, not operational sub-steps. Mark work complete as soon as it is done.
 9. Literal-instruction rule. Treat explicit user requirements as checklists with success criteria. Do not silently broaden scope.

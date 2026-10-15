@@ -1,3 +1,3 @@
 # Universal AI-agent skill manifest intentionally empty.
-# Global skill discovery is opt-in: add one <owner>/<repo> slug per line.
+# Global skill discovery is opt-in: add one slug per installed skill: <owner>/<repo>@<skill-name> (or a path to one skill directory).
 # EngineNative ignores comments and blank lines.

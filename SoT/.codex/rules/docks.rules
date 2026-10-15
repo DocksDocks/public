@@ -6,8 +6,6 @@ prefix_rule(pattern=["tail"], decision="allow")
 prefix_rule(pattern=["wc"], decision="allow")
 prefix_rule(pattern=["nl"], decision="allow")
 prefix_rule(pattern=["grep"], decision="allow")
-prefix_rule(pattern=["sort"], decision="allow")
-prefix_rule(pattern=["uniq"], decision="allow")
 prefix_rule(pattern=["diff"], decision="allow")
 prefix_rule(pattern=["which"], decision="allow")
 prefix_rule(pattern=["date"], decision="allow")
@@ -16,7 +14,6 @@ prefix_rule(pattern=["dirname"], decision="allow")
 prefix_rule(pattern=["realpath"], decision="allow")
 prefix_rule(pattern=["readlink"], decision="allow")
 prefix_rule(pattern=["jq"], decision="allow")
-prefix_rule(pattern=["tree"], decision="allow")
 prefix_rule(pattern=["cut"], decision="allow")
 prefix_rule(pattern=["tr"], decision="allow")
 prefix_rule(pattern=["echo"], decision="allow")
@@ -30,17 +27,12 @@ prefix_rule(pattern=["id"], decision="allow")
 prefix_rule(pattern=["whoami"], decision="allow")
 
 prefix_rule(pattern=["git", "status"], decision="allow")
-prefix_rule(pattern=["git", "diff"], decision="allow")
-prefix_rule(pattern=["git", "log"], decision="allow")
-prefix_rule(pattern=["git", "show"], decision="allow")
 prefix_rule(pattern=["git", "blame"], decision="allow")
 prefix_rule(pattern=["git", "rev-parse"], decision="allow")
 prefix_rule(pattern=["git", "ls-files"], decision="allow")
-prefix_rule(pattern=["git", "grep"], decision="allow")
 prefix_rule(pattern=["git", "ls-tree"], decision="allow")
 prefix_rule(pattern=["git", "branch", "--show-current"], decision="allow")
 prefix_rule(pattern=["git", "branch", "-vv"], decision="allow")
-prefix_rule(pattern=["git", "mv"], decision="allow")
 
 prefix_rule(pattern=["gh", "pr", "view"], decision="allow")
 prefix_rule(pattern=["gh", "pr", "list"], decision="allow")
@@ -56,6 +48,7 @@ prefix_rule(pattern=["git", "clean"], decision="prompt")
 prefix_rule(pattern=["git", "merge"], decision="prompt")
 prefix_rule(pattern=["git", "rebase"], decision="prompt")
 prefix_rule(pattern=["git", "checkout"], decision="prompt")
+prefix_rule(pattern=["git", "mv"], decision="prompt")
 
 prefix_rule(pattern=["rm"], decision="prompt")
 prefix_rule(pattern=["mv"], decision="prompt")
@@ -92,9 +85,13 @@ prefix_rule(pattern=["docker-compose", "stop"], decision="prompt")
 # `tail -f`/`--follow` never returns and hangs the agent (bare `tail` stays allowed above).
 prefix_rule(pattern=["tail", "-f"], decision="prompt")
 prefix_rule(pattern=["tail", "--follow"], decision="prompt")
-# rg and `sed -n` are prompt, NOT allow: argv-prefix matching cannot gate their
-# code-exec forms (rg --pre=CMD or a reordered --pre; sed -n 'e CMD' / -ni) while a
-# shorter allow prefix would auto-approve the whole command.
+# These commands are prompt or absent, NOT allow, because argv-prefix matching
+# cannot gate a later write or exec flag, and allow runs outside the sandbox:
+# rg --pre=CMD; sed -n 'e CMD' or -ni; sort -o FILE or --compress-program=CMD;
+# the uniq OUTPUT operand; tree -o FILE; git diff/log/show --output=FILE;
+# git grep --open-files-in-pager=CMD or -O; git mv into .git/hooks.
+# Without a rule, sort, uniq, tree, git diff/log/show, and git grep run in the
+# sandbox with no prompt.
 prefix_rule(pattern=["rg"], decision="prompt")
 prefix_rule(pattern=["sed", "-n"], decision="prompt")
 prefix_rule(pattern=["find"], decision="prompt")
