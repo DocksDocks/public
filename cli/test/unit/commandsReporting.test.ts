@@ -1,11 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { p } from "../../src/engine-native/exec";
-import { cliEntry } from "../lib/cliEntry";
+import { BUN_RUNTIME, cliEntry } from "../lib/cliEntry";
 import { runPublicCli } from "../lib/goldenExecution";
 import { childEnv, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
@@ -14,18 +14,25 @@ const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const CLI = cliEntry();
 const temporaryDirectories = new Array<string>();
 
+// `status` runs `toolchain check`, and `sync --dry-run` probes the harness CLIs.
+// Both version-probe tools such as omp, claude, and codex. The golden stubs come
+// first on PATH, so those probes never run the host's binaries.
+let toolStubs = "";
+
 const temporaryDirectory = (prefix: string): string => {
   const directory = mkdtempSync(join(tmpdir(), prefix));
   temporaryDirectories.push(directory);
   return directory;
 };
 
+// The CLI runs on the absolute Bun runtime: a PATH lookup of `bun` would find
+// the stub `bun`, which prints a version and exits.
 const runCli = (
   args: ReadonlyArray<string>,
   home: string,
   environment: Record<string, string> = {},
 ) =>
-  spawnSync("bun", [CLI, ...args], {
+  spawnSync(BUN_RUNTIME, [CLI, ...args], {
     encoding: "utf8",
     env: childEnv({
       HOME: home,
@@ -34,6 +41,7 @@ const runCli = (
       CODEX_HOME: "",
       DOCKS_KIT_ENGINE: "",
       DOCKS_KIT_HOME: REPO_DIR,
+      PATH: `${toolStubs}${delimiter}${process.env["PATH"] ?? ""}`,
       ...environment,
     }),
     timeout: SPAWN_TIMEOUT_MS,
@@ -53,6 +61,10 @@ const fakeCommand = (directory: string, name: string, script: string): void => {
     chmodSync(executable, 0o755);
   }
 };
+
+beforeAll(() => {
+  toolStubs = makeStubDir({}, { nativeHost: true });
+});
 
 afterAll(cleanupTemporaryDirs);
 
@@ -83,10 +95,12 @@ describe("command reporting", () => {
       mkdirSync(p(home, ".claude"), { recursive: true });
       writeFileSync(p(home, ".claude", "settings.json"), "{not-json\n");
 
-      const result = runCli(["status", "--json"], home);
+      const argvLog = join(temporaryDirectory("docks-status-argv-"), "argv.log");
+      const result = runCli(["status", "--json"], home, { GOLDEN_ARGV_LOG: argvLog });
       const output = JSON.parse(result.stdout) as {
         deployment: { claude: { state: string; diagnostic: string } };
         drift: Array<{ setting: string; deployed: string; sot: string; drifted: boolean }>;
+        toolchain: { state: string; table: string };
         diagnostics: Array<{ source: string; message: string; exitCode: number }>;
       };
 
@@ -105,6 +119,11 @@ describe("command reporting", () => {
         exitCode: 1,
       });
       expect(result.stderr).not.toContain("SyntaxError");
+      // The toolchain probes ran against the stubs: the table carries the stub's
+      // omp version, and the stub logged the probe.
+      expect(output.toolchain.state).toBe("valid");
+      expect(output.toolchain.table).toMatch(/^omp\s+check\s+18\.4\.4\s/m);
+      expect(readFileSync(argvLog, "utf8")).toContain("omp\t--version");
 
       const humanResult = runCli(["status"], home);
       expect(humanResult.status).toBe(1);
