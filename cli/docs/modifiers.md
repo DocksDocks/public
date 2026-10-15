@@ -5,9 +5,10 @@ the SoT is never touched. They all share one contract:
 
 > A later flag-less sync reverts the modifier: the settings merge (Claude)
 > and the config.toml merge (Codex) re-assert SoT values for kit-owned keys.
-> Re-pass the flag on machines that should keep the override. Claude-only
-> profiles can instead use `~/.claude/settings.local.json`, which sync never
-> touches.
+> Re-pass the flag on machines that should keep the override. Claude Code has
+> no user-scope local settings file; a per-project Claude override belongs in
+> that checkout's `.claude/settings.local.json`, which sync never reads or
+> writes.
 
 Claude's embedded SoT is `model: opus`, `effortLevel: high`, with advisor
 off (`advisorModel` unset). Codex's embedded normal and plan reasoning effort is

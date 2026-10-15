@@ -1,6 +1,6 @@
 ---
 name: codex-config-agent
-description: Use when editing `cli/src/engine-native/codexSync.ts` config functions (`syncConfig`, `scrubDeprecatedFeatures`, `ensureBubblewrap`, `syncRules`) or `cli/src/engine-native/codexToml.ts` (`mergeTopLevelSettings`, `mergeTableSettings`, `replaceTopLevelSetting`, `syncCodexModel`), plus `SoT/.codex/config.toml` and `SoT/.codex/rules/*.rules`. Not for Claude settings or plugin install.
+description: Use when editing `cli/src/engine-native/codexConfig.ts` config functions (`syncConfig`, `scrubDeprecatedFeatures`, `removeRetiredPluginTables`), `cli/src/engine-native/codexSync.ts` (`ensureBubblewrap`, `syncRules`), or `cli/src/engine-native/codexToml.ts` (`mergeTopLevelSettings`, `mergeTableSettings`, `replaceTopLevelSetting`, `syncCodexModel`), plus `SoT/.codex/config.toml` and `SoT/.codex/rules/*.rules`. Not for Claude settings or plugin install.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -55,7 +55,7 @@ deployed or overwritten by the kit.
 
 ## Gotchas
 
-- Exact table-header matching can duplicate logical tables when user headers
-  differ by whitespace.
+- SoT ownership is matched by decoded TOML key path, so padded, commented, or
+  re-quoted user headers are replaced rather than duplicated.
 - A user field inside a SoT-owned table is discarded on replacement.
 - `--codex-model` is deploy-only; a later flag-less sync restores the SoT pin.

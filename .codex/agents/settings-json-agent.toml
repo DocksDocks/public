@@ -1,5 +1,5 @@
 name = "settings-json-agent"
-description = "Use when editing cli/src/engine-native/claudeSync.ts settings functions (prepareClaudeSettings, commitClaudeSettings, syncClaudeJson, syncConnectorEnv, syncRemovals, syncCompactWindow, syncPermissive, syncClaudeModel), claudeRuntime.ts materialization, or settings.ts merge functions. Not for plugin install/uninstall or Codex TOML merge."
+description = "Use when editing cli/src/engine-native/claudeSync.ts (syncClaudeJson, syncConnectorEnv), claudeSettings.ts (prepareClaudeSettings, commitClaudeSettings, syncCompactWindow, syncPermissive), claudeRemovals.ts (syncRemovals), claudeSettingsModifiers.ts (syncClaudeModel), claudeRuntime.ts materialization, or settings.ts merge functions. Not for plugin install/uninstall or Codex TOML merge."
 sandbox_mode = "read-only"
 developer_instructions = '''
 

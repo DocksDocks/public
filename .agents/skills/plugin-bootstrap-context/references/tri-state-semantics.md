@@ -11,7 +11,7 @@ they mean installed but globally disabled.
 |------------------------|--------------|-----------|--------------------|----------------------|
 | `true` | Installed | Kept | Not needed | Globally enabled |
 | `false` | Installed | Kept | Activates for that project | Globally disabled |
-| absent | Not installed | Removed if user-scope installed | Ignored | Unavailable |
+| absent | Not installed | Removed if user-scope installed and not opted in this run | Ignored | Unavailable |
 
 ## Examples
 

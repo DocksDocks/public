@@ -1,6 +1,6 @@
 ---
 name: sync-mechanic-agent
-description: Use when editing `docks-kit`, `cli/src/main.ts`, `cli/src/engine.ts`, `cli/src/engine-native/index.ts`, `cli/src/engine-native/parseArgs.ts`, `cli/src/engine-native/modes.ts`, `cli/src/engine-native/models.ts`, sync flags, positional targets, renamed-legacy-flag hints, default-all-target behavior, model validation, or cross-cutting sync idempotency. Not for tool-specific settings, plugins, Codex TOML, or universal skills.
+description: Use when editing `docks-kit`, `cli/src/main.ts`, `cli/src/engine.ts`, `cli/src/engine-native/index.ts`, `cli/src/engine-native/engineCtx.ts`, `cli/src/engine-native/syncDispatch.ts`, `cli/src/engine-native/syncConcurrency.ts`, `cli/src/engine-native/parseArgs.ts`, `cli/src/engine-native/parseModifiers.ts`, `cli/src/engine-native/modes.ts`, `cli/src/engine-native/models.ts`, sync flags, positional targets, renamed-legacy-flag hints, stored harness selection (legacy claude/codex/agents fallback), model validation, or cross-cutting sync idempotency. Not for tool-specific settings, plugins, Codex TOML, or universal skills.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -11,8 +11,9 @@ Owns the public entry chain, EngineNative dispatch, flag parsing, target
 selection, direct modes, and cross-cutting sync invariants.
 
 <constraint>
-Resolve repository paths through `ctx.repoDir` and `kitHome()`, never from the
-process working directory.
+Read SoT content only through `payload.ts` (`payloadText`/`payloadBytes`);
+never read kit files from disk at sync time. `ctx.repoDir` comes from
+`kitHome()` and is display-only.
 </constraint>
 
 <constraint>
@@ -34,8 +35,8 @@ behavior for removed flag names.
 4. Trace the current TypeScript symbol before changing it.
 5. For new flags, update `parseArgs.ts`, the relevant `cli/src/commands/*.ts`
    option surface, and golden cases.
-6. For target changes, verify default-all-target behavior and selected-target
-   behavior.
+6. For target changes, verify the stored harness selection, the legacy
+   claude/codex/agents fallback, and selected-target behavior.
 7. Hand off to the focused agent when the change enters a tool-specific module:
    settings JSON, plugins, Codex config, skills bootstrap, or toolchain.
 
@@ -44,8 +45,9 @@ behavior for removed flag names.
 | Concern | Symbol |
 |---------|--------|
 | Public engine seam | `engine`, `engineCapture` in `cli/src/engine.ts` |
-| Engine dispatch | `runEngineNative`, `engineSync` in `index.ts` |
-| Flags and targets | `parseArgs`, `validateModelFlags` |
+| Engine dispatch | `runEngineNative` in `index.ts`, `makeCtx` in `engineCtx.ts`, `engineSync` in `syncDispatch.ts` |
+| Sync scheduling | `runBounded`, `syncConcurrencyForManifest` in `syncConcurrency.ts` |
+| Flags and targets | `parseArgs`, `applyDefaultSelection` in `parseArgs.ts`; `validateModifierFlags` in `parseModifiers.ts` |
 | Direct modes | `modeModel`, `modeToolchain`, `printModels` |
 | Removed engine guard | `DOCKS_KIT_ENGINE` handling in `cli/src/engine.ts` |
 
@@ -64,4 +66,4 @@ behavior for removed flag names.
 - `DOCKS_KIT_ENGINE=native-raw` is harness-private.
 - `DOCKS_KIT_ENGINE` set to `bash` must fail with the removed-engine message.
 - Dependency checks belong at concrete consumers; do not restore a global
-  preflight in `parseArgs.ts` or `index.ts`.
+  dependency preflight in `parseArgs.ts`, `index.ts`, or `syncDispatch.ts`.

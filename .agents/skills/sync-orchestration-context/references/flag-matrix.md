@@ -3,7 +3,7 @@
 ## Critical Constraints
 
 - `--reconcile` and `--prune` are orthogonal layers.
-- Targets are positional words: `claude`, `codex`, `agents`.
+- Targets are positional words: `claude`, `codex`, `agents`, `omp`.
 - Unknown flags and renamed legacy flags exit 2 before mutation.
 - Bare value flags such as `--claude-model` exit 2; use `--flag=value`.
 
@@ -11,8 +11,8 @@
 
 | `--reconcile` | `--prune` | `--dry-run` | `claude` only | Effect |
 |---------------|-----------|-------------|---------------|--------|
-| 0 | 0 | 0 | 0 | Additive sync for all three targets. |
-| 0 | 0 | 1 | 0 | Preview all three targets. |
+| 0 | 0 | 0 | 0 | Additive sync for the default target selection. |
+| 0 | 0 | 1 | 0 | Preview the default target selection. |
 | 1 | 0 | 0 | 0 | Reconcile settings layer; keep user-only keys. |
 | 0 | 1 | 0 | 0 | Remove kit-managed plugins, marketplaces, and skills not in SoT. |
 | 1 | 1 | 0 | 0 | Reconcile settings and prune removable kit-managed installs. |
@@ -37,8 +37,10 @@
 | `--codex-model=<m>` | `ctx.codexModel` |
 | target word present | `ctx.targetFilterSet` |
 
-Default target behavior: when no target word is present, Claude, Codex, and
-agents are all selected. Once any target word appears, only named targets run.
+Default target behavior: when no target word is present, `parseArgs.ts
+applyDefaultSelection` selects the stored kit.db harness selection. When no
+selection is stored, Claude, Codex, and agents are selected (the legacy
+fallback). Once any target word appears, only named targets run.
 
 ## Layer Scope By Flag
 
@@ -75,7 +77,7 @@ only by `--prune`.
 
 ## Model Flags
 
-- `validateModelFlags(ctx)` runs after parsing and before mutation. Dependencies
+- `parseModifiers.ts validateModifierFlags(ctx)` runs after parsing and before mutation. Dependencies
   are checked by their consumers rather than a global preflight.
 - Claude catalog misses are accepted only for `claude-*` IDs, with a warning.
 - Codex values must match the safe quoted-TOML charset.

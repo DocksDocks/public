@@ -12,7 +12,6 @@
 | Standard env, permissions, hooks, plugins | `~/.claude/settings.json` | `prepareClaudeSettings` + `commitClaudeSettings` | Standard Claude Code settings schema after runtime materialization. |
 | `showTurnDuration` | `~/.claude.json` | `syncClaudeJson` | Rejected by settings schema. |
 | User-scoped `mcpServers` | `~/.claude.json` | `syncClaudeJson` | Rejected by settings schema; declared in `SoT/.claude/mcp-servers.json`. |
-| `skipAutoPermissionPrompt` | `~/.claude/settings.json` | prepared settings transaction | Standard schema. |
 | `skipDangerousModePermissionPrompt` | `~/.claude/settings.json` | prepared settings transaction | User-scope setting. |
 
 ## Creation And Patch Behavior
@@ -27,8 +26,10 @@ server keys win; user-declared servers survive.
 ## Disabling claude.ai Cloud Connectors
 
 Cloud connectors are account-synced. No field in `settings.json` or
-`~/.claude.json` disables them. The working lever is a shell environment export:
-`ENABLE_CLAUDEAI_MCP_SERVERS=false`, written idempotently by `syncConnectorEnv`.
+`~/.claude.json` disables them. The working lever is a persisted user
+environment variable (a shell profile export on POSIX, `HKCU\Environment` via
+`setx` on Windows): `ENABLE_CLAUDEAI_MCP_SERVERS=false`, written idempotently by
+`syncConnectorEnv`.
 
 ## Adding A New Key
 

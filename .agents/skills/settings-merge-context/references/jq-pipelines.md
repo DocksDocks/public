@@ -1,7 +1,7 @@
 # Settings Merge Compatibility Spec
 
 The production implementation is TypeScript (`settings.ts` and
-`claudeSync.ts`). The jq snippets below are the compatibility spec preserved in
+`claudeSettings.ts`). The jq snippets below are the compatibility spec preserved in
 tests, because they define the historical merge behavior.
 
 ## Critical Constraints

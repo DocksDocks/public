@@ -36,9 +36,10 @@ The executable carries the generated sync payload; no checkout or adjacent
 `SoT/` directory is required.
 
 Source and global installs require Bun. npm-global tools require Node/npm.
-`jq` is optional doctor/test tooling. `curl` downloads Bun only when a source
-launcher needs it. POSIX runs `install.sh`; Windows runs `install.ps1` through
-PowerShell.
+`jq` is optional doctor/test tooling. `curl` is needed only to download Bun's
+upstream installer when Bun is absent: by the POSIX launcher and installer, and
+by sync's Bun bootstrap, which a release binary can also run. The Windows
+launcher and installer use Invoke-WebRequest.
 
 ## CLI
 

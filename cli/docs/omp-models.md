@@ -419,21 +419,27 @@ AA's 1M.
 
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
 omp session with a configuration overlay that selects a free model. The
-overlay sets all 14 model roles to that model and empties all 11 retry fallback
-chains. Higher-precedence model selection can replace those values.
+overlay sets 16 chat-model roles to that model and empties 13 retry fallback
+chains. These roles include `memory` and `judge`. The SoT does not set them,
+but omp otherwise uses its built-in priority chain for them, and that chain
+can name a paid model. The overlay does not set the `web` role or its retry
+chain. The deployed web-search provider order therefore applies, and that
+order includes the paid `openai-codex/gpt-6-luna` entry. Higher-precedence
+model selection can replace the overlay values.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.
 
 The launcher renders a run overlay to
 `~/.cache/docks-kit/omp-free-<model>-<digest>.yml` at mode 0600 and passes it
-through omp's repeatable `--config` flag. Each model gets its own file,
-because omp can re-read the overlay during a live session, and a second
-launcher on another model must not rewrite that file. The name sanitizes the
-selector for the file system and appends a digest of the exact selector, so
-two selectors that differ only in separator characters stay apart. A session
-launch never reads or writes `~/.omp/agent/config.yml` or `models.yml`; only
-`--fast`, below, edits `config.yml`. It
+through omp's repeatable `--config` flag. Each distinct model-and-level
+combination gets its own file, because omp re-reads a changed overlay during
+a live session, and a second launcher must not change the levels of that
+session. The name sanitizes the selector for the file system and appends a
+digest of the rendered overlay. The digest covers the selector and both
+levels, so two selectors that differ only in separator characters stay
+apart. A session launch never reads or writes `~/.omp/agent/config.yml` or
+`models.yml`; only `--fast`, below, edits `config.yml`. It
 never touches the SoT. The next plain `omp` run uses the paid configuration
 again.
 
@@ -486,11 +492,14 @@ committed. `--model <selector>` records one selector and derives both levels
 from the catalog row. `--pick` opens an interactive wizard.
 
 The picker lists only models the live `omp models --json` catalog reports at
-zero input and output cost (26 entries on 2026-09-11). The resulting overlay
-sets every role to the chosen free model and empties every retry chain.
-Higher-precedence model selection can replace those values. The catalog can
-advertise a free model that the account cannot call; omp reports that provider
-error unchanged.
+zero input and output cost with `pricingStatus` `free` or `unknown` (26
+entries on 2026-09-11). A zero-cost row with another status, such as
+`variable` or `included`, is billed outside the token price, so the picker
+leaves it out. The resulting overlay sets every chat-model role to the chosen
+free model and empties their retry chains. The `web` role and its chain keep
+the deployed values. Higher-precedence model selection can replace those
+values. The catalog can advertise a free model that the account cannot call;
+omp reports that provider error unchanged.
 
 After the model, the wizard asks about thinking levels. `ompOverlay.ts
 planEffortChoice` decides which questions apply, because omp accepts a
@@ -512,14 +521,19 @@ recommendation equal to the chosen level is omitted rather than duplicated.
 A session whose advisor differs from the other roles reports both on the
 launch line.
 
-An omp login is required. The kit owns no login flow. It surfaces omp's own
-authentication error unchanged.
+An omp login is required. The kit owns no login flow. Every launch reads the
+live free catalog once. A plain launch checks the remembered model, or the
+default model, against that catalog. When the model is not there, the
+launcher stops before omp starts. The model can be renamed, repriced, or on a
+provider that is not logged in. Without this check, omp silently starts the
+default model of the first logged-in provider, which can be paid.
 
 When the catalog renames the free variant, change only the default selector
-constant. A ladder change needs no code change. Under `--model` both levels
-are derived from the catalog row of the chosen model, and under `--pick` the
-user chooses them from the ladder that same row publishes. Refresh the
-recorded default and the ladder counts in these docs in the same commit.
+constant. Until then, a plain launch on that default stops with an error. A
+ladder change needs no code change. Under `--model` both levels are derived
+from the catalog row of the chosen model, and under `--pick` the user chooses
+them from the ladder that same row publishes. Refresh the recorded default
+and the ladder counts in these docs in the same commit.
 
 ## OpenAI fast mode (`docks-kit omp --fast`)
 
