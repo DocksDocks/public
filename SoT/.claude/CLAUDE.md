@@ -24,9 +24,12 @@ Research the codebase before editing. Never change code you have not read.
 
 ## Removing Files
 
-- Move a file or directory to the trash: `gio trash <path>` on Linux, `trash <path>` on macOS.
+To remove, use the trash.
+
+- Move a file or directory to the trash: `gio trash -- <path>` on Linux, `trash <path>` on macOS. Only the `gio trash -- <path>` form runs without approval.
 - Use plain `rm <file>`, without flags, only for a single file you created.
-- Never delete recursively or in bulk (`rm -r`, `find -delete`, `git clean`, `git reset --hard`) without the user's approval. If you cannot ask, list the paths in your final report instead.
+- Never delete recursively or in bulk (`rm -r`, `rm` with a glob, `find -delete`, `git clean`, `git reset --hard`) without the user's approval. If you cannot ask, list the paths in your final report instead.
+- Never pass `--force` to `git rm` or `git worktree remove`; it discards uncommitted changes.
 - Write literal absolute paths in commands; never `~` or `$HOME`. Never set or export `HOME`.
 
 ## Agentic Harness Heuristics

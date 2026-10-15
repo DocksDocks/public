@@ -36,10 +36,14 @@ round trips. Being overruled ends the discussion — execute my call without rel
 
 ## Removing files
 
-- To remove a file or a directory, move it to the trash with `gio trash <path>` on Linux or `trash <path>` on macOS.
-- Use `rm <file>` without flags only for one file that you created.
-- Do not delete recursively or in bulk yourself (`rm -r`, `find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
-- A subagent cannot get approval. In a subagent, put the paths in your final report.
+To remove, use the trash.
+
+- To remove a file or a directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
+- Do not use `rm`. omp denies a recursive `rm` and asks me before any other `rm`.
+- A subagent cannot get my approval, so omp rejects every `rm` in a subagent.
+- Do not delete in bulk yourself (`find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
+- If a deletion needs `rm -r` or a bulk command, put the paths in your report. I run that deletion myself.
+- Do not use `--force` with `git rm` or `git worktree remove`.
 - Write literal absolute paths. Do not use `~` or `$HOME` in a command.
 - Do not set or export `HOME`.
 

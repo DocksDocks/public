@@ -111,12 +111,14 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
   working legacy hook/statusline setup and reports that migration is deferred.
 - **Command guards** — omp, Claude Code, and Codex share one policy for
-  destructive shell commands. `rm` of the home directory or `/` and `HOME`
-  reassignment are denied. Recursive deletion, `find -delete`, `git clean`,
-  `git reset --hard`, and force pushes ask a person, and an omp subagent
-  cannot answer, so it is rejected. `gio trash`, `trash`, `git rm`, and
-  `git worktree remove` run freely. Details and per-tool gaps:
-  `docks-kit docs command-guards`.
+  destructive shell commands; to remove, agents use the trash
+  (`gio trash -- <path>`, or `trash <path>` on macOS). `rm` of the home
+  directory or `/` and `HOME` reassignment are denied. omp also denies every
+  recursive `rm` and asks before any other `rm`. `find -delete`, `git clean`,
+  `git reset --hard`, force pushes, and forced `git rm` ask; Claude Code and
+  Codex also ask before a recursive `rm`. An omp subagent cannot answer an
+  ask, so omp rejects it; a Codex ask can go to its `auto_review` reviewer.
+  Details and per-tool gaps: `docks-kit docs command-guards`.
 
 ## Repository map
 
