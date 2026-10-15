@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-10-15 - docks-kit 0.20.8: destructive-command guards
+
+On 2026-10-14 an omp subagent ran `rm -rf "$HOME"` after an
+`export HOME=$(mktemp -d)` in an earlier, separate bash call, and deleted the
+home directory. omp, Claude Code, and Codex now share one three-tier policy for
+destructive shell commands. `docks-kit docs command-guards` has the per-tool
+table and the gaps.
+
+### Deny
+
+- `rm` of `/`, `~`, `~/`, `$HOME`, and `${HOME}`, quoted or with a trailing `/`,
+  and `HOME=`, `export HOME=`, and `env HOME=` reassignment. Claude Code also
+  denies `rm /*`. The old Claude `Bash(rm -rf $HOME)` rule never matched the
+  quoted `rm -rf "$HOME"`; the kit now lists each quoted spelling.
+- omp also denies a force push to `origin main` or `origin master`, as Claude
+  Code and Codex already did.
+- Codex denies `rm` of `/` as argv and the exact home and root scripts, because
+  Codex matches a script that holds `~` or `$HOME` only as a whole.
+
+### Ask
+
+- Recursive `rm` on any path, `find -delete`, `find -exec rm`, `git clean`,
+  `git reset --hard`, every force push, and `gio trash --empty`. omp rejects
+  these in a subagent, because a subagent cannot answer a prompt. omp also asks
+  for any `rm` of a `~/`, `$HOME/`, or `${HOME}/` path.
+- Claude Code asks for `Remove-Item -Recurse` and its aliases in PowerShell.
+- Codex already prompted for every `rm`, `find`, `git push`, `git reset`, and
+  `git clean`; its prefix rules cannot tell a single-file `rm` apart.
+
+### Allow
+
+- `gio trash` (Linux), `trash` (macOS 15 and later), `git rm`, and
+  `git worktree remove` run without a prompt in all three tools. omp also
+  allows `rm <file>` without recursive flags; Claude Code leaves it to the
+  auto-mode classifier.
+- The deployed agent prompts tell agents to use the trash, to ask before a
+  recursive deletion, and to write literal paths instead of `~` or `$HOME`.
+
+### Sync
+
+- The omp `config.yml` merge keeps user `bash.patterns` rules. It orders the
+  list as kit deny and prompt rules, user rules, then kit allow rules, because
+  omp takes the first matching rule. A repeat sync changes nothing.
+- New tests port omp's pattern matcher and assert each command's tier in all
+  three tools. The Claude cutover test proves that the retired-rule prune keeps
+  every new rule.
+
 ## 2026-10-14 - docks-kit 0.20.7: verified audit fixes
 
 A multi-agent audit found these defects, and a second agent verified each one.
