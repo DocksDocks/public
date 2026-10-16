@@ -1,16 +1,19 @@
 /**
- * EngineNative `sync omp` retired-key pruning. `ompYaml.ts mergeOmpConfig` and
+ * EngineNative `sync omp` retired-entry pruning. `ompYaml.ts mergeOmpConfig` and
  * `mergeOmpModels` are additive: their `mergeMappings, deployed-key retention
- * loop` returns every deployed key absent from the SoT to the merged result.
- * Removing a key from `SoT/.omp/config.yml` or `SoT/.omp/models.yml` therefore
- * never removes it from the deployed file. This pass force-prunes an inventory
- * of retired kit-owned keys on every sync, without `--reconcile`. Message
- * strings and prune semantics are part of the contract.
+ * loop` returns every deployed key absent from the SoT to the merged result,
+ * and `mergeBashPatterns` keeps a deployed rule the SoT stops shipping as a user
+ * rule. Removing a key or rule from `SoT/.omp/config.yml` or
+ * `SoT/.omp/models.yml` therefore never removes it from the deployed file. This
+ * pass force-prunes an inventory of retired kit-owned keys and rules on every
+ * sync, without `--reconcile`. Message strings and prune semantics are part of
+ * the contract.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
-import { isMap, isScalar, parseDocument, type YAMLMap } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, type YAMLMap } from "yaml";
 import type { Ctx } from "./index";
+import { bashPatternKey, bashRuleKey } from "./ompYaml";
 
 type RetiredScalar = string | number | boolean;
 
@@ -79,7 +82,73 @@ const OMP_RETIRED_MODEL_BLOCKS: ReadonlyArray<readonly [string, unknown]> = [
   ],
 ];
 
+/**
+ * `bash.patterns` rules the kit used to deploy, each with the exact match and
+ * approval it deployed. A deployed rule is pruned only while it equals one of
+ * these under the merge's rule normalization, so a user rule with another match
+ * or approval survives.
+ *
+ * The kit prompted before every file removal: rm and its wrappers, find
+ * -delete, git rm, git worktree remove, and gio trash. The three `-- *` allows
+ * existed only to skip those prompts.
+ */
+const OMP_RETIRED_BASH_RULES: ReadonlyArray<{
+  readonly match: string;
+  readonly approval: "allow" | "prompt";
+}> = [
+  { match: "git rm -- *", approval: "allow" },
+  { match: "git worktree remove -- *", approval: "allow" },
+  { match: "gio trash -- *", approval: "allow" },
+  { match: "rm", approval: "prompt" },
+  { match: "rm *", approval: "prompt" },
+  { match: "*/rm", approval: "prompt" },
+  { match: "*/rm *", approval: "prompt" },
+  { match: "xargs rm", approval: "prompt" },
+  { match: "xargs rm *", approval: "prompt" },
+  { match: "xargs * rm", approval: "prompt" },
+  { match: "xargs * rm *", approval: "prompt" },
+  { match: "env * rm", approval: "prompt" },
+  { match: "env * rm *", approval: "prompt" },
+  { match: "command rm", approval: "prompt" },
+  { match: "command rm *", approval: "prompt" },
+  { match: "exec rm", approval: "prompt" },
+  { match: "exec rm *", approval: "prompt" },
+  { match: "nohup rm", approval: "prompt" },
+  { match: "nohup rm *", approval: "prompt" },
+  { match: "nice rm", approval: "prompt" },
+  { match: "nice rm *", approval: "prompt" },
+  { match: "nice * rm", approval: "prompt" },
+  { match: "nice * rm *", approval: "prompt" },
+  { match: "time rm", approval: "prompt" },
+  { match: "time rm *", approval: "prompt" },
+  { match: "timeout * rm", approval: "prompt" },
+  { match: "timeout * rm *", approval: "prompt" },
+  { match: "stdbuf * rm", approval: "prompt" },
+  { match: "stdbuf * rm *", approval: "prompt" },
+  { match: "find -delete*", approval: "prompt" },
+  { match: "find * -delete*", approval: "prompt" },
+  { match: "find -exec*rm *", approval: "prompt" },
+  { match: "find * -exec*rm *", approval: "prompt" },
+  { match: "git rm", approval: "prompt" },
+  { match: "git rm *", approval: "prompt" },
+  { match: "git worktree remove", approval: "prompt" },
+  { match: "git worktree remove *", approval: "prompt" },
+  { match: "gio trash", approval: "prompt" },
+  { match: "gio trash *", approval: "prompt" },
+];
+
+/** Normalized rule key to the name a prune message reports. */
+const OMP_RETIRED_BASH_KEYS: ReadonlyMap<string, string> = new Map(
+  OMP_RETIRED_BASH_RULES.map(({ match, approval }) => [
+    bashRuleKey(match, approval),
+    `bash.patterns "${match}" (${approval})`,
+  ]),
+);
+
 type RetiredEntry = readonly [string, (node: unknown) => boolean];
+
+/** Removes retired content from a deployed root mapping and names each removal. */
+type Pruner = (root: YAMLMap) => Array<string>;
 
 function indexOfKey(mapping: YAMLMap, key: string): number {
   return mapping.items.findIndex((pair) => {
@@ -154,12 +223,39 @@ function deletePath(
   return true;
 }
 
-/** Prunes each matching retired entry from one deployed omp YAML file. */
+/** Pruner that deletes each matching retired key path. */
+function retiredKeys(entries: ReadonlyArray<RetiredEntry>): Pruner {
+  return (root) => {
+    const pruned: Array<string> = [];
+    for (const [path, matches] of entries) {
+      if (deletePath(root, path.split("."), matches)) pruned.push(path);
+    }
+    return pruned;
+  };
+}
+
+/** Deletes each retired kit rule from the deployed `bash.patterns` sequence. */
+const retiredBashRules: Pruner = (root) => {
+  const bash: unknown = root.get("bash");
+  const patterns: unknown = isMap(bash) ? bash.get("patterns") : undefined;
+  if (!isSeq(patterns)) return [];
+  const pruned: Array<string> = [];
+  patterns.items = patterns.items.filter((item) => {
+    const key = bashPatternKey(item);
+    const name = key === undefined ? undefined : OMP_RETIRED_BASH_KEYS.get(key);
+    if (name === undefined) return true;
+    pruned.push(name);
+    return false;
+  });
+  return pruned;
+};
+
+/** Applies each pruner to one deployed omp YAML file. */
 function pruneRetired(
   ctx: Ctx,
   file: string,
   label: string,
-  entries: ReadonlyArray<RetiredEntry>,
+  pruners: ReadonlyArray<Pruner>,
 ): number {
   const { change, echo, verbose, warn } = ctx.services.logger;
   if (!existsSync(file)) return 0;
@@ -167,19 +263,16 @@ function pruneRetired(
   const doc = parseDocument(readFileSync(file, "utf8"));
   const parseError = doc.errors[0];
   if (parseError !== undefined) {
-    warn(`omp ${label} unreadable, retired keys not pruned: ${parseError.message}`);
+    warn(`omp ${label} unreadable, retired entries not pruned: ${parseError.message}`);
     return 0;
   }
   const contents = doc.contents;
   if (!isMap(contents)) return 0;
 
-  const pruned: Array<string> = [];
-  for (const [path, matches] of entries) {
-    if (deletePath(contents, path.split("."), matches)) pruned.push(path);
-  }
+  const pruned = pruners.flatMap((prune) => prune(contents));
 
   if (pruned.length === 0) {
-    verbose(`omp ${label} carries no retired keys`);
+    verbose(`omp ${label} carries no retired entries`);
     return 0;
   }
   if (ctx.dryRun) {
@@ -187,30 +280,32 @@ function pruneRetired(
     return pruned.length;
   }
   writeFileSync(file, String(doc));
-  change(`omp ${label} pruned ${pruned.length} retired key(s): ${pruned.join(", ")}`);
+  change(`omp ${label} pruned ${pruned.length} retired entr(ies): ${pruned.join(", ")}`);
   return pruned.length;
 }
 
-/** Prunes retired kit-owned keys from a deployed omp config.yml. */
+/** Prunes retired kit-owned keys and bash rules from a deployed omp config.yml. */
 export function syncOmpRemovals(ctx: Ctx, configFile: string): number {
   return pruneRetired(ctx, configFile, "config.yml", [
-    ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
-      path,
-      (node) => isScalar(node) && node.value === value,
+    retiredKeys([
+      ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
+        path,
+        (node) => isScalar(node) && node.value === value,
+      ]),
+      ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
     ]),
-    ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
+    retiredBashRules,
   ]);
 }
 
 /** Prunes retired kit-owned blocks from a deployed omp models.yml. */
 export function syncOmpModelRemovals(ctx: Ctx, modelsFile: string): number {
-  return pruneRetired(
-    ctx,
-    modelsFile,
-    "models.yml",
-    OMP_RETIRED_MODEL_BLOCKS.map(([path, block]): RetiredEntry => [
-      path,
-      (node) => isMap(node) && isDeepStrictEqual(node.toJSON(), block),
-    ]),
-  );
+  return pruneRetired(ctx, modelsFile, "models.yml", [
+    retiredKeys(
+      OMP_RETIRED_MODEL_BLOCKS.map(([path, block]): RetiredEntry => [
+        path,
+        (node) => isMap(node) && isDeepStrictEqual(node.toJSON(), block),
+      ]),
+    ),
+  ]);
 }

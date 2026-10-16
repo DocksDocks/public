@@ -168,11 +168,13 @@ bash:
   # First match wins. omp checks deny and prompt rules against the whole line
   # and each quote-stripped segment, so `rm -rf "$HOME"` matches `rm * $HOME`.
   # `*` matches any text, spaces included; no escape spells a literal `*`.
-  # omp's critical-command check turns a prompt into an allow under yolo,
-  # so every rm shape it can flag is denied, not prompted.
+  # No rule matches a plain rm, find -delete, git rm, git worktree remove, or
+  # gio trash, so yolo runs it. omp's critical-command check turns a prompt
+  # into an allow under yolo, so every rm shape it can flag is denied.
   patterns:
     # Deny: rm of the home directory or the filesystem root, sudo before rm,
-    # rm with an r or f option before an absolute path, recursive rm, HOME
+    # rm with an r or f option before an absolute path, recursive rm (bare, by
+    # path, or after any word such as env, xargs, find -exec, or git), HOME
     # reassignment, and a force push to main or master.
     - { match: "rm /", approval: deny }
     - { match: "rm / *", approval: deny }
@@ -313,6 +315,14 @@ bash:
     - { match: "rm *-vrf", approval: deny }
     - { match: "rm *-vfr *", approval: deny }
     - { match: "rm *-vfr", approval: deny }
+    - { match: "rm *-ri *", approval: deny }
+    - { match: "rm *-ri", approval: deny }
+    - { match: "rm *-ir *", approval: deny }
+    - { match: "rm *-ir", approval: deny }
+    - { match: "rm *-Ri *", approval: deny }
+    - { match: "rm *-Ri", approval: deny }
+    - { match: "rm *-iR *", approval: deny }
+    - { match: "rm *-iR", approval: deny }
     - { match: "rm *-R *", approval: deny }
     - { match: "rm *-R", approval: deny }
     - { match: "rm *-Rf *", approval: deny }
@@ -359,6 +369,14 @@ bash:
     - { match: "*/rm *-vrf", approval: deny }
     - { match: "*/rm *-vfr *", approval: deny }
     - { match: "*/rm *-vfr", approval: deny }
+    - { match: "*/rm *-ri *", approval: deny }
+    - { match: "*/rm *-ri", approval: deny }
+    - { match: "*/rm *-ir *", approval: deny }
+    - { match: "*/rm *-ir", approval: deny }
+    - { match: "*/rm *-Ri *", approval: deny }
+    - { match: "*/rm *-Ri", approval: deny }
+    - { match: "*/rm *-iR *", approval: deny }
+    - { match: "*/rm *-iR", approval: deny }
     - { match: "*/rm *-R *", approval: deny }
     - { match: "*/rm *-R", approval: deny }
     - { match: "*/rm *-Rf *", approval: deny }
@@ -383,6 +401,60 @@ bash:
     - { match: "*/rm *-vfR", approval: deny }
     - { match: "*/rm *--recursive *", approval: deny }
     - { match: "*/rm *--recursive", approval: deny }
+    - { match: "* rm *-r *", approval: deny }
+    - { match: "* rm *-r", approval: deny }
+    - { match: "* rm *-rf *", approval: deny }
+    - { match: "* rm *-rf", approval: deny }
+    - { match: "* rm *-fr *", approval: deny }
+    - { match: "* rm *-fr", approval: deny }
+    - { match: "* rm *-rv *", approval: deny }
+    - { match: "* rm *-rv", approval: deny }
+    - { match: "* rm *-vr *", approval: deny }
+    - { match: "* rm *-vr", approval: deny }
+    - { match: "* rm *-rfv *", approval: deny }
+    - { match: "* rm *-rfv", approval: deny }
+    - { match: "* rm *-rvf *", approval: deny }
+    - { match: "* rm *-rvf", approval: deny }
+    - { match: "* rm *-frv *", approval: deny }
+    - { match: "* rm *-frv", approval: deny }
+    - { match: "* rm *-fvr *", approval: deny }
+    - { match: "* rm *-fvr", approval: deny }
+    - { match: "* rm *-vrf *", approval: deny }
+    - { match: "* rm *-vrf", approval: deny }
+    - { match: "* rm *-vfr *", approval: deny }
+    - { match: "* rm *-vfr", approval: deny }
+    - { match: "* rm *-R *", approval: deny }
+    - { match: "* rm *-R", approval: deny }
+    - { match: "* rm *-ri *", approval: deny }
+    - { match: "* rm *-ri", approval: deny }
+    - { match: "* rm *-ir *", approval: deny }
+    - { match: "* rm *-ir", approval: deny }
+    - { match: "* rm *-Ri *", approval: deny }
+    - { match: "* rm *-Ri", approval: deny }
+    - { match: "* rm *-iR *", approval: deny }
+    - { match: "* rm *-iR", approval: deny }
+    - { match: "* rm *-Rf *", approval: deny }
+    - { match: "* rm *-Rf", approval: deny }
+    - { match: "* rm *-fR *", approval: deny }
+    - { match: "* rm *-fR", approval: deny }
+    - { match: "* rm *-Rv *", approval: deny }
+    - { match: "* rm *-Rv", approval: deny }
+    - { match: "* rm *-vR *", approval: deny }
+    - { match: "* rm *-vR", approval: deny }
+    - { match: "* rm *-Rfv *", approval: deny }
+    - { match: "* rm *-Rfv", approval: deny }
+    - { match: "* rm *-Rvf *", approval: deny }
+    - { match: "* rm *-Rvf", approval: deny }
+    - { match: "* rm *-fRv *", approval: deny }
+    - { match: "* rm *-fRv", approval: deny }
+    - { match: "* rm *-fvR *", approval: deny }
+    - { match: "* rm *-fvR", approval: deny }
+    - { match: "* rm *-vRf *", approval: deny }
+    - { match: "* rm *-vRf", approval: deny }
+    - { match: "* rm *-vfR *", approval: deny }
+    - { match: "* rm *-vfR", approval: deny }
+    - { match: "* rm *--recursive *", approval: deny }
+    - { match: "* rm *--recursive", approval: deny }
     - { match: "HOME=*", approval: deny }
     - { match: "export HOME=*", approval: deny }
     - { match: "env HOME=*", approval: deny }
@@ -395,44 +467,8 @@ bash:
     - { match: "git push -f origin main *", approval: deny }
     - { match: "git push -f origin master", approval: deny }
     - { match: "git push -f origin master *", approval: deny }
-    # Allow, ahead of the prompts below: the option-terminated forms. After
-    # `--`, every argument is a path, so no option can force or empty.
-    - { match: "git rm -- *", approval: allow }
-    - { match: "git worktree remove -- *", approval: allow }
-    - { match: "gio trash -- *", approval: allow }
-    # Prompt: every other rm, git rm, git worktree remove, and gio trash; bulk
-    # deletion; history-destroying git; every git push spelling that could
+    # Prompt: history-destroying git, and every git push spelling that could
     # force. A subagent cannot answer a prompt, so omp rejects it.
-    - { match: "rm", approval: prompt }
-    - { match: "rm *", approval: prompt }
-    - { match: "*/rm", approval: prompt }
-    - { match: "*/rm *", approval: prompt }
-    - { match: "xargs rm", approval: prompt }
-    - { match: "xargs rm *", approval: prompt }
-    - { match: "xargs * rm", approval: prompt }
-    - { match: "xargs * rm *", approval: prompt }
-    - { match: "env * rm", approval: prompt }
-    - { match: "env * rm *", approval: prompt }
-    - { match: "command rm", approval: prompt }
-    - { match: "command rm *", approval: prompt }
-    - { match: "exec rm", approval: prompt }
-    - { match: "exec rm *", approval: prompt }
-    - { match: "nohup rm", approval: prompt }
-    - { match: "nohup rm *", approval: prompt }
-    - { match: "nice rm", approval: prompt }
-    - { match: "nice rm *", approval: prompt }
-    - { match: "nice * rm", approval: prompt }
-    - { match: "nice * rm *", approval: prompt }
-    - { match: "time rm", approval: prompt }
-    - { match: "time rm *", approval: prompt }
-    - { match: "timeout * rm", approval: prompt }
-    - { match: "timeout * rm *", approval: prompt }
-    - { match: "stdbuf * rm", approval: prompt }
-    - { match: "stdbuf * rm *", approval: prompt }
-    - { match: "find -delete*", approval: prompt }
-    - { match: "find * -delete*", approval: prompt }
-    - { match: "find -exec*rm *", approval: prompt }
-    - { match: "find * -exec*rm *", approval: prompt }
     - { match: "git clean", approval: prompt }
     - { match: "git clean *", approval: prompt }
     - { match: "git reset *--hard*", approval: prompt }
@@ -560,11 +596,5 @@ bash:
     - { match: "git push * $*", approval: prompt }
     - { match: "git push `*", approval: prompt }
     - { match: "git push * `*", approval: prompt }
-    - { match: "git rm", approval: prompt }
-    - { match: "git rm *", approval: prompt }
-    - { match: "git worktree remove", approval: prompt }
-    - { match: "git worktree remove *", approval: prompt }
-    - { match: "gio trash", approval: prompt }
-    - { match: "gio trash *", approval: prompt }
     # Allow: the macOS trash command.
     - { match: "trash *", approval: allow }

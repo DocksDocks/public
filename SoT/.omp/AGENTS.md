@@ -41,8 +41,8 @@ To remove, use the trash.
 - To remove a file or a directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
 - `gio trash` can refuse a path in `/tmp`, because it does not trash on system mounts. Leave temporary files there; the system clears them.
 - To remove a path from the git index, run `git rm -- <path>`. To remove a worktree, run `git worktree remove -- <path>`.
-- Write the `--` exactly as shown. omp asks me before any other form of `gio trash`, `git rm`, or `git worktree remove`.
-- Do not use `rm`. omp denies a recursive `rm` and asks me before any other `rm`.
+- Write the `--` exactly as shown.
+- Do not use `rm`. omp denies a recursive `rm`.
 - A subagent cannot get my approval, so omp rejects every ask in a subagent.
 - Do not delete in bulk yourself (`find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
 - If a deletion needs `rm -r` or a bulk command, put the paths in your report. I run that deletion myself.

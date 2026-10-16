@@ -45,14 +45,19 @@ const keepSotSequence: MergeSequence = () => {};
 /**
  * Identity of one `bash.patterns` rule, normalized the way omp reads it: the
  * approval is trimmed and lowercased, and whitespace runs in `match` collapse to
- * one space. Returns undefined for an entry omp would ignore.
+ * one space.
  */
-function bashPatternKey(node: unknown): string | undefined {
+export function bashRuleKey(match: string, approval: string): string {
+  return `${approval.trim().toLowerCase()}\u0000${match.trim().replace(/\s+/gu, " ")}`;
+}
+
+/** `bashRuleKey` of one deployed rule node, or undefined for an entry omp would ignore. */
+export function bashPatternKey(node: unknown): string | undefined {
   if (!isMap(node)) return undefined;
   const match = node.get("match");
   const approval = node.get("approval");
   if (typeof match !== "string" || typeof approval !== "string") return undefined;
-  return `${approval.trim().toLowerCase()}\u0000${match.trim().replace(/\s+/gu, " ")}`;
+  return bashRuleKey(match, approval);
 }
 
 /**

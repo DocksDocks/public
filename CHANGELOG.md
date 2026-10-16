@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-10-16 - docks-kit 0.20.9: omp file-removal prompts removed
+
+omp asked for approval too often. By owner decision, omp no longer prompts
+for file removal. Claude Code and Codex guards do not change.
+
+### Removed
+
+- The 36 omp `bash.patterns` prompts for file removal: plain `rm` (also
+  `*/rm` and behind `xargs`, `env`, `command`, `exec`, `nohup`, `nice`,
+  `time`, `timeout`, and `stdbuf`), `find -delete`, `find -exec rm`, `git rm`,
+  `git worktree remove`, and `gio trash`.
+- The 3 allow exceptions `git rm -- *`, `git worktree remove -- *`, and
+  `gio trash -- *`. They only bypassed the removed prompts.
+
+### Added
+
+- omp denies a recursive `rm` behind any prefix: a `* rm ` copy of each bare
+  recursive-cluster deny. `env X=1 rm -rf b`, `xargs rm -rf`,
+  `nice rm -rf b`, `find . -exec rm -rf {} +`, `git rm -r dir`, and
+  `git rm -rf dir` were prompts and are now denied.
+- omp denies the `-ri`, `-ir`, `-Ri`, and `-iR` clusters for bare `rm`,
+  `*/rm`, and `* rm`.
+
+### Kept
+
+- Every omp deny rule. Recursive `rm`, `rm` of `/`, `~`, or `$HOME`,
+  `sudo rm`, and `rm` with an `r` or `f` option before an absolute path stay
+  denied.
+- The history-loss prompts: `git clean`, `git reset --hard`, and every
+  `git push` form that could force. The `trash *` allow stays.
+
+### Sync
+
+- `ompRemovals.ts syncOmpRemovals` prunes the 39 retired rules
+  (`OMP_RETIRED_BASH_RULES`) from `~/.omp/agent/config.yml` on every sync,
+  without `--reconcile`. It matches the exact `match` and `approval` pair, so
+  a different user rule survives.
+
 ## 2026-10-15 - docks-kit 0.20.8: destructive-command guards
 
 On 2026-10-14 an omp subagent ran `rm -rf "$HOME"` after an
