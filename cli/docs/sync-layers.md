@@ -62,11 +62,13 @@ config.yml and models.yml are deep-merged (SoT keys win, mapping nodes merge,
 deployed-only keys survive; config.yml also drops stale slash-bearing
 `retry.fallbackChains` wildcards). A SoT list replaces the deployed list, except
 config.yml `bash.patterns`: the merge keeps user rules and groups all rules as
-kit deny, user deny, user prompt, kit allow exceptions (the `-- *` forms), kit
+kit deny, user deny, user prompt, kit allow exceptions (kit allows listed
+before the first kit prompt; the kit currently ships none), kit
 prompt, other user rules, and kit allow, so no allow loosens a deny or a prompt (see
 `docks-kit docs command-guards`). After each merge, every sync (no
 `--reconcile` needed) force-prunes the `ompRemovals.ts` retired-key inventory:
-config.yml keys whose deployed value still equals the value the kit used to
+the retired kit `bash.patterns` rules in `OMP_RETIRED_BASH_RULES` (exact
+`match` and `approval` pairs), config.yml keys whose deployed value still equals the value the kit used to
 ship, `providers.webSearchOrder` at any value, and the retired
 `anthropic.modelOverrides.claude-opus-5-5` block in models.yml while it still
 matches the shipped block.

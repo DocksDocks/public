@@ -287,6 +287,93 @@ describe("retired omp config keys", () => {
   });
 });
 
+/**
+ * bash.patterns as an earlier kit sync left them: retired kit rules, one of
+ * them respaced and recased, among a kit deny, prompt, and allow that the kit
+ * still ships, and two user rules that only resemble retired ones.
+ */
+const DEPLOYED_RULES = [
+  "bash:",
+  "  patterns:",
+  '    - { match: "rm *-rf *", approval: deny }',
+  "    # Allow, ahead of the prompts below.",
+  '    - { match: "git rm -- *", approval: allow }',
+  "    # Prompt: every other rm.",
+  '    - { match: "rm", approval: prompt }',
+  '    - { match: " rm   * ", approval: PROMPT }',
+  '    - { match: "find * -delete*", approval: prompt }',
+  '    - { match: "gio trash *", approval: prompt }',
+  '    - { match: "rm *", approval: deny }',
+  '    - { match: "rm -i *", approval: prompt }',
+  '    - { match: "git clean *", approval: prompt }',
+  '    - { match: "trash *", approval: allow }',
+  "",
+].join("\n");
+
+const KEPT_RULES = [
+  { match: "rm *-rf *", approval: "deny" },
+  { match: "rm *", approval: "deny" },
+  { match: "rm -i *", approval: "prompt" },
+  { match: "git clean *", approval: "prompt" },
+  { match: "trash *", approval: "allow" },
+];
+
+describe("retired omp bash.patterns rules", () => {
+  it("prunes retired kit rules and keeps kit and user rules that differ", () => {
+    const { file, root } = deployConfig(DEPLOYED_RULES);
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(5);
+    const after = readFileSync(file, "utf8");
+    expect(parse(after)).toEqual({ bash: { patterns: KEPT_RULES } });
+    expect(after).not.toContain("# Allow, ahead of the prompts below.");
+    expect(after).not.toContain("# Prompt: every other rm.");
+  });
+
+  it("reports the retired rules under dry run and leaves the file byte-identical", () => {
+    const { file, root } = deployConfig(DEPLOYED_RULES);
+    const stdout: Array<string> = [];
+
+    expect(syncOmpRemovals(testCtx(root, true, stdout), file)).toBe(5);
+    expect(readFileSync(file, "utf8")).toBe(DEPLOYED_RULES);
+    expect(stdout.join("")).toContain(
+      `[dry-run] prune ${file}: bash.patterns "git rm -- *" (allow), bash.patterns "rm" (prompt)`,
+    );
+  });
+
+  it("changes nothing on a second run", () => {
+    const { file, root } = deployConfig(DEPLOYED_RULES);
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(5);
+    const once = readFileSync(file, "utf8");
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(readFileSync(file, "utf8")).toBe(once);
+  });
+
+  it("retires no key or rule the SoT config still ships", () => {
+    const source = readFileSync(join(kitHome(), "SoT", ".omp", "config.yml"), "utf8");
+    const { file, root } = deployConfig(source);
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(readFileSync(file, "utf8")).toBe(source);
+  });
+
+  it("prunes retired rules that the ompSync config merge kept", async () => {
+    const root = mkdtempSync(join(tmpdir(), "omp-removals-rules-"));
+    roots.push(root);
+    const agentDir = join(root, ".omp", "agent");
+    mkdirSync(agentDir, { recursive: true });
+    const file = join(agentDir, "config.yml");
+    writeFileSync(file, DEPLOYED_RULES);
+
+    await runOmpSync(root);
+
+    expect(parse(readFileSync(file, "utf8"))).toEqual({
+      bash: { patterns: KEPT_RULES },
+      steeringMode: "all",
+    });
+  });
+});
+
 /** The claude-opus-5-5 override block exactly as SoT/.omp/models.yml shipped it. */
 const SHIPPED_OPUS_BLOCK = `      claude-opus-5-5:
         name: Claude Opus 5.5
