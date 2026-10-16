@@ -162,7 +162,9 @@ The kit therefore denies every `rm` shape that the check can flag:
 
 - **omp, literal `*`**: omp cannot match a literal `*`, so it cannot tell a
   glob from a file name. The kit therefore runs every `rm` that it does not
-  deny without a prompt.
+  deny without a prompt. This includes `rm ~/*`, `rm $HOME/*`, and `rm /*`
+  without an `r` or `f` option, because a deny rule for them would also deny
+  `rm ~/notes.txt` (owner decision, 0.20.9).
 - **omp, whole-line matching**: omp tests deny rules against the whole command
   line too, so a pattern can span commands. For example, `rm x && cd ~`,
   `rm -i a && ls -R /tmp`, and `sudo apt update && rm x` are denied. Run `rm`
