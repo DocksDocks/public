@@ -369,6 +369,7 @@ invalidates the pass and blocks merge.
 A step whose `Effect` is not `local` requires an in-session `ask` confirmation
 immediately before it runs; when `ask` is unavailable the step is set `blocked`
 and `Blocked: <unconfirmed effect>` is recorded first in `## Open questions`.
+A user-invoked `yolo` run replaces these asks, the five-round stop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
 
 Routine plan issue publication is authorized by the settled mode and needs no
 repeated repository picker. Routine linked-branch creation, commits, and normal

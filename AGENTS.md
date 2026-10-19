@@ -177,12 +177,13 @@ The plan record is a GitHub issue. Its body starts with
 `<!-- plan-contract: v4 -->`, followed by one blank line and seven `##`
 sections. It has no frontmatter. GitHub owns the title, open-work phase, owner,
 timestamps, and completion. The repository tracks no plan markdown.
-Exactly three skills own the workflow. `plan-workspace` maintains the workspace.
+Three skills own the workflow. `plan-workspace` maintains the workspace.
 Main-context `plan-manager` runs six phases: decide, draft, research, plan
 review, implement, and code review. It uses bounded repair and fresh re-review
 in both review phases, then archives. Internal `plan-reviewer` returns one
 readable pre-implementation verdict block per round. Two read-only reviewer
 wrappers ship: `plan-reviewer` and `code-reviewer`.
+The explicit-only `yolo` skill runs the same workflow and asks only before merge.
 </constraint>
 
 After the marker and blank line, the record carries exactly seven sections.
@@ -228,6 +229,7 @@ before it runs; when `ask` is unavailable the step is set `blocked` and the plan
 reason becomes the first `## Open questions` line, `Blocked: <reason>`.
 Persisted effects record intent only. Routine issue publication and landing
 actions are outside the Steps table.
+A user-invoked `yolo` run replaces these asks, the five-round stop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
 
 Render a plan body verbatim only when the user names that plan and asks to see it. After a write, report the one-line header strip and the changed lines only; a write never re-renders the body.
 

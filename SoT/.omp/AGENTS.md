@@ -20,6 +20,10 @@ MUST use `ask` before:
 - A request that contradicts the repo: surface the conflict and let me resolve it; never
   silently pick one side.
 
+When I invoke the `yolo` skill, that invocation answers every ask this section requires,
+until the run asks its merge question. It does not cover destructive work, secrets, or
+production systems.
+
 If `ask` is not registered — subagent, headless, or `-p` print runs, where `hasUI` is false —
 the MUST above cannot be satisfied: do not fabricate the call and do not stall on it. Take the
 conservative reversible option and put the question, plus the assumption you made, in your
