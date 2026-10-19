@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-19 - docks-kit 0.20.10: yolo runs answer omp ask rules
+
+### Changed
+
+- The deployed omp global instructions (`SoT/.omp/AGENTS.md`) add one rule
+  to `## Asking me things`. When the user invokes the `yolo` skill from
+  `plan-lifecycle`, that invocation answers every ask that section requires,
+  until the run asks its merge question. It does not cover destructive work,
+  secrets, or production systems. The root `AGENTS.md` and `docs/PLAN.md`
+  plan routing name the same exception.
+
 ## 2026-10-16 - docks-kit 0.20.9: omp file-removal prompts removed
 
 omp asked for approval too often. By owner decision, omp no longer prompts
