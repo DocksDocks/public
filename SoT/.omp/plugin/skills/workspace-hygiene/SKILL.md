@@ -57,8 +57,7 @@ Report the other items to the user.
 
 ## Plan runs
 
-- After the pull request of a plan merges and the plan is archived, remove the linked worktree. Then stop the stacks and processes that the plan started.
-- If the plan run stops without a merge, stop its processes and stacks. Keep the worktree, and name it.
+- For a plan run, follow the Teardown rule in the `plan-lifecycle` plan contract (`plan-manager/references/plan-contract.md`). That rule decides when the run stops stacks and processes, removes the linked worktree, deletes the branch, and keeps a resource.
 
 ## Automatic sweep
 
