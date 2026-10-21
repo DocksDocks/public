@@ -37,7 +37,9 @@ plugin. The Claude Code and Codex SoT files do not change.
   reminds the agent of each resource that a bash command created, checks at
   session stop that those resources are gone, and starts
   `docks-kit tidy --apply` in the background at most once per 12 hours. It
-  also ships the `workspace-hygiene` skill and the `/cleanup` command.
+  also ships the `workspace-hygiene` skill and the `/cleanup` command. For a
+  plan run, the skill points to the Teardown rule of the `plan-lifecycle`
+  plan contract.
 - omp denies bulk removal that can empty the home directory: `find -delete`,
   `find -exec rm` (also `-execdir`, `-ok`, `-okdir`), and `xargs rm`, in
   every position and by path.
