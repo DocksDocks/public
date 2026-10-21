@@ -23,6 +23,9 @@ github:
 find:
   enabled: true
 
+browser:
+  idleCloseSec: 600
+
 task:
   eager: always
   showResolvedModelBadge: true
@@ -35,6 +38,7 @@ task:
   maxConcurrency: 16
   maxRecursionDepth: 2
   maxRuntimeMs: 3600000
+  agentIdleTtlMs: 120000
   agentModelOverrides:
     reviewer: "@reviewer"
     security-reviewer: "@reviewer"
@@ -167,14 +171,17 @@ tools:
 bash:
   # First match wins. omp checks deny and prompt rules against the whole line
   # and each quote-stripped segment, so `rm -rf "$HOME"` matches `rm * $HOME`.
-  # `*` matches any text, spaces included; no escape spells a literal `*`.
-  # No rule matches a plain rm, find -delete, git rm, git worktree remove, or
-  # gio trash, so yolo runs it. omp's critical-command check turns a prompt
-  # into an allow under yolo, so every rm shape it can flag is denied.
+  # `*` matches any text, spaces and slashes included; no escape spells a
+  # literal `*`.
+  # No rule matches a plain rm, git rm, git worktree remove, gio trash, or
+  # docks-kit scratch remove, so yolo runs it.
+  # omp's critical-command check turns a prompt into an allow under yolo, so
+  # every rm shape it can flag is denied.
   patterns:
     # Deny: rm of the home directory or the filesystem root, sudo before rm,
     # rm with an r or f option before an absolute path, recursive rm (bare, by
-    # path, or after any word such as env, xargs, find -exec, or git), HOME
+    # path, or after any word such as env, xargs, find -exec, or git), bulk
+    # removal through find -delete, find -exec rm, and xargs rm, HOME
     # reassignment, and a force push to main or master.
     - { match: "rm /", approval: deny }
     - { match: "rm / *", approval: deny }
@@ -455,6 +462,24 @@ bash:
     - { match: "* rm *-vfR", approval: deny }
     - { match: "* rm *--recursive *", approval: deny }
     - { match: "* rm *--recursive", approval: deny }
+    # Bulk removal: find -delete, find -exec rm, and xargs rm, in every position.
+    - { match: "find *-delete*", approval: deny }
+    - { match: "*/find *-delete*", approval: deny }
+    - { match: "* find *-delete*", approval: deny }
+    - { match: "*-exec rm *", approval: deny }
+    - { match: "*-exec */rm *", approval: deny }
+    - { match: "*-execdir rm *", approval: deny }
+    - { match: "*-execdir */rm *", approval: deny }
+    - { match: "*-ok rm *", approval: deny }
+    - { match: "*-ok */rm *", approval: deny }
+    - { match: "*-okdir rm *", approval: deny }
+    - { match: "*-okdir */rm *", approval: deny }
+    - { match: "*xargs rm", approval: deny }
+    - { match: "*xargs rm *", approval: deny }
+    - { match: "*xargs * rm", approval: deny }
+    - { match: "*xargs * rm *", approval: deny }
+    - { match: "*xargs */rm", approval: deny }
+    - { match: "*xargs */rm *", approval: deny }
     - { match: "HOME=*", approval: deny }
     - { match: "export HOME=*", approval: deny }
     - { match: "env HOME=*", approval: deny }

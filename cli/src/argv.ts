@@ -10,6 +10,8 @@ import { syncCommand } from "./commands/sync";
 import { toolchainCommand } from "./commands/toolchain";
 import { updateCommand } from "./commands/update";
 import { ompCommand } from "./commands/omp";
+import { scratchCommand } from "./commands/scratch";
+import { tidyCommand } from "./commands/tidy";
 import {
   buildSurfaces,
   normalizeArgv,
@@ -37,6 +39,8 @@ const COMMANDS: ReadonlyArray<CommandValue> = [
   skillsCommand,
   docsCommand,
   ompCommand,
+  scratchCommand,
+  tidyCommand,
 ];
 
 const SURFACES: ArgvSurfaces = buildSurfaces(COMMANDS, GlobalFlag.BuiltIns);

@@ -40,19 +40,37 @@ round trips. Being overruled ends the discussion — execute my call without rel
 
 ## Removing files
 
-To remove, use the trash.
+To remove, use the trash or a command that checks the path.
 
 - To remove a file or a directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
-- `gio trash` can refuse a path in `/tmp`, because it does not trash on system mounts. Leave temporary files there; the system clears them.
-- To remove a path from the git index, run `git rm -- <path>`. To remove a worktree, run `git worktree remove -- <path>`.
+- To remove a temporary directory, use the `scratch_remove` tool or run `docks-kit scratch remove <path>`. Both remove only a path inside the scratch root, the system temporary directory, or `/var/tmp`.
+- To remove a path from the git index, run `git rm -- <path>`.
+- To remove a worktree, run `git worktree remove -- <path>`.
+- If git refuses because the worktree has changes, make sure that each of its commits is on the remote. Then make sure that `git status --porcelain` lists only generated files. Then run `git worktree remove --force -- <path>`.
+- Never pass `--force` two times to `git worktree remove`.
 - Write the `--` exactly as shown.
-- Do not use `rm`. omp denies a recursive `rm`.
+- Do not use `rm`. omp denies a recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`.
+- Do not delete files through `eval`, Python, or Node code.
 - A subagent cannot get my approval, so omp rejects every ask in a subagent.
-- Do not delete in bulk yourself (`find -delete`, `git clean`, `git reset --hard`). In the main session, ask me first.
+- Do not delete in bulk yourself (`git clean`, `git reset --hard`). In the main session, ask me first.
 - If a deletion needs `rm -r` or a bulk command, put the paths in your report. I run that deletion myself.
-- Do not use `--force`, `-f`, or an abbreviation of it with `git rm`, `git worktree remove`, or `git push`.
+- Do not use `--force`, `-f`, or an abbreviation of it with `git rm` or `git push`.
 - Write literal absolute paths. Do not use `~` or `$HOME` in a command.
 - Do not set or export `HOME`.
+
+## Cleaning up what you create
+
+- Follow the `workspace-hygiene` skill for each resource that you create: worktrees, temporary directories, processes, containers, clusters, tunnels, scheduled jobs, global installs, and remote test resources.
+- Create a temporary directory with the `scratch_new` tool or `docks-kit scratch new <label>`. Do not put a temporary directory, a package store, a cache, or a clone in `/tmp`.
+- Create a worktree only at `<data>/agent-worktrees/<repository>/<name>`. `<data>` is `$XDG_DATA_HOME`, or `.local/share` in the home directory when that variable is not set. Write the literal absolute path.
+- Run a test suite in single-run mode. Start a server, a watcher, a tunnel, or a database only as a named bash service or an async job. Do not detach a process with `nohup`, `setsid`, `disown`, `tmux`, or `screen`.
+- Do not install a package globally, add a scheduled job, or enable a service unless I ask for it.
+- Do not remove a Docker volume, image, or build cache that you did not create, and do not run `docker system prune`.
+- Before your final answer, remove each resource that you created and that the task no longer needs. Keep a resource only when I ask for it or a later step needs it, and name it in your final answer.
+- A scratch directory is deleted after 7 idle days. Put evidence that you cite in the issue, the pull request, or the repository.
+- Resources on this workstation are always development. A remote resource is one that you reach through SSH or a provider CLI, such as `wrangler`, `vercel`, `netlify`, `fly`, `supabase`, `kubectl`, or a remote Docker host.
+- Clean up a remote resource only when its target is named local, development, dev, test, homolog, homologation, staging, or preview. Every other target is production. For example, `wrangler delete` without `--env` acts on the top-level Worker, which is usually production.
+- Never stop, remove, undeploy, or delete a production resource without an `ask` immediately before it. A production cleanup must be rare. A `yolo` invocation does not answer this ask. In a subagent, do not do it; name the resource in your report.
 
 ## Output Standard
 

@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
@@ -11,7 +11,9 @@ metadata:
     - path: cli/src/engine-native/ompMarketplace.ts
       lines: "1-131"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-169"
+      lines: "1-203"
+    - path: cli/src/engine-native/ompKitPlugin.ts
+      lines: "1-94"
     - path: cli/src/engine-native/ompRemovals.ts
       lines: "1-216"
     - path: cli/src/engine-native/failures.ts
@@ -32,7 +34,7 @@ metadata:
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-10-14"
+  updated: "2026-10-21"
 ---
 
 # omp Sync Context
@@ -130,6 +132,7 @@ Replace the other three deployed files as whole files.
 | `SoT/.omp/config.yml` | `<agentDir>/config.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/models.yml` | `<agentDir>/models.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/intercom.json` | `<intercomRoot>/intercom/config.json` | Use the profile `agentDir` under a named profile; otherwise use `$PI_CODING_AGENT_DIR`, defaulting to `~/.pi/agent`. |
+| `SoT/.omp/plugin/**` (payload prefix) | `~/.docks-kit/omp-plugin/` | Kit-owned: `ompKitPlugin.ts syncKitPlugin` writes each file only when it differs, sets `package.json` `version` to the kit version, removes files that the payload no longer lists, and keeps no backups. |
 
 Under a named profile (`OMP_PROFILE` or `PI_PROFILE`), use the profile `agentDir` from `ompPaths`.
 omp exports `PI_CODING_AGENT_DIR` as that profile `agentDir`, and `pi-intercom` reads that variable.
@@ -213,9 +216,9 @@ Use the same value for install and upgrade commands.
 Accept the row only when its `scope` is `user`, because omp reports one row per
 scope and `upgrade --scope user` fails while the user scope is empty.
 
-Read each npm row from `name` and `version`.
-Use `name` to find `pi-intercom`.
-Compare `version` with the verified toolchain pin.
+Read each npm row from `name`, `version`, and `path`.
+Use `name` to find `pi-intercom` and the kit plugin `docks-kit-omp`.
+Compare the `pi-intercom` `version` with the verified toolchain pin.
 Use the exact verified version for installation.
 
 ```ts
@@ -232,6 +235,8 @@ Upgrade a user-scope marketplace plugin unless refreshes are skipped.
 Install a missing npm plugin even when refreshes are skipped.
 Refresh a present npm plugin only when its version differs.
 Pass `--force` only when replacing a present npm plugin version.
+Link the kit plugin with `omp plugin link <kitPluginDir>` unless its npm row `path` resolves to the real kit plugin directory.
+Run the link also under `--skip-plugin-refresh` and when the inventory is unavailable.
 
 ## Dry Run And Refresh Rules
 
@@ -264,6 +269,7 @@ Install every missing plugin regardless of this flag.
 | Marketplace plugin present in user scope | Upgrade | Skip upgrade |
 | npm plugin missing | Install pinned version | Install pinned version |
 | npm plugin at wrong version | Force pinned version | Skip replacement |
+| Kit plugin not linked, or linked elsewhere | `omp plugin link` | `omp plugin link` |
 
 Anchor this behavior at `ompMarketplace.ts syncMarketplace` and `ompPlugins.ts syncPlugins` — dry-run and refresh boundaries.
 

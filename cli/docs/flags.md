@@ -78,6 +78,17 @@ never reach omp:
 The same names on omp stay reachable behind an explicit delimiter. Use
 `docks-kit omp -- --help` to ask omp for help.
 
+## `scratch` and `tidy`
+
+| Command | Effect |
+|------|--------|
+| `scratch new <label>` | Create a private directory (mode 0700) `~/.cache/docks-kit/scratch/<label>-XXXXXX` and print its path; the label matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` |
+| `scratch remove <path>...` | Remove each path whose real path is strictly inside the scratch root, the system temporary directory, or `/var/tmp`; print `removed <path>` or `refused <path>: <reason>`; exit 1 when any path is refused |
+| `tidy` | List the safe leftover actions (`remove`, `stop`) and the kept candidates (`keep`) with reasons; change nothing |
+| `tidy --apply` | Perform those actions under the lock `~/.cache/docks-kit/tidy.lock` and append the outcomes to `~/.cache/docks-kit/tidy.log`; exit 1 when an action fails |
+| `tidy --repo <path>` | Take the worktree candidates only from that repository, at any location |
+| `tidy --report` | After the plan, print read-only sections on memory, temporary directories, processes, Docker, caches, Trash, git, agent histories, scheduled jobs, and global installs |
+
 ## Renamed legacy flags (pre-CLI sync.sh)
 
 Old flags exit with a rename hint — there is no compat behavior.

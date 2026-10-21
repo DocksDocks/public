@@ -10,9 +10,11 @@ import { modelsCommand } from "./commands/models";
 import { ompCommand } from "./commands/omp";
 import { pluginsCommand } from "./commands/plugins";
 import { skillsCommand } from "./commands/skills";
+import { scratchCommand } from "./commands/scratch";
 import { statusCommand } from "./commands/status";
 import { syncCommand } from "./commands/sync";
 import { toolchainCommand } from "./commands/toolchain";
+import { tidyCommand } from "./commands/tidy";
 import { updateCommand } from "./commands/update";
 import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload";
 import { prepareArgv } from "./argv";
@@ -41,6 +43,8 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log("  docks-kit skills list                      universal skills");
     yield* Console.log("  docks-kit docs [topic]                     self-documentation");
     yield* Console.log("  docks-kit omp [--model|--pick] [...]       free-model omp session");
+    yield* Console.log("  docks-kit scratch new|remove              agent temporary directories");
+    yield* Console.log("  docks-kit tidy [--apply] [--repo <path>]  remove safe agent leftovers");
     yield* Console.log("");
     yield* Console.log(
       "Run 'docks-kit --help' for full option listings (also: --wizard, --completions).",
@@ -63,6 +67,8 @@ const root = Command.make("docks-kit", {}, () =>
     skillsCommand,
     docsCommand,
     ompCommand,
+    scratchCommand,
+    tidyCommand,
   ]),
 );
 

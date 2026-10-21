@@ -40,10 +40,12 @@ that `eval` starts.
 | Recursive `rm` (`-r`, `-R`, `-rf`, `-fr`, `-rfv`, `-ri`, `-ir`, `-Ri`, `-iR`, `--recursive`, other listed clusters) | deny, also behind any prefix (`env`, `xargs`, `nice`, `find -exec`, `git rm -r`) | ask | ask (every `rm` asks) |
 | `rm` with an `r` or `f` option before an absolute path, `--no-preserve-root` | deny | ask if recursive, else classifier | ask |
 | Any other `rm`: one file, several files, a glob, `-f` | allow | glob asks; the rest goes to the classifier | ask |
-| `find ... -delete`, `find ... -exec rm` without a recursive option | allow | ask | ask (every `find` asks) |
+| `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask | ask (every `find` asks) |
 | `git clean`, `git reset --hard` | ask | ask | ask |
 | `git push` that could force: see below | ask | ask | ask (every `git push` asks) |
 | `git rm -- <path>`, `git worktree remove -- <path>` | allow | ask | ask |
+| `git worktree remove --force -- <path>` | allow; the omp prompt permits it once, after the commits are on the remote | ask | ask |
+| `docks-kit scratch remove <path>` | allow; the command removes only a path inside the scratch root, the system temporary directory, or `/var/tmp` | no rule | no rule |
 | Any other non-recursive `git rm` or `git worktree remove` | allow | ask | ask |
 | `gio trash -- <path>` | allow | allow | ask |
 | Any other `gio trash` | allow | ask with `--empty` or `--restore`; the rest goes to the classifier | ask |
@@ -84,11 +86,16 @@ it shares the `--f` prefix.
    every later argument as a path, and a path such as `--empty` cannot empty
    the trash.
 2. `gio trash` does not trash on a system internal mount, such as a `tmpfs`
-   `/tmp`. Leave a temporary file in `/tmp`; the system clears it.
+   `/tmp`. In omp, remove a temporary directory with the `scratch_remove`
+   tool or `docks-kit scratch remove <path>`. In Claude Code and Codex, leave
+   a temporary file in `/tmp`; the system clears it.
 3. To remove a path from the git index, run `git rm -- <path>`. To remove a
-   worktree, run `git worktree remove -- <path>`. Never pass `--force`.
-4. In omp, do not use `rm`. omp denies a recursive `rm`. It runs any other
-   `rm` without a prompt.
+   worktree, run `git worktree remove -- <path>`. In omp, when git refuses
+   because the worktree has changes, the agent may pass `--force` once, after
+   each commit is on the remote and `git status --porcelain` lists only
+   generated files. Never pass `--force` two times.
+4. In omp, do not use `rm`. omp denies a recursive `rm`, `find -delete`,
+   `find -exec rm`, and `xargs rm`. It runs any other `rm` without a prompt.
 5. In Claude Code and Codex, use `rm <file>` without flags only for one file
    that the agent created.
 6. For a recursive or bulk deletion, ask the user in the main session. A
@@ -130,6 +137,11 @@ The kit therefore denies every `rm` shape that the check can flag:
 - an `rm` with an option that holds `r` or `f` before an absolute path;
 - `sudo` anywhere before `rm`;
 - `--no-preserve-root`.
+
+The kit also denies bulk removal through `find -delete`, `find -exec rm`, and
+`xargs rm`. omp's critical check does not flag these forms, but they can empty
+the home directory, and no glob can express "inside the temporary directory".
+`docks-kit scratch remove` checks the path in code instead.
 
 ## Matching rules per tool
 
@@ -178,6 +190,9 @@ The kit therefore denies every `rm` shape that the check can flag:
   such as `env X=1 rm -rf b`, `xargs rm -rf`, `find . -exec rm -rf {} +`, or
   `git rm -r dir`. A `* rm ` rule also matches text, so a line such as
   `echo do not rm -rf b` is denied too.
+- **omp, bulk-removal text**: the `* find *-delete*`, `*-exec rm *`, and
+  `*xargs rm` rules also match text, so a line such as
+  `echo use find with -delete` is denied. Write such text to a file instead.
 - **Recursive `rm` clusters**: omp and Claude Code match only the listed
   recursive-`rm` clusters. In omp, these are `r` or `R` alone or with `f` and
   `v`, plus `-ri`, `-ir`, `-Ri`, and `-iR`. In Claude Code, they are `r` or `R`

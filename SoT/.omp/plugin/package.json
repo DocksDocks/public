@@ -1,0 +1,8 @@
+{
+  "name": "docks-kit-omp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "docks-kit integration for omp: workspace hygiene tools, reminders, and the automatic tidy sweep",
+  "omp": { "extensions": ["./extensions/hygiene.ts"] }
+}

@@ -1,21 +1,31 @@
 /**
- * EngineNative omp plugin pass: marketplace-plugin install/upgrade plus the
- * pinned pi-intercom npm plugin. Split from ompSync.ts; the orchestration
- * still lives there.
+ * EngineNative omp plugin pass: marketplace-plugin install/upgrade, the
+ * pinned pi-intercom npm plugin, and the link of the kit plugin that
+ * `ompKitPlugin.ts syncKitPlugin` writes. Split from ompSync.ts; the
+ * orchestration still lives there.
  */
+import { realpathSync } from "node:fs";
+
 import { processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
+import { KIT_PLUGIN_NAME, kitPluginDir } from "./ompKitPlugin";
 import { field } from "./toolchain";
 
 const MARKETPLACE_PLUGIN_IDS = ["docks@docks", "plan-lifecycle@docks"] as const;
 
 // -------------------------------------------------------------- plugins ----
 
+interface InstalledNpmPlugin {
+  readonly version: string;
+  /** The `node_modules` entry of the plugin, a symbolic link for a linked plugin. */
+  readonly path: string | undefined;
+}
+
 interface InstalledPlugins {
   readonly marketplace: Set<string>;
-  readonly npm: Map<string, string>;
+  readonly npm: Map<string, InstalledNpmPlugin>;
 }
 
 async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined> {
@@ -46,11 +56,12 @@ async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined
     marketplace.add(row["id"]);
   }
 
-  const npm = new Map<string, string>();
+  const npm = new Map<string, InstalledNpmPlugin>();
   for (const row of value["npm"]) {
     if (!isObject(row) || typeof row["name"] !== "string" || typeof row["version"] !== "string")
       continue;
-    npm.set(row["name"], row["version"]);
+    const path = typeof row["path"] === "string" ? row["path"] : undefined;
+    npm.set(row["name"], { version: row["version"], path });
   }
   return { marketplace, npm };
 }
@@ -71,6 +82,14 @@ async function runPluginCommand(
     `omp plugin operation failed for ${plugin}: ${processFailureSummary(result)}; run manually: omp ${args.join(" ")}`,
   );
   return false;
+}
+
+function realPath(path: string): string | undefined {
+  try {
+    return realpathSync(path);
+  } catch {
+    return undefined;
+  }
 }
 
 export async function syncPlugins(ctx: Ctx): Promise<number> {
@@ -105,6 +124,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     } else {
       echo(`[dry-run] omp install pi-intercom@${piIntercomPin}`);
     }
+    echo(`[dry-run] omp plugin link ${kitPluginDir(ctx.home)}`);
     return 0;
   }
 
@@ -121,7 +141,8 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     installed === undefined
       ? 0
       : MARKETPLACE_PLUGIN_IDS.filter((pluginId) => installed.marketplace.has(pluginId)).length +
-        (piIntercomPin !== "" && installed.npm.has("pi-intercom") ? 1 : 0);
+        (piIntercomPin !== "" && installed.npm.has("pi-intercom") ? 1 : 0) +
+        (installed.npm.has(KIT_PLUGIN_NAME) ? 1 : 0);
   let operationsSucceeded = 0;
 
   for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
@@ -143,7 +164,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
   if (piIntercomPin === "") {
     warn("pi-intercom install skipped because SoT/toolchain.json has no verified pi-intercom pin");
   } else {
-    const installedVersion = installed?.npm.get("pi-intercom");
+    const installedVersion = installed?.npm.get("pi-intercom")?.version;
     const present = installedVersion !== undefined;
     if (installedVersion === piIntercomPin) {
       verbose(`omp npm plugin pi-intercom already installed at ${piIntercomPin}`);
@@ -158,6 +179,18 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
         if (!present) pluginsInstalled++;
       }
     }
+  }
+
+  // The kit plugin is linked when omp's entry resolves to the kit directory.
+  // A refresh never applies: the link always points at the current files.
+  const kitDir = kitPluginDir(ctx.home);
+  const kitPluginPath = installed?.npm.get(KIT_PLUGIN_NAME)?.path;
+  const linkedTarget = kitPluginPath === undefined ? undefined : realPath(kitPluginPath);
+  if (linkedTarget !== undefined && linkedTarget === realPath(kitDir)) {
+    verbose(`omp kit plugin ${KIT_PLUGIN_NAME} already linked`);
+  } else if (await runPluginCommand(ctx, KIT_PLUGIN_NAME, ["plugin", "link", kitDir])) {
+    operationsSucceeded++;
+    if (installed?.npm.has(KIT_PLUGIN_NAME) !== true) pluginsInstalled++;
   }
 
   if (operationsSucceeded > 0) {
