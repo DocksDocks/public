@@ -270,8 +270,13 @@ export function runPublicCli(
   };
 }
 
+/**
+ * The argv log with the per-run home spelled `<HOME>`, in its native and
+ * forward-slash forms. `omp plugin link` names a path under that home.
+ */
 export function readArgvLog(run: EngineRun): string {
-  return readFileSync(run.argvLog, "utf8");
+  const log = readFileSync(run.argvLog, "utf8");
+  return log.replaceAll(run.home, "<HOME>").replaceAll(run.home.replaceAll("\\", "/"), "<HOME>");
 }
 
 export function cleanup(runs: Array<EngineRun>): void {

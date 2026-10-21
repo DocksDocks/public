@@ -3,6 +3,7 @@ import { Console, Effect, Option } from "effect";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { bail } from "../engine";
 import { capture, p, spawnHost, which } from "../engine-native/exec";
+import { kitCacheDir } from "../engine-native/scratch";
 import {
   DEFAULT_OMP_SESSION_MODEL,
   engineHome,
@@ -314,7 +315,7 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
     // re-read the overlay during a live session. The name carries a digest of
     // the rendered overlay, so a second launcher on another model or level
     // cannot rewrite the file a running session still reads.
-    const directory = p(home, ".cache", "docks-kit");
+    const directory = kitCacheDir(home);
     const overlayPath = p(directory, overlayFileName(session));
     yield* Effect.sync(() => {
       // `mode` applies only when mkdir creates the path, so an existing

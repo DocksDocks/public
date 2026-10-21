@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-10-21 - docks-kit 0.21.0: agent resource hygiene for omp
+
+Agents left behind worktrees, temporary directories, processes, and
+containers, and the guards that protect the home directory also blocked their
+cleanup. This release adds checked cleanup commands and a kit-owned omp
+plugin. The Claude Code and Codex SoT files do not change.
+
+### Added
+
+- `docks-kit scratch new <label>` creates a private directory (mode 0700)
+  under `~/.cache/docks-kit/scratch/`. `docks-kit scratch remove <path>...`
+  removes a path only when its real path is strictly inside the scratch root,
+  the system temporary directory, or `/var/tmp`. It refuses a symbolic link,
+  a root itself, a path that contains the home directory, a path that another
+  user owns, and a path on another filesystem.
+- `docks-kit tidy` lists safe agent leftovers, and `--apply` removes them:
+  merged, clean, idle (24 h) worktrees under the agent worktree root and
+  their compose containers, orphaned processes (24 h) in agent directories,
+  and scratch directories idle for 7 days. It never passes `--force` to
+  `git worktree remove` and never removes a named volume. `--repo <path>`
+  takes the worktree candidates from one repository. When the host cannot
+  list processes with their working directories, tidy keeps every candidate
+  that a running process could use. Tidy acts only on a local Docker daemon:
+  it accepts a `unix:///` socket or a local `npipe:////./pipe/` endpoint and
+  passes it as `--host` to every Docker call. Any other endpoint, such as
+  `ssh://` or `tcp://`, skips every container rule and keeps the worktrees
+  that it would remove.
+- `docks-kit tidy --report` lists other disk and memory use without changing
+  anything: memory and swap, temporary directories, long-running processes
+  and their ports, Docker, package caches, Trash, merged branches, agent
+  histories, scheduled jobs, and recent global installs.
+- `docks-kit sync omp` materializes the kit omp plugin `docks-kit-omp` to
+  `~/.docks-kit/omp-plugin` and links it with `omp plugin link`. The plugin
+  registers the tools `scratch_new`, `scratch_remove`, and `tidy_report`,
+  reminds the agent of each resource that a bash command created, checks at
+  session stop that those resources are gone, and starts
+  `docks-kit tidy --apply` in the background at most once per 12 hours. It
+  also ships the `workspace-hygiene` skill and the `/cleanup` command.
+- omp denies bulk removal that can empty the home directory: `find -delete`,
+  `find -exec rm` (also `-execdir`, `-ok`, `-okdir`), and `xargs rm`, in
+  every position and by path.
+- omp parks an idle subagent after 2 minutes (`task.agentIdleTtlMs: 120000`)
+  and closes an idle browser after 10 minutes (`browser.idleCloseSec: 600`).
+
+### Changed
+
+- The omp global instructions route temporary-directory removal through
+  `scratch_remove` or `docks-kit scratch remove`, permit one
+  `git worktree remove --force -- <path>` after the commits are on the
+  remote, and add `## Cleaning up what you create`.
+- By owner decision, resources on the workstation are always development.
+  An agent cleans up a remote resource that it reaches through SSH or a
+  provider CLI (for example `wrangler`, `vercel`, `kubectl`, or a remote
+  Docker host) only when its target is local, development, test, staging, or
+  preview. A production cleanup needs an `ask` immediately before it, and a
+  `yolo` invocation does not answer that ask. The prompt rules, the
+  `workspace-hygiene` skill, `/cleanup`, and the extension reminders carry
+  this rule.
+
 ## 2026-10-19 - docks-kit 0.20.10: yolo runs answer omp ask rules
 
 ### Changed

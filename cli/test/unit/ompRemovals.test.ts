@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../src/payload", () => ({
   payloadText: mocks.payloadText,
   payloadDisplayPath: (path: string) => `embedded:${path}`,
+  // ompSync also writes the kit plugin files; these cases need none of them.
+  payloadPaths: () => [],
 }));
 vi.mock("../../src/engine-native/exec", async () => {
   const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec");

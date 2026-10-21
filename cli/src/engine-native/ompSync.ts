@@ -6,10 +6,10 @@
  * Resolution stays within the environment and filesystem probes so no omp
  * subcommand runs under ctx.dryRun.
  *
- * Split: file deploy lives in `ompFileDeploy.ts`, the marketplace pass in
- * `ompMarketplace.ts`, the plugin pass in `ompPlugins.ts`, and the retired-key
- * prune in `ompRemovals.ts`. This module keeps the orchestration plus the
- * summary surface.
+ * Split: file deploy lives in `ompFileDeploy.ts`, the kit plugin files in
+ * `ompKitPlugin.ts`, the marketplace pass in `ompMarketplace.ts`, the plugin
+ * pass in `ompPlugins.ts`, and the retired-key prune in `ompRemovals.ts`.
+ * This module keeps the orchestration plus the summary surface.
  */
 import { isAbsolute, resolve } from "node:path";
 
@@ -19,6 +19,7 @@ import type { Ctx } from "./index";
 import { ompPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
+import { syncKitPlugin } from "./ompKitPlugin";
 import { syncMarketplace } from "./ompMarketplace";
 import { syncPlugins } from "./ompPlugins";
 import { syncOmpModelRemovals, syncOmpRemovals } from "./ompRemovals";
@@ -79,6 +80,8 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
     "omp intercom configuration already in sync",
     "omp intercom configuration synced",
   );
+  // The plugin pass links this directory, so the files must exist first.
+  syncKitPlugin(ctx);
 
   const legacyRegistryFile =
     paths.dataRoot === paths.configRoot ? undefined : p(paths.configRoot, "marketplaces.json");

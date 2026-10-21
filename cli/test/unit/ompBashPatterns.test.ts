@@ -110,6 +110,22 @@ const DENIED = [
   "/usr/bin/sudo rm -rf user-data",
   "/usr/bin/sudo /bin/rm notes.txt",
   "env PATH=/usr/bin sudo rm notes.txt",
+  // Bulk removal that can empty the home directory.
+  "xargs rm",
+  "find . -name x | xargs rm",
+  "find . -delete",
+  "find . -name x -delete",
+  "find . -name '*.tmp' -exec rm {} +",
+  "find /home/docks -delete",
+  "cd /home/docks && find . -delete",
+  "/usr/bin/find . -delete",
+  "env FOO=1 find . -delete",
+  "find /home/docks -type f -exec rm {} +",
+  "find . -execdir rm {} ;",
+  "find . -ok /bin/rm {} ;",
+  "find ~ -type f | xargs rm",
+  "git ls-files -z | xargs -0 rm",
+  "xargs /bin/rm",
   // Force push to main or master.
   "git push --force origin main",
 ];
@@ -145,8 +161,9 @@ const PROMPTED = [
 const ALLOWED = [
   "trash build",
   // No rule matches these, and yolo runs them. A file removal runs unless it
-  // is recursive, runs under sudo, or names the root or home directory. A
-  // dash inside a path is not an option cluster.
+  // is recursive, runs under sudo, runs through find -delete, find -exec rm,
+  // or xargs rm, or names the root or home directory. A dash inside a path is
+  // not an option cluster.
   "rm file.txt",
   "rm /home/docks/projects/x/file.txt",
   "rm -- /tmp/x.json",
@@ -158,11 +175,6 @@ const ALLOWED = [
   "rm *.log",
   "rm ~/notes.txt",
   'rm "$HOME/notes.txt"',
-  "xargs rm",
-  "find . -name x | xargs rm",
-  "find . -delete",
-  "find . -name x -delete",
-  "find . -name '*.tmp' -exec rm {} +",
   "gio trash build",
   "gio trash -- build",
   "gio trash --empty",
@@ -177,6 +189,15 @@ const ALLOWED = [
   "git worktree remove ../wt",
   "git worktree remove -- ../wt",
   "git worktree remove --force ../wt",
+  "git worktree remove --force -- /home/docks/.local/share/agent-worktrees/repo/feat",
+  "find . -name x",
+  "find /home/docks/projects -name '*.log'",
+  "xargs grep -l TODO",
+  "docks-kit scratch new eval",
+  "docks-kit scratch remove /tmp/eval-ab12",
+  "docks-kit scratch remove /home/docks/.cache/docks-kit/scratch/eval-ab12 /home/docks/.cache/docks-kit/scratch/run-cd34",
+  "docks-kit tidy --apply",
+  "docks-kit tidy --report",
   "git push -u origin feat/fix-flaky",
   "git push -u origin feat/cache-vf",
   "git push -v origin main",

@@ -114,12 +114,19 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   policy for destructive shell commands; to remove, agents use the trash
   (`gio trash -- <path>`, or `trash <path>` on macOS). `rm` of the home
   directory or `/` and `HOME` reassignment are denied. omp also denies every
-  recursive `rm` and asks before any other `rm`. `find -delete`, `git clean`,
-  `git reset --hard`, any `git push` that could force, and `git rm` other
-  than `git rm -- <path>` ask; Claude Code and Codex also ask before a
-  recursive `rm` and every `git rm`. An omp subagent cannot answer an ask, so
-  omp rejects it; a Codex ask can go to its `auto_review` reviewer. Details,
-  per-tool differences, and gaps: `docks-kit docs command-guards`.
+  recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`, and runs
+  any other `rm` without a prompt. In omp, `git clean`, `git reset --hard`,
+  and any `git push` that could force ask; Claude Code and Codex also ask
+  before `find -delete`, a recursive `rm`, and every `git rm`. An omp
+  subagent cannot answer an ask, so omp rejects it; a Codex ask can go to its
+  `auto_review` reviewer. Details, per-tool differences, and gaps:
+  `docks-kit docs command-guards`.
+- **Agent cleanup (omp)** — `docks-kit scratch` creates and removes agent
+  temporary directories with checked paths, and `docks-kit tidy` removes
+  merged idle worktrees, their containers, orphaned processes, and idle
+  scratch directories; `--report` lists other disk and memory use. The kit
+  omp plugin `docks-kit-omp` exposes these as tools, reminds the agent of
+  what it created, and runs the sweep at most once per 12 hours.
 
 ## Repository map
 
@@ -127,7 +134,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |------|---------|
 | `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
-| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, intercom.json) |
+| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, intercom.json, and the `plugin/` source of `docks-kit-omp`) |
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Curated aliases, notes, and offline Claude/Codex fallback |
 | `SoT/toolchain.json` | Verified-version floors |
