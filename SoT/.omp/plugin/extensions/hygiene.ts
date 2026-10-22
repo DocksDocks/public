@@ -62,7 +62,6 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
-const SHORT_CLUSTER_WITH_U = /^-[A-Za-z]*u[A-Za-z]*$/;
 /** mktemp options after which it prints a name or text but creates nothing. */
 const MKTEMP_CREATES_NOTHING: Record<string, true> = {
   "--dry-run": true,
@@ -868,10 +867,14 @@ export function detectResources(
   };
 
   const segments = scopedSegments(command, ROOT_SCOPE);
-  // Only a command that runs alone owns the output. A substitution such as
-  // `f=$(mktemp)` captures what mktemp prints, and a later command can print
-  // an unrelated path, so a compound command gets the generic note.
-  const ownPath = segments.length === 1 ? lastAbsoluteLine(output) : undefined;
+  // Only a command that runs alone and prints to the tool output owns that
+  // output. A substitution such as `f=$(mktemp)` captures what mktemp prints,
+  // a later command can print an unrelated path, and a redirection or a
+  // process substitution sends the output elsewhere, so these get the
+  // generic note.
+  const sole = segments.length === 1 ? segments[0] : undefined;
+  const ownPath =
+    sole !== undefined && printsToOutput(sole.words) ? lastAbsoluteLine(output) : undefined;
   for (const segment of segments) {
     const { assignments, words } = commandWords(segment.words);
     const first = words[0];
@@ -950,11 +953,9 @@ function detectMktemp(
   path: string | undefined,
   findings: Findings,
 ): void {
-  const createsNothing = args.some(
-    (word) => MKTEMP_CREATES_NOTHING[word] === true || SHORT_CLUSTER_WITH_U.test(word),
-  );
-  if (createsNothing) return;
-  const directory = args.some((word) => word === "--directory" || SHORT_CLUSTER_WITH_D.test(word));
+  const effect = mktempEffect(args);
+  if (effect === "nothing") return;
+  const directory = effect === "directory";
   if (path === undefined) {
     const noun = directory ? "temporary directory" : "temporary file";
     findings.note(unresolvedNote(noun, "docks-kit scratch remove <path>"));
@@ -962,6 +963,49 @@ function detectMktemp(
     findings.resource({ kind: directory ? "tempDir" : "tempFile", path });
   }
   findings.note(SCRATCH_NOTE);
+}
+
+/**
+ * Reads the options of an mktemp call, which GNU mktemp accepts before and
+ * after the template. The value of `--suffix` or `-p`, the template, and every
+ * word after `--` are not options, so `--suffix -upload` is no dry run.
+ */
+function mktempEffect(args: ReadonlyArray<string>): "file" | "directory" | "nothing" {
+  let directory = false;
+  for (let index = 0; index < args.length; index++) {
+    const word = args[index] ?? "";
+    if (word === "--") break;
+    if (!word.startsWith("-") || word === "-") continue;
+    if (word.startsWith("--")) {
+      const name = word.split("=", 1)[0] ?? word;
+      if (MKTEMP_CREATES_NOTHING[name] === true) return "nothing";
+      if (name === "--directory") directory = true;
+      if (name === "--suffix" && !word.includes("=")) index++;
+      continue;
+    }
+    for (let at = 1; at < word.length; at++) {
+      const flag = word[at];
+      if (flag === "u") return "nothing";
+      if (flag === "d") directory = true;
+      if (flag === "p") {
+        // `-p DIR` takes the next word; in `-pDIR` the rest of the word is the value.
+        if (at === word.length - 1) index++;
+        break;
+      }
+    }
+  }
+  return directory ? "directory" : "file";
+}
+
+/** True when no word of the segment redirects its output or runs a process substitution. */
+function printsToOutput(words: ReadonlyArray<string>): boolean {
+  return !words.some(
+    (word) =>
+      REDIRECT_OPERATOR.test(word) ||
+      ATTACHED_REDIRECT.test(word) ||
+      word.includes("<(") ||
+      word.includes(">("),
+  );
 }
 
 function detectWorktree(

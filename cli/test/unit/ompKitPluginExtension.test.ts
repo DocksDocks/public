@@ -224,6 +224,23 @@ describe("detectResources", () => {
   });
 
   it.each([
+    ["mktemp > >(sed 's@.*@/tmp/other-task@')", "a temporary file"],
+    ["docks-kit scratch new x > >(sed 's@.*@/tmp/other-task@')", "a scratch directory"],
+  ])("does not take redirected output for %s", (command, noun) => {
+    const result = detect(command, "/w", `${join(tmpdir(), "other-task")}\n`);
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes(noun))).toBe(true);
+  });
+
+  it.each(["mktemp --suffix -upload", "mktemp --suffix -dir", "mktemp -- -dXXXXXX"])(
+    "reads the options of %s, not an option value or the template",
+    (command) => {
+      const path = join(tmpdir(), "tmp.V");
+      expect(detect(command, "/w", `${path}\n`).resources).toEqual([{ kind: "tempFile", path }]);
+    },
+  );
+
+  it.each([
     ["npm run dev &", "background process"],
     ["nohup srv", "background process"],
     ["kind create cluster", "cluster or virtual machine"],
