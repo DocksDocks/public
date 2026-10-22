@@ -620,9 +620,9 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
 
 /**
  * Removes redirections and leading reserved words, then splits off the
- * `NAME=value` words before the command, also after one `sudo` and an `env`.
- * The first of the returned words is the command name. The words are empty
- * when a `sudo` or `env` option hides the command or its directory.
+ * `NAME=value` words before the command, also after an `env`. The first of
+ * the returned words is the command name. The words are empty when `sudo`
+ * or an `env` option hides the command, its directory, or its Docker daemon.
  */
 function commandWords(segmentWords: ReadonlyArray<string>): {
   assignments: Array<string>;
@@ -641,21 +641,26 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
   const assignments: Array<string> = [];
   let start = 0;
   while (RESERVED_WORDS[result[start] ?? ""] === true) start++;
-  for (const prefix of ["sudo", "env"]) {
-    while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
-    if (result[start] !== prefix) continue;
+  while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
+  // A command under sudo runs as another user, in an environment and a
+  // directory that the sudoers policy controls, so it records nothing.
+  if (result[start] === "sudo") return { assignments, words: [] };
+  if (result[start] === "env") {
     start++;
-    // `env -u NAME` and `sudo -u USER` keep the command and its directory.
-    // Another option can run another program (`env -S`), change the
-    // directory (`env -C`, `sudo -D`, `sudo -i`), or clear the environment
-    // (`env -i`), so the command stays unresolved and records nothing.
+    // `env -u NAME` keeps the command and its directory. Another option can
+    // run another program (`env -S`), change the directory (`env -C`), or
+    // clear the environment (`env -i`), and `env -u DOCKER_HOST` changes the
+    // daemon, so the command records nothing.
     while ((result[start] ?? "").startsWith("-")) {
       const option = result[start] ?? "";
       if (option === "--") {
         start++;
         break;
       }
-      if (option !== "-u" && option !== "--unset") return { assignments, words: [] };
+      const unsetsDaemon = DOCKER_ENVIRONMENT[result[start + 1] ?? ""] === true;
+      if ((option !== "-u" && option !== "--unset") || unsetsDaemon) {
+        return { assignments, words: [] };
+      }
       start += 2;
     }
   }

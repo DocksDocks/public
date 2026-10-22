@@ -325,6 +325,20 @@ describe("Docker daemon targets", () => {
     });
   });
 
+  it("records nothing when env -u removes a daemon variable", () => {
+    const command =
+      "export DOCKER_HOST=ssh://u@h && env -u DOCKER_HOST docker compose -p app up -d";
+    expect(detect(command).resources).toEqual([]);
+  });
+
+  it.each([
+    "sudo docker compose -p app up -d",
+    "export DOCKER_HOST=ssh://u@h && sudo docker compose -p app up -d",
+    "DOCKER_HOST=ssh://u@h sudo DOCKER_CONTEXT=dev docker compose -p app up -d",
+  ])("records nothing for %s, whose daemon the sudoers policy selects", (command) => {
+    expect(detect(command).resources).toEqual([]);
+  });
+
   it("repeats the daemon options in the cleanup of a detached container", () => {
     expect(container("docker -H ssh://u@h run -d img")?.down).toBe(
       `docker --host ssh://u@h stop ${SHORT_ID} && docker --host ssh://u@h rm ${SHORT_ID}`,
