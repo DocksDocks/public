@@ -1,6 +1,6 @@
 ---
 name: workspace-hygiene
-description: Use when a task creates or ends with worktrees, temporary directories, servers, watchers, test runners, containers, clusters, tunnels, scheduled jobs, global installs, or remote test resources, or when disk or memory fills up. Says where to create each resource and how to remove it. Not for git history cleanup or dead-code removal.
+description: Use when a task creates or ends with worktrees, temporary files or directories, servers, watchers, test runners, containers, clusters, tunnels, scheduled jobs, global installs, or remote test resources, or when disk or memory fills up. Says where to create each resource and how to remove it. Not for git history cleanup or dead-code removal.
 ---
 
 # Workspace hygiene
@@ -19,7 +19,7 @@ For each resource, write its path, id, port, or remote name.
 | Class | Create | Remove | Keep when |
 |---|---|---|---|
 | Git worktree | `<data>/agent-worktrees/<repo>/<name>`; reuse a worktree of the same branch | `git worktree remove -- <path>`, then `git worktree prune`; one `--force` only after the commits are on the remote and the changes are generated files | its pull request is open |
-| Temporary directory | `scratch_new`, or `docks-kit scratch new <label>`; never `/tmp` | `scratch_remove`, or `docks-kit scratch remove <path>` | a later step reads it |
+| Temporary file or directory | a directory from `scratch_new` or `docks-kit scratch new <label>`; each temporary file inside it; never `/tmp` | `scratch_remove`, or `docks-kit scratch remove <path>`; `gio trash` does not work on a `tmpfs` `/tmp` | a later step reads it |
 | Test artifacts (coverage, test results, traces, screenshots, videos) | inside the worktree, git-ignored | removed with the worktree; in the user's checkout, `gio trash -- <path>` | the user asked for them |
 | Server, watcher, test runner, browser | named bash service or async job; single-run tests | `write proc://<id>/kill`; outside omp, `kill <pid>` | the user asked for it |
 | Container or compose stack | `docker run --rm`; `docker compose up` in the worktree; no restart policy | `docker compose down`; `docker stop <id>`; on a remote Docker host, only for a development target; ask first for production | its worktree is kept |
@@ -35,7 +35,7 @@ For each resource, write its path, id, port, or remote name.
 
 ## Production resources
 
-- A local workstation resource is always a development resource. This includes worktrees, local compose stacks, local servers and processes, and scratch and temporary directories. Remove it as this skill says, without an additional question.
+- A local workstation resource is always a development resource. This includes worktrees, local compose stacks, local servers and processes, scratch directories, and temporary files and directories. Remove it as this skill says, without an additional question.
 - A remote resource is a resource that you reach through SSH or a provider CLI, for example `wrangler`, `vercel`, `netlify`, `fly`, `supabase`, `neonctl`, `pscale`, `kubectl`, or `gh`. A Docker host that `DOCKER_HOST`, `DOCKER_CONTEXT`, or `docker --context` selects is also remote.
 - A remote target is a development target only when its name is `local`, `development`, `dev`, `test`, `homolog`, `homologation`, `staging`, or `preview`. Every other target is production.
 - Clean up a remote resource with a development target as this skill says.

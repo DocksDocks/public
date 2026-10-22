@@ -176,9 +176,9 @@ describe("detectResources", () => {
   it("finds a mktemp directory and points to the scratch tools", () => {
     const result = detect("mktemp -d", "/w", "/tmp/tmp.X\n");
     expect(result.resources).toEqual([{ kind: "temp", path: "/tmp/tmp.X" }]);
-    expect(result.notes).toEqual([
-      "Create temporary directories with the `scratch_new` tool or `docks-kit scratch new <label>`.",
-    ]);
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0]).toContain("scratch_new");
+    expect(result.notes[0]).toContain("docks-kit scratch new");
   });
 
   it.each([
