@@ -33,6 +33,16 @@
   `PI_CONFIG_FILES`. The overlay empties the retry chains keyed by the free
   model. The catalog check covers each profile that the launch can select.
   Run `omp` directly for an omp subcommand or a paid model.
+- The `docks-kit-omp` extension records no Docker stack or container after a
+  command that changes the daemon variables in a way it cannot follow (#100).
+  Such commands include `unset "$name"`, `export -n`, `export "$v=..."`,
+  `declare`, `source`, and `eval`. Before, the cleanup command of a later
+  `docker compose up -d` could name the wrong daemon. A literal
+  `unset DOCKER_HOST` or `unset -v DOCKER_HOST` still records the stack.
+- On Windows, `docks-kit tidy` reports that another run holds the lock when
+  the lock file is in the delete-pending state (#101). Before, the run
+  stopped with `EPERM`. Windows refuses a new file with the name of a deleted
+  file while a handle to that file is open. Other errors still stop the run.
 
 ### Added
 
