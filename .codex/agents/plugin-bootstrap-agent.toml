@@ -60,7 +60,7 @@ and no `missingToolCount` entry.
 - Removing a plugin deletes its key, then prune removes the user-scope install.
 - `false` entries remain installed and disabled.
 - `bun run golden:dryrun`, `bun run golden:mutation`, and
-  `bun x tsc --noEmit -p cli` pass when behavior changes.
+  `bun run typecheck` pass when behavior changes.
 
 ## Gotchas
 

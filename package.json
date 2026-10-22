@@ -26,7 +26,7 @@
     "README.md"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p cli",
+    "typecheck": "bun check --no-script -b -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
     "smoke:native": "bun cli/scripts/native-smoke.ts",
     "smoke:package": "bun cli/scripts/package-smoke.ts",

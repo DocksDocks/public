@@ -48,7 +48,7 @@ Always install for both `claude-code` and `codex` so the canonical
   to one skill directory.
 - Install command keeps slug before `-a` and names both agents.
 - Snapshot is still written last.
-- `bun run golden:mutation` and `bun x tsc --noEmit -p cli` pass when behavior
+- `bun run golden:mutation` and `bun run typecheck` pass when behavior
   changes.
 
 ## Gotchas

@@ -55,7 +55,7 @@ behavior for removed flag names.
 
 - `bun run golden:dryrun` and, when sync behavior changes, `bun run golden:mutation`.
 - `bun run test:unit`.
-- `bun x tsc --noEmit -p cli`.
+- `bun run typecheck`.
 - Focused public smoke for changed flags or targets, for example
   `./docks-kit sync --dry-run` or `./docks-kit sync codex --dry-run --skip-bubblewrap`.
 
