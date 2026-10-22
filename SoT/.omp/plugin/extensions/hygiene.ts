@@ -72,42 +72,6 @@ const MKTEMP_LONG_OPTIONS: ReadonlyArray<string> = [
   "--help",
   "--version",
 ];
-/** Options of `sudo` and `env` that take the next word as their value. */
-const WRAPPER_VALUE_OPTIONS: Readonly<Record<"sudo" | "env", Record<string, true>>> = {
-  sudo: {
-    "-u": true,
-    "--user": true,
-    "-g": true,
-    "--group": true,
-    "-U": true,
-    "--other-user": true,
-    "-C": true,
-    "--close-from": true,
-    "-D": true,
-    "--chdir": true,
-    "-h": true,
-    "--host": true,
-    "-p": true,
-    "--prompt": true,
-    "-r": true,
-    "--role": true,
-    "-t": true,
-    "--type": true,
-    "-T": true,
-    "--command-timeout": true,
-  },
-  env: {
-    "-u": true,
-    "--unset": true,
-    "-C": true,
-    "--chdir": true,
-    "-S": true,
-    "--split-string": true,
-    "-a": true,
-    "--argv0": true,
-    "-P": true,
-  },
-};
 const CONTAINER_ID = /^[0-9a-f]{64}$/;
 const SAFE_WORD = /^[A-Za-z0-9_/.:@%+=,-]+$/;
 const RESERVED_WORDS: Record<string, true> = {
@@ -657,7 +621,8 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
 /**
  * Removes redirections and leading reserved words, then splits off the
  * `NAME=value` words before the command, also after one `sudo` and an `env`.
- * The first of the returned words is the command name.
+ * The first of the returned words is the command name. The words are empty
+ * when a `sudo` or `env` option hides the command or its directory.
  */
 function commandWords(segmentWords: ReadonlyArray<string>): {
   assignments: Array<string>;
@@ -676,13 +641,22 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
   const assignments: Array<string> = [];
   let start = 0;
   while (RESERVED_WORDS[result[start] ?? ""] === true) start++;
-  for (const prefix of ["sudo", "env"] as const) {
+  for (const prefix of ["sudo", "env"]) {
     while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
     if (result[start] !== prefix) continue;
     start++;
-    // Options of the wrapper, for example `env -i`, `env -u NAME`, or `sudo -g GROUP`.
+    // `env -u NAME` and `sudo -u USER` keep the command and its directory.
+    // Another option can run another program (`env -S`), change the
+    // directory (`env -C`, `sudo -D`, `sudo -i`), or clear the environment
+    // (`env -i`), so the command stays unresolved and records nothing.
     while ((result[start] ?? "").startsWith("-")) {
-      start += WRAPPER_VALUE_OPTIONS[prefix][result[start] ?? ""] === true ? 2 : 1;
+      const option = result[start] ?? "";
+      if (option === "--") {
+        start++;
+        break;
+      }
+      if (option !== "-u" && option !== "--unset") return { assignments, words: [] };
+      start += 2;
     }
   }
   while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");

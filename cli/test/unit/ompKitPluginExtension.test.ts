@@ -259,6 +259,19 @@ describe("detectResources", () => {
   });
 
   it.each([
+    "env -S true git worktree add /tmp/existing",
+    "env -C /srv/new docker compose up -d",
+    "env --chdir /srv/new docker compose up -d",
+    "sudo -D /srv/new docker compose up -d",
+    "sudo -i docker compose up -d",
+  ])(
+    "records nothing for %s, whose wrapper option can change the command or its directory",
+    (command) => {
+      expect(detect(command, "/srv/old").resources).toEqual([]);
+    },
+  );
+
+  it.each([
     ["npm run dev &", "background process"],
     ["nohup srv", "background process"],
     ["kind create cluster", "cluster or virtual machine"],
