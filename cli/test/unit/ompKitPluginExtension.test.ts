@@ -232,13 +232,31 @@ describe("detectResources", () => {
     expect(result.notes.some((note) => note.includes(noun))).toBe(true);
   });
 
-  it.each(["mktemp --suffix -upload", "mktemp --suffix -dir", "mktemp -- -dXXXXXX"])(
-    "reads the options of %s, not an option value or the template",
-    (command) => {
-      const path = join(tmpdir(), "tmp.V");
-      expect(detect(command, "/w", `${path}\n`).resources).toEqual([{ kind: "tempFile", path }]);
-    },
-  );
+  it.each([
+    "mktemp --suffix -upload",
+    "mktemp --s -upload",
+    "mktemp --suffix -dir",
+    "mktemp -- -dXXXXXX",
+  ])("reads the options of %s, not an option value or the template", (command) => {
+    const path = join(tmpdir(), "tmp.V");
+    expect(detect(command, "/w", `${path}\n`).resources).toEqual([{ kind: "tempFile", path }]);
+  });
+
+  it("reads the -t prefix of macOS mktemp as a value", () => {
+    const path = join(tmpdir(), "upload.V");
+    const result = detectResources("mktemp -tupload", resolve("/w"), `${path}\n`, HOME, "darwin");
+    expect(result.resources).toEqual([{ kind: "tempFile", path }]);
+  });
+
+  it("does not take the output of a command that a wrapper runs", () => {
+    const result = detect(
+      `env -a mktemp printf '%s\\n' "$OTHER"`,
+      "/w",
+      `${join(tmpdir(), "other-task")}\n`,
+    );
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes("temporary file"))).toBe(false);
+  });
 
   it.each([
     ["npm run dev &", "background process"],

@@ -62,11 +62,51 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
-/** mktemp options after which it prints a name or text but creates nothing. */
-const MKTEMP_CREATES_NOTHING: Record<string, true> = {
-  "--dry-run": true,
-  "--help": true,
-  "--version": true,
+/** The long options of GNU mktemp, which also accepts a unique prefix of each. */
+const MKTEMP_LONG_OPTIONS: ReadonlyArray<string> = [
+  "--directory",
+  "--dry-run",
+  "--quiet",
+  "--suffix",
+  "--tmpdir",
+  "--help",
+  "--version",
+];
+/** Options of `sudo` and `env` that take the next word as their value. */
+const WRAPPER_VALUE_OPTIONS: Readonly<Record<"sudo" | "env", Record<string, true>>> = {
+  sudo: {
+    "-u": true,
+    "--user": true,
+    "-g": true,
+    "--group": true,
+    "-U": true,
+    "--other-user": true,
+    "-C": true,
+    "--close-from": true,
+    "-D": true,
+    "--chdir": true,
+    "-h": true,
+    "--host": true,
+    "-p": true,
+    "--prompt": true,
+    "-r": true,
+    "--role": true,
+    "-t": true,
+    "--type": true,
+    "-T": true,
+    "--command-timeout": true,
+  },
+  env: {
+    "-u": true,
+    "--unset": true,
+    "-C": true,
+    "--chdir": true,
+    "-S": true,
+    "--split-string": true,
+    "-a": true,
+    "--argv0": true,
+    "-P": true,
+  },
 };
 const CONTAINER_ID = /^[0-9a-f]{64}$/;
 const SAFE_WORD = /^[A-Za-z0-9_/.:@%+=,-]+$/;
@@ -636,13 +676,13 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
   const assignments: Array<string> = [];
   let start = 0;
   while (RESERVED_WORDS[result[start] ?? ""] === true) start++;
-  for (const prefix of ["sudo", "env"]) {
+  for (const prefix of ["sudo", "env"] as const) {
     while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
     if (result[start] !== prefix) continue;
     start++;
-    // Options of env, for example `-i` or `-u NAME`.
+    // Options of the wrapper, for example `env -i`, `env -u NAME`, or `sudo -g GROUP`.
     while ((result[start] ?? "").startsWith("-")) {
-      start += result[start] === "-u" || result[start] === "--unset" ? 2 : 1;
+      start += WRAPPER_VALUE_OPTIONS[prefix][result[start] ?? ""] === true ? 2 : 1;
     }
   }
   while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
@@ -840,6 +880,7 @@ export function detectResources(
   cwd: string,
   output: string,
   home: string,
+  platform: NodeJS.Platform = process.platform,
 ): { resources: Array<HygieneResource>; notes: Array<string> } {
   const found = new Map<string, HygieneResource>();
   const notes: Array<string> = [];
@@ -867,14 +908,17 @@ export function detectResources(
   };
 
   const segments = scopedSegments(command, ROOT_SCOPE);
-  // Only a command that runs alone and prints to the tool output owns that
-  // output. A substitution such as `f=$(mktemp)` captures what mktemp prints,
-  // a later command can print an unrelated path, and a redirection or a
-  // process substitution sends the output elsewhere, so these get the
-  // generic note.
+  // Only a command that runs alone, without a wrapper, and prints to the tool
+  // output owns that output. A substitution such as `f=$(mktemp)` captures
+  // what mktemp prints, a later command can print an unrelated path, a
+  // wrapper such as `env -a mktemp printf` can run another program, and a
+  // redirection or a process substitution sends the output elsewhere, so
+  // these get the generic note.
   const sole = segments.length === 1 ? segments[0] : undefined;
   const ownPath =
-    sole !== undefined && printsToOutput(sole.words) ? lastAbsoluteLine(output) : undefined;
+    sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
+      ? lastAbsoluteLine(output)
+      : undefined;
   for (const segment of segments) {
     const { assignments, words } = commandWords(segment.words);
     const first = words[0];
@@ -899,7 +943,7 @@ export function detectResources(
       directory: state.directory,
       dockerEnvironment: dockerEnvironment(state.dockerEnvironment, assignments),
     };
-    detectCreation(context, home, output, ownPath, findings);
+    detectCreation(context, home, output, ownPath, platform, findings);
     const text = segment.words.map(quote).join(" ").slice(0, COMMAND_TEXT_LIMIT);
     for (const rule of otherRules(context, segment.background, home)) {
       findings.resource({ kind: "other", category: rule.category, command: text, hint: rule.hint });
@@ -913,6 +957,7 @@ function detectCreation(
   home: string,
   output: string,
   ownPath: string | undefined,
+  platform: NodeJS.Platform,
   findings: Findings,
 ): void {
   const { name, words, directory } = context;
@@ -944,16 +989,17 @@ function detectCreation(
     return;
   }
 
-  if (name === "mktemp") detectMktemp(words.slice(1), ownPath, findings);
+  if (name === "mktemp") detectMktemp(words.slice(1), ownPath, platform, findings);
 }
 
 /** mktemp creates a file, or a directory with `-d`; a dry run (`-u`) creates nothing. */
 function detectMktemp(
   args: ReadonlyArray<string>,
   path: string | undefined,
+  platform: NodeJS.Platform,
   findings: Findings,
 ): void {
-  const effect = mktempEffect(args);
+  const effect = mktempEffect(args, platform);
   if (effect === "nothing") return;
   const directory = effect === "directory";
   if (path === undefined) {
@@ -966,28 +1012,36 @@ function detectMktemp(
 }
 
 /**
- * Reads the options of an mktemp call, which GNU mktemp accepts before and
- * after the template. The value of `--suffix` or `-p`, the template, and every
- * word after `--` are not options, so `--suffix -upload` is no dry run.
+ * Reads the options of an mktemp call. GNU mktemp accepts options before and
+ * after the template and a unique prefix of each long option; macOS mktemp
+ * takes a prefix after `-t`. An option value, the template, and every word
+ * after `--` are not options, so `--suffix -upload` is no dry run.
  */
-function mktempEffect(args: ReadonlyArray<string>): "file" | "directory" | "nothing" {
+function mktempEffect(
+  args: ReadonlyArray<string>,
+  platform: NodeJS.Platform,
+): "file" | "directory" | "nothing" {
   let directory = false;
   for (let index = 0; index < args.length; index++) {
     const word = args[index] ?? "";
     if (word === "--") break;
     if (!word.startsWith("-") || word === "-") continue;
     if (word.startsWith("--")) {
-      const name = word.split("=", 1)[0] ?? word;
-      if (MKTEMP_CREATES_NOTHING[name] === true) return "nothing";
-      if (name === "--directory") directory = true;
-      if (name === "--suffix" && !word.includes("=")) index++;
+      const typed = word.split("=", 1)[0] ?? word;
+      const matches = MKTEMP_LONG_OPTIONS.filter((option) => option.startsWith(typed));
+      const option = matches.includes(typed) ? typed : matches.length === 1 ? matches[0] : undefined;
+      // mktemp stops on an unknown or ambiguous option, so it creates nothing.
+      if (option === undefined || option === "--dry-run" || option === "--help") return "nothing";
+      if (option === "--version") return "nothing";
+      if (option === "--directory") directory = true;
+      if (option === "--suffix" && !word.includes("=")) index++;
       continue;
     }
     for (let at = 1; at < word.length; at++) {
       const flag = word[at];
       if (flag === "u") return "nothing";
       if (flag === "d") directory = true;
-      if (flag === "p") {
+      if (flag === "p" || (flag === "t" && platform === "darwin")) {
         // `-p DIR` takes the next word; in `-pDIR` the rest of the word is the value.
         if (at === word.length - 1) index++;
         break;
@@ -995,6 +1049,12 @@ function mktempEffect(args: ReadonlyArray<string>): "file" | "directory" | "noth
     }
   }
   return directory ? "directory" : "file";
+}
+
+/** True when the command of the segment is its first word after the `NAME=value` words. */
+function runsWithoutWrapper(words: ReadonlyArray<string>): boolean {
+  const first = words.find((word) => !ASSIGNMENT.test(word));
+  return first !== undefined && first === commandWords(words).words[0];
 }
 
 /** True when no word of the segment redirects its output or runs a process substitution. */
