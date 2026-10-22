@@ -70,6 +70,6 @@ export const scratchCommand = Command.make("scratch", { action, operands }, (con
   }),
 ).pipe(
   Command.withDescription(
-    "Create or remove agent temporary directories; removal accepts only paths inside the scratch root, the system temporary directory, or /var/tmp.",
+    "Create an agent temporary directory, or remove agent temporary files and directories; removal accepts only paths inside the scratch root, the system temporary directory, or /var/tmp.",
   ),
 );

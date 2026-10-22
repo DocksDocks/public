@@ -174,12 +174,102 @@ describe("detectResources", () => {
   });
 
   it("finds a mktemp directory and points to the scratch tools", () => {
-    const result = detect("mktemp -d", "/w", "/tmp/tmp.X\n");
-    expect(result.resources).toEqual([{ kind: "temp", path: "/tmp/tmp.X" }]);
-    expect(result.notes).toEqual([
-      "Create temporary directories with the `scratch_new` tool or `docks-kit scratch new <label>`.",
-    ]);
+    const path = join(tmpdir(), "tmp.X");
+    const result = detect("mktemp -d", "/w", `${path}\n`);
+    expect(result.resources).toEqual([{ kind: "tempDir", path }]);
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0]).toContain("scratch_new");
+    expect(result.notes[0]).toContain("docks-kit scratch new");
   });
+
+  it("finds a mktemp file, but not a dry-run name, and points to the scratch tools", () => {
+    const path = join(tmpdir(), "tmp.Y");
+    const result = detect("mktemp", "/w", `${path}\n`);
+    expect(result.resources).toEqual([{ kind: "tempFile", path }]);
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0]).toContain("scratch_new");
+    expect(detect("mktemp -u", "/w", `${join(tmpdir(), "tmp.Z")}\n`)).toEqual({
+      resources: [],
+      notes: [],
+    });
+  });
+
+  it.each(["mktemp -du", "mktemp -d --dry-run", "mktemp --directory -u"])(
+    "records nothing for %s, a dry run that creates nothing",
+    (command) => {
+      expect(detect(command, "/w", "/tmp/tmp.Z\n")).toEqual({ resources: [], notes: [] });
+    },
+  );
+
+  it("names a temporary file when the mktemp path is not in the output", () => {
+    const result = detect("f=$(mktemp)");
+    expect(result.resources).toEqual([]);
+    const fileNote = result.notes.find((note) => note.includes("a temporary file"));
+    expect(fileNote).toContain("docks-kit scratch remove <path>");
+  });
+
+  it("does not take another command's output for a captured mktemp file", () => {
+    const other = join(tmpdir(), "other-task");
+    const result = detect(`f=$(mktemp); printf '%s\\n' "$OTHER"`, "/w", `${other}\n`);
+    expect(result.resources).toEqual([]);
+    const fileNote = result.notes.find((note) => note.includes("a temporary file"));
+    expect(fileNote).toContain("docks-kit scratch remove <path>");
+  });
+
+  it("does not take another command's output for a captured scratch directory", () => {
+    const other = join(tmpdir(), "other-task");
+    const result = detect('S=$(docks-kit scratch new x); echo "$OTHER"', "/w", `${other}\n`);
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes("scratch directory"))).toBe(true);
+  });
+
+  it.each([
+    ["mktemp > >(sed 's@.*@/tmp/other-task@')", "a temporary file"],
+    ["docks-kit scratch new x > >(sed 's@.*@/tmp/other-task@')", "a scratch directory"],
+  ])("does not take redirected output for %s", (command, noun) => {
+    const result = detect(command, "/w", `${join(tmpdir(), "other-task")}\n`);
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes(noun))).toBe(true);
+  });
+
+  it.each([
+    "mktemp --suffix -upload",
+    "mktemp --s -upload",
+    "mktemp --suffix -dir",
+    "mktemp -- -dXXXXXX",
+  ])("reads the options of %s, not an option value or the template", (command) => {
+    const path = join(tmpdir(), "tmp.V");
+    expect(detect(command, "/w", `${path}\n`).resources).toEqual([{ kind: "tempFile", path }]);
+  });
+
+  it("reads the -t prefix of macOS mktemp as a value", () => {
+    const path = join(tmpdir(), "upload.V");
+    const result = detectResources("mktemp -tupload", resolve("/w"), `${path}\n`, HOME, "darwin");
+    expect(result.resources).toEqual([{ kind: "tempFile", path }]);
+  });
+
+  it("does not take the output of a command that a wrapper runs", () => {
+    const result = detect(
+      `env -a mktemp printf '%s\\n' "$OTHER"`,
+      "/w",
+      `${join(tmpdir(), "other-task")}\n`,
+    );
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes("temporary file"))).toBe(false);
+  });
+
+  it.each([
+    "env -S true git worktree add /tmp/existing",
+    "env -C /srv/new docker compose up -d",
+    "env --chdir /srv/new docker compose up -d",
+    "sudo -D /srv/new docker compose up -d",
+    "sudo -i docker compose up -d",
+  ])(
+    "records nothing for %s, whose wrapper option can change the command or its directory",
+    (command) => {
+      expect(detect(command, "/srv/old").resources).toEqual([]);
+    },
+  );
 
   it.each([
     ["npm run dev &", "background process"],
@@ -233,6 +323,27 @@ describe("Docker daemon targets", () => {
       environment: { DOCKER_HOST: "ssh://u@h" },
       options: [],
     });
+  });
+
+  it("records nothing when env -u removes a daemon variable", () => {
+    const command =
+      "export DOCKER_HOST=ssh://u@h && env -u DOCKER_HOST docker compose -p app up -d";
+    expect(detect(command).resources).toEqual([]);
+  });
+
+  it.each([
+    'name=DOCKER_HOST; export DOCKER_HOST=ssh://u@h; env -u "$name" docker compose -p app up -d',
+    'name=DOCKER_HOST; export DOCKER_HOST=ssh://u@h; env --unset "$name" docker compose -p app up -d',
+  ])("records nothing for %s, whose unset variable is not literal", (command) => {
+    expect(detect(command).resources).toEqual([]);
+  });
+
+  it.each([
+    "sudo docker compose -p app up -d",
+    "export DOCKER_HOST=ssh://u@h && sudo docker compose -p app up -d",
+    "DOCKER_HOST=ssh://u@h sudo DOCKER_CONTEXT=dev docker compose -p app up -d",
+  ])("records nothing for %s, whose daemon the sudoers policy selects", (command) => {
+    expect(detect(command).resources).toEqual([]);
   });
 
   it("repeats the daemon options in the cleanup of a detached container", () => {
@@ -301,7 +412,8 @@ describe("reminders", () => {
       docker: DEFAULT_DAEMON,
     },
     { kind: "scratch", path: "/h/.cache/docks-kit/scratch/a b" },
-    { kind: "temp", path: "/tmp/tmp.X" },
+    { kind: "tempDir", path: "/tmp/tmp.X" },
+    { kind: "tempFile", path: "/tmp/tmp.Y" },
   ];
   const other: HygieneResource = {
     kind: "other",
@@ -323,6 +435,12 @@ describe("reminders", () => {
     expect(creationReminder(other)).toBe(
       "This command created a background process (`npm run dev`). Stop it before your final answer, or start it as a named bash service.",
     );
+  });
+
+  it("names a temporary file and its cleanup command in a creation reminder", () => {
+    const reminder = creationReminder({ kind: "tempFile", path: "/tmp/tmp.Y" });
+    expect(reminder).toContain("the temporary file /tmp/tmp.Y");
+    expect(reminder).toContain("`docks-kit scratch remove /tmp/tmp.Y`");
   });
 
   it("lists every cleanup command and the keep sentence at stop", () => {
@@ -636,6 +754,20 @@ describe("extension handlers", () => {
     expect(await stop?.({ stop_hook_active: true }, { cwd: "/w" })).toBeUndefined();
     expect(await stop?.({ stop_hook_active: false }, { cwd: "/w" })).toBeUndefined();
     expect(statSync(directory).isDirectory()).toBe(true);
+  });
+
+  it("reminds at stop while a mktemp file exists", async () => {
+    const { handlers } = load();
+    const file = join(sandbox(), "tmp.Y");
+    writeFileSync(file, "");
+
+    await bash(handlers, "mktemp", `${file}\n`);
+
+    const stop = handlers.get("session_stop");
+    const result = (await stop?.({ stop_hook_active: false }, { cwd: "/w" })) as
+      | { additionalContext: string }
+      | undefined;
+    expect(result?.additionalContext).toContain(`the temporary file ${file}`);
   });
 
   it("ignores a failed bash call", async () => {
