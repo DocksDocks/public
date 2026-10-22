@@ -890,9 +890,9 @@ export function detectResources(
   // Only a command that runs alone, without a wrapper, and prints to the tool
   // output owns that output. A substitution such as `f=$(mktemp)` captures
   // what mktemp prints, a later command can print an unrelated path, a
-  // wrapper such as `env -a mktemp printf` can run another program, and a
-  // redirection or a process substitution sends the output elsewhere, so
-  // these get the generic note.
+  // wrapper such as `env` or `time` stands between the command and the
+  // output, and a redirection or a process substitution sends the output
+  // elsewhere, so these get the generic note.
   const sole = segments.length === 1 ? segments[0] : undefined;
   const ownPath =
     sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
