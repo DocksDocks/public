@@ -1,5 +1,6 @@
-import { Command, Prompt } from "effect/unstable/cli";
+import { Command } from "effect/unstable/cli";
 import { Console, Effect } from "effect";
+import { checklistPrompt } from "../checklistPrompt";
 import { bail } from "../engine";
 import {
   engineHome,
@@ -14,7 +15,7 @@ import { kitDbFile } from "../engine-native/kitDb";
 const DESCRIPTIONS: Record<Harness, string> = {
   claude: "Claude Code user configuration",
   codex: "Codex user configuration",
-  agents: "universal agent skills",
+  agents: "Universal agent skills",
   omp: "Oh My Pi user configuration",
 };
 
@@ -39,32 +40,40 @@ export const harnessesCommand = Command.make("harnesses", {}, () =>
 
     if (!process.stdin.isTTY || !process.stdout.isTTY) return;
 
-    const answer = yield* Prompt.MultiSelect({
-      message: "Choose the harnesses for a flag-less docks-kit sync",
-      choices: HARNESSES.map((harness) => ({
-        title: harness,
+    const result = yield* checklistPrompt({
+      title: "Harnesses",
+      message: "Choose what a plain docks-kit sync sets up.",
+      note:
+        stored === undefined
+          ? "Every harness starts ticked. Nothing is stored until you save."
+          : undefined,
+      items: HARNESSES.map((harness) => ({
         value: harness,
+        label: harness,
         description: DESCRIPTIONS[harness],
         // With no stored selection, pre-tick every harness, omp included, so a
         // new machine opts out of omp instead of opting in. A flag-less sync
         // keeps LEGACY_SELECTION until this picker saves a selection.
-        selected: (stored ?? HARNESSES).includes(harness),
+        checked: (stored ?? HARNESSES).includes(harness),
       })),
+      emptySelectionError: "Tick at least one harness.",
     });
 
-    if (answer.length === 0) {
-      return yield* bail("Select at least one harness. The stored selection was not changed.");
+    if (result._tag === "Cancelled") {
+      yield* Console.log("Harness selection unchanged.");
+      return;
     }
 
     yield* Effect.try({
-      try: () => writeHarnessSelection(home, answer),
+      try: () => writeHarnessSelection(home, result.values),
       catch: (error) => (error instanceof Error ? error.message : String(error)),
     }).pipe(
       Effect.catch((reason) =>
         bail(`Cannot save the harness selection to ${kitDbFile(home)}: ${reason}`, 1),
       ),
     );
-    yield* Console.log(`Saved harness selection: ${answer.join(", ")} (${kitDbFile(home)})`);
+    const saved = result.values.join(", ");
+    yield* Console.log(`Saved harness selection: ${saved} (${kitDbFile(home)})`);
   }),
 ).pipe(
   Command.withDescription("Choose the harness selection that drives a flag-less docks-kit sync."),
