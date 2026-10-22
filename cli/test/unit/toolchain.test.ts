@@ -125,7 +125,7 @@ describe("public toolchain ensure", () => {
 
       try {
         expect(run.exitCode).toBe(0);
-        expect(run.stdout).toContain("[dry-run] install Bun 1.4.2 (kit-verified)");
+        expect(run.stdout).toContain("[dry-run] install Bun 1.4.4 (kit-verified)");
         const argvLog = readFileSync(join(run.home, ".golden-argv.log"), "utf8");
         expect(argvLog.split("\n").filter((line) => line.startsWith("curl\t"))).toEqual([]);
       } finally {
@@ -137,7 +137,7 @@ describe("public toolchain ensure", () => {
   );
 
   it.each([
-    ["1.4.2", "1.4.2"],
+    ["1.4.4", "1.4.4"],
     ["", "version unknown"],
   ])(
     "reports a present Bun with %j version without installing it",
@@ -186,7 +186,7 @@ describe("public toolchain ensure", () => {
 
     expect(await modeToolchain(ctx, ["ensure", "bun"])).toBe(0);
     expect(stderr.map(stripVTControlCharacters)).toEqual([
-      "[warn] bun 1.4.0 is below the kit floor 1.4.2; run bun upgrade\n",
+      "[warn] bun 1.4.0 is below the kit floor 1.4.4; run bun upgrade\n",
     ]);
   });
 });
