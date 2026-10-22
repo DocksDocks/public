@@ -86,9 +86,9 @@ a failed child process turns a real sync failure into a success log.
 
 ## Supported-host boundary
 
-- `engine.ts requireSupportedHost, pre-execution gate` admits Linux, macOS, and Windows on x64 or arm64, and runs before EngineNative or the `engineCapture` child fallback.
-- Keep `engine.test.ts supported host boundary` cases for `win32/x64` and `win32/arm64`. They prove Windows on x64 or arm64 reaches EngineNative.
-- Keep `engine.test.ts unsupported host boundary` cases `freebsd/arm64`, `linux/ia32`, and `win32/ia32`. They prove rejected hosts cannot reach EngineNative or the Bun/source fallback.
+- `engine.ts requireSupportedHost, pre-execution gate` admits exactly Linux on x64 and arm64, macOS on arm64, and Windows on x64, and runs before EngineNative or the `engineCapture` child fallback.
+- Keep the `engine.test.ts supported host boundary` cases for the four admitted hosts. They prove each kept host reaches EngineNative.
+- Keep the `engine.test.ts unsupported host boundary` cases `freebsd/arm64`, `linux/ia32`, `win32/ia32`, `win32/arm64`, and `darwin/x64`. They prove a rejected host, removed targets included, cannot reach EngineNative or the Bun/source fallback.
 - Golden normalization canonicalizes CRLF to LF and scrubs temp paths for deterministic fixtures; that normalization is not a supported-host path.
 
 ## Gotchas

@@ -1,15 +1,14 @@
 # Platform support
 
-The supported host matrix is exact:
+The supported host matrix is exact: Linux on x64 and arm64, macOS on arm64,
+and Windows on x64.
 
 | Platform | Architecture | docks-kit binary | Sync engine |
 |----------|--------------|------------------|-------------|
 | Linux | x64 | `docks-kit-linux-x64` | EngineNative (TS) |
 | Linux | arm64 | `docks-kit-linux-arm64` | EngineNative (TS) |
-| macOS | x64 | `docks-kit-darwin-x64` | EngineNative (TS) |
 | macOS | arm64 | `docks-kit-darwin-arm64` | EngineNative (TS) |
 | Windows | x64 | `docks-kit-windows-x64.exe` | EngineNative (TS) |
-| Windows | arm64 | `docks-kit-windows-arm64.exe` | EngineNative (TS) |
 
 POSIX hosts use the `docks-kit` launcher. Windows uses `docks-kit.ps1`.
 Hosts outside this table fail before either launcher can fall back to Bun
