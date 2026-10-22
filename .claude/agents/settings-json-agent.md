@@ -56,7 +56,7 @@ left untouched.
 
 - Merge behavior covered by `bun run test:unit`.
 - Golden dry-run/mutation pass when sync output or file effects change.
-- `bun x tsc --noEmit -p cli`.
+- `bun run typecheck`.
 - Focused temp-HOME dry-run for changed Claude settings paths.
 
 ## Gotchas

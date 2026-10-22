@@ -8,11 +8,11 @@ $ErrorActionPreference = 'Stop'
 $RepoDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # BEGIN GENERATED BUN PIN
-$BunPin = "1.4.2"
+$BunPin = "1.4.4"
 # END GENERATED BUN PIN
 
 # BEGIN GENERATED BUN FLOOR
-$BunFloor = "1.4.2"
+$BunFloor = "1.4.4"
 # END GENERATED BUN FLOOR
 
 $ProcessorArchitecture = if (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {

@@ -2,8 +2,9 @@
 
 The kit ships one destructive-command policy to omp, Claude Code, and Codex.
 The short rule for agents: **to remove, use the trash**. Run
-`gio trash -- <path>` on Linux or `trash <path>` on macOS. To remove a path
-from the git index, run `git rm -- <path>`.
+`gio trash -- <path>` on Linux or `trash <path>` on macOS. In omp, remove a
+temporary file or directory with `docks-kit scratch remove <path>` instead.
+To remove a path from the git index, run `git rm -- <path>`.
 
 The policy follows one principle: **fail closed**. A command is allowed only
 in a canonical form that is safe by construction. Every other form that could
@@ -81,14 +82,16 @@ it shares the `--f` prefix.
 
 ## How an agent removes files
 
-1. Move a file or a directory to the trash with `gio trash -- <path>` on Linux
-   or `trash <path>` on macOS. The `--` ends option parsing, so `gio` reads
-   every later argument as a path, and a path such as `--empty` cannot empty
-   the trash.
-2. `gio trash` does not trash on a system internal mount, such as a `tmpfs`
-   `/tmp`. In omp, remove a temporary directory with the `scratch_remove`
-   tool or `docks-kit scratch remove <path>`. In Claude Code and Codex, leave
-   a temporary file in `/tmp`; the system clears it.
+1. In omp, remove a temporary file or directory with the `scratch_remove`
+   tool or `docks-kit scratch remove <path>`. The command removes only a path
+   inside the scratch root, the system temporary directory, or `/var/tmp`.
+   `gio trash` does not trash on a system internal mount, such as a `tmpfs`
+   `/tmp`.
+2. Move every other file or directory to the trash with `gio trash -- <path>`
+   on Linux or `trash <path>` on macOS. The `--` ends option parsing, so `gio`
+   reads every later argument as a path, and a path such as `--empty` cannot
+   empty the trash. In Claude Code and Codex, leave a temporary file in
+   `/tmp`; the system clears it.
 3. To remove a path from the git index, run `git rm -- <path>`. To remove a
    worktree, run `git worktree remove -- <path>`. In omp, when git refuses
    because the worktree has changes, the agent may pass `--force` once, after

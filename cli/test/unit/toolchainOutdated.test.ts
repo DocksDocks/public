@@ -98,7 +98,7 @@ describe("toolchain outdated", () => {
   it("distinguishes a newer release from a release matching the verified pin", async () => {
     const fetchImpl = async (url: string | URL | Request): Promise<Response> => {
       const address = String(url);
-      if (address.includes("/repos/oven-sh/bun/")) return jsonResponse({ tag_name: "bun-v1.4.3" });
+      if (address.includes("/repos/oven-sh/bun/")) return jsonResponse({ tag_name: "bun-v1.4.5" });
       if (address.includes("/repos/can1357/oh-my-pi/"))
         return jsonResponse({ tag_name: `v${verifiedVersion("omp")}` });
       if (address === "https://registry.npmjs.org/typescript")
@@ -109,7 +109,7 @@ describe("toolchain outdated", () => {
 
     expect(await outdatedReport(makeCtx(stdout), { refresh: false, fetchImpl })).toBe(0);
     const output = stdout.join("");
-    expect(output).toMatch(/^bun\s+managed\s+1\.4\.2\s+1\.4\.3\s+newer\s+github oven-sh\/bun$/m);
+    expect(output).toMatch(/^bun\s+managed\s+1\.4\.4\s+1\.4\.5\s+newer\s+github oven-sh\/bun$/m);
     const ompPin = verifiedVersion("omp").replaceAll(".", "\\.");
     expect(output).toMatch(
       new RegExp(
