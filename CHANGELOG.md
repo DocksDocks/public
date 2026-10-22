@@ -21,8 +21,8 @@
   ticks the harness under the cursor, a Save row stores the selection, a hint
   line names the keys, and Escape leaves the selection unchanged. The picker
   fits the terminal width, uses ASCII on an old Windows console, and drops
-  color when `NO_COLOR` is set. Before, the picker started on a Select All
-  row, saved on Enter, and showed no key hints.
+  color when `NO_COLOR` is set. Before, the picker started on a Select All or
+  Select None row, saved on Enter, and showed no key hints.
 
 ## 2026-10-22 - docks-kit 0.21.1: omp temporary files, Bun 1.4.4, and free omp sessions
 
