@@ -1,15 +1,17 @@
 /**
  * Run overlay for `docks-kit omp`. The overlay merges over the deployed omp
  * config for one run only. It sets the 16 roles in ROLE_ORDER to the free
- * model and empties the 13 retry chains in FALLBACK_ORDER. omp merges the
- * overlay key by key, so each deployed retry chain that is not in
- * FALLBACK_ORDER stays as deployed. The `web` role and its retry chain are
- * not in the overlay, so the deployed web-search provider order applies, and
- * that order can include a paid chat model. A deployed `plan`, `slow`, or
- * `designer` chain also stays and can name a paid model. Every other key
- * falls through to the deployed config.
+ * model and empties the 13 retry chains in FALLBACK_ORDER and the chains keyed
+ * by the free model. omp merges the overlay key by key, so each deployed retry
+ * chain that is not in FALLBACK_ORDER stays as deployed. The `web` role and
+ * its retry chain are not in the overlay, so the deployed web-search provider
+ * order applies, and that order can include a paid chat model. A deployed
+ * `plan`, `slow`, or `designer` chain also stays, but a retry of the free
+ * model uses the empty chain keyed by that model first. Every other key falls
+ * through to the deployed config.
  */
 import { createHash } from "node:crypto";
+import { delimiter } from "node:path";
 import type { OmpSessionModel } from "./harnesses";
 
 export interface CatalogModel {
@@ -199,42 +201,110 @@ export function advisorRecommendation(
   return known[Math.max(0, index - 2)];
 }
 
+/** A thinking level the overlay can render, or undefined for a blank one. */
+function renderableLevel(level: string | undefined): string | undefined {
+  return typeof level === "string" && level.trim() !== "" ? level : undefined;
+}
+
+/**
+ * The value the overlay gives one role. The overlay, the session `--model`,
+ * and the child environment all use it, so the three cannot drift apart. A
+ * model without a level gets the bare selector so the deployed level applies.
+ */
+function roleValue(model: OmpSessionModel, role: string): string {
+  const thinking = renderableLevel(model.thinking);
+  if (thinking === undefined) return model.selector;
+  const level =
+    role === "advisor" ? (renderableLevel(model.advisorThinking) ?? thinking) : thinking;
+  return `${model.selector}:${level}`;
+}
+
 /**
  * Render the run overlay as YAML text. Empty fallback chains keep a retry
  * from falling back onto a paid model. A model without a level renders bare
  * selectors with no thinking keys so the deployed values apply.
  */
 export function renderFreeOverlay(model: OmpSessionModel): string {
-  const thinking =
-    typeof model.thinking === "string" && model.thinking.trim() !== "" ? model.thinking : undefined;
+  const thinking = renderableLevel(model.thinking);
   const lines: Array<string> = ["# Generated per run by docks-kit omp. Edits are overwritten."];
-  if (thinking !== undefined) {
-    lines.push(`defaultThinkingLevel: ${thinking}`, "modelRoles:");
-    const advisor =
-      typeof model.advisorThinking === "string" && model.advisorThinking.trim() !== ""
-        ? model.advisorThinking
-        : thinking;
-    for (const role of ROLE_ORDER) {
-      lines.push(`  ${role}: ${model.selector}:${role === "advisor" ? advisor : thinking}`);
-    }
-    lines.push("task:", `  maxEffort: ${thinking}`);
-  } else {
-    lines.push("modelRoles:");
-    for (const role of ROLE_ORDER) {
-      lines.push(`  ${role}: ${model.selector}`);
-    }
+  if (thinking !== undefined) lines.push(`defaultThinkingLevel: ${thinking}`);
+  lines.push("modelRoles:");
+  for (const role of ROLE_ORDER) {
+    lines.push(`  ${role}: ${roleValue(model, role)}`);
   }
+  if (thinking !== undefined) lines.push("task:", `  maxEffort: ${thinking}`);
   lines.push("retry:", "  fallbackChains:");
   for (const chain of FALLBACK_ORDER) {
     lines.push(`    ${chain}: []`);
   }
+  // A chain keyed by the selector outranks a role chain, so a project or
+  // PI_CONFIG_FILES chain for the free model could otherwise reach a paid
+  // model. The session can run the model at any level, `off` included.
+  for (const level of [undefined, "off", ...THINKING_LADDER]) {
+    const key = level === undefined ? model.selector : `${model.selector}:${level}`;
+    lines.push(`    ${JSON.stringify(key)}: []`);
+  }
   return `${lines.join("\n")}\n`;
 }
 
-/** Build the omp argv with the overlay flag ahead of the forwarded args. */
+/**
+ * Build the omp argv. `launch` first makes omp read every forwarded word as
+ * message text, so no omp subcommand, with its own model selection, runs
+ * through the launcher. The explicit `--model` outranks a restored session
+ * model, so `--continue` and `--resume` keep the free model.
+ */
 export function buildOmpArgs(
   overlayPath: string,
+  session: OmpSessionModel,
   passthrough: ReadonlyArray<string>,
 ): ReadonlyArray<string> {
-  return ["--config", overlayPath, ...passthrough];
+  return [
+    "launch",
+    "--config",
+    overlayPath,
+    "--model",
+    roleValue(session, "default"),
+    ...passthrough,
+  ];
+}
+
+// Variables that omp reads at launch to set a role above every config layer.
+const MODEL_ENV_ROLES: ReadonlyArray<readonly [string, string]> = [
+  ["PI_SMOL_MODEL", "smol"],
+  ["PI_SLOW_MODEL", "slow"],
+  ["PI_PLAN_MODEL", "plan"],
+];
+
+export interface OmpChildEnvironment {
+  readonly env: Record<string, string | undefined>;
+  /** Model variables whose non-empty parent value the overlay value replaced. */
+  readonly replaced: ReadonlyArray<string>;
+}
+
+/**
+ * The omp session environment. The model variables get the overlay role
+ * values, because removing them would let a `.env` file refill them. The
+ * overlay joins PI_CONFIG_FILES, so an omp that the session's bash tool
+ * starts loads it too.
+ */
+export function ompChildEnvironment(
+  parent: Readonly<Record<string, string | undefined>>,
+  overlayPath: string,
+  session: OmpSessionModel,
+): OmpChildEnvironment {
+  const inherited = (parent["PI_CONFIG_FILES"] ?? "")
+    .split(delimiter)
+    .filter((entry) => entry !== "");
+  const env: Record<string, string | undefined> = {
+    ...parent,
+    PI_CONFIG_FILES: [...inherited, overlayPath].join(delimiter),
+  };
+  const replaced: Array<string> = [];
+  for (const [name, role] of MODEL_ENV_ROLES) {
+    const value = roleValue(session, role);
+    const previous = parent[name];
+    if (previous !== undefined && previous !== "" && previous !== value) replaced.push(name);
+    env[name] = value;
+  }
+  return { env, replaced };
 }

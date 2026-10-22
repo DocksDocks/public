@@ -62,9 +62,26 @@ ignored with a warning; Claude modifiers never touch Codex config and vice versa
 | `--pick` | Interactive picker over free catalog models; records the choice the same way |
 | `--fast` | Toggle `tier.openai` between `priority` and `none` in the deployed `~/.omp/agent/config.yml`, print the change, and exit; the same tier omp's `/fast on` selects for OpenAI and Codex models |
 
-Remaining arguments forward verbatim to omp after the launcher flags.
-`docks-kit omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes
-the previous session. A bare `docks-kit omp` opens an interactive session.
+The launcher starts omp as
+`omp launch --config <overlay> --model <selector>[:<level>]`, followed by the
+remaining arguments in the same order. `docks-kit omp -p "..."` runs one
+prompt. `docks-kit omp --continue` resumes the previous session on the free
+model. A bare `docks-kit omp` opens an interactive session. `launch` makes omp
+read every forwarded word as message text, so no omp subcommand runs through
+the launcher; run `omp` directly for a subcommand.
+
+The launcher rejects a forwarded `--config`, `--model`, `--smol`, `--slow`,
+`--plan`, `--models`, `--provider`, `--prewalk-into`, or `--plan-yolo-into`,
+in the `--flag value` and the `--flag=value` form and also after a `--`. It
+exits with code 2 before omp starts. The error names the flag and the
+recoveries: `--model <selector>` before the other arguments or `--pick` for a
+free model, `omp` directly for a paid model, and `PI_CONFIG_FILES` for another
+config file. The launcher sets `PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and
+`PI_PLAN_MODEL` to the free role values, warns once for each exported value
+that it replaces, and appends the overlay to `PI_CONFIG_FILES`. See
+[omp-models.md](omp-models.md#free-session-launcher-docks-kit-omp) for the
+full policy and the paths that stay outside the launcher.
+
 The launcher changes no deployed file and never invokes `sync`, except for
 `--fast`, which changes only `tier.openai` and launches nothing. `--fast` over
 `ultrafast` selects `priority`.
@@ -75,8 +92,9 @@ never reach omp:
 - `--model`, `--pick`, `--fast`
 - `--help`, `--version`, `--log-level`, `--wizard`, `--completions`
 
-The same names on omp stay reachable behind an explicit delimiter. Use
-`docks-kit omp -- --help` to ask omp for help.
+The same names, except `--model`, stay reachable on omp behind an explicit
+delimiter. `docks-kit omp -- --help` prints the help of `omp launch`. A
+forwarded `--model` stops the launcher with exit 2, also behind `--`.
 
 ## `scratch` and `tidy`
 

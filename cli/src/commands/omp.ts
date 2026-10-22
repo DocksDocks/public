@@ -16,6 +16,7 @@ import {
   advisorRecommendation,
   buildOmpArgs,
   ladderCeiling,
+  ompChildEnvironment,
   overlayFileName,
   planEffortChoice,
   parseFreeModels,
@@ -80,20 +81,20 @@ export function resolveFreeSelector(
 }
 
 /**
- * The omp profile that the forwarded arguments select. omp reads
- * `--profile <name>` or `--profile=<name>` before a `--`, the last one wins,
- * and it rejects a missing or empty name. The catalog check must query the
- * profile the session runs, so it reads the arguments the same way.
+ * Every omp profile that the forwarded arguments can select, in argv order.
+ * omp reads `--profile <name>` or `--profile=<name>`, the last one wins, and
+ * it rejects a missing or empty name. The scan does not stop at `--`,
+ * because omp can read that `--` as the value of a flag such as
+ * `--system-prompt` and still select a later profile.
  */
 export type ForwardedProfile =
-  | { readonly ok: true; readonly profile: string | undefined }
+  | { readonly ok: true; readonly profiles: ReadonlyArray<string> }
   | { readonly ok: false; readonly message: string };
 
 export function forwardedProfile(forwarded: ReadonlyArray<string>): ForwardedProfile {
-  let profile: string | undefined;
+  const profiles: Array<string> = [];
   for (let index = 0; index < forwarded.length; index++) {
     const arg = forwarded[index]!;
-    if (arg === "--") break;
     let value: string | undefined;
     if (arg === "--profile") {
       value = forwarded[index + 1];
@@ -105,9 +106,48 @@ export function forwardedProfile(forwarded: ReadonlyArray<string>): ForwardedPro
       continue;
     }
     if (value === "") return { ok: false, message: "--profile requires a profile name" };
-    profile = value;
+    profiles.push(value);
   }
-  return { ok: true, profile };
+  return { ok: true, profiles };
+}
+
+// omp flags that can select a model the free overlay does not control.
+const MODEL_SELECTING_FLAGS: Record<string, true> = {
+  "--config": true,
+  "--model": true,
+  "--smol": true,
+  "--slow": true,
+  "--plan": true,
+  "--models": true,
+  "--provider": true,
+  "--prewalk-into": true,
+  "--plan-yolo-into": true,
+};
+
+export type ForwardedFlagCheck =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly message: string };
+
+/**
+ * Reject a forwarded omp flag that can select a model outside the free
+ * session. The scan does not stop at `--`, because omp can read that `--` as
+ * the value of a flag and then parse the next token as a flag.
+ */
+export function rejectedForwardedFlag(forwarded: ReadonlyArray<string>): ForwardedFlagCheck {
+  for (const arg of forwarded) {
+    const equals = arg.indexOf("=");
+    const flag = equals === -1 ? arg : arg.slice(0, equals);
+    if (MODEL_SELECTING_FLAGS[flag] !== true) continue;
+    const configNote =
+      flag === "--config"
+        ? " To load another config, list it in PI_CONFIG_FILES, which omp loads below the overlay."
+        : "";
+    return {
+      ok: false,
+      message: `Forwarded ${flag} can select a model outside the free session. For a free model, put --model <selector> before other arguments or use --pick; for a paid model, run omp directly.${configNote}`,
+    };
+  }
+  return { ok: true };
 }
 
 const loadFreeCatalog = (
@@ -213,6 +253,11 @@ const pickLevels = (catalogModel: CatalogModel) =>
 
 export const ompCommand = Command.make("omp", { model, pick, fast, args }, (config) =>
   Effect.gen(function* () {
+    // Check the forwarded arguments before omp, the catalog, or kit.db, so a
+    // rejected launch starts no process and writes nothing.
+    const forwardedFlag = rejectedForwardedFlag(config.args);
+    if (!forwardedFlag.ok) return yield* bail(forwardedFlag.message);
+
     if (Option.isSome(config.model) && config.pick) {
       return yield* bail("Pass either --model <selector> or --pick, not both");
     }
@@ -251,13 +296,24 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
     if (config.pick && (!process.stdin.isTTY || !process.stdout.isTTY)) {
       return yield* bail("Picking needs a terminal; pass --model <selector> instead");
     }
-    // Every launch reads the live catalog once, because a remembered or
-    // default model can be renamed, repriced, or lose its provider login.
-    // omp then silently starts a paid default model instead. The catalog
-    // comes from the profile that the forwarded arguments select.
+    // Every launch reads the live catalog, because a remembered or default
+    // model can be renamed, repriced, or lose its provider login. omp then
+    // silently starts a paid default model instead. omp can run the
+    // environment's profile or any forwarded one, so the session model must
+    // be free in the catalog of each.
     const profile = forwardedProfile(config.args);
     if (!profile.ok) return yield* bail(profile.message);
-    const free = yield* loadFreeCatalog(omp, profile.profile);
+    const candidates: Array<string | undefined> = [undefined];
+    for (const name of profile.profiles) {
+      if (!candidates.includes(name)) candidates.push(name);
+    }
+    const catalogs: Array<ReadonlyArray<CatalogModel>> = [];
+    for (const candidate of candidates) {
+      catalogs.push(yield* loadFreeCatalog(omp, candidate));
+    }
+    // --model and --pick choose from the catalog of the last forwarded
+    // profile, which omp selects when no flag consumes it.
+    const free = catalogs[candidates.indexOf(profile.profiles.at(-1))]!;
     // The value the launcher writes is the value it runs, so a concurrent
     // launcher or a failed read of kit.db cannot change this session.
     let chosen: OmpSessionModel | undefined;
@@ -298,17 +354,20 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       };
     }
 
-    if (chosen !== undefined) {
-      const remembered = chosen;
-      yield* Effect.sync(() => writeOmpSessionModel(home, remembered));
-    }
-
     const session: OmpSessionModel =
       chosen ?? (yield* Effect.sync(() => readOmpSessionModel(home))) ?? DEFAULT_OMP_SESSION_MODEL;
-    if (!free.some((candidate) => candidate.selector === session.selector)) {
+    const freeInEveryProfile = catalogs.every((catalog) =>
+      catalog.some((candidate) => candidate.selector === session.selector),
+    );
+    if (!freeInEveryProfile) {
       return yield* bail(
         `free model '${session.selector}' is not available in the omp catalog (renamed, repriced, or provider not logged in); log in to its provider or choose another with --model or --pick`,
       );
+    }
+
+    if (chosen !== undefined) {
+      const remembered = chosen;
+      yield* Effect.sync(() => writeOmpSessionModel(home, remembered));
     }
 
     // A stable cache path, not a temp file deleted at exit, because omp may
@@ -344,8 +403,20 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       `Starting omp with ${session.selector} at ${levelText}${advisorText} (session only; deployed config unchanged)`,
     );
 
+    // An exported model variable would set its role above the overlay, so the
+    // session gets the overlay value and the user sees what changed.
+    const childEnvironment = ompChildEnvironment(process.env, overlayPath, session);
+    for (const name of childEnvironment.replaced) {
+      yield* Console.error(
+        `${name} is set; this session uses ${childEnvironment.env[name]} instead`,
+      );
+    }
+
     const child = yield* Effect.sync(() =>
-      spawnHost("omp", buildOmpArgs(overlayPath, config.args), { stdio: "inherit" }),
+      spawnHost("omp", buildOmpArgs(overlayPath, session, config.args), {
+        stdio: "inherit",
+        env: childEnvironment.env,
+      }),
     );
     if (child.error !== undefined) {
       return yield* bail(
@@ -357,6 +428,6 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
   }),
 ).pipe(
   Command.withDescription(
-    "Start omp with every chat-model role set to the remembered free model for this run only. The web-search role keeps the deployed provider order, which can include a paid model. No deployed configuration changes; --model or --pick remembers a new free default. Every launch checks the model against the live free catalog. --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
+    "Start omp with every chat-model role set to the remembered free model for this run only. The launcher starts 'omp launch' with an explicit --model, so omp reads a forwarded subcommand name as message text and a resumed session keeps the free model. It rejects forwarded flags that can select another model (--config, --model, --smol, --slow, --plan, --models, --provider, --prewalk-into, --plan-yolo-into); run omp directly for a paid model or a subcommand. The web-search role keeps the deployed provider order, which can include a paid model. No deployed configuration changes; --model or --pick remembers a new free default. Every launch checks the model against the live free catalog of each candidate profile. --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
   ),
 );

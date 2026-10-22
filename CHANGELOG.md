@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-22 - docks-kit 0.21.1: omp rules for temporary files and Bun 1.4.4
+## 2026-10-22 - docks-kit 0.21.1: omp temporary files, Bun 1.4.4, and free omp sessions
 
 ### Fixed
 
@@ -23,6 +23,16 @@
   command under `env` with an option other than `-u NAME` also records
   nothing. The extension cannot know the directory or the Docker daemon of
   these commands.
+- `docks-kit omp` now enforces the free session at launch (#53). It rejects a
+  forwarded `--config`, `--model`, `--smol`, `--slow`, `--plan`, `--models`,
+  `--provider`, `--prewalk-into`, or `--plan-yolo-into` with exit 2. It
+  starts `omp launch` with an explicit `--model`, so a forwarded subcommand
+  name becomes message text and `--continue` keeps the free model. It sets
+  `PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and `PI_PLAN_MODEL` to the free roles and
+  warns for each value that it replaces. It appends the overlay to
+  `PI_CONFIG_FILES`. The overlay empties the retry chains keyed by the free
+  model. The catalog check covers each profile that the launch can select.
+  Run `omp` directly for an omp subcommand or a paid model.
 
 ### Added
 

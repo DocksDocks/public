@@ -423,13 +423,17 @@ overlay sets the 16 chat-model roles in `ompOverlay.ts ROLE_ORDER` to that
 model and empties the 13 retry fallback chains in `ompOverlay.ts
 FALLBACK_ORDER`. These roles include `memory` and `judge`. The SoT does
 not set them, but omp otherwise uses its built-in priority chain for them,
-and that chain can name a paid model. The overlay does not set the `web` role
-or its retry chain. The deployed web-search provider order therefore applies,
-and that order includes the paid `openai-codex/gpt-6-luna` entry. omp merges
-the overlay key by key. Each other deployed retry chain, such as a `plan`,
-`slow`, or `designer` chain, therefore stays as deployed. Such a chain can name
-a paid model. Higher-precedence model selection can replace the overlay
-values.
+and that chain can name a paid model. The overlay also empties the retry
+chains keyed by the free model: the bare selector, `<selector>:off`, and
+`<selector>:<level>` for every level in `ompOverlay.ts THINKING_LADDER`. omp
+uses a chain keyed by the model before a role chain, so a project or
+`PI_CONFIG_FILES` chain for the free model could otherwise reach a paid model.
+The overlay does not set the `web` role or its retry chain. The deployed
+web-search provider order therefore applies, and that order includes the paid
+`openai-codex/gpt-6-luna` entry. omp merges the overlay key by key. Each other
+deployed retry chain, such as a `plan`, `slow`, or `designer` chain, therefore
+stays in the merged config. A retry of the free model does not reach such a
+chain, because omp uses the empty chain keyed by the free model first.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.
@@ -447,31 +451,70 @@ apart. A session launch never reads or writes `~/.omp/agent/config.yml` or
 never touches the SoT. The next plain `omp` run uses the paid configuration
 again.
 
-Every argument after the launcher flags forwards verbatim to omp. `docks-kit
-omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes the
-previous session. A bare `docks-kit omp` opens an interactive session.
+The launcher starts omp as
+`omp launch --config <overlay> --model <selector>[:<level>] [args...]`, where
+`[args...]` are the arguments after the launcher flags, in the same order.
+`docks-kit omp -p "..."` runs one prompt. `docks-kit omp --continue` resumes
+the previous session. A bare `docks-kit omp` opens an interactive session.
+
+`launch` makes omp read every forwarded word as message text. So `docks-kit
+omp commit` sends `commit` to the free model as a prompt, and no omp
+subcommand runs through the launcher. To run an omp subcommand such as
+`commit`, `bench`, or `search`, run `omp` directly. The explicit `--model`
+outranks the model that omp restores from a stored session. So `--continue`,
+`--resume`, and `autoResume` keep the free model and its level.
+
+### Model selection that the launcher controls
 
 The overlay ranks above the deployed global and project configuration, and
-below runtime overrides and later overlay files. Each input below therefore
-selects a model that the overlay does not control:
+below runtime overrides and later overlay files. The launcher handles each
+known input that can select a model above the overlay:
 
-- A forwarded later config overlay. The launcher passes its own `--config`
-  first, and omp applies a later overlay file over an earlier one.
-- The runtime model flags `--model`, `--smol`, `--slow`, and `--plan`. The
-  legacy `--provider` flag selects a provider. `--models` sets the model
-  patterns that `Ctrl+P` cycling can reach, so cycling can leave the free
-  model.
+- Forwarded model flags. The launcher rejects `--config`, `--model`,
+  `--smol`, `--slow`, `--plan`, `--models`, `--provider`, `--prewalk-into`,
+  and `--plan-yolo-into`, in the `--flag value` and the `--flag=value` form.
+  It exits with code 2 and starts no omp process. It checks every forwarded
+  argument, also after a `--`, because omp can read that `--` as the value of
+  a flag such as `--api-key` and then read the next flag. The error names the
+  flag and the recoveries. For a free model, put `--model <selector>` before
+  the other arguments or use `--pick`. For a paid model, run `omp` directly.
+  For another config file, list it in `PI_CONFIG_FILES`.
+- A restored session model. The explicit `--model` keeps the free model.
+- An omp subcommand. `launch` makes it message text.
 - The model environment variables `PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and
-  `PI_PLAN_MODEL`. `PI_CONFIG_FILES` is not in this set, because those files
-  load before `--config` overlays.
-- The in-session model selector. `Alt+M` sets the roles, and `Alt+P` picks a
-  model for the current session only.
-- A restored persisted session model. `--continue`, `--resume`, and
-  `autoResume` restore the model of the session they open, so a session that
-  started under the paid configuration returns to its paid model.
+  `PI_PLAN_MODEL`. The launcher sets each one to the overlay value of its
+  role in the omp environment, and prints one warning for each exported value
+  that it replaces. omp fills an unset or empty variable from its `.env`
+  files, so the launcher sets the variables instead of removing them.
+- `PI_CONFIG_FILES`. The launcher appends the overlay path to the exported
+  entries, so an `omp` that the bash tool of the session starts loads the
+  overlay too. omp loads these files below `--config` overlays, so an exported
+  entry still applies below the overlay. A `PI_CONFIG_FILES` value in an omp
+  `.env` file does not apply in a launcher session, because the launcher
+  always sets the variable.
+- The omp profile. The catalog check below covers every profile that the
+  launch can select.
 
-This list names the known selection paths. It is not a closed set. The
-launcher does not reject these inputs today.
+### Model selection outside the launcher
+
+These paths act after omp starts or outside the chat roles. The launcher does
+not control them:
+
+- In-session selection. `Alt+M` (model hub), `Alt+P` (session-only picker),
+  `/switch <selector>`, `/model`, and `/modelpreset` can select any catalog
+  model. `/resume` and a session switch restore the model of the target
+  session. A seance subagent runs on the models of its source session. An
+  `Alt+M` assignment of the `default` role writes `modelRoles.default` to the
+  deployed `~/.omp/agent/config.yml`, so later plain `omp` runs use it too.
+- The `web` role and its retry chain. By owner decision they keep the
+  deployed web-search provider order, which can reach the paid
+  `openai-codex/gpt-6-luna` entry.
+- The model-kind roles `image`, `speech`, and `dictation`. A chat model
+  cannot serve them, so the overlay does not set them.
+- Extensions and hooks. `-e`, `--hook`, and `--plugin-dir` run arbitrary
+  code, and that code can select any model.
+
+These lists name the known paths. They are not a closed set.
 
 The default model is `opencode-zen/muse-spark-1.3-contributor-free` ("Muse
 Spark 1.3 Free", 1,048,576-token context) at `xhigh`. `xhigh` is the ceiling
@@ -500,11 +543,11 @@ zero input and output cost with `pricingStatus` `free` or `unknown` (26
 entries on 2026-09-11). A zero-cost row with another status, such as
 `variable` or `included`, is billed outside the token price, so the picker
 leaves it out. The resulting overlay sets the 16 `ROLE_ORDER` roles to the
-chosen free model and empties the 13 `FALLBACK_ORDER` chains. The `web` role,
-its chain, and each other deployed chain keep the deployed values.
-Higher-precedence model selection can replace those values. The catalog can
-advertise a free model that the account cannot call; omp reports that
-provider error unchanged.
+chosen free model and empties the 13 `FALLBACK_ORDER` chains and the chains
+keyed by that model. The `web` role, its chain, and each other deployed chain
+keep the deployed values. The
+catalog can advertise a free model that the account cannot call; omp reports
+that provider error unchanged.
 
 After the model, the wizard asks about thinking levels. `ompOverlay.ts
 planEffortChoice` decides which questions apply, because omp accepts a
@@ -527,16 +570,25 @@ A session whose advisor differs from the other roles reports both on the
 launch line.
 
 An omp login is required. The kit owns no login flow. Every launch reads the
-live free catalog once. A plain launch checks the remembered model, or the
-default model, against that catalog. When the model is not there, the
-launcher stops before omp starts. The model can be renamed, repriced, or on a
-provider that is not logged in. Without this check, omp silently starts the
-default model of the first logged-in provider, which can be paid. When the
-forwarded arguments include `--profile <name>` or `--profile=<name>`, the
-catalog check queries that same omp profile with
-`omp --profile <name> models --json`. As in omp, the last such flag before a
-`--` wins, and a `--profile` without a name stops the launcher before omp
-starts.
+live free catalog of each candidate profile. A plain launch checks the
+remembered model, or the default model, against those catalogs. When the
+model is not there, the launcher stops before omp starts. The model can be
+renamed, repriced, or on a provider that is not logged in. Without this
+check, omp silently starts the default model of the first logged-in
+provider, which can be paid.
+
+Each omp profile has its own login and `models.yml`, so a selector can be
+free in one profile and missing or paid in another. The candidate profiles
+are the profile of the environment (`OMP_PROFILE`, `PI_PROFILE`, or the
+default) and each forwarded `--profile <name>` or `--profile=<name>` value.
+The launcher reads every forwarded argument, also after a `--`, because omp
+can read that `--` as a flag value and then select a later profile. It runs
+`omp models --json` for the profile of the environment and
+`omp --profile <name> models --json` for each forwarded name. The session
+model must be free in every one of these catalogs. `--model` and `--pick`
+choose from the catalog of the last forwarded profile, or of the profile of
+the environment when the arguments name none. A `--profile` without a name
+stops the launcher before omp starts.
 
 When the catalog renames the free variant, change only the default selector
 constant. Until then, a plain launch on that default stops with an error. A
