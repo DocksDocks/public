@@ -112,21 +112,23 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   working legacy hook/statusline setup and reports that migration is deferred.
 - **Command guards** — omp, Claude Code, and Codex share one fail-closed
   policy for destructive shell commands; to remove, agents use the trash
-  (`gio trash -- <path>`, or `trash <path>` on macOS). `rm` of the home
-  directory or `/` and `HOME` reassignment are denied. omp also denies every
-  recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`, and runs
-  any other `rm` without a prompt. In omp, `git clean`, `git reset --hard`,
-  and any `git push` that could force ask; Claude Code and Codex also ask
-  before `find -delete`, a recursive `rm`, and every `git rm`. An omp
-  subagent cannot answer an ask, so omp rejects it; a Codex ask can go to its
-  `auto_review` reviewer. Details, per-tool differences, and gaps:
+  (`gio trash -- <path>`, or `trash <path>` on macOS); omp agents remove a
+  temporary file or directory with `docks-kit scratch remove`. `rm` of the
+  home directory or `/` and `HOME` reassignment are denied. omp also denies
+  every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`, and
+  runs any other `rm` without a prompt. In omp, `git clean`,
+  `git reset --hard`, and any `git push` that could force ask; Claude Code and
+  Codex also ask before `find -delete`, a recursive `rm`, and every `git rm`.
+  An omp subagent cannot answer an ask, so omp rejects it; a Codex ask can go
+  to its `auto_review` reviewer. Details, per-tool differences, and gaps:
   `docks-kit docs command-guards`.
-- **Agent cleanup (omp)** — `docks-kit scratch` creates and removes agent
-  temporary directories with checked paths, and `docks-kit tidy` removes
-  merged idle worktrees, their containers, orphaned processes, and idle
-  scratch directories; `--report` lists other disk and memory use. The kit
-  omp plugin `docks-kit-omp` exposes these as tools, reminds the agent of
-  what it created, and runs the sweep at most once per 12 hours.
+- **Agent cleanup (omp)** — `docks-kit scratch` creates agent temporary
+  directories and removes agent temporary files and directories with checked
+  paths, and `docks-kit tidy` removes merged idle worktrees, their containers,
+  orphaned processes, and idle scratch directories; `--report` lists other
+  disk and memory use. The kit omp plugin `docks-kit-omp` exposes these as
+  tools, reminds the agent of what it created, and runs the sweep at most
+  once per 12 hours.
 
 ## Repository map
 

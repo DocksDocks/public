@@ -42,8 +42,8 @@ round trips. Being overruled ends the discussion — execute my call without rel
 
 To remove, use the trash or a command that checks the path.
 
-- To remove a file or a directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
-- To remove a temporary directory, use the `scratch_remove` tool or run `docks-kit scratch remove <path>`. Both remove only a path inside the scratch root, the system temporary directory, or `/var/tmp`.
+- To remove a temporary file or directory, use the `scratch_remove` tool or run `docks-kit scratch remove <path>`. Both remove only a path inside the scratch root, the system temporary directory, or `/var/tmp`. `gio trash` does not work on a `tmpfs` `/tmp`.
+- To remove any other file or directory, run `gio trash -- <path>` on Linux or `trash <path>` on macOS.
 - To remove a path from the git index, run `git rm -- <path>`.
 - To remove a worktree, run `git worktree remove -- <path>`.
 - If git refuses because the worktree has changes, make sure that each of its commits is on the remote. Then make sure that `git status --porcelain` lists only generated files. Then run `git worktree remove --force -- <path>`.
@@ -60,8 +60,8 @@ To remove, use the trash or a command that checks the path.
 
 ## Cleaning up what you create
 
-- Follow the `workspace-hygiene` skill for each resource that you create: worktrees, temporary directories, processes, containers, clusters, tunnels, scheduled jobs, global installs, and remote test resources.
-- Create a temporary directory with the `scratch_new` tool or `docks-kit scratch new <label>`. Do not put a temporary directory, a package store, a cache, or a clone in `/tmp`.
+- Follow the `workspace-hygiene` skill for each resource that you create: worktrees, temporary files and directories, processes, containers, clusters, tunnels, scheduled jobs, global installs, and remote test resources.
+- Create a temporary directory with the `scratch_new` tool or `docks-kit scratch new <label>`. Put each temporary file in that directory. Do not put a temporary file, a temporary directory, a package store, a cache, or a clone in `/tmp`.
 - Create a worktree only at `<data>/agent-worktrees/<repository>/<name>`. `<data>` is `$XDG_DATA_HOME`, or `.local/share` in the home directory when that variable is not set. Write the literal absolute path.
 - Run a test suite in single-run mode. Start a server, a watcher, a tunnel, or a database only as a named bash service or an async job. Do not detach a process with `nohup`, `setsid`, `disown`, `tmux`, or `screen`.
 - Do not install a package globally, add a scheduled job, or enable a service unless I ask for it.

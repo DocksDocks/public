@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-10-22 - docks-kit 0.21.1: omp rules for temporary files
+
+### Fixed
+
+- The deployed omp global instructions (`SoT/.omp/AGENTS.md`) send a
+  temporary file or directory to the `scratch_remove` tool or
+  `docks-kit scratch remove <path>` before the trash rule, which now covers
+  every other path. `gio trash` refuses a path on a `tmpfs` `/tmp`, so an
+  agent that followed the trash rule failed on each temporary file there
+  (#93). The creation rule also names temporary files: put them in a scratch
+  directory, never in `/tmp`. The `workspace-hygiene` skill, the
+  `scratch_new` and `scratch_remove` tool descriptions, the extension
+  reminder, `docks-kit docs command-guards`, the README, and the
+  `docks-kit scratch` help say the same. The Claude Code and Codex rules do
+  not change.
+- The `docks-kit-omp` extension takes a created path only from a bash call
+  that runs `mktemp` or `docks-kit scratch new` alone. That call must have no
+  wrapper, no redirection, and no process substitution. Before, a compound
+  command made the extension report a line of unrelated output as a directory
+  that the agent created. A command under `sudo` now records nothing. A
+  command under `env` with an option other than `-u NAME` also records
+  nothing. The extension cannot know the directory or the Docker daemon of
+  these commands.
+
+### Added
+
+- The `docks-kit-omp` extension reminds the agent of a temporary file that
+  `mktemp` creates, and its session-stop check lists that file while it
+  exists. A dry run (`mktemp -u`) records nothing.
+
 ## 2026-10-21 - docks-kit 0.21.0: agent resource hygiene for omp
 
 Agents left behind worktrees, temporary directories, processes, and

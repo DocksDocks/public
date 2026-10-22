@@ -43,7 +43,9 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log("  docks-kit skills list                      universal skills");
     yield* Console.log("  docks-kit docs [topic]                     self-documentation");
     yield* Console.log("  docks-kit omp [--model|--pick] [...]       free-model omp session");
-    yield* Console.log("  docks-kit scratch new|remove              agent temporary directories");
+    yield* Console.log(
+      "  docks-kit scratch new|remove              agent temporary files and directories",
+    );
     yield* Console.log("  docks-kit tidy [--apply] [--repo <path>]  remove safe agent leftovers");
     yield* Console.log("");
     yield* Console.log(
