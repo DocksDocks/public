@@ -3,7 +3,11 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { forwardedProfile, resolveFreeSelector } from "../../src/commands/omp";
+import {
+  forwardedProfile,
+  rejectedForwardedFlag,
+  resolveFreeSelector,
+} from "../../src/commands/omp";
 import { readOmpSessionModel } from "../../src/engine-native/harnesses";
 import { kitDbFile } from "../../src/engine-native/kitDb";
 import { overlayFileName, type CatalogModel } from "../../src/engine-native/ompOverlay";
@@ -68,18 +72,34 @@ describe("resolveFreeSelector", () => {
 });
 
 describe("forwardedProfile", () => {
-  it("reads --profile <name> and --profile=<name> the way omp does, last one winning", () => {
-    expect(forwardedProfile(["-p", "hi"])).toEqual({ ok: true, profile: undefined });
+  it("lists every --profile <name> and --profile=<name> value in argv order", () => {
+    expect(forwardedProfile(["-p", "hi"])).toEqual({ ok: true, profiles: [] });
     expect(forwardedProfile(["--profile", "work", "-p", "hi"])).toEqual({
       ok: true,
-      profile: "work",
+      profiles: ["work"],
     });
-    expect(forwardedProfile(["--profile=work"])).toEqual({ ok: true, profile: "work" });
-    expect(forwardedProfile(["--profile", "a", "--profile=b"])).toEqual({ ok: true, profile: "b" });
+    expect(forwardedProfile(["--profile=work"])).toEqual({ ok: true, profiles: ["work"] });
+    expect(forwardedProfile(["--profile", "a", "--profile=b"])).toEqual({
+      ok: true,
+      profiles: ["a", "b"],
+    });
+    expect(forwardedProfile(["--profile", "a", "-p", "x", "--profile=b"])).toEqual({
+      ok: true,
+      profiles: ["a", "b"],
+    });
   });
 
-  it("stops at -- because omp reads no flags after it", () => {
-    expect(forwardedProfile(["--", "--profile", "work"])).toEqual({ ok: true, profile: undefined });
+  it("does not stop at -- because omp can read that -- as the value of a flag", () => {
+    // In `--system-prompt -- --profile work`, omp takes `--` as the prompt
+    // and selects the work profile.
+    expect(forwardedProfile(["--system-prompt", "--", "--profile", "work"])).toEqual({
+      ok: true,
+      profiles: ["work"],
+    });
+    expect(forwardedProfile(["--", "--profile", "work"])).toEqual({
+      ok: true,
+      profiles: ["work"],
+    });
   });
 
   it("rejects a missing or empty profile name as omp does", () => {
@@ -89,6 +109,63 @@ describe("forwardedProfile", () => {
         message: "--profile requires a profile name",
       });
     }
+  });
+});
+
+describe("rejectedForwardedFlag", () => {
+  const MODEL_FLAGS = [
+    "--config",
+    "--model",
+    "--smol",
+    "--slow",
+    "--plan",
+    "--models",
+    "--provider",
+    "--prewalk-into",
+    "--plan-yolo-into",
+  ] as const;
+
+  const expectRejected = (args: ReadonlyArray<string>, flag: string): string => {
+    const result = rejectedForwardedFlag(args);
+    expect(result.ok).toBe(false);
+    const message = result.ok ? "" : result.message;
+    expect(message).toContain(flag);
+    expect(message).toContain("--model <selector>");
+    expect(message).toContain("--pick");
+    expect(message).toContain("run omp directly");
+    return message;
+  };
+
+  it.each(MODEL_FLAGS)("rejects %s in the --flag value and --flag=value forms", (flag) => {
+    expectRejected(["-p", "hi", flag, "paid/x"], flag);
+    expectRejected(["-p", "hi", `${flag}=paid/x`], flag);
+  });
+
+  it("names PI_CONFIG_FILES for a forwarded --config", () => {
+    expect(expectRejected(["--config", "extra.yml"], "--config")).toContain("PI_CONFIG_FILES");
+    expect(expectRejected(["--config=extra.yml"], "--config")).toContain("PI_CONFIG_FILES");
+  });
+
+  it("rejects a model flag after a forwarded -- because omp can read that -- as a value", () => {
+    expectRejected(["-p", "hi", "--", "--smol", "x"], "--smol");
+    expectRejected(["--api-key", "--", "--model", "x"], "--model");
+  });
+
+  it.each([
+    [[]],
+    [["--continue"]],
+    [["-c"]],
+    [["--resume", "abc"]],
+    [["-p", "hi"]],
+    [["--thinking", "high"]],
+    [["--advisor"]],
+    [["--prewalk"]],
+    [["--plan-yolo"]],
+    [["--profile", "work"]],
+    [["--api-key", "k"]],
+    [["fix the --model docs"]],
+  ])("allows %j", (args) => {
+    expect(rejectedForwardedFlag(args)).toEqual({ ok: true });
   });
 });
 
@@ -268,47 +345,115 @@ describe("omp command", () => {
   );
 
   it(
-    "checks the catalog of the omp profile that the forwarded arguments select",
+    "resolves --model in the last forwarded profile and checks the model in every candidate profile",
     () => {
-      // Each profile has its own login and catalog. The work profile lists a
-      // free model that the default profile does not have.
+      // Each profile has its own login and catalog. `free-model` is ambiguous
+      // in the default catalog and unique in the work catalog, and the
+      // resolved model is free in both.
       const profiles = makeStubDir(
         {
           omp: `const at = args.indexOf("models");
 if (at !== -1 && args[at + 1] === "--json") {
   const profile = args[0] === "--profile" ? args[1] : "default";
-  console.log(JSON.stringify({models:[
-    {selector:profile + "/free-model",name:"Free",thinking:["high"],contextWindow:4096,cost:{input:0,output:0}}
-  ]}))
+  const free = (selector) => ({selector,name:selector,thinking:["high"],contextWindow:4096,cost:{input:0,output:0}});
+  const catalogs = {
+    default: [free("shared/free-model"), free("shared/free-model-plus")],
+    work: [free("shared/free-model")],
+  };
+  console.log(JSON.stringify({models:catalogs[profile] ?? []}))
 }`,
         },
         NATIVE,
       );
       const first = runPublicCli(
-        ["omp", "--model", "work/free-model", "--profile", "work", "-p", "hi"],
+        ["omp", "--model", "free-model", "--profile", "work", "-p", "hi"],
         "home-fresh",
         profiles,
         NATIVE,
       );
       expect(first.exitCode, first.stderr).toBe(0);
+      expect(readOmpSessionModel(first.home)).toEqual({
+        selector: "shared/free-model",
+        thinking: "high",
+        advisorThinking: "high",
+      });
       const argvLog = join(first.home, ".golden-argv.log");
       const [overlayName] = readdirSync(join(first.home, ".cache", "docks-kit"));
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
         "omp\t--profile work models --json",
         `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile work -p hi`,
       ]);
 
       // A plain launch under --profile=<name> checks the remembered model
-      // against that profile's catalog too.
+      // against every candidate catalog too.
       const plain = runPublicCli(["omp", "--profile=work"], "home-fresh", profiles, {
         ...NATIVE,
         reuseHome: first.home,
       });
       expect(plain.exitCode, plain.stderr).toBe(0);
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
         "omp\t--profile work models --json",
         `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile=work`,
       ]);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "refuses a launch whose model is free in the environment profile but not in a forwarded profile",
+    () => {
+      // omp reads `--` as the --system-prompt value and then selects the
+      // work profile, whose catalog does not list the session model.
+      const profiles = makeStubDir(
+        {
+          omp: `const at = args.indexOf("models");
+if (at !== -1 && args[at + 1] === "--json") {
+  const profile = args[0] === "--profile" ? args[1] : "default";
+  const free = (selector) => ({selector,name:selector,thinking:["high"],contextWindow:4096,cost:{input:0,output:0}});
+  const catalogs = {
+    default: [free("opencode-zen/muse-spark-1.3-contributor-free"), free("shared/free-model")],
+    work: [free("shared/free-model")],
+  };
+  console.log(JSON.stringify({models:catalogs[profile] ?? []}))
+}`,
+        },
+        NATIVE,
+      );
+      const run = runPublicCli(
+        ["omp", "--system-prompt", "--", "--profile", "work", "-p", "hi"],
+        "home-fresh",
+        profiles,
+        NATIVE,
+      );
+      expect(run.exitCode).toBe(2);
+      expect(run.stderr).toContain(
+        "free model 'opencode-zen/muse-spark-1.3-contributor-free' is not available",
+      );
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
+        "omp\t--profile work models --json",
+      ]);
+      expect(existsSync(join(run.home, ".cache", "docks-kit"))).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "rejects a forwarded model flag before contacting omp",
+    () => {
+      const run = runPublicCli(
+        ["omp", "-p", "hi", "--smol", "paid/x"],
+        "home-fresh",
+        stubDir,
+        NATIVE,
+      );
+      expect(run.exitCode).toBe(2);
+      expect(run.stderr).toContain("--smol");
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8")).toBe("");
+      expect(existsSync(kitDbFile(run.home))).toBe(false);
+      expect(existsSync(join(run.home, ".cache", "docks-kit"))).toBe(false);
     },
     SPAWN_TIMEOUT_MS,
   );
