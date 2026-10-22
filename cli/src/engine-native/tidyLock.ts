@@ -8,6 +8,9 @@
  *   the holder checks staleness again before it removes the lock. Thus two
  *   runs never both remove a stale lock and both create a new one.
  * - A run removes the lock and the mutex only while they still hold its token.
+ * - On Windows, another process can delete or hold the lock or the mutex while
+ *   a run reads or removes it. Such a path counts as absent, and only the
+ *   exclusive create decides the result.
  */
 import { randomBytes } from "node:crypto";
 import {
@@ -35,13 +38,31 @@ function errorCode(cause: unknown): string | undefined {
     : undefined;
 }
 
-/** Create `path` with `wx` and write `text`; false when the path exists. */
+/**
+ * Windows keeps a deleted file "delete pending" while a handle to it is open,
+ * and refuses a new open of that name with ERROR_ACCESS_DENIED. A delete of a
+ * file that another process holds without delete sharing fails with
+ * ERROR_SHARING_VIOLATION. libuv, which runs the `node:fs` calls of Bun and
+ * Node.js on Windows, reports these errors as EPERM and EBUSY.
+ */
+const WINDOWS_CONTENTION: Record<string, true> = { EBUSY: true, EPERM: true };
+
+/** True on Windows for an error that another process causes when it deletes or holds the path. */
+function isWindowsContention(cause: unknown): boolean {
+  const code = errorCode(cause);
+  return process.platform === "win32" && code !== undefined && WINDOWS_CONTENTION[code] === true;
+}
+
+/**
+ * Create `path` with `wx` and write `text`. False when the path exists or, on
+ * Windows, when another process deletes it now.
+ */
 function createExclusive(path: string, text: string): boolean {
   let fd: number;
   try {
     fd = openSync(path, "wx", 0o600);
   } catch (cause) {
-    if (errorCode(cause) === "EEXIST") return false;
+    if (errorCode(cause) === "EEXIST" || isWindowsContention(cause)) return false;
     throw cause;
   }
   try {
@@ -52,13 +73,13 @@ function createExclusive(path: string, text: string): boolean {
   return true;
 }
 
-/** `lstat`, `undefined` when absent; any other error throws. */
+/** `lstat`; `undefined` when absent or, on Windows, when another process deletes it. */
 function lstatIfPresent(path: string): Stats | undefined {
   try {
     return lstatSync(path);
   } catch (cause) {
     const code = errorCode(cause);
-    if (code === "ENOENT" || code === "ENOTDIR") return undefined;
+    if (code === "ENOENT" || code === "ENOTDIR" || isWindowsContention(cause)) return undefined;
     throw cause;
   }
 }
@@ -71,11 +92,15 @@ function readText(path: string): string | undefined {
   }
 }
 
+/**
+ * Remove `path`. Ignore a path that is absent or, on Windows, a path that
+ * another process deletes or holds.
+ */
 function unlinkIfPresent(path: string): void {
   try {
     unlinkSync(path);
   } catch (cause) {
-    if (errorCode(cause) !== "ENOENT") throw cause;
+    if (errorCode(cause) !== "ENOENT" && !isWindowsContention(cause)) throw cause;
   }
 }
 
