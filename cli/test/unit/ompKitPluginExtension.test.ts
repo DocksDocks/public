@@ -175,10 +175,32 @@ describe("detectResources", () => {
 
   it("finds a mktemp directory and points to the scratch tools", () => {
     const result = detect("mktemp -d", "/w", "/tmp/tmp.X\n");
-    expect(result.resources).toEqual([{ kind: "temp", path: "/tmp/tmp.X" }]);
+    expect(result.resources).toEqual([{ kind: "tempDir", path: "/tmp/tmp.X" }]);
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0]).toContain("scratch_new");
     expect(result.notes[0]).toContain("docks-kit scratch new");
+  });
+
+  it("finds a mktemp file, but not a dry-run name, and points to the scratch tools", () => {
+    const result = detect("mktemp", "/w", "/tmp/tmp.Y\n");
+    expect(result.resources).toEqual([{ kind: "tempFile", path: "/tmp/tmp.Y" }]);
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0]).toContain("scratch_new");
+    expect(detect("mktemp -u", "/w", "/tmp/tmp.Z\n")).toEqual({ resources: [], notes: [] });
+  });
+
+  it.each(["mktemp -du", "mktemp -d --dry-run", "mktemp --directory -u"])(
+    "records nothing for %s, a dry run that creates nothing",
+    (command) => {
+      expect(detect(command, "/w", "/tmp/tmp.Z\n")).toEqual({ resources: [], notes: [] });
+    },
+  );
+
+  it("names a temporary file when the mktemp path is not in the output", () => {
+    const result = detect("f=$(mktemp)");
+    expect(result.resources).toEqual([]);
+    const fileNote = result.notes.find((note) => note.includes("a temporary file"));
+    expect(fileNote).toContain("docks-kit scratch remove <path>");
   });
 
   it.each([
@@ -301,7 +323,8 @@ describe("reminders", () => {
       docker: DEFAULT_DAEMON,
     },
     { kind: "scratch", path: "/h/.cache/docks-kit/scratch/a b" },
-    { kind: "temp", path: "/tmp/tmp.X" },
+    { kind: "tempDir", path: "/tmp/tmp.X" },
+    { kind: "tempFile", path: "/tmp/tmp.Y" },
   ];
   const other: HygieneResource = {
     kind: "other",
@@ -323,6 +346,12 @@ describe("reminders", () => {
     expect(creationReminder(other)).toBe(
       "This command created a background process (`npm run dev`). Stop it before your final answer, or start it as a named bash service.",
     );
+  });
+
+  it("names a temporary file and its cleanup command in a creation reminder", () => {
+    const reminder = creationReminder({ kind: "tempFile", path: "/tmp/tmp.Y" });
+    expect(reminder).toContain("the temporary file /tmp/tmp.Y");
+    expect(reminder).toContain("`docks-kit scratch remove /tmp/tmp.Y`");
   });
 
   it("lists every cleanup command and the keep sentence at stop", () => {
@@ -636,6 +665,20 @@ describe("extension handlers", () => {
     expect(await stop?.({ stop_hook_active: true }, { cwd: "/w" })).toBeUndefined();
     expect(await stop?.({ stop_hook_active: false }, { cwd: "/w" })).toBeUndefined();
     expect(statSync(directory).isDirectory()).toBe(true);
+  });
+
+  it("reminds at stop while a mktemp file exists", async () => {
+    const { handlers } = load();
+    const file = join(sandbox(), "tmp.Y");
+    writeFileSync(file, "");
+
+    await bash(handlers, "mktemp", `${file}\n`);
+
+    const stop = handlers.get("session_stop");
+    const result = (await stop?.({ stop_hook_active: false }, { cwd: "/w" })) as
+      | { additionalContext: string }
+      | undefined;
+    expect(result?.additionalContext).toContain(`the temporary file ${file}`);
   });
 
   it("ignores a failed bash call", async () => {

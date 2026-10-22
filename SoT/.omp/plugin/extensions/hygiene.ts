@@ -62,6 +62,13 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
+const SHORT_CLUSTER_WITH_U = /^-[A-Za-z]*u[A-Za-z]*$/;
+/** mktemp options after which it prints a name or text but creates nothing. */
+const MKTEMP_CREATES_NOTHING: Record<string, true> = {
+  "--dry-run": true,
+  "--help": true,
+  "--version": true,
+};
 const CONTAINER_ID = /^[0-9a-f]{64}$/;
 const SAFE_WORD = /^[A-Za-z0-9_/.:@%+=,-]+$/;
 const RESERVED_WORDS: Record<string, true> = {
@@ -209,7 +216,8 @@ export type HygieneResource =
   | { kind: "compose"; workingDir: string; down: string; docker: DockerTarget }
   | { kind: "container"; id: string; down: string; docker: DockerTarget }
   | { kind: "scratch"; path: string }
-  | { kind: "temp"; path: string }
+  | { kind: "tempDir"; path: string }
+  | { kind: "tempFile"; path: string }
   | { kind: "other"; category: string; command: string; hint: string };
 
 type PathResource = Exclude<HygieneResource, { kind: "other" }>;
@@ -928,18 +936,24 @@ function detectCreation(
     return;
   }
 
-  if (
-    name === "mktemp" &&
-    words.slice(1).some((word) => word === "--directory" || SHORT_CLUSTER_WITH_D.test(word))
-  ) {
-    const path = lastAbsoluteLine(output);
-    if (path === undefined) {
-      findings.note(unresolvedNote("temporary directory", "docks-kit scratch remove <path>"));
-    } else {
-      findings.resource({ kind: "temp", path });
-    }
-    findings.note(SCRATCH_NOTE);
+  if (name === "mktemp") detectMktemp(words.slice(1), output, findings);
+}
+
+/** mktemp creates a file, or a directory with `-d`; a dry run (`-u`) creates nothing. */
+function detectMktemp(args: ReadonlyArray<string>, output: string, findings: Findings): void {
+  const createsNothing = args.some(
+    (word) => MKTEMP_CREATES_NOTHING[word] === true || SHORT_CLUSTER_WITH_U.test(word),
+  );
+  if (createsNothing) return;
+  const directory = args.some((word) => word === "--directory" || SHORT_CLUSTER_WITH_D.test(word));
+  const path = lastAbsoluteLine(output);
+  if (path === undefined) {
+    const noun = directory ? "temporary directory" : "temporary file";
+    findings.note(unresolvedNote(noun, "docks-kit scratch remove <path>"));
+  } else {
+    findings.resource({ kind: directory ? "tempDir" : "tempFile", path });
   }
+  findings.note(SCRATCH_NOTE);
 }
 
 function detectWorktree(
@@ -1162,7 +1176,8 @@ function resourceKey(resource: HygieneResource): string {
   switch (resource.kind) {
     case "worktree":
     case "scratch":
-    case "temp":
+    case "tempDir":
+    case "tempFile":
       return `${resource.kind}:${resource.path}`;
     case "compose":
       return `compose:${dockerPrefix(resource.docker)}:${resource.workingDir}`;
@@ -1183,8 +1198,10 @@ function describeResource(resource: PathResource): string {
       return `the container ${resource.id}`;
     case "scratch":
       return `the scratch directory ${resource.path}`;
-    case "temp":
+    case "tempDir":
       return `the temporary directory ${resource.path}`;
+    case "tempFile":
+      return `the temporary file ${resource.path}`;
   }
 }
 
@@ -1196,7 +1213,8 @@ export function cleanupCommand(resource: HygieneResource): string {
     case "container":
       return resource.down;
     case "scratch":
-    case "temp":
+    case "tempDir":
+    case "tempFile":
       return `docks-kit scratch remove ${quote(resource.path)}`;
     case "other":
       return resource.hint;
@@ -1371,7 +1389,8 @@ async function stillExists(resource: HygieneResource): Promise<boolean> {
   switch (resource.kind) {
     case "worktree":
     case "scratch":
-    case "temp":
+    case "tempDir":
+    case "tempFile":
       return existsSync(resource.path);
     case "compose":
       return dockerListsAny(resource.docker, [
