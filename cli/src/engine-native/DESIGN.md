@@ -180,7 +180,8 @@ active logger binding.
 
 ## Platform Support
 
-- EngineNative supports Linux, macOS, and Windows on x64 and arm64.
+- EngineNative supports Linux on x64 and arm64, macOS on arm64, and Windows on
+  x64.
 - Unsupported hosts fail before launcher fallback, dependency probes, downloads,
   settings writes, or sync work.
 - Claude runtime settings use absolute Bun/script paths and materialize
@@ -204,8 +205,8 @@ active logger binding.
   command checks, and compilation and execution of the native host artifact.
   The Linux-canonical snapshot lane stays on Ubuntu and runs both golden suites
   plus their prove-red checks.
-- `.github/workflows/release-cli.yml` publishes six binaries for Linux, macOS,
-  and Windows on x64 and arm64, plus `SHA256SUMS` and the npm package.
+- `.github/workflows/release-cli.yml` publishes four binaries (Linux x64 and
+  arm64, macOS arm64, Windows x64), plus `SHA256SUMS` and the npm package.
 
 ## Non-Goals
 

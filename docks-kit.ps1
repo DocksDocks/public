@@ -25,10 +25,9 @@ if ([string]::IsNullOrWhiteSpace($ProcessorArchitecture)) {
 }
 $KitBin = switch ($ProcessorArchitecture) {
   'AMD64' { 'docks-kit-windows-x64.exe' }
-  'ARM64' { 'docks-kit-windows-arm64.exe' }
   default {
     $HostName = "Windows-$ProcessorArchitecture"
-    [Console]::Error.WriteLine("[docks-kit] unsupported host $HostName; docks-kit supports Linux, macOS, and Windows on x64 or arm64.")
+    [Console]::Error.WriteLine("[docks-kit] unsupported host $HostName; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64.")
     exit 1
   }
 }

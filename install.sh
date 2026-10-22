@@ -38,6 +38,17 @@ path_has_entry() {
   [[ ":${PATH:-}:" == *":${entry}:"* ]]
 }
 
+# Stop before any download: the package installs on every host, but the
+# engine refuses a host outside the matrix at the first sync.
+HOST="$(uname -s)-$(uname -m)"
+case "$HOST" in
+  Linux-x86_64|Linux-aarch64|Darwin-arm64) ;;
+  *)
+    err "unsupported host $HOST; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64."
+    exit 1
+    ;;
+esac
+
 if ! BUN="$(find_bun)"; then
   command -v curl >/dev/null 2>&1 || { err "curl is required to bootstrap Bun. Install Bun manually: https://bun.sh"; exit 1; }
   warn "Bun not found — installing (download-then-run)..."

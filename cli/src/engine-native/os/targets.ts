@@ -10,13 +10,7 @@
  */
 import { platformName, type PlatformName } from "./index";
 
-export type TargetId =
-  | "linux-x64"
-  | "linux-arm64"
-  | "darwin-x64"
-  | "darwin-arm64"
-  | "windows-x64"
-  | "windows-arm64";
+export type TargetId = "linux-x64" | "linux-arm64" | "darwin-arm64" | "windows-x64";
 
 export type TargetArch = "x64" | "arm64";
 
@@ -32,8 +26,8 @@ export interface HostTarget {
   readonly unameKeys: ReadonlyArray<string>;
   /**
    * `$env:PROCESSOR_ARCHITECTURE` values the PowerShell launcher matches; empty
-   * off Windows. Windows PowerShell 5.1 runs emulated on ARM64 and reports
-   * `AMD64` there, so a launcher must read `PROCESSOR_ARCHITEW6432` first.
+   * off Windows. A 32-bit shell on an x64 host reports `x86` there, so a
+   * launcher must read `PROCESSOR_ARCHITEW6432` first.
    */
   readonly processorArchitectures: ReadonlyArray<string>;
 }
@@ -57,10 +51,8 @@ const target = (
 export const HOST_TARGETS: ReadonlyArray<HostTarget> = [
   target("linux-x64", "linux", "x64", ["Linux-x86_64"], []),
   target("linux-arm64", "linux", "arm64", ["Linux-aarch64"], []),
-  target("darwin-x64", "darwin", "x64", ["Darwin-x86_64"], []),
   target("darwin-arm64", "darwin", "arm64", ["Darwin-arm64"], []),
   target("windows-x64", "windows", "x64", [], ["AMD64"]),
-  target("windows-arm64", "windows", "arm64", [], ["ARM64"]),
 ];
 
 function targetFor(platform: PlatformName, arch: string): HostTarget | undefined {

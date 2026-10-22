@@ -21,7 +21,7 @@ const requireSupportedHost = () => {
   return targetForHost(platform, arch) !== undefined
     ? Effect.void
     : bail(
-        `unsupported host ${platform}/${arch}; docks-kit supports only Linux, macOS, and Windows on x64 or arm64`,
+        `unsupported host ${platform}/${arch}; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64`,
         2,
       );
 };
