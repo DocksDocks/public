@@ -97,7 +97,7 @@ function commandShimInvocation(executablePath: string, args: ReadonlyArray<strin
   } as const;
 }
 
-// Host module for the windows-x64 and windows-arm64 targets admitted in os/targets.ts.
+// Host module for the windows-x64 target admitted in os/targets.ts.
 export const windows: HostOs = {
   id: "windows",
   toolchainOs: "windows",

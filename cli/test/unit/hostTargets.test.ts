@@ -54,8 +54,13 @@ describe("host target script contracts", () => {
     }
   });
 
-  it("builds exactly the host target table by default", () => {
-    expect(HOST_TARGETS).toHaveLength(6);
+  it("builds exactly the four supported host targets by default", () => {
+    expect(HOST_TARGETS.map(({ id }) => id)).toEqual([
+      "linux-x64",
+      "linux-arm64",
+      "darwin-arm64",
+      "windows-x64",
+    ]);
     expect(defaultBuildTargets(repoFile("cli/build-binaries.sh"))).toEqual(
       HOST_TARGETS.map(({ id }) => id),
     );

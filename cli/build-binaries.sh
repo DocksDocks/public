@@ -1,7 +1,7 @@
 #!/bin/bash
 # build-binaries.sh — compile docks-kit into standalone executables
 # (bun build --compile embeds the runtime + generated payload + docs topics).
-# Usage: bash cli/build-binaries.sh [--prune] [target ...]   (default: all six)
+# Usage: bash cli/build-binaries.sh [--prune] [target ...]   (default: all four)
 #   --prune also discards binaries whose version cannot be established.
 set -euo pipefail
 
@@ -19,13 +19,13 @@ for arg in "$@"; do
     *) TARGETS+=("$arg") ;;
   esac
 done
-[[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64)
+[[ ${#TARGETS[@]} -gt 0 ]] || TARGETS=(linux-x64 linux-arm64 darwin-arm64 windows-x64)
 
 for target in "${TARGETS[@]}"; do
   case "$target" in
-    linux-x64|linux-arm64|darwin-x64|darwin-arm64|windows-x64|windows-arm64) ;;
+    linux-x64|linux-arm64|darwin-arm64|windows-x64) ;;
     *)
-      echo "unsupported binary target: $target; supported: linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64" >&2
+      echo "unsupported binary target: $target; supported: linux-x64 linux-arm64 darwin-arm64 windows-x64" >&2
       exit 2
       ;;
   esac
@@ -47,7 +47,7 @@ if [[ -r "$REPO_DIR/package.json" ]]; then
   done < "$REPO_DIR/package.json"
 fi
 
-ALL_TARGETS=(linux-x64 linux-arm64 darwin-x64 darwin-arm64 windows-x64 windows-arm64)
+ALL_TARGETS=(linux-x64 linux-arm64 darwin-arm64 windows-x64)
 artifact_name() {
   if [[ "$1" == windows-* ]]; then
     printf 'docks-kit-%s.exe' "$1"

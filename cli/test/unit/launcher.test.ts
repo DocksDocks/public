@@ -199,7 +199,6 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
   it.each([
     ["Linux", "x86_64", "docks-kit-linux-x64"],
     ["Linux", "aarch64", "docks-kit-linux-arm64"],
-    ["Darwin", "x86_64", "docks-kit-darwin-x64"],
     ["Darwin", "arm64", "docks-kit-darwin-arm64"],
   ])("keeps a matching %s-%s release binary on the fast path", (system, machine, binaryName) => {
     const fixture = launcherFixture(binaryName, CURRENT_VERSION);
@@ -244,6 +243,7 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
   });
 
   it.each([
+    ["Darwin", "x86_64"],
     ["MINGW64_NT-10.0-19045", "x86_64"],
     ["Linux", "i686"],
     ["FreeBSD", "x86_64"],
@@ -253,9 +253,8 @@ describe.skipIf(!POSIX_LAUNCHER_APPLIES)(launcherSuiteLabel, () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toBe("");
-    expect(result.stderr).toContain(`unsupported host ${system}-${machine}`);
-    expect(result.stderr).toContain("this launcher serves Linux and macOS on x64 or arm64");
-    expect(result.stderr).toContain("on Windows run docks-kit.ps1 instead");
-    expect(result.stderr).not.toContain("source:");
+    expect(result.stderr.trim()).toBe(
+      `[docks-kit] unsupported host ${system}-${machine}; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64 - on Windows run docks-kit.ps1 instead.`,
+    );
   });
 });
