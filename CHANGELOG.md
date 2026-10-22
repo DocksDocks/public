@@ -15,6 +15,14 @@
   reminder, `docks-kit docs command-guards`, the README, and the
   `docks-kit scratch` help say the same. The Claude Code and Codex rules do
   not change.
+- The `docks-kit-omp` extension takes a created path only from a bash call
+  that runs `mktemp` or `docks-kit scratch new` alone. That call must have no
+  wrapper, no redirection, and no process substitution. Before, a compound
+  command made the extension report a line of unrelated output as a directory
+  that the agent created. A command under `sudo` now records nothing. A
+  command under `env` with an option other than `-u NAME` also records
+  nothing. The extension cannot know the directory or the Docker daemon of
+  these commands.
 
 ### Added
 
