@@ -332,6 +332,13 @@ describe("Docker daemon targets", () => {
   });
 
   it.each([
+    'name=DOCKER_HOST; export DOCKER_HOST=ssh://u@h; env -u "$name" docker compose -p app up -d',
+    'name=DOCKER_HOST; export DOCKER_HOST=ssh://u@h; env --unset "$name" docker compose -p app up -d',
+  ])("records nothing for %s, whose unset variable is not literal", (command) => {
+    expect(detect(command).resources).toEqual([]);
+  });
+
+  it.each([
     "sudo docker compose -p app up -d",
     "export DOCKER_HOST=ssh://u@h && sudo docker compose -p app up -d",
     "DOCKER_HOST=ssh://u@h sudo DOCKER_CONTEXT=dev docker compose -p app up -d",

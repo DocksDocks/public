@@ -59,6 +59,7 @@ const ROOT_SCOPE = "0";
 
 const UNRESOLVED = /[$`*]/;
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+const VARIABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
@@ -647,18 +648,20 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
   if (result[start] === "sudo") return { assignments, words: [] };
   if (result[start] === "env") {
     start++;
-    // `env -u NAME` keeps the command and its directory. Another option can
-    // run another program (`env -S`), change the directory (`env -C`), or
-    // clear the environment (`env -i`), and `env -u DOCKER_HOST` changes the
-    // daemon, so the command records nothing.
+    // `env -u NAME` keeps the command and its directory when NAME is a literal
+    // name that does not select the daemon. Another option can run another
+    // program (`env -S`), change the directory (`env -C`), or clear the
+    // environment (`env -i`), and `env -u DOCKER_HOST` or `env -u "$name"`
+    // can change the daemon, so the command records nothing.
     while ((result[start] ?? "").startsWith("-")) {
       const option = result[start] ?? "";
       if (option === "--") {
         start++;
         break;
       }
-      const unsetsDaemon = DOCKER_ENVIRONMENT[result[start + 1] ?? ""] === true;
-      if ((option !== "-u" && option !== "--unset") || unsetsDaemon) {
+      const name = result[start + 1] ?? "";
+      const keepsDaemon = VARIABLE_NAME.test(name) && DOCKER_ENVIRONMENT[name] !== true;
+      if ((option !== "-u" && option !== "--unset") || !keepsDaemon) {
         return { assignments, words: [] };
       }
       start += 2;
