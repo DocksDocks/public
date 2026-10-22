@@ -3,6 +3,7 @@ import { Cause, Effect, Exit, FileSystem, Layer, Option, Path, Queue, Terminal }
 import { Prompt } from "effect/unstable/cli";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChecklistItem, ChecklistOptions, ChecklistResult } from "../../src/checklistPrompt";
+import { terminalCells } from "../../src/terminalCells";
 
 const ESC = "\u001b";
 const BELL = "\u0007";
@@ -25,47 +26,6 @@ const LONG_DESCRIPTIONS: Record<Label, string> = {
   gamma:
     "Third description with enough words in it to overflow every width that these tests use, from forty columns up to one hundred columns",
 };
-
-// UAX #11 (https://www.unicode.org/reports/tr11/): code points with East Asian
-// Width W or F use two terminal cells.
-const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
-  [0x1100, 0x115f],
-  [0x2e80, 0x303e],
-  [0x3041, 0x33ff],
-  [0x3400, 0x4dbf],
-  [0x4e00, 0x9fff],
-  [0xa000, 0xa4cf],
-  [0xa960, 0xa97f],
-  [0xac00, 0xd7a3],
-  [0xf900, 0xfaff],
-  [0xfe10, 0xfe19],
-  [0xfe30, 0xfe6f],
-  [0xff00, 0xff60],
-  [0xffe0, 0xffe6],
-  [0x1f300, 0x1f64f],
-  [0x1f900, 0x1f9ff],
-  [0x20000, 0x2fffd],
-  [0x30000, 0x3fffd],
-];
-// Marks (variation selectors included), controls, and format characters such
-// as the zero-width joiner use no cell.
-const ZERO_WIDTH = /^[\p{Mark}\p{Cc}\p{Cf}]$/u;
-const EMOJI_PRESENTATION = /^\p{Emoji_Presentation}$/u;
-
-function codePointCells(char: string): number {
-  if (ZERO_WIDTH.test(char)) return 0;
-  const code = char.codePointAt(0) ?? 0;
-  const wide =
-    EMOJI_PRESENTATION.test(char) || WIDE_RANGES.some(([low, high]) => code >= low && code <= high);
-  return wide ? 2 : 1;
-}
-
-/** The terminal cells that `text` uses on one line. */
-function cellWidth(text: string): number {
-  let cells = 0;
-  for (const char of text) cells += codePointCells(char);
-  return cells;
-}
 
 const JAPANESE_DESCRIPTION =
   "日本語の説明テキストがとても長いのでこの行は端末の幅を超えますから最後は省略記号で終わる必要があります";
@@ -231,7 +191,7 @@ function cursorAt(frame: string, pointer = "❯"): Label | undefined {
 function expectLinesFit(run: ChecklistRun, columns: number): void {
   for (const display of run.displays) {
     for (const line of plain(display).split("\n")) {
-      expect(cellWidth(line), `line ${JSON.stringify(line)}`).toBeLessThanOrEqual(columns - 1);
+      expect(terminalCells(line), `line ${JSON.stringify(line)}`).toBeLessThanOrEqual(columns - 1);
     }
   }
 }
@@ -497,6 +457,29 @@ describe("checklist prompt frame", () => {
     expectLinesFit(run, 60);
   });
 
+  it("ends a description of East Asian wide angle brackets with an ellipsis within 60 columns", async () => {
+    const description = "\u2329\u232A".repeat(40);
+    const run = await runChecklist(
+      options({
+        items: items(
+          { alpha: true, beta: false, gamma: true },
+          {
+            alpha: description,
+            beta: "Second item",
+            gamma: "Third item",
+          },
+        ),
+      }),
+      [keys.escape],
+      60,
+    );
+    const row = rowOf(frameAt(run, 0), "alpha");
+
+    expect(row).not.toContain(description);
+    expect(row.replace(/│\s*$/, "").trimEnd()).toMatch(/…$/);
+    expectLinesFit(run, 60);
+  });
+
   it.each([40, 60, 100])(
     "fits wide characters within %i columns minus one and keeps each label whole",
     async (columns) => {
@@ -530,21 +513,34 @@ describe("checklist prompt frame", () => {
   });
 
   it("erases every wrapped row of the old frame after the terminal narrows", async () => {
-    const run = await runChecklist(
-      options({ items: items({ alpha: true, beta: false, gamma: true }, LONG_DESCRIPTIONS) }),
-      [keys.down, keys.escape],
-      100,
-      60,
-    );
-    const firstLines = displayLines(run, 0);
-    const rows = firstLines.reduce(
-      (sum, line) => sum + Math.max(1, Math.ceil(cellWidth(line) / 60)),
-      0,
-    );
+    // Both descriptions use 12 cells, so both frames are the same except the alpha row.
+    const descriptions = { narrow: "a".repeat(12), wide: "漢".repeat(6) } as const;
+    const clearedRows = { narrow: 0, wide: 0 };
+    for (const characters of ["narrow", "wide"] as const) {
+      const run = await runChecklist(
+        options({
+          items: items(
+            { alpha: true, beta: false, gamma: true },
+            {
+              alpha: descriptions[characters],
+              beta: "Second item",
+              gamma: "Third item",
+            },
+          ),
+        }),
+        [keys.down, keys.escape],
+        100,
+        1,
+      );
+      expect(displayLines(run, 0).some((line) => line.includes(descriptions[characters]))).toBe(
+        true,
+      );
+      clearedRows[characters] = cursorUpsBeforeFrame(run, 1);
+    }
 
-    // A line that is wider than 60 cells takes more rows after the terminal reflows.
-    expect(Math.max(...firstLines.map(cellWidth))).toBeGreaterThan(60);
-    expect(cursorUpsBeforeFrame(run, 1)).toBe(rows - 1);
+    // At 1 column the terminal puts one character on each row: the twelve narrow
+    // characters use 12 rows and the six wide characters use 6 rows.
+    expect(clearedRows.narrow - clearedRows.wide).toBe(6);
   });
 
   it("drops the border below 40 columns and still fits every line", async () => {

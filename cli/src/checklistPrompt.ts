@@ -1,5 +1,6 @@
 import { Effect, Terminal } from "effect";
 import { Prompt } from "effect/unstable/cli";
+import { terminalCells, terminalRows } from "./terminalCells";
 
 /** One row of a checklist. The label and the description are each one line of text. */
 export interface ChecklistItem<A> {
@@ -131,11 +132,12 @@ export function checklistPrompt<A>(
     checked: options.items.map((item) => item.checked),
     showError: false,
   };
-  // The cell widths of the lines on screen. `clear` erases these lines and not
-  // a frame that it builds again: the terminal width can change between the
-  // two calls, and then a new frame has a different number of lines. The first
-  // frame of a run always comes from `render`, so a reused prompt starts clean.
-  let shown: ReadonlyArray<number> = [];
+  // The ANSI-free text of the lines on screen. `clear` erases these lines and
+  // not a frame that it builds again: the terminal width can change between
+  // the two calls, and then a new frame has a different number of lines. The
+  // first frame of a run always comes from `render`, so a reused prompt starts
+  // clean.
+  let shown: ReadonlyArray<string> = [];
   return Prompt.Custom<ChecklistState, ChecklistResult<A>>(initial, {
     render: (state, action) => {
       // Beep shows no bell and no change. Submit leaves the panel erased, so
@@ -144,7 +146,7 @@ export function checklistPrompt<A>(
       // https://no-color.org: a NO_COLOR value that is set and not empty turns color off.
       const color = (process.env.NO_COLOR ?? "") === "";
       return Effect.map(frameOf(options, state), (frame) => {
-        shown = frame.map(lineWidth);
+        shown = frame.map((line) => line.map((part) => part.text).join(""));
         const lines = frame.map((line) => paint(line, color));
         return CURSOR_HIDE + lines.join("\n");
       });
@@ -156,8 +158,9 @@ export function checklistPrompt<A>(
         const reported = yield* terminal.columns;
         const columns = reported > 0 ? reported : DEFAULT_COLUMNS;
         // A terminal that reflows wraps a long line into more rows when it
-        // narrows.
-        const rows = shown.reduce((sum, cells) => sum + Math.max(1, Math.ceil(cells / columns)), 0);
+        // narrows. It never splits a character: a wide character that does not
+        // fit in the rest of a row moves to the next row.
+        const rows = shown.reduce((sum, line) => sum + terminalRows(line, columns), 0);
         // The cursor stays on the last row of the frame: erase each row from
         // there up to the first row.
         const above = `${CURSOR_UP}${ERASE_LINE}`.repeat(Math.max(0, rows - 1));
@@ -261,20 +264,20 @@ function measure<A>(options: ChecklistOptions<A>, columns: number, glyphs: Glyph
   const width = known - 1;
   const bordered = known >= BORDER_MIN_COLUMNS;
   const total = options.items.length;
-  const markerWidth = Math.max(widthOf(glyphs.ticked), widthOf(glyphs.unticked));
-  const labelWidth = Math.max(0, ...options.items.map((item) => widthOf(item.label)));
-  const nameWidth = Math.max(markerWidth + 1 + labelWidth, widthOf(SAVE_LABEL));
-  const statusColumn = widthOf(glyphs.pointer) + 1 + nameWidth + GAP.length;
+  const markerWidth = Math.max(terminalCells(glyphs.ticked), terminalCells(glyphs.unticked));
+  const labelWidth = Math.max(0, ...options.items.map((item) => terminalCells(item.label)));
+  const nameWidth = Math.max(markerWidth + 1 + labelWidth, terminalCells(SAVE_LABEL));
+  const statusColumn = terminalCells(glyphs.pointer) + 1 + nameWidth + GAP.length;
   // Size the panel for its widest content in all states, so that its width
   // stays the same when the error shows. The top border needs two columns
   // more than the title.
   const natural = Math.max(
-    widthOf(options.title) + 2,
-    widthOf(options.message),
-    widthOf(options.note ?? ""),
-    ...options.items.map((item) => statusColumn + widthOf(item.description)),
-    statusColumn + widthOf(`${total} of ${total} selected`),
-    statusColumn + widthOf(options.emptySelectionError),
+    terminalCells(options.title) + 2,
+    terminalCells(options.message),
+    terminalCells(options.note ?? ""),
+    ...options.items.map((item) => statusColumn + terminalCells(item.description)),
+    statusColumn + terminalCells(`${total} of ${total} selected`),
+    statusColumn + terminalCells(options.emptySelectionError),
   );
   return {
     width,
@@ -337,9 +340,9 @@ function itemRow<A>(
   glyphs: Glyphs,
 ): Line {
   const marker = ticked ? span(glyphs.ticked, "green") : span(glyphs.unticked, "dim");
-  const padding = layout.nameWidth - widthOf(marker.text) - 1 - widthOf(item.label);
+  const padding = layout.nameWidth - terminalCells(marker.text) - 1 - terminalCells(item.label);
   return [
-    current ? span(glyphs.pointer, "accent") : span(" ".repeat(widthOf(glyphs.pointer))),
+    current ? span(glyphs.pointer, "accent") : span(" ".repeat(terminalCells(glyphs.pointer))),
     span(" "),
     marker,
     span(" "),
@@ -364,10 +367,10 @@ function saveRows<A>(
   const [first = "", ...rest] = pack(words(status.text), " ", layout.inner - layout.statusColumn);
   return [
     [
-      current ? span(glyphs.pointer, "accent") : span(" ".repeat(widthOf(glyphs.pointer))),
+      current ? span(glyphs.pointer, "accent") : span(" ".repeat(terminalCells(glyphs.pointer))),
       span(" "),
       span(SAVE_LABEL, current ? "accentBold" : "plain"),
-      span(" ".repeat(layout.nameWidth - widthOf(SAVE_LABEL)) + GAP),
+      span(" ".repeat(layout.nameWidth - terminalCells(SAVE_LABEL)) + GAP),
       span(first, status.style),
     ],
     ...rest.map((text) => [span(" ".repeat(layout.statusColumn)), span(text, status.style)]),
@@ -399,59 +402,12 @@ function span(text: string, style: Style = "plain"): Span {
   return { text, style };
 }
 
-/** The terminal cells of `text`. */
-function widthOf(text: string): number {
-  let cells = 0;
-  for (const char of text) cells += charCells(char);
-  return cells;
-}
-
-// Marks (variation selectors included), controls, and format characters such
-// as the zero-width joiner use no cell.
-const ZERO_WIDTH = /[\p{Mark}\p{Cc}\p{Cf}]/u;
-const EMOJI_PRESENTATION = /\p{Emoji_Presentation}/u;
-
-// Code points with East Asian Width W or F.
-const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
-  [0x1100, 0x115f],
-  [0x2e80, 0x303e],
-  [0x3041, 0x33ff],
-  [0x3400, 0x4dbf],
-  [0x4e00, 0x9fff],
-  [0xa000, 0xa4cf],
-  [0xa960, 0xa97f],
-  [0xac00, 0xd7a3],
-  [0xf900, 0xfaff],
-  [0xfe10, 0xfe19],
-  [0xfe30, 0xfe6f],
-  [0xff00, 0xff60],
-  [0xffe0, 0xffe6],
-  [0x1f300, 0x1f64f],
-  [0x1f900, 0x1f9ff],
-  [0x20000, 0x2fffd],
-  [0x30000, 0x3fffd],
-];
-
-/**
- * The terminal cells of one code point, after UAX #11 East Asian Width
- * (https://www.unicode.org/reports/tr11/): 0 for a mark, a control, or a format
- * character; 2 for a wide or full-width character; else 1.
- */
-function charCells(char: string): number {
-  if (ZERO_WIDTH.test(char)) return 0;
-  const point = char.codePointAt(0) ?? 0;
-  const wide =
-    WIDE_RANGES.some(([first, last]) => point >= first && point <= last) ||
-    EMOJI_PRESENTATION.test(char);
-  return wide ? 2 : 1;
-}
-
 /** The longest start of `text` that uses at most `cells` cells. */
 function cutCells(text: string, cells: number): string {
   let kept = "";
   let used = 0;
   for (const char of text) {
-    const next = used + charCells(char);
+    const next = used + terminalCells(char);
     // A wide character that does not fit stops the cut: it never crosses the width.
     if (next > cells) break;
     kept += char;
@@ -461,18 +417,18 @@ function cutCells(text: string, cells: number): string {
 }
 
 function lineWidth(line: Line): number {
-  return line.reduce((sum, part) => sum + widthOf(part.text), 0);
+  return line.reduce((sum, part) => sum + terminalCells(part.text), 0);
 }
 
 /** Cuts `line` to `width` cells and ends a cut line with the ellipsis. */
 function fit(line: Line, width: number, ellipsis: string): Line {
   if (lineWidth(line) <= width) return line;
-  const room = width - widthOf(ellipsis);
+  const room = width - terminalCells(ellipsis);
   if (room < 0) return [span(cutCells(ellipsis, Math.max(width, 0)))];
   const kept: Array<Span> = [];
   let used = 0;
   for (const part of line) {
-    const cells = widthOf(part.text);
+    const cells = terminalCells(part.text);
     if (used + cells > room) {
       kept.push(span(cutCells(part.text, room - used).trimEnd() + ellipsis, part.style));
       break;
@@ -496,7 +452,7 @@ function pack(parts: ReadonlyArray<string>, separator: string, width: number): A
   let current = "";
   for (const part of parts) {
     const joined = current === "" ? part : `${current}${separator}${part}`;
-    if (current !== "" && widthOf(joined) > width) {
+    if (current !== "" && terminalCells(joined) > width) {
       lines.push(current);
       current = part;
     } else {
