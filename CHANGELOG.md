@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-22 - docks-kit 0.21.1: omp rules for temporary files
+## 2026-10-22 - docks-kit 0.21.1: omp rules for temporary files and Bun 1.4.4
 
 ### Fixed
 
@@ -29,6 +29,18 @@
 - The `docks-kit-omp` extension reminds the agent of a temporary file that
   `mktemp` creates, and its session-stop check lists that file while it
   exists. A dry run (`mktemp -u`) records nothing.
+
+### Changed
+
+- The Bun floor, the verified Bun pin, and the Bun in CI move from 1.4.2 to
+  1.4.4 (`SoT/toolchain.json`). The generated launcher and installer blocks
+  install Bun 1.4.4. The checkout launchers stop on an older Bun and name
+  `bun upgrade`.
+- `bun run typecheck` runs `bun check --no-script -b -p cli` in place of
+  `tsc --noEmit -p cli`. `bun check` is the type checker that Bun 1.4.3 added,
+  ported from typescript-go, and it reports the same errors as TypeScript 7.
+  `bun run check`, CI, and the kit agent files use it. The `typescript`
+  devDependency stays for editors.
 
 ## 2026-10-21 - docks-kit 0.21.0: agent resource hygiene for omp
 

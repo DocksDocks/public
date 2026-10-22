@@ -49,7 +49,7 @@ deployed or overwritten by the kit.
 - Top-level keys and table blocks keep their documented ownership boundaries.
 - `default.rules` remains untouched.
 - `bun run golden:mutation` covers file effects for config changes.
-- `bun x tsc --noEmit -p cli` passes.
+- `bun run typecheck` passes.
 
 ## Gotchas
 
