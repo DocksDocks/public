@@ -301,7 +301,9 @@ describe("omp command", () => {
       expect(run.exitCode, run.stderr).toBe(0);
       const overlayDir = join(run.home, ".cache", "docks-kit");
       const [overlayName] = readdirSync(overlayDir);
-      const overlayPath = join(overlayDir, overlayName!);
+      // The launcher joins the overlay path with "/", as the argv below shows,
+      // also on Windows.
+      const overlayPath = `${run.home}/.cache/docks-kit/${overlayName}`;
       const roles = (parse(readFileSync(overlayPath, "utf8")) as Record<string, unknown>)[
         "modelRoles"
       ] as Record<string, string>;
