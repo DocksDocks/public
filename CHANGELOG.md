@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-22 - docks-kit 0.22.0: four supported platforms
+
+### Removed
+
+- docks-kit no longer supports macOS x64 (Intel Macs) or Windows arm64
+  (#105). No release download used their binaries. A release now builds
+  four binaries, `docks-kit-linux-x64`, `docks-kit-linux-arm64`,
+  `docks-kit-darwin-arm64`, and `docks-kit-windows-x64.exe`, plus
+  `SHA256SUMS`. The engine gate (exit 2) and both launchers (exit 1) stop a
+  removed host with a message that names the four supported targets.
+
+### Changed
+
+- `install.sh` and `install.ps1` check the host before they download Bun or
+  install the package, and stop a host outside the support matrix with
+  exit 1. Before, such a host installed the package and failed only at its
+  first sync.
+
 ## 2026-10-22 - docks-kit 0.21.1: omp temporary files, Bun 1.4.4, and free omp sessions
 
 ### Fixed
