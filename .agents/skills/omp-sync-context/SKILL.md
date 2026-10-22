@@ -327,6 +327,9 @@ Start omp with `launch` first, so a forwarded subcommand name becomes message te
 Pass the session model as an explicit `--model`, so a restored session model cannot replace it.
 Set the three model variables in the child environment instead of removing them, because omp refills an unset variable from its `.env` files.
 Check the session model against the free catalog of every candidate profile.
+Do not claim that the launcher covers these paths, which can still select a paid model: in-session selection (`Alt+M`, `Alt+P`, `/switch`, `/model`, `/modelpreset`, `/resume`, and a seance subagent), the `web` role and its chain, the model-kind roles `image`, `speech`, and `dictation`, and extensions and hooks (`-e`, `--hook`, `--plugin-dir`).
+An `Alt+M` assignment of the `default` role writes `modelRoles.default` to the deployed `~/.omp/agent/config.yml`, so it also changes later plain `omp` runs.
+`cli/docs/omp-models.md` `### Model selection outside the launcher` lists these paths.
 Anchor input checks at `commands/omp.ts` — `rejectedForwardedFlag` and `forwardedProfile` — the rejected model flags and the candidate profiles, scanned past `--`.
 Anchor the launch at `ompOverlay.ts` — `buildOmpArgs` and `ompChildEnvironment` — `launch` first, the explicit `--model`, the model variables, and the `PI_CONFIG_FILES` append.
 Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
