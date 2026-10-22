@@ -112,6 +112,15 @@ const DOCKER_ENVIRONMENT: Record<string, true> = {
   DOCKER_TLS_VERIFY: true,
   DOCKER_CERT_PATH: true,
 };
+/** Builtins that declare shell variables, with options and `NAME=value` words. */
+const DECLARATION_COMMANDS: Record<string, true> = {
+  declare: true,
+  typeset: true,
+  local: true,
+  readonly: true,
+};
+/** Builtins that run shell code that detection does not read. */
+const SHELL_CODE_COMMANDS: Record<string, true> = { eval: true, source: true, ".": true };
 const COMPOSE_VALUE_OPTIONS: Record<string, true> = {
   "-f": true,
   "--file": true,
@@ -624,10 +633,13 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
  * `NAME=value` words before the command, also after an `env`. The first of
  * the returned words is the command name. The words are empty when `sudo`
  * or an `env` option hides the command, its directory, or its Docker daemon.
+ * `assignsShell` is true when the segment has only `NAME=value` words, which
+ * then set shell variables.
  */
 function commandWords(segmentWords: ReadonlyArray<string>): {
   assignments: Array<string>;
   words: Array<string>;
+  assignsShell: boolean;
 } {
   const result: Array<string> = [];
   for (let index = 0; index < segmentWords.length; index++) {
@@ -643,9 +655,10 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
   let start = 0;
   while (RESERVED_WORDS[result[start] ?? ""] === true) start++;
   while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
+  if (start === result.length) return { assignments, words: [], assignsShell: true };
   // A command under sudo runs as another user, in an environment and a
   // directory that the sudoers policy controls, so it records nothing.
-  if (result[start] === "sudo") return { assignments, words: [] };
+  if (result[start] === "sudo") return { assignments, words: [], assignsShell: false };
   if (result[start] === "env") {
     start++;
     // `env -u NAME` keeps the command and its directory when NAME is a literal
@@ -662,27 +675,75 @@ function commandWords(segmentWords: ReadonlyArray<string>): {
       const name = result[start + 1] ?? "";
       const keepsDaemon = VARIABLE_NAME.test(name) && DOCKER_ENVIRONMENT[name] !== true;
       if ((option !== "-u" && option !== "--unset") || !keepsDaemon) {
-        return { assignments, words: [] };
+        return { assignments, words: [], assignsShell: false };
       }
       start += 2;
     }
   }
   while (ASSIGNMENT.test(result[start] ?? "")) assignments.push(result[start++] ?? "");
-  return { assignments, words: result.slice(start) };
+  return { assignments, words: result.slice(start), assignsShell: false };
 }
 
-/** Applies the `DOCKER_*` words of `assignments` to a copy of `environment`. */
+/** Applies the `DOCKER_*=value` words of `assignments` to a copy of `environment`. */
 function dockerEnvironment(
   environment: Readonly<Record<string, string>>,
   assignments: ReadonlyArray<string>,
 ): Record<string, string> {
   const result = { ...environment };
   for (const assignment of assignments) {
+    if (!ASSIGNMENT.test(assignment)) continue;
     const equals = assignment.indexOf("=");
     const variable = assignment.slice(0, equals);
     if (DOCKER_ENVIRONMENT[variable] === true) result[variable] = assignment.slice(equals + 1);
   }
   return result;
+}
+
+/** True when the `NAME` or `NAME=value` word names a variable that selects the Docker daemon. */
+function namesDaemonVariable(word: string): boolean {
+  const equals = word.indexOf("=");
+  return DOCKER_ENVIRONMENT[equals < 0 ? word : word.slice(0, equals)] === true;
+}
+
+/**
+ * True when detection can apply the `export` arguments: each operand is a
+ * literal `NAME=value`, or a literal NAME that does not select the daemon.
+ * An option such as `-n`, an operand that is not literal, or a daemon
+ * variable without a value can give the daemon a value that detection does
+ * not know. For example, `export DOCKER_HOST` exports a shell variable that
+ * detection does not track.
+ */
+function exportIsTracked(args: ReadonlyArray<string>): boolean {
+  const operands = args[0] === "--" ? args.slice(1) : args;
+  return operands.every(
+    (word) => ASSIGNMENT.test(word) || (VARIABLE_NAME.test(word) && !namesDaemonVariable(word)),
+  );
+}
+
+/**
+ * Returns the variables that the `unset` arguments remove, or undefined when
+ * detection cannot know them. Only `-v` and literal names keep them known:
+ * `unset -f` and `unset -n` act on functions and name references, and
+ * `unset "$name"` removes a variable that the command does not name.
+ */
+function unsetVariables(args: ReadonlyArray<string>): ReadonlyArray<string> | undefined {
+  let start = 0;
+  while (args[start] === "-v") start++;
+  if (args[start] === "--") start++;
+  const operands = args.slice(start);
+  return operands.every((word) => VARIABLE_NAME.test(word)) ? operands : undefined;
+}
+
+/**
+ * True when the `declare`, `typeset`, `local`, or `readonly` arguments keep
+ * the daemon variables unchanged: each word is a literal option, a literal
+ * NAME, or a literal `NAME=value`, and no word names a daemon variable.
+ */
+function declarationIsTracked(args: ReadonlyArray<string>): boolean {
+  return args.every((word) => {
+    if (word.startsWith("-") || word.startsWith("+")) return !UNRESOLVED.test(word);
+    return (ASSIGNMENT.test(word) || VARIABLE_NAME.test(word)) && !namesDaemonVariable(word);
+  });
 }
 
 function quote(word: string): string {
@@ -761,18 +822,19 @@ function gitArguments(
 
 /**
  * Reads a docker command: the daemon target and the arguments after the
- * global options. `target` is undefined when a value of the target is not
- * literal. Returns undefined for a command that is not docker.
+ * global options. `target` is undefined when the Docker environment is
+ * unknown or a value of the target is not literal. Returns undefined for a
+ * command that is not docker.
  */
 function dockerCommand(
   name: string,
   words: ReadonlyArray<string>,
-  environment: Readonly<Record<string, string>>,
+  environment: Readonly<Record<string, string>> | undefined,
 ): { target: DockerTarget | undefined; args: Array<string> } | undefined {
   if (name !== "docker" && name !== "docker-compose") return undefined;
   const target: DockerTarget = { environment: {}, options: [] };
-  let literal = true;
-  for (const [variable, value] of Object.entries(environment)) {
+  let literal = environment !== undefined;
+  for (const [variable, value] of Object.entries(environment ?? {})) {
     if (value === "") continue;
     if (UNRESOLVED.test(value)) literal = false;
     target.environment[variable] = value;
@@ -841,7 +903,12 @@ interface Findings {
 /** The state that a `cd` or an `export` changes, one for each subshell scope. */
 interface ScopeState {
   directory: string | undefined;
-  dockerEnvironment: Record<string, string>;
+  /**
+   * The `DOCKER_*` variables that the scope exported, or undefined when a
+   * command changed them in a way that detection does not know. An unknown
+   * environment stays unknown for the rest of the scope.
+   */
+  dockerEnvironment: Record<string, string> | undefined;
 }
 
 /** One simple command, with the state of its scope applied. */
@@ -849,7 +916,8 @@ interface CommandContext {
   readonly name: string;
   readonly words: ReadonlyArray<string>;
   readonly directory: string | undefined;
-  readonly dockerEnvironment: Readonly<Record<string, string>>;
+  /** The Docker environment of the command, or undefined when it is unknown. */
+  readonly dockerEnvironment: Readonly<Record<string, string>> | undefined;
 }
 
 /**
@@ -876,7 +944,8 @@ export function detectResources(
   };
 
   // A subshell scope starts with a copy of its parent state at its first
-  // command, so a `cd` in a subshell does not change the commands after it.
+  // command, so a `cd` or an unknown Docker environment in a subshell does
+  // not change the commands after it.
   const states = new Map<string, ScopeState>([
     [ROOT_SCOPE, { directory: cwd, dockerEnvironment: {} }],
   ]);
@@ -884,7 +953,11 @@ export function detectResources(
     const known = states.get(scope);
     if (known !== undefined) return known;
     const parent = stateOf(scope.slice(0, scope.lastIndexOf("/")));
-    const state = { directory: parent.directory, dockerEnvironment: { ...parent.dockerEnvironment } };
+    const environment = parent.dockerEnvironment;
+    const state = {
+      directory: parent.directory,
+      dockerEnvironment: environment === undefined ? undefined : { ...environment },
+    };
     states.set(scope, state);
     return state;
   };
@@ -902,28 +975,50 @@ export function detectResources(
       ? lastAbsoluteLine(output)
       : undefined;
   for (const segment of segments) {
-    const { assignments, words } = commandWords(segment.words);
+    const { assignments, words, assignsShell } = commandWords(segment.words);
     const first = words[0];
-    if (first === undefined) continue;
+    if (first === undefined) {
+      // `DOCKER_HOST=value` without a command changes the daemon when the
+      // shell already exports DOCKER_HOST, which detection does not know.
+      if (assignsShell && assignments.some(namesDaemonVariable)) {
+        stateOf(segment.scope).dockerEnvironment = undefined;
+      }
+      continue;
+    }
     const name = (first.split(/[\\/]/).pop() ?? first).replace(/\.exe$/i, "");
     const state = stateOf(segment.scope);
+    const args = words.slice(1);
     if (name === "cd" || name === "pushd") {
-      state.directory = changeDirectory(words.slice(1), state.directory, home);
+      state.directory = changeDirectory(args, state.directory, home);
       continue;
     }
     if (name === "export") {
-      state.dockerEnvironment = dockerEnvironment(state.dockerEnvironment, words.slice(1));
+      state.dockerEnvironment =
+        state.dockerEnvironment !== undefined && exportIsTracked(args)
+          ? dockerEnvironment(state.dockerEnvironment, args)
+          : undefined;
       continue;
     }
     if (name === "unset") {
-      for (const variable of words.slice(1)) delete state.dockerEnvironment[variable];
+      const variables = unsetVariables(args);
+      if (variables === undefined) state.dockerEnvironment = undefined;
+      for (const variable of variables ?? []) delete state.dockerEnvironment?.[variable];
       continue;
+    }
+    if (
+      SHELL_CODE_COMMANDS[name] === true ||
+      (DECLARATION_COMMANDS[name] === true && !declarationIsTracked(args))
+    ) {
+      state.dockerEnvironment = undefined;
     }
     const context: CommandContext = {
       name,
       words,
       directory: state.directory,
-      dockerEnvironment: dockerEnvironment(state.dockerEnvironment, assignments),
+      dockerEnvironment:
+        state.dockerEnvironment === undefined
+          ? undefined
+          : dockerEnvironment(state.dockerEnvironment, assignments),
     };
     detectCreation(context, home, output, ownPath, platform, findings);
     const text = segment.words.map(quote).join(" ").slice(0, COMMAND_TEXT_LIMIT);
