@@ -174,19 +174,24 @@ describe("detectResources", () => {
   });
 
   it("finds a mktemp directory and points to the scratch tools", () => {
-    const result = detect("mktemp -d", "/w", "/tmp/tmp.X\n");
-    expect(result.resources).toEqual([{ kind: "tempDir", path: "/tmp/tmp.X" }]);
+    const path = join(tmpdir(), "tmp.X");
+    const result = detect("mktemp -d", "/w", `${path}\n`);
+    expect(result.resources).toEqual([{ kind: "tempDir", path }]);
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0]).toContain("scratch_new");
     expect(result.notes[0]).toContain("docks-kit scratch new");
   });
 
   it("finds a mktemp file, but not a dry-run name, and points to the scratch tools", () => {
-    const result = detect("mktemp", "/w", "/tmp/tmp.Y\n");
-    expect(result.resources).toEqual([{ kind: "tempFile", path: "/tmp/tmp.Y" }]);
+    const path = join(tmpdir(), "tmp.Y");
+    const result = detect("mktemp", "/w", `${path}\n`);
+    expect(result.resources).toEqual([{ kind: "tempFile", path }]);
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0]).toContain("scratch_new");
-    expect(detect("mktemp -u", "/w", "/tmp/tmp.Z\n")).toEqual({ resources: [], notes: [] });
+    expect(detect("mktemp -u", "/w", `${join(tmpdir(), "tmp.Z")}\n`)).toEqual({
+      resources: [],
+      notes: [],
+    });
   });
 
   it.each(["mktemp -du", "mktemp -d --dry-run", "mktemp --directory -u"])(
@@ -201,6 +206,19 @@ describe("detectResources", () => {
     expect(result.resources).toEqual([]);
     const fileNote = result.notes.find((note) => note.includes("a temporary file"));
     expect(fileNote).toContain("docks-kit scratch remove <path>");
+  });
+
+  it("does not take a later output path outside the temporary roots for a mktemp file", () => {
+    const result = detect('tmp=$(mktemp) && bash "$tmp"', "/w", "/opt/tool/bin/tool\n");
+    expect(result.resources).toEqual([]);
+    const fileNote = result.notes.find((note) => note.includes("a temporary file"));
+    expect(fileNote).toContain("docks-kit scratch remove <path>");
+  });
+
+  it("does not take a later output path outside the temporary roots for a scratch directory", () => {
+    const result = detect("S=$(docks-kit scratch new x) && ls /opt", "/w", "/opt/app\n");
+    expect(result.resources).toEqual([]);
+    expect(result.notes.some((note) => note.includes("scratch directory"))).toBe(true);
   });
 
   it.each([
