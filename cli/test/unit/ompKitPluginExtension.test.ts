@@ -208,15 +208,17 @@ describe("detectResources", () => {
     expect(fileNote).toContain("docks-kit scratch remove <path>");
   });
 
-  it("does not take a later output path outside the temporary roots for a mktemp file", () => {
-    const result = detect('tmp=$(mktemp) && bash "$tmp"', "/w", "/opt/tool/bin/tool\n");
+  it("does not take another command's output for a captured mktemp file", () => {
+    const other = join(tmpdir(), "other-task");
+    const result = detect(`f=$(mktemp); printf '%s\\n' "$OTHER"`, "/w", `${other}\n`);
     expect(result.resources).toEqual([]);
     const fileNote = result.notes.find((note) => note.includes("a temporary file"));
     expect(fileNote).toContain("docks-kit scratch remove <path>");
   });
 
-  it("does not take a later output path outside the temporary roots for a scratch directory", () => {
-    const result = detect("S=$(docks-kit scratch new x) && ls /opt", "/w", "/opt/app\n");
+  it("does not take another command's output for a captured scratch directory", () => {
+    const other = join(tmpdir(), "other-task");
+    const result = detect('S=$(docks-kit scratch new x); echo "$OTHER"', "/w", `${other}\n`);
     expect(result.resources).toEqual([]);
     expect(result.notes.some((note) => note.includes("scratch directory"))).toBe(true);
   });

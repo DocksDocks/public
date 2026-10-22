@@ -23,13 +23,12 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
-  realpathSync,
   statSync,
   unlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join, posix, resolve, win32 } from "node:path";
 
 // ------------------------------------------------------------- constants ----
@@ -868,7 +867,12 @@ export function detectResources(
     return state;
   };
 
-  for (const segment of scopedSegments(command, ROOT_SCOPE)) {
+  const segments = scopedSegments(command, ROOT_SCOPE);
+  // Only a command that runs alone owns the output. A substitution such as
+  // `f=$(mktemp)` captures what mktemp prints, and a later command can print
+  // an unrelated path, so a compound command gets the generic note.
+  const ownPath = segments.length === 1 ? lastAbsoluteLine(output) : undefined;
+  for (const segment of segments) {
     const { assignments, words } = commandWords(segment.words);
     const first = words[0];
     if (first === undefined) continue;
@@ -892,7 +896,7 @@ export function detectResources(
       directory: state.directory,
       dockerEnvironment: dockerEnvironment(state.dockerEnvironment, assignments),
     };
-    detectCreation(context, home, output, findings);
+    detectCreation(context, home, output, ownPath, findings);
     const text = segment.words.map(quote).join(" ").slice(0, COMMAND_TEXT_LIMIT);
     for (const rule of otherRules(context, segment.background, home)) {
       findings.resource({ kind: "other", category: rule.category, command: text, hint: rule.hint });
@@ -905,6 +909,7 @@ function detectCreation(
   context: CommandContext,
   home: string,
   output: string,
+  ownPath: string | undefined,
   findings: Findings,
 ): void {
   const { name, words, directory } = context;
@@ -928,23 +933,21 @@ function detectCreation(
   }
 
   if (name === "docks-kit" && words[1] === "scratch" && words[2] === "new") {
-    const path = temporaryPathIn(output, home);
-    if (path === undefined) {
+    if (ownPath === undefined) {
       findings.note(unresolvedNote("scratch directory", "docks-kit scratch remove <path>"));
     } else {
-      findings.resource({ kind: "scratch", path });
+      findings.resource({ kind: "scratch", path: ownPath });
     }
     return;
   }
 
-  if (name === "mktemp") detectMktemp(words.slice(1), output, home, findings);
+  if (name === "mktemp") detectMktemp(words.slice(1), ownPath, findings);
 }
 
 /** mktemp creates a file, or a directory with `-d`; a dry run (`-u`) creates nothing. */
 function detectMktemp(
   args: ReadonlyArray<string>,
-  output: string,
-  home: string,
+  path: string | undefined,
   findings: Findings,
 ): void {
   const createsNothing = args.some(
@@ -952,7 +955,6 @@ function detectMktemp(
   );
   if (createsNothing) return;
   const directory = args.some((word) => word === "--directory" || SHORT_CLUSTER_WITH_D.test(word));
-  const path = temporaryPathIn(output, home);
   if (path === undefined) {
     const noun = directory ? "temporary directory" : "temporary file";
     findings.note(unresolvedNote(noun, "docks-kit scratch remove <path>"));
@@ -960,39 +962,6 @@ function detectMktemp(
     findings.resource({ kind: directory ? "tempDir" : "tempFile", path });
   }
   findings.note(SCRATCH_NOTE);
-}
-
-/**
- * The last absolute output line, when it lies inside a root that
- * `docks-kit scratch remove` accepts. A command substitution captures what
- * mktemp or `scratch new` prints, so the last line can come from a later
- * command, such as an installer that prints where it installed. A path
- * outside the roots gets the generic note, because the cleanup command
- * refuses it.
- */
-function temporaryPathIn(output: string, home: string): string | undefined {
-  const path = lastAbsoluteLine(output);
-  if (path === undefined) return undefined;
-  return temporaryRoots(home).some((root) => isStrictlyInside(root, path)) ? path : undefined;
-}
-
-/** The scratch root and the temporary directories, also as real paths behind symlinks. */
-function temporaryRoots(home: string): Array<string> {
-  const roots = [join(home, ".cache", "docks-kit", "scratch"), tmpdir()];
-  if (process.platform !== "win32") roots.push("/tmp", "/var/tmp");
-  return roots.flatMap((root) => {
-    try {
-      const real = realpathSync(root);
-      return real === root ? [root] : [root, real];
-    } catch {
-      return [root];
-    }
-  });
-}
-
-function isStrictlyInside(parent: string, child: string): boolean {
-  const path = (process.platform === "win32" ? win32 : posix).relative(parent, child);
-  return path !== "" && !path.startsWith("..") && !isAbsolute(path);
 }
 
 function detectWorktree(
