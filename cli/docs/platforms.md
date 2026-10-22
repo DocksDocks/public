@@ -12,7 +12,9 @@ and Windows on x64.
 
 POSIX hosts use the `docks-kit` launcher. Windows uses `docks-kit.ps1`.
 Hosts outside this table fail before either launcher can fall back to Bun
-source.
+source. Both checks read the architecture of the shell. On an Apple silicon
+Mac, a shell that runs under Rosetta reports `x86_64` and gets the
+unsupported-host message, so run docks-kit from a native arm64 shell.
 
 EngineNative is the only supported engine on supported hosts.
 `DOCKS_KIT_ENGINE=bash` exits with the removed-engine message and points at the
