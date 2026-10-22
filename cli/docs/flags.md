@@ -18,7 +18,9 @@ Positional targets are `claude`, `codex`, `agents`, and `omp`. A flag-less
 `codex`, and `agents`, and never selects `omp`. Choose the stored selection
 with `docks-kit harnesses`. With no stored selection, its picker pre-ticks all
 four harnesses, `omp` included; a flag-less `sync` does not change until the
-picker saves a selection.
+picker saves a selection. In the picker, Enter or Space ticks or unticks the
+harness under the cursor, Enter on the Save row stores the selection, and
+Escape leaves it unchanged.
 
 ## Global flags
 

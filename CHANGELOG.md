@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-22 - docks-kit 0.22.0: four supported platforms
+## 2026-10-22 - docks-kit 0.22.0: four supported platforms and a clear harnesses picker
 
 ### Removed
 
@@ -17,6 +17,12 @@
   install the package, and stop a host outside the support matrix with
   exit 1. Before, such a host installed the package and failed only at its
   first sync.
+- `docks-kit harnesses` opens a new checklist picker (#104). Enter or Space
+  ticks the harness under the cursor, a Save row stores the selection, a hint
+  line names the keys, and Escape leaves the selection unchanged. The picker
+  fits the terminal width, uses ASCII on an old Windows console, and drops
+  color when `NO_COLOR` is set. Before, the picker started on a Select All
+  row, saved on Enter, and showed no key hints.
 
 ## 2026-10-22 - docks-kit 0.21.1: omp temporary files, Bun 1.4.4, and free omp sessions
 
