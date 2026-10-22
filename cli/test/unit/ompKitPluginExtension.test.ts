@@ -346,6 +346,34 @@ describe("Docker daemon targets", () => {
     expect(detect(command).resources).toEqual([]);
   });
 
+  const GENERIC_COMPOSE_NOTES = detect('docker --context "$CTX" compose -p app up -d').notes;
+
+  it.each([
+    'name=DOCKER_HOST; export DOCKER_HOST=ssh://dev; unset "$name"',
+    "export DOCKER_HOST=ssh://dev; export -n DOCKER_HOST",
+    'v=DOCKER_HOST; export "$v=ssh://dev"',
+    "DOCKER_HOST=ssh://dev; export DOCKER_HOST",
+    "export DOCKER_HOST=ssh://dev; unset -f DOCKER_HOST",
+    "declare -x DOCKER_HOST=ssh://dev",
+    "source env.sh",
+    ". env.sh",
+    'eval "$cmd"',
+    "source env.sh; export DOCKER_HOST=ssh://dev",
+  ])("records no stack and gives the generic note after %s", (before) => {
+    const result = detect(`${before}; docker compose -p app up -d`);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toEqual(GENERIC_COMPOSE_NOTES);
+  });
+
+  it.each([
+    "export DOCKER_HOST=ssh://dev; unset -v DOCKER_HOST",
+    "export DOCKER_HOST=ssh://dev; unset DOCKER_HOST",
+    'export PATH="/x:$PATH"',
+    'local dir="$1"',
+  ])("records the stack on the local daemon after %s", (before) => {
+    expect(compose(`${before}; docker compose -p app up -d`)?.docker).toEqual(DEFAULT_DAEMON);
+  });
+
   it("repeats the daemon options in the cleanup of a detached container", () => {
     expect(container("docker -H ssh://u@h run -d img")?.down).toBe(
       `docker --host ssh://u@h stop ${SHORT_ID} && docker --host ssh://u@h rm ${SHORT_ID}`,
@@ -393,6 +421,16 @@ describe("subshell scopes", () => {
       resolve("/a", "b", "wt"),
       resolve("/a", "top"),
     ]);
+  });
+
+  it("keeps an unknown Docker environment inside a subshell", () => {
+    expect(detect('(unset "$n"); docker compose -p app up -d').resources).toEqual([
+      expect.objectContaining({ kind: "compose", docker: DEFAULT_DAEMON }),
+    ]);
+  });
+
+  it("applies an unknown Docker environment to later commands of the same subshell", () => {
+    expect(detect('(unset "$n"; docker compose -p app up -d)').resources).toEqual([]);
   });
 });
 
