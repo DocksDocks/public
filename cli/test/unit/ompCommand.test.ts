@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
@@ -224,7 +224,7 @@ describe("omp command", () => {
       const argvLog = join(first.home, ".golden-argv.log");
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
-        `omp\t--config ${first.home}/.cache/docks-kit/${firstName} -p hello`,
+        `omp\tlaunch --config ${first.home}/.cache/docks-kit/${firstName} --model ${selector}:high -p hello`,
       ]);
 
       const options = { ...NATIVE, reuseHome: first.home };
@@ -233,7 +233,7 @@ describe("omp command", () => {
       // Every plain launch checks the remembered model against the live catalog.
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
-        `omp\t--config ${first.home}/.cache/docks-kit/${firstName} -p again`,
+        `omp\tlaunch --config ${first.home}/.cache/docks-kit/${firstName} --model ${selector}:high -p again`,
       ]);
 
       const switched = runPublicCli(
@@ -251,7 +251,7 @@ describe("omp command", () => {
       // which held the earlier model before this run.
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
-        `omp\t--config ${first.home}/.cache/docks-kit/${overlayFileName({ selector: levelFreeSelector })}`,
+        `omp\tlaunch --config ${first.home}/.cache/docks-kit/${overlayFileName({ selector: levelFreeSelector })} --model ${levelFreeSelector}`,
       ]);
       const names = readdirSync(overlayDir);
       expect(names).toHaveLength(2);
@@ -266,6 +266,80 @@ describe("omp command", () => {
       expect((second["modelRoles"] as Record<string, string>)["advisor"]).toBe(levelFreeSelector);
       expect(readFileSync(firstPath, "utf8")).toBe(firstOverlay);
       expect(existsSync(join(first.home, ".omp", "agent"))).toBe(false);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "gives the omp session the overlay and the overlay role models in its environment",
+    () => {
+      // The session call logs the variables that select a model or load a
+      // config, so the test sees what omp and its bash tool inherit.
+      const envStub = makeStubDir(
+        {
+          omp: `if (args[0] === "models" && args[1] === "--json") {
+  console.log(JSON.stringify({models:[
+    {selector:"${selector}",name:"GLM Free",thinking:["low","high"],contextWindow:204800,cost:{input:0,output:0}}
+  ]}))
+} else {
+  const pick = (name) => process.env[name] ?? null;
+  appendFileSync(process.env.HOME + "/.omp-env.log", JSON.stringify({
+    PI_CONFIG_FILES: pick("PI_CONFIG_FILES"),
+    PI_SMOL_MODEL: pick("PI_SMOL_MODEL"),
+    PI_SLOW_MODEL: pick("PI_SLOW_MODEL"),
+    PI_PLAN_MODEL: pick("PI_PLAN_MODEL"),
+  }) + "\\n")
+}`,
+        },
+        NATIVE,
+      );
+      const inherited = join("team", "omp-extra.yml");
+      const run = runPublicCli(["omp", "--model", "GLM", "-p", "hello"], "home-fresh", envStub, {
+        ...NATIVE,
+        env: { PI_SMOL_MODEL: "paid/x", PI_CONFIG_FILES: inherited },
+      });
+      expect(run.exitCode, run.stderr).toBe(0);
+      const overlayDir = join(run.home, ".cache", "docks-kit");
+      const [overlayName] = readdirSync(overlayDir);
+      const overlayPath = join(overlayDir, overlayName!);
+      const roles = (parse(readFileSync(overlayPath, "utf8")) as Record<string, unknown>)[
+        "modelRoles"
+      ] as Record<string, string>;
+      const logged = readFileSync(join(run.home, ".omp-env.log"), "utf8").trim().split("\n");
+      expect(logged.map((line) => JSON.parse(line) as unknown)).toEqual([
+        {
+          PI_CONFIG_FILES: [inherited, overlayPath].join(delimiter),
+          PI_SMOL_MODEL: roles["smol"],
+          PI_SLOW_MODEL: roles["slow"],
+          PI_PLAN_MODEL: roles["plan"],
+        },
+      ]);
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
+        `omp\tlaunch --config ${run.home}/.cache/docks-kit/${overlayName} --model ${selector}:high -p hello`,
+      ]);
+      // One warning for the exported variable the launcher replaced, none
+      // for the two variables the parent did not set.
+      const stderrLines = run.stderr.split("\n");
+      expect(stderrLines.filter((line) => line.includes("PI_SMOL_MODEL"))).toHaveLength(1);
+      expect(stderrLines.filter((line) => line.includes("PI_SLOW_MODEL"))).toEqual([]);
+      expect(stderrLines.filter((line) => line.includes("PI_PLAN_MODEL"))).toEqual([]);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "sends a forwarded omp subcommand word to the free session as message text",
+    () => {
+      // `launch` first makes omp read `commit` as a prompt instead of running
+      // its commit subcommand with its own model selection.
+      const run = runPublicCli(["omp", "--model", "GLM", "commit"], "home-fresh", stubDir, NATIVE);
+      expect(run.exitCode, run.stderr).toBe(0);
+      const [overlayName] = readdirSync(join(run.home, ".cache", "docks-kit"));
+      expect(readFileSync(join(run.home, ".golden-argv.log"), "utf8").trim().split("\n")).toEqual([
+        "omp\tmodels --json",
+        `omp\tlaunch --config ${run.home}/.cache/docks-kit/${overlayName} --model ${selector}:high commit`,
+      ]);
     },
     SPAWN_TIMEOUT_MS,
   );
@@ -382,7 +456,7 @@ if (at !== -1 && args[at + 1] === "--json") {
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
         "omp\t--profile work models --json",
-        `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile work -p hi`,
+        `omp\tlaunch --config ${first.home}/.cache/docks-kit/${overlayName} --model shared/free-model:high --profile work -p hi`,
       ]);
 
       // A plain launch under --profile=<name> checks the remembered model
@@ -395,7 +469,7 @@ if (at !== -1 && args[at + 1] === "--json") {
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
         "omp\tmodels --json",
         "omp\t--profile work models --json",
-        `omp\t--config ${first.home}/.cache/docks-kit/${overlayName} --profile=work`,
+        `omp\tlaunch --config ${first.home}/.cache/docks-kit/${overlayName} --model shared/free-model:high --profile=work`,
       ]);
     },
     SPAWN_TIMEOUT_MS,

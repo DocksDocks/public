@@ -16,6 +16,7 @@ import {
   advisorRecommendation,
   buildOmpArgs,
   ladderCeiling,
+  ompChildEnvironment,
   overlayFileName,
   planEffortChoice,
   parseFreeModels,
@@ -402,8 +403,20 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       `Starting omp with ${session.selector} at ${levelText}${advisorText} (session only; deployed config unchanged)`,
     );
 
+    // An exported model variable would set its role above the overlay, so the
+    // session gets the overlay value and the user sees what changed.
+    const childEnvironment = ompChildEnvironment(process.env, overlayPath, session);
+    for (const name of childEnvironment.replaced) {
+      yield* Console.error(
+        `${name} is set; this session uses ${childEnvironment.env[name]} instead`,
+      );
+    }
+
     const child = yield* Effect.sync(() =>
-      spawnHost("omp", buildOmpArgs(overlayPath, config.args), { stdio: "inherit" }),
+      spawnHost("omp", buildOmpArgs(overlayPath, session, config.args), {
+        stdio: "inherit",
+        env: childEnvironment.env,
+      }),
     );
     if (child.error !== undefined) {
       return yield* bail(

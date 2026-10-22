@@ -1,16 +1,20 @@
 import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
+import type { OmpSessionModel } from "../../src/engine-native/harnesses";
 import {
   advisorLevelFor,
   advisorRecommendation,
+  buildOmpArgs,
   ladderCeiling,
+  ompChildEnvironment,
   overlayFileName,
   parseFreeModels,
   planEffortChoice,
   renderFreeOverlay,
+  THINKING_LADDER,
 } from "../../src/engine-native/ompOverlay";
 
 const FREE_SELECTOR = "opencode-zen/muse-spark-1.3-contributor-free";
@@ -67,6 +71,19 @@ const LADDER_EMPTY: ReadonlyArray<string> = [];
 function fallbackChains(parsed: Record<string, unknown>): Record<string, unknown> {
   return (parsed["retry"] as Record<string, unknown>)["fallbackChains"] as Record<string, unknown>;
 }
+
+function renderedRoles(model: OmpSessionModel): Record<string, string> {
+  const parsed = parse(renderFreeOverlay(model)) as Record<string, unknown>;
+  return parsed["modelRoles"] as Record<string, string>;
+}
+
+const LADDER_MODEL: OmpSessionModel = {
+  selector: FREE_SELECTOR,
+  thinking: "high",
+  advisorThinking: "low",
+};
+const LEVEL_FREE_MODEL: OmpSessionModel = { selector: "provider/ling-free" };
+const OVERLAY_PATH = join("cache", "docks-kit", "omp-free.yml");
 
 describe("omp free-session overlay", () => {
   it("sets the chat-model roles to one free selector with a cheaper advisor", () => {
@@ -287,5 +304,124 @@ describe("omp free-session overlay", () => {
     // A sparse ladder counts its own positions, so two steps cannot invent
     // a level between high and max.
     expect(advisorRecommendation(["high", "max"], "max")).toBe("high");
+  });
+});
+
+describe("free model fallback chains", () => {
+  it.each([
+    ["a model with a ladder", LADDER_MODEL],
+    ["a level-free model", LEVEL_FREE_MODEL],
+  ])(
+    "empties the chains keyed by the selector, :off, and every ladder level for %s",
+    (_label, model) => {
+      // A chain keyed by the model outranks a role chain, and the session can
+      // run the free model at any concrete level.
+      const chains = fallbackChains(parse(renderFreeOverlay(model)) as Record<string, unknown>);
+      expect(chains[model.selector]).toEqual([]);
+      expect(chains[`${model.selector}:off`]).toEqual([]);
+      for (const level of THINKING_LADDER) {
+        expect(chains[`${model.selector}:${level}`]).toEqual([]);
+      }
+      for (const key of FALLBACK_KEYS) {
+        expect(chains[key]).toEqual([]);
+      }
+    },
+  );
+});
+
+describe("buildOmpArgs", () => {
+  it("starts omp with launch, the overlay, and the session model at its level", () => {
+    const args = buildOmpArgs(OVERLAY_PATH, LADDER_MODEL, ["-p", "commit"]);
+    expect(args).toEqual([
+      "launch",
+      "--config",
+      OVERLAY_PATH,
+      "--model",
+      `${FREE_SELECTOR}:high`,
+      "-p",
+      "commit",
+    ]);
+    // The explicit model is the overlay's default role, so a restored
+    // session model cannot replace it.
+    expect(args[4]).toBe(renderedRoles(LADDER_MODEL)["default"]);
+  });
+
+  it("passes the bare selector for a model without a ladder", () => {
+    const args = buildOmpArgs(OVERLAY_PATH, LEVEL_FREE_MODEL, ["--continue"]);
+    expect(args).toEqual([
+      "launch",
+      "--config",
+      OVERLAY_PATH,
+      "--model",
+      "provider/ling-free",
+      "--continue",
+    ]);
+    expect(args[4]).toBe(renderedRoles(LEVEL_FREE_MODEL)["default"]);
+  });
+});
+
+describe("ompChildEnvironment", () => {
+  const roles = renderedRoles(LADDER_MODEL);
+
+  it("adds the overlay and the overlay role models to an empty environment", () => {
+    expect(ompChildEnvironment({}, OVERLAY_PATH, LADDER_MODEL)).toEqual({
+      env: {
+        PI_CONFIG_FILES: OVERLAY_PATH,
+        PI_SMOL_MODEL: roles["smol"],
+        PI_SLOW_MODEL: roles["slow"],
+        PI_PLAN_MODEL: roles["plan"],
+      },
+      replaced: [],
+    });
+  });
+
+  it("uses the bare selector for a level-free model", () => {
+    const bare = renderedRoles(LEVEL_FREE_MODEL);
+    const { env } = ompChildEnvironment({}, OVERLAY_PATH, LEVEL_FREE_MODEL);
+    expect(env["PI_SMOL_MODEL"]).toBe(bare["smol"]);
+    expect(env["PI_SLOW_MODEL"]).toBe(bare["slow"]);
+    expect(env["PI_PLAN_MODEL"]).toBe(bare["plan"]);
+  });
+
+  it("appends the overlay after the inherited PI_CONFIG_FILES entries and keeps other variables", () => {
+    const inherited = [join("team", "a.yml"), "", join("team", "b.yml")].join(delimiter);
+    const { env } = ompChildEnvironment(
+      { PI_CONFIG_FILES: inherited, KEEP_ME: "1" },
+      OVERLAY_PATH,
+      LADDER_MODEL,
+    );
+    expect(env["PI_CONFIG_FILES"]).toBe(
+      [join("team", "a.yml"), join("team", "b.yml"), OVERLAY_PATH].join(delimiter),
+    );
+    expect(env["KEEP_ME"]).toBe("1");
+  });
+
+  it("lists only a non-empty parent model variable that differs from the overlay value", () => {
+    const { env, replaced } = ompChildEnvironment(
+      { PI_SMOL_MODEL: "paid/x", PI_SLOW_MODEL: roles["slow"], PI_PLAN_MODEL: "" },
+      OVERLAY_PATH,
+      LADDER_MODEL,
+    );
+    expect(replaced).toEqual(["PI_SMOL_MODEL"]);
+    expect(env["PI_SMOL_MODEL"]).toBe(roles["smol"]);
+    expect(env["PI_SLOW_MODEL"]).toBe(roles["slow"]);
+    expect(env["PI_PLAN_MODEL"]).toBe(roles["plan"]);
+  });
+
+  it("lists replaced variables in smol, slow, plan order", () => {
+    const { replaced } = ompChildEnvironment(
+      { PI_PLAN_MODEL: "paid/p", PI_SLOW_MODEL: "paid/s", PI_SMOL_MODEL: "paid/x" },
+      OVERLAY_PATH,
+      LADDER_MODEL,
+    );
+    expect(replaced).toEqual(["PI_SMOL_MODEL", "PI_SLOW_MODEL", "PI_PLAN_MODEL"]);
+  });
+
+  it("does not mutate the parent environment", () => {
+    const parent = { PI_CONFIG_FILES: join("team", "a.yml"), PI_SMOL_MODEL: "paid/x" };
+    const before = { ...parent };
+    const { env } = ompChildEnvironment(parent, OVERLAY_PATH, LADDER_MODEL);
+    expect(parent).toEqual(before);
+    expect(env).not.toBe(parent);
   });
 });
