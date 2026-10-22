@@ -131,6 +131,11 @@ export function checklistPrompt<A>(
     checked: options.items.map((item) => item.checked),
     showError: false,
   };
+  // The cell widths of the lines on screen. `clear` erases these lines and not
+  // a frame that it builds again: the terminal width can change between the
+  // two calls, and then a new frame has a different number of lines. The first
+  // frame of a run always comes from `render`, so a reused prompt starts clean.
+  let shown: ReadonlyArray<number> = [];
   return Prompt.Custom<ChecklistState, ChecklistResult<A>>(initial, {
     render: (state, action) => {
       // Beep shows no bell and no change. Submit leaves the panel erased, so
@@ -139,16 +144,23 @@ export function checklistPrompt<A>(
       // https://no-color.org: a NO_COLOR value that is set and not empty turns color off.
       const color = (process.env.NO_COLOR ?? "") === "";
       return Effect.map(frameOf(options, state), (frame) => {
+        shown = frame.map(lineWidth);
         const lines = frame.map((line) => paint(line, color));
         return CURSOR_HIDE + lines.join("\n");
       });
     },
     process: (input, state) => Effect.succeed(nextAction(options.items, input.key, state)),
-    clear: (state) =>
-      Effect.map(frameOf(options, state), (frame) => {
-        // The cursor stays on the last line of the frame: erase each line from
-        // there up to the first line.
-        const above = `${CURSOR_UP}${ERASE_LINE}`.repeat(frame.length - 1);
+    clear: () =>
+      Effect.gen(function* () {
+        const terminal = yield* Terminal.Terminal;
+        const reported = yield* terminal.columns;
+        const columns = reported > 0 ? reported : DEFAULT_COLUMNS;
+        // A terminal that reflows wraps a long line into more rows when it
+        // narrows.
+        const rows = shown.reduce((sum, cells) => sum + Math.max(1, Math.ceil(cells / columns)), 0);
+        // The cursor stays on the last row of the frame: erase each row from
+        // there up to the first row.
+        const above = `${CURSOR_UP}${ERASE_LINE}`.repeat(Math.max(0, rows - 1));
         return `${ERASE_LINE}${above}${CURSOR_COLUMN_ONE}`;
       }),
   });
@@ -387,31 +399,86 @@ function span(text: string, style: Style = "plain"): Span {
   return { text, style };
 }
 
-// Count code points: each glyph of the frame uses one column.
+/** The terminal cells of `text`. */
 function widthOf(text: string): number {
-  return [...text].length;
+  let cells = 0;
+  for (const char of text) cells += charCells(char);
+  return cells;
+}
+
+// Marks (variation selectors included), controls, and format characters such
+// as the zero-width joiner use no cell.
+const ZERO_WIDTH = /[\p{Mark}\p{Cc}\p{Cf}]/u;
+const EMOJI_PRESENTATION = /\p{Emoji_Presentation}/u;
+
+// Code points with East Asian Width W or F.
+const WIDE_RANGES: ReadonlyArray<readonly [number, number]> = [
+  [0x1100, 0x115f],
+  [0x2e80, 0x303e],
+  [0x3041, 0x33ff],
+  [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff],
+  [0xa000, 0xa4cf],
+  [0xa960, 0xa97f],
+  [0xac00, 0xd7a3],
+  [0xf900, 0xfaff],
+  [0xfe10, 0xfe19],
+  [0xfe30, 0xfe6f],
+  [0xff00, 0xff60],
+  [0xffe0, 0xffe6],
+  [0x1f300, 0x1f64f],
+  [0x1f900, 0x1f9ff],
+  [0x20000, 0x2fffd],
+  [0x30000, 0x3fffd],
+];
+
+/**
+ * The terminal cells of one code point, after UAX #11 East Asian Width
+ * (https://www.unicode.org/reports/tr11/): 0 for a mark, a control, or a format
+ * character; 2 for a wide or full-width character; else 1.
+ */
+function charCells(char: string): number {
+  if (ZERO_WIDTH.test(char)) return 0;
+  const point = char.codePointAt(0) ?? 0;
+  const wide =
+    WIDE_RANGES.some(([first, last]) => point >= first && point <= last) ||
+    EMOJI_PRESENTATION.test(char);
+  return wide ? 2 : 1;
+}
+
+/** The longest start of `text` that uses at most `cells` cells. */
+function cutCells(text: string, cells: number): string {
+  let kept = "";
+  let used = 0;
+  for (const char of text) {
+    const next = used + charCells(char);
+    // A wide character that does not fit stops the cut: it never crosses the width.
+    if (next > cells) break;
+    kept += char;
+    used = next;
+  }
+  return kept;
 }
 
 function lineWidth(line: Line): number {
   return line.reduce((sum, part) => sum + widthOf(part.text), 0);
 }
 
-/** Cuts `line` to `width` columns and ends a cut line with the ellipsis. */
+/** Cuts `line` to `width` cells and ends a cut line with the ellipsis. */
 function fit(line: Line, width: number, ellipsis: string): Line {
   if (lineWidth(line) <= width) return line;
   const room = width - widthOf(ellipsis);
-  if (room < 0) return [span([...ellipsis].slice(0, Math.max(width, 0)).join(""))];
+  if (room < 0) return [span(cutCells(ellipsis, Math.max(width, 0)))];
   const kept: Array<Span> = [];
   let used = 0;
   for (const part of line) {
-    const chars = [...part.text];
-    if (used + chars.length > room) {
-      const cut = chars.slice(0, room - used).join("");
-      kept.push(span(cut.trimEnd() + ellipsis, part.style));
+    const cells = widthOf(part.text);
+    if (used + cells > room) {
+      kept.push(span(cutCells(part.text, room - used).trimEnd() + ellipsis, part.style));
       break;
     }
     kept.push(part);
-    used += chars.length;
+    used += cells;
   }
   return kept;
 }
