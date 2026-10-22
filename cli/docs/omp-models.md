@@ -430,10 +430,10 @@ uses a chain keyed by the model before a role chain, so a project or
 `PI_CONFIG_FILES` chain for the free model could otherwise reach a paid model.
 The overlay does not set the `web` role or its retry chain. The deployed
 web-search provider order therefore applies, and that order includes the paid
-`openai-codex/gpt-6-luna` entry. omp merges
-the overlay key by key. Each other deployed retry chain, such as a `plan`,
-`slow`, or `designer` chain, therefore stays as deployed. Such a chain can name
-a paid model.
+`openai-codex/gpt-6-luna` entry. omp merges the overlay key by key. Each other
+deployed retry chain, such as a `plan`, `slow`, or `designer` chain, therefore
+stays in the merged config. A retry of the free model does not reach such a
+chain, because omp uses the empty chain keyed by the free model first.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
 deployed values apply.

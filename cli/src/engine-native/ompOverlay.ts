@@ -6,8 +6,9 @@
  * chain that is not in FALLBACK_ORDER stays as deployed. The `web` role and
  * its retry chain are not in the overlay, so the deployed web-search provider
  * order applies, and that order can include a paid chat model. A deployed
- * `plan`, `slow`, or `designer` chain also stays and can name a paid model.
- * Every other key falls through to the deployed config.
+ * `plan`, `slow`, or `designer` chain also stays, but a retry of the free
+ * model uses the empty chain keyed by that model first. Every other key falls
+ * through to the deployed config.
  */
 import { createHash } from "node:crypto";
 import { delimiter } from "node:path";
