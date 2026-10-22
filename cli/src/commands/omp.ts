@@ -428,6 +428,6 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
   }),
 ).pipe(
   Command.withDescription(
-    "Start omp with every chat-model role set to the remembered free model for this run only. The web-search role keeps the deployed provider order, which can include a paid model. No deployed configuration changes; --model or --pick remembers a new free default. Every launch checks the model against the live free catalog. --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
+    "Start omp with every chat-model role set to the remembered free model for this run only. The launcher starts 'omp launch' with an explicit --model, so omp reads a forwarded subcommand name as message text and a resumed session keeps the free model. It rejects forwarded flags that can select another model (--config, --model, --smol, --slow, --plan, --models, --provider, --prewalk-into, --plan-yolo-into); run omp directly for a paid model or a subcommand. The web-search role keeps the deployed provider order, which can include a paid model. No deployed configuration changes; --model or --pick remembers a new free default. Every launch checks the model against the live free catalog of each candidate profile. --fast instead toggles OpenAI/Codex fast mode in the deployed omp config and exits.",
   ),
 );

@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, or buildOmpArgs; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
@@ -27,14 +27,14 @@ metadata:
     - path: cli/src/engine-native/kitDb.ts
       lines: "1-245"
     - path: cli/src/engine-native/ompOverlay.ts
-      lines: "1-211"
+      lines: "1-309"
     - path: cli/src/commands/omp.ts
-      lines: "1-259"
+      lines: "1-433"
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-10-21"
+  updated: "2026-10-22"
 ---
 
 # omp Sync Context
@@ -305,8 +305,7 @@ The pre-tick changes no stored state until the user saves the picker.
 `docks-kit omp` owns the `ompSession` key and writes nothing else.
 It stores a required free model selector, an optional session thinking level,
 and an optional advisor thinking level.
-Compute both levels once at set time from the catalog row of the chosen model,
-so a plain launch needs no catalog call.
+Compute both levels once at set time from the catalog row of the chosen model.
 Derive each level from that model's own ladder, never from the global ladder
 constant: five free models publish no `medium`, and two publish no ladder.
 Store no level for a model without a ladder, and render a bare selector for it.
@@ -320,7 +319,16 @@ Drop each level field independently when it is blank, so a stale level never
 survives a switch to a level-free model.
 
 Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — versioned local state over one merge helper.
-Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains.
+Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains, including the chains keyed by the free model at every level.
+
+The launcher enforces the free model before omp starts.
+Reject each forwarded flag that can select a model, in both forms and also after a `--`, because omp can read that `--` as a flag value.
+Start omp with `launch` first, so a forwarded subcommand name becomes message text.
+Pass the session model as an explicit `--model`, so a restored session model cannot replace it.
+Set the three model variables in the child environment instead of removing them, because omp refills an unset variable from its `.env` files.
+Check the session model against the free catalog of every candidate profile.
+Anchor input checks at `commands/omp.ts` — `rejectedForwardedFlag` and `forwardedProfile` — the rejected model flags and the candidate profiles, scanned past `--`.
+Anchor the launch at `ompOverlay.ts` — `buildOmpArgs` and `ompChildEnvironment` — `launch` first, the explicit `--model`, the model variables, and the `PI_CONFIG_FILES` append.
 Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
 Anchor dispatch at `syncDispatch.ts` — `engineSync` omp branch — selected pipeline execution.
 
