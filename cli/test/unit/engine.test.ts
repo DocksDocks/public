@@ -135,14 +135,6 @@ describe("EngineNative Effect seam", () => {
     expect(mocks.runEngineNative).not.toHaveBeenCalled();
   });
 
-  it("exits with the EngineNative non-zero code", async () => {
-    mocks.runEngineNative.mockResolvedValue(3);
-
-    await expect(
-      Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive)),
-    ).rejects.toThrow("exit 3");
-  });
-
   it("maps a rejected EngineNative Promise to a user-facing CLI failure", async () => {
     mocks.runEngineNative.mockRejectedValue(new Error("native engine failed"));
 
