@@ -39,7 +39,7 @@ const TOPICS: Record<string, { summary: string; body: string }> = {
     body: install,
   },
   platforms: {
-    summary: "Platform support: Linux, macOS, and Windows on x64 and arm64",
+    summary: "Platform support: Linux on x64 and arm64, macOS on arm64, Windows on x64",
     body: platforms,
   },
   "omp-models": {

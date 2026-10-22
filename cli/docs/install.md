@@ -1,6 +1,6 @@
 # Installing docks-kit
 
-Supported hosts are Linux x64/arm64, macOS x64/arm64, and Windows x64/arm64.
+Supported hosts are Linux x64/arm64, macOS arm64, and Windows x64.
 Hosts outside this matrix fail before a launcher can fall back to Bun source.
 
 ## 1. Repo checkout (development / current users)

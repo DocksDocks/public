@@ -19,8 +19,8 @@ cd ~/projects/public
 ./docks-kit status          # doctor view: drift, toolchain, plugins, skills
 ```
 
-POSIX hosts use the `./docks-kit` launcher on x64 and arm64. Windows uses
-`.\docks-kit.ps1` on x64 and arm64. Each launcher prefers the matching compiled
+POSIX hosts use the `./docks-kit` launcher on Linux x64 and arm64 and on macOS
+arm64. Windows uses `.\docks-kit.ps1` on x64. Each launcher prefers the matching compiled
 binary in `cli/dist/` only when its version matches the checkout. Otherwise it
 runs from source via Bun and auto-installs Bun plus dependencies when needed.
 Hosts outside this matrix fail immediately and never fall back to Bun source.
@@ -154,17 +154,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |----------|--------------|------------------|-------------|
 | Linux | x64 | ✅ | ✅ native |
 | Linux | arm64 | ✅ | ✅ native |
-| macOS | x64 | ✅ | ✅ native |
 | macOS | arm64 | ✅ | ✅ native |
 | Windows | x64 | ✅ | ✅ native |
-| Windows | arm64 | ✅ | ✅ native |
 
 Details: `docks-kit docs platforms`.
 
 ## Releases
 
-Tagging `cli-v*` builds six standalone binaries for Linux, macOS, and Windows
-on x64 and arm64. The workflow attaches them plus `SHA256SUMS` to the GitHub
+Tagging `cli-v*` builds four standalone binaries: `docks-kit-linux-x64`,
+`docks-kit-linux-arm64`, `docks-kit-darwin-arm64`, and
+`docks-kit-windows-x64.exe`. The workflow attaches them plus `SHA256SUMS` to the GitHub
 release. npm publishes the exact package tarball through trusted publishing
 with OIDC provenance.
 Published binaries, checksums, and release notes are available on

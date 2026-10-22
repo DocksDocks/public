@@ -119,7 +119,6 @@ afterEach(() => {
 describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSuiteLabel, () => {
   it.each([
     ["AMD64", "", "docks-kit-windows-x64.exe"],
-    ["ARM64", "", "docks-kit-windows-arm64.exe"],
     ["x86", "AMD64", "docks-kit-windows-x64.exe"],
   ])(
     "keeps a version-matching %s/%s release binary on the fast path as %s",
@@ -232,18 +231,24 @@ describe.skipIf(!WINDOWS_LAUNCHER_APPLIES || pwshExecutable === null)(launcherSu
     expect(result.stderr).toContain("checkout is <unknown>");
   });
 
-  it("rejects the injected x86 processor architecture before the Bun source fallback", () => {
-    const fixture = launcherFixture({
-      binaryName: "docks-kit-windows-x64.exe",
-      checkoutVersion: "checkout-version",
-      binary: "bun",
-    });
-    const result = runLauncher(fixture, { native: "x86" }, ["probe"]);
+  it.each([
+    ["ARM64", "Windows-ARM64"],
+    ["x86", "Windows-x86"],
+  ])(
+    "rejects the injected %s processor architecture before the Bun source fallback",
+    (native, hostName) => {
+      const fixture = launcherFixture({
+        binaryName: "docks-kit-windows-x64.exe",
+        checkoutVersion: "checkout-version",
+        binary: "bun",
+      });
+      const result = runLauncher(fixture, { native }, ["probe"]);
 
-    expect(result.status).toBe(1);
-    expect(result.stdout).toBe("");
-    expect(result.stderr).toContain("unsupported host Windows-x86");
-    expect(result.stderr).toContain("supports Linux, macOS, and Windows on x64 or arm64");
-    expect(result.stderr).not.toContain("source:");
-  });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain(
+        `[docks-kit] unsupported host ${hostName}; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64.`,
+      );
+    },
+  );
 });

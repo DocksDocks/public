@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -83,24 +84,21 @@ function manifestArtifacts(dist: string): Array<string> {
 }
 
 describe.skipIf(!BUILD_SCRIPT_APPLIES)(buildSuiteLabel, () => {
-  it("builds every host target by default with deterministic artifact names", () => {
+  it("builds exactly the four supported host targets by default", () => {
     const { buildScript, dist, fakeBin } = fixture();
 
     const result = runBuild(buildScript, fakeBin);
     const expected = [
       "docks-kit-darwin-arm64",
-      "docks-kit-darwin-x64",
       "docks-kit-linux-arm64",
       "docks-kit-linux-x64",
-      "docks-kit-windows-arm64.exe",
       "docks-kit-windows-x64.exe",
     ];
 
     expect(result.status, result.stderr).toBe(0);
     expect(manifestArtifacts(dist)).toEqual(expected);
-    for (const artifact of expected) {
-      expect(existsSync(join(dist, artifact)), artifact).toBe(true);
-    }
+    const builtArtifacts = readdirSync(dist).filter((name) => name.startsWith("docks-kit-"));
+    expect(builtArtifacts.sort()).toEqual(expected);
   });
 
   it("keeps retained target checksums after a subset build", () => {

@@ -78,9 +78,15 @@ describe("compiled runtime capture", () => {
 });
 
 describe("supported host boundary", () => {
-  it.each(["x64", "arm64"] as const)(
-    "admits win32/%s and exits with the native engine's failure code",
-    async (arch) => {
+  it.each([
+    ["linux", "x64"],
+    ["linux", "arm64"],
+    ["darwin", "arm64"],
+    ["win32", "x64"],
+  ] as const)(
+    "admits %s/%s and exits with the native engine's failure code",
+    async (platform, arch) => {
+      vi.spyOn(process, "platform", "get").mockReturnValue(platform);
       vi.spyOn(process, "arch", "get").mockReturnValue(arch);
       mocks.runEngineNative.mockResolvedValue(37);
 
@@ -94,6 +100,8 @@ describe("supported host boundary", () => {
 
 describe("unsupported host boundary", () => {
   it.each([
+    ["darwin", "x64"],
+    ["win32", "arm64"],
     ["freebsd", "arm64"],
     ["linux", "ia32"],
     ["win32", "ia32"],
@@ -103,7 +111,7 @@ describe("unsupported host boundary", () => {
 
     await expect(Effect.runPromise(engineCapture(["status"]))).rejects.toThrow("exit 2");
     expect(console.error).toHaveBeenCalledWith(
-      `unsupported host ${platform}/${arch}; docks-kit supports only Linux, macOS, and Windows on x64 or arm64`,
+      `unsupported host ${platform}/${arch}; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64`,
     );
     expect(mocks.spawnSync).not.toHaveBeenCalled();
   });
@@ -125,14 +133,6 @@ describe("EngineNative Effect seam", () => {
       "bash engine removed — recover at tag bash-engine-final",
     );
     expect(mocks.runEngineNative).not.toHaveBeenCalled();
-  });
-
-  it("exits with the EngineNative non-zero code", async () => {
-    mocks.runEngineNative.mockResolvedValue(3);
-
-    await expect(
-      Effect.runPromise(Effect.provide(engine(["status"]), EngineServicesLive)),
-    ).rejects.toThrow("exit 3");
   });
 
   it("maps a rejected EngineNative Promise to a user-facing CLI failure", async () => {

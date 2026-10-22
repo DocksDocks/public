@@ -21,7 +21,7 @@ Tool-specific instructions live alongside this file:
 
 
 docks-kit runtime and standalone binary support covers Linux x64/arm64, macOS
-x64/arm64, and Windows x64/arm64. Hosts outside this matrix fail before either
+arm64, and Windows x64. Hosts outside this matrix fail before either
 launcher can fall back to Bun source.
 
 ## Repository layout (cross-cutting)
@@ -29,7 +29,7 @@ launcher can fall back to Bun source.
 | Path | Purpose |
 |------|---------|
 | `docks-kit` / `docks-kit.ps1` | POSIX and Windows CLI launchers. On supported hosts, each runs the matching binary in `cli/dist/` only when its `--version` matches `package.json`. Otherwise it runs Bun-from-source and auto-installs Bun plus `node_modules`, and the mismatch warning names the rebuild remedy. A launcher never deletes a binary: on a host without Bun it is the only remaining recovery path. Hosts outside the support matrix fail before source fallback. The standalone platform release binary provides no-Bun recovery. |
-| `cli/build-binaries.sh` | Compiles the six release binaries. It checksums the six known artifact names rather than globbing `docks-kit-*`, so a packed `docks-kit-<version>.tgz` is never attested as a release binary. It stamps `cli/dist/VERSION` only when the directory holds one version, and on the next build discards every artifact that stamp attributes to a different version, because a launcher refuses to run one and keeping it makes `SHA256SUMS` span two versions. An artifact with no stamp has unknown provenance and may be a hand-built or downloaded recovery binary, so the script keeps it and warns; `--prune` discards those too. Nothing here removes an artifact the stamp vouches for. |
+| `cli/build-binaries.sh` | Compiles the four release binaries (`docks-kit-linux-x64`, `docks-kit-linux-arm64`, `docks-kit-darwin-arm64`, `docks-kit-windows-x64.exe`). It checksums the four known artifact names rather than globbing `docks-kit-*`, so a packed `docks-kit-<version>.tgz` is never attested as a release binary. It stamps `cli/dist/VERSION` only when the directory holds one version, and on the next build discards every artifact that stamp attributes to a different version, because a launcher refuses to run one and keeping it makes `SHA256SUMS` span two versions. An artifact with no stamp has unknown provenance and may be a hand-built or downloaded recovery binary, so the script keeps it and warns; `--prune` discards those too. Nothing here removes an artifact the stamp vouches for. |
 | `cli/src/engine-native/` | EngineNative implementation for `sync`, `model`, and `toolchain`; idempotent, flag-gated for destructive reconciliation |
 | `cli/src/engine-native/ompSync.ts` | omp sync orchestration and summary |
 | `cli/src/commands/omp.ts` | `docks-kit omp` session launcher: rejects model-selecting forwarded flags, checks the free catalog of each candidate profile, renders the free-model run overlay, and starts `omp launch` |
@@ -49,8 +49,8 @@ launcher can fall back to Bun source.
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative; optional `upstream` source read by `docks-kit toolchain outdated`) |
 | `SoT/.claude/bin/` | Dependency-free Bun runtime programs for Claude's statusline, SessionStart, and Notification |
 | `SoT/.omp/` | Kit-owned omp SoT: `AGENTS.md`, `config.yml`, `models.yml`, `mcp.json`, and `intercom.json` |
-| `install.sh` / `install.ps1` | POSIX and Windows global installers |
-| `.github/workflows/release-cli.yml` | `cli-v*` release: six binaries for Linux, macOS, and Windows on x64 and arm64, plus `SHA256SUMS` and npm publish |
+| `install.sh` / `install.ps1` | POSIX and Windows global installers. Each installer stops on a host outside the support matrix before it downloads anything. |
+| `.github/workflows/release-cli.yml` | `cli-v*` release: four binaries (Linux x64 and arm64, macOS arm64, Windows x64), plus `SHA256SUMS` and npm publish |
 | `README.md` | Front door |
 | `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
 | `SoT/.agents/skills.txt` | Universal-skill manifest, intentionally empty by default. Adding an [agentskills.io](https://agentskills.io/specification) slug opts it into EngineNative's shared `~/.agents/skills/` bootstrap and Claude symlink. |

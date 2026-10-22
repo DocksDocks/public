@@ -72,6 +72,22 @@ function Test-PathEntry([string]$Entry) {
   return $false
 }
 
+# Stop before any download: the package installs on every host, but the
+# engine refuses a host outside the matrix at the first sync. A 32-bit shell
+# on an x64 host reports x86, so read the native value first.
+$ProcessorArchitecture = if (-not [string]::IsNullOrWhiteSpace($env:PROCESSOR_ARCHITEW6432)) {
+  $env:PROCESSOR_ARCHITEW6432
+} else {
+  $env:PROCESSOR_ARCHITECTURE
+}
+if ([string]::IsNullOrWhiteSpace($ProcessorArchitecture)) {
+  $ProcessorArchitecture = '<unknown>'
+}
+if ($ProcessorArchitecture -ne 'AMD64') {
+  Write-ErrorMessage "unsupported host Windows-$ProcessorArchitecture; docks-kit supports Linux on x64 and arm64, macOS on arm64, and Windows on x64."
+  exit 1
+}
+
 $Bun = Find-Bun
 if ($null -eq $Bun) {
   Write-Warn 'Bun not found - installing (download-then-run)...'
