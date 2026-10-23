@@ -68,6 +68,14 @@ Each of these must begin a word: `feat/cache-vf` is a branch name, not an
 option. `--follow-tags` also asks. This is an accepted false positive, because
 it shares the `--f` prefix.
 
+A word that starts with `$` asks also when the variable holds a plain branch
+name, such as `git push origin --delete $b` in a loop. The matcher sees the
+text before the shell expands it, so it cannot tell `$b` from `+main`. omp
+never applies an allow rule to a command that holds `$`, so the kit cannot
+add an exception for this form. The omp agent prompt therefore tells the agent
+to write each ref literally, for example
+`git push origin --delete <branch-a> <branch-b>`.
+
 ## Why the tools differ
 
 | Topic | omp | Claude Code | Codex |
