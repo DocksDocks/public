@@ -55,7 +55,7 @@ To remove, use the trash or a command that checks the path.
 - Do not delete in bulk yourself (`git clean`, `git reset --hard`). In the main session, ask me first.
 - If a deletion needs `rm -r` or a bulk command, put the paths in your report. I run that deletion myself.
 - Do not use `--force`, `-f`, or an abbreviation of it with `git rm` or `git push`.
-- Write each ref of a `git push` command as literal text, for example `git push origin --delete <branch-a> <branch-b>`. omp asks for approval when a `git push` word starts with `$` or a backtick.
+- Write each ref of a `git push` command as literal text, not as a `$` variable or a backtick substitution. To delete several remote branches, list them in one command: `git push origin --delete <branch-a> <branch-b>`.
 - Write literal absolute paths. Do not use `~` or `$HOME` in a command.
 - Do not set or export `HOME`.
 
