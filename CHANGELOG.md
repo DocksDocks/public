@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-23 - docks-kit 0.22.1: literal git push refs in omp
+
+### Fixed
+
+- The deployed omp global instructions (`SoT/.omp/AGENTS.md`) tell the agent
+  to write each `git push` ref as literal text, not as a `$` variable or a
+  backtick substitution (#108). To delete several remote branches, the agent
+  lists them in one `git push origin --delete` command. Before, an agent that
+  deleted branches in a loop with `git push origin --delete $b` got an
+  approval prompt on each run. The omp guard asks for every `git push` word
+  that starts with `$`, because a variable can expand to a `+` refspec that
+  forces the push. The guard does not change. `docks-kit docs command-guards`
+  explains why no allow rule can exempt this form.
+
 ## 2026-10-22 - docks-kit 0.22.0: four supported platforms and a clear harnesses picker
 
 ### Removed
