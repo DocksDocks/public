@@ -202,6 +202,8 @@ const ALLOWED = [
   "git push -u origin feat/cache-vf",
   "git push -v origin main",
   "git push origin feat/x",
+  // The literal-ref form that the omp agent prompt recommends for a branch delete.
+  "git push -q origin --delete feat/a feat/b",
   "ls ~",
 ];
 
