@@ -59,6 +59,11 @@ To remove, use the trash or a command that checks the path.
 - Write literal absolute paths. Do not use `~` or `$HOME` in a command.
 - Do not set or export `HOME`.
 
+## Repository hooks
+
+- Do not skip or turn off a repository hook. Do not use `--no-verify`, `git commit -n`, `git am -n`, or a `core.hooksPath` change.
+- When a hook fails on a problem that your change did not cause, report the failure. In the main session, ask me before you continue.
+
 ## Cleaning up what you create
 
 - Follow the `workspace-hygiene` skill for each resource that you create: worktrees, temporary files and directories, processes, containers, clusters, tunnels, scheduled jobs, global installs, and remote test resources.

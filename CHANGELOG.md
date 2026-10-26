@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-26 - docks-kit 0.22.2: omp asks before a git hook skip
+
+### Fixed
+
+- omp asks before a git command that skips the repository's hooks (#111).
+  Before, an agent ran `git push --no-verify` past a failing pre-push hook
+  without a prompt. The new `bash.patterns` prompt rules cover each unique
+  prefix of `--no-verify` in `git push`, `git commit`, `git merge`,
+  `git pull`, `git rebase`, and `git am`; a `git commit` or `git am`
+  short-option cluster that can hold `-n`; `core.hooksPath` after `git`; and
+  a line that sets `GIT_CONFIG_COUNT` or `GIT_CONFIG_PARAMETERS`. Each rule
+  also matches after a word before `git`, such as `HUSKY=0` or `env`. A subagent
+  cannot answer the prompt, so omp refuses the command there. The deployed omp
+  instructions also tell the agent not to skip a hook, and to report a hook
+  that fails on a problem outside its change. `docks-kit docs command-guards`
+  lists the accepted false positives and the known gaps.
+
 ## 2026-10-23 - docks-kit 0.22.1: literal git push refs in omp
 
 ### Fixed
