@@ -156,6 +156,42 @@ const PROMPTED = [
   "git push origin $BRANCH",
   // Accepted false positive: --follow-tags shares the --f prefix.
   "git push --follow-tags origin feat/x",
+  // Every git command that skips the repository's hooks (#111). git takes any
+  // unique prefix of --no-verify; git am takes the shortest, --no-v.
+  "git push --no-verify origin feat/x",
+  "git push --no-veri origin feat/x",
+  "git push -q origin feat/x --no-verif",
+  "git commit --no-verify -m x",
+  "git commit -m x --no-veri",
+  "git merge --no-verify feat/x",
+  "git pull --no-verify origin main",
+  "git rebase --no-veri main",
+  "git am --no-v 0001.patch",
+  "git -C ../repo push --no-verify origin feat/x",
+  // git commit and git am read -n as --no-verify, also inside a cluster.
+  "git commit -n -m x",
+  "git commit -nm x",
+  "git commit -anm x",
+  "git commit -vn -m x",
+  "git commit -m x -n",
+  "git am -n 0001.patch",
+  "git am -3n 0001.patch",
+  // A core.hooksPath change moves the hooks directory.
+  "git -c core.hooksPath=/dev/null push origin feat/x",
+  "git -c core.hookspath=/dev/null commit -m x",
+  "git --config-env=core.hooksPath=HOOKS push origin feat/x",
+  "git config core.hooksPath /dev/null",
+  "git config --unset core.hooksPath",
+  "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git push origin feat/x",
+  "export GIT_CONFIG_COUNT=1",
+  `GIT_CONFIG_PARAMETERS="'core.hooksPath'='/dev/null'" git push origin feat/x`,
+  `GIT_CONFIG_PARAMETERS="'core.hooksPath=/dev/null'" git push origin feat/x`,
+  `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath'='/dev/null'" git commit -m x`,
+  // Accepted false positives: a cluster of two no-argument options without n,
+  // a hooks-path read, and --no-verify-signatures.
+  "git commit -aqm x",
+  "git config --get core.hooksPath",
+  "git merge --no-verify-signatures feat/x",
 ];
 
 const ALLOWED = [
@@ -204,6 +240,18 @@ const ALLOWED = [
   "git push origin feat/x",
   // The literal-ref form that the omp agent prompt recommends for a branch delete.
   "git push -q origin --delete feat/a feat/b",
+  // Commit and config forms that keep the repository's hooks.
+  "git commit -m x",
+  "git commit -am x",
+  "git commit -sm x",
+  "git commit -F msg.txt",
+  "git commit --amend --no-edit",
+  "git am -3 0001.patch",
+  "git am --continue",
+  "git log -n 5",
+  "git branch -vv",
+  "git -c color.ui=never log",
+  "git rev-parse --git-path hooks",
   "ls ~",
 ];
 
@@ -219,6 +267,48 @@ describe("omp bash.patterns policy under yolo", () => {
   it.each(ALLOWED)("allows %s", (command) => {
     expect(ompYoloOutcome(KIT_RULES, command)).toBe("allow");
   });
+
+  // git reads a short-option cluster left to right. A no-argument option
+  // stands alone; the first option that takes an argument consumes the rest
+  // of the word. So a cluster skips the hooks when it reaches n first.
+  const SHORT_OPTIONS = {
+    commit: { noArgument: "qvseaipnoz", takesArgument: "FmcCtUSu" },
+    am: { noArgument: "in3qsukmcr", takesArgument: "CpS" },
+  };
+
+  function reachesNoVerify(cluster: string, noArgument: string): boolean {
+    for (const option of cluster) {
+      if (option === "n") return true;
+      if (!noArgument.includes(option)) return false;
+    }
+    return false;
+  }
+
+  function clustersUpTo(alphabet: string, maxLength: number): Array<string> {
+    const clusters: Array<string> = [];
+    let previous = [""];
+    for (let length = 1; length <= maxLength; length++) {
+      previous = previous.flatMap((prefix) => [...alphabet].map((option) => prefix + option));
+      clusters.push(...previous);
+    }
+    return clusters;
+  }
+
+  it.each(Object.entries(SHORT_OPTIONS))(
+    "asks before every git %s short-option cluster that reaches -n",
+    (subcommand, { noArgument, takesArgument }) => {
+      const hookSkips = clustersUpTo(noArgument + takesArgument, 3).filter((cluster) =>
+        reachesNoVerify(cluster, noArgument),
+      );
+      const commands = hookSkips.flatMap((cluster) => [
+        `git ${subcommand} -${cluster} x`,
+        `git ${subcommand} -q -${cluster} x`,
+      ]);
+      expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "prompt")).toEqual(
+        [],
+      );
+    },
+  );
 
   // omp returns its bare critical override before a prompt rule, and yolo
   // ignores that override. Each of these commands is critical, so only a deny

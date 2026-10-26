@@ -621,5 +621,381 @@ bash:
     - { match: "git push * $*", approval: prompt }
     - { match: "git push `*", approval: prompt }
     - { match: "git push * `*", approval: prompt }
+    # Prompt: every git command that skips the repository's hooks. git takes
+    # any unique prefix of --no-verify, and git am takes the shortest, --no-v.
+    # git commit and git am read -n as --no-verify, also inside a short-option
+    # cluster, so every cluster that starts with -n or with two no-argument
+    # options asks. core.hooksPath moves the hooks directory: the git rules
+    # match its two common spellings, and the variable rules match every
+    # configuration override through the environment.
+    - { match: "git * --no-v*", approval: prompt }
+    - { match: "git commit -n*", approval: prompt }
+    - { match: "git commit * -n*", approval: prompt }
+    - { match: "git commit -qq*", approval: prompt }
+    - { match: "git commit * -qq*", approval: prompt }
+    - { match: "git commit -qv*", approval: prompt }
+    - { match: "git commit * -qv*", approval: prompt }
+    - { match: "git commit -qs*", approval: prompt }
+    - { match: "git commit * -qs*", approval: prompt }
+    - { match: "git commit -qe*", approval: prompt }
+    - { match: "git commit * -qe*", approval: prompt }
+    - { match: "git commit -qa*", approval: prompt }
+    - { match: "git commit * -qa*", approval: prompt }
+    - { match: "git commit -qi*", approval: prompt }
+    - { match: "git commit * -qi*", approval: prompt }
+    - { match: "git commit -qp*", approval: prompt }
+    - { match: "git commit * -qp*", approval: prompt }
+    - { match: "git commit -qn*", approval: prompt }
+    - { match: "git commit * -qn*", approval: prompt }
+    - { match: "git commit -qo*", approval: prompt }
+    - { match: "git commit * -qo*", approval: prompt }
+    - { match: "git commit -qz*", approval: prompt }
+    - { match: "git commit * -qz*", approval: prompt }
+    - { match: "git commit -vq*", approval: prompt }
+    - { match: "git commit * -vq*", approval: prompt }
+    - { match: "git commit -vv*", approval: prompt }
+    - { match: "git commit * -vv*", approval: prompt }
+    - { match: "git commit -vs*", approval: prompt }
+    - { match: "git commit * -vs*", approval: prompt }
+    - { match: "git commit -ve*", approval: prompt }
+    - { match: "git commit * -ve*", approval: prompt }
+    - { match: "git commit -va*", approval: prompt }
+    - { match: "git commit * -va*", approval: prompt }
+    - { match: "git commit -vi*", approval: prompt }
+    - { match: "git commit * -vi*", approval: prompt }
+    - { match: "git commit -vp*", approval: prompt }
+    - { match: "git commit * -vp*", approval: prompt }
+    - { match: "git commit -vn*", approval: prompt }
+    - { match: "git commit * -vn*", approval: prompt }
+    - { match: "git commit -vo*", approval: prompt }
+    - { match: "git commit * -vo*", approval: prompt }
+    - { match: "git commit -vz*", approval: prompt }
+    - { match: "git commit * -vz*", approval: prompt }
+    - { match: "git commit -sq*", approval: prompt }
+    - { match: "git commit * -sq*", approval: prompt }
+    - { match: "git commit -sv*", approval: prompt }
+    - { match: "git commit * -sv*", approval: prompt }
+    - { match: "git commit -ss*", approval: prompt }
+    - { match: "git commit * -ss*", approval: prompt }
+    - { match: "git commit -se*", approval: prompt }
+    - { match: "git commit * -se*", approval: prompt }
+    - { match: "git commit -sa*", approval: prompt }
+    - { match: "git commit * -sa*", approval: prompt }
+    - { match: "git commit -si*", approval: prompt }
+    - { match: "git commit * -si*", approval: prompt }
+    - { match: "git commit -sp*", approval: prompt }
+    - { match: "git commit * -sp*", approval: prompt }
+    - { match: "git commit -sn*", approval: prompt }
+    - { match: "git commit * -sn*", approval: prompt }
+    - { match: "git commit -so*", approval: prompt }
+    - { match: "git commit * -so*", approval: prompt }
+    - { match: "git commit -sz*", approval: prompt }
+    - { match: "git commit * -sz*", approval: prompt }
+    - { match: "git commit -eq*", approval: prompt }
+    - { match: "git commit * -eq*", approval: prompt }
+    - { match: "git commit -ev*", approval: prompt }
+    - { match: "git commit * -ev*", approval: prompt }
+    - { match: "git commit -es*", approval: prompt }
+    - { match: "git commit * -es*", approval: prompt }
+    - { match: "git commit -ee*", approval: prompt }
+    - { match: "git commit * -ee*", approval: prompt }
+    - { match: "git commit -ea*", approval: prompt }
+    - { match: "git commit * -ea*", approval: prompt }
+    - { match: "git commit -ei*", approval: prompt }
+    - { match: "git commit * -ei*", approval: prompt }
+    - { match: "git commit -ep*", approval: prompt }
+    - { match: "git commit * -ep*", approval: prompt }
+    - { match: "git commit -en*", approval: prompt }
+    - { match: "git commit * -en*", approval: prompt }
+    - { match: "git commit -eo*", approval: prompt }
+    - { match: "git commit * -eo*", approval: prompt }
+    - { match: "git commit -ez*", approval: prompt }
+    - { match: "git commit * -ez*", approval: prompt }
+    - { match: "git commit -aq*", approval: prompt }
+    - { match: "git commit * -aq*", approval: prompt }
+    - { match: "git commit -av*", approval: prompt }
+    - { match: "git commit * -av*", approval: prompt }
+    - { match: "git commit -as*", approval: prompt }
+    - { match: "git commit * -as*", approval: prompt }
+    - { match: "git commit -ae*", approval: prompt }
+    - { match: "git commit * -ae*", approval: prompt }
+    - { match: "git commit -aa*", approval: prompt }
+    - { match: "git commit * -aa*", approval: prompt }
+    - { match: "git commit -ai*", approval: prompt }
+    - { match: "git commit * -ai*", approval: prompt }
+    - { match: "git commit -ap*", approval: prompt }
+    - { match: "git commit * -ap*", approval: prompt }
+    - { match: "git commit -an*", approval: prompt }
+    - { match: "git commit * -an*", approval: prompt }
+    - { match: "git commit -ao*", approval: prompt }
+    - { match: "git commit * -ao*", approval: prompt }
+    - { match: "git commit -az*", approval: prompt }
+    - { match: "git commit * -az*", approval: prompt }
+    - { match: "git commit -iq*", approval: prompt }
+    - { match: "git commit * -iq*", approval: prompt }
+    - { match: "git commit -iv*", approval: prompt }
+    - { match: "git commit * -iv*", approval: prompt }
+    - { match: "git commit -is*", approval: prompt }
+    - { match: "git commit * -is*", approval: prompt }
+    - { match: "git commit -ie*", approval: prompt }
+    - { match: "git commit * -ie*", approval: prompt }
+    - { match: "git commit -ia*", approval: prompt }
+    - { match: "git commit * -ia*", approval: prompt }
+    - { match: "git commit -ii*", approval: prompt }
+    - { match: "git commit * -ii*", approval: prompt }
+    - { match: "git commit -ip*", approval: prompt }
+    - { match: "git commit * -ip*", approval: prompt }
+    - { match: "git commit -in*", approval: prompt }
+    - { match: "git commit * -in*", approval: prompt }
+    - { match: "git commit -io*", approval: prompt }
+    - { match: "git commit * -io*", approval: prompt }
+    - { match: "git commit -iz*", approval: prompt }
+    - { match: "git commit * -iz*", approval: prompt }
+    - { match: "git commit -pq*", approval: prompt }
+    - { match: "git commit * -pq*", approval: prompt }
+    - { match: "git commit -pv*", approval: prompt }
+    - { match: "git commit * -pv*", approval: prompt }
+    - { match: "git commit -ps*", approval: prompt }
+    - { match: "git commit * -ps*", approval: prompt }
+    - { match: "git commit -pe*", approval: prompt }
+    - { match: "git commit * -pe*", approval: prompt }
+    - { match: "git commit -pa*", approval: prompt }
+    - { match: "git commit * -pa*", approval: prompt }
+    - { match: "git commit -pi*", approval: prompt }
+    - { match: "git commit * -pi*", approval: prompt }
+    - { match: "git commit -pp*", approval: prompt }
+    - { match: "git commit * -pp*", approval: prompt }
+    - { match: "git commit -pn*", approval: prompt }
+    - { match: "git commit * -pn*", approval: prompt }
+    - { match: "git commit -po*", approval: prompt }
+    - { match: "git commit * -po*", approval: prompt }
+    - { match: "git commit -pz*", approval: prompt }
+    - { match: "git commit * -pz*", approval: prompt }
+    - { match: "git commit -oq*", approval: prompt }
+    - { match: "git commit * -oq*", approval: prompt }
+    - { match: "git commit -ov*", approval: prompt }
+    - { match: "git commit * -ov*", approval: prompt }
+    - { match: "git commit -os*", approval: prompt }
+    - { match: "git commit * -os*", approval: prompt }
+    - { match: "git commit -oe*", approval: prompt }
+    - { match: "git commit * -oe*", approval: prompt }
+    - { match: "git commit -oa*", approval: prompt }
+    - { match: "git commit * -oa*", approval: prompt }
+    - { match: "git commit -oi*", approval: prompt }
+    - { match: "git commit * -oi*", approval: prompt }
+    - { match: "git commit -op*", approval: prompt }
+    - { match: "git commit * -op*", approval: prompt }
+    - { match: "git commit -on*", approval: prompt }
+    - { match: "git commit * -on*", approval: prompt }
+    - { match: "git commit -oo*", approval: prompt }
+    - { match: "git commit * -oo*", approval: prompt }
+    - { match: "git commit -oz*", approval: prompt }
+    - { match: "git commit * -oz*", approval: prompt }
+    - { match: "git commit -zq*", approval: prompt }
+    - { match: "git commit * -zq*", approval: prompt }
+    - { match: "git commit -zv*", approval: prompt }
+    - { match: "git commit * -zv*", approval: prompt }
+    - { match: "git commit -zs*", approval: prompt }
+    - { match: "git commit * -zs*", approval: prompt }
+    - { match: "git commit -ze*", approval: prompt }
+    - { match: "git commit * -ze*", approval: prompt }
+    - { match: "git commit -za*", approval: prompt }
+    - { match: "git commit * -za*", approval: prompt }
+    - { match: "git commit -zi*", approval: prompt }
+    - { match: "git commit * -zi*", approval: prompt }
+    - { match: "git commit -zp*", approval: prompt }
+    - { match: "git commit * -zp*", approval: prompt }
+    - { match: "git commit -zn*", approval: prompt }
+    - { match: "git commit * -zn*", approval: prompt }
+    - { match: "git commit -zo*", approval: prompt }
+    - { match: "git commit * -zo*", approval: prompt }
+    - { match: "git commit -zz*", approval: prompt }
+    - { match: "git commit * -zz*", approval: prompt }
+    - { match: "git am -n*", approval: prompt }
+    - { match: "git am * -n*", approval: prompt }
+    - { match: "git am -ii*", approval: prompt }
+    - { match: "git am * -ii*", approval: prompt }
+    - { match: "git am -in*", approval: prompt }
+    - { match: "git am * -in*", approval: prompt }
+    - { match: "git am -i3*", approval: prompt }
+    - { match: "git am * -i3*", approval: prompt }
+    - { match: "git am -iq*", approval: prompt }
+    - { match: "git am * -iq*", approval: prompt }
+    - { match: "git am -is*", approval: prompt }
+    - { match: "git am * -is*", approval: prompt }
+    - { match: "git am -iu*", approval: prompt }
+    - { match: "git am * -iu*", approval: prompt }
+    - { match: "git am -ik*", approval: prompt }
+    - { match: "git am * -ik*", approval: prompt }
+    - { match: "git am -im*", approval: prompt }
+    - { match: "git am * -im*", approval: prompt }
+    - { match: "git am -ic*", approval: prompt }
+    - { match: "git am * -ic*", approval: prompt }
+    - { match: "git am -ir*", approval: prompt }
+    - { match: "git am * -ir*", approval: prompt }
+    - { match: "git am -3i*", approval: prompt }
+    - { match: "git am * -3i*", approval: prompt }
+    - { match: "git am -3n*", approval: prompt }
+    - { match: "git am * -3n*", approval: prompt }
+    - { match: "git am -33*", approval: prompt }
+    - { match: "git am * -33*", approval: prompt }
+    - { match: "git am -3q*", approval: prompt }
+    - { match: "git am * -3q*", approval: prompt }
+    - { match: "git am -3s*", approval: prompt }
+    - { match: "git am * -3s*", approval: prompt }
+    - { match: "git am -3u*", approval: prompt }
+    - { match: "git am * -3u*", approval: prompt }
+    - { match: "git am -3k*", approval: prompt }
+    - { match: "git am * -3k*", approval: prompt }
+    - { match: "git am -3m*", approval: prompt }
+    - { match: "git am * -3m*", approval: prompt }
+    - { match: "git am -3c*", approval: prompt }
+    - { match: "git am * -3c*", approval: prompt }
+    - { match: "git am -3r*", approval: prompt }
+    - { match: "git am * -3r*", approval: prompt }
+    - { match: "git am -qi*", approval: prompt }
+    - { match: "git am * -qi*", approval: prompt }
+    - { match: "git am -qn*", approval: prompt }
+    - { match: "git am * -qn*", approval: prompt }
+    - { match: "git am -q3*", approval: prompt }
+    - { match: "git am * -q3*", approval: prompt }
+    - { match: "git am -qq*", approval: prompt }
+    - { match: "git am * -qq*", approval: prompt }
+    - { match: "git am -qs*", approval: prompt }
+    - { match: "git am * -qs*", approval: prompt }
+    - { match: "git am -qu*", approval: prompt }
+    - { match: "git am * -qu*", approval: prompt }
+    - { match: "git am -qk*", approval: prompt }
+    - { match: "git am * -qk*", approval: prompt }
+    - { match: "git am -qm*", approval: prompt }
+    - { match: "git am * -qm*", approval: prompt }
+    - { match: "git am -qc*", approval: prompt }
+    - { match: "git am * -qc*", approval: prompt }
+    - { match: "git am -qr*", approval: prompt }
+    - { match: "git am * -qr*", approval: prompt }
+    - { match: "git am -si*", approval: prompt }
+    - { match: "git am * -si*", approval: prompt }
+    - { match: "git am -sn*", approval: prompt }
+    - { match: "git am * -sn*", approval: prompt }
+    - { match: "git am -s3*", approval: prompt }
+    - { match: "git am * -s3*", approval: prompt }
+    - { match: "git am -sq*", approval: prompt }
+    - { match: "git am * -sq*", approval: prompt }
+    - { match: "git am -ss*", approval: prompt }
+    - { match: "git am * -ss*", approval: prompt }
+    - { match: "git am -su*", approval: prompt }
+    - { match: "git am * -su*", approval: prompt }
+    - { match: "git am -sk*", approval: prompt }
+    - { match: "git am * -sk*", approval: prompt }
+    - { match: "git am -sm*", approval: prompt }
+    - { match: "git am * -sm*", approval: prompt }
+    - { match: "git am -sc*", approval: prompt }
+    - { match: "git am * -sc*", approval: prompt }
+    - { match: "git am -sr*", approval: prompt }
+    - { match: "git am * -sr*", approval: prompt }
+    - { match: "git am -ui*", approval: prompt }
+    - { match: "git am * -ui*", approval: prompt }
+    - { match: "git am -un*", approval: prompt }
+    - { match: "git am * -un*", approval: prompt }
+    - { match: "git am -u3*", approval: prompt }
+    - { match: "git am * -u3*", approval: prompt }
+    - { match: "git am -uq*", approval: prompt }
+    - { match: "git am * -uq*", approval: prompt }
+    - { match: "git am -us*", approval: prompt }
+    - { match: "git am * -us*", approval: prompt }
+    - { match: "git am -uu*", approval: prompt }
+    - { match: "git am * -uu*", approval: prompt }
+    - { match: "git am -uk*", approval: prompt }
+    - { match: "git am * -uk*", approval: prompt }
+    - { match: "git am -um*", approval: prompt }
+    - { match: "git am * -um*", approval: prompt }
+    - { match: "git am -uc*", approval: prompt }
+    - { match: "git am * -uc*", approval: prompt }
+    - { match: "git am -ur*", approval: prompt }
+    - { match: "git am * -ur*", approval: prompt }
+    - { match: "git am -ki*", approval: prompt }
+    - { match: "git am * -ki*", approval: prompt }
+    - { match: "git am -kn*", approval: prompt }
+    - { match: "git am * -kn*", approval: prompt }
+    - { match: "git am -k3*", approval: prompt }
+    - { match: "git am * -k3*", approval: prompt }
+    - { match: "git am -kq*", approval: prompt }
+    - { match: "git am * -kq*", approval: prompt }
+    - { match: "git am -ks*", approval: prompt }
+    - { match: "git am * -ks*", approval: prompt }
+    - { match: "git am -ku*", approval: prompt }
+    - { match: "git am * -ku*", approval: prompt }
+    - { match: "git am -kk*", approval: prompt }
+    - { match: "git am * -kk*", approval: prompt }
+    - { match: "git am -km*", approval: prompt }
+    - { match: "git am * -km*", approval: prompt }
+    - { match: "git am -kc*", approval: prompt }
+    - { match: "git am * -kc*", approval: prompt }
+    - { match: "git am -kr*", approval: prompt }
+    - { match: "git am * -kr*", approval: prompt }
+    - { match: "git am -mi*", approval: prompt }
+    - { match: "git am * -mi*", approval: prompt }
+    - { match: "git am -mn*", approval: prompt }
+    - { match: "git am * -mn*", approval: prompt }
+    - { match: "git am -m3*", approval: prompt }
+    - { match: "git am * -m3*", approval: prompt }
+    - { match: "git am -mq*", approval: prompt }
+    - { match: "git am * -mq*", approval: prompt }
+    - { match: "git am -ms*", approval: prompt }
+    - { match: "git am * -ms*", approval: prompt }
+    - { match: "git am -mu*", approval: prompt }
+    - { match: "git am * -mu*", approval: prompt }
+    - { match: "git am -mk*", approval: prompt }
+    - { match: "git am * -mk*", approval: prompt }
+    - { match: "git am -mm*", approval: prompt }
+    - { match: "git am * -mm*", approval: prompt }
+    - { match: "git am -mc*", approval: prompt }
+    - { match: "git am * -mc*", approval: prompt }
+    - { match: "git am -mr*", approval: prompt }
+    - { match: "git am * -mr*", approval: prompt }
+    - { match: "git am -ci*", approval: prompt }
+    - { match: "git am * -ci*", approval: prompt }
+    - { match: "git am -cn*", approval: prompt }
+    - { match: "git am * -cn*", approval: prompt }
+    - { match: "git am -c3*", approval: prompt }
+    - { match: "git am * -c3*", approval: prompt }
+    - { match: "git am -cq*", approval: prompt }
+    - { match: "git am * -cq*", approval: prompt }
+    - { match: "git am -cs*", approval: prompt }
+    - { match: "git am * -cs*", approval: prompt }
+    - { match: "git am -cu*", approval: prompt }
+    - { match: "git am * -cu*", approval: prompt }
+    - { match: "git am -ck*", approval: prompt }
+    - { match: "git am * -ck*", approval: prompt }
+    - { match: "git am -cm*", approval: prompt }
+    - { match: "git am * -cm*", approval: prompt }
+    - { match: "git am -cc*", approval: prompt }
+    - { match: "git am * -cc*", approval: prompt }
+    - { match: "git am -cr*", approval: prompt }
+    - { match: "git am * -cr*", approval: prompt }
+    - { match: "git am -ri*", approval: prompt }
+    - { match: "git am * -ri*", approval: prompt }
+    - { match: "git am -rn*", approval: prompt }
+    - { match: "git am * -rn*", approval: prompt }
+    - { match: "git am -r3*", approval: prompt }
+    - { match: "git am * -r3*", approval: prompt }
+    - { match: "git am -rq*", approval: prompt }
+    - { match: "git am * -rq*", approval: prompt }
+    - { match: "git am -rs*", approval: prompt }
+    - { match: "git am * -rs*", approval: prompt }
+    - { match: "git am -ru*", approval: prompt }
+    - { match: "git am * -ru*", approval: prompt }
+    - { match: "git am -rk*", approval: prompt }
+    - { match: "git am * -rk*", approval: prompt }
+    - { match: "git am -rm*", approval: prompt }
+    - { match: "git am * -rm*", approval: prompt }
+    - { match: "git am -rc*", approval: prompt }
+    - { match: "git am * -rc*", approval: prompt }
+    - { match: "git am -rr*", approval: prompt }
+    - { match: "git am * -rr*", approval: prompt }
+    - { match: "git *core.hooksPath*", approval: prompt }
+    - { match: "git *core.hookspath*", approval: prompt }
+    - { match: "*GIT_CONFIG_PARAMETERS=*", approval: prompt }
+    - { match: "*GIT_CONFIG_COUNT=*", approval: prompt }
     # Allow: the macOS trash command.
     - { match: "trash *", approval: allow }
