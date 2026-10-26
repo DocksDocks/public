@@ -117,7 +117,9 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   home directory or `/` and `HOME` reassignment are denied. omp also denies
   every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`, and
   runs any other `rm` without a prompt. In omp, `git clean`,
-  `git reset --hard`, and any `git push` that could force ask; Claude Code and
+  `git reset --hard`, any `git push` that could force, and any git command
+  that skips the repository's hooks (`--no-verify`, `git commit -n`, a
+  `core.hooksPath` change) ask; Claude Code and
   Codex also ask before `find -delete`, a recursive `rm`, and every `git rm`.
   An omp subagent cannot answer an ask, so omp rejects it; a Codex ask can go
   to its `auto_review` reviewer. Details, per-tool differences, and gaps:

@@ -12,7 +12,8 @@ force, empty, or delete asks. Where omp's critical-command check acts, the
 form is denied instead. A false positive in the ask tier is accepted. omp is
 the exception for file removal: by owner decision, omp runs any removal that
 it does not deny without a prompt. omp still asks before a removal that loses
-history: `git clean`, `git reset --hard`, and a force push.
+history: `git clean`, `git reset --hard`, and a force push. omp also asks
+before a git command that skips the repository's hooks.
 
 The policy sorts shell commands into three tiers:
 
@@ -44,6 +45,7 @@ that `eval` starts.
 | `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask | ask (every `find` asks) |
 | `git clean`, `git reset --hard` | ask | ask | ask |
 | `git push` that could force: see below | ask | ask | ask (every `git push` asks) |
+| A git command that skips the repository's hooks: see below | ask | no rule; the classifier decides | ask for every `git push`, `git merge`, and `git rebase`; no rule for `git commit`, `git am`, or `git pull` |
 | `git rm -- <path>`, `git worktree remove -- <path>` | allow | ask | ask |
 | `git worktree remove --force -- <path>` | allow; the omp prompt permits it once, after the commits are on the remote | ask | ask |
 | `docks-kit scratch remove <path>` | allow; the command removes only a path inside the scratch root, the system temporary directory, or `/var/tmp` | no rule | no rule |
@@ -75,6 +77,35 @@ never applies an allow rule to a command that holds a `$` that the shell
 expands, so the kit cannot add an exception for this form. The omp agent
 prompt therefore tells the agent to write each ref literally, for example
 `git push origin --delete <branch-a> <branch-b>`.
+
+## Commands that skip the repository's hooks
+
+In omp, a command asks when it can skip the repository's hooks:
+
+- a word after `git` that starts with `--no-v`. Git accepts each unique
+  prefix of `--no-verify`, and `git am` accepts the shortest, `--no-v`. This
+  covers `git push`, `git commit`, `git merge`, `git pull`, `git rebase`, and
+  `git am`, also after `git -C <dir>`;
+- `-n`, or a short-option cluster that starts with two no-argument options,
+  in `git commit` or `git am`. Both read `-n` as `--no-verify`, also inside a
+  cluster such as `-anm`. The no-argument options are `q`, `v`, `s`, `e`, `a`,
+  `i`, `p`, `o`, `n`, and `z` for `git commit`, and `i`, `n`, `3`, `q`, `s`,
+  `u`, `k`, `m`, `c`, and `r` for `git am`;
+- `core.hooksPath` or `core.hookspath` after `git`, as in `git -c`,
+  `git --config-env`, or `git config`;
+- `GIT_CONFIG_COUNT=` or `GIT_CONFIG_PARAMETERS=` anywhere in the line. These
+  variables can override any configuration key, `core.hooksPath` included,
+  whatever its spelling. A `GIT_CONFIG_PARAMETERS` entry keeps its inner
+  quotes, as in `'core.hooksPath'='/dev/null'`, so a match on the key alone
+  would miss it.
+
+`git commit -m x`, `git commit -am x`, and `git commit -sm x` run without a
+prompt. These forms ask as accepted false positives: `--no-verbose`,
+`--no-verify-signatures`, a cluster of two no-argument options without `n`,
+such as `git commit -aqm x`, and a read such as
+`git config --get core.hooksPath`. To read the hooks directory without a
+prompt, run `git rev-parse --git-path hooks`. omp tests the whole line, so
+`git commit -m x && git log -n 1` asks too. Run the commit as its own command.
 
 ## Why the tools differ
 
@@ -214,7 +245,23 @@ the home directory, and no glob can express "inside the temporary directory".
   configuration. `git push --delete` and `git push --prune` remove remote
   branches without force; they ask only in Codex.
 - **`git -C`**: omp and Claude Code do not match a git subcommand that does
-  not follow `git` directly, such as `git -C . push --force`.
+  not follow `git` directly, such as `git -C . push --force` or
+  `git -C . commit -n`. In omp, the `--no-verify` and `core.hooksPath` forms
+  still ask after `git -C`.
+- **omp, `core.hooksPath` spelling**: git reads section and variable names
+  without case, but omp matches with case. A key in another case, such as
+  `CORE.HOOKSPATH` or `Core.HooksPath`, after `git -c`, `git --config-env`, or
+  `git config` runs without a prompt.
+- **omp, configuration files**: `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM`
+  name a configuration file that can set `core.hooksPath`. The kit does not
+  ask for them, because test scripts set `GIT_CONFIG_GLOBAL=/dev/null`
+  routinely.
+- **omp on Windows, variable names**: Windows reads variable names without
+  case, so a name such as `git_config_count` also overrides configuration and
+  runs without a prompt.
+- **omp, other hook skips**: no rule covers a hook-manager switch, such as
+  `HUSKY=0`, `SKIP=...`, or `LEFTHOOK=0`, or a change to the files in the
+  hooks directory. The deployed omp prompt forbids each hook skip.
 - **Claude Code, `HOME=` before a command**: Claude Code matches deny rules
   past a leading assignment. So `HOME=/tmp/x cmd` reaches the classifier.
   `export HOME=...`, `env HOME=...`, a bare `HOME=...` line, and any `rm` of
@@ -300,4 +347,10 @@ Each check below is safe, because the shell never reaches `rm`.
   https://github.com/git/git/blob/master/builtin/worktree.c
   (`remove_worktree` parses `--`; `check_clean_worktree` runs
   `git status --porcelain` without `--ignored`).
+- Git hooks: https://git-scm.com/docs/githooks (`--no-verify`,
+  `core.hooksPath`), https://git-scm.com/docs/git-commit and
+  https://git-scm.com/docs/git-am (`-n`), https://git-scm.com/docs/git
+  (`-c`, `--config-env`), and https://git-scm.com/docs/git-config (names
+  without case, `GIT_CONFIG_COUNT`, `GIT_CONFIG_PARAMETERS`,
+  `GIT_CONFIG_GLOBAL`).
 - macOS `trash`: https://keith.github.io/xcode-man-pages/trash.8.html
