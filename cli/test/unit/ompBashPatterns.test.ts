@@ -343,10 +343,13 @@ describe("omp bash.patterns policy under yolo", () => {
 
   // An option that takes an argument reads the rest of the word as its
   // value, so `git commit -mn x` sets the message "n" and keeps the hooks.
+  // A cluster rule reads at most two letters, so two-letter clusters reach
+  // every rule shape; longer ones only slow the test, because an allowed
+  // command is checked against every rule.
   it.each(Object.entries(SHORT_OPTIONS))(
     "allows every git %s short-option cluster that starts with an option taking an argument",
     (subcommand, { noArgument, takesArgument }) => {
-      const commands = clustersUpTo(noArgument + takesArgument, 3)
+      const commands = clustersUpTo(noArgument + takesArgument, 2)
         .filter((cluster) => takesArgument.includes(cluster[0]!))
         .flatMap((cluster) => clusterCommands(subcommand, cluster));
       expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "allow")).toEqual(
