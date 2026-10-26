@@ -10,11 +10,12 @@
   prefix of `--no-verify` in `git push`, `git commit`, `git merge`,
   `git pull`, `git rebase`, and `git am`; a `git commit` or `git am`
   short-option cluster that can hold `-n`; `core.hooksPath` after `git`; and
-  a `GIT_CONFIG_COUNT` or `GIT_CONFIG_PARAMETERS` assignment. A subagent
+  a line that sets `GIT_CONFIG_COUNT` or `GIT_CONFIG_PARAMETERS`. Each rule
+  also matches after a word before `git`, such as `HUSKY=0` or `env`. A subagent
   cannot answer the prompt, so omp refuses the command there. The deployed omp
   instructions also tell the agent not to skip a hook, and to report a hook
   that fails on a problem outside its change. `docks-kit docs command-guards`
-  lists the false positives and the forms that no rule covers.
+  lists the accepted false positives and the known gaps.
 
 ## 2026-10-23 - docks-kit 0.22.1: literal git push refs in omp
 

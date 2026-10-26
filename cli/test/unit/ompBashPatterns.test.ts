@@ -156,18 +156,16 @@ const PROMPTED = [
   "git push origin $BRANCH",
   // Accepted false positive: --follow-tags shares the --f prefix.
   "git push --follow-tags origin feat/x",
-  // Every git command that skips the repository's hooks (#111). git takes any
-  // unique prefix of --no-verify; git am takes the shortest, --no-v.
-  "git push --no-verify origin feat/x",
-  "git push --no-veri origin feat/x",
+  // Every git command that skips the repository's hooks (#111). The
+  // NO_VERIFY_SPELLINGS matrix below covers each --no-verify abbreviation; these
+  // rows cover its position and a word before git.
   "git push -q origin feat/x --no-verif",
-  "git commit --no-verify -m x",
   "git commit -m x --no-veri",
-  "git merge --no-verify feat/x",
-  "git pull --no-verify origin main",
-  "git rebase --no-veri main",
-  "git am --no-v 0001.patch",
   "git -C ../repo push --no-verify origin feat/x",
+  "HUSKY=0 git commit --no-verify -m x",
+  "env git push --no-verify origin feat/x",
+  "timeout 60 git push --no-verify origin feat/x",
+  "/usr/bin/git commit --no-verify -m x",
   // git commit and git am read -n as --no-verify, also inside a cluster.
   "git commit -n -m x",
   "git commit -nm x",
@@ -176,22 +174,30 @@ const PROMPTED = [
   "git commit -m x -n",
   "git am -n 0001.patch",
   "git am -3n 0001.patch",
+  "FOO=1 git commit -n -m x",
+  "command git commit -n -m x",
+  "/usr/bin/git commit -nm x",
   // A core.hooksPath change moves the hooks directory.
   "git -c core.hooksPath=/dev/null push origin feat/x",
   "git -c core.hookspath=/dev/null commit -m x",
   "git --config-env=core.hooksPath=HOOKS push origin feat/x",
   "git config core.hooksPath /dev/null",
   "git config --unset core.hooksPath",
+  "GIT_DIR=.git git -c core.hooksPath=/dev/null push origin feat/x",
   "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git push origin feat/x",
+  "GIT_CONFIG_COUNT+=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git commit -m x",
   "export GIT_CONFIG_COUNT=1",
   `GIT_CONFIG_PARAMETERS="'core.hooksPath'='/dev/null'" git push origin feat/x`,
   `GIT_CONFIG_PARAMETERS="'core.hooksPath=/dev/null'" git push origin feat/x`,
   `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath'='/dev/null'" git commit -m x`,
+  `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath=/dev/null'" git commit -m x`,
   // Accepted false positives: a cluster of two no-argument options without n,
-  // a hooks-path read, and --no-verify-signatures.
+  // a hooks-path read, another --no-v option, and message text.
   "git commit -aqm x",
   "git config --get core.hooksPath",
   "git merge --no-verify-signatures feat/x",
+  'git commit -m "drop --no-verify"',
+  'git commit -m "fix -n flag"',
 ];
 
 const ALLOWED = [
@@ -268,6 +274,25 @@ describe("omp bash.patterns policy under yolo", () => {
     expect(ompYoloOutcome(KIT_RULES, command)).toBe("allow");
   });
 
+  // Each spelling skips the hooks on git 2.53.0. git accepts a unique prefix
+  // of --no-verify; a shorter prefix is ambiguous with --no-verbose or
+  // --no-verify-signatures, except in git am.
+  const NO_VERIFY_SPELLINGS = {
+    push: ["--no-verify", "--no-verif", "--no-veri"],
+    commit: ["--no-verify", "--no-verif", "--no-veri"],
+    rebase: ["--no-verify", "--no-verif", "--no-veri"],
+    merge: ["--no-verify"],
+    pull: ["--no-verify"],
+    am: ["--no-verify", "--no-verif", "--no-veri", "--no-ver", "--no-ve", "--no-v"],
+  };
+  const noVerifyCommands = Object.entries(NO_VERIFY_SPELLINGS).flatMap(([subcommand, spellings]) =>
+    spellings.map((spelling) => `git ${subcommand} ${spelling} x`),
+  );
+
+  it.each(noVerifyCommands)("asks before %s", (command) => {
+    expect(ompYoloOutcome(KIT_RULES, command)).toBe("prompt");
+  });
+
   // git reads a short-option cluster left to right. A no-argument option
   // stands alone; the first option that takes an argument consumes the rest
   // of the word. So a cluster skips the hooks when it reaches n first.
@@ -294,17 +319,37 @@ describe("omp bash.patterns policy under yolo", () => {
     return clusters;
   }
 
+  // A word before git, such as X=1 or a path, must not hide the cluster.
+  function clusterCommands(subcommand: string, cluster: string): Array<string> {
+    return [
+      `git ${subcommand} -${cluster} x`,
+      `git ${subcommand} -q -${cluster} x`,
+      `X=1 git ${subcommand} -${cluster} x`,
+      `/usr/bin/git ${subcommand} -q -${cluster} x`,
+    ];
+  }
+
   it.each(Object.entries(SHORT_OPTIONS))(
     "asks before every git %s short-option cluster that reaches -n",
     (subcommand, { noArgument, takesArgument }) => {
-      const hookSkips = clustersUpTo(noArgument + takesArgument, 3).filter((cluster) =>
-        reachesNoVerify(cluster, noArgument),
-      );
-      const commands = hookSkips.flatMap((cluster) => [
-        `git ${subcommand} -${cluster} x`,
-        `git ${subcommand} -q -${cluster} x`,
-      ]);
+      const commands = clustersUpTo(noArgument + takesArgument, 3)
+        .filter((cluster) => reachesNoVerify(cluster, noArgument))
+        .flatMap((cluster) => clusterCommands(subcommand, cluster));
       expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "prompt")).toEqual(
+        [],
+      );
+    },
+  );
+
+  // An option that takes an argument reads the rest of the word as its
+  // value, so `git commit -mn x` sets the message "n" and keeps the hooks.
+  it.each(Object.entries(SHORT_OPTIONS))(
+    "allows every git %s short-option cluster that starts with an option taking an argument",
+    (subcommand, { noArgument, takesArgument }) => {
+      const commands = clustersUpTo(noArgument + takesArgument, 3)
+        .filter((cluster) => takesArgument.includes(cluster[0]!))
+        .flatMap((cluster) => clusterCommands(subcommand, cluster));
+      expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "allow")).toEqual(
         [],
       );
     },
