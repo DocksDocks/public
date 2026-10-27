@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-27 - docks-kit 0.22.4: a timed-out version probe ends its process tree
+
+### Fixed
+
+- When a `<tool> --version` probe passes its 60 s limit, sync now ends the
+  whole process tree of the probe, not only the direct child. Before, in
+  0.22.3, a process that the tool started, such as the real tool behind a
+  rustup proxy, kept running after sync moved on. On Linux and macOS, the
+  probe runs in its own process group, and sync kills the group. On Windows,
+  sync runs `taskkill /T /F` from `System32`, and it skips a probe that already
+  exited, so a reused process id cannot name an unrelated process.
+- When you press Ctrl-C or the CLI gets SIGTERM while a version probe runs,
+  docks-kit now ends that probe's process group before it exits, also in the
+  `docks-kit status` capture child.
+
 ## 2026-10-27 - docks-kit 0.22.3: omp plugin version changes and a bounded rust-analyzer probe
 
 ### Changed

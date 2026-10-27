@@ -1,9 +1,28 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { captureWithin, processFailureSummary, spawnProcess } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
+
+/**
+ * Whether `pid` still runs. A killed orphan can stay a zombie until an init
+ * process reaps it, so on Linux a zombie counts as ended.
+ */
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+  if (process.platform !== "linux") return true;
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    return stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3) !== "Z";
+  } catch {
+    return false;
+  }
+}
 
 /** A PATH holding exactly the named shims, so resolution is the same on every host. */
 const withPath = async <A>(names: ReadonlyArray<string>, use: () => Promise<A>): Promise<A> => {
@@ -117,6 +136,35 @@ describe("spawnProcess time limit", () => {
     expect(pid).toBeGreaterThan(0);
     // The kill is asynchronous; the pid disappears after the parent reaps it.
     await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow(), { timeout: 5000 });
+  });
+
+  it("also ends a process that the timed-out child started", async () => {
+    // The child starts a grandchild, prints the grandchild's pid, and waits,
+    // like a version proxy that runs the real tool. Both end by themselves
+    // after 30 s, so a regression cannot leave them running for long.
+    const startsGrandchild = [
+      "-e",
+      [
+        "const { spawn } = require('node:child_process');",
+        "const grandchild = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 30000)'], { stdio: 'ignore' });",
+        "process.stdout.write(String(grandchild.pid));",
+        "setTimeout(() => {}, 30000);",
+      ].join(" "),
+    ];
+    let grandchild = 0;
+    try {
+      const result = await spawnProcess(process.execPath, startsGrandchild, {
+        host: hostOs("linux"),
+        timeoutMs: 1000,
+      });
+
+      expect(result).toMatchObject({ timedOut: true });
+      grandchild = Number(result.stdout);
+      expect(grandchild).toBeGreaterThan(0);
+      await vi.waitFor(() => expect(isRunning(grandchild)).toBe(false), { timeout: 5000 });
+    } finally {
+      if (grandchild > 0 && isRunning(grandchild)) process.kill(grandchild, "SIGKILL");
+    }
   });
 
   it("tells a command that does not answer in time from one that answers", async () => {

@@ -95,6 +95,11 @@ const rawChannel = process.env["DOCKS_KIT_ENGINE"];
 if (rawChannel === "native-raw" || rawChannel === "native-capture") {
   const rawArgs = process.argv.slice(2);
   const rawOperation = rawArgs.join(" ") || "default";
+  // The raw channels bypass BunRuntime.runMain, which turns a signal into
+  // process.exit. Without a handler a signal ends the process without the
+  // `exit` event, and exec.ts then cannot end its bounded probes.
+  process.once("SIGINT", () => process.exit(130));
+  process.once("SIGTERM", () => process.exit(143));
   try {
     process.exit(
       await runEngineNative(rawArgs, undefined, { envGlobals: rawChannel === "native-raw" }),
