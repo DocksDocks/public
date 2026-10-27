@@ -23,6 +23,7 @@ import { isObject, parseJson } from "../../src/engine-native/jq";
 import { runEngineNative } from "../../src/engine-native";
 import { mergeSettings } from "../../src/engine-native/settings";
 import {
+  makeDependencyManager,
   makeEngineServices,
   type EngineServices,
   type Logger,
@@ -107,6 +108,26 @@ function recordingServices(records: Array<string>): EngineServices {
     echo: (message) => void records.push(message),
   };
   return { ...base, logger };
+}
+
+/**
+ * The dry-run case answers every dependency probe from this table instead of
+ * the host. A runner image can make a host version probe slow: on
+ * macos-26-arm64 20261021.0445, `rust-analyzer --version` took 20 s (#114).
+ * Bun is present, so the Claude runtime cutover runs; every other tool is
+ * missing, so the sync starts no host process.
+ */
+function hostIndependentServices(records: Array<string>): EngineServices {
+  const services = recordingServices(records);
+  const bun = "/opt/stub/bin/bun";
+  return {
+    ...services,
+    deps: makeDependencyManager(services.platform, {
+      commandExists: (name) => name === "bun",
+      capture: async () => "",
+      which: (name) => (name === "bun" ? bun : ""),
+    }),
+  };
 }
 
 /**
@@ -272,7 +293,7 @@ describe("retired permission rule cutover", () => {
       process.env["USERPROFILE"] = home;
       process.env["AGENTS_DIR"] = p(home, ".agents");
       expect(
-        await runEngineNative(["sync", "claude", "--dry-run"], recordingServices(records)),
+        await runEngineNative(["sync", "claude", "--dry-run"], hostIndependentServices(records)),
       ).toBe(0);
       const output = records.join("\n");
 
