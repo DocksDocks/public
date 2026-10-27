@@ -951,10 +951,10 @@
       }
     },
     "fixture=home-fresh cmd=sync omp": {
-      "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.14.0\nomp\tplugin link <HOME>/.docks-kit/omp-plugin\n",
+      "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.14.0\nomp\tplugin link <HOME>/.docks-kit/omp-plugin\nomp\tplugin list --json\n",
       "command": ["sync", "omp"],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced (plugins: ~4)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 4 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced: docks@docks, plan-lifecycle@docks, pi-intercom, docks-kit-omp linked\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 4 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".docks-kit/": "dir",
@@ -963,7 +963,7 @@
         ".docks-kit/omp-plugin/commands/cleanup.md": "sha256:29906202194335ca0277be5558c5f28b3e6a55937295a71769d18e33d8214976",
         ".docks-kit/omp-plugin/extensions/": "dir",
         ".docks-kit/omp-plugin/extensions/hygiene.ts": "sha256:3886318e66f2ee6092c34ed20137aa4fc22f04205c51e1b1751d1f33a111ec88",
-        ".docks-kit/omp-plugin/package.json": "sha256:dae90d02bc9db2f434f0acf5a402de5be68c52827fddafeee5a5aca4e0c20282",
+        ".docks-kit/omp-plugin/package.json": "sha256:1a495456f6577f9165ff52b442ecbda917ca9534b029e07e970aa1579b3438d7",
         ".docks-kit/omp-plugin/skills/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
@@ -980,10 +980,10 @@
       }
     },
     "fixture=home-fresh cmd=sync omp --reconcile": {
-      "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.14.0\nomp\tplugin link <HOME>/.docks-kit/omp-plugin\n",
+      "argvLog": "omp\tplugin marketplace add https://github.com/DocksDocks/docks.git\nomp\tplugin list --json\nomp\tplugin install --scope user docks@docks\nomp\tplugin install --scope user plan-lifecycle@docks\nomp\tinstall pi-intercom@0.14.0\nomp\tplugin link <HOME>/.docks-kit/omp-plugin\nomp\tplugin list --json\n",
       "command": ["sync", "omp", "--reconcile"],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced (plugins: ~4)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 4 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;32m[ok]\u001b[0m omp docks marketplace registered\n\u001b[1;32m[ok]\u001b[0m omp plugins synced: docks@docks, plan-lifecycle@docks, pi-intercom, docks-kit-omp linked\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 4 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".docks-kit/": "dir",
@@ -992,7 +992,7 @@
         ".docks-kit/omp-plugin/commands/cleanup.md": "sha256:29906202194335ca0277be5558c5f28b3e6a55937295a71769d18e33d8214976",
         ".docks-kit/omp-plugin/extensions/": "dir",
         ".docks-kit/omp-plugin/extensions/hygiene.ts": "sha256:3886318e66f2ee6092c34ed20137aa4fc22f04205c51e1b1751d1f33a111ec88",
-        ".docks-kit/omp-plugin/package.json": "sha256:dae90d02bc9db2f434f0acf5a402de5be68c52827fddafeee5a5aca4e0c20282",
+        ".docks-kit/omp-plugin/package.json": "sha256:1a495456f6577f9165ff52b442ecbda917ca9534b029e07e970aa1579b3438d7",
         ".docks-kit/omp-plugin/skills/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
@@ -1021,7 +1021,7 @@
         ".docks-kit/omp-plugin/commands/cleanup.md": "sha256:29906202194335ca0277be5558c5f28b3e6a55937295a71769d18e33d8214976",
         ".docks-kit/omp-plugin/extensions/": "dir",
         ".docks-kit/omp-plugin/extensions/hygiene.ts": "sha256:3886318e66f2ee6092c34ed20137aa4fc22f04205c51e1b1751d1f33a111ec88",
-        ".docks-kit/omp-plugin/package.json": "sha256:dae90d02bc9db2f434f0acf5a402de5be68c52827fddafeee5a5aca4e0c20282",
+        ".docks-kit/omp-plugin/package.json": "sha256:1a495456f6577f9165ff52b442ecbda917ca9534b029e07e970aa1579b3438d7",
         ".docks-kit/omp-plugin/skills/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
@@ -1050,7 +1050,7 @@
         ".docks-kit/omp-plugin/commands/cleanup.md": "sha256:29906202194335ca0277be5558c5f28b3e6a55937295a71769d18e33d8214976",
         ".docks-kit/omp-plugin/extensions/": "dir",
         ".docks-kit/omp-plugin/extensions/hygiene.ts": "sha256:3886318e66f2ee6092c34ed20137aa4fc22f04205c51e1b1751d1f33a111ec88",
-        ".docks-kit/omp-plugin/package.json": "sha256:dae90d02bc9db2f434f0acf5a402de5be68c52827fddafeee5a5aca4e0c20282",
+        ".docks-kit/omp-plugin/package.json": "sha256:1a495456f6577f9165ff52b442ecbda917ca9534b029e07e970aa1579b3438d7",
         ".docks-kit/omp-plugin/skills/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",

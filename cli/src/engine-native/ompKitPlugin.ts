@@ -21,6 +21,7 @@ import { GENERATED_PACKAGE_VERSION } from "../generated/sotPayload";
 import { payloadBytes, payloadDisplayPath, payloadPaths } from "../payload";
 import { p } from "./exec";
 import type { Ctx } from "./index";
+import { isObject, parseJson } from "./jq";
 import { ensureDirectory } from "./ompFileDeploy";
 
 export const KIT_PLUGIN_NAME = "docks-kit-omp";
@@ -51,6 +52,14 @@ function pruneStale(directory: string, targets: ReadonlySet<string>): boolean {
   return changed;
 }
 
+/** The `version` of the deployed manifest, or undefined when it is absent or does not parse. */
+function deployedVersion(manifestPath: string): string | undefined {
+  if (!existsSync(manifestPath)) return undefined;
+  const manifest = parseJson(readFileSync(manifestPath, "utf8"));
+  if (manifest === undefined || !isObject(manifest)) return undefined;
+  return typeof manifest["version"] === "string" ? manifest["version"] : undefined;
+}
+
 export function syncKitPlugin(ctx: Ctx): void {
   const { change, echo, verbose } = ctx.services.logger;
   const pluginDir = kitPluginDir(ctx.home);
@@ -66,6 +75,7 @@ export function syncKitPlugin(ctx: Ctx): void {
     return;
   }
 
+  const before = deployedVersion(p(pluginDir, "package.json"));
   let changed = false;
   for (const { source, target } of files) {
     let content = payloadBytes(source);
@@ -86,7 +96,11 @@ export function syncKitPlugin(ctx: Ctx): void {
   }
 
   if (changed) {
-    change("omp kit plugin files synced");
+    change(
+      before === undefined || before === GENERATED_PACKAGE_VERSION
+        ? "omp kit plugin files synced"
+        : `omp kit plugin files synced (${KIT_PLUGIN_NAME} ${before} -> ${GENERATED_PACKAGE_VERSION})`,
+    );
     ctx.nextStepTriggers.ompRestart = true;
   } else {
     verbose("omp kit plugin files already in sync");

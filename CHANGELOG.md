@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-27 - docks-kit 0.22.3: omp plugin version changes
+
+### Changed
+
+- `docks-kit sync omp` names each omp plugin that it installs, upgrades, or
+  links, with its version change, the way `docks-kit update` shows its own
+  version. The line `omp plugins synced (plugins: ~N)` is now, for example,
+  `omp plugins synced: docks@docks 0.21.1 -> 0.22.0, plan-lifecycle@docks 0.9.0 (current), pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+  To get the new versions, the sync reads `omp plugin list --json` one more
+  time after a plugin operation. When omp does not report a version, the line
+  shows only the plugin id. `omp kit plugin files synced` also shows
+  `(docks-kit-omp <old> -> <new>)` when the kit version of the deployed plugin
+  changes.
+
 ## 2026-10-26 - docks-kit 0.22.2: omp asks before a git hook skip
 
 ### Fixed

@@ -24,8 +24,32 @@ interface InstalledNpmPlugin {
 }
 
 interface InstalledPlugins {
-  readonly marketplace: Set<string>;
+  /** Each user-scope marketplace plugin id, with its version when the row reports one. */
+  readonly marketplace: Map<string, string | undefined>;
   readonly npm: Map<string, InstalledNpmPlugin>;
+}
+
+/** One successful plugin operation, named in the sync summary line. */
+type PluginOperation =
+  | {
+      readonly kind: "marketplace" | "npm";
+      readonly id: string;
+      /**
+       * Whether the inventory listed the plugin before the operation, or
+       * undefined when that inventory could not be read.
+       */
+      readonly present: boolean | undefined;
+      readonly before: string | undefined;
+    }
+  | { readonly kind: "link"; readonly id: string };
+
+/** The version of the first entry that reports one; a marketplace row has no top-level version. */
+function marketplaceEntryVersion(entries: unknown): string | undefined {
+  if (!Array.isArray(entries)) return undefined;
+  for (const entry of entries) {
+    if (isObject(entry) && typeof entry["version"] === "string") return entry["version"];
+  }
+  return undefined;
 }
 
 async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined> {
@@ -50,10 +74,10 @@ async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined
   // per scope holding the plugin, so a match found only in a `project` row
   // means the user scope is empty and `upgrade --scope user` would fail; only a
   // `user` row counts as installed for this pipeline.
-  const marketplace = new Set<string>();
+  const marketplace = new Map<string, string | undefined>();
   for (const row of value["marketplace"]) {
     if (!isObject(row) || typeof row["id"] !== "string" || row["scope"] !== "user") continue;
-    marketplace.add(row["id"]);
+    marketplace.set(row["id"], marketplaceEntryVersion(row["entries"]));
   }
 
   const npm = new Map<string, InstalledNpmPlugin>();
@@ -64,6 +88,26 @@ async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined
     npm.set(row["name"], { version: row["version"], path });
   }
   return { marketplace, npm };
+}
+
+/**
+ * Names one operation with its version change. `after` is the inventory read
+ * after all operations; when it does not give a version, only the id remains.
+ */
+function describeOperation(
+  operation: PluginOperation,
+  after: InstalledPlugins | undefined,
+): string {
+  if (operation.kind === "link") return `${operation.id} linked`;
+  const version =
+    operation.kind === "marketplace"
+      ? after?.marketplace.get(operation.id)
+      : after?.npm.get(operation.id)?.version;
+  if (version === undefined) return operation.id;
+  if (operation.present === false) return `${operation.id} ${version} (new)`;
+  if (operation.before === undefined) return `${operation.id} ${version}`;
+  if (operation.before === version) return `${operation.id} ${version} (current)`;
+  return `${operation.id} ${operation.before} -> ${version}`;
 }
 
 async function runPluginCommand(
@@ -143,7 +187,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
       : MARKETPLACE_PLUGIN_IDS.filter((pluginId) => installed.marketplace.has(pluginId)).length +
         (piIntercomPin !== "" && installed.npm.has("pi-intercom") ? 1 : 0) +
         (installed.npm.has(KIT_PLUGIN_NAME) ? 1 : 0);
-  let operationsSucceeded = 0;
+  const operations: Array<PluginOperation> = [];
 
   for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
     const present = installed?.marketplace.has(pluginId) === true;
@@ -156,7 +200,12 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
       ? ["plugin", "upgrade", "--scope", "user", pluginId]
       : ["plugin", "install", "--scope", "user", pluginId];
     if (await runPluginCommand(ctx, pluginId, args)) {
-      operationsSucceeded++;
+      operations.push({
+        kind: "marketplace",
+        id: pluginId,
+        present: installed === undefined ? undefined : present,
+        before: installed?.marketplace.get(pluginId),
+      });
       if (!present) pluginsInstalled++;
     }
   }
@@ -175,7 +224,12 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
         ? ["install", "--force", `pi-intercom@${piIntercomPin}`]
         : ["install", `pi-intercom@${piIntercomPin}`];
       if (await runPluginCommand(ctx, "pi-intercom", args)) {
-        operationsSucceeded++;
+        operations.push({
+          kind: "npm",
+          id: "pi-intercom",
+          present: installed === undefined ? undefined : present,
+          before: installedVersion,
+        });
         if (!present) pluginsInstalled++;
       }
     }
@@ -189,12 +243,17 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
   if (linkedTarget !== undefined && linkedTarget === realPath(kitDir)) {
     verbose(`omp kit plugin ${KIT_PLUGIN_NAME} already linked`);
   } else if (await runPluginCommand(ctx, KIT_PLUGIN_NAME, ["plugin", "link", kitDir])) {
-    operationsSucceeded++;
+    operations.push({ kind: "link", id: KIT_PLUGIN_NAME });
     if (installed?.npm.has(KIT_PLUGIN_NAME) !== true) pluginsInstalled++;
   }
 
-  if (operationsSucceeded > 0) {
-    change(`omp plugins synced (plugins: ~${operationsSucceeded})`);
+  if (operations.length > 0) {
+    // A second inventory read gives the versions that the operations left.
+    progress("Reading omp plugin versions...");
+    const after = await installedPluginIdsFromCli();
+    clearProgress();
+    const items = operations.map((operation) => describeOperation(operation, after));
+    change(`omp plugins synced: ${items.join(", ")}`);
     ctx.nextStepTriggers.ompRestart = true;
   } else {
     verbose("omp plugins already in sync");

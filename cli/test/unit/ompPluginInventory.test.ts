@@ -55,8 +55,11 @@ const OMP_ENV_KEYS = [
 ] as const;
 const ORIGINAL_OMP_ENV = new Map(OMP_ENV_KEYS.map((key) => [key, process.env[key]] as const));
 
-/** A complete inventory; the kit plugin row resolves to the kit directory under `root`. */
-function inventoryPresent(root: string): string {
+/**
+ * A complete inventory; the kit plugin row resolves to the kit directory under
+ * `root`. `docksVersion` sets the docks@docks entry version.
+ */
+function inventoryPresent(root: string, docksVersion = "0.18.0"): string {
   const kitDir = join(root, ".docks-kit", "omp-plugin");
   mkdirSync(kitDir, { recursive: true });
   return JSON.stringify({
@@ -65,7 +68,7 @@ function inventoryPresent(root: string): string {
       { name: "docks-kit-omp", version: "0.0.0", path: kitDir },
     ],
     marketplace: [
-      { id: "docks@docks", scope: "user", entries: [{ version: "0.18.0" }] },
+      { id: "docks@docks", scope: "user", entries: [{ version: docksVersion }] },
       { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: "0.9.0" }] },
     ],
   });
@@ -129,16 +132,36 @@ function ompCommands(): Array<string> {
   return mocks.spawnProcess.mock.calls.map((call) => (call[1] as ReadonlyArray<string>).join(" "));
 }
 
-function respondWithInventory(inventory: string, failingCommand?: string): void {
+/**
+ * Answers each `plugin list --json` call with the next inventory; the last
+ * inventory answers every later call. `failingCommand` exits 1.
+ */
+function respondWithInventory(
+  inventories: string | ReadonlyArray<string>,
+  failingCommand?: string,
+): void {
+  const answers = typeof inventories === "string" ? [inventories] : inventories;
+  let listCalls = 0;
   mocks.spawnProcess.mockImplementation(async (_cmd: string, args: ReadonlyArray<string>) => {
     const failed = args.join(" ") === failingCommand;
+    const list = args[0] === "plugin" && args[1] === "list";
+    const stdout = list ? (answers[Math.min(listCalls++, answers.length - 1)] ?? "") : "";
     return {
       error: undefined,
       exitCode: failed ? 1 : 0,
-      stdout: args[0] === "plugin" && args[1] === "list" ? inventory : "",
+      stdout,
       stderr: failed ? "stub omp operation failure\n" : "",
     };
   });
+}
+
+/** The text of the plugin summary line, from its message start to the line end. */
+function pluginSummary(output: ReadonlyArray<string>): string | undefined {
+  const line = output
+    .join("")
+    .split("\n")
+    .find((candidate) => candidate.includes("omp plugins synced"));
+  return line?.slice(line.indexOf("omp plugins synced"));
 }
 
 describe("omp plugin inventory", () => {
@@ -174,8 +197,33 @@ describe("omp plugin inventory", () => {
       "plugin list --json",
       "plugin upgrade --scope user docks@docks",
       "plugin upgrade --scope user plan-lifecycle@docks",
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
+  });
+
+  it("names the version change of each upgraded plugin", async () => {
+    const root = makeRoot();
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+    const output: Array<string> = [];
+
+    await ompSync(makeCtx(root, { output }));
+
+    expect(pluginSummary(output)).toBe(
+      "omp plugins synced: docks@docks 0.18.0 -> 0.19.0, plan-lifecycle@docks 0.9.0 (current)",
+    );
+  });
+
+  it("names the version of each new install and the kit plugin link", async () => {
+    const root = makeRoot();
+    respondWithInventory([INVENTORY_EMPTY, inventoryPresent(root, "0.19.0")]);
+    const output: Array<string> = [];
+
+    await ompSync(makeCtx(root, { output }));
+
+    expect(pluginSummary(output)).toBe(
+      `omp plugins synced: docks@docks 0.19.0 (new), plan-lifecycle@docks 0.9.0 (new), pi-intercom ${PIN} (new), docks-kit-omp linked`,
+    );
   });
 
   it("installs a plugin whose only row is project-scoped", async () => {
@@ -199,6 +247,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user docks@docks",
       "plugin upgrade --scope user plan-lifecycle@docks",
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
   });
@@ -237,6 +286,7 @@ describe("omp plugin inventory", () => {
       "plugin list --json",
       "plugin upgrade --scope user docks@docks",
       "plugin upgrade --scope user plan-lifecycle@docks",
+      "plugin list --json",
     ]);
   });
 
@@ -252,6 +302,7 @@ describe("omp plugin inventory", () => {
       "plugin list --json",
       "plugin upgrade --scope user docks@docks",
       "plugin upgrade --scope user plan-lifecycle@docks",
+      "plugin list --json",
     ]);
   });
 
@@ -294,6 +345,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(3);
     expect(ctx.failures).toEqual([
@@ -315,6 +367,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install --force pi-intercom@${PIN}`,
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
   });
@@ -340,6 +393,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
   });
@@ -390,7 +444,8 @@ describe("omp plugin inventory", () => {
   it("falls back to the full refresh path when the inventory cannot be parsed", async () => {
     respondWithInventory("not json");
     const root = makeRoot();
-    const state = await ompSync(makeCtx(root));
+    const output: Array<string> = [];
+    const state = await ompSync(makeCtx(root, { output }));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -399,8 +454,25 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user plan-lifecycle@docks",
       `install pi-intercom@${PIN}`,
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
+    // The inventory stays unreadable after the operations, so each plugin keeps only its id.
+    expect(pluginSummary(output)).toBe(
+      "omp plugins synced: docks@docks, plan-lifecycle@docks, pi-intercom, docks-kit-omp linked",
+    );
+  });
+
+  it("shows versions without (new) when only the second inventory read succeeds", async () => {
+    const root = makeRoot();
+    respondWithInventory(["not json", inventoryPresent(root)]);
+    const output: Array<string> = [];
+    await ompSync(makeCtx(root, { output }));
+
+    // The first read failed, so the sync cannot know whether a plugin was new.
+    expect(pluginSummary(output)).toBe(
+      `omp plugins synced: docks@docks 0.18.0, plan-lifecycle@docks 0.9.0, pi-intercom ${PIN}, docks-kit-omp linked`,
+    );
   });
 
   it("links the kit plugin again when omp's entry resolves elsewhere", async () => {
@@ -423,6 +495,7 @@ describe("omp plugin inventory", () => {
       "plugin install --scope user docks@docks",
       "plugin install --scope user plan-lifecycle@docks",
       kitLink(root),
+      "plugin list --json",
     ]);
     expect(state.pluginsInstalled).toBe(4);
   });
