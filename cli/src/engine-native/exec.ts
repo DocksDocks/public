@@ -133,6 +133,9 @@ export function spawnProcess(
     child = spawn(invocation.command, [...invocation.args], {
       stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
       ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+      // A bounded child leads its own process group on POSIX, so a timeout
+      // can end the processes that it started too (see killProcessTree).
+      ...(options.timeoutMs !== undefined && !WINDOWS_PROCESS ? { detached: true } : {}),
       windowsVerbatimArguments: invocation.windowsVerbatimArguments,
     });
   } catch (cause) {
@@ -169,11 +172,12 @@ export function spawnProcess(
     options.timeoutMs === undefined
       ? undefined
       : setTimeout(() => {
-          // The kill reaches only the child. A grandchild that got the pipes,
-          // such as the tool that a Windows command shim starts, can keep them
-          // open, and "close" waits for the pipes. Close our ends and unref the
-          // child, so neither this promise nor the event loop waits for it.
-          child.kill("SIGKILL");
+          // A version proxy, such as rustup, runs the real tool as its own
+          // child, so end the whole process tree, not only the direct child.
+          // A process that holds the pipes could still keep them open, and
+          // "close" waits for the pipes. Close our ends and unref the child,
+          // so neither this promise nor the event loop waits for it.
+          killProcessTree(child);
           child.stdout?.destroy();
           child.stderr?.destroy();
           child.unref();
@@ -184,6 +188,37 @@ export function spawnProcess(
     resolve({ exitCode, stdout, stderr, ...(error !== undefined ? { error } : {}) });
   });
   return promise;
+}
+
+/**
+ * The kill strategy follows the real platform, not the injected `host`: the
+ * host only shapes command resolution and argv.
+ */
+const WINDOWS_PROCESS = process.platform === "win32";
+
+/**
+ * Ends `child` and every process it started. On POSIX the child leads its own
+ * process group (`detached`), so a signal to the negative pid reaches the
+ * group. On Windows, `taskkill /T` ends the process tree; its absolute path
+ * keeps CreateProcess from finding a `taskkill` in the current directory.
+ */
+function killProcessTree(child: ChildProcess): void {
+  const pid = child.pid;
+  if (pid === undefined) return;
+  if (WINDOWS_PROCESS) {
+    const taskkill = `${process.env["SystemRoot"] ?? "C:\\Windows"}\\System32\\taskkill.exe`;
+    spawnSync(taskkill, ["/pid", String(pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // The group is already gone; kill the child in case it left the group.
+    child.kill("SIGKILL");
+  }
 }
 
 export async function capture(cmd: string, args: ReadonlyArray<string>): Promise<string> {

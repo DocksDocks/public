@@ -119,6 +119,31 @@ describe("spawnProcess time limit", () => {
     await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow(), { timeout: 5000 });
   });
 
+  it("also ends a process that the timed-out child started", async () => {
+    // The child starts a grandchild, prints the grandchild's pid, and waits,
+    // like a version proxy that runs the real tool.
+    const startsGrandchild = [
+      "-e",
+      [
+        "const { spawn } = require('node:child_process');",
+        "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+        "process.stdout.write(String(grandchild.pid));",
+        "setInterval(() => {}, 1000);",
+      ].join(" "),
+    ];
+    const result = await spawnProcess(process.execPath, startsGrandchild, {
+      host: hostOs("linux"),
+      timeoutMs: 1000,
+    });
+
+    expect(result).toMatchObject({ timedOut: true });
+    const grandchild = Number(result.stdout);
+    expect(grandchild).toBeGreaterThan(0);
+    await vi.waitFor(() => expect(() => process.kill(grandchild, 0)).toThrow(), {
+      timeout: 5000,
+    });
+  });
+
   it("tells a command that does not answer in time from one that answers", async () => {
     await expect(captureWithin(process.execPath, neverCloses, 200)).resolves.toEqual({
       kind: "timed-out",
