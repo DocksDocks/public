@@ -11,9 +11,9 @@ metadata:
     - path: cli/src/engine-native/ompMarketplace.ts
       lines: "1-131"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-203"
+      lines: "1-251"
     - path: cli/src/engine-native/ompKitPlugin.ts
-      lines: "1-94"
+      lines: "1-108"
     - path: cli/src/engine-native/ompRemovals.ts
       lines: "1-216"
     - path: cli/src/engine-native/failures.ts
@@ -34,7 +34,7 @@ metadata:
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-10-22"
+  updated: "2026-10-27"
 ---
 
 # omp Sync Context
@@ -205,7 +205,7 @@ Do not replace this parser with a line-based YAML merge.
 
 ## Plugin Inventory Contract
 
-Call `omp plugin list --json` once for inventory.
+Call `omp plugin list --json` once for inventory before the plugin operations.
 Expect top-level `marketplace` and `npm` arrays.
 Return the fallback refresh path when the inventory shape is invalid.
 
@@ -213,6 +213,8 @@ Read each marketplace row from its composite `id` field.
 The value already has the `<plugin>@<marketplace>` form.
 Compare it with `docks@docks` and `plan-lifecycle@docks`.
 Use the same value for install and upgrade commands.
+A marketplace row has no top-level version. Read the version from the first
+`entries[]` item that has a string `version`.
 Accept the row only when its `scope` is `user`, because omp reports one row per
 scope and `upgrade --scope user` fails while the user scope is empty.
 
@@ -237,6 +239,14 @@ Refresh a present npm plugin only when its version differs.
 Pass `--force` only when replacing a present npm plugin version.
 Link the kit plugin with `omp plugin link <kitPluginDir>` unless its npm row `path` resolves to the real kit plugin directory.
 Run the link also under `--skip-plugin-refresh` and when the inventory is unavailable.
+
+When at least one plugin operation succeeds, call `omp plugin list --json` one
+more time and print one summary line that names each operation:
+`omp plugins synced: docks@docks 0.21.1 -> 0.22.0, plan-lifecycle@docks 0.9.0 (current), pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+An id without a version means the second inventory did not give one.
+Do not read the inventory again when no operation ran, in a dry run, or when omp or git is missing.
+`ompKitPlugin.ts syncKitPlugin` adds `(docks-kit-omp <old> -> <new>)` to its line
+when the deployed `package.json` had a different version.
 
 ## Dry Run And Refresh Rules
 

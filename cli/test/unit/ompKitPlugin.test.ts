@@ -23,13 +23,13 @@ import { payloadText } from "../../src/payload";
 
 const roots: Array<string> = [];
 
-function testCtx(dryRun = false, stdout: Array<string> = []): Ctx {
+function testCtx(dryRun = false, stdout: Array<string> = [], stderr: Array<string> = []): Ctx {
   const root = mkdtempSync(join(tmpdir(), "omp-kit-plugin-"));
   roots.push(root);
   const home = p(root, "home");
   const services: EngineServices = {
     logger: makeLogger({
-      stderr: () => {},
+      stderr: (chunk) => stderr.push(chunk),
       progress: () => {},
       stdout: (chunk) => stdout.push(chunk),
     }),
@@ -141,6 +141,20 @@ describe("omp kit plugin files", () => {
     syncKitPlugin(ctx);
 
     expect(ctx.nextStepTriggers.ompRestart).toBe(false);
+  });
+
+  it("names the kit plugin version change when the deployed version differs", () => {
+    const stderr: Array<string> = [];
+    const ctx = testCtx(false, [], stderr);
+    const pluginDir = kitPluginDir(ctx.home);
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(join(pluginDir, "package.json"), '{ "version": "0.0.1" }\n');
+
+    syncKitPlugin(ctx);
+
+    expect(stderr.join("")).toContain(
+      `omp kit plugin files synced (docks-kit-omp 0.0.1 -> ${GENERATED_PACKAGE_VERSION})`,
+    );
   });
 
   it("previews each file in a dry run and writes nothing", () => {

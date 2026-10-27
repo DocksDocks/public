@@ -80,8 +80,11 @@ marketplace row counts as installed only when its `scope` is `user`, so a repeat
 run is a no-op and a project-only row still installs. When just the legacy
 config-root registry lists `docks`, omp copies it forward itself: the sync runs
 `marketplace update`, or the read-only `marketplace list` under
-`--skip-plugin-refresh`, which keeps installs but fetches nothing. A dry run
-invokes no omp subcommand.
+`--skip-plugin-refresh`, which keeps installs but fetches nothing. After a
+plugin operation, the sync reads the inventory again and prints one line that
+names each plugin with its version change, for example
+`omp plugins synced: docks@docks 0.21.1 -> 0.22.0, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+A dry run invokes no omp subcommand.
 
 Paths mirror upstream `dirs.ts` `DirResolver`, resolved from the environment
 plus directory probes, so a dry run still runs no omp subcommand. The agent
