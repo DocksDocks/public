@@ -9,7 +9,7 @@
  */
 import { isAbsolute } from "node:path";
 
-import { capture, commandExists, p, which } from "./exec";
+import { capture, captureWithin, commandExists, p, which, type CaptureOutcome } from "./exec";
 import { engineHome } from "./harnesses";
 import { isObject, parseJson } from "./jq";
 import { hostOs, platformName, rawPlatform } from "./os";
@@ -47,8 +47,25 @@ export type ProbeResult =
 export interface ProbeExecutor {
   readonly commandExists: (name: string) => boolean;
   readonly capture: (cmd: string, args: ReadonlyArray<string>) => Promise<string>;
+  /** `capture` with a time limit. Without it, a version probe has no limit. */
+  readonly captureWithin?: (
+    cmd: string,
+    args: ReadonlyArray<string>,
+    timeoutMs: number,
+  ) => Promise<CaptureOutcome>;
   readonly which: (name: string) => string;
 }
+
+/** The version text ("" when the tool is absent or prints none), or no answer in time. */
+export type VersionReading =
+  | { readonly kind: "version"; readonly value: string }
+  | { readonly kind: "timed-out" };
+
+/**
+ * The longest wait for a `<tool> --version` answer. A cold rust-analyzer start
+ * took 20 s on a macOS runner (#114), so the limit must let that pass.
+ */
+export const VERSION_PROBE_LIMIT_MS = 60_000;
 
 export interface DependencySpec {
   readonly id: ToolId;
@@ -57,6 +74,10 @@ export interface DependencySpec {
   /** Platform-correct one-line install command (param injectable for tests). */
   readonly installHint: (platform?: NodeJS.Platform) => string;
   readonly resolve?: (exec: ProbeExecutor, platform: NodeJS.Platform) => ProbeResult;
+  /**
+   * Reads the version in a different way than `<id> <versionArgs>`. This
+   * reader has no time limit.
+   */
   readonly version?: (exec: ProbeExecutor) => Promise<string>;
 }
 
@@ -89,15 +110,6 @@ const pathProbe =
     const path = exec.which(id);
     return path === "" ? { state: "present" } : { state: "present", path };
   };
-
-const versionProbe =
-  (
-    id: string,
-    versionArgs: ReadonlyArray<string> = ["--version"],
-    parse: (out: string) => string = (out) => out,
-  ): ((exec: ProbeExecutor) => Promise<string>) =>
-  async (exec) =>
-    parse(await exec.capture(id, versionArgs));
 
 /**
  * The resolved path gets persisted into global direct-exec hooks, so a
@@ -154,33 +166,18 @@ const versionNpmGlobal =
   async (exec: ProbeExecutor): Promise<string> =>
     (await npmGlobalVersions(exec))[pkg] ?? "";
 
-export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, which };
+export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, captureWithin, which };
 
 export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
-  git: spec(
-    "git",
-    "optional",
-    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git"),
-    { version: versionProbe("git") },
-  ),
-  jq: spec("jq", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq"), {
-    version: versionProbe("jq"),
-  }),
-  curl: spec(
-    "curl",
-    "optional",
-    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("curl"),
-    {
-      version: versionProbe("curl"),
-    },
+  git: spec("git", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git")),
+  jq: spec("jq", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq")),
+  curl: spec("curl", "optional", (pf = rawPlatform()) =>
+    hostOs(platformName(pf)).installHint("curl"),
   ),
   node: spec(
     "node",
     "optional",
     () => "install Node.js via https://nodejs.org (or your package manager)",
-    {
-      version: versionProbe("node"),
-    },
   ),
   npm: spec(
     "npm",
@@ -192,24 +189,21 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "optional",
     () => "ships with Node.js — install via https://nodejs.org (or your package manager)",
   ),
-  claude: spec(
-    "claude",
-    "optional",
-    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("claude"),
-    { version: versionProbe("claude") },
+  claude: spec("claude", "optional", (pf = rawPlatform()) =>
+    hostOs(platformName(pf)).installHint("claude"),
   ),
-  codex: spec(
-    "codex",
-    "optional",
-    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("codex"),
-    { version: versionProbe("codex") },
+  codex: spec("codex", "optional", (pf = rawPlatform()) =>
+    hostOs(platformName(pf)).installHint("codex"),
   ),
   omp: spec(
     "omp",
     "optional",
     () =>
       "install omp from https://github.com/can1357/oh-my-pi (an existing install updates with `omp update`, or through the tool that manages it, such as Tern)",
-    { version: versionProbe("omp", ["--version"], (out) => out.trim().replace(/^omp[/v]/, "")) },
+    {
+      version: async (exec) =>
+        (await exec.capture("omp", ["--version"])).trim().replace(/^omp[/v]/, ""),
+    },
   ),
   bun: spec("bun", "optional", () => "curl -fsSL https://bun.sh/install | bash", {
     resolve: resolveBun,
@@ -223,9 +217,6 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     "bwrap",
     "optional",
     () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)",
-    {
-      version: versionProbe("bwrap"),
-    },
   ),
   ffplay: spec(
     "ffplay",
@@ -233,7 +224,6 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("ffplay"),
     {
       versionArgs: ["-version"],
-      version: versionProbe("ffplay", ["-version"]),
       resolve: pathProbe("ffplay"),
     },
   ),
@@ -247,20 +237,15 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
     () => "npm install -g typescript-language-server typescript",
     {
       resolve: pathProbe("typescript-language-server"),
-      version: versionProbe("typescript-language-server"),
     },
   ),
   tsc: spec("tsc", "optional", () => "npm install -g typescript", {
     resolve: pathProbe("tsc"),
-    version: versionProbe("tsc"),
   }),
   "rust-analyzer": spec("rust-analyzer", "optional", () => "rustup component add rust-analyzer", {
     resolve: pathProbe("rust-analyzer"),
-    version: versionProbe("rust-analyzer"),
   }),
-  rustup: spec("rustup", "optional", () => "install the Rust toolchain from https://rustup.rs", {
-    version: versionProbe("rustup"),
-  }),
+  rustup: spec("rustup", "optional", () => "install the Rust toolchain from https://rustup.rs"),
   "apt-get": spec("apt-get", "optional", () => "install apt via your Linux distribution"),
   dnf: spec("dnf", "optional", () => "install dnf via your Linux distribution"),
   pacman: spec("pacman", "optional", () => "install pacman via your Linux distribution"),
@@ -275,14 +260,43 @@ export function resolveDependency(
   return (specification.resolve ?? pathProbe(specification.id))(exec, platform);
 }
 
+/**
+ * Reads the version with `<id> <versionArgs>` under `VERSION_PROBE_LIMIT_MS`,
+ * or with the spec's own `version` reader. An executor without
+ * `captureWithin` reads without a limit and never reports `timed-out`.
+ */
+export async function resolveVersionReading(
+  specification: DependencySpec,
+  exec: ProbeExecutor,
+): Promise<VersionReading> {
+  if (resolveDependency(specification, exec).state !== "present") {
+    return { kind: "version", value: "" };
+  }
+  if (specification.version !== undefined) {
+    return { kind: "version", value: await specification.version(exec) };
+  }
+  if (exec.captureWithin === undefined) {
+    return {
+      kind: "version",
+      value: await exec.capture(specification.id, specification.versionArgs),
+    };
+  }
+  const outcome = await exec.captureWithin(
+    specification.id,
+    specification.versionArgs,
+    VERSION_PROBE_LIMIT_MS,
+  );
+  if (outcome.kind === "timed-out") return outcome;
+  return { kind: "version", value: outcome.kind === "output" ? outcome.stdout : "" };
+}
+
+/** `resolveVersionReading` as text: a probe that timed out reads as no version. */
 export async function resolveVersion(
   specification: DependencySpec,
   exec: ProbeExecutor,
 ): Promise<string> {
-  if (resolveDependency(specification, exec).state !== "present") return "";
-  return await (specification.version ?? versionProbe(specification.id, specification.versionArgs))(
-    exec,
-  );
+  const reading = await resolveVersionReading(specification, exec);
+  return reading.kind === "version" ? reading.value : "";
 }
 
 export async function resolvePath(

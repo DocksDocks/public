@@ -42,6 +42,7 @@ function testCtx(root: string, stdout: Array<string> = [], stderr: Array<string>
       spec: (id) => DEPENDENCIES[id],
       probe: () => ({ state: "missing" as const }),
       version: async () => "",
+      versionReading: async () => ({ kind: "version" as const, value: "" }),
       path: async () => "",
       warnMissing: () => {},
     },

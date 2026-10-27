@@ -3,8 +3,15 @@ import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
-import { DEPENDENCIES, resolvePath, type ProbeExecutor } from "../../src/engine-native/deps";
-import { capture, which } from "../../src/engine-native/exec";
+import {
+  DEPENDENCIES,
+  resolvePath,
+  resolveVersion,
+  resolveVersionReading,
+  VERSION_PROBE_LIMIT_MS,
+  type ProbeExecutor,
+} from "../../src/engine-native/deps";
+import { capture, which, type CaptureOutcome } from "../../src/engine-native/exec";
 import {
   makeDependencyManager,
   makeEngineServices,
@@ -281,5 +288,46 @@ describe("DependencyManager registry", () => {
     });
     expect(manager.probe("git")).toEqual({ state: "present", path: "/stub/git" });
     expect(captureVersion).not.toHaveBeenCalled();
+  });
+
+  it("reports a version probe that does not answer within the limit as timed out", async () => {
+    const bounded: Array<[string, ReadonlyArray<string>, number]> = [];
+    const exec: ProbeExecutor = {
+      commandExists: () => true,
+      capture: async () => "rust-analyzer 1.92.0",
+      captureWithin: async (cmd, args, timeoutMs) => {
+        bounded.push([cmd, args, timeoutMs]);
+        return { kind: "timed-out" };
+      },
+      which: (name) => `/stub/${name}`,
+    };
+
+    await expect(resolveVersionReading(DEPENDENCIES["rust-analyzer"], exec)).resolves.toEqual({
+      kind: "timed-out",
+    });
+    await expect(resolveVersion(DEPENDENCIES["rust-analyzer"], exec)).resolves.toBe("");
+    expect(bounded).toEqual([
+      ["rust-analyzer", ["--version"], VERSION_PROBE_LIMIT_MS],
+      ["rust-analyzer", ["--version"], VERSION_PROBE_LIMIT_MS],
+    ]);
+  });
+
+  it("reads the version from the bounded probe output, and an empty one from a failed probe", async () => {
+    const answering = (outcome: CaptureOutcome): ProbeExecutor => ({
+      commandExists: () => true,
+      capture: async () => "unbounded capture must not run",
+      captureWithin: async () => outcome,
+      which: (name) => `/stub/${name}`,
+    });
+
+    await expect(
+      resolveVersionReading(
+        DEPENDENCIES["rust-analyzer"],
+        answering({ kind: "output", stdout: "rust-analyzer 1.92.0" }),
+      ),
+    ).resolves.toEqual({ kind: "version", value: "rust-analyzer 1.92.0" });
+    await expect(
+      resolveVersionReading(DEPENDENCIES["rust-analyzer"], answering({ kind: "failed" })),
+    ).resolves.toEqual({ kind: "version", value: "" });
   });
 });

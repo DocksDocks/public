@@ -1,8 +1,8 @@
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { processFailureSummary, spawnProcess } from "../../src/engine-native/exec";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { captureWithin, processFailureSummary, spawnProcess } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
 
 /** A PATH holding exactly the named shims, so resolution is the same on every host. */
@@ -92,6 +92,40 @@ describe("spawnProcess host resolution", () => {
       stdout: "before",
       stderr: "failure",
     });
+  });
+});
+
+describe("spawnProcess time limit", () => {
+  // These cases spawn a real child, so the limit runs on the real clock: a fake
+  // timer cannot make a child process start or print. The child prints its
+  // pid, then runs until a signal ends it.
+  const neverCloses = [
+    "-e",
+    "process.stdout.write(String(process.pid)); setInterval(() => {}, 1000)",
+  ];
+
+  it("kills a child that does not close within the limit and reports the timeout", async () => {
+    const started = Date.now();
+    const result = await spawnProcess(process.execPath, neverCloses, {
+      host: hostOs("linux"),
+      timeoutMs: 1000,
+    });
+
+    expect(Date.now() - started).toBeLessThan(5000);
+    expect(result).toMatchObject({ exitCode: null, timedOut: true });
+    const pid = Number(result.stdout);
+    expect(pid).toBeGreaterThan(0);
+    // The kill is asynchronous; the pid disappears after the parent reaps it.
+    await vi.waitFor(() => expect(() => process.kill(pid, 0)).toThrow(), { timeout: 5000 });
+  });
+
+  it("tells a command that does not answer in time from one that answers", async () => {
+    await expect(captureWithin(process.execPath, neverCloses, 200)).resolves.toEqual({
+      kind: "timed-out",
+    });
+    await expect(
+      captureWithin(process.execPath, ["-e", "process.stdout.write('1.2.3\\n')"], 30_000),
+    ).resolves.toEqual({ kind: "output", stdout: "1.2.3" });
   });
 });
 

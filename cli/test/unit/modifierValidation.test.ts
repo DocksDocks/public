@@ -43,6 +43,7 @@ function stubServices(records: Array<LogRecord>): EngineServices {
     },
     probe: (id) => ({ state: "present", path: `/stub-bin/${id}` }),
     version: async (id) => (id === "bun" ? "1.4.0" : "0.5.3"),
+    versionReading: async (id) => ({ kind: "version", value: id === "bun" ? "1.4.0" : "0.5.3" }),
     path: async (id) => `/stub-bin/${id}`,
     warnMissing: () => {},
   };

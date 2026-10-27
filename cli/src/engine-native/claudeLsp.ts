@@ -5,7 +5,12 @@
  * server binaries, so this pass installs the missing ones. Message strings
  * and spawned argv are part of the contract.
  */
-import { defaultProbeExecutor, npmGlobalVersions, type ToolId } from "./deps";
+import {
+  defaultProbeExecutor,
+  npmGlobalVersions,
+  VERSION_PROBE_LIMIT_MS,
+  type ToolId,
+} from "./deps";
 import { realpathSync } from "node:fs";
 import { capture, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
@@ -97,6 +102,26 @@ async function installRustAnalyzer(ctx: Ctx): Promise<void> {
   }
 }
 
+/**
+ * rustup links a rust-analyzer proxy into ~/.cargo/bin even when the
+ * component is not installed, and that proxy reports no version. With rustup
+ * present, a PATH hit without a version counts as missing. A probe that does
+ * not answer in time tells nothing about the component, and the install would
+ * wait on the same rustup, so that hit does not count as missing.
+ */
+async function rustAnalyzerMissing(ctx: Ctx, rustupPresent: boolean): Promise<boolean> {
+  if (ctx.services.deps.probe("rust-analyzer").state === "missing") return true;
+  if (!rustupPresent) return false;
+  const reading = await ctx.services.deps.versionReading("rust-analyzer");
+  if (reading.kind === "timed-out") {
+    ctx.services.logger.warn(
+      `rust-analyzer --version did not answer within ${VERSION_PROBE_LIMIT_MS / 1000} s; skipped the rust-analyzer install check. Run rust-analyzer --version to see what it waits for, then re-run sync.`,
+    );
+    return false;
+  }
+  return reading.value === "";
+}
+
 export async function syncLspServers(ctx: Ctx): Promise<void> {
   const { echo, verbose, warn } = ctx.services.logger;
   const sot = parseJson(payloadText("SoT/.claude/settings.json"));
@@ -117,13 +142,7 @@ export async function syncLspServers(ctx: Ctx): Promise<void> {
     hasTs && ctx.services.deps.probe("typescript-language-server").state === "missing";
   const tscMissing = hasTs && ctx.services.deps.probe("tsc").state === "missing";
   const rustupPresent = ctx.services.deps.probe("rustup").state === "present";
-  // rustup links a rust-analyzer proxy into ~/.cargo/bin even when the
-  // component is not installed, and that proxy reports no version. With
-  // rustup present, a PATH hit without a version counts as missing.
-  const rustMissing =
-    hasRust &&
-    (ctx.services.deps.probe("rust-analyzer").state === "missing" ||
-      (rustupPresent && (await ctx.services.deps.version("rust-analyzer")) === ""));
+  const rustMissing = hasRust && (await rustAnalyzerMissing(ctx, rustupPresent));
   // A host without rustup does no Rust work, so the plugin has nothing to
   // serve there. Installing is impossible and warning every sync would name no
   // action the user wants, so that host is not counted as missing a tool.

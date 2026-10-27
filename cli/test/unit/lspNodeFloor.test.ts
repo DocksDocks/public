@@ -22,6 +22,11 @@ type Sinks = { readonly out: Array<string>; readonly err: Array<string> };
  */
 function lspCtx(nodeVersion: string, missing: ReadonlyArray<ToolId>, sinks: Sinks): Ctx {
   const home = mkdtempSync(join(tmpdir(), "docks-lsp-floor-"));
+  // rust-analyzer reports a version, so a PATH hit counts as a working binary.
+  const version = async (id: ToolId): Promise<string> => {
+    if (id === "node") return nodeVersion;
+    return id === "rust-analyzer" ? "rust-analyzer 1.92.0 (0d1f2e3a4 2026-08-31)" : "";
+  };
   const services: EngineServices = {
     logger: makeLogger({
       stderr: (chunk) => void sinks.err.push(chunk.replace(/\n$/, "")),
@@ -32,11 +37,8 @@ function lspCtx(nodeVersion: string, missing: ReadonlyArray<ToolId>, sinks: Sink
     deps: {
       spec: (id) => DEPENDENCIES[id],
       probe: (id) => ({ state: missing.includes(id) ? "missing" : "present" }),
-      // rust-analyzer reports a version, so a PATH hit counts as a working binary.
-      version: async (id) => {
-        if (id === "node") return nodeVersion;
-        return id === "rust-analyzer" ? "rust-analyzer 1.92.0 (0d1f2e3a4 2026-08-31)" : "";
-      },
+      version,
+      versionReading: async (id) => ({ kind: "version", value: await version(id) }),
       path: async () => "",
       warnMissing: () => {},
     },

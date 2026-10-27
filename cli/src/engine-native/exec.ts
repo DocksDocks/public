@@ -70,6 +70,8 @@ export interface AsyncProcessResult {
   readonly stdout: string;
   readonly stderr: string;
   readonly error?: Error;
+  /** Set when `timeoutMs` expired before the child closed; the output is partial. */
+  readonly timedOut?: true;
 }
 
 /**
@@ -95,6 +97,11 @@ export interface AsyncProcessOptions {
   readonly cwd?: string;
   /** Host whose executable resolution and argv shaping apply; tests inject it. */
   readonly host?: HostOs;
+  /**
+   * Kill the child and resolve with `timedOut` when it does not close within
+   * this many milliseconds. No limit when absent.
+   */
+  readonly timeoutMs?: number;
 }
 
 export function spawnProcess(
@@ -158,7 +165,22 @@ export function spawnProcess(
   child.once("error", (cause) => {
     error ??= cause;
   });
+  const timer =
+    options.timeoutMs === undefined
+      ? undefined
+      : setTimeout(() => {
+          // The kill reaches only the child. A grandchild that got the pipes,
+          // such as the tool that a Windows command shim starts, can keep them
+          // open, and "close" waits for the pipes. Close our ends and unref the
+          // child, so neither this promise nor the event loop waits for it.
+          child.kill("SIGKILL");
+          child.stdout?.destroy();
+          child.stderr?.destroy();
+          child.unref();
+          resolve({ exitCode: null, stdout, stderr, timedOut: true });
+        }, options.timeoutMs);
   child.once("close", (exitCode) => {
+    clearTimeout(timer);
     resolve({ exitCode, stdout, stderr, ...(error !== undefined ? { error } : {}) });
   });
   return promise;
@@ -168,6 +190,28 @@ export async function capture(cmd: string, args: ReadonlyArray<string>): Promise
   const res = await spawnProcess(cmd, args, { stdio: ["ignore", "pipe", "ignore"] });
   if (res.error !== undefined || res.exitCode !== 0) return "";
   return res.stdout.replace(/[\r\n]+$/, "");
+}
+
+/** The result of `captureWithin`: the output, a failure, or no answer in time. */
+export type CaptureOutcome =
+  | { readonly kind: "output"; readonly stdout: string }
+  | { readonly kind: "failed" }
+  | { readonly kind: "timed-out" };
+
+/**
+ * `capture` with a time limit. A command that does not close within
+ * `timeoutMs` is killed and reported as `timed-out`, not as an empty output,
+ * so the caller can tell "no answer" from "no version".
+ */
+export async function captureWithin(
+  cmd: string,
+  args: ReadonlyArray<string>,
+  timeoutMs: number,
+): Promise<CaptureOutcome> {
+  const res = await spawnProcess(cmd, args, { stdio: ["ignore", "pipe", "ignore"], timeoutMs });
+  if (res.timedOut === true) return { kind: "timed-out" };
+  if (res.error !== undefined || res.exitCode !== 0) return { kind: "failed" };
+  return { kind: "output", stdout: res.stdout.replace(/[\r\n]+$/, "") };
 }
 
 /**

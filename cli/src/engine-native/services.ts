@@ -11,10 +11,12 @@ import {
   resolveDependency,
   resolvePath,
   resolveVersion,
+  resolveVersionReading,
   type DependencySpec,
   type ProbeExecutor,
   type ProbeResult,
   type ToolId,
+  type VersionReading,
 } from "./deps";
 import { makeLogger, type Logger, type LoggerSinks } from "./logger";
 import { platformName, rawPlatform, type PlatformName } from "./os";
@@ -25,6 +27,8 @@ export interface DependencyManager {
   readonly spec: (id: ToolId) => DependencySpec;
   readonly probe: (id: ToolId) => ProbeResult;
   readonly version: (id: ToolId) => Promise<string>;
+  /** Like `version`, but keeps a probe that did not answer in time apart from no version. */
+  readonly versionReading: (id: ToolId) => Promise<VersionReading>;
   readonly path: (id: ToolId) => Promise<string>;
   readonly warnMissing: (id: ToolId, logger: Logger, context?: string) => void;
 }
@@ -63,6 +67,7 @@ export const makeDependencyManager = (
     },
     probe: (id) => resolveDependency(DEPENDENCIES[id], exec, platform.raw()),
     version: (id) => resolveVersion(DEPENDENCIES[id], exec),
+    versionReading: (id) => resolveVersionReading(DEPENDENCIES[id], exec),
     path: (id) => resolvePath(DEPENDENCIES[id], exec, platform.raw()),
     warnMissing: (id, logger, context) => {
       if (warned.has(id)) return;
