@@ -14,8 +14,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { bunBootstrap } from "../../src/engine-native/bun";
+import { syncLspServers } from "../../src/engine-native/claudeLsp";
 import { RETIRED_PERMISSION_RULES } from "../../src/engine-native/claudeRetired";
-import { p } from "../../src/engine-native/exec";
+import { capture, p, which } from "../../src/engine-native/exec";
+import type { Ctx } from "../../src/engine-native/index";
 import { isObject, parseJson } from "../../src/engine-native/jq";
 import { runEngineNative } from "../../src/engine-native";
 import { mergeSettings } from "../../src/engine-native/settings";
@@ -106,7 +109,82 @@ function recordingServices(records: Array<string>): EngineServices {
   return { ...base, logger };
 }
 
+/**
+ * probe115: temporary diagnosis for #114, removed by plan #115 step
+ * remove_probe. It runs first in this file's worker, so it makes the first host
+ * calls of the dry-run path and logs how long each one takes. The bound uses
+ * the real clock on purpose: the probe measures real host latency.
+ */
+const PROBE_CALL_BOUND_MS = 90_000;
+
+async function timed(label: string, call: () => Promise<unknown>): Promise<void> {
+  console.log(`probe115: start ${label}`);
+  const started = performance.now();
+  const { promise: bound, resolve } = Promise.withResolvers<"bound">();
+  const timer = setTimeout(() => resolve("bound"), PROBE_CALL_BOUND_MS);
+  const outcome = await Promise.race([call().then(() => "done" as const), bound]);
+  clearTimeout(timer);
+  const elapsed = Math.round(performance.now() - started);
+  console.log(
+    outcome === "done"
+      ? `probe115: ${label} took ${elapsed} ms`
+      : `probe115: ${label} did not finish in ${PROBE_CALL_BOUND_MS} ms`,
+  );
+}
+
+function homeRelative(value: string | undefined, realHome: string): string {
+  if (value === undefined || value === "") return "unset";
+  return value.startsWith(realHome) ? `~${value.slice(realHome.length)}` : "outside the home";
+}
+
 describe("retired permission rule cutover", () => {
+  it("probe115 times each host call of the dry-run path", { timeout: 600_000 }, async () => {
+    const realHome = process.env["HOME"] ?? "";
+    console.log(`probe115: RUSTUP_HOME ${homeRelative(process.env["RUSTUP_HOME"], realHome)}`);
+    console.log(`probe115: CARGO_HOME ${homeRelative(process.env["CARGO_HOME"], realHome)}`);
+    console.log(`probe115: rustup at ${homeRelative(which("rustup"), realHome)}`);
+    console.log(`probe115: rust-analyzer at ${homeRelative(which("rust-analyzer"), realHome)}`);
+
+    const home = mkdtempSync(join(tmpdir(), "claude-perms-probe-"));
+    const previous = {
+      HOME: process.env["HOME"],
+      USERPROFILE: process.env["USERPROFILE"],
+      AGENTS_DIR: process.env["AGENTS_DIR"],
+    };
+    mkdirSync(p(home, ".claude"), { recursive: true });
+    writeFileSync(p(home, ".claude", "settings.json"), deployedBeforeThisChange());
+    try {
+      process.env["HOME"] = home;
+      process.env["USERPROFILE"] = home;
+      process.env["AGENTS_DIR"] = p(home, ".agents");
+      const services = recordingServices([]);
+      const ctx = {
+        home,
+        agentsDir: p(home, ".agents"),
+        dryRun: true,
+        verbose: false,
+        services,
+        nextStepTriggers: {},
+        failures: [],
+      } as unknown as Ctx;
+
+      await timed("rust-analyzer --version", () => capture("rust-analyzer", ["--version"]));
+      await timed("node --version", () => capture("node", ["--version"]));
+      await timed("bunBootstrap", () => bunBootstrap(ctx, services));
+      await timed("syncLspServers", () => syncLspServers(ctx));
+      await timed("rustup --version (context)", () => capture("rustup", ["--version"]));
+      await timed("sync claude --dry-run (context)", () =>
+        runEngineNative(["sync", "claude", "--dry-run"], recordingServices([])),
+      );
+    } finally {
+      for (const [key, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it("ships no rule the retired inventory prunes", () => {
     const retired = new Set<string>(RETIRED);
     const shipped = (["allow", "deny", "ask"] as const).flatMap(
