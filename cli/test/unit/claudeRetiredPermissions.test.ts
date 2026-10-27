@@ -112,7 +112,9 @@ function recordingServices(records: Array<string>): EngineServices {
  * the host. A runner image can make a host version probe slow: on
  * macos-26-arm64 20261021.0445, `rust-analyzer --version` took 20 s (#114).
  * Bun is present, so the Claude runtime cutover runs; every other tool is
- * missing, so the sync starts no host process.
+ * missing, so no dependency probe starts a host process. On Windows,
+ * `syncConnectorEnv` still runs `reg query`, because its setting comes from the
+ * host platform and not from these services.
  */
 function hostIndependentServices(records: Array<string>): EngineServices {
   const services = recordingServices(records);
