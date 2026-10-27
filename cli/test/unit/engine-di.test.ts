@@ -50,6 +50,7 @@ function stubServices(records: Array<LogRecord>): EngineServices {
     spec: (id) => DEPENDENCIES[id],
     probe: (id) => ({ state: "present", path: `/stub-bin/${id}` }),
     version: async () => "",
+    versionReading: async () => ({ kind: "version", value: "" }),
     path: async (id) => `/stub-bin/${id}`,
     warnMissing: () => {},
   };

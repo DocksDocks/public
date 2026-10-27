@@ -38,6 +38,7 @@ function testCtx(dryRun = false, stdout: Array<string> = [], stderr: Array<strin
       spec: (id) => DEPENDENCIES[id],
       probe: vi.fn(() => ({ state: "missing" as const })),
       version: async () => "",
+      versionReading: async () => ({ kind: "version" as const, value: "" }),
       path: async () => "",
       warnMissing: () => {},
     },

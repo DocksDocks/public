@@ -422,6 +422,7 @@ function pluginCtx(home: string): Ctx {
       spec: (id) => DEPENDENCIES[id],
       probe: () => ({ state: "present" }),
       version: async () => "",
+      versionReading: async () => ({ kind: "version", value: "" }),
       path: async () => "",
       warnMissing: () => {},
     },

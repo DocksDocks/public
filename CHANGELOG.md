@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-10-27 - docks-kit 0.22.3: omp plugin version changes
+## 2026-10-27 - docks-kit 0.22.3: omp plugin version changes and a bounded rust-analyzer probe
 
 ### Changed
 
@@ -13,6 +13,17 @@
   shows only the plugin id. `omp kit plugin files synced` also shows
   `(docks-kit-omp <old> -> <new>)` when the kit version of the deployed plugin
   changes.
+
+### Fixed
+
+- `docks-kit sync claude` no longer waits without a limit for
+  `rust-analyzer --version` (#114). On the GitHub macOS 26 arm64 runner image,
+  that command took 20 s, and a rustup proxy can wait on a download. Each
+  `<tool> --version` probe, except the Bun and omp probes, now stops after
+  60 s, and the tool version then reads as unknown. When the rust-analyzer
+  probe stops, sync warns and does not run `rustup component add rust-analyzer`
+  on that run. A rustup proxy that answers with no version still makes sync
+  add the component.
 
 ## 2026-10-26 - docks-kit 0.22.2: omp asks before a git hook skip
 

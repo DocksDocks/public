@@ -58,8 +58,9 @@ a fresh host immediately and leaves an existing install alone.
 
 The rustup channel follows the same rule. Sync adds the component only when the
 `rust-analyzer` binary is missing or is a rustup proxy that cannot run because
-the component is not installed. `rustup update` is the user's remedy for an old
-component.
+the component is not installed. When `rust-analyzer --version` does not answer
+within 60 s, sync warns, stops the probe, and does not add the component on that
+run. `rustup update` is the user's remedy for an old component.
 
 A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
 the npm servers to their `verified` pins, run:

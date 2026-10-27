@@ -81,6 +81,7 @@ function testCtx(home: string, records: Array<LogRecord>): Ctx {
         spec: (id) => DEPENDENCIES[id],
         probe: () => ({ state: "missing" as const }),
         version: async () => "",
+        versionReading: async () => ({ kind: "version" as const, value: "" }),
         path: async () => "",
         warnMissing: () => {},
       },
