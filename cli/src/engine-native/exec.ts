@@ -168,6 +168,7 @@ export function spawnProcess(
   child.once("error", (cause) => {
     error ??= cause;
   });
+  if (options.timeoutMs !== undefined) trackBoundedChild(child);
   const timer =
     options.timeoutMs === undefined
       ? undefined
@@ -178,6 +179,7 @@ export function spawnProcess(
           // "close" waits for the pipes. Close our ends and unref the child,
           // so neither this promise nor the event loop waits for it.
           killProcessTree(child);
+          boundedChildren.delete(child);
           child.stdout?.destroy();
           child.stderr?.destroy();
           child.unref();
@@ -185,6 +187,7 @@ export function spawnProcess(
         }, options.timeoutMs);
   child.once("close", (exitCode) => {
     clearTimeout(timer);
+    boundedChildren.delete(child);
     resolve({ exitCode, stdout, stderr, ...(error !== undefined ? { error } : {}) });
   });
   return promise;
@@ -197,15 +200,36 @@ export function spawnProcess(
 const WINDOWS_PROCESS = process.platform === "win32";
 
 /**
+ * Bounded children that still run. On POSIX they lead their own process
+ * groups, so a terminal Ctrl-C does not reach them; when the CLI exits first,
+ * the exit handler ends their groups.
+ */
+const boundedChildren = new Set<ChildProcess>();
+let exitHandlerInstalled = false;
+
+function trackBoundedChild(child: ChildProcess): void {
+  boundedChildren.add(child);
+  if (exitHandlerInstalled) return;
+  exitHandlerInstalled = true;
+  process.once("exit", () => {
+    for (const running of boundedChildren) killProcessTree(running);
+  });
+}
+
+/**
  * Ends `child` and every process it started. On POSIX the child leads its own
  * process group (`detached`), so a signal to the negative pid reaches the
- * group. On Windows, `taskkill /T` ends the process tree; its absolute path
- * keeps CreateProcess from finding a `taskkill` in the current directory.
+ * group; the group id stays reserved while any member runs, so it cannot name
+ * an unrelated process. On Windows, `taskkill /T` ends the process tree; its
+ * absolute path keeps CreateProcess from finding a `taskkill` in the current
+ * directory. A child that already exited is skipped there, because Windows can
+ * give its pid to an unrelated process.
  */
 function killProcessTree(child: ChildProcess): void {
   const pid = child.pid;
   if (pid === undefined) return;
   if (WINDOWS_PROCESS) {
+    if (child.exitCode !== null || child.signalCode !== null) return;
     const taskkill = `${process.env["SystemRoot"] ?? "C:\\Windows"}\\System32\\taskkill.exe`;
     spawnSync(taskkill, ["/pid", String(pid), "/T", "/F"], {
       stdio: "ignore",
