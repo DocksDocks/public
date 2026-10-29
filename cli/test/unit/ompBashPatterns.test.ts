@@ -128,15 +128,23 @@ const DENIED = [
   "xargs /bin/rm",
   // Force push to main or master.
   "git push --force origin main",
-  // A git push ref that a variable or a command substitution supplies. The
-  // matcher reads the text before the shell expands it, so it cannot tell a
-  // branch name from +main or --force. The deny also reaches a git push after
-  // a shell keyword or a wrapper.
+  // A $ or a backtick anywhere after git push. The matcher reads the text
+  // before the shell expands it, so it cannot tell a branch name from +main or
+  // --force, and an unquoted value inside a word splits into more words. The
+  // deny also reaches a git push after a shell keyword or a wrapper.
   "git push origin $BRANCH",
+  "git push $REMOTE main",
   'B=$(git branch --show-current) && git push -q -u origin "$B"',
   "git push origin `git branch --show-current`",
+  "git push `git remote` main",
+  "git push origin HEAD:$B",
+  'git push origin "feat/$X"',
   "for b in feat/a feat/b; do git push origin --delete $b; done",
   "env GIT_TRACE=1 git push origin $BRANCH",
+  // Accepted false positives: a later $ in the same command, and text that
+  // names git push before a $.
+  "git push origin HEAD && echo $?",
+  'git commit -m "note: git push origin $B is denied"',
 ];
 
 const PROMPTED = [
