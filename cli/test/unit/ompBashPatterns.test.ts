@@ -137,6 +137,8 @@ const DENIED = [
   'B=$(git branch --show-current) && git push -q -u origin "$B"',
   "git push origin `git branch --show-current`",
   "git push `git remote` main",
+  "git push origin HEAD:`git branch --show-current`",
+  "env git push origin `git branch --show-current`",
   "git push origin HEAD:$B",
   'git push origin "feat/$X"',
   "for b in feat/a feat/b; do git push origin --delete $b; done",
