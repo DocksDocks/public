@@ -9,7 +9,9 @@ To remove a path from the git index, run `git rm -- <path>`.
 The policy follows one principle: **fail closed**. A command is allowed only
 in a canonical form that is safe by construction. Every other form that could
 force, empty, or delete asks. Where omp's critical-command check acts, the
-form is denied instead. A false positive in the ask tier is accepted. omp is
+form is denied instead. omp also denies a `$` or a backtick after `git push`,
+because the agent can always write the ref literally. A false positive in the
+ask tier is accepted. omp is
 the exception for file removal: by owner decision, omp runs any removal that
 it does not deny without a prompt. omp still asks before a removal that loses
 history: `git clean`, `git reset --hard`, and a force push. omp also asks
@@ -45,6 +47,7 @@ that `eval` starts.
 | `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask | ask (every `find` asks) |
 | `git clean`, `git reset --hard` | ask | ask | ask |
 | `git push` that could force: see below | ask | ask | ask (every `git push` asks) |
+| A `$` or a backtick anywhere after `git push` in the same command | deny, also after a shell keyword, a wrapper, or a path before `git`: see below | ask for a word that starts with `$` or a backtick | ask (every `git push` asks) |
 | A git command that skips the repository's hooks: see below | ask | no rule; the classifier decides | ask for each `git push`, `git merge`, and `git rebase` that starts the command; no rule for `git commit`, `git am`, or `git pull` |
 | `git rm -- <path>`, `git worktree remove -- <path>` | allow | ask | ask |
 | `git worktree remove --force -- <path>` | allow; the omp prompt permits it once, after the commits are on the remote | ask | ask |
@@ -63,20 +66,28 @@ A `git push` asks when it holds any of these words:
 - `-f`, or a short-option cluster that starts with two of git push's
   no-argument flags (`v`, `q`, `d`, `n`, `u`, `4`, `6`, `f`), such as `-vf`,
   `-vvf`, or `-uvfq`;
-- a word that starts with `$` or a backtick. In Claude Code, also a word that
-  starts with a quote or a backslash.
+- in Claude Code, a word that starts with `$`, a backtick, a quote, or a
+  backslash. omp denies a `$` or a backtick anywhere after `git push`.
 
 Each of these must begin a word: `feat/cache-vf` is a branch name, not an
 option. `--follow-tags` also asks. This is an accepted false positive, because
 it shares the `--f` prefix.
 
-A word that starts with `$` asks also when the variable holds a plain branch
-name, such as `git push origin --delete $b` in a loop. The matcher sees the
-text before the shell expands it, so it cannot tell `$b` from `+main`. omp
-never applies an allow rule to a command that holds a `$` that the shell
-expands, so the kit cannot add an exception for this form. The omp agent
-prompt therefore tells the agent to write each ref literally, for example
-`git push origin --delete <branch-a> <branch-b>`.
+A `$` or a backtick hides the ref until the shell expands it, so the matcher
+cannot tell `$b` from `+main` or `--force`. An unquoted value inside a word
+also splits into more words: with `b="main --force"`, `HEAD:$b` becomes
+`HEAD:main --force`. omp never applies an allow rule to a command that holds a
+`$` that the shell expands. So the kit cannot add an exception for a plain
+branch name.
+
+omp therefore denies a `$` or a backtick anywhere after `git push` in the same
+command, instead of asking. The agent reads a refusal such as
+`Blocked by bash pattern: *git push *$*`, writes the ref literally, and runs
+the push without a question. The omp agent prompt names the literal forms:
+`git push -u origin HEAD` for the current branch, and
+`git push origin --delete <branch-a> <branch-b>` for several branches. The two
+omp rules start with `*`. So a shell keyword such as `do` in a loop, a wrapper
+such as `env`, or a path such as `/usr/bin/git` does not hide the push.
 
 ## Commands that skip the repository's hooks
 
@@ -233,9 +244,14 @@ the home directory, and no glob can express "inside the temporary directory".
 - **omp, whole-line matching**: omp tests deny rules against the whole command
   line too, so a pattern can span commands. For example, `rm x && cd ~`,
   `rm -i a && ls -R /tmp`, and `sudo apt update && rm x` are denied. Run `rm`
-  as its own command.
+  as its own command. In the same way, a `$` or a backtick after `git push`
+  denies the whole command, such as `git push origin HEAD && echo $?`. omp
+  joins the lines of a command first, so `echo $?` on a later line is denied
+  too. Run `git push` as its own command.
 - **omp, text arguments**: the critical-shape deny also matches text such as
-  `git commit -m "rm -f /tmp/x"`. Write such a message with `git commit -F`.
+  `git commit -m "rm -f /tmp/x"`. The `git push` deny matches text that names
+  `git push` before a `$`, such as `git commit -m "git push $b fails"`. Write
+  such a message with `git commit -F`.
 - **omp, critical patterns in a line**: a line that holds one of omp's other
   critical patterns turns any matching prompt rule on that line into an
   allow. This applies to a compound line, such as one with `curl ... | sh`,
@@ -258,10 +274,15 @@ the home directory, and no glob can express "inside the temporary directory".
   `remote.<name>.push` makes a plain `git push` force. No rule sees git
   configuration. `git push --delete` and `git push --prune` remove remote
   branches without force; they ask only in Codex.
+- **omp, force push after a prefix**: the force-push deny and prompt rules
+  start with `git push`, not `*`. So a force push after a shell keyword, a
+  wrapper, or a path runs without a check, such as
+  `for r in a; do git push --force origin main; done`,
+  `env git push --force origin main`, or `/usr/bin/git push --force origin main`.
 - **`git -C`**: no tool matches a git subcommand that does not follow `git`
-  directly, such as `git -C . push --force`. omp also lets
-  `git -C . commit -n` run without a prompt. In omp, the `--no-verify` and
-  `core.hooksPath` forms still ask after `git -C`.
+  directly, such as `git -C . push --force` or `git -C . push origin $b`. omp
+  also lets `git -C . commit -n` run without a prompt. In omp, the
+  `--no-verify` and `core.hooksPath` forms still ask after `git -C`.
 - **omp, `core.hooksPath` spelling**: git reads section and variable names
   without case, but omp matches with case. A key in another case, such as
   `CORE.HOOKSPATH` or `Core.HooksPath`, after `git -c`, `git --config-env`, or

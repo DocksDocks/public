@@ -182,7 +182,8 @@ bash:
     # rm with an r or f option before an absolute path, recursive rm (bare, by
     # path, or after any word such as env, xargs, find -exec, or git), bulk
     # removal through find -delete, find -exec rm, and xargs rm, HOME
-    # reassignment, and a force push to main or master.
+    # reassignment, a force push to main or master, and a $ or a backtick
+    # after git push.
     - { match: "rm /", approval: deny }
     - { match: "rm / *", approval: deny }
     - { match: "rm * /", approval: deny }
@@ -492,6 +493,15 @@ bash:
     - { match: "git push -f origin main *", approval: deny }
     - { match: "git push -f origin master", approval: deny }
     - { match: "git push -f origin master *", approval: deny }
+    # A $ or a backtick anywhere after git push: the matcher reads the text
+    # before the shell expands it, so it cannot tell a branch name from +main
+    # or --force. An unquoted value inside a word also splits into more words.
+    # A deny, not a prompt: the agent reads the refusal and writes the ref
+    # literally (git push -u origin HEAD). No person is asked.
+    # The leading * also reaches a git push after a shell keyword such as do,
+    # after a wrapper such as env, and after a path such as /usr/bin/git.
+    - { match: "*git push *$*", approval: deny }
+    - { match: "*git push *`*", approval: deny }
     # Prompt: history-destroying git, and every git push spelling that could
     # force. A subagent cannot answer a prompt, so omp rejects it.
     - { match: "git clean", approval: prompt }
@@ -617,10 +627,6 @@ bash:
     - { match: "git push * --mi*", approval: prompt }
     - { match: "git push +*", approval: prompt }
     - { match: "git push * +*", approval: prompt }
-    - { match: "git push $*", approval: prompt }
-    - { match: "git push * $*", approval: prompt }
-    - { match: "git push `*", approval: prompt }
-    - { match: "git push * `*", approval: prompt }
     # Prompt: every git command that skips the repository's hooks. Each rule
     # starts with * so that a prefix such as X=1, env, timeout, or /usr/bin/
     # before git still matches. git takes any unique prefix of --no-verify,

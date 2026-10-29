@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-29 - docks-kit 0.22.5: omp denies a git push ref in a variable instead of asking
+
+### Changed
+
+- omp no longer stops on an approval prompt for a `git push` with a `$`
+  variable or a backtick substitution (#120). An example is
+  `B=$(git branch --show-current) && git push -u origin "$B"`. omp now denies
+  that command. The agent reads the refusal, writes the ref literally, and
+  pushes without a question. The deployed omp instructions name
+  `git push -u origin HEAD` for the current branch.
+- The deny covers a `$` or a backtick anywhere after `git push` in the same
+  command. The matcher reads the text before the shell expands it. So it
+  cannot tell a branch name from `+main` or `--force`, and an allow would let
+  a variable force a push. The deny also covers a `$` inside a ref, such as
+  `HEAD:$B`. Before, such a ref ran without a check.
+- The two deny rules, `*git push *$*` and ``*git push *`*``, start with `*`.
+  So they also reach a `git push` after a shell keyword such as `do`, a
+  wrapper such as `env`, or a path such as `/usr/bin/git`. Before, such a
+  command ran without a check.
+- Sync removes the four old prompt rules from `~/.omp/agent/config.yml`.
+  Claude Code and Codex keep their rules.
+- `docks-kit docs command-guards` lists the accepted false positives. A later
+  `$` in the same command, such as `git push origin HEAD && echo $?`, is
+  denied. Text that names `git push` before a `$`, such as a commit message,
+  is denied too; write such a message with `git commit -F`.
+
 ## 2026-10-27 - docks-kit 0.22.4: a timed-out version probe ends its process tree
 
 ### Fixed
