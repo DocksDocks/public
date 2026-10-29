@@ -91,6 +91,10 @@ const OMP_RETIRED_MODEL_BLOCKS: ReadonlyArray<readonly [string, unknown]> = [
  * The kit prompted before every file removal: rm and its wrappers, find
  * -delete, git rm, git worktree remove, and gio trash. The three `-- *` allows
  * existed only to skip those prompts.
+ *
+ * The kit also prompted before a `git push` word that starts with `$` or a
+ * backtick. It now denies that word under a leading `*`, so the old prompt
+ * copies would otherwise stay behind as user prompts.
  */
 const OMP_RETIRED_BASH_RULES: ReadonlyArray<{
   readonly match: string;
@@ -135,6 +139,10 @@ const OMP_RETIRED_BASH_RULES: ReadonlyArray<{
   { match: "git worktree remove *", approval: "prompt" },
   { match: "gio trash", approval: "prompt" },
   { match: "gio trash *", approval: "prompt" },
+  { match: "git push $*", approval: "prompt" },
+  { match: "git push * $*", approval: "prompt" },
+  { match: "git push `*", approval: "prompt" },
+  { match: "git push * `*", approval: "prompt" },
 ];
 
 /** Normalized rule key to the name a prune message reports. */

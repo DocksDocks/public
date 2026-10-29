@@ -128,6 +128,15 @@ const DENIED = [
   "xargs /bin/rm",
   // Force push to main or master.
   "git push --force origin main",
+  // A git push ref that a variable or a command substitution supplies. The
+  // matcher reads the text before the shell expands it, so it cannot tell a
+  // branch name from +main or --force. The deny also reaches a git push after
+  // a shell keyword or a wrapper.
+  "git push origin $BRANCH",
+  'B=$(git branch --show-current) && git push -q -u origin "$B"',
+  "git push origin `git branch --show-current`",
+  "for b in feat/a feat/b; do git push origin --delete $b; done",
+  "env GIT_TRACE=1 git push origin $BRANCH",
 ];
 
 const PROMPTED = [
@@ -153,7 +162,6 @@ const PROMPTED = [
   "git push -4f origin feat/x",
   "git push origin feat/x -vf",
   'git push "-vf" origin feat/x',
-  "git push origin $BRANCH",
   // Accepted false positive: --follow-tags shares the --f prefix.
   "git push --follow-tags origin feat/x",
   // Every git command that skips the repository's hooks (#111). The
@@ -246,6 +254,8 @@ const ALLOWED = [
   "git push origin feat/x",
   // The literal-ref form that the omp agent prompt recommends for a branch delete.
   "git push -q origin --delete feat/a feat/b",
+  // The literal form that the omp agent prompt recommends for the current branch.
+  "git push -u origin HEAD",
   // Commit and config forms that keep the repository's hooks.
   "git commit -m x",
   "git commit -am x",

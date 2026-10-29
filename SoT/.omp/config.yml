@@ -492,6 +492,16 @@ bash:
     - { match: "git push -f origin main *", approval: deny }
     - { match: "git push -f origin master", approval: deny }
     - { match: "git push -f origin master *", approval: deny }
+    # A git push word that starts with $ or a backtick: the matcher reads the
+    # text before the shell expands it, so it cannot tell a branch name from
+    # +main or --force. A deny, not a prompt: the agent reads the refusal,
+    # writes the ref literally (git push -u origin HEAD), and asks no person.
+    # The leading * also reaches a git push after a shell keyword such as do,
+    # after a wrapper such as env, and after a path such as /usr/bin/git.
+    - { match: "*git push $*", approval: deny }
+    - { match: "*git push * $*", approval: deny }
+    - { match: "*git push `*", approval: deny }
+    - { match: "*git push * `*", approval: deny }
     # Prompt: history-destroying git, and every git push spelling that could
     # force. A subagent cannot answer a prompt, so omp rejects it.
     - { match: "git clean", approval: prompt }
@@ -617,10 +627,6 @@ bash:
     - { match: "git push * --mi*", approval: prompt }
     - { match: "git push +*", approval: prompt }
     - { match: "git push * +*", approval: prompt }
-    - { match: "git push $*", approval: prompt }
-    - { match: "git push * $*", approval: prompt }
-    - { match: "git push `*", approval: prompt }
-    - { match: "git push * `*", approval: prompt }
     # Prompt: every git command that skips the repository's hooks. Each rule
     # starts with * so that a prefix such as X=1, env, timeout, or /usr/bin/
     # before git still matches. git takes any unique prefix of --no-verify,
