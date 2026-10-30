@@ -172,6 +172,7 @@ describe("omp plugin inventory", () => {
       if (path === "SoT/.omp/models.yml") return "providers: {}\n";
       if (path === "SoT/.omp/config.yml") return "theme: dark\n";
       if (path === "SoT/.omp/intercom.json") return "{}\n";
+      if (path === "SoT/.omp/agent.env") return "PI_DISABLE_UUTILS_BUILTINS=1\n";
       if (path === "SoT/toolchain.json") return `{"tools":{"pi-intercom":{"verified":"${PIN}"}}}`;
       throw new Error(`Unexpected payload: ${path}`);
     });

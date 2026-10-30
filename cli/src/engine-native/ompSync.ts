@@ -1,6 +1,7 @@
 /**
  * EngineNative `sync omp` pipeline. config.yml merges through mergeOmpConfig
- * and models.yml through mergeOmpModels. Both preserve user-only keys.
+ * and models.yml through mergeOmpModels. Both preserve user-only keys. The
+ * agent `.env` merges by key through mergeDotenv, so user keys stay.
  * Paths come from ompPaths because profiles, PI_CONFIG_DIR,
  * PI_CODING_AGENT_DIR, and XDG roots each move them.
  * Resolution stays within the environment and filesystem probes so no omp
@@ -18,7 +19,7 @@ import { p } from "./exec";
 import type { Ctx } from "./index";
 import { ompPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
-import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
+import { ensureDirectory, syncMergedDotenv, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncKitPlugin } from "./ompKitPlugin";
 import { syncMarketplace } from "./ompMarketplace";
 import { syncPlugins } from "./ompPlugins";
@@ -58,6 +59,10 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   syncOmpRemovals(ctx, p(agentDir, "config.yml"));
   syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels);
   syncOmpModelRemovals(ctx, p(agentDir, "models.yml"));
+  // omp loads <agentDir>/.env into its environment for each key the process
+  // environment does not set. The kit key turns off the in-process bash
+  // builtins, which can drop the agent.db locks (can1357/oh-my-pi#15586).
+  syncMergedDotenv(ctx, "SoT/.omp/agent.env", p(agentDir, ".env"));
 
   // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
   // and pi-intercom reads the trimmed value. Without a profile, the kit uses

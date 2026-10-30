@@ -1,13 +1,15 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile, syncMergedYaml, or syncMergedDotenv; ompDotenv.ts mergeDotenv; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, dotenv key merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-77"
     - path: cli/src/engine-native/ompFileDeploy.ts
-      lines: "1-110"
+      lines: "1-139"
+    - path: cli/src/engine-native/ompDotenv.ts
+      lines: "1-86"
     - path: cli/src/engine-native/ompMarketplace.ts
       lines: "1-131"
     - path: cli/src/engine-native/ompPlugins.ts
@@ -34,7 +36,7 @@ metadata:
       lines: "1-139"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-222"
-  updated: "2026-10-27"
+  updated: "2026-10-30"
 ---
 
 # omp Sync Context
@@ -51,7 +53,7 @@ Print the planned action without invoking omp.
 <constraint>
 Preserve the two deployment roots and all private modes.
 Create directories with mode `0700`.
-Write files with mode `0600`.
+Write files with mode `0600`. An existing `.env` keeps its mode.
 Run `chmod` after each creation or write.
 `mkdirSync` and `writeFileSync` apply `mode` only when they create a path.
 </constraint>
@@ -99,7 +101,7 @@ that equals `<config root>/profiles/<PI_PROFILE>/agent`, because omp exports
 that value in a profile session. While an override is active, XDG is disabled.
 The agent directory never moves under XDG; only `dataRoot` does, on Linux and
 macOS, and only when the probed omp directory already exists.
-Deploy `AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` to `agentDir`, and read
+Deploy `AGENTS.md`, `config.yml`, `models.yml`, `mcp.json`, and `.env` to `agentDir`, and read
 `marketplaces.json` from `dataRoot`.
 Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 </constraint>
@@ -123,6 +125,7 @@ Use `toolchain-context` for the omp binary floor or the `pi-intercom` pin.
 
 Treat each Source of Truth file as kit-owned input.
 Keep user-only keys through both the `config.yml` and `models.yml` merges.
+Keep every user line through the `.env` key merge.
 Replace the other three deployed files as whole files.
 
 | Source | Deployed target | Root rule |
@@ -131,6 +134,7 @@ Replace the other three deployed files as whole files.
 | `SoT/.omp/mcp.json` | `<agentDir>/mcp.json` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/config.yml` | `<agentDir>/config.yml` | Take `agentDir` from `ompPaths`. |
 | `SoT/.omp/models.yml` | `<agentDir>/models.yml` | Take `agentDir` from `ompPaths`. |
+| `SoT/.omp/agent.env` | `<agentDir>/.env` | Take `agentDir` from `ompPaths`. Merge by key; see the dotenv contract below. |
 | `SoT/.omp/intercom.json` | `<intercomRoot>/intercom/config.json` | Use the profile `agentDir` under a named profile; otherwise use `$PI_CODING_AGENT_DIR`, defaulting to `~/.pi/agent`. |
 | `SoT/.omp/plugin/**` (payload prefix) | `~/.docks-kit/omp-plugin/` | Kit-owned: `ompKitPlugin.ts syncKitPlugin` writes each file only when it differs, sets `package.json` `version` to the kit version, removes files that the payload no longer lists, and keeps no backups. |
 
@@ -143,7 +147,7 @@ Use `~/.pi/agent` when the value is absent or empty.
 
 Create `~/.omp/agent` only outside dry-run mode.
 Create the resolved intercom directory only outside dry-run mode.
-Back up a differing deployed file before replacement.
+Back up a differing deployed file before replacement, except `.env`.
 Set every backup file to mode `0600`.
 Replace a merged `config.yml` or `models.yml` through `atomicWrite.ts replaceFile`
 with mode `0600`. The temporary file and rename keep a symlinked target as a link.
@@ -161,6 +165,24 @@ chmodSync(directory, 0o700)
 writeFileSync(target, content, { mode: 0o600 })
 chmodSync(target, 0o600)
 ```
+
+## Dotenv Key Merge Contract
+
+`<agentDir>/.env` can hold the user's API keys.
+omp loads it for each key that the process environment does not set.
+`ompFileDeploy.ts syncMergedDotenv` merges `SoT/.omp/agent.env` into it through
+`ompDotenv.ts mergeDotenv`.
+Never replace the whole file.
+Replace each line that assigns a kit key, as `KEY=` or `export KEY=`.
+Append each missing kit key at the end, after a line end when the file has none.
+Keep every other line verbatim and in order, comments and blank lines too.
+Deploy only SoT assignments, not SoT comments.
+Treat a quoted value that continues on later lines as one entry, as `parseEnv` does.
+A key name inside that value is not an assignment.
+Name keys in each message. Never show a value from the deployed file.
+Create a new file with mode `0600`.
+Keep the mode of an existing file: `replaceFile` without a `mode` keeps it.
+Make no `.env.bak` copy, because a backup would duplicate the secrets.
 
 ## YAML Merge Contract
 

@@ -72,7 +72,29 @@ the retired kit `bash.patterns` rules in `OMP_RETIRED_BASH_RULES` (exact
 ship, `providers.webSearchOrder` at any value, and the retired
 `anthropic.modelOverrides.claude-opus-5-5` block in models.yml while it still
 matches the shipped block.
-Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
+
+`SoT/.omp/agent.env` merges by key into the agent dotenv file,
+`<agent dir>/.env`. That file can hold API keys, so sync never replaces it
+whole. Sync replaces each line that assigns a kit key (`KEY=` or
+`export KEY=`) and appends each missing kit key. Every other line stays
+verbatim and in order. A key name inside a multi-line quoted value of another
+key does not match. Messages name keys and never show a value. A new file gets
+mode 0600, and an existing file keeps its mode.
+
+The only kit key is `PI_DISABLE_UUTILS_BUILTINS=1`. It makes the omp bash tool
+run `cat`, `grep`, `sed`, `wc`, `jq`, and similar commands as system
+processes, not inside the omp process. On Linux, a builtin that closes a file
+in the omp process can drop the SQLite locks on `agent.db`, and the database
+can become corrupt (can1357/oh-my-pi#15586 and #15968). The key does not cover
+a shell redirection such as `wc -c < agent.db`, or the omp read, grep, and find
+tools. Side effects: the `rg`, `fd`, and `ast-grep`/`sg` builtins go away, so
+these names resolve to system binaries when installed (on Ubuntu, `sg` is the
+shadow-utils group command). `jq` is the system jq, GNU coreutils replace the
+uutils ports, and each command starts one process. A value in the environment
+that starts omp wins over the file, so `PI_DISABLE_UUTILS_BUILTINS=0` keeps the
+builtins.
+
+Directories are mode 0700 and files mode 0600, except an existing `.env`. Then the `docks` marketplace is
 registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
 through `omp plugin`, and `pi-intercom` is installed at its
 `SoT/toolchain.json` pin. Inventory comes from `omp plugin list --json`, where a

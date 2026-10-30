@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-10-30 - docks-kit 0.22.6: omp runs coreutils as system processes to keep the agent.db locks
+
+### Changed
+
+- `docks-kit sync omp` sets `PI_DISABLE_UUTILS_BUILTINS=1` in the omp agent
+  dotenv file, `~/.omp/agent/.env`. With this key, the omp bash tool runs
+  `cat`, `grep`, `sed`, `wc`, `jq`, and similar commands as separate system
+  processes. Before, omp ran them as builtins inside the omp process.
+- Reason: can1357/oh-my-pi#15586 and #15968. A builtin opens and closes files
+  inside the omp process. On Linux, each close of a descriptor on `agent.db`
+  or `agent.db-shm` drops every POSIX lock that the omp process holds on that
+  file. SQLite then stops the serialization of writers, and `agent.db`, the
+  credential store, can become corrupt. omp 18.14.0 has no fix.
+- The key does not cover a shell redirection such as `wc -c < agent.db`. It
+  also does not cover the omp read, grep, and find tools. These still open
+  the file inside the omp process.
+- Side effects: the `rg`, `fd`, and `ast-grep`/`sg` builtins go away. These
+  names now resolve to system binaries when installed. On Ubuntu,
+  `/usr/bin/sg` is the shadow-utils group command, not ast-grep. `jq` is the
+  system jq, not the bundled jaq. GNU coreutils replace the uutils ports, and
+  each command starts one process. omp stops listing the builtins in its
+  system prompt.
+- Sync merges the file by key and never replaces it whole, because it can
+  hold API keys. Sync replaces a line that sets the key, also in the
+  `export KEY=` form, and appends the key when no line sets it. Every other
+  line stays as it is. A new file gets mode 0600, and an existing file keeps
+  its mode. Messages name the key and never show a value from the file.
+- omp reads the agent `.env` only for a key that the process environment does
+  not set. To keep the builtins, set `PI_DISABLE_UUTILS_BUILTINS=0` in the
+  environment that starts omp. Restart omp after the sync.
+
 ## 2026-10-29 - docks-kit 0.22.5: omp denies a git push ref in a variable instead of asking
 
 ### Changed

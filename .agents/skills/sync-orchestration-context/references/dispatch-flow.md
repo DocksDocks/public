@@ -90,6 +90,7 @@ runEngineNative(argv, services?, options?)        index.ts
         |       |-- syncWholeFile: AGENTS.md, mcp.json
         |       |-- syncMergedYaml + syncOmpRemovals: config.yml
         |       |-- syncMergedYaml + syncOmpModelRemovals: models.yml
+        |       |-- syncMergedDotenv: agent.env -> .env, key merge
         |       |-- syncWholeFile: intercom config.json
         |       |-- syncMarketplace(ctx)
         |       `-- syncPlugins(ctx)
