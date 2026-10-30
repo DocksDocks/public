@@ -17,6 +17,7 @@ export const TEXT_PAYLOAD_PATHS = [
   "SoT/.codex/plugins/marketplace.json",
   "SoT/.codex/rules/docks.rules",
   "SoT/.omp/AGENTS.md",
+  "SoT/.omp/agent.env",
   "SoT/.omp/config.yml",
   "SoT/.omp/intercom.json",
   "SoT/.omp/mcp.json",

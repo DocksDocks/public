@@ -138,7 +138,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 |------|---------|
 | `SoT/.claude/` | Claude Code SoT (settings template, Bun runtime programs, CLAUDE.md) |
 | `SoT/.codex/` | Codex SoT (config.toml, rules, AGENTS.md, marketplace) |
-| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, intercom.json, and the `plugin/` source of `docks-kit-omp`) |
+| `SoT/.omp/` | omp SoT (AGENTS.md, config.yml, models.yml, mcp.json, agent.env, intercom.json, and the `plugin/` source of `docks-kit-omp`) |
 | `SoT/.agents/` | Universal-skill manifest |
 | `SoT/models.json` | Curated aliases, notes, and offline Claude/Codex fallback |
 | `SoT/toolchain.json` | Verified-version floors |

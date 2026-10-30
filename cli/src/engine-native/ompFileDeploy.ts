@@ -1,7 +1,7 @@
 /**
- * EngineNative omp file deploy: private file modes, whole-file sync, and
- * merged-YAML sync for the agent directory. Split from ompSync.ts; the
- * orchestration still lives there.
+ * EngineNative omp file deploy: private file modes, whole-file sync,
+ * merged-YAML sync, and the dotenv key merge for the agent directory. Split
+ * from ompSync.ts; the orchestration still lives there.
  */
 import {
   chmodSync,
@@ -16,6 +16,7 @@ import { basename } from "node:path";
 import { payloadDisplayPath, payloadText, type PayloadPath } from "../payload";
 import { replaceFile } from "./atomicWrite";
 import type { Ctx } from "./index";
+import { mergeDotenv } from "./ompDotenv";
 
 export type OmpTextPayloadPath = Extract<PayloadPath, `SoT/.omp/${string}`>;
 
@@ -106,5 +107,43 @@ export function syncMergedYaml(
   // replaceFile writes through a symlinked config.yml or models.yml, so the link stays.
   replaceFile(target, merged, { mode: 0o600 });
   change(`omp ${name} merged (backup at ${name}.bak)`);
+  ctx.nextStepTriggers.ompRestart = true;
+}
+
+/**
+ * Key merge for `<agentDir>/.env` through `ompDotenv.ts mergeDotenv`. The file
+ * can hold API keys, so each message names keys and never shows a value, and
+ * no backup copy is made. A new file gets mode 0600. An existing file keeps
+ * its mode, and a symlinked target stays a link.
+ *
+ * Windows gets no merge and the file stays as it is. The kit key prevents a
+ * POSIX lock loss: on Linux and macOS, any close of a descriptor drops the
+ * fcntl locks of the process. A Windows LockFileEx lock belongs to its own
+ * handle, so the key has no benefit there. It would also remove the builtin
+ * grep, sed, cat, and jq, which native Windows does not supply.
+ */
+export function syncMergedDotenv(ctx: Ctx, sourcePath: OmpTextPayloadPath, target: string): void {
+  const { change, echo, verbose } = ctx.services.logger;
+  const name = basename(target);
+  if (ctx.services.platform.raw() === "win32") {
+    verbose(`omp ${name} skipped on Windows (POSIX lock issue only)`);
+    return;
+  }
+  const exists = existsSync(target);
+  const deployedText = exists ? readFileSync(target, "utf8") : "";
+  const { text, changedKeys } = mergeDotenv(payloadText(sourcePath), deployedText);
+  if (changedKeys.length === 0) {
+    verbose(`omp ${name} already in sync`);
+    return;
+  }
+  const keys = changedKeys.join(", ");
+  if (ctx.dryRun) {
+    echo(`[dry-run] merge ${payloadDisplayPath(sourcePath)} -> ${target} (keys: ${keys})`);
+    return;
+  }
+
+  if (exists) replaceFile(target, text);
+  else writePrivateFile(target, text);
+  change(`omp ${name} ${exists ? "merged" : "installed"} (keys: ${keys})`);
   ctx.nextStepTriggers.ompRestart = true;
 }
