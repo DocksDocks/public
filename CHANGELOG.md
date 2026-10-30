@@ -4,10 +4,11 @@
 
 ### Changed
 
-- `docks-kit sync omp` sets `PI_DISABLE_UUTILS_BUILTINS=1` in the omp agent
-  dotenv file, `~/.omp/agent/.env`. With this key, the omp bash tool runs
-  `cat`, `grep`, `sed`, `wc`, `jq`, and similar commands as separate system
-  processes. Before, omp ran them as builtins inside the omp process.
+- On Linux and macOS, `docks-kit sync omp` sets `PI_DISABLE_UUTILS_BUILTINS=1`
+  in the omp agent dotenv file, `~/.omp/agent/.env`. With this key, the omp
+  bash tool runs `cat`, `grep`, `sed`, `wc`, `jq`, and similar commands as
+  separate system processes. Before, omp ran them as builtins inside the omp
+  process.
 - Reason: can1357/oh-my-pi#15586 and #15968. A builtin opens and closes files
   inside the omp process. On Linux, each close of a descriptor on `agent.db`
   or `agent.db-shm` drops every POSIX lock that the omp process holds on that
@@ -16,6 +17,12 @@
 - The key does not cover a shell redirection such as `wc -c < agent.db`. It
   also does not cover the omp read, grep, and find tools. These still open
   the file inside the omp process.
+- Sync does not set the key on Windows and leaves `.env` as it is there. The
+  lock loss comes from POSIX `close()`, which drops every fcntl lock of the
+  process. A Windows `LockFileEx` lock belongs to the handle that took it, so
+  the key has no benefit there. The key would also remove the builtin `grep`,
+  `sed`, `cat`, and `jq`, and native Windows has no system copy of these
+  commands unless Git Bash supplies them.
 - Side effects: the `rg`, `fd`, and `ast-grep`/`sg` builtins go away. These
   names now resolve to system binaries when installed. On Ubuntu,
   `/usr/bin/sg` is the shadow-utils group command, not ast-grep. `jq` is the

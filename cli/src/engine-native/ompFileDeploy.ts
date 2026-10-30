@@ -115,10 +115,20 @@ export function syncMergedYaml(
  * can hold API keys, so each message names keys and never shows a value, and
  * no backup copy is made. A new file gets mode 0600. An existing file keeps
  * its mode, and a symlinked target stays a link.
+ *
+ * Windows gets no merge and the file stays as it is. The kit key prevents a
+ * POSIX lock loss: on Linux and macOS, any close of a descriptor drops the
+ * fcntl locks of the process. A Windows LockFileEx lock belongs to its own
+ * handle, so the key has no benefit there. It would also remove the builtin
+ * grep, sed, cat, and jq, which native Windows does not supply.
  */
 export function syncMergedDotenv(ctx: Ctx, sourcePath: OmpTextPayloadPath, target: string): void {
   const { change, echo, verbose } = ctx.services.logger;
   const name = basename(target);
+  if (ctx.services.platform.raw() === "win32") {
+    verbose(`omp ${name} skipped on Windows (POSIX lock issue only)`);
+    return;
+  }
   const exists = existsSync(target);
   const deployedText = exists ? readFileSync(target, "utf8") : "";
   const { text, changedKeys } = mergeDotenv(payloadText(sourcePath), deployedText);

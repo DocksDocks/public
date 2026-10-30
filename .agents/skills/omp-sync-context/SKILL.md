@@ -7,7 +7,7 @@ metadata:
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-77"
     - path: cli/src/engine-native/ompFileDeploy.ts
-      lines: "1-139"
+      lines: "1-149"
     - path: cli/src/engine-native/ompDotenv.ts
       lines: "1-86"
     - path: cli/src/engine-native/ompMarketplace.ts
@@ -183,6 +183,10 @@ Name keys in each message. Never show a value from the deployed file.
 Create a new file with mode `0600`.
 Keep the mode of an existing file: `replaceFile` without a `mode` keeps it.
 Make no `.env.bak` copy, because a backup would duplicate the secrets.
+Skip the merge on Windows (`platform.raw() === "win32"`) and leave the file as it is.
+The lock loss comes from POSIX `close()`, which drops every fcntl lock of the process.
+A Windows `LockFileEx` lock belongs to its own handle, so the key gives no benefit there.
+The key would also remove the builtin `grep`, `sed`, `cat`, and `jq`, which native Windows lacks.
 
 ## YAML Merge Contract
 

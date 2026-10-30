@@ -30,14 +30,19 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function testCtx(home: string, dryRun: boolean, output: Array<string>): Ctx {
+function testCtx(
+  home: string,
+  dryRun: boolean,
+  output: Array<string>,
+  platform: NodeJS.Platform,
+): Ctx {
   const services: EngineServices = {
     logger: makeLogger({
       stderr: (chunk) => output.push(chunk),
       progress: () => {},
       stdout: (chunk) => output.push(chunk),
     }),
-    platform: makePlatform("linux"),
+    platform: makePlatform(platform),
     deps: {
       spec: (id) => DEPENDENCIES[id],
       probe: vi.fn(() => ({ state: "missing" as const })),
@@ -84,10 +89,11 @@ function testCtx(home: string, dryRun: boolean, output: Array<string>): Ctx {
   };
 }
 
-/** Runs the deploy step on `<root>/.env` with the embedded SoT and returns its messages. */
-function sync(target: string, dryRun = false): string {
+/** Runs the deploy step on `target` with the embedded SoT and returns its messages. */
+function sync(target: string, dryRun = false, platform: NodeJS.Platform = "linux"): string {
   const output: Array<string> = [];
-  syncMergedDotenv(testCtx(join(target, ".."), dryRun, output), "SoT/.omp/agent.env", target);
+  const ctx = testCtx(join(target, ".."), dryRun, output, platform);
+  syncMergedDotenv(ctx, "SoT/.omp/agent.env", target);
   return output.join("");
 }
 
@@ -222,6 +228,20 @@ describe("omp agent dotenv deploy", () => {
     expect(output).toContain(
       `[dry-run] merge embedded:SoT/.omp/agent.env -> ${missing} (keys: PI_DISABLE_UUTILS_BUILTINS)`,
     );
+    expect(output).not.toContain("sk-test");
+  });
+
+  it("leaves the agent .env untouched on Windows", () => {
+    const existing = dotenvTarget("OPENAI_API_KEY=sk-test\nPI_DISABLE_UUTILS_BUILTINS=0\n");
+    const missing = dotenvTarget();
+
+    const output = sync(existing, false, "win32") + sync(missing, false, "win32");
+
+    expect(readFileSync(existing, "utf8")).toBe(
+      "OPENAI_API_KEY=sk-test\nPI_DISABLE_UUTILS_BUILTINS=0\n",
+    );
+    expect(existsSync(missing)).toBe(false);
+    expect(output).toContain("omp .env skipped on Windows (POSIX lock issue only)");
     expect(output).not.toContain("sk-test");
   });
 });

@@ -62,6 +62,7 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   // omp loads <agentDir>/.env into its environment for each key the process
   // environment does not set. The kit key turns off the in-process bash
   // builtins, which can drop the agent.db locks (can1357/oh-my-pi#15586).
+  // The step skips Windows, where the lock loss does not occur.
   syncMergedDotenv(ctx, "SoT/.omp/agent.env", p(agentDir, ".env"));
 
   // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,

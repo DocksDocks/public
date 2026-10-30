@@ -94,6 +94,13 @@ uutils ports, and each command starts one process. A value in the environment
 that starts omp wins over the file, so `PI_DISABLE_UUTILS_BUILTINS=0` keeps the
 builtins.
 
+The merge runs on Linux and macOS only. On Windows, sync leaves `.env` as it
+is. The lock loss comes from POSIX `close()`, which drops every fcntl lock of
+the process. A Windows `LockFileEx` lock belongs to the handle that took it, so
+the key has no benefit there. It would also remove the builtin `grep`, `sed`,
+`cat`, and `jq`, and native Windows has no system copy of these commands
+unless Git Bash supplies them.
+
 Directories are mode 0700 and files mode 0600, except an existing `.env`. Then the `docks` marketplace is
 registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
 through `omp plugin`, and `pi-intercom` is installed at its
