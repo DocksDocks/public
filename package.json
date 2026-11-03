@@ -46,9 +46,9 @@
     "check": "bun run --parallel lint format:check typecheck test"
   },
   "dependencies": {
-    "@effect/platform-bun": "4.0.0-rc.115",
-    "@effect/platform-node-shared": "4.0.0-rc.115",
-    "effect": "4.0.0-rc.115",
+    "@effect/platform-bun": "4.1.2",
+    "@effect/platform-node-shared": "4.1.2",
+    "effect": "4.1.2",
     "yaml": "2.9.1"
   },
   "devDependencies": {

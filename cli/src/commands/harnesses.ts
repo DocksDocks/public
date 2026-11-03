@@ -1,4 +1,4 @@
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { Console, Effect } from "effect";
 import { checklistPrompt } from "../checklistPrompt";
 import { bail } from "../engine";

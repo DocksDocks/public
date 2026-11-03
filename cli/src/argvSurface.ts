@@ -130,8 +130,8 @@ const globalSurface = (builtIns: unknown): GlobalFlagSurface => {
     }
     if (builtIn._tag === "Action") {
       // Only a presence-based action is idempotent. `--completions` is an action
-      // that takes a value, and Effect 4 would silently keep the first one, which
-      // is exactly what the duplicate rule exists to refuse.
+      // that takes a value. Effect 4.0.7 and later reject a repeat with help output
+      // and its own message; the duplicate rule refuses it first, with exit 2.
       const metadata = flagMetadata(builtIn.flag);
       if (!metadata.takesValue) actionFlags.add(`--${metadata.name}`);
     }
@@ -281,8 +281,8 @@ export const scanArgv = (
       if (next !== undefined && next !== "--" && !nextIsRecognizedFlag) {
         hasValue = true;
         if (next.startsWith("-")) {
-          // Effect 4's lexer treats any `-`-leading token as an option, so a legitimate
-          // dash-leading value only survives in the inline form.
+          // Effect 4's lexer treats every `-`-leading token except a negative number as
+          // an option, so a legitimate dash-leading value only survives in the inline form.
           normalizations.push({
             flagIndex: index,
             valueIndex: index + 1,

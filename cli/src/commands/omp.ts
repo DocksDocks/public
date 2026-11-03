@@ -1,4 +1,4 @@
-import { Argument, Command, Flag, Prompt } from "effect/unstable/cli";
+import { Argument, Command, Flag, Prompt } from "effect/cli";
 import { Console, Effect, Option } from "effect";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { bail } from "../engine";

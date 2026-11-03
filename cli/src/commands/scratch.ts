@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 
-import { Argument, Command } from "effect/unstable/cli";
+import { Argument, Command } from "effect/cli";
 import { Console, Effect } from "effect";
 
 import { bail } from "../engine";

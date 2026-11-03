@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Console, Effect, Option } from "effect";
 
 import { bail } from "../engine";

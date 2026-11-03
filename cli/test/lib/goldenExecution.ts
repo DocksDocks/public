@@ -240,7 +240,7 @@ export function runEngineSplit(
 }
 
 /**
- * Run the PUBLIC CLI (effect/unstable/cli path — no DOCKS_KIT_ENGINE bypass) with
+ * Run the PUBLIC CLI (effect/cli path — no DOCKS_KIT_ENGINE bypass) with
  * split channels. Exercises real flag parsing and command wiring.
  */
 export function runPublicCli(

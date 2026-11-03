@@ -56,7 +56,7 @@ const COMMANDS: Array<Array<string>> = [
 ];
 
 /**
- * Public-CLI characterization. These rows run the real effect/unstable/cli parser and
+ * Public-CLI characterization. These rows run the real effect/cli parser and
  * pin root, help, version, and the read-only listing commands so the Effect v4
  * migration can prove it changed nothing outside the accepted help rendering.
  */
