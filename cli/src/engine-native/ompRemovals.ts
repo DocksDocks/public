@@ -20,9 +20,11 @@ type RetiredScalar = string | number | boolean;
 /**
  * Keys the kit used to deploy, each paired with the exact value it deployed. A
  * key is pruned only while the deployed value still equals that value, so a
- * user who changed the setting keeps it. Every recorded value also equals omp's
- * current default, so pruning changes no behavior today and lets a later
- * upstream default change take effect.
+ * user who changed the setting keeps it. Every recorded value except
+ * `retry.usageAwareFallback` also equals omp's current default, so pruning those
+ * changes no behavior today and lets a later upstream default change take
+ * effect. Pruning `retry.usageAwareFallback: true` restores omp's default
+ * `false`, which removes the coding-plan reserve prompt.
  */
 const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredScalar]> = [
   ["symbolPreset", "unicode"],
@@ -43,6 +45,7 @@ const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredScalar]> = [
   ["interruptMode", "immediate"],
   ["autoResume", false],
   ["startup.changelogMode", "summary"],
+  ["retry.usageAwareFallback", true],
 ];
 
 /**

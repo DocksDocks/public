@@ -84,7 +84,6 @@ providers:
   webSearchTimeoutSeconds: 30
 
 retry:
-  usageAwareFallback: true
   fallbackChains:
     default:
       - openai-codex/gpt-6.1-sol:high
