@@ -42,8 +42,8 @@
     "test": "bun run --parallel test:unit test:integration",
     "lint": "oxlint",
     "lint:effect": "effect-tsgo diagnostics --project cli/tsconfig.json --strict --format text",
-    "format": "oxfmt --write cli/src cli/test cli/scripts vitest.config.ts",
-    "format:check": "oxfmt --check cli/src cli/test cli/scripts vitest.config.ts",
+    "format": "bun fmt --no-script cli/src cli/test cli/scripts vitest.config.ts",
+    "format:check": "bun fmt --no-script --check cli/src cli/test cli/scripts vitest.config.ts",
     "check": "bun run --parallel lint lint:effect format:check typecheck test"
   },
   "dependencies": {
@@ -55,7 +55,6 @@
   "devDependencies": {
     "@effect/tsgo": "0.64.1",
     "@types/bun": "1.4.4",
-    "oxfmt": "0.67.0",
     "oxlint": "1.91.0",
     "typescript": "7.0.2",
     "vitest": "5.1.0"

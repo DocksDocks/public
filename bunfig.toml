@@ -1,0 +1,5 @@
+[fmt]
+# Keep the existing code style: 100 columns, with .gitignore respected. The
+# two ignored paths hold generated or intentionally invalid files.
+flavor = "oxfmt"
+ignorePatterns = ["cli/src/generated/", "cli/test/fixtures/"]
