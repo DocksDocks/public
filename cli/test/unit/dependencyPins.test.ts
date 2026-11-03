@@ -15,7 +15,12 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseVersion, pinSatisfies } from "../lib/semverRange";
+import {
+  type PeerRequirement,
+  parseVersion,
+  pinSatisfies,
+  unsatisfiedPeerRanges,
+} from "../lib/semverRange";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const MODULES_DIR = join(REPO_DIR, "node_modules");
@@ -388,5 +393,97 @@ describe("root dependency pins", () => {
       split,
       `a prerelease package at two versions loads two halves of one release: ${split.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * List the non-optional peer of every package in the installed runtime
+ * closure, with the version that the dependent resolves for it. A peer is not
+ * nested under its dependent, so a lagging root pin of `effect` stays a
+ * single copy that no nested-copy check sees; only its version tells.
+ */
+function installedPeerRequirements(roots: Dependencies): Array<PeerRequirement> {
+  const requirements: Array<PeerRequirement> = [];
+  for (const dependent of Object.keys(runtimeClosure(roots))) {
+    const manifest = readManifest(join(MODULES_DIR, dependent, "package.json"));
+    const peers = manifest.peerDependencies;
+    if (typeof peers !== "object" || peers === null) continue;
+    const meta =
+      typeof manifest.peerDependenciesMeta === "object" && manifest.peerDependenciesMeta !== null
+        ? (manifest.peerDependenciesMeta as Record<string, { readonly optional?: boolean }>)
+        : {};
+    for (const [peer, range] of Object.entries(peers as Dependencies)) {
+      if (meta[peer]?.optional === true) continue;
+      const installed = installedPackage(peer, dependent);
+      requirements.push({
+        dependent,
+        peer,
+        range,
+        installed:
+          installed === undefined ? undefined : String(readManifest(installed.path).version),
+      });
+    }
+  }
+  return requirements;
+}
+
+describe("peer ranges", () => {
+  const requirement = (range: string, installed: string | undefined): PeerRequirement => ({
+    dependent: "@effect/platform-bun",
+    peer: "effect",
+    range,
+    installed,
+  });
+
+  it("reports a peer whose installed version lags the declared range", () => {
+    const lagging = requirement("^4.1.2", "4.1.1");
+    expect(unsatisfiedPeerRanges([lagging])).toEqual([{ ...lagging, kind: "unsatisfied" }]);
+  });
+
+  it("accepts an installed peer inside each range form that a manifest uses", () => {
+    const satisfied = [
+      requirement("^4.1.2", "4.1.2"),
+      requirement("^4.1.2", "4.9.0"),
+      requirement("~4.1.2", "4.1.7"),
+      requirement(">=4.1.2", "5.0.0"),
+      requirement("4.1.2", "4.1.2"),
+      requirement(">=8.22.1 <9.0.0", "8.22.1"),
+      requirement("^3.9.0 || ^4.1.2", "4.1.2"),
+      requirement("*", "4.1.2"),
+    ];
+    expect(unsatisfiedPeerRanges(satisfied)).toEqual([]);
+  });
+
+  it("reports a version outside a bound, a caret major, or an exact pin", () => {
+    const outside = [
+      requirement(">=8.22.1 <9.0.0", "9.0.0"),
+      requirement("^4.1.2", "5.0.0"),
+      requirement("~4.1.2", "4.2.0"),
+      requirement("4.1.2", "4.1.3"),
+      requirement("^4.1.2", "4.2.0-rc.1"),
+    ];
+    expect(unsatisfiedPeerRanges(outside)).toEqual(
+      outside.map((entry) => ({ ...entry, kind: "unsatisfied" })),
+    );
+  });
+
+  it("reports an unparsed range form and a missing peer instead of passing them", () => {
+    const unparsed = requirement("4.x", "4.1.2");
+    const missing = requirement("^4.1.2", undefined);
+    expect(unsatisfiedPeerRanges([unparsed, missing])).toEqual([
+      { ...unparsed, kind: "unparsed" },
+      { ...missing, kind: "missing" },
+    ]);
+  });
+
+  it("finds every non-optional peer of the installed runtime closure satisfied", () => {
+    const findings = unsatisfiedPeerRanges(installedPeerRequirements(rootDependencies));
+    const listed = findings
+      .map(
+        (finding) =>
+          `${finding.kind}: ${finding.dependent} requires ${finding.peer}@${finding.range}, installed ${finding.installed ?? "nowhere"}`,
+      )
+      .join(", ");
+    expect(findings, `every peer must be installed inside its range: ${listed}`).toEqual([]);
   });
 });

@@ -88,3 +88,91 @@ export function pinSatisfies(pin: Version, operator: string, anchor: Version): b
   if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor;
   return pin.major === anchor.major;
 }
+
+/** One peer that an installed package declares, with the version it resolves. */
+export interface PeerRequirement {
+  readonly dependent: string;
+  readonly peer: string;
+  readonly range: string;
+  /** The installed version of the peer, or `undefined` when no copy resolves. */
+  readonly installed: string | undefined;
+}
+
+export interface PeerFinding extends PeerRequirement {
+  readonly kind: "unsatisfied" | "unparsed" | "missing";
+}
+
+const COMPARATOR = /^(\^|~|>=|<=|>|<|=)?v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+
+/**
+ * Decide one comparator, or return `undefined` for a form this module does not
+ * parse. `*` admits every version; the set rule below still keeps a
+ * prerelease out of it.
+ */
+function comparatorHolds(version: Version, comparator: string): boolean | undefined {
+  if (comparator === "*") return true;
+  const match = COMPARATOR.exec(comparator);
+  const anchor = match === null ? undefined : parseVersion(match[2] ?? "");
+  if (match === null || anchor === undefined) return undefined;
+  const operator = match[1] ?? "=";
+  if (operator === "^" || operator === "~" || operator === ">=") {
+    return pinSatisfies(version, operator, anchor);
+  }
+  const order = compareVersions(version, anchor);
+  if (operator === ">") return order > 0;
+  if (operator === "<") return order < 0;
+  if (operator === "<=") return order <= 0;
+  return order === 0;
+}
+
+/**
+ * Decide one space-separated comparator set. A prerelease version enters a
+ * set only when a comparator of the set names a prerelease of the same
+ * `major.minor.patch` tuple, the rule that npm and bun apply.
+ */
+function comparatorSetHolds(version: Version, set: string): boolean | undefined {
+  const comparators = set.trim().split(/\s+/);
+  const results = comparators.map((comparator) => comparatorHolds(version, comparator));
+  if (results.includes(undefined)) return undefined;
+  if (results.includes(false)) return false;
+  if (version.tail === "") return true;
+  return comparators.some((comparator) => {
+    const anchor = parseVersion(COMPARATOR.exec(comparator)?.[2] ?? "");
+    return (
+      anchor !== undefined &&
+      anchor.tail !== "" &&
+      anchor.major === version.major &&
+      anchor.minor === version.minor &&
+      anchor.patch === version.patch
+    );
+  });
+}
+
+/**
+ * Report every peer that is missing, installed outside its declared range, or
+ * declared with a range form that this module cannot decide. An unparsed form
+ * is a finding, not a pass, so a new form makes the guard fail until the
+ * helper learns it.
+ */
+export function unsatisfiedPeerRanges(
+  requirements: ReadonlyArray<PeerRequirement>,
+): Array<PeerFinding> {
+  const findings: Array<PeerFinding> = [];
+  for (const requirement of requirements) {
+    const version =
+      requirement.installed === undefined ? undefined : parseVersion(requirement.installed);
+    if (version === undefined) {
+      findings.push({ ...requirement, kind: "missing" });
+      continue;
+    }
+    const results = requirement.range
+      .split("||")
+      .map((alternative) => comparatorSetHolds(version, alternative));
+    if (results.includes(true)) continue;
+    findings.push({
+      ...requirement,
+      kind: results.includes(undefined) ? "unparsed" : "unsatisfied",
+    });
+  }
+  return findings;
+}
