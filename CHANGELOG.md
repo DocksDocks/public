@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-03 - docks-kit 0.22.7: Effect 4.1.2, the Effect language service, and bun fmt
+
+### Changed
+
+- `docks-kit --completions` now also accepts `powershell` and `pwsh`. Effect
+  4.0.3 added these shells to the built-in completions flag.
+- The CLI now runs on the stable Effect 4.1.2 release. `effect`,
+  `@effect/platform-bun`, and `@effect/platform-node-shared` are pinned at
+  exactly `4.1.2`. The CLI imports its command API from `effect/cli`.
+- Other dependency updates: `yaml` 2.9.1, `oxlint` 1.91.0, `vitest` 5.1.0,
+  and `@types/bun` 1.4.4. No GitHub advisory affects `vitest` 5.1.0.
+- The unused `@effect/vitest` package is removed.
+- A global install with Bun 1.4.4 holds nine packages. No package has an
+  install script, and the install prints no peer dependency warning.
+
+### Development tooling
+
+- `bun run lint:effect` checks the Effect rules through `@effect/tsgo`, and
+  `bun run check` runs it. The editor language server can show the same
+  diagnostics through `node_modules/.bin/effect-tsgo tsc --lsp --stdio`.
+- `bun fmt` replaces the old formatter. `bunfig.toml` sets
+  `flavor = "oxfmt"`, so the output stays identical.
+- `cli/test/unit/dependencyPins.test.ts` also fails when the installed
+  version of a package does not satisfy a non-optional peer range in the
+  runtime closure.
+
 ## 2026-11-03 - docks-kit 0.22.6: omp spends the full coding-plan quota
 
 ### Changed

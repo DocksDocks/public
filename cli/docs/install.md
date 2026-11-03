@@ -31,21 +31,20 @@ are versioned config snapshots without publishing the authoring `SoT/` tree.
 Kit-home resolution remains available for checkout/package update behavior and
 display paths, but sync reads do not depend on it.
 
-### Bun 1.4.0 install output
+### Bun 1.4.4 install output
 
-A supported global install completes with no blocked postinstall: `bun pm -g
+A supported global install completes with no blocked postinstall. The graph
+holds nine packages, and no package in it has an install script. `bun pm -g
 untrusted` reports zero untrusted dependencies with scripts. Neither
-`@parcel/watcher` nor `esbuild` is in the consumer graph. The graph does carry
-one package with an `install` script, `msgpackr-extract` by way of
-`effect > msgpackr`, and Bun raises no trust prompt for it.
+`@parcel/watcher` nor `esbuild` is in the consumer graph.
 
-The install prints no peer dependency warning. The root pins
-`@effect/platform-node-shared` at `4.0.0-rc.115`, the same release as the
-pinned `effect`, so a fresh registry resolution installs exactly one copy of
-each and the transitive peer range `effect@^4.0.0-rc.115` is satisfied. Without
-that root pin, `@effect/platform-bun` requests the shared package through a
-caret range over a prerelease and a fresh install can pair a newer shared
-package with the pinned `effect`.
+The install prints no peer dependency warning. The root pins `effect`,
+`@effect/platform-bun`, and `@effect/platform-node-shared` at exactly `4.1.2`.
+`@effect/platform-bun@4.1.2` also pins `@effect/platform-node-shared` at
+exactly `4.1.2`, and both packages accept `effect@^4.1.2` as a peer. So a
+fresh registry resolution installs exactly one copy of each package. The root
+pin of `@effect/platform-node-shared` lets the offline nested-copy guard catch
+a copy that lags behind the pinned release.
 
 ## 3. curl installer (POSIX)
 

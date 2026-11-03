@@ -25,7 +25,7 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | `typescript-lsp` | `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 | `rust-analyzer-lsp` | `claude-plugins-official` | Rust language-server integration with no prompt or skill context. |
 
-For Effect work in this checkout, verify API shapes against the installed declarations under `node_modules/effect/dist/unstable/cli/`. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only and do not apply.
+For Effect work in this checkout, verify API shapes against the installed declarations under `node_modules/effect/dist/cli/`. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only and do not apply.
 
 Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
