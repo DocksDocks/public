@@ -52,7 +52,7 @@ export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     yield* requireSupportedHost();
     if (bashEngineRequested()) {
-      yield* bail(bashRemovedMessage, 2);
+      return yield* bail(bashRemovedMessage, 2);
     }
     const logger = yield* LoggerService;
     const deps = yield* DependencyManagerService;
@@ -66,7 +66,7 @@ export const engine = (args: ReadonlyArray<string>) =>
         }),
     });
     if (code !== 0) {
-      yield* Effect.sync(() => process.exit(code));
+      return yield* Effect.sync(() => process.exit(code));
     }
   });
 

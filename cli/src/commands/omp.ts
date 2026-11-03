@@ -424,7 +424,7 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       );
     }
     // A signalled child reports a null status, which must not look successful.
-    yield* Effect.sync(() => process.exit(child.status ?? 1));
+    return yield* Effect.sync(() => process.exit(child.status ?? 1));
   }),
 ).pipe(
   Command.withDescription(
