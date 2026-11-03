@@ -11,7 +11,20 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "allowedUnstableApis": [
+          "effect/cli",
+          "effect/Terminal",
+          "effect/FileSystem#layerNoop",
+          "effect/Path#layer",
+          "@effect/platform-bun/BunRuntime#runMain",
+          "@effect/platform-bun/BunServices#layer"
+        ]
+      }
+    ]
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "test/**/*.ts", "scripts/**/*.ts", "test/statusline-runtime-smoke.mjs", "../SoT/.claude/bin/*.mjs", "../SoT/.omp/plugin/extensions/*.ts"]
 }

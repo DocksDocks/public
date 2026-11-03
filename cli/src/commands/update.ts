@@ -1,4 +1,4 @@
-import { Command, Flag } from "effect/unstable/cli";
+import { Command, Flag } from "effect/cli";
 import { Console, Effect } from "effect";
 import { existsSync, readFileSync } from "node:fs";
 import { bail, compiled } from "../engine";

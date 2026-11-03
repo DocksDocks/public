@@ -1,4 +1,4 @@
-import { Argument, Command, Flag, Prompt } from "effect/unstable/cli";
+import { Argument, Command, Flag, Prompt } from "effect/cli";
 import { Effect, Option } from "effect";
 import { bail, engine } from "../engine";
 import { engineHome } from "../engine-native/harnesses";

@@ -15,6 +15,12 @@
 import { existsSync, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  type PeerRequirement,
+  parseVersion,
+  pinSatisfies,
+  unsatisfiedPeerRanges,
+} from "../lib/semverRange";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const MODULES_DIR = join(REPO_DIR, "node_modules");
@@ -29,91 +35,6 @@ interface Finding {
   readonly dependency: string;
   readonly range: string;
   readonly kind: "unpinned" | "unsatisfied";
-}
-
-/**
- * Order two prerelease tails the way semver does: numeric identifiers compare
- * as numbers and rank below alphanumeric ones, a shared prefix leaves the
- * shorter tail lower, and an empty tail is a final release, which outranks
- * every prerelease of the same version tuple.
- */
-function comparePrerelease(left: string, right: string): number {
-  if (left === right) return 0;
-  if (left === "") return 1;
-  if (right === "") return -1;
-  const leftParts = left.split(".");
-  const rightParts = right.split(".");
-  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
-    const a = leftParts[index];
-    const b = rightParts[index];
-    if (a === undefined) return -1;
-    if (b === undefined) return 1;
-    if (a === b) continue;
-    const aNumeric = /^\d+$/.test(a);
-    const bNumeric = /^\d+$/.test(b);
-    if (aNumeric && bNumeric) return Number(a) - Number(b);
-    if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
-    return a < b ? -1 : 1;
-  }
-  return 0;
-}
-
-interface Version {
-  readonly major: number;
-  readonly minor: number;
-  readonly patch: number;
-  readonly tail: string;
-}
-
-/**
- * Split `major.minor.patch[-prerelease]` into its parts. Anything else, such
- * as a tag, a URL, or a wildcard, has no version to compare.
- */
-function parseVersion(text: string): Version | undefined {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(text);
-  if (match === null) return undefined;
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-    tail: match[4] ?? "",
-  };
-}
-
-function compareVersions(left: Version, right: Version): number {
-  if (left.major !== right.major) return left.major - right.major;
-  if (left.minor !== right.minor) return left.minor - right.minor;
-  if (left.patch !== right.patch) return left.patch - right.patch;
-  return comparePrerelease(left.tail, right.tail);
-}
-
-/**
- * Decide whether an exact root pin satisfies a single-comparator range. Only
- * the operators a real manifest uses are accepted: `^` holds the major, `~`
- * holds the major and the minor, and `>=` holds nothing beyond the lower
- * bound. A compound range, an upper bound, or any other operator is treated as
- * not satisfied, because this guard does not carry a full semver solver.
- *
- * Two rules of the real resolvers decide the prerelease cases that this guard
- * exists for. A pin that carries a prerelease tail enters a range only when
- * its `major.minor.patch` tuple equals the comparator tuple, so the pin
- * `4.1.0-rc.1` stays outside `^4.0.0-rc.109` and bun resolves a second copy. A
- * caret narrows as the leading zeros grow: `^0.4.2` means `>=0.4.2 <0.5.0` and
- * `^0.0.3` means `>=0.0.3 <0.0.4`.
- */
-function pinSatisfies(pin: Version, operator: string, anchor: Version): boolean {
-  if (compareVersions(pin, anchor) < 0) return false;
-  if (operator !== "^" && operator !== "~" && operator !== ">=") return false;
-  if (pin.tail !== "") {
-    return pin.major === anchor.major && pin.minor === anchor.minor && pin.patch === anchor.patch;
-  }
-  if (operator === ">=") return true;
-  if (operator === "~") return pin.major === anchor.major && pin.minor === anchor.minor;
-  if (anchor.major === 0 && anchor.minor === 0) {
-    return pin.major === 0 && pin.minor === 0 && pin.patch === anchor.patch;
-  }
-  if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor;
-  return pin.major === anchor.major;
 }
 
 /**
@@ -472,5 +393,126 @@ describe("root dependency pins", () => {
       split,
       `a prerelease package at two versions loads two halves of one release: ${split.join(", ")}`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * List every non-optional peer of every package in the installed runtime
+ * closure, with the version that the dependent resolves for it. A peer is not
+ * nested under its dependent, so a lagging root pin of `effect` stays a
+ * single copy that no nested-copy check sees; only its version tells.
+ */
+function installedPeerRequirements(roots: Dependencies): Array<PeerRequirement> {
+  const requirements: Array<PeerRequirement> = [];
+  for (const dependent of Object.keys(runtimeClosure(roots))) {
+    const manifest = readManifest(join(MODULES_DIR, dependent, "package.json"));
+    const peers = manifest.peerDependencies;
+    if (typeof peers !== "object" || peers === null) continue;
+    const meta =
+      typeof manifest.peerDependenciesMeta === "object" && manifest.peerDependenciesMeta !== null
+        ? (manifest.peerDependenciesMeta as Record<string, { readonly optional?: boolean }>)
+        : {};
+    for (const [peer, range] of Object.entries(peers as Dependencies)) {
+      if (meta[peer]?.optional === true) continue;
+      const installed = installedPackage(peer, dependent);
+      requirements.push({
+        dependent,
+        peer,
+        range,
+        installed:
+          installed === undefined ? undefined : String(readManifest(installed.path).version),
+      });
+    }
+  }
+  return requirements;
+}
+
+describe("peer ranges", () => {
+  const requirement = (range: string, installed: string | undefined): PeerRequirement => ({
+    dependent: "@effect/platform-bun",
+    peer: "effect",
+    range,
+    installed,
+  });
+
+  it("reports a peer whose installed version lags the declared range", () => {
+    const lagging = requirement("^4.1.2", "4.1.1");
+    expect(unsatisfiedPeerRanges([lagging])).toEqual([{ ...lagging, kind: "unsatisfied" }]);
+  });
+
+  it("accepts an installed peer inside each range form that a manifest uses", () => {
+    const satisfied = [
+      requirement("^4.1.2", "4.1.2"),
+      requirement("^4.1.2", "4.9.0"),
+      requirement("~4.1.2", "4.1.7"),
+      requirement(">=4.1.2", "5.0.0"),
+      requirement("4.1.2", "4.1.2"),
+      requirement(">=8.22.1 <9.0.0", "8.22.1"),
+      requirement("^3.9.0 || ^4.1.2", "4.1.2"),
+      requirement("*", "4.1.2"),
+      requirement(">=4.1.0 <4.1.2-rc.9", "4.1.2-rc.5"),
+      requirement("^4.1.0 <4.1.2-rc.9", "4.1.2-rc.5"),
+      requirement(">=4.1.2-rc.1 <4.1.3-rc.5", "4.1.3-rc.1"),
+    ];
+    expect(unsatisfiedPeerRanges(satisfied)).toEqual([]);
+  });
+
+  it("reports a version outside a bound, a caret major, or an exact pin", () => {
+    const outside = [
+      requirement(">=8.22.1 <9.0.0", "9.0.0"),
+      requirement("^4.1.2", "5.0.0"),
+      requirement("~4.1.2", "4.2.0"),
+      requirement("4.1.2", "4.1.3"),
+      requirement("^4.1.2", "4.2.0-rc.1"),
+    ];
+    expect(unsatisfiedPeerRanges(outside)).toEqual(
+      outside.map((entry) => ({ ...entry, kind: "unsatisfied" })),
+    );
+  });
+
+  it("pins each comparator boundary and the prerelease rule of a comparator set", () => {
+    const inside = [
+      requirement(">4.1.2", "4.1.3"),
+      requirement("<=4.1.2", "4.1.2"),
+      requirement("=4.1.2", "4.1.2"),
+      requirement("v4.1.2", "4.1.2"),
+      requirement("^4.1.2-rc.1", "4.1.2-rc.3"),
+      requirement(">=4.1.2-rc.1 <4.1.3", "4.1.2-rc.3"),
+    ];
+    const outside = [
+      requirement(">4.1.2", "4.1.2"),
+      requirement("<=4.1.2", "4.1.3"),
+      requirement("*", "4.2.0-rc.1"),
+      requirement("<5.0.0", "5.0.0-rc.1"),
+    ];
+    expect(unsatisfiedPeerRanges([...inside, ...outside])).toEqual(
+      outside.map((entry) => ({ ...entry, kind: "unsatisfied" })),
+    );
+  });
+
+  it("reports an unparsed range form, an unparsed version, and a missing peer instead of passing them", () => {
+    const unparsed = requirement("4.x", "4.1.2");
+    const unparsedBesideSatisfied = requirement("4.x || ^4.1.2", "4.1.2");
+    const unparsedVersion = requirement("^4.1.2", "4.1.2+build.1");
+    const missing = requirement("^4.1.2", undefined);
+    expect(
+      unsatisfiedPeerRanges([unparsed, unparsedBesideSatisfied, unparsedVersion, missing]),
+    ).toEqual([
+      { ...unparsed, kind: "unparsed" },
+      { ...unparsedBesideSatisfied, kind: "unparsed" },
+      { ...unparsedVersion, kind: "unparsed" },
+      { ...missing, kind: "missing" },
+    ]);
+  });
+
+  it("finds every non-optional peer of the installed runtime closure satisfied", () => {
+    const findings = unsatisfiedPeerRanges(installedPeerRequirements(rootDependencies));
+    const listed = findings
+      .map(
+        (finding) =>
+          `${finding.kind}: ${finding.dependent} requires ${finding.peer}@${finding.range}, installed ${finding.installed ?? "nowhere"}`,
+      )
+      .join(", ");
+    expect(findings, `every peer must be installed inside its range: ${listed}`).toEqual([]);
   });
 });

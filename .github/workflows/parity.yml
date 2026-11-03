@@ -104,7 +104,7 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run typecheck
 
-      - name: Unit tests (vitest + @effect/vitest)
+      - name: Unit tests (vitest)
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run test:unit

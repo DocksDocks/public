@@ -1,4 +1,4 @@
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import { Argument, Command, Flag } from "effect/cli";
 import { Console, Effect, Option } from "effect";
 import { bail } from "../engine";
 import overview from "../../docs/overview.md" with { type: "text" };

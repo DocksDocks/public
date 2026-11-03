@@ -56,7 +56,7 @@ const COMMANDS: Array<Array<string>> = [
 ];
 
 /**
- * Public-CLI characterization. These rows run the real effect/unstable/cli parser and
+ * Public-CLI characterization. These rows run the real effect/cli parser and
  * pin root, help, version, and the read-only listing commands so the Effect v4
  * migration can prove it changed nothing outside the accepted help rendering.
  */
@@ -166,7 +166,7 @@ if (options.updateGoldens) {
     `golden-dryrun: updated ${Object.keys(selectedCases).length} case(s) at ${GOLDEN_PATH}`,
   );
   console.log(
-    "run 'bun run format' before committing; the golden writer does not match oxfmt output",
+    "run 'bun run format' before committing; the golden writer does not match bun fmt output",
   );
   process.exit(0);
 }

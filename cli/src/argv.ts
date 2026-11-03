@@ -1,4 +1,4 @@
-import { GlobalFlag } from "effect/unstable/cli";
+import { GlobalFlag } from "effect/cli";
 import { docsCommand } from "./commands/docs";
 import { harnessesCommand } from "./commands/harnesses";
 import { modelCommand } from "./commands/model";

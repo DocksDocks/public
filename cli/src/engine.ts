@@ -1,4 +1,4 @@
-import { CliError } from "effect/unstable/cli";
+import { CliError } from "effect/cli";
 import { Console, Effect } from "effect";
 import { spawnSync } from "node:child_process";
 import { runEngineNative } from "./engine-native";
@@ -11,7 +11,7 @@ import { DependencyManagerService, LoggerService, PlatformService } from "./serv
 
 /**
  * The single seam between the typed CLI and EngineNative. Engine execution
- * stays in-process after effect/unstable/cli has parsed pickers and flag spellings.
+ * stays in-process after effect/cli has parsed pickers and flag spellings.
  */
 const bashRemovedMessage = "bash engine removed — recover at tag bash-engine-final";
 const bashEngineRequested = (): boolean => process.env["DOCKS_KIT_ENGINE"] === "bash";
@@ -52,7 +52,7 @@ export const engine = (args: ReadonlyArray<string>) =>
   Effect.gen(function* () {
     yield* requireSupportedHost();
     if (bashEngineRequested()) {
-      yield* bail(bashRemovedMessage, 2);
+      return yield* bail(bashRemovedMessage, 2);
     }
     const logger = yield* LoggerService;
     const deps = yield* DependencyManagerService;
@@ -66,7 +66,7 @@ export const engine = (args: ReadonlyArray<string>) =>
         }),
     });
     if (code !== 0) {
-      yield* Effect.sync(() => process.exit(code));
+      return yield* Effect.sync(() => process.exit(code));
     }
   });
 

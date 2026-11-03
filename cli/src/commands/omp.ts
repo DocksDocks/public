@@ -1,4 +1,4 @@
-import { Argument, Command, Flag, Prompt } from "effect/unstable/cli";
+import { Argument, Command, Flag, Prompt } from "effect/cli";
 import { Console, Effect, Option } from "effect";
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { bail } from "../engine";
@@ -424,7 +424,7 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       );
     }
     // A signalled child reports a null status, which must not look successful.
-    yield* Effect.sync(() => process.exit(child.status ?? 1));
+    return yield* Effect.sync(() => process.exit(child.status ?? 1));
   }),
 ).pipe(
   Command.withDescription(

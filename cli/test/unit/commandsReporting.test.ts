@@ -281,6 +281,24 @@ describe("command reporting", () => {
     },
     SPAWN_TIMEOUT_MS,
   );
+
+  // Effect 4.0.7 and later reject any flag given twice, so a repeated presence-only
+  // action must reach Effect once.
+  it(
+    "answers a repeated global action once through the public CLI parser",
+    () => {
+      const home = temporaryDirectory("docks-repeated-action-");
+
+      const version = runCli(["--version", "-v"], home);
+      expect(version.status, version.stderr).toBe(0);
+      expect(version.stdout).toBe(runCli(["--version"], home).stdout);
+
+      const help = runCli(["--help", "-h"], home);
+      expect(help.status, help.stderr).toBe(0);
+      expect(help.stdout).toBe(runCli(["--help"], home).stdout);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
 });
 
 describe("update install detection", () => {

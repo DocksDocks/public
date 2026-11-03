@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { stripVTControlCharacters } from "node:util";
 import { BunServices } from "@effect/platform-bun";
 import { type Cause, Effect, Exit, Option, Queue, Terminal } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { harnessesCommand } from "../../src/commands/harnesses";
 import {
@@ -152,6 +152,7 @@ function fakeTerminal(keys: ReadonlyArray<KeyPress>, frames: Array<string>): Ter
   return Terminal.make({
     columns: Effect.succeed(80),
     rows: Effect.succeed(24),
+    size: Effect.die("the harness picker does not watch the terminal size"),
     readInput: Effect.gen(function* () {
       const queue = yield* Queue.unbounded<Terminal.UserInput, Cause.Done>();
       yield* Queue.offerAll(

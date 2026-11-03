@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Command, CliOutput } from "effect/unstable/cli";
+import { Command, CliOutput } from "effect/cli";
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { Console, Effect, Layer } from "effect";
 import { EngineServicesLive } from "./services";
@@ -83,7 +83,7 @@ const bareVersionFormatter: CliOutput.Formatter = {
 };
 
 // Harness-private raw channels:
-// `DOCKS_KIT_ENGINE=native-raw` bypasses effect/unstable/cli and hands the raw engine
+// `DOCKS_KIT_ENGINE=native-raw` bypasses effect/cli and hands the raw engine
 // argv to EngineNative so golden tests drive the internal vocabulary directly.
 // Only this channel honors the unprefixed env globals (DRY_RUN, PRUNE, and so on).
 // `DOCKS_KIT_ENGINE=native-capture` is the engine.ts engineCapture child. It takes

@@ -1,5 +1,5 @@
 import { Effect, Terminal } from "effect";
-import { Prompt } from "effect/unstable/cli";
+import { Prompt } from "effect/cli";
 import { terminalCells, terminalRows } from "./terminalCells";
 
 /** One row of a checklist. The label and the description are each one line of text. */

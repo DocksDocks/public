@@ -1,6 +1,6 @@
 {
   "name": "docks-kit",
-  "version": "0.22.6",
+  "version": "0.22.7",
   "description": "Portable AI coding agent config kit — SoT sync engine + typed CLI for Claude Code, Codex, and universal agent skills",
   "type": "module",
   "license": "MIT",
@@ -41,22 +41,22 @@
     "test:integration": "bun run --parallel golden:dryrun golden:mutation",
     "test": "bun run --parallel test:unit test:integration",
     "lint": "oxlint",
-    "format": "oxfmt --write cli/src cli/test cli/scripts vitest.config.ts",
-    "format:check": "oxfmt --check cli/src cli/test cli/scripts vitest.config.ts",
-    "check": "bun run --parallel lint format:check typecheck test"
+    "lint:effect": "effect-tsgo diagnostics --project cli/tsconfig.json --strict --format text",
+    "format": "bun fmt --no-script cli/src cli/test cli/scripts vitest.config.ts",
+    "format:check": "bun fmt --no-script --check cli/src cli/test cli/scripts vitest.config.ts",
+    "check": "bun run --parallel lint lint:effect format:check typecheck test"
   },
   "dependencies": {
-    "@effect/platform-bun": "4.0.0-rc.115",
-    "@effect/platform-node-shared": "4.0.0-rc.115",
-    "effect": "4.0.0-rc.115",
-    "yaml": "2.9.0"
+    "@effect/platform-bun": "4.1.2",
+    "@effect/platform-node-shared": "4.1.2",
+    "effect": "4.1.2",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.0-rc.115",
-    "@types/bun": "^1.4.0",
-    "oxfmt": "0.67.0",
-    "oxlint": "1.82.0",
+    "@effect/tsgo": "0.64.1",
+    "@types/bun": "1.4.4",
+    "oxlint": "1.91.0",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vitest": "5.1.0"
   }
 }

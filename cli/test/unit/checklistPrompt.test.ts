@@ -1,6 +1,6 @@
 import { stripVTControlCharacters } from "node:util";
 import { Cause, Effect, Exit, FileSystem, Layer, Option, Path, Queue, Terminal } from "effect";
-import { Prompt } from "effect/unstable/cli";
+import { Prompt } from "effect/cli";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChecklistItem, ChecklistOptions, ChecklistResult } from "../../src/checklistPrompt";
 import { terminalCells } from "../../src/terminalCells";
@@ -121,6 +121,7 @@ async function runChecklist(
   const terminal = Terminal.make({
     columns: Effect.sync(() => currentColumns),
     rows: Effect.succeed(40),
+    size: Effect.die("the checklist does not watch the terminal size"),
     readInput: Effect.gen(function* () {
       const queue = yield* Queue.unbounded<Terminal.UserInput, Cause.Done>();
       yield* Queue.offerAll(queue, input);
