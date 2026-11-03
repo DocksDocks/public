@@ -6,12 +6,13 @@
 
 - `docks-kit --completions` now also accepts `powershell` and `pwsh`. Effect
   4.0.3 added these shells to the built-in completions flag.
-- The CLI now runs on the stable Effect 4.1.2 release. `effect`,
-  `@effect/platform-bun`, and `@effect/platform-node-shared` are pinned at
-  exactly `4.1.2`. The CLI imports its command API from `effect/cli`.
+- The CLI now runs on the stable Effect 4.1.2 release. The root
+  `package.json` pins `effect`, `@effect/platform-bun`, and
+  `@effect/platform-node-shared` at exactly `4.1.2`. The CLI imports its
+  command API from `effect/cli`.
 - Other dependency updates: `yaml` 2.9.1, `oxlint` 1.91.0, `vitest` 5.1.0,
   and `@types/bun` 1.4.4. No GitHub advisory affects `vitest` 5.1.0.
-- The unused `@effect/vitest` package is removed.
+- This release removes the unused `@effect/vitest` package.
 - A global install with Bun 1.4.4 holds nine packages. No package has an
   install script, and the install prints no peer dependency warning.
 

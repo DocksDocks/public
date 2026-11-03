@@ -227,7 +227,8 @@ export interface ScannedFlag {
 export interface ArgvNormalization {
   readonly flagIndex: number;
   readonly valueIndex: number;
-  readonly token: string;
+  /** The replacement token, or `undefined` to drop the tokens from the argument list. */
+  readonly token: string | undefined;
 }
 
 export interface ScannedArgv {
@@ -257,6 +258,7 @@ export const scanArgv = (
 ): ScannedArgv => {
   const flags: Array<ScannedFlag> = [];
   const normalizations: Array<ArgvNormalization> = [];
+  const seenActions = new Set<string>();
 
   for (let index = 0; index < args.length; index++) {
     const token = args[index];
@@ -281,8 +283,9 @@ export const scanArgv = (
       if (next !== undefined && next !== "--" && !nextIsRecognizedFlag) {
         hasValue = true;
         if (next.startsWith("-")) {
-          // Effect 4's lexer treats every `-`-leading token except a negative number as
-          // an option, so a legitimate dash-leading value only survives in the inline form.
+          // Effect 4's lexer treats every `-`-leading token except a lone `-` or a
+          // negative number as an option, so a legitimate dash-leading value only
+          // survives in the inline form.
           normalizations.push({
             flagIndex: index,
             valueIndex: index + 1,
@@ -299,6 +302,19 @@ export const scanArgv = (
         hasValue = true;
         index++;
       }
+    }
+
+    if (
+      canonicalName !== undefined &&
+      !hasValue &&
+      surfaces.globalSurface.actionFlags.has(canonicalName)
+    ) {
+      // Effect 4.0.7 and later reject any flag given twice, but a repeated
+      // presence-only action asks for the same thing, so Effect sees it once.
+      if (seenActions.has(canonicalName)) {
+        normalizations.push({ flagIndex: index, valueIndex: index, token: undefined });
+      }
+      seenActions.add(canonicalName);
     }
 
     flags.push({ token, name, canonicalName, hasValue, takesValue });
@@ -318,7 +334,7 @@ export const normalizeArgv = (
   for (let index = 0; index < args.length; index++) {
     const normalization = normalizations[normalizationIndex];
     if (normalization !== undefined && normalization.flagIndex === index) {
-      normalized.push(normalization.token);
+      if (normalization.token !== undefined) normalized.push(normalization.token);
       index = normalization.valueIndex;
       normalizationIndex++;
       continue;

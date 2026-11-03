@@ -80,13 +80,22 @@ export function pinSatisfies(pin: Version, operator: string, anchor: Version): b
   if (pin.tail !== "") {
     return pin.major === anchor.major && pin.minor === anchor.minor && pin.patch === anchor.patch;
   }
+  return withinUpperBound(pin, operator, anchor);
+}
+
+/**
+ * Apply the upper bound of `^`, `~`, or `>=` to a version at or above the
+ * anchor. The prerelease rule stays with the caller: a root pin decides it per
+ * comparator, and a peer range decides it once per comparator set.
+ */
+function withinUpperBound(version: Version, operator: "^" | "~" | ">=", anchor: Version): boolean {
   if (operator === ">=") return true;
-  if (operator === "~") return pin.major === anchor.major && pin.minor === anchor.minor;
+  if (operator === "~") return version.major === anchor.major && version.minor === anchor.minor;
   if (anchor.major === 0 && anchor.minor === 0) {
-    return pin.major === 0 && pin.minor === 0 && pin.patch === anchor.patch;
+    return version.major === 0 && version.minor === 0 && version.patch === anchor.patch;
   }
-  if (anchor.major === 0) return pin.major === 0 && pin.minor === anchor.minor;
-  return pin.major === anchor.major;
+  if (anchor.major === 0) return version.major === 0 && version.minor === anchor.minor;
+  return version.major === anchor.major;
 }
 
 /** One peer that an installed package declares, with the version it resolves. */
@@ -116,7 +125,7 @@ function comparatorHolds(version: Version, comparator: string): boolean | undefi
   if (match === null || anchor === undefined) return undefined;
   const operator = match[1] ?? "=";
   if (operator === "^" || operator === "~" || operator === ">=") {
-    return pinSatisfies(version, operator, anchor);
+    return compareVersions(version, anchor) >= 0 && withinUpperBound(version, operator, anchor);
   }
   const order = compareVersions(version, anchor);
   if (operator === ">") return order > 0;
@@ -150,29 +159,33 @@ function comparatorSetHolds(version: Version, set: string): boolean | undefined 
 
 /**
  * Report every peer that is missing, installed outside its declared range, or
- * declared with a range form that this module cannot decide. An unparsed form
- * is a finding, not a pass, so a new form makes the guard fail until the
- * helper learns it.
+ * not decidable here: a range form or an installed version that this module
+ * cannot parse. An undecidable alternative is a finding even when another
+ * alternative holds, so a new form makes the guard fail until the helper
+ * learns it.
  */
 export function unsatisfiedPeerRanges(
   requirements: ReadonlyArray<PeerRequirement>,
 ): Array<PeerFinding> {
   const findings: Array<PeerFinding> = [];
   for (const requirement of requirements) {
-    const version =
-      requirement.installed === undefined ? undefined : parseVersion(requirement.installed);
-    if (version === undefined) {
+    if (requirement.installed === undefined) {
       findings.push({ ...requirement, kind: "missing" });
+      continue;
+    }
+    const version = parseVersion(requirement.installed);
+    if (version === undefined) {
+      findings.push({ ...requirement, kind: "unparsed" });
       continue;
     }
     const results = requirement.range
       .split("||")
       .map((alternative) => comparatorSetHolds(version, alternative));
-    if (results.includes(true)) continue;
-    findings.push({
-      ...requirement,
-      kind: results.includes(undefined) ? "unparsed" : "unsatisfied",
-    });
+    if (results.includes(undefined)) {
+      findings.push({ ...requirement, kind: "unparsed" });
+    } else if (!results.includes(true)) {
+      findings.push({ ...requirement, kind: "unsatisfied" });
+    }
   }
   return findings;
 }

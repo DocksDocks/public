@@ -397,7 +397,7 @@ describe("root dependency pins", () => {
 });
 
 /**
- * List the non-optional peer of every package in the installed runtime
+ * List every non-optional peer of every package in the installed runtime
  * closure, with the version that the dependent resolves for it. A peer is not
  * nested under its dependent, so a lagging root pin of `effect` stays a
  * single copy that no nested-copy check sees; only its version tells.
@@ -450,6 +450,9 @@ describe("peer ranges", () => {
       requirement(">=8.22.1 <9.0.0", "8.22.1"),
       requirement("^3.9.0 || ^4.1.2", "4.1.2"),
       requirement("*", "4.1.2"),
+      requirement(">=4.1.0 <4.1.2-rc.9", "4.1.2-rc.5"),
+      requirement("^4.1.0 <4.1.2-rc.9", "4.1.2-rc.5"),
+      requirement(">=4.1.2-rc.1 <4.1.3-rc.5", "4.1.3-rc.1"),
     ];
     expect(unsatisfiedPeerRanges(satisfied)).toEqual([]);
   });
@@ -467,11 +470,37 @@ describe("peer ranges", () => {
     );
   });
 
-  it("reports an unparsed range form and a missing peer instead of passing them", () => {
+  it("pins each comparator boundary and the prerelease rule of a comparator set", () => {
+    const inside = [
+      requirement(">4.1.2", "4.1.3"),
+      requirement("<=4.1.2", "4.1.2"),
+      requirement("=4.1.2", "4.1.2"),
+      requirement("v4.1.2", "4.1.2"),
+      requirement("^4.1.2-rc.1", "4.1.2-rc.3"),
+      requirement(">=4.1.2-rc.1 <4.1.3", "4.1.2-rc.3"),
+    ];
+    const outside = [
+      requirement(">4.1.2", "4.1.2"),
+      requirement("<=4.1.2", "4.1.3"),
+      requirement("*", "4.2.0-rc.1"),
+      requirement("<5.0.0", "5.0.0-rc.1"),
+    ];
+    expect(unsatisfiedPeerRanges([...inside, ...outside])).toEqual(
+      outside.map((entry) => ({ ...entry, kind: "unsatisfied" })),
+    );
+  });
+
+  it("reports an unparsed range form, an unparsed version, and a missing peer instead of passing them", () => {
     const unparsed = requirement("4.x", "4.1.2");
+    const unparsedBesideSatisfied = requirement("4.x || ^4.1.2", "4.1.2");
+    const unparsedVersion = requirement("^4.1.2", "4.1.2+build.1");
     const missing = requirement("^4.1.2", undefined);
-    expect(unsatisfiedPeerRanges([unparsed, missing])).toEqual([
+    expect(
+      unsatisfiedPeerRanges([unparsed, unparsedBesideSatisfied, unparsedVersion, missing]),
+    ).toEqual([
       { ...unparsed, kind: "unparsed" },
+      { ...unparsedBesideSatisfied, kind: "unparsed" },
+      { ...unparsedVersion, kind: "unparsed" },
       { ...missing, kind: "missing" },
     ]);
   });

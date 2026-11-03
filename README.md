@@ -65,8 +65,9 @@ dry-run output, mutation snapshots, and argv logs. Its dependency graph is
 `effect@4.1.2` (including `effect/cli`), `@effect/platform-bun@4.1.2`
 (`BunServices.layer` and `BunRuntime.runMain`), and
 `@effect/platform-node-shared@4.1.2`. Tests run on `vitest@5.1.0`.
-`bun run lint:effect` checks the Effect rules through `@effect/tsgo`, which
-also serves Effect diagnostics to the editor language server.
+`bun run lint:effect` checks the Effect rules through `@effect/tsgo`. The
+same package can run as the editor's TypeScript language server
+(`node_modules/.bin/effect-tsgo tsc --lsp --stdio`).
 `@effect/cli` and `@effect/platform` are removed: neither has a 4.x release,
 the CLI API moved into core, and the standalone platform package was unused
 here.
