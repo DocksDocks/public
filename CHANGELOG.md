@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-03 - docks-kit 0.22.6: omp spends the full coding-plan quota
+
+### Changed
+
+- The kit no longer turns on omp's `retry.usageAwareFallback`. omp no longer
+  asks "Coding-plan reserve reached" when a plan has 10% quota or less left.
+  Subagents no longer move to a fallback model at that point without asking.
+- omp now moves to a model in `retry.fallbackChains` only after the provider
+  rejects a request with a usage-limit error.
+- Sync removes `retry.usageAwareFallback: true` from
+  `~/.omp/agent/config.yml`. A different value that a user set stays.
+
 ## 2026-10-29 - docks-kit 0.22.5: omp denies a git push ref in a variable instead of asking
 
 ### Changed
