@@ -9,8 +9,8 @@
   `default`. They now take the live tier of the main session for each
   provider. In a new session, `docks-kit omp --fast` therefore switches them
   between fast and normal with the other OpenAI work.
-- `--fast` and sync never set an Anthropic tier, and the SoT still starts each
-  session with `tier.anthropic: none`. `/fast on` in an Opus session sets the
+- `--fast` never changes the Anthropic tier, and sync sets the deployed
+  `tier.anthropic` to the SoT value `none`. `/fast on` in an Opus session sets the
   Anthropic tier to `priority` for that session, and the reviewers inherit it.
   Use `docks-kit omp --fast` and a new session to keep Anthropic models normal.
 - The user chose this setting (#134). In the #130 benchmark, Terra `high` on

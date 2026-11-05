@@ -670,8 +670,9 @@ The four review agents inherit the live tier of the main session
 and on standard processing when it is `none`. A running session keeps the tier
 it started with, so its reviewers do not follow a later toggle.
 
-`--fast` and sync never set an Anthropic tier, and the SoT starts each session
-with `tier.anthropic: none`. In omp 18.16.0, `/fast on` in a session whose current
+`--fast` never changes the Anthropic tier, and sync sets the deployed
+`tier.anthropic` to the SoT value `none`, so each session starts with it. In omp
+18.16.0, `/fast on` in a session whose current
 model is Anthropic sets `anthropic: priority` for that session. The reviewers
 then inherit it, so their Opus 5.5 fallback also runs fast. omp has no
 override value that inherits only the OpenAI tier. To keep Anthropic models
