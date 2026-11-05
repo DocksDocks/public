@@ -209,6 +209,8 @@ const ALLOWED = [
   `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath'='/dev/null'" git commit -m x`,
   `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath=/dev/null'" git commit -m x`,
   "git config --get core.hooksPath",
+  // The chained line from #126.
+  "git config --get core.hooksPath; ls .git/hooks | grep -v sample",
   "git config get core.hookspath",
   "git commit -aqm x",
   "git merge --no-verify-signatures feat/x",
@@ -333,9 +335,9 @@ describe("omp bash.patterns policy under yolo", () => {
     ];
   }
 
-  // Two-letter clusters reach every shape that a former cluster rule read;
-  // longer ones only slow the test, because an allowed command is checked
-  // against every rule.
+  // No deny rule may catch a git commit or git am short-option cluster. Two
+  // letters keep the run fast, because an allowed command is checked against
+  // every rule.
   it.each(Object.entries(SHORT_OPTIONS))(
     "allows every git %s short-option cluster",
     (subcommand, options) => {
@@ -420,26 +422,55 @@ describe("omp bash.patterns sync merge", () => {
     expect(ompYoloOutcome(rules, "curl https://example.com")).toBe("prompt");
   });
 
-  // Migration: a deployed prompt that an older merge left ahead of a user deny
-  // for the same command moves behind that deny on the next sync.
-  it("moves a user deny ahead of a deployed prompt that matches the same command", () => {
+  // A user deny and a user prompt can share a match. The deny moves first on
+  // the next sync, also when the deployed file lists the prompt first.
+  it("moves a user deny ahead of a user prompt that matches the same command", () => {
     const shadowed = [
       "bash:",
       "  patterns:",
-      '    - match: "git clean *"',
+      '    - match: "git clean -x *"',
       "      approval: prompt",
-      '    - match: "git clean *"',
+      '    - match: "git clean -x *"',
       "      approval: deny",
       "",
     ].join("\n");
-    expect(ompApproval(bashPatterns(shadowed), "git clean -fdx")).toBe("prompt");
+    expect(ompApproval(bashPatterns(shadowed), "git clean -x -f")).toBe("prompt");
 
     const rules = bashPatterns(mergeOmpConfig(SOT_TEXT, shadowed));
 
-    expect(ompYoloOutcome(rules, "git clean -fdx")).toBe("deny");
-    expect(rules.filter(({ match }) => match === "git clean *")).toEqual([
-      { match: "git clean *", approval: "deny" },
-      { match: "git clean *", approval: "prompt" },
+    expect(ompYoloOutcome(rules, "git clean -x -f")).toBe("deny");
+    expect(rules.filter(({ match }) => match === "git clean -x *")).toEqual([
+      { match: "git clean -x *", approval: "deny" },
+      { match: "git clean -x *", approval: "prompt" },
+    ]);
+  });
+
+  // The kit ships no prompt today, so a small SoT pins where a kit prompt goes.
+  it("orders a kit prompt after user prompts and ahead of user and kit allows", () => {
+    const sot = [
+      "bash:",
+      "  patterns:",
+      '    - { match: "kit-deny *", approval: deny }',
+      '    - { match: "kit-prompt *", approval: prompt }',
+      '    - { match: "kit-allow *", approval: allow }',
+      "",
+    ].join("\n");
+    const deployed = [
+      "bash:",
+      "  patterns:",
+      '    - { match: "user-allow *", approval: allow }',
+      '    - { match: "user-prompt *", approval: prompt }',
+      '    - { match: "user-deny *", approval: deny }',
+      "",
+    ].join("\n");
+
+    expect(bashPatterns(mergeOmpConfig(sot, deployed)).map(({ match }) => match)).toEqual([
+      "kit-deny *",
+      "user-deny *",
+      "user-prompt *",
+      "kit-prompt *",
+      "user-allow *",
+      "kit-allow *",
     ]);
   });
 

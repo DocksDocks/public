@@ -118,12 +118,13 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   (`gio trash -- <path>`, or `trash <path>` on macOS); omp agents remove a
   temporary file or directory with `docks-kit scratch remove`. `rm` of the
   home directory or `/` and `HOME` reassignment are denied. omp also denies
-  every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`. omp
-  runs every command that no deny matches without a question, in subagents
-  too. Claude Code and Codex ask before a recursive `rm`, `find -delete`,
-  every `git rm`, `git clean`, `git reset --hard`, and any `git push` that
-  could force; a Codex ask can go to its `auto_review` reviewer. Details,
-  per-tool differences, and gaps: `docks-kit docs command-guards`.
+  every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`. The
+  kit ships no omp prompt rule, so omp runs every command that no deny
+  matches without a question, in subagents too. Claude Code and Codex ask
+  before a recursive `rm`, `find -delete`, every `git rm`, `git clean`,
+  `git reset --hard`, and any `git push` that could force; a Codex ask can go
+  to its `auto_review` reviewer. Details, per-tool differences, and gaps:
+  `docks-kit docs command-guards`.
 - **Agent cleanup (omp)** — `docks-kit scratch` creates agent temporary
   directories and removes agent temporary files and directories with checked
   paths, and `docks-kit tidy` removes merged idle worktrees, their containers,

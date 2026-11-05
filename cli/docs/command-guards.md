@@ -6,28 +6,33 @@ The short rule for agents: **to remove, use the trash**. Run
 temporary file or directory with `docks-kit scratch remove <path>` instead.
 To remove a path from the git index, run `git rm -- <path>`.
 
-The policy follows one principle: **fail closed**. A command is allowed only
-in a canonical form that is safe by construction. In Claude Code and Codex,
-every other form that could force, empty, or delete asks. Where omp's
-critical-command check acts, the form is denied instead. omp also denies a `$`
-or a backtick after `git push`, because the agent can always write the ref
-literally. A false positive in the ask tier is accepted.
+Claude Code and Codex follow one principle: **fail closed**. A command is
+allowed only in a canonical form that is safe by construction, and every other
+form that could force, empty, or delete asks. omp keeps only the deny part of
+that principle. Where omp's critical-command check acts, the form is denied
+instead of asked. omp also denies a `$` or a backtick after `git push`,
+because the agent can always write the ref literally. A false positive in the
+ask tier is accepted.
 
-omp is the exception: by owner decision (0.22.8, #126), omp never asks
-before a shell command. The kit ships only deny rules and the `trash *`
+omp is the exception: by owner decision (0.22.8, #126), the kit ships no omp
+prompt rule. The kit's `bash.patterns` holds only deny rules and the `trash *`
 allow. Under the kit's `tools.approvalMode: yolo`, omp runs every command
 that no deny matches without a question, in the main session and in
 subagents. This includes any `rm` that omp does not deny, `git clean`,
 `git reset --hard`, a force push that no deny matches, and a git command
-that skips the repository's hooks. The deployed omp agent prompt forbids a
-force push and a hook skip. It tells the agent to ask the user before
+that skips the repository's hooks. A prompt rule that the user adds to
+`~/.omp/agent/config.yml` survives sync and still asks; a subagent rejects
+it. The deployed omp agent prompt forbids `--force`, `-f`, and their
+abbreviations with `git push`, and it forbids each hook skip. It tells the
+agent to use `ask` before a force push, and to ask the user before
 `git clean` or `git reset --hard`.
 
 The policy sorts shell commands into three tiers. omp uses two of them: deny
 and allow.
 
 - **Deny**: the command never runs, and nobody can approve it in the session.
-- **Ask**: the command needs approval before it runs. omp has no ask tier.
+- **Ask**: the command needs approval before it runs. The kit ships no omp
+  rule in this tier.
   - Claude Code asks a person, even in auto mode.
   - Codex sends the prompt to the approvals reviewer in the kit's
     `config.toml`. That reviewer is `auto_review`, a reviewer subagent, so a
@@ -64,8 +69,9 @@ that `eval` starts.
 | `trash <path>` (macOS) | allow | allow | allow |
 
 In Claude Code, a `git push` asks when it holds any of these words. Codex
-asks for every `git push`. omp runs each of these forms, unless a deny rule
-matches, such as a force push to `origin main`:
+asks for every `git push`. omp runs each of these forms. Its force-push deny
+matches only `git push --force` or `git push -f` directly before
+`origin main` or `origin master`:
 
 - a `+` refspec;
 - any long option that starts with `--f`, such as `--force`,
@@ -101,22 +107,22 @@ such as `env`, or a path such as `/usr/bin/git` does not hide the push.
 
 A git command can skip the repository's hooks, for example with
 `--no-verify`, `git commit -n`, `git am -n`, or a `core.hooksPath` change.
-omp has no rule for these commands, so it runs them without a question. The
-deployed omp agent prompt forbids each hook skip. Claude Code has no rule
-either, so its classifier decides. Codex asks for each `git push`,
-`git merge`, and `git rebase` that starts the command. Codex has no rule for
-`git commit`, `git am`, or `git pull`.
+The kit ships no omp rule for these commands, so omp runs them without a
+question. The deployed omp agent prompt forbids each hook skip. Claude Code
+has no rule either, so its classifier decides. Codex asks for each
+`git push`, `git merge`, and `git rebase` that starts the command. Codex has
+no rule for `git commit`, `git am`, or `git pull`.
 
 ## Why the tools differ
 
 | Topic | omp | Claude Code | Codex |
 | --- | --- | --- | --- |
 | Rule order | First match wins | Deny, then ask, then allow, whatever the order | Strictest matching rule wins |
-| Exception for one form | omp has no ask tier, so it needs no exception | An allow never beats a matching ask, so every `git rm` asks | An allow never beats a matching prompt, so every `gio trash` asks |
+| Exception for one form | The kit ships no omp prompt rule, so it needs no exception | An allow never beats a matching ask, so every `git rm` asks | An allow never beats a matching prompt, so every `gio trash` asks |
 | Pattern | Glob on the whole line and on each quote-stripped segment; `*` crosses spaces; no literal `*` | Glob on each subcommand as written, quotes included; `\*` is a literal `*` | Exact argv tokens from the start, with alternatives |
 | `rm` by path (`/bin/rm`) | Matched by `*/rm` forms | Matched by `*/rm` forms | Resolved to the `rm` rules |
 | Leading assignment `X=1 cmd` | Part of the line | Stripped before deny and ask rules | A script with it is not split |
-| What an ask means | No ask: a command that no deny matches runs, in the main session and in subagents | A person | The `auto_review` reviewer subagent |
+| What an ask means | The kit ships no ask; a user prompt rule asks a person in the main session, and a subagent rejects it | A person | The `auto_review` reviewer subagent |
 | Critical-command check | Turns a prompt into an allow under yolo, so the kit denies those shapes | Asks or denies for an `rm` of a critical path | Prompts for a forced `rm` that no rule matches |
 
 ## How an agent removes files
@@ -247,6 +253,13 @@ the home directory, and no glob can express "inside the temporary directory".
   `remote.<name>.push` makes a plain `git push` force. No rule sees git
   configuration. `git push --delete` and `git push --prune` remove remote
   branches without force; they ask only in Codex.
+- **omp, force push to `main` in another spelling**: the force-push deny
+  rules match only `git push --force` or `git push -f`, then
+  `origin main` or `origin master`. Every other force push to `main` runs
+  without a question, such as `git push origin main --force`,
+  `git push -vf origin main`, `git push --force-with-lease origin main`,
+  `git push origin +main`, `git push -f origin HEAD:main`, or
+  `git push --mirror origin`. Until 0.22.8 these forms asked.
 - **omp, force push after a prefix**: the force-push deny rules start with
   `git push`, not `*`. So a force push to `origin main` after a shell keyword,
   a wrapper, or a path runs without a check, such as

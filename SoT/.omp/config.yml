@@ -173,9 +173,10 @@ bash:
   # matches any text, spaces and slashes included; no escape spells a literal
   # `*`.
   # The kit ships no prompt rule, because a subagent rejects every prompt.
-  # A command that no deny rule matches runs under yolo: a plain rm, git rm,
-  # git worktree remove, gio trash, docks-kit scratch remove, git clean,
-  # git reset --hard, and every git push that the denies below do not stop.
+  # A command that no deny rule matches runs under yolo, unless a prompt rule
+  # that the user added matches it: a plain rm, git rm, git worktree remove,
+  # gio trash, docks-kit scratch remove, git clean, git reset --hard, and
+  # every git push that the denies below do not stop.
   # omp's critical-command check turns a prompt into an allow under yolo, so
   # every rm shape it can flag is a deny.
   patterns:
