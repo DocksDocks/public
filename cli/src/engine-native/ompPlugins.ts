@@ -7,7 +7,10 @@
  * omp deletes the previous plugin folder on `omp plugin upgrade`, so a running
  * omp session loses the plugin agents and skill script paths of that folder.
  * For each version change, the pass warns and writes one event file into the
- * upgrade log. The kit plugin extension `pluginUpgrades.ts` reads that log.
+ * upgrade log. When the versions cannot be read after the upgrade, each
+ * upgrade counts as a change to the version `unknown`. A failed log write
+ * gives a warning, not a sync failure. The kit plugin extension
+ * `pluginUpgrades.ts` reads that log.
  */
 import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, readdirSync, realpathSync, unlinkSync } from "node:fs";
@@ -27,6 +30,8 @@ const MARKETPLACE_PLUGIN_IDS = ["docks@docks", "plan-lifecycle@docks"] as const;
 const UPGRADE_EVENTS_KEPT = 100;
 /** An event file name: the `finishedAt` time in milliseconds, a random part, and `.json`. */
 const UPGRADE_EVENT_FILE = /^(\d+)-[0-9a-f]+\.json$/;
+/** The version of an upgrade event when the inventory read did not give it. */
+const UNKNOWN_VERSION = "unknown";
 
 // -------------------------------------------------------------- plugins ----
 
@@ -63,7 +68,7 @@ type PluginOperation =
   | (VersionedOperation & { readonly kind: "npm" })
   | { readonly kind: "link"; readonly id: string };
 
-/** One marketplace plugin upgrade that changed the installed version. */
+/** One marketplace plugin upgrade that changed the installed version or can have changed it. */
 interface PluginUpgrade {
   readonly id: string;
   readonly before: string;
@@ -165,8 +170,9 @@ function realPath(path: string): string | undefined {
 }
 
 /**
- * The marketplace upgrades that changed the version. `after` is the inventory
- * read after all operations; an operation without both versions is not an upgrade.
+ * The marketplace upgrades that changed the version or can have changed it.
+ * `after` is the inventory read after all operations. When that read failed,
+ * each upgrade of a present plugin counts as a change to `unknown`.
  */
 function versionChanges(
   operations: ReadonlyArray<PluginOperation>,
@@ -174,15 +180,16 @@ function versionChanges(
 ): Array<PluginUpgrade> {
   const upgrades: Array<PluginUpgrade> = [];
   for (const operation of operations) {
-    if (operation.kind !== "marketplace" || operation.before === undefined) continue;
-    const version = after?.marketplace.get(operation.id);
-    if (version === undefined || version === operation.before) continue;
-    upgrades.push({
-      id: operation.id,
-      before: operation.before,
-      after: version,
-      finishedAt: operation.finishedAt,
-    });
+    // Only `omp plugin upgrade` removes a folder, and only a present plugin gets that command.
+    if (operation.kind !== "marketplace" || operation.present !== true) continue;
+    const { id, before, finishedAt } = operation;
+    if (after === undefined) {
+      upgrades.push({ id, before: before ?? UNKNOWN_VERSION, after: UNKNOWN_VERSION, finishedAt });
+      continue;
+    }
+    const version = after.marketplace.get(id);
+    if (before === undefined || version === undefined || version === before) continue;
+    upgrades.push({ id, before, after: version, finishedAt });
   }
   return upgrades;
 }
@@ -208,25 +215,39 @@ function pruneUpgradeLog(dir: string): void {
 /**
  * Writes one new event file for each upgrade, then prunes the log. A writer
  * creates only its own files, so concurrent syncs keep the events of each other.
+ * Returns a warning when a step fails. It does not throw, because the
+ * upgrades are already done and the sync must still give its restart advice.
  */
-function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): void {
+function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): string | undefined {
   // The kit plugin extension `pluginUpgrades.ts` reads the same folder.
   const dir = p(kitCacheDir(home), "omp-plugin-upgrades");
-  mkdirSync(dir, { recursive: true, mode: 0o700 });
-  chmodSync(dir, 0o700);
-  for (const upgrade of upgrades) {
-    const event = {
-      version: 1,
-      id: upgrade.id,
-      before: upgrade.before,
-      after: upgrade.after,
-      finishedAt: new Date(upgrade.finishedAt).toISOString(),
-    };
-    const name = `${upgrade.finishedAt}-${randomBytes(8).toString("hex")}.json`;
-    // replaceFile writes a temporary name in the same folder and renames it into place.
-    replaceFile(p(dir, name), `${JSON.stringify(event)}\n`, { mode: 0o600 });
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    chmodSync(dir, 0o700);
+    for (const upgrade of upgrades) {
+      const event = {
+        version: 1,
+        id: upgrade.id,
+        before: upgrade.before,
+        after: upgrade.after,
+        finishedAt: new Date(upgrade.finishedAt).toISOString(),
+      };
+      const name = `${upgrade.finishedAt}-${randomBytes(8).toString("hex")}.json`;
+      // replaceFile writes a temporary name in the same folder and renames it into place.
+      replaceFile(p(dir, name), `${JSON.stringify(event)}\n`, { mode: 0o600 });
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return `omp plugin upgrade log not written: ${detail} — running omp sessions get no reminder for these upgrades and must restart`;
   }
-  pruneUpgradeLog(dir);
+  try {
+    pruneUpgradeLog(dir);
+  } catch (error) {
+    // The events are written, so the sessions still get their reminders.
+    const detail = error instanceof Error ? error.message : String(error);
+    return `omp plugin upgrade log not pruned: ${detail} — it can keep more than ${UPGRADE_EVENTS_KEPT} event files`;
+  }
+  return undefined;
 }
 
 export async function syncPlugins(ctx: Ctx): Promise<number> {
@@ -353,14 +374,20 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     change(`omp plugins synced: ${items.join(", ")}`);
     ctx.nextStepTriggers.ompRestart = true;
     const upgrades = versionChanges(operations, after);
+    if (after === undefined && upgrades.length > 0) {
+      warn(
+        "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
+      );
+    }
     for (const upgrade of upgrades) {
       warn(
         `omp plugin ${upgrade.id} ${upgrade.before} -> ${upgrade.after}: running omp sessions lose its plugin agents and skill script paths until they restart.`,
       );
     }
     if (upgrades.length > 0) {
-      recordUpgrades(ctx.home, upgrades);
       ctx.nextStepTriggers.ompPluginUpgraded = true;
+      const logFailure = recordUpgrades(ctx.home, upgrades);
+      if (logFailure !== undefined) warn(logFailure);
     }
   } else {
     verbose("omp plugins already in sync");

@@ -7,6 +7,7 @@
  * already resolves to it.
  */
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -41,6 +42,7 @@ vi.mock("../../src/engine-native/bun", () => ({
 }));
 
 import type { Ctx } from "../../src/engine-native";
+import { syncPlugins } from "../../src/engine-native/ompPlugins";
 import { ompNextSteps, ompSync } from "../../src/engine-native/ompSync";
 import {
   makeDependencyManager,
@@ -185,6 +187,33 @@ function upgradeWarnings(output: ReadonlyArray<string>): Array<string> {
     .split("\n")
     .filter((line) => line.includes("running omp sessions lose"))
     .map((line) => line.slice(line.indexOf("omp plugin ")));
+}
+
+/** Each line that contains `start`, from `start` to the line end. */
+function messageLines(output: ReadonlyArray<string>, start: string): Array<string> {
+  return output
+    .join("")
+    .split("\n")
+    .filter((line) => line.includes(start))
+    .map((line) => line.slice(line.indexOf(start)));
+}
+
+/**
+ * Each upgrade that sync logged, as `<id> <before> -> <after>`, sorted. Sync
+ * names a file with 16 random hex digits, so the files that a test made are left out.
+ */
+function loggedUpgrades(root: string): Array<string> {
+  return readdirSync(upgradeLog(root))
+    .filter((name) => /^\d+-[0-9a-f]{16}\.json$/.test(name))
+    .map((name) => {
+      const event = JSON.parse(readFileSync(join(upgradeLog(root), name), "utf8")) as {
+        id: string;
+        before: string;
+        after: string;
+      };
+      return `${event.id} ${event.before} -> ${event.after}`;
+    })
+    .sort();
 }
 
 /**
@@ -596,23 +625,108 @@ describe("omp plugin inventory", () => {
     ]);
     await ompSync(makeCtx(root));
 
-    const events = readdirSync(upgradeLog(root)).map(
-      (name) =>
-        JSON.parse(readFileSync(join(upgradeLog(root), name), "utf8")) as {
-          id: string;
-          before: string;
-          after: string;
-        },
-    );
-    expect(events.map(({ id, before, after }) => `${id} ${before} -> ${after}`).sort()).toEqual([
+    expect(loggedUpgrades(root)).toEqual([
       "docks@docks 0.18.0 -> 0.19.0",
       "plan-lifecycle@docks 0.9.0 -> 0.10.0",
     ]);
   });
 
+  it("keeps the event files of two overlapping syncs that upgrade different plugins", async () => {
+    const root = makeRoot();
+    // Each sync takes the next first inventory; both second reads give the same versions.
+    respondWithInventory([
+      inventoryPresent(root, "0.18.0", "0.10.0"),
+      inventoryPresent(root, "0.19.0", "0.9.0"),
+      inventoryPresent(root, "0.19.0", "0.10.0"),
+    ]);
+
+    await Promise.all([syncPlugins(makeCtx(root)), syncPlugins(makeCtx(root))]);
+
+    // Both first inventory reads ran before either upgrade, so the syncs overlapped.
+    expect(ompCommands().slice(0, 2)).toEqual(["plugin list --json", "plugin list --json"]);
+    expect(loggedUpgrades(root)).toEqual([
+      "docks@docks 0.18.0 -> 0.19.0",
+      "plan-lifecycle@docks 0.9.0 -> 0.10.0",
+    ]);
+  });
+
+  it("warns about and logs each upgrade as unknown when the versions cannot be read after it", async () => {
+    const root = makeRoot();
+    respondWithInventory([inventoryPresent(root), "not json"]);
+    const output: Array<string> = [];
+    const ctx = makeCtx(root, { output });
+
+    await ompSync(ctx);
+
+    expect(messageLines(output, "omp plugin versions")).toEqual([
+      "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
+    ]);
+    expect(upgradeWarnings(output)).toEqual([
+      "omp plugin docks@docks 0.18.0 -> unknown: running omp sessions lose its plugin agents and skill script paths until they restart.",
+      "omp plugin plan-lifecycle@docks 0.9.0 -> unknown: running omp sessions lose its plugin agents and skill script paths until they restart.",
+    ]);
+    expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
+    expect(loggedUpgrades(root)).toEqual([
+      "docks@docks 0.18.0 -> unknown",
+      "plan-lifecycle@docks 0.9.0 -> unknown",
+    ]);
+  });
+
+  it("warns and keeps the restart advice when the upgrade log cannot be written", async () => {
+    const root = makeRoot();
+    // A file at the log path makes the folder creation fail.
+    mkdirSync(join(root, ".cache", "docks-kit"), { recursive: true });
+    writeFileSync(upgradeLog(root), "");
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+    const output: Array<string> = [];
+    const ctx = makeCtx(root, { output });
+
+    await ompSync(ctx);
+
+    const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
+    expect(otherLogWarnings).toEqual([]);
+    expect(logWarning).toMatch(
+      /^omp plugin upgrade log not written: .+ — running omp sessions get no reminder for these upgrades and must restart$/,
+    );
+    expect(pluginSummary(output)).toBe(
+      "omp plugins synced: docks@docks 0.18.0 -> 0.19.0, plan-lifecycle@docks 0.9.0 (current)",
+    );
+    expect(upgradeWarnings(output)).toHaveLength(1);
+    expect(ctx.failures).toEqual([]);
+    expect(ompNextSteps(ctx)).toEqual([
+      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
+    ]);
+  });
+
+  it("warns and keeps the new event when the upgrade log cannot be pruned", async () => {
+    const root = makeRoot();
+    mkdirSync(upgradeLog(root), { recursive: true });
+    // The oldest name is a folder, so the prune cannot unlink it.
+    mkdirSync(join(upgradeLog(root), "1000-aa.json"));
+    for (let index = 1; index < 100; index++) {
+      writeFileSync(join(upgradeLog(root), `${1000 + index}-aa.json`), "{}\n");
+    }
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+    const output: Array<string> = [];
+    const ctx = makeCtx(root, { output });
+
+    await ompSync(ctx);
+
+    const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
+    expect(otherLogWarnings).toEqual([]);
+    expect(logWarning).toMatch(
+      /^omp plugin upgrade log not pruned: .+ — it can keep more than 100 event files$/,
+    );
+    expect(readdirSync(upgradeLog(root))).toHaveLength(101);
+    expect(loggedUpgrades(root)).toEqual(["docks@docks 0.18.0 -> 0.19.0"]);
+    expect(ctx.failures).toEqual([]);
+  });
+
   it("cuts the upgrade log to the newest 100 event files", async () => {
     const root = makeRoot();
     mkdirSync(upgradeLog(root), { recursive: true });
+    // A mode that the umask cannot make 0700, so the check below needs the sync's chmod.
+    chmodSync(upgradeLog(root), 0o755);
     const old = Array.from({ length: 105 }, (_, index) => `${1000 + index}-aa.json`);
     for (const name of old) writeFileSync(join(upgradeLog(root), name), "{}\n");
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
@@ -623,6 +737,10 @@ describe("omp plugin inventory", () => {
     expect(files).toHaveLength(100);
     // 106 files exist after the write, so the six oldest go.
     expect(files.filter((name) => old.includes(name)).sort()).toEqual(old.slice(6).sort());
+    // The folder had mode 0755 before the sync, so the sync set 0700.
+    if (process.platform !== "win32") {
+      expect(statSync(upgradeLog(root)).mode & 0o777).toBe(0o700);
+    }
   });
 
   it.each([
@@ -632,6 +750,12 @@ describe("omp plugin inventory", () => {
       false,
       (root: string) => [INVENTORY_EMPTY, inventoryPresent(root, "0.19.0", "0.10.0")],
     ],
+    [
+      "a new install whose versions cannot be read after it",
+      false,
+      () => [INVENTORY_EMPTY, "not json"],
+    ],
+    ["a sync that cannot read the inventory", false, () => ["not json"]],
     ["a dry run", true, (root: string) => [inventoryPresent(root, "0.19.0")]],
   ])("prints no upgrade warning and logs nothing for %s", async (_name, dryRun, inventories) => {
     const root = makeRoot();
@@ -642,6 +766,7 @@ describe("omp plugin inventory", () => {
     await ompSync(ctx);
 
     expect(upgradeWarnings(output)).toEqual([]);
+    expect(messageLines(output, "omp plugin versions")).toEqual([]);
     expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(false);
     expect(existsSync(upgradeLog(root))).toBe(false);
   });

@@ -1,11 +1,11 @@
 /**
- * The upgrade log connects two programs: `ompPlugins.ts syncPlugins` writes
- * one event file for each plugin upgrade that changed a version, and the kit
+ * The upgrade log connects two programs. `ompPlugins.ts syncPlugins` writes
+ * one event file for each plugin upgrade that changed a version. The kit
  * plugin extension `pluginUpgrades.ts` reminds each main omp session about the
  * events that finished after its omp process started. These cases run both
  * against one temporary home with a mocked omp.
  */
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,6 +41,8 @@ import {
 
 const PIN = "0.13.0";
 const roots: Array<string> = [];
+/** File modes do not block reads on Windows or for root. */
+const modesBlockReads = process.platform !== "win32" && process.getuid?.() !== 0;
 
 type Handler = (event: unknown, ctx: unknown) => Promise<{ additionalContext: string } | undefined>;
 
@@ -221,5 +223,56 @@ describe("plugin upgrade reminders", () => {
     const handler = load(home, 0);
 
     expect(await toolResult(handler, "s1")).toBeUndefined();
+  });
+
+  it("names the version unknown when the versions cannot be read after the upgrade", async () => {
+    const home = makeHome();
+    const handler = load(home, Date.now() - 1000);
+    await sync(home, inventory(home, "0.18.0", "0.9.0"), "not json");
+
+    // Both upgrades can finish in the same millisecond, so either order is valid.
+    const docks = "docks@docks 0.18.0 -> unknown";
+    const plan = "plan-lifecycle@docks 0.9.0 -> unknown";
+    expect([reminder(`${docks}, ${plan}`), reminder(`${plan}, ${docks}`)]).toContain(
+      await toolResult(handler, "s1"),
+    );
+  });
+
+  it.skipIf(!modesBlockReads)("reminds a session after an event file read recovers", async () => {
+    const home = makeHome();
+    const dir = upgradeLogDir(home);
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, `${Date.now()}-a1.json`);
+    const finishedAt = new Date(Date.now()).toISOString();
+    writeFileSync(
+      file,
+      JSON.stringify({
+        version: 1,
+        id: "docks@docks",
+        before: "0.18.0",
+        after: "0.19.0",
+        finishedAt,
+      }),
+    );
+    const handler = load(home, Date.now() - 1000);
+
+    chmodSync(file, 0o000);
+    expect(await toolResult(handler, "s1")).toBeUndefined();
+    chmodSync(file, 0o600);
+    expect(await toolResult(handler, "s1")).toBe(reminder("docks@docks 0.18.0 -> 0.19.0"));
+  });
+
+  it.skipIf(!modesBlockReads)("reminds a session after a log folder read recovers", async () => {
+    const home = makeHome();
+    const handler = load(home, Date.now() - 1000);
+    await sync(home, inventory(home, "0.18.0", "0.9.0"), inventory(home, "0.19.0", "0.9.0"));
+
+    chmodSync(upgradeLogDir(home), 0o000);
+    try {
+      expect(await toolResult(handler, "s1")).toBeUndefined();
+    } finally {
+      chmodSync(upgradeLogDir(home), 0o700);
+    }
+    expect(await toolResult(handler, "s1")).toBe(reminder("docks@docks 0.18.0 -> 0.19.0"));
   });
 });

@@ -2,13 +2,15 @@
  * docks-kit-omp extension: plugin upgrade reminders for omp sessions.
  *
  * omp deletes the previous plugin folder on `omp plugin upgrade`. A running
- * omp session keeps the plugin folders that it found at startup, so its plugin
+ * omp session keeps the plugin folders that it found at startup. So its plugin
  * agents and skill script paths can fail after an upgrade. `docks-kit sync`
- * writes one event file for each upgrade that changed a version.
+ * writes one event file for each upgrade that changed a version, or that can
+ * have changed it (the version `unknown`).
  *
  * In each tool_result of a main session, this extension reads the events that
  * finished after this omp process started. It adds one reminder for the events
- * that the session did not get before.
+ * that the session did not get before. A folder or file that it cannot read
+ * gives no reminder for that tool result. The next tool result reads it again.
  *
  * The module imports only node: modules, so omp loads it without a package
  * install.
@@ -109,17 +111,19 @@ export interface PluginUpgradesOptions {
 /** The extension factory for one home folder and one process start. */
 export function pluginUpgrades(options: PluginUpgradesOptions): (pi: ExtensionApi) => void {
   const dir = upgradeLogDir(options.home);
-  /** Each event file read so far; undefined marks a file that is not an event. */
+  /** Each event file read so far; undefined marks a file whose content is not an event. */
   const read = new Map<string, PluginUpgradeEvent | undefined>();
   /** For each session id, the event files that its reminders named. */
   const told = new Map<string, Set<string>>();
 
-  /** The events of the log, read once for each file name. */
+  /** The events of the log. Each file name is read until one read succeeds. */
   function currentEvents(): Array<{ name: string; event: PluginUpgradeEvent }> {
     let names: Array<string>;
     try {
       names = readdirSync(dir).filter((name) => EVENT_FILE.test(name));
     } catch {
+      // A missing folder holds no events. Another error gives no events now,
+      // and the next tool result reads the folder again.
       return [];
     }
     const present = new Set(names);
@@ -128,13 +132,15 @@ export function pluginUpgrades(options: PluginUpgradesOptions): (pi: ExtensionAp
     const events: Array<{ name: string; event: PluginUpgradeEvent }> = [];
     for (const name of names) {
       if (!read.has(name)) {
-        let text: string | undefined;
+        let text: string;
         try {
           text = readFileSync(join(dir, name), "utf8");
         } catch {
-          text = undefined;
+          // A prune removed the file (ENOENT), or the read failed for now.
+          // The name stays out of the cache, so the next tool result reads it again.
+          continue;
         }
-        read.set(name, text === undefined ? undefined : parseUpgradeEvent(text));
+        read.set(name, parseUpgradeEvent(text));
       }
       const event = read.get(name);
       if (event !== undefined) events.push({ name, event });
