@@ -30,8 +30,9 @@ for GPT-6 Luna medium, so that row carries `n/a` for TTFT. AA measures no web
 search provider, so the `web` row carries no figures. The `reviewer` row comes
 from a later capture at Intelligence Index v5.0.1. The 2026-09-29 capture
 predates GPT-6.1 Terra. Compare that row only with other v5.0.1 figures (see
-GPT-6.1 Terra below). A review benchmark chose the model and tier of that role
-(DocksDocks/public#130), not these figures.
+GPT-6.1 Terra below). A review benchmark chose the model of that role
+(DocksDocks/public#130), not these figures. The tier of that role follows the
+main session (DocksDocks/public#134).
 
 The role map carries no Coding Agent Index column. That index measures specific
 agent harnesses and model levels, not omp roles. The snapshot section below
@@ -88,9 +89,8 @@ What omp's settings catalog establishes about these roles:
 `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
 `code-reviewer`, and `plan-reviewer` to `@reviewer`, so one key sets the
 model for every reviewer. `task.agentServiceTierOverrides` sets the same four
-agents to `inherit`, so they take the main session's tier for each provider:
-`priority` when `docks-kit omp --fast` has turned `tier.openai` on, and no
-tier when it is `none`. The bundled
+agents to `inherit`, so they take the live tier of the main session for each
+provider. "OpenAI fast mode" below describes how that tier changes. The bundled
 `reviewer` and `security-reviewer` agents ship with omp, and the
 `plan-lifecycle` plugin ships `code-reviewer` and `plan-reviewer`.
 `retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:high`, and
@@ -456,9 +456,9 @@ quick answer.
   `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
-- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`, and
-  the four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high`
-  on the main session's OpenAI tier. A `docks-kit omp` free session replaces
+- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`. The
+  four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on the
+  live tier of the main session. A `docks-kit omp` free session replaces
   both roles with its free model (see Free session launcher). A retry can
   fall back to the role's fallback chain, for the reviewers Opus 5.5 `high`.
 
@@ -662,11 +662,21 @@ values, and exits without starting a session. `priority` is the tier omp's
 `ultrafast` for a Codex model only when its catalog `serviceTiers` lists it,
 and the omp 18.4.9 catalog lists none for GPT-6.1 Sol, Astra, or Luna. The SoT
 does not declare `tier.openai`, so the additive sync merge keeps the toggled
-value. New sessions read it; a running session changes through `/fast`. The
-four review agents inherit the main session's tier
-(`task.agentServiceTierOverrides`), so the toggle also switches them. The SoT
-declares `tier.anthropic: none`, so fast mode never reaches Anthropic models,
-the reviewer fallback included.
+value. New sessions read it; a running session changes through `/fast`.
+
+The four review agents inherit the live tier of the main session
+(`task.agentServiceTierOverrides: inherit`). In a new session after
+`docks-kit omp --fast`, they run on `priority` when `tier.openai` is `priority`,
+and on standard processing when it is `none`. A running session keeps the tier
+it started with, so its reviewers do not follow a later toggle.
+
+`--fast` and sync never set an Anthropic tier, and the SoT starts each session
+with `tier.anthropic: none`. In omp 18.16.0, `/fast on` in a session whose current
+model is Anthropic sets `anthropic: priority` for that session. The reviewers
+then inherit it, so their Opus 5.5 fallback also runs fast. omp has no
+override value that inherits only the OpenAI tier. To keep Anthropic models
+on normal processing, use `docks-kit omp --fast` and a new session, not
+`/fast` in an Opus session.
 
 ## Maintenance
 
