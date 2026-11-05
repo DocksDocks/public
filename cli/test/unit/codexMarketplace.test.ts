@@ -73,6 +73,7 @@ function testCtx(home: string, records: Array<LogRecord>): Ctx {
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services: {
       logger,

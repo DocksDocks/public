@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.12: warn when an omp plugin upgrade removes a loaded folder
+
+### Added
+
+- omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
+  session then loses the plugin agents and skill script paths of that folder
+  (#129). For each marketplace upgrade that changes the version,
+  `docks-kit sync omp` now prints a warning that names the plugin and the
+  version change. The next step asks the user to restart running omp sessions.
+- Sync writes one event file for each such upgrade into
+  `~/.cache/docks-kit/omp-plugin-upgrades/` and keeps the newest 100. A failed
+  write of this log gives a warning, not a sync failure. The warning says that
+  running omp sessions get no reminder for these upgrades and must restart.
+- If sync cannot read the plugin versions after the upgrades, it warns. Each
+  upgrade of an installed marketplace plugin then counts as a change to the
+  version `unknown`, with its own warning and event.
+- The new kit plugin extension `pluginUpgrades.ts` reads that log. In a tool
+  result of each main omp session, it adds one reminder for the upgrades that
+  finished after its omp process started. The reminder names each plugin and
+  its version change, and it tells the agent to ask the user to restart omp.
+- Restart open omp sessions after `docks-kit sync omp`.
+
+### Limits
+
+- omp imports extension modules only at startup. An omp process that started
+  before a sync deployed `pluginUpgrades.ts` did not load it. Its sessions get
+  no reminder, also for the upgrades of that sync.
+- An upgrade that `docks-kit sync` did not run gives no reminder, for example
+  `omp plugin upgrade` by hand.
+- The warning, the next step, and the reminder assume that the session loaded
+  the user-scope install. omp keeps an old cache folder that a known project
+  registry still uses. So a session on a project-scope install keeps its
+  folder. For this reason, the reminder says "may".
+- A session that stays idle through more than 100 later upgrades loses the
+  oldest events.
+
 ## 2026-11-05 - docks-kit 0.22.11: omp reviewers follow the OpenAI fast toggle
 
 ### Changed

@@ -84,7 +84,59 @@ config-root registry lists `docks`, omp copies it forward itself: the sync runs
 plugin operation, the sync reads the inventory again and prints one line that
 names each plugin with its version change, for example
 `omp plugins synced: docks@docks 0.21.1 -> 0.22.0, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
-A dry run invokes no omp subcommand.
+omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
+session then loses the plugin agents and skill script paths of that folder. For
+each marketplace upgrade that changed the version, the sync prints a warning,
+for example
+`omp plugin docks@docks 0.21.1 -> 0.22.0: running omp sessions lose its plugin agents and skill script paths until they restart.`
+The next step then says
+`Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.`
+The sync also writes one event file for each such upgrade into the upgrade log
+`~/.cache/docks-kit/omp-plugin-upgrades/` (folder 0700, files 0600). The file
+name is `<finishedAt ms>-<random>.json`, and the file holds
+`{"version":1,"id":"<id>","before":"<v>","after":"<v>","finishedAt":"<ISO time>"}`.
+`finishedAt` is the time just after the upgrade command returned. Each sync
+writes only new files, through a temporary name and a rename, so concurrent
+syncs keep all events. Then it removes the oldest files beyond the newest 100.
+
+If the inventory read after the operations fails, the sync cannot see the new
+versions. It then warns
+`omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed`.
+Each upgrade of a present marketplace plugin then counts as a change. It gets
+the warning and an event with the after version `unknown`, for example
+`docks@docks 0.21.1 -> unknown`.
+
+A failed write or prune of the upgrade log does not fail the sync, because it
+is not a harness CLI operation. A failed write warns
+`omp plugin upgrade log not written: <error> — running omp sessions get no reminder for these upgrades and must restart`.
+The summary line, the upgrade warnings, and the next step stay. A failed prune
+keeps the new events and warns
+`omp plugin upgrade log not pruned: <error> — it can keep more than 100 event files`.
+
+The kit plugin extension `pluginUpgrades.ts` reads the upgrade log. In each
+tool result of a main omp session, it takes the events that finished after
+its omp process started. It adds one reminder for the events that the session
+did not get before. The reminder names each plugin with its version change. It
+says that the session may still use the removed folders. It tells the agent to
+ask the user to restart omp. A folder or file that the extension cannot read
+gives no reminder for that tool result. The next tool result reads it again.
+These limits apply:
+
+- omp imports extension modules only at startup. An omp process that started
+  before a sync deployed `pluginUpgrades.ts` did not load it. Its sessions get
+  no reminder, also for the upgrades of that sync.
+- An upgrade that `docks-kit sync` did not run gives no reminder, for example
+  `omp plugin upgrade` by hand.
+- The warning, the next step, and the reminder assume that the session loaded
+  the user-scope install. omp keeps an old cache folder that a known project
+  registry still uses. So a session on a project-scope install keeps its
+  folder. For this reason, the reminder says "may".
+- An omp process that started during the upgrade can get a reminder that it
+  does not need. A restart is harmless.
+- The log keeps the newest 100 events. A session that stays idle through more
+  than 100 later upgrades loses the oldest ones.
+
+A dry run invokes no omp subcommand and writes no upgrade event.
 
 Paths mirror upstream `dirs.ts` `DirResolver`, resolved from the environment
 plus directory probes, so a dry run still runs no omp subcommand. The agent

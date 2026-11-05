@@ -104,6 +104,11 @@ export function ompSummary(ctx: Ctx, state: OmpState): void {
 }
 
 export function ompNextSteps(ctx: Ctx): Array<string> {
+  if (ctx.nextStepTriggers.ompPluginUpgraded) {
+    return [
+      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
+    ];
+  }
   return ctx.verbose || ctx.nextStepTriggers.ompRestart
     ? ["Restart omp to load any refreshed plugins, skills, or tools."]
     : [];

@@ -459,6 +459,7 @@ function pluginCtx(home: string): Ctx {
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services,
   };

@@ -92,6 +92,7 @@ function testCtx(root: string, dryRun = false, stdout: Array<string> = []): Ctx 
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services,
     failures: [],

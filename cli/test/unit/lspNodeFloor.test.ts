@@ -75,6 +75,7 @@ function lspCtx(nodeVersion: string, missing: ReadonlyArray<ToolId>, sinks: Sink
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services,
   };
