@@ -6,7 +6,16 @@
  * row also carries `path`: the kit links its directory unless that entry
  * already resolves to it.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,7 +41,7 @@ vi.mock("../../src/engine-native/bun", () => ({
 }));
 
 import type { Ctx } from "../../src/engine-native";
-import { ompSync } from "../../src/engine-native/ompSync";
+import { ompNextSteps, ompSync } from "../../src/engine-native/ompSync";
 import {
   makeDependencyManager,
   makeEngineServices,
@@ -57,9 +66,9 @@ const ORIGINAL_OMP_ENV = new Map(OMP_ENV_KEYS.map((key) => [key, process.env[key
 
 /**
  * A complete inventory; the kit plugin row resolves to the kit directory under
- * `root`. `docksVersion` sets the docks@docks entry version.
+ * `root`. `docksVersion` and `planVersion` set the marketplace entry versions.
  */
-function inventoryPresent(root: string, docksVersion = "0.18.0"): string {
+function inventoryPresent(root: string, docksVersion = "0.18.0", planVersion = "0.9.0"): string {
   const kitDir = join(root, ".docks-kit", "omp-plugin");
   mkdirSync(kitDir, { recursive: true });
   return JSON.stringify({
@@ -69,7 +78,7 @@ function inventoryPresent(root: string, docksVersion = "0.18.0"): string {
     ],
     marketplace: [
       { id: "docks@docks", scope: "user", entries: [{ version: docksVersion }] },
-      { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: "0.9.0" }] },
+      { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: planVersion }] },
     ],
   });
 }
@@ -122,7 +131,7 @@ function makeCtx(
     prune: false,
     skipPluginRefresh: options.skipPluginRefresh ?? false,
     services,
-    nextStepTriggers: { ompRestart: false },
+    nextStepTriggers: { ompRestart: false, ompPluginUpgraded: false },
     failures: [],
   } as unknown as Ctx;
 }
@@ -164,6 +173,34 @@ function pluginSummary(output: ReadonlyArray<string>): string | undefined {
   return line?.slice(line.indexOf("omp plugins synced"));
 }
 
+/** The upgrade log folder under `root`, as `kitCacheDir` gives it. */
+function upgradeLog(root: string): string {
+  return join(root, ".cache", "docks-kit", "omp-plugin-upgrades");
+}
+
+/** Each upgrade warning line, from its message start to the line end. */
+function upgradeWarnings(output: ReadonlyArray<string>): Array<string> {
+  return output
+    .join("")
+    .split("\n")
+    .filter((line) => line.includes("running omp sessions lose"))
+    .map((line) => line.slice(line.indexOf("omp plugin ")));
+}
+
+/**
+ * Sets the fake clock when a command in `times` returns, so each operation
+ * finishes at a known time. Call it after `respondWithInventory`.
+ */
+function finishCommandsAt(times: Readonly<Record<string, number>>): void {
+  const respond = mocks.spawnProcess.getMockImplementation();
+  mocks.spawnProcess.mockImplementation(async (cmd: string, args: ReadonlyArray<string>) => {
+    const result: unknown = await respond?.(cmd, args);
+    const time = times[args.join(" ")];
+    if (time !== undefined) vi.setSystemTime(time);
+    return result;
+  });
+}
+
 describe("omp plugin inventory", () => {
   beforeEach(() => {
     mocks.payloadText.mockReset().mockImplementation((path) => {
@@ -180,6 +217,7 @@ describe("omp plugin inventory", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
     for (const [key, value] of ORIGINAL_OMP_ENV) {
       if (value === undefined) delete process.env[key];
@@ -509,5 +547,102 @@ describe("omp plugin inventory", () => {
     const lines = output.join("").split("\n");
     expect(lines).toContain(`[dry-run] omp plugin link ${root}/.docks-kit/omp-plugin`);
     expect(ompCommands()).toEqual([]);
+  });
+
+  it("warns about and logs a marketplace upgrade that changed the version", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const docksFinishedAt = 1_700_000_000_000;
+    const root = makeRoot();
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+    finishCommandsAt({
+      "plugin upgrade --scope user docks@docks": docksFinishedAt,
+      "plugin upgrade --scope user plan-lifecycle@docks": docksFinishedAt + 5000,
+    });
+    const output: Array<string> = [];
+    const ctx = makeCtx(root, { output });
+
+    await ompSync(ctx);
+
+    expect(upgradeWarnings(output)).toEqual([
+      "omp plugin docks@docks 0.18.0 -> 0.19.0: running omp sessions lose its plugin agents and skill script paths until they restart.",
+    ]);
+    expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
+    expect(ompNextSteps(ctx)).toEqual([
+      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
+    ]);
+    const files = readdirSync(upgradeLog(root));
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(new RegExp(`^${docksFinishedAt}-[0-9a-f]+\\.json$`));
+    expect(JSON.parse(readFileSync(join(upgradeLog(root), files[0] ?? ""), "utf8"))).toEqual({
+      version: 1,
+      id: "docks@docks",
+      before: "0.18.0",
+      after: "0.19.0",
+      finishedAt: new Date(docksFinishedAt).toISOString(),
+    });
+    if (process.platform !== "win32") {
+      expect(statSync(upgradeLog(root)).mode & 0o777).toBe(0o700);
+      expect(statSync(join(upgradeLog(root), files[0] ?? "")).mode & 0o777).toBe(0o600);
+    }
+  });
+
+  it("keeps the event files of two syncs that upgrade different plugins", async () => {
+    const root = makeRoot();
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+    await ompSync(makeCtx(root));
+    respondWithInventory([
+      inventoryPresent(root, "0.19.0"),
+      inventoryPresent(root, "0.19.0", "0.10.0"),
+    ]);
+    await ompSync(makeCtx(root));
+
+    const events = readdirSync(upgradeLog(root)).map(
+      (name) =>
+        JSON.parse(readFileSync(join(upgradeLog(root), name), "utf8")) as {
+          id: string;
+          before: string;
+          after: string;
+        },
+    );
+    expect(events.map(({ id, before, after }) => `${id} ${before} -> ${after}`).sort()).toEqual([
+      "docks@docks 0.18.0 -> 0.19.0",
+      "plan-lifecycle@docks 0.9.0 -> 0.10.0",
+    ]);
+  });
+
+  it("cuts the upgrade log to the newest 100 event files", async () => {
+    const root = makeRoot();
+    mkdirSync(upgradeLog(root), { recursive: true });
+    const old = Array.from({ length: 105 }, (_, index) => `${1000 + index}-aa.json`);
+    for (const name of old) writeFileSync(join(upgradeLog(root), name), "{}\n");
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+
+    await ompSync(makeCtx(root));
+
+    const files = readdirSync(upgradeLog(root));
+    expect(files).toHaveLength(100);
+    // 106 files exist after the write, so the six oldest go.
+    expect(files.filter((name) => old.includes(name)).sort()).toEqual(old.slice(6).sort());
+  });
+
+  it.each([
+    ["an unchanged upgrade", false, (root: string) => [inventoryPresent(root)]],
+    [
+      "a new install",
+      false,
+      (root: string) => [INVENTORY_EMPTY, inventoryPresent(root, "0.19.0", "0.10.0")],
+    ],
+    ["a dry run", true, (root: string) => [inventoryPresent(root, "0.19.0")]],
+  ])("prints no upgrade warning and logs nothing for %s", async (_name, dryRun, inventories) => {
+    const root = makeRoot();
+    respondWithInventory(inventories(root));
+    const output: Array<string> = [];
+    const ctx = makeCtx(root, { dryRun, output });
+
+    await ompSync(ctx);
+
+    expect(upgradeWarnings(output)).toEqual([]);
+    expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(false);
+    expect(existsSync(upgradeLog(root))).toBe(false);
   });
 });

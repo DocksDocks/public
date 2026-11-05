@@ -100,6 +100,7 @@ function lspCtx(
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services,
   };

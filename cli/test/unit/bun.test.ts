@@ -124,6 +124,7 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     failures: [],
   };

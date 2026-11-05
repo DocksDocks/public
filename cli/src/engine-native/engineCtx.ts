@@ -60,6 +60,8 @@ export interface Ctx {
     codexRestart: boolean;
     skillsRestart: boolean;
     ompRestart: boolean;
+    /** A marketplace plugin upgrade changed a version, so running omp sessions lost its folder. */
+    ompPluginUpgraded: boolean;
   };
   /** Harness-CLI operations that failed this run; a non-empty list fails the sync. */
   readonly failures: Array<string>;
@@ -148,6 +150,7 @@ export function makeCtx(services: EngineServices, options: CtxOptions): Ctx {
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     failures: [],
   };

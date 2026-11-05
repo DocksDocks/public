@@ -74,6 +74,7 @@ function testCtx(dryRun = false, stdout: Array<string> = [], stderr: Array<strin
       codexRestart: false,
       skillsRestart: false,
       ompRestart: false,
+      ompPluginUpgraded: false,
     },
     services,
     failures: [],
