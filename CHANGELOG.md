@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.11: omp reviewers follow the OpenAI fast toggle
+
+### Changed
+
+- `task.agentServiceTierOverrides` sets the four review agents (`reviewer`,
+  `security-reviewer`, `code-reviewer`, `plan-reviewer`) to `inherit`, not
+  `default`. They now take the main session's tier for each provider, so
+  `docks-kit omp --fast` switches them between fast and normal with the other
+  OpenAI work.
+- Anthropic models stay on normal processing: the SoT still declares
+  `tier.anthropic: none`.
+- The user chose this setting (#134). In the #130 benchmark, Terra `high` on
+  the fast tier let 35.15 known defects per 50 escape, against 34.90 on the
+  normal tier, and took a median of 35.7 s, against 69.3 s.
+- Restart open omp sessions after `docks-kit sync omp`.
+
 ## 2026-11-05 - docks-kit 0.22.10: omp reviewers run GPT-6.1 Terra high
 
 ### Changed

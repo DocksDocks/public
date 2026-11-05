@@ -45,10 +45,10 @@ task:
     code-reviewer: "@reviewer"
     plan-reviewer: "@reviewer"
   agentServiceTierOverrides:
-    reviewer: default
-    security-reviewer: default
-    code-reviewer: default
-    plan-reviewer: default
+    reviewer: inherit
+    security-reviewer: inherit
+    code-reviewer: inherit
+    plan-reviewer: inherit
 
 modelRoles:
   smol: openai-codex/gpt-6-luna:medium

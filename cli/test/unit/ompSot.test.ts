@@ -113,12 +113,13 @@ describe("SoT omp tree", () => {
       "code-reviewer": "@reviewer",
       "plan-reviewer": "@reviewer",
     });
-    // The reviewers keep the benchmarked tier when the session switches to fast mode.
+    // The reviewers take the main session's tier per provider, so the OpenAI
+    // fast toggle reaches them; a fixed tier would ignore it.
     expect(task["agentServiceTierOverrides"]).toEqual({
-      reviewer: "default",
-      "security-reviewer": "default",
-      "code-reviewer": "default",
-      "plan-reviewer": "default",
+      reviewer: "inherit",
+      "security-reviewer": "inherit",
+      "code-reviewer": "inherit",
+      "plan-reviewer": "inherit",
     });
   });
 
