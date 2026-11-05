@@ -90,7 +90,7 @@ describe("SoT omp tree", () => {
     expect(chains["task"]).toEqual(["openai-codex/gpt-6.1-sol:high"]);
   });
 
-  it("keeps Astra off subagents and routes every reviewer through the hidden Sol reviewer role", () => {
+  it("keeps Astra off subagents and routes every reviewer through the hidden Terra reviewer role", () => {
     const config = ompConfig();
     const roles = config["modelRoles"] as Record<string, string>;
     expect(roles).toMatchObject({
@@ -98,20 +98,27 @@ describe("SoT omp tree", () => {
       smol: "openai-codex/gpt-6-luna:medium",
       commit: "openai-codex/gpt-6-luna:medium",
       tiny: "openai-codex/gpt-6-luna:low",
-      reviewer: "openai-codex/gpt-6.1-sol:xhigh",
+      reviewer: "openai-codex/gpt-6.1-terra:high",
     });
     for (const [role, selector] of Object.entries(roles)) {
       if (role !== "astra") expect(selector).not.toContain("gpt-6-astra");
     }
     expect(config["modelTags"]).toHaveProperty(["reviewer", "hidden"], true);
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
-    expect(chains).toHaveProperty("reviewer", ["anthropic/claude-opus-5-5:xhigh"]);
+    expect(chains).toHaveProperty("reviewer", ["anthropic/claude-opus-5-5:high"]);
     const task = config["task"] as Record<string, unknown>;
     expect(task["agentModelOverrides"]).toEqual({
       reviewer: "@reviewer",
       "security-reviewer": "@reviewer",
       "code-reviewer": "@reviewer",
       "plan-reviewer": "@reviewer",
+    });
+    // The reviewers keep the benchmarked tier when the session switches to fast mode.
+    expect(task["agentServiceTierOverrides"]).toEqual({
+      reviewer: "default",
+      "security-reviewer": "default",
+      "code-reviewer": "default",
+      "plan-reviewer": "default",
     });
   });
 
