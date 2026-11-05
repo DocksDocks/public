@@ -28,9 +28,9 @@ model and level. It states no motive that the config or omp's own
 documentation does not establish. AA has not measured output speed or latency
 for GPT-6 Luna medium, so that row carries `n/a` for TTFT. AA measures no web
 search provider, so the `web` row carries no figures. The `reviewer` row comes
-from a later capture at Intelligence Index v5.0.1, because the 2026-09-29
-capture predates GPT-6.1 Terra; compare it only with other v5.0.1 figures (see
-GPT-6.1 Terra below). A review benchmark chose that role
+from a later capture at Intelligence Index v5.0.1. The 2026-09-29 capture
+predates GPT-6.1 Terra. Compare that row only with other v5.0.1 figures (see
+GPT-6.1 Terra below). A review benchmark chose the model and tier of that role
 (DocksDocks/public#130), not these figures.
 
 The role map carries no Coding Agent Index column. That index measures specific
@@ -96,15 +96,16 @@ agents to the OpenAI `default` tier, so they keep that tier when
 `retry.fallbackChains.task` holds `openai-codex/gpt-6.1-sol:high`; both are
 cross-vendor fallbacks.
 
-The review benchmark of DocksDocks/public#130 (2026-11-05, 24 held-out cases of
-the DocksDocks/docks `review-benchmark` skill, 2 runs each) compared
-`gpt-6.1-sol` and `gpt-6.1-terra` at `high`, each on the `default` and
-`priority` tiers. `gpt-6.1-terra` on `default` let the fewest known defects
-escape (34.90 per 50 known), and no other setting stayed within the
-pre-registered bounds. It took a median of 69.3 s per review against 172.8 s
-for `gpt-6.1-sol` on `default`, and about a third of the tokens. It returned
-more wrong findings: 0.49 per run against 0.20. The issue holds the full
-tables and the decision rule.
+The review benchmark of DocksDocks/public#130 ran on 2026-11-05. It used 24
+held-out cases of the DocksDocks/docks `review-benchmark` skill, 2 runs each.
+It compared `gpt-6.1-sol` and `gpt-6.1-terra` at `high`, each on the `default`
+and `priority` tiers. The user set the effort `high`; the benchmark chose the
+model and the tier. `gpt-6.1-terra` on `default` let the fewest known defects
+escape (34.90 per 50 known). No other setting stayed within the
+pre-registered bounds. A Terra review took a median of 69.3 s, against 172.8 s
+for `gpt-6.1-sol` on `default`. It used about a third of the tokens. It
+returned more wrong findings: 0.49 per run against 0.20. The issue holds the
+full tables and the decision rule.
 
 `retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
 `retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
@@ -200,7 +201,8 @@ Column meanings:
   whole index run. This is the token-efficiency signal.
 - **Speed** - output tokens per second.
 - **TTFT** - seconds to the first answer token, so reasoning time counts.
-- **TB 4.0** - Terminal-Bench 4.0, one of the ten index evaluations.
+- **TB 4.0** - Terminal-Bench 4.0, one of the index evaluations (ten at v4.3.2,
+  nine at v5.0.1).
 
 ### Claude Opus 5.5 (Anthropic) - `anthropic/claude-opus-5-5`
 
@@ -309,8 +311,9 @@ TTFT, and 52% on Terminal-Bench 4.0. The same Sol high row read 50, $0.32, and
 57.26 s at v4.3.2, which shows why the two captures do not mix.
 
 AA and OpenAI list $1.00 input, $5.00 output, and $0.05 cached input per 1M
-tokens, a 1,050,000-token context, 922,000 maximum input tokens, and 128,000
-maximum output tokens (<https://developers.openai.com/api/docs/models/gpt-6.1-terra>).
+tokens. OpenAI also lists a 1,050,000-token context, 922,000 maximum input
+tokens, and 128,000 maximum output tokens
+(<https://developers.openai.com/api/docs/models/gpt-6.1-terra>).
 Fast mode costs 2x Standard. The knowledge cutoff is 2026-06-01. The API effort
 ladder is `none, low, medium, high, xhigh, max`, with `medium` as the default.
 
@@ -444,9 +447,11 @@ quick answer.
   `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
-- `scout` and `sonic` always run GPT-6 Luna `medium`. The four reviewer
-  agents resolve `@reviewer` and always run GPT-6.1 Terra `high` on the
-  `default` tier.
+- `scout` and `sonic` always run GPT-6 Luna `medium`. In the deployed config,
+  the four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on
+  the `default` tier. A `docks-kit omp` free session replaces that role with
+  its free model (see Free session launcher), and a retry can fall back to
+  Opus 5.5 `high`.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
 predates this change. It applies to the retired Astra-low `task` configuration,
