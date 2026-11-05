@@ -149,8 +149,8 @@ const DENIED = [
   'git commit -m "note: git push origin $B is denied"',
 ];
 
-const PROMPTED = [
-  // History-destroying git.
+const ALLOWED = [
+  // No rule asks. History-destroying git runs.
   "git clean -fdx",
   "git reset --hard",
   "git reset --hard HEAD~1",
@@ -172,9 +172,8 @@ const PROMPTED = [
   "git push -4f origin feat/x",
   "git push origin feat/x -vf",
   'git push "-vf" origin feat/x',
-  // Accepted false positive: --follow-tags shares the --f prefix.
   "git push --follow-tags origin feat/x",
-  // Every git command that skips the repository's hooks (#111). The
+  // Every git command that skips the repository's hooks runs. The
   // NO_VERIFY_SPELLINGS matrix below covers each --no-verify abbreviation; these
   // rows cover its position and a word before git.
   "git push -q origin feat/x --no-verif",
@@ -195,7 +194,7 @@ const PROMPTED = [
   "FOO=1 git commit -n -m x",
   "command git commit -n -m x",
   "/usr/bin/git commit -nm x",
-  // A core.hooksPath change moves the hooks directory.
+  // A core.hooksPath change, and a read of the key (#126).
   "git -c core.hooksPath=/dev/null push origin feat/x",
   "git -c core.hookspath=/dev/null commit -m x",
   "git --config-env=core.hooksPath=HOOKS push origin feat/x",
@@ -209,16 +208,16 @@ const PROMPTED = [
   `GIT_CONFIG_PARAMETERS="'core.hooksPath=/dev/null'" git push origin feat/x`,
   `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath'='/dev/null'" git commit -m x`,
   `env GIT_CONFIG_PARAMETERS="'color.ui=never' 'core.hooksPath=/dev/null'" git commit -m x`,
-  // Accepted false positives: a cluster of two no-argument options without n,
-  // a hooks-path read, another --no-v option, and message text.
-  "git commit -aqm x",
   "git config --get core.hooksPath",
+  // The chained line from #126.
+  "git config --get core.hooksPath; ls .git/hooks | grep -v sample",
+  "git config get core.hookspath",
+  "git commit -aqm x",
   "git merge --no-verify-signatures feat/x",
   'git commit -m "drop --no-verify"',
   'git commit -m "fix -n flag"',
-];
-
-const ALLOWED = [
+  // Text that names git and the key inside another command's arguments (#126).
+  'gh issue create --title "omp: a read-only git config --get core.hooksPath asks" --body-file body.md',
   "trash build",
   // No rule matches these, and yolo runs them. A file removal runs unless it
   // is recursive, runs under sudo, runs through find -delete, find -exec rm,
@@ -286,17 +285,13 @@ describe("omp bash.patterns policy under yolo", () => {
     expect(ompYoloOutcome(KIT_RULES, command)).toBe("deny");
   });
 
-  it.each(PROMPTED)("asks before %s", (command) => {
-    expect(ompYoloOutcome(KIT_RULES, command)).toBe("prompt");
-  });
-
   it.each(ALLOWED)("allows %s", (command) => {
     expect(ompYoloOutcome(KIT_RULES, command)).toBe("allow");
   });
 
   // Each spelling skips the hooks on git 2.53.0. git accepts a unique prefix
   // of --no-verify; a shorter prefix is ambiguous with --no-verbose or
-  // --no-verify-signatures, except in git am.
+  // --no-verify-signatures, except in git am. No deny rule catches one.
   const NO_VERIFY_SPELLINGS = {
     push: ["--no-verify", "--no-verif", "--no-veri"],
     commit: ["--no-verify", "--no-verif", "--no-veri"],
@@ -309,25 +304,16 @@ describe("omp bash.patterns policy under yolo", () => {
     spellings.map((spelling) => `git ${subcommand} ${spelling} x`),
   );
 
-  it.each(noVerifyCommands)("asks before %s", (command) => {
-    expect(ompYoloOutcome(KIT_RULES, command)).toBe("prompt");
+  it.each(noVerifyCommands)("allows %s", (command) => {
+    expect(ompYoloOutcome(KIT_RULES, command)).toBe("allow");
   });
 
-  // git reads a short-option cluster left to right. A no-argument option
-  // stands alone; the first option that takes an argument consumes the rest
-  // of the word. So a cluster skips the hooks when it reaches n first.
+  // git commit and git am read -n as --no-verify, also inside a short-option
+  // cluster. These are their single-letter options.
   const SHORT_OPTIONS = {
-    commit: { noArgument: "qvseaipnoz", takesArgument: "FmcCtUSu" },
-    am: { noArgument: "in3qsukmcr", takesArgument: "CpS" },
+    commit: "qvseaipnozFmcCtUSu",
+    am: "in3qsukmcrCpS",
   };
-
-  function reachesNoVerify(cluster: string, noArgument: string): boolean {
-    for (const option of cluster) {
-      if (option === "n") return true;
-      if (!noArgument.includes(option)) return false;
-    }
-    return false;
-  }
 
   function clustersUpTo(alphabet: string, maxLength: number): Array<string> {
     const clusters: Array<string> = [];
@@ -339,7 +325,7 @@ describe("omp bash.patterns policy under yolo", () => {
     return clusters;
   }
 
-  // A word before git, such as X=1 or a path, must not hide the cluster.
+  // A word before git, such as X=1 or a path, must not change the outcome.
   function clusterCommands(subcommand: string, cluster: string): Array<string> {
     return [
       `git ${subcommand} -${cluster} x`,
@@ -349,40 +335,26 @@ describe("omp bash.patterns policy under yolo", () => {
     ];
   }
 
+  // No deny rule may catch a git commit or git am short-option cluster. Two
+  // letters keep the run fast, because an allowed command is checked against
+  // every rule.
   it.each(Object.entries(SHORT_OPTIONS))(
-    "asks before every git %s short-option cluster that reaches -n",
-    (subcommand, { noArgument, takesArgument }) => {
-      const commands = clustersUpTo(noArgument + takesArgument, 3)
-        .filter((cluster) => reachesNoVerify(cluster, noArgument))
-        .flatMap((cluster) => clusterCommands(subcommand, cluster));
-      expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "prompt")).toEqual(
-        [],
+    "allows every git %s short-option cluster",
+    (subcommand, options) => {
+      const commands = clustersUpTo(options, 2).flatMap((cluster) =>
+        clusterCommands(subcommand, cluster),
       );
-    },
-  );
-
-  // An option that takes an argument reads the rest of the word as its
-  // value, so `git commit -mn x` sets the message "n" and keeps the hooks.
-  // A cluster rule reads at most two letters, so two-letter clusters reach
-  // every rule shape; longer ones only slow the test, because an allowed
-  // command is checked against every rule.
-  it.each(Object.entries(SHORT_OPTIONS))(
-    "allows every git %s short-option cluster that starts with an option taking an argument",
-    (subcommand, { noArgument, takesArgument }) => {
-      const commands = clustersUpTo(noArgument + takesArgument, 2)
-        .filter((cluster) => takesArgument.includes(cluster[0]!))
-        .flatMap((cluster) => clusterCommands(subcommand, cluster));
       expect(commands.filter((command) => ompYoloOutcome(KIT_RULES, command) !== "allow")).toEqual(
         [],
       );
     },
   );
 
-  // omp returns its bare critical override before a prompt rule, and yolo
+  // omp returns its bare critical override before an allow rule, and yolo
   // ignores that override. Each of these commands is critical, so only a deny
   // rule stops it.
   it("denies every corpus command that omp's critical check flags", () => {
-    const critical = [...DENIED, ...PROMPTED, ...ALLOWED].filter(isOmpCritical);
+    const critical = [...DENIED, ...ALLOWED].filter(isOmpCritical);
     expect(critical.length).toBeGreaterThan(5);
     expect(critical.filter((command) => ompApproval(KIT_RULES, command) !== "deny")).toEqual([]);
   });
@@ -393,12 +365,12 @@ describe("omp bash.patterns policy under yolo", () => {
     expect(ompYoloOutcome(promptOnly, "rm -rf build")).toBe("prompt");
   });
 
-  // First match wins. Every deny precedes every prompt, and every prompt
-  // precedes every allow, so no kit allow shadows a deny or a prompt.
-  it("orders denies first, then prompts, then allows", () => {
-    const rank: Record<OmpApproval, number> = { deny: 0, prompt: 1, allow: 2 };
-    const ranks = KIT_RULES.map(({ approval }) => rank[approval]);
-    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  // A subagent rejects every prompt, so the kit ships none. First match wins,
+  // and every deny precedes every allow, so no kit allow shadows a deny.
+  it("ships no prompt rule and lists every deny before the allows", () => {
+    const approvals = KIT_RULES.map(({ approval }) => approval);
+    expect(approvals).not.toContain("prompt");
+    expect(approvals.indexOf("allow")).toBeGreaterThan(approvals.lastIndexOf("deny"));
   });
 
   it("allows no rm", () => {
@@ -431,7 +403,7 @@ describe("omp bash.patterns sync merge", () => {
     expect(bashPatterns(mergeOmpConfig(SOT_TEXT, "userOnly: true\n"))).toEqual(KIT_RULES);
   });
 
-  it("puts user denies and prompts ahead of every kit allow, and user allows after kit prompts", () => {
+  it("puts user denies and prompts ahead of every kit allow, and user allows ahead of kit allows", () => {
     const merged = mergeOmpConfig(SOT_TEXT, userRules);
     const rules = bashPatterns(merged);
 
@@ -440,7 +412,6 @@ describe("omp bash.patterns sync merge", () => {
       { match: "git clean *", approval: "deny" },
       { match: "trash *", approval: "prompt" },
       { match: "curl *", approval: "prompt" },
-      ...byApproval("prompt"),
       { match: "rm -rf build", approval: "allow" },
       ...byApproval("allow"),
     ]);
@@ -451,26 +422,55 @@ describe("omp bash.patterns sync merge", () => {
     expect(ompYoloOutcome(rules, "curl https://example.com")).toBe("prompt");
   });
 
-  // Migration: a user deny that an older merge left behind a kit prompt rule
-  // for the same command moves ahead of that prompt on the next sync.
-  it("moves a user deny ahead of a kit prompt that matches the same command", () => {
+  // A user deny and a user prompt can share a match. The deny moves first on
+  // the next sync, also when the deployed file lists the prompt first.
+  it("moves a user deny ahead of a user prompt that matches the same command", () => {
     const shadowed = [
       "bash:",
       "  patterns:",
-      '    - match: "git clean *"',
+      '    - match: "git clean -x *"',
       "      approval: prompt",
-      '    - match: "git clean *"',
+      '    - match: "git clean -x *"',
       "      approval: deny",
       "",
     ].join("\n");
-    expect(ompApproval(bashPatterns(shadowed), "git clean -fdx")).toBe("prompt");
+    expect(ompApproval(bashPatterns(shadowed), "git clean -x -f")).toBe("prompt");
 
     const rules = bashPatterns(mergeOmpConfig(SOT_TEXT, shadowed));
 
-    expect(ompYoloOutcome(rules, "git clean -fdx")).toBe("deny");
-    expect(rules.filter(({ match }) => match === "git clean *")).toEqual([
-      { match: "git clean *", approval: "deny" },
-      { match: "git clean *", approval: "prompt" },
+    expect(ompYoloOutcome(rules, "git clean -x -f")).toBe("deny");
+    expect(rules.filter(({ match }) => match === "git clean -x *")).toEqual([
+      { match: "git clean -x *", approval: "deny" },
+      { match: "git clean -x *", approval: "prompt" },
+    ]);
+  });
+
+  // The kit ships no prompt today, so a small SoT pins where a kit prompt goes.
+  it("orders a kit prompt after user prompts and ahead of user and kit allows", () => {
+    const sot = [
+      "bash:",
+      "  patterns:",
+      '    - { match: "kit-deny *", approval: deny }',
+      '    - { match: "kit-prompt *", approval: prompt }',
+      '    - { match: "kit-allow *", approval: allow }',
+      "",
+    ].join("\n");
+    const deployed = [
+      "bash:",
+      "  patterns:",
+      '    - { match: "user-allow *", approval: allow }',
+      '    - { match: "user-prompt *", approval: prompt }',
+      '    - { match: "user-deny *", approval: deny }',
+      "",
+    ].join("\n");
+
+    expect(bashPatterns(mergeOmpConfig(sot, deployed)).map(({ match }) => match)).toEqual([
+      "kit-deny *",
+      "user-deny *",
+      "user-prompt *",
+      "kit-prompt *",
+      "user-allow *",
+      "kit-allow *",
     ]);
   });
 

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.8: the kit ships no omp prompt rule
+
+### Changed
+
+- omp `bash.patterns` now ships only deny rules and the `trash *` allow. The
+  kit ships no prompt rule. Under `tools.approvalMode: yolo`, omp runs every
+  command that no deny matches without a question. This applies in the main
+  session and in subagents. A prompt rule that you add yourself still asks.
+- These commands asked before and now run: `git clean`, `git reset --hard`,
+  every `git push` that could force (`--force`, `-f`, clusters such as `-vf`,
+  `--mirror`, and a `+` refspec), `git push --follow-tags` (a former false
+  positive), and every git command that could skip the repository's hooks
+  (`--no-verify` and its prefixes, `git commit -n` and `git am -n`,
+  `core.hooksPath`, `GIT_CONFIG_COUNT`, and `GIT_CONFIG_PARAMETERS`).
+- The deny rules do not change. omp still denies an `rm` of the home
+  directory or `/`, `sudo rm`, a recursive `rm`, an `rm` with an `r` or `f`
+  option before an absolute path, `find -delete`, `find -exec rm`,
+  `xargs rm`, `HOME` reassignment, a `$` or a backtick after `git push`, and
+  a force push spelled `git push --force` or `git push -f` before
+  `origin main` or `origin master`. A force push to `main` in another
+  spelling, such as `git push origin main --force` or
+  `git push --force-with-lease origin main`, now runs.
+- This fixes #126. A read such as `git config --get core.hooksPath` no longer
+  asks. A command whose argument text names git and the hooks key, such as
+  `gh issue create --title`, no longer asks either.
+- `docks-kit sync omp` removes the 492 former kit prompt rules from
+  `~/.omp/agent/config.yml`. A user rule with another `match` or `approval`
+  stays.
+- The config merge no longer has a group for kit allow exceptions. The order
+  is kit deny, user deny, user prompt, kit prompt, the other user rules, and
+  kit allow.
+- Claude Code and Codex keep their ask tiers.
+
 ## 2026-11-03 - docks-kit 0.22.7: Effect 4.1.2, the Effect language service, and bun fmt
 
 ### Changed

@@ -292,8 +292,8 @@ describe("retired omp config keys", () => {
 
 /**
  * bash.patterns as an earlier kit sync left them: retired kit rules, one of
- * them respaced and recased, among a kit deny, prompt, and allow that the kit
- * still ships, and two user rules that only resemble retired ones.
+ * them respaced and recased, among a kit deny and allow that the kit still
+ * ships, and three user rules that only resemble retired ones.
  */
 const DEPLOYED_RULES = [
   "bash:",
@@ -308,7 +308,7 @@ const DEPLOYED_RULES = [
   '    - { match: "gio trash *", approval: prompt }',
   '    - { match: "rm *", approval: deny }',
   '    - { match: "rm -i *", approval: prompt }',
-  '    - { match: "git clean *", approval: prompt }',
+  '    - { match: "git clean -x *", approval: prompt }',
   '    - { match: "trash *", approval: allow }',
   "",
 ].join("\n");
@@ -317,7 +317,7 @@ const KEPT_RULES = [
   { match: "rm *-rf *", approval: "deny" },
   { match: "rm *", approval: "deny" },
   { match: "rm -i *", approval: "prompt" },
-  { match: "git clean *", approval: "prompt" },
+  { match: "git clean -x *", approval: "prompt" },
   { match: "trash *", approval: "allow" },
 ];
 
@@ -330,6 +330,49 @@ describe("retired omp bash.patterns rules", () => {
     expect(parse(after)).toEqual({ bash: { patterns: KEPT_RULES } });
     expect(after).not.toContain("# Allow, ahead of the prompts below.");
     expect(after).not.toContain("# Prompt: every other rm.");
+  });
+
+  // One rule from each family of the 492 prompt rules that the kit shipped up
+  // to 0.22.7, beside a user prompt that resembles them and a user deny that
+  // reuses a retired match.
+  it("prunes every family of the retired kit prompt rules", () => {
+    const retired = [
+      "git clean",
+      "git clean *",
+      "git reset *--hard*",
+      "git push -f*",
+      "git push * -vf*",
+      "git push -6u*",
+      "git push --f*",
+      "git push * --mi*",
+      "git push +*",
+      "*git * --no-v*",
+      "*git commit -n*",
+      "*git commit * -zn*",
+      "*git commit -qa*",
+      "*git am * -n*",
+      "*git am -3n*",
+      "*git am * -rr*",
+      "*git *core.hooksPath*",
+      "*git *core.hookspath*",
+      "*GIT_CONFIG_PARAMETERS*",
+      "*GIT_CONFIG_COUNT*",
+    ];
+    const kept = [
+      { match: "git push -fv*", approval: "prompt" },
+      { match: "*git *core.hooksPath*", approval: "deny" },
+    ];
+    const deployed = [
+      "bash:",
+      "  patterns:",
+      ...retired.map((match) => `    - { match: "${match}", approval: prompt }`),
+      ...kept.map(({ match, approval }) => `    - { match: "${match}", approval: ${approval} }`),
+      "",
+    ].join("\n");
+    const { file, root } = deployConfig(deployed);
+
+    expect(syncOmpRemovals(testCtx(root), file)).toBe(retired.length);
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ bash: { patterns: kept } });
   });
 
   it("reports the retired rules under dry run and leaves the file byte-identical", () => {

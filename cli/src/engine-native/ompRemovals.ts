@@ -85,6 +85,37 @@ const OMP_RETIRED_MODEL_BLOCKS: ReadonlyArray<readonly [string, unknown]> = [
   ],
 ];
 
+/** Each two-letter short-option cluster with a first letter from `first` and a second from `second`. */
+function shortClusters(first: string, second: string): Array<string> {
+  return [...first].flatMap((a) => [...second].map((b) => `-${a}${b}`));
+}
+
+/** The rule pair that matches `option` as the first word after `command`, or after any later word. */
+function optionRules(command: string, options: ReadonlyArray<string>): Array<string> {
+  return options.flatMap((option) => [`${command} ${option}*`, `${command} * ${option}*`]);
+}
+
+/**
+ * The 492 prompt rules the kit shipped through 0.22.7: history-destroying git,
+ * each `git push` spelling that could force, and each git command that skips
+ * the repository's hooks. The letter sets are the no-argument short options of
+ * `git push`, `git commit`, and `git am`; a cluster that starts with `-n` (or
+ * `-f` for `git push`) was covered by the single-option rule.
+ */
+const RETIRED_PROMPT_MATCHES: ReadonlyArray<string> = [
+  "git clean",
+  "git clean *",
+  "git reset *--hard*",
+  ...optionRules("git push", ["-f", ...shortClusters("vqdnu46", "vqdnu46f"), "--f", "--mi", "+"]),
+  "*git * --no-v*",
+  ...optionRules("*git commit", ["-n", ...shortClusters("qvseaipoz", "qvseaipnoz")]),
+  ...optionRules("*git am", ["-n", ...shortClusters("i3qsukmcr", "in3qsukmcr")]),
+  "*git *core.hooksPath*",
+  "*git *core.hookspath*",
+  "*GIT_CONFIG_PARAMETERS*",
+  "*GIT_CONFIG_COUNT*",
+];
+
 /**
  * `bash.patterns` rules the kit used to deploy, each with the exact match and
  * approval it deployed. A deployed rule is pruned only while it equals one of
@@ -98,6 +129,9 @@ const OMP_RETIRED_MODEL_BLOCKS: ReadonlyArray<readonly [string, unknown]> = [
  * The kit also prompted before a `git push` word that starts with `$` or a
  * backtick. It now denies a `$` or a backtick anywhere after `git push`, so
  * the old prompt copies would otherwise stay behind as user prompts.
+ *
+ * Since 0.22.8 the kit ships no prompt rule at all, because a subagent rejects
+ * every prompt; `RETIRED_PROMPT_MATCHES` lists the rest.
  */
 const OMP_RETIRED_BASH_RULES: ReadonlyArray<{
   readonly match: string;
@@ -146,6 +180,7 @@ const OMP_RETIRED_BASH_RULES: ReadonlyArray<{
   { match: "git push * $*", approval: "prompt" },
   { match: "git push `*", approval: "prompt" },
   { match: "git push * `*", approval: "prompt" },
+  ...RETIRED_PROMPT_MATCHES.map((match) => ({ match, approval: "prompt" as const })),
 ];
 
 /** Normalized rule key to the name a prune message reports. */

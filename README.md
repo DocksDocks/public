@@ -113,18 +113,16 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   Claude's native `rate_limits`; there is no OAuth fetch, shared usage cache,
   or Stop hook. If Bun cannot be resolved or bootstrapped, sync preserves a
   working legacy hook/statusline setup and reports that migration is deferred.
-- **Command guards** — omp, Claude Code, and Codex share one fail-closed
-  policy for destructive shell commands; to remove, agents use the trash
+- **Command guards** — omp, Claude Code, and Codex share one policy for
+  destructive shell commands; to remove, agents use the trash
   (`gio trash -- <path>`, or `trash <path>` on macOS); omp agents remove a
   temporary file or directory with `docks-kit scratch remove`. `rm` of the
   home directory or `/` and `HOME` reassignment are denied. omp also denies
-  every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`, and
-  runs any other `rm` without a prompt. In omp, `git clean`,
-  `git reset --hard`, any `git push` that could force, and the common forms
-  of a git command that skips the repository's hooks (`--no-verify`,
-  `git commit -n`, a `core.hooksPath` change) ask; Claude Code and
-  Codex also ask before `find -delete`, a recursive `rm`, and every `git rm`.
-  An omp subagent cannot answer an ask, so omp rejects it; a Codex ask can go
+  every recursive `rm`, `find -delete`, `find -exec rm`, and `xargs rm`. The
+  kit ships no omp prompt rule, so omp runs every command that no deny
+  matches without a question, in subagents too. Claude Code and Codex ask
+  before a recursive `rm`, `find -delete`, every `git rm`, `git clean`,
+  `git reset --hard`, and any `git push` that could force; a Codex ask can go
   to its `auto_review` reviewer. Details, per-tool differences, and gaps:
   `docks-kit docs command-guards`.
 - **Agent cleanup (omp)** — `docks-kit scratch` creates agent temporary

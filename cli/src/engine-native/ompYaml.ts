@@ -62,22 +62,18 @@ export function bashPatternKey(node: unknown): string | undefined {
 
 /**
  * omp evaluates `bash.patterns` in order, and the first matching rule wins. The
- * merge groups the rules: kit deny, user deny, user prompt, kit exception allow,
- * kit prompt, the other user rules in their deployed order, then kit allow. A
- * kit exception is a kit allow that the SoT lists before its first prompt: an
- * option-terminated form such as `git rm -- *` that a broader kit prompt
- * (`git rm *`) would otherwise shadow, because a glob cannot exclude it. A user
- * deny or prompt therefore always precedes every kit allow, and no user or
- * tail allow loosens a deny or a prompt. A deployed rule equal to a kit rule is
- * the kit copy, so a re-sync changes nothing. A rule the kit stops shipping
- * stays as a user rule.
+ * merge groups the rules: kit deny, user deny, user prompt, kit prompt, the
+ * other user rules in their deployed order, then kit allow. A user deny or
+ * prompt therefore always precedes every kit allow, and no user or kit allow
+ * loosens a deny or a prompt. A deployed rule equal to a kit rule is the kit
+ * copy, so a re-sync changes nothing. A rule the kit stops shipping stays as a
+ * user rule.
  */
 const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
   if (path.length !== 2 || path[0] !== "bash" || path[1] !== "patterns") return;
   const kitKeys = new Set(sotSeq.items.map(bashPatternKey));
-  const kit: Record<"deny" | "exception" | "prompt" | "allow", Array<unknown>> = {
+  const kit: Record<"deny" | "prompt" | "allow", Array<unknown>> = {
     deny: [],
-    exception: [],
     prompt: [],
     allow: [],
   };
@@ -88,9 +84,7 @@ const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
   };
   for (const item of sotSeq.items) {
     const approval = bashPatternKey(item)?.split("\u0000")[0];
-    if (approval === "deny" || approval === "prompt") kit[approval].push(item);
-    else if (kit.prompt.length === 0 && approval === "allow") kit.exception.push(item);
-    else kit.allow.push(item);
+    kit[approval === "deny" || approval === "prompt" ? approval : "allow"].push(item);
   }
   for (const item of deployedSeq.items) {
     const key = bashPatternKey(item);
@@ -102,7 +96,6 @@ const mergeBashPatterns: MergeSequence = (path, sotSeq, deployedSeq) => {
     ...kit.deny,
     ...user.deny,
     ...user.prompt,
-    ...kit.exception,
     ...kit.prompt,
     ...user.other,
     ...kit.allow,
