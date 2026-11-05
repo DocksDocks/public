@@ -33,7 +33,7 @@ task:
   softRequestBudgetNotice: true
   batch: true
   enableLsp: true
-  enableEffort: true
+  enableEffort: false
   maxEffort: xhigh
   maxConcurrency: 16
   maxRecursionDepth: 2

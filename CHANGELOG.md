@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.9: omp subagents run their role level
+
+### Changed
+
+- omp `task.enableEffort` changes from `true` to `false`. The task tool no
+  longer has an `effort` field, so the main agent cannot set a thinking level
+  for one spawn. Each subagent runs the level of its role: `task` runs
+  Opus 5.5 `high`, the reviewers run GPT-6.1 Sol `xhigh`, and `scout` and
+  `sonic` run GPT-6 Luna `medium`.
+- Before, a caller `effort: hi` replaced the role level and gave the top of
+  the model ladder, capped at `task.maxEffort` (`xhigh`). Many `task` spawns
+  ran Opus 5.5 `xhigh` instead of the configured `high`.
+- `task.maxEffort` stays `xhigh`. It now bounds only a per-call `model` with
+  a `:level` suffix.
+- Restart open omp sessions after `docks-kit sync omp`. A session that started
+  before the sync keeps the old task tool.
+
 ## 2026-11-05 - docks-kit 0.22.8: the kit ships no omp prompt rule
 
 ### Changed
