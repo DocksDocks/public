@@ -90,8 +90,10 @@ describe("Linux host OS", () => {
       ".bash_login": "export ENABLE_CLAUDEAI_MCP_SERVERS=false\n",
     });
     // Without a claude CLI the plugin passes are skipped, so the run only depends on
-    // the connector pass and the stubbed runtime tools.
+    // the connector pass and the stubbed runtime tools. A null stub alone falls through
+    // to a claude CLI installed on the host, so the run also masks it on PATH.
     const run = runEngine(["sync", "claude"], home, makeStubDir({ claude: null }), {
+      maskTools: ["claude"],
       reuseHome: home,
       env: { SHELL: "/bin/bash" },
     });
