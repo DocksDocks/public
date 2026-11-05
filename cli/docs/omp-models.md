@@ -20,14 +20,18 @@ against.
 | `fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
 | `switch_fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
 | `astra` | `openai-codex/gpt-6-astra` | xhigh | 52 | $2.31 | 126.90 s |
-| `reviewer` | `openai-codex/gpt-6.1-sol` | xhigh | 51 | $0.39 | 68.65 s |
+| `reviewer` | `openai-codex/gpt-6.1-terra` | high | 42 (v5.0.1) | $0.26 (v5.0.1) | 10.91 s (v5.0.1) |
 | `web` | `web/firecrawl` | n/a | n/a | n/a | n/a |
 
 The table reports the measured Artificial Analysis figures for each assigned
 model and level. It states no motive that the config or omp's own
 documentation does not establish. AA has not measured output speed or latency
 for GPT-6 Luna medium, so that row carries `n/a` for TTFT. AA measures no web
-search provider, so the `web` row carries no figures.
+search provider, so the `web` row carries no figures. The `reviewer` row comes
+from a later capture at Intelligence Index v5.0.1. The 2026-09-29 capture
+predates GPT-6.1 Terra. Compare that row only with other v5.0.1 figures (see
+GPT-6.1 Terra below). A review benchmark chose the model and tier of that role
+(DocksDocks/public#130), not these figures.
 
 The role map carries no Coding Agent Index column. That index measures specific
 agent harnesses and model levels, not omp roles. The snapshot section below
@@ -79,17 +83,29 @@ What omp's settings catalog establishes about these roles:
   keeps `switch_fable` and `reviewer` out of the switcher list.
 
 `modelRoles.reviewer` is a kit-defined role, not an omp built-in. It runs
-`openai-codex/gpt-6.1-sol:xhigh`. omp resolves `@<name>` for any key in
+`openai-codex/gpt-6.1-terra:high`. omp resolves `@<name>` for any key in
 `modelRoles` (`getModelRoleAlias` in omp's `model-resolver.ts`, omp 18.8.5).
 `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
 `code-reviewer`, and `plan-reviewer` to `@reviewer`, so one key sets the
-model for every reviewer. Only the bundled `reviewer` and `security-reviewer`
-exist as OMP agents (omp's task tool lists `scout`, `reviewer`,
-`security-reviewer`, `task`, and `sonic`). The `code-reviewer` and
-`plan-reviewer` entries are dormant until an OMP agent with that name exists.
-`retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:xhigh`, and
+model for every reviewer. `task.agentServiceTierOverrides` pins the same four
+agents to the OpenAI `default` tier, so they keep that tier when
+`docks-kit omp --fast` turns the session tier to `priority`. The bundled
+`reviewer` and `security-reviewer` agents ship with omp, and the
+`plan-lifecycle` plugin ships `code-reviewer` and `plan-reviewer`.
+`retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:high`, and
 `retry.fallbackChains.task` holds `openai-codex/gpt-6.1-sol:high`; both are
 cross-vendor fallbacks.
+
+The review benchmark of DocksDocks/public#130 ran on 2026-11-05. It used 24
+held-out cases of the DocksDocks/docks `review-benchmark` skill, 2 runs each.
+It compared `gpt-6.1-sol` and `gpt-6.1-terra` at `high`, each on the `default`
+and `priority` tiers. The user set the effort `high`; the benchmark chose the
+model and the tier. `gpt-6.1-terra` on `default` let the fewest known defects
+escape (34.90 per 50 known). No other setting stayed within the
+pre-registered bounds. A Terra review took a median of 69.3 s, against 172.8 s
+for `gpt-6.1-sol` on `default`. It used about a third of the tokens. It
+returned more wrong findings: 0.49 per run against 0.20. The issue holds the
+full tables and the decision rule.
 
 `retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
 `retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
@@ -185,7 +201,8 @@ Column meanings:
   whole index run. This is the token-efficiency signal.
 - **Speed** - output tokens per second.
 - **TTFT** - seconds to the first answer token, so reasoning time counts.
-- **TB 4.0** - Terminal-Bench 4.0, one of the ten index evaluations.
+- **TB 4.0** - Terminal-Bench 4.0, one of the index evaluations (ten at v4.3.2,
+  nine at v5.0.1).
 
 ### Claude Opus 5.5 (Anthropic) - `anthropic/claude-opus-5-5`
 
@@ -271,6 +288,34 @@ OpenAI also lists $2.50 per 1M cache-write tokens, a 1,050,000-token context,
 full request. The knowledge cutoff is 2026-04-30. The API effort ladder is
 `low, medium, high, xhigh, max`, with `medium` as the default. There is no
 `none`, `minimal`, or non-reasoning level.
+
+### GPT-6.1 Terra (OpenAI) - `openai-codex/gpt-6.1-terra`
+
+Source: `https://artificialanalysis.ai`, read on 2026-11-05 at Intelligence
+Index v5.0.1, from the metric table of
+`/models/comparisons/<level-slug>-vs-gpt-5-6-sol-high`. AA serves `max` under
+the bare model slug. These figures use another index version than the rest of
+this snapshot, so they do not compare with the v4.3.2 rows above.
+
+| Level | Index | Cost/task | Tokens/task | Index tokens | Speed t/s | TTFT s | TB 4.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| max | 51 | $0.96 | 60k | 99M | 76 | 159.59 | 56% |
+| xhigh | 45 | $0.40 | 26k | 35M | 74 | 33.02 | 46% |
+| high | 42 | $0.26 | 17k | 21M | 73 | 10.91 | 42% |
+| medium | 38 | $0.17 | 11k | 14M | 72 | 4.43 | 32% |
+| low | 29 | $0.07 | 4k | 7M | 72 | 2.34 | 15% |
+
+For comparison at the same index version, AA lists GPT-6.1 Sol high at index
+50, $0.59 per task, 23k tokens per task, 25M index tokens, 57 t/s, a 38.27 s
+TTFT, and 52% on Terminal-Bench 4.0. The same Sol high row read 50, $0.32, and
+57.26 s at v4.3.2, which shows why the two captures do not mix.
+
+AA and OpenAI list $1.00 input, $5.00 output, and $0.05 cached input per 1M
+tokens. OpenAI also lists a 1,050,000-token context, 922,000 maximum input
+tokens, and 128,000 maximum output tokens
+(<https://developers.openai.com/api/docs/models/gpt-6.1-terra>).
+Fast mode costs 2x Standard. The knowledge cutoff is 2026-06-01. The API effort
+ladder is `none, low, medium, high, xhigh, max`, with `medium` as the default.
 
 ### GPT-6 Luna (OpenAI) - `openai-codex/gpt-6-luna`
 
@@ -402,12 +447,11 @@ quick answer.
   `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
-- `scout` and `sonic` always run GPT-6 Luna `medium`. The bundled `reviewer`
-  and `security-reviewer` resolve `@reviewer` and always run GPT-6.1 Sol
-  xhigh.
-- The `code-reviewer` and `plan-reviewer` override entries remain dormant.
-  Both point to `@reviewer`. omp's task tool rejects both names as unknown
-  agents, so neither can spawn.
+- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`, and
+  the four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on
+  the `default` tier. A `docks-kit omp` free session replaces both roles with
+  its free model (see Free session launcher). A retry can fall back to the
+  role's fallback chain, for the reviewers Opus 5.5 `high`.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
 predates this change. It applies to the retired Astra-low `task` configuration,

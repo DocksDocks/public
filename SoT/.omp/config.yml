@@ -44,6 +44,11 @@ task:
     security-reviewer: "@reviewer"
     code-reviewer: "@reviewer"
     plan-reviewer: "@reviewer"
+  agentServiceTierOverrides:
+    reviewer: default
+    security-reviewer: default
+    code-reviewer: default
+    plan-reviewer: default
 
 modelRoles:
   smol: openai-codex/gpt-6-luna:medium
@@ -59,7 +64,7 @@ modelRoles:
   fable: anthropic/claude-fable-5-1:medium
   switch_fable: anthropic/claude-fable-5-1:medium
   astra: openai-codex/gpt-6-astra:xhigh
-  reviewer: openai-codex/gpt-6.1-sol:xhigh
+  reviewer: openai-codex/gpt-6.1-terra:high
   web: web/firecrawl
 
 modelTags:
@@ -104,7 +109,7 @@ retry:
     astra:
       - anthropic/claude-fable-5-1:medium
     reviewer:
-      - anthropic/claude-opus-5-5:xhigh
+      - anthropic/claude-opus-5-5:high
     web:
       - web/exa
       - web/perplexity

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.10: omp reviewers run GPT-6.1 Terra high
+
+### Changed
+
+- The omp `reviewer` role changes from `openai-codex/gpt-6.1-sol:xhigh` to
+  `openai-codex/gpt-6.1-terra:high`. All four review agents use it:
+  `reviewer`, `security-reviewer`, `code-reviewer`, and `plan-reviewer`.
+- New `task.agentServiceTierOverrides` pins the same four agents to the
+  OpenAI `default` tier, so reviews keep that tier when
+  `docks-kit omp --fast` turns the session to `priority`.
+- The reviewer fallback changes from `anthropic/claude-opus-5-5:xhigh` to
+  `anthropic/claude-opus-5-5:high`.
+- The user set the effort `high`. A review benchmark chose the model and the
+  tier (#130): 24 held-out review cases, 2 runs each, `gpt-6.1-sol` and
+  `gpt-6.1-terra` at `high` on both tiers. Terra on the `default` tier let the
+  fewest known defects escape. No other setting stayed within the
+  pre-registered bounds. A Terra review took a median of 69.3 s, against
+  172.8 s for Sol, and used about a third of the tokens. It returned more wrong
+  findings: 0.49 against 0.20 per run.
+- `cli/docs/omp-models.md` adds the Artificial Analysis figures for
+  GPT-6.1 Terra, read at Intelligence Index v5.0.1.
+- Restart open omp sessions after `docks-kit sync omp`.
+
 ## 2026-11-05 - docks-kit 0.22.9: omp subagents run their role level
 
 ### Changed
