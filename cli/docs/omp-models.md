@@ -30,8 +30,9 @@ for GPT-6 Luna medium, so that row carries `n/a` for TTFT. AA measures no web
 search provider, so the `web` row carries no figures. The `reviewer` row comes
 from a later capture at Intelligence Index v5.0.1. The 2026-09-29 capture
 predates GPT-6.1 Terra. Compare that row only with other v5.0.1 figures (see
-GPT-6.1 Terra below). A review benchmark chose the model and tier of that role
-(DocksDocks/public#130), not these figures.
+GPT-6.1 Terra below). A review benchmark chose the model of that role
+(DocksDocks/public#130), not these figures. The tier of that role follows the
+main session (DocksDocks/public#134).
 
 The role map carries no Coding Agent Index column. That index measures specific
 agent harnesses and model levels, not omp roles. The snapshot section below
@@ -87,9 +88,9 @@ What omp's settings catalog establishes about these roles:
 `modelRoles` (`getModelRoleAlias` in omp's `model-resolver.ts`, omp 18.8.5).
 `task.agentModelOverrides` maps `reviewer`, `security-reviewer`,
 `code-reviewer`, and `plan-reviewer` to `@reviewer`, so one key sets the
-model for every reviewer. `task.agentServiceTierOverrides` pins the same four
-agents to the OpenAI `default` tier, so they keep that tier when
-`docks-kit omp --fast` turns the session tier to `priority`. The bundled
+model for every reviewer. `task.agentServiceTierOverrides` sets the same four
+agents to `inherit`, so they take the live tier of the main session for each
+provider. "OpenAI fast mode" below describes how that tier changes. The bundled
 `reviewer` and `security-reviewer` agents ship with omp, and the
 `plan-lifecycle` plugin ships `code-reviewer` and `plan-reviewer`.
 `retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:high`, and
@@ -100,12 +101,20 @@ The review benchmark of DocksDocks/public#130 ran on 2026-11-05. It used 24
 held-out cases of the DocksDocks/docks `review-benchmark` skill, 2 runs each.
 It compared `gpt-6.1-sol` and `gpt-6.1-terra` at `high`, each on the `default`
 and `priority` tiers. The user set the effort `high`; the benchmark chose the
-model and the tier. `gpt-6.1-terra` on `default` let the fewest known defects
-escape (34.90 per 50 known). No other setting stayed within the
-pre-registered bounds. A Terra review took a median of 69.3 s, against 172.8 s
-for `gpt-6.1-sol` on `default`. It used about a third of the tokens. It
-returned more wrong findings: 0.49 per run against 0.20. The issue holds the
-full tables and the decision rule.
+model. `gpt-6.1-terra` on `default` let the fewest known defects escape (34.90
+per 50 known). No other setting stayed within the pre-registered bounds. A
+Terra review took a median of 69.3 s, against 172.8 s for `gpt-6.1-sol` on
+`default`. It used about a third of the tokens. It returned more wrong
+findings: 0.49 per run against 0.20. The issue holds the full tables and the
+decision rule.
+
+The benchmark rule first pinned the `default` tier. The user then chose to
+let the reviewers follow the fast toggle (DocksDocks/public#134). On the
+`priority` tier, Terra `high` let 35.15 known defects per 50 escape, against
+34.90 on `default`, and a review took a median of 35.7 s. Its 90% intervals
+missed two pre-registered bounds: escaped difference up to 3.26 (bound 2) and
+recall difference down to -0.07 (bound -0.05). Both intervals include 0, and
+the user judged the difference as noise.
 
 `retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
 `retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
@@ -447,11 +456,11 @@ quick answer.
   `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
-- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`, and
-  the four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on
-  the `default` tier. A `docks-kit omp` free session replaces both roles with
-  its free model (see Free session launcher). A retry can fall back to the
-  role's fallback chain, for the reviewers Opus 5.5 `high`.
+- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`. The
+  four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on the
+  live tier of the main session. A `docks-kit omp` free session replaces
+  both roles with its free model (see Free session launcher). A retry can
+  fall back to the role's fallback chain, for the reviewers Opus 5.5 `high`.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
 predates this change. It applies to the retired Astra-low `task` configuration,
@@ -654,6 +663,21 @@ values, and exits without starting a session. `priority` is the tier omp's
 and the omp 18.4.9 catalog lists none for GPT-6.1 Sol, Astra, or Luna. The SoT
 does not declare `tier.openai`, so the additive sync merge keeps the toggled
 value. New sessions read it; a running session changes through `/fast`.
+
+The four review agents inherit the live tier of the main session
+(`task.agentServiceTierOverrides: inherit`). In a new session after
+`docks-kit omp --fast`, they run on `priority` when `tier.openai` is `priority`,
+and on standard processing when it is `none`. A running session keeps the tier
+it started with, so its reviewers do not follow a later toggle.
+
+`--fast` never changes the Anthropic tier, and sync sets the deployed
+`tier.anthropic` to the SoT value `none`, so each session starts with it. In omp
+18.16.0, `/fast on` in a session whose current
+model is Anthropic sets `anthropic: priority` for that session. The reviewers
+then inherit it, so their Opus 5.5 fallback also runs fast. omp has no
+override value that inherits only the OpenAI tier. To keep Anthropic models
+on normal processing, use `docks-kit omp --fast` and a new session, not
+`/fast` in an Opus session.
 
 ## Maintenance
 
