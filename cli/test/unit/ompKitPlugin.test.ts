@@ -98,9 +98,15 @@ describe("omp kit plugin files", () => {
     };
     expect(manifest.name).toBe("docks-kit-omp");
     expect(manifest.version).toBe(GENERATED_PACKAGE_VERSION);
-    expect(manifest.omp.extensions).toEqual(["./extensions/hygiene.ts"]);
+    expect(manifest.omp.extensions).toEqual([
+      "./extensions/hygiene.ts",
+      "./extensions/pluginUpgrades.ts",
+    ]);
     expect(readFileSync(join(pluginDir, "extensions", "hygiene.ts"), "utf8")).toBe(
       payloadText("SoT/.omp/plugin/extensions/hygiene.ts"),
+    );
+    expect(readFileSync(join(pluginDir, "extensions", "pluginUpgrades.ts"), "utf8")).toBe(
+      payloadText("SoT/.omp/plugin/extensions/pluginUpgrades.ts"),
     );
     expect(
       readFileSync(join(pluginDir, "skills", "workspace-hygiene", "SKILL.md"), "utf8"),
@@ -118,6 +124,7 @@ describe("omp kit plugin files", () => {
     expect(statSync(join(pluginDir, "extensions")).mode & 0o777).toBe(0o700);
     expect(statSync(join(pluginDir, "package.json")).mode & 0o777).toBe(0o600);
     expect(statSync(join(pluginDir, "extensions", "hygiene.ts")).mode & 0o777).toBe(0o600);
+    expect(statSync(join(pluginDir, "extensions", "pluginUpgrades.ts")).mode & 0o777).toBe(0o600);
   });
 
   it("removes stale files and empty directories from the plugin directory", () => {
@@ -172,7 +179,7 @@ describe("omp kit plugin files", () => {
     expect(lines).toContain(
       `[dry-run] cp embedded:SoT/.omp/plugin/extensions/hygiene.ts -> ${pluginDir}/extensions/hygiene.ts`,
     );
-    expect(lines.filter((line) => line.startsWith("[dry-run] cp "))).toHaveLength(4);
+    expect(lines.filter((line) => line.startsWith("[dry-run] cp "))).toHaveLength(5);
     expect(existsSync(pluginDir)).toBe(false);
   });
 });
