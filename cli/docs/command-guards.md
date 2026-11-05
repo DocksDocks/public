@@ -7,27 +7,33 @@ temporary file or directory with `docks-kit scratch remove <path>` instead.
 To remove a path from the git index, run `git rm -- <path>`.
 
 The policy follows one principle: **fail closed**. A command is allowed only
-in a canonical form that is safe by construction. Every other form that could
-force, empty, or delete asks. Where omp's critical-command check acts, the
-form is denied instead. omp also denies a `$` or a backtick after `git push`,
-because the agent can always write the ref literally. A false positive in the
-ask tier is accepted. omp is
-the exception for file removal: by owner decision, omp runs any removal that
-it does not deny without a prompt. omp still asks before a removal that loses
-history: `git clean`, `git reset --hard`, and a force push. omp also asks
-before a git command that skips the repository's hooks.
+in a canonical form that is safe by construction. In Claude Code and Codex,
+every other form that could force, empty, or delete asks. Where omp's
+critical-command check acts, the form is denied instead. omp also denies a `$`
+or a backtick after `git push`, because the agent can always write the ref
+literally. A false positive in the ask tier is accepted.
 
-The policy sorts shell commands into three tiers:
+omp is the exception: by owner decision (0.22.8, #126), omp never asks
+before a shell command. The kit ships only deny rules and the `trash *`
+allow. Under the kit's `tools.approvalMode: yolo`, omp runs every command
+that no deny matches without a question, in the main session and in
+subagents. This includes any `rm` that omp does not deny, `git clean`,
+`git reset --hard`, a force push that no deny matches, and a git command
+that skips the repository's hooks. The deployed omp agent prompt forbids a
+force push and a hook skip. It tells the agent to ask the user before
+`git clean` or `git reset --hard`.
+
+The policy sorts shell commands into three tiers. omp uses two of them: deny
+and allow.
 
 - **Deny**: the command never runs, and nobody can approve it in the session.
-- **Ask**: the command needs approval before it runs.
-  - omp asks a person in the main session. omp runs subagents headless, so it
-    rejects every ask in a subagent.
+- **Ask**: the command needs approval before it runs. omp has no ask tier.
   - Claude Code asks a person, even in auto mode.
   - Codex sends the prompt to the approvals reviewer in the kit's
     `config.toml`. That reviewer is `auto_review`, a reviewer subagent, so a
     Codex ask can be approved without a person.
-- **Allow**: the agent may run the command alone.
+- **Allow**: the agent may run the command alone. In omp, a command that no
+  rule matches runs too. The table below calls this `run`.
 
 The omp `eval` tool stays unrestricted: `bash.patterns` does not gate a shell
 that `eval` starts.
@@ -43,21 +49,23 @@ that `eval` starts.
 | `git push --force` or `-f` to `origin main` or `origin master` | deny | deny | deny |
 | Recursive `rm` (`-r`, `-R`, `-rf`, `-fr`, `-rfv`, `-ri`, `-ir`, `-Ri`, `-iR`, `--recursive`, other listed clusters) | deny, also behind any prefix (`env`, `xargs`, `nice`, `find -exec`, `git rm -r`) | ask | ask (every `rm` asks) |
 | `rm` with an `r` or `f` option before an absolute path, `--no-preserve-root` | deny | ask if recursive, else classifier | ask |
-| Any other `rm`: one file, several files, a glob, `-f` | allow | glob asks; the rest goes to the classifier | ask |
+| Any other `rm`: one file, several files, a glob, `-f` | run | glob asks; the rest goes to the classifier | ask |
 | `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask | ask (every `find` asks) |
-| `git clean`, `git reset --hard` | ask | ask | ask |
-| `git push` that could force: see below | ask | ask | ask (every `git push` asks) |
+| `git clean`, `git reset --hard` | run | ask | ask |
+| `git push` that could force: see below | run, unless a deny above matches | ask | ask (every `git push` asks) |
 | A `$` or a backtick anywhere after `git push` in the same command | deny, also after a shell keyword, a wrapper, or a path before `git`: see below | ask for a word that starts with `$` or a backtick | ask (every `git push` asks) |
-| A git command that skips the repository's hooks: see below | ask | no rule; the classifier decides | ask for each `git push`, `git merge`, and `git rebase` that starts the command; no rule for `git commit`, `git am`, or `git pull` |
-| `git rm -- <path>`, `git worktree remove -- <path>` | allow | ask | ask |
-| `git worktree remove --force -- <path>` | allow; the omp prompt permits it once, after the commits are on the remote | ask | ask |
-| `docks-kit scratch remove <path>` | allow; the command removes only a path inside the scratch root, the system temporary directory, or `/var/tmp` | no rule | no rule |
-| Any other non-recursive `git rm` or `git worktree remove` | allow | ask | ask |
-| `gio trash -- <path>` | allow | allow | ask |
-| Any other `gio trash` | allow | ask with `--empty` or `--restore`; the rest goes to the classifier | ask |
+| A git command that skips the repository's hooks: see below | run | no rule; the classifier decides | ask for each `git push`, `git merge`, and `git rebase` that starts the command; no rule for `git commit`, `git am`, or `git pull` |
+| `git rm -- <path>`, `git worktree remove -- <path>` | run | ask | ask |
+| `git worktree remove --force -- <path>` | run; the omp agent prompt permits it once, after the commits are on the remote | ask | ask |
+| `docks-kit scratch remove <path>` | run; the command removes only a path inside the scratch root, the system temporary directory, or `/var/tmp` | no rule | no rule |
+| Any other non-recursive `git rm` or `git worktree remove` | run | ask | ask |
+| `gio trash -- <path>` | run | allow | ask |
+| Any other `gio trash` | run | ask with `--empty` or `--restore`; the rest goes to the classifier | ask |
 | `trash <path>` (macOS) | allow | allow | allow |
 
-A `git push` asks when it holds any of these words:
+In Claude Code, a `git push` asks when it holds any of these words. Codex
+asks for every `git push`. omp runs each of these forms, unless a deny rule
+matches, such as a force push to `origin main`:
 
 - a `+` refspec;
 - any long option that starts with `--f`, such as `--force`,
@@ -66,12 +74,12 @@ A `git push` asks when it holds any of these words:
 - `-f`, or a short-option cluster that starts with two of git push's
   no-argument flags (`v`, `q`, `d`, `n`, `u`, `4`, `6`, `f`), such as `-vf`,
   `-vvf`, or `-uvfq`;
-- in Claude Code, a word that starts with `$`, a backtick, a quote, or a
-  backslash. omp denies a `$` or a backtick anywhere after `git push`.
+- a word that starts with `$`, a backtick, a quote, or a backslash. omp
+  denies a `$` or a backtick anywhere after `git push`.
 
 Each of these must begin a word: `feat/cache-vf` is a branch name, not an
-option. `--follow-tags` also asks. This is an accepted false positive, because
-it shares the `--f` prefix.
+option. In Claude Code, `--follow-tags` also asks. This is an accepted false
+positive, because it shares the `--f` prefix.
 
 A `$` or a backtick hides the ref until the shell expands it, so the matcher
 cannot tell `$b` from `+main` or `--force`. An unquoted value inside a word
@@ -81,7 +89,7 @@ also splits into more words: with `b="main --force"`, `HEAD:$b` becomes
 branch name.
 
 omp therefore denies a `$` or a backtick anywhere after `git push` in the same
-command, instead of asking. The agent reads a refusal such as
+command. The agent reads a refusal such as
 `Blocked by bash pattern: *git push *$*`, writes the ref literally, and runs
 the push without a question. The omp agent prompt names the literal forms:
 `git push -u origin HEAD` for the current branch, and
@@ -91,54 +99,24 @@ such as `env`, or a path such as `/usr/bin/git` does not hide the push.
 
 ## Commands that skip the repository's hooks
 
-In omp, a command asks when it can skip the repository's hooks. Each of
-these rules also matches after a word before `git`, such as `X=1`, `env`,
-`timeout`, or a path like `/usr/bin/git`:
-
-- a word after `git` that starts with `--no-v`. Git accepts each unique
-  prefix of `--no-verify`, and `git am` accepts the shortest, `--no-v`. This
-  covers `git push`, `git commit`, `git merge`, `git pull`, `git rebase`, and
-  `git am`, also after `git -C <dir>`;
-- `-n`, or a short-option cluster that starts with two no-argument options,
-  in `git commit` or `git am`. Both read `-n` as `--no-verify`, also inside a
-  cluster such as `-anm`. The no-argument options are `q`, `v`, `s`, `e`, `a`,
-  `i`, `p`, `o`, `n`, and `z` for `git commit`, and `i`, `n`, `3`, `q`, `s`,
-  `u`, `k`, `m`, `c`, and `r` for `git am`;
-- `core.hooksPath` or `core.hookspath` after `git`, as in `git -c`,
-  `git --config-env`, or `git config`;
-- `GIT_CONFIG_COUNT` or `GIT_CONFIG_PARAMETERS` anywhere in the line, in any
-  assignment form such as `=`, `+=`, or `export`. These variables can
-  override any configuration key, `core.hooksPath` included, whatever its
-  spelling. A line that sets them does not start with `git`, and a
-  `GIT_CONFIG_PARAMETERS` entry keeps its inner quotes, as in
-  `'core.hooksPath'='/dev/null'`.
-
-`git commit -m x`, `git commit -am x`, `git commit -sm x`, and
-`git commit -mn x` (the message `n`) run without a prompt. These forms ask as
-accepted false positives:
-
-- another option that starts with `--no-v`, such as `--no-verbose`,
-  `--no-verify-signatures`, or `git send-email --no-validate`;
-- a cluster of two no-argument options without `n`, such as
-  `git commit -aqm x`;
-- a read such as `git config --get core.hooksPath`. To read the hooks
-  directory without a prompt, run `git rev-parse --git-path hooks`;
-- message or search text that holds ` -n`, a two-letter cluster, or `--no-v`,
-  such as `git commit -m "use head -n 5"` or `git grep -- --no-verify`. Write
-  such a message with `git commit -F <file>`;
-- a line with a later command, because omp tests the whole line:
-  `git commit -m x && git log -n 1` asks. Run the commit as its own command.
+A git command can skip the repository's hooks, for example with
+`--no-verify`, `git commit -n`, `git am -n`, or a `core.hooksPath` change.
+omp has no rule for these commands, so it runs them without a question. The
+deployed omp agent prompt forbids each hook skip. Claude Code has no rule
+either, so its classifier decides. Codex asks for each `git push`,
+`git merge`, and `git rebase` that starts the command. Codex has no rule for
+`git commit`, `git am`, or `git pull`.
 
 ## Why the tools differ
 
 | Topic | omp | Claude Code | Codex |
 | --- | --- | --- | --- |
 | Rule order | First match wins | Deny, then ask, then allow, whatever the order | Strictest matching rule wins |
-| Exception for one form | An allow before a broader prompt works; the kit ships no such exception now | An allow never beats a matching ask, so every `git rm` asks | An allow never beats a matching prompt, so every `gio trash` asks |
+| Exception for one form | omp has no ask tier, so it needs no exception | An allow never beats a matching ask, so every `git rm` asks | An allow never beats a matching prompt, so every `gio trash` asks |
 | Pattern | Glob on the whole line and on each quote-stripped segment; `*` crosses spaces; no literal `*` | Glob on each subcommand as written, quotes included; `\*` is a literal `*` | Exact argv tokens from the start, with alternatives |
 | `rm` by path (`/bin/rm`) | Matched by `*/rm` forms | Matched by `*/rm` forms | Resolved to the `rm` rules |
 | Leading assignment `X=1 cmd` | Part of the line | Stripped before deny and ask rules | A script with it is not split |
-| What an ask means | A person in the main session; rejected in a subagent | A person | The `auto_review` reviewer subagent |
+| What an ask means | No ask: a command that no deny matches runs, in the main session and in subagents | A person | The `auto_review` reviewer subagent |
 | Critical-command check | Turns a prompt into an allow under yolo, so the kit denies those shapes | Asks or denies for an `rm` of a critical path | Prompts for a forced `rm` that no rule matches |
 
 ## How an agent removes files
@@ -212,11 +190,12 @@ the home directory, and no glob can express "inside the temporary directory".
 - **omp**:
   - The rules are ordered, and the first match wins.
   - `*` matches any text, spaces included, and no escape spells a literal `*`.
-  - Deny and prompt rules test the whole line and each segment between `;`,
-    `&&`, `|`, and similar operators, with quotes and escapes removed. So
+  - Deny rules test the whole line and each segment between `;`, `&&`, `|`,
+    and similar operators, with quotes and escapes removed. So
     `rm -rf "$HOME"` matches `rm * $HOME`.
   - Allow rules apply only to a simple command.
-  - The kit lists rules as deny, then prompts, then the `trash *` allow.
+  - The kit ships no prompt rule. It lists rules as deny, then the `trash *`
+    allow.
 - **Claude Code**:
   - Deny beats ask, and ask beats allow, whatever the order.
   - The rules match the command text as written, quotes included, so the kit
@@ -252,12 +231,6 @@ the home directory, and no glob can express "inside the temporary directory".
   `git commit -m "rm -f /tmp/x"`. The `git push` deny matches text that names
   `git push` before a `$`, such as `git commit -m "git push $b fails"`. Write
   such a message with `git commit -F`.
-- **omp, critical patterns in a line**: a line that holds one of omp's other
-  critical patterns turns any matching prompt rule on that line into an
-  allow. This applies to a compound line, such as one with `curl ... | sh`,
-  and to message text: `git commit -n -m "fix reboot loop"` runs, because
-  `reboot`, `shutdown`, `halt`, `mkfs`, `cryptsetup`, and `init 0` are
-  critical words.
 - **omp, prefixed `rm`**: the kit denies a recursive `rm` behind any prefix,
   such as `env X=1 rm -rf b`, `xargs rm -rf`, `find . -exec rm -rf {} +`, or
   `git rm -r dir`. A `* rm ` rule also matches text, so a line such as
@@ -274,35 +247,14 @@ the home directory, and no glob can express "inside the temporary directory".
   `remote.<name>.push` makes a plain `git push` force. No rule sees git
   configuration. `git push --delete` and `git push --prune` remove remote
   branches without force; they ask only in Codex.
-- **omp, force push after a prefix**: the force-push deny and prompt rules
-  start with `git push`, not `*`. So a force push after a shell keyword, a
-  wrapper, or a path runs without a check, such as
+- **omp, force push after a prefix**: the force-push deny rules start with
+  `git push`, not `*`. So a force push to `origin main` after a shell keyword,
+  a wrapper, or a path runs without a check, such as
   `for r in a; do git push --force origin main; done`,
   `env git push --force origin main`, or `/usr/bin/git push --force origin main`.
 - **`git -C`**: no tool matches a git subcommand that does not follow `git`
-  directly, such as `git -C . push --force` or `git -C . push origin $b`. omp
-  also lets `git -C . commit -n` run without a prompt. In omp, the
-  `--no-verify` and `core.hooksPath` forms still ask after `git -C`.
-- **omp, `core.hooksPath` spelling**: git reads section and variable names
-  without case, but omp matches with case. A key in another case, such as
-  `CORE.HOOKSPATH` or `Core.HooksPath`, after `git -c`, `git --config-env`, or
-  `git config` runs without a prompt.
-- **omp, configuration files**: a configuration file can set
-  `core.hooksPath` without a rule seeing the key. This includes a file named
-  through `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_SYSTEM`, `XDG_CONFIG_HOME`,
-  `include.path`, or `includeIf`, and a direct edit of `.git/config`. The kit
-  does not ask for these variables, because test scripts set
-  `GIT_CONFIG_GLOBAL=/dev/null` routinely.
-- **omp on Windows, variable names**: Windows reads variable names without
-  case, so a name such as `git_config_count` also overrides configuration and
-  runs without a prompt.
-- **omp, git aliases**: an alias for `commit` or `am`, such as `git ci -n` or
-  `git -c alias.ci=commit ci -n`, runs without a prompt.
-- **omp, other hook skips**: no rule covers a hook-manager switch, such as
-  `HUSKY=0`, `SKIP=...`, or `LEFTHOOK=0`, or a change to the files in the
-  hooks directory. `git commit --no-post-rewrite` also runs: the
-  `post-rewrite` hook runs after the commit and cannot stop it. The deployed
-  omp prompt forbids each hook skip.
+  directly, such as `git -C . push --force origin main` or
+  `git -C . push origin $b`.
 - **Claude Code, `HOME=` before a command**: Claude Code matches deny rules
   past a leading assignment. So `HOME=/tmp/x cmd` reaches the classifier.
   `export HOME=...`, `env HOME=...`, a bare `HOME=...` line, and any `rm` of
@@ -341,19 +293,18 @@ prompt. In Claude Code, any form with `--empty` or `--restore` asks.
     1. kit deny;
     2. user deny;
     3. user prompt;
-    4. kit allow exceptions (the kit allows listed before the first kit
-       prompt; the kit currently ships none);
-    5. kit prompt;
-    6. the other user rules;
-    7. kit allow.
+    4. kit prompt (the kit ships none since 0.22.8);
+    5. the other user rules;
+    6. kit allow.
   - A user deny or prompt thus precedes every kit allow, and no allow can
     loosen a deny or a prompt.
   - A repeat sync changes nothing.
   - After the merge, `ompRemovals.ts syncOmpRemovals, retired bash-rule
     inventory` removes the retired kit rules in `OMP_RETIRED_BASH_RULES` from
-    the deployed `bash.patterns` on every sync. It removes a rule only when
-    its `match` and `approval` equal a retired pair, so a different user rule
-    stays.
+    the deployed `bash.patterns` on every sync. The inventory also holds the
+    492 prompt rules that the kit retired in 0.22.8. It removes a rule only
+    when its `match` and `approval` equal a retired pair, so a different user
+    rule stays.
 - **Claude Code**: sync unions each permissions array with the deployed one,
   so user rules stay. `--reconcile` replaces the arrays with the SoT arrays.
 - **Codex**: sync writes `~/.codex/rules/docks.rules` whole. Keep your own
@@ -390,8 +341,5 @@ Each check below is safe, because the shell never reaches `rm`.
   `git status --porcelain` without `--ignored`).
 - Git hooks: https://git-scm.com/docs/githooks (`--no-verify`,
   `core.hooksPath`), https://git-scm.com/docs/git-commit and
-  https://git-scm.com/docs/git-am (`-n`), https://git-scm.com/docs/git
-  (`-c`, `--config-env`), and https://git-scm.com/docs/git-config (names
-  without case, `GIT_CONFIG_COUNT`, `GIT_CONFIG_PARAMETERS`,
-  `GIT_CONFIG_GLOBAL`).
+  https://git-scm.com/docs/git-am (`-n`).
 - macOS `trash`: https://keith.github.io/xcode-man-pages/trash.8.html
