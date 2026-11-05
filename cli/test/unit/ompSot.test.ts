@@ -115,10 +115,10 @@ describe("SoT omp tree", () => {
     });
   });
 
-  // omp maps a caller `effort: hi` to the top of the model ladder (`max`), and
-  // caller effort outranks the role suffix; only this ceiling stops it.
-  it("caps caller task effort at xhigh", () => {
-    expect(ompConfig()["task"]).toHaveProperty("maxEffort", "xhigh");
+  // A caller `effort` outranks the role suffix, and `hi` maps to the top of the
+  // model ladder. With the field off, every spawn runs its role's level.
+  it("hides caller task effort so spawns run the role level", () => {
+    expect(ompConfig()["task"]).toHaveProperty("enableEffort", false);
   });
 
   // A GPT-6 Sol advisor looped on repeated reads under an Opus 5.5 session.

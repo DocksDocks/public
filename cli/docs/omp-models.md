@@ -388,21 +388,23 @@ quick answer.
   `thinking-level: auto`. It resolves Opus 5.5 high. The `:high` suffix on
   `modelRoles.task` is an explicit level, so it outranks the agent's `auto`,
   and the auto classifier does not run for a `task` spawn.
-- `task.enableEffort` is `true`, so a caller can pass `effort: lo`, `med`, or
-  `hi`. Caller effort outranks the role suffix. omp maps it onto the model's
-  own ladder, not onto level names: `lo` selects the lowest level, `med` the
-  lower middle, and `hi` the highest (`resolveTaskEffortLevel` in omp's
-  `packages/tui/src/thinking.ts`, omp 18.8.5). Then omp caps the result at
-  `task.maxEffort`.
-- `task.maxEffort` is `xhigh`. On the `low, medium, high, xhigh, max` ladder
-  that Opus 5.5, GPT-6.1 Sol, and GPT-6 Luna publish, `lo` gives `low`, `med`
-  gives `high`, and `hi` gives `xhigh`. With the former `max` ceiling, `hi`
-  gave `max`: on 2026-10-09, `task` spawns with `effort: hi` ran GPT-6.1 Sol
-  at `max` despite the `:high` role suffix. `scout` and `sonic` run GPT-6 Luna
-  `medium` by default and GPT-6 Luna `xhigh` with `effort: hi`.
-- The bundled `reviewer` and `security-reviewer` resolve `@reviewer`, which is
-  GPT-6.1 Sol xhigh. A caller `effort` still outranks the `:xhigh` suffix:
-  `med` gives `high`, and `hi` gives `xhigh` under the `task.maxEffort` cap.
+- `task.enableEffort` is `false`, so the task tool has no `effort` field and
+  every spawn runs the level of its agent's role. When the field is on, a
+  caller can pass `effort: lo`, `med`, or `hi`, and caller effort outranks the
+  role suffix. omp maps it onto the model's own ladder, not onto level names:
+  `lo` selects the lowest level, `med` the lower middle, and `hi` the highest
+  (`resolveTaskEffortLevel` in omp's `packages/tui/src/thinking.ts`,
+  omp 18.8.5). Then omp caps the result at `task.maxEffort`. On the
+  `low, medium, high, xhigh, max` ladder, `hi` gave `xhigh` under the
+  `xhigh` cap, so many `task` spawns ran Opus 5.5 xhigh despite the `:high`
+  role suffix. On 2026-11-05, a fresh `omp -p` run on omp 18.16.0 with the
+  field off had no `effort` field, and its `task` child recorded
+  `resolvedModel: anthropic/claude-opus-5-5:high`.
+- `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
+  only to a per-call `model` with a `:level` suffix.
+- `scout` and `sonic` always run GPT-6 Luna `medium`. The bundled `reviewer`
+  and `security-reviewer` resolve `@reviewer` and always run GPT-6.1 Sol
+  xhigh.
 - The `code-reviewer` and `plan-reviewer` override entries remain dormant.
   Both point to `@reviewer`. omp's task tool rejects both names as unknown
   agents, so neither can spawn.
