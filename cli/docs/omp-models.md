@@ -447,11 +447,11 @@ quick answer.
   `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
-- `scout` and `sonic` always run GPT-6 Luna `medium`. In the deployed config,
+- In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`, and
   the four reviewer agents resolve `@reviewer` and run GPT-6.1 Terra `high` on
-  the `default` tier. A `docks-kit omp` free session replaces that role with
-  its free model (see Free session launcher), and a retry can fall back to
-  Opus 5.5 `high`.
+  the `default` tier. A `docks-kit omp` free session replaces both roles with
+  its free model (see Free session launcher). A retry can fall back to the
+  role's fallback chain, for the reviewers Opus 5.5 `high`.
 
 The runtime per-agent measurement from fresh `omp -p` runs on 2026-09-09
 predates this change. It applies to the retired Astra-low `task` configuration,
