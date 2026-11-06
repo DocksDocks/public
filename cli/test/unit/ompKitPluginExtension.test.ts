@@ -160,6 +160,24 @@ describe("detectResources", () => {
     expect(result.notes).toEqual([]);
   });
 
+  it("finds the id of a detached container that omp follows with a wall-time notice", () => {
+    const output = `${CONTAINER_ID}\n\n\nWall time: 1.2 seconds`;
+    expect(detect("docker run -d --rm img", "/w", output).resources).toEqual([
+      { kind: "container", id: SHORT_ID, down: `docker stop ${SHORT_ID}`, docker: DEFAULT_DAEMON },
+    ]);
+  });
+
+  it.each([
+    "docker run -d img > /dev/null; docker inspect -f '{{.Id}}' other",
+    "docker inspect -f '{{.Id}}' other || docker run -d --rm img",
+  ])("does not take another command's container id for %s", (command) => {
+    const result = detect(command, "/w", `${CONTAINER_ID}\n`);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toContain(
+      "You created a detached container. When the task no longer needs it, run `docker stop <id>`.",
+    );
+  });
+
   it("asks for --rm on docker run", () => {
     expect(detect("docker run img").notes).toEqual([
       "Add `--rm` to `docker run` so that Docker removes the container when it stops.",

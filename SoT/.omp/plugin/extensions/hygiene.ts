@@ -963,17 +963,7 @@ export function detectResources(
   };
 
   const segments = scopedSegments(command, ROOT_SCOPE);
-  // Only a command that runs alone, without a wrapper, and prints to the tool
-  // output owns that output. A substitution such as `f=$(mktemp)` captures
-  // what mktemp prints, a later command can print an unrelated path, a
-  // wrapper such as `env` or `time` stands between the command and the
-  // output, and a redirection or a process substitution sends the output
-  // elsewhere, so these get the generic note.
-  const sole = segments.length === 1 ? segments[0] : undefined;
-  const ownPath =
-    sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
-      ? lastAbsoluteLine(output)
-      : undefined;
+  const owned = ownedOutput(segments, output);
   for (const segment of segments) {
     const { assignments, words, assignsShell } = commandWords(segment.words);
     const first = words[0];
@@ -1020,7 +1010,7 @@ export function detectResources(
           ? undefined
           : dockerEnvironment(state.dockerEnvironment, assignments),
     };
-    detectCreation(context, home, output, ownPath, platform, findings);
+    detectCreation(context, home, owned, platform, findings);
     const text = segment.words.map(quote).join(" ").slice(0, COMMAND_TEXT_LIMIT);
     for (const rule of otherRules(context, segment.background, home)) {
       findings.resource({ kind: "other", category: rule.category, command: text, hint: rule.hint });
@@ -1029,11 +1019,26 @@ export function detectResources(
   return { resources: [...found.values()], notes };
 }
 
+/**
+ * The tool output when one command owns it, else undefined. Only a command
+ * that runs alone, without a wrapper, and prints to the tool output owns that
+ * output. A substitution such as `f=$(mktemp)` captures what mktemp prints,
+ * another command can print an unrelated path or container ID or skip the
+ * command after `||`, a wrapper such as `env` or `time` stands between the
+ * command and the output, and a redirection or a process substitution sends
+ * the output elsewhere, so these get the generic note.
+ */
+function ownedOutput(segments: ReadonlyArray<ScopedSegment>, output: string): string | undefined {
+  const sole = segments.length === 1 ? segments[0] : undefined;
+  return sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
+    ? output
+    : undefined;
+}
+
 function detectCreation(
   context: CommandContext,
   home: string,
-  output: string,
-  ownPath: string | undefined,
+  owned: string | undefined,
   platform: NodeJS.Platform,
   findings: Findings,
 ): void {
@@ -1050,13 +1055,14 @@ function detectCreation(
   if (docker !== undefined) {
     const { target, args } = docker;
     if (args[0] === "compose") detectCompose(args.slice(1), target, directory, home, findings);
-    else if (args[0] === "run") detectContainer(args.slice(1), target, output, findings);
+    else if (args[0] === "run") detectContainer(args.slice(1), target, owned, findings);
     else if (args[0] === "container" && args[1] === "run") {
-      detectContainer(args.slice(2), target, output, findings);
+      detectContainer(args.slice(2), target, owned, findings);
     }
     return;
   }
 
+  const ownPath = owned === undefined ? undefined : lastAbsoluteLine(owned);
   if (name === "docks-kit" && words[1] === "scratch" && words[2] === "new") {
     if (ownPath === undefined) {
       findings.note(unresolvedNote("scratch directory", "docks-kit scratch remove <path>"));
@@ -1240,7 +1246,7 @@ function detectCompose(
 function detectContainer(
   args: ReadonlyArray<string>,
   target: DockerTarget | undefined,
-  output: string,
+  owned: string | undefined,
   findings: Findings,
 ): void {
   const detached = args.some(
@@ -1248,13 +1254,9 @@ function detectContainer(
   );
   const removesItself = args.some((word) => word === "--rm" || word === "--rm=true");
   if (detached) {
-    const line = output
-      .split(/\r?\n/)
-      .map((text) => text.trim())
-      .filter((text) => text !== "")
-      .pop();
-    if (target !== undefined && line !== undefined && CONTAINER_ID.test(line)) {
-      const id = line.slice(0, 12);
+    const fullId = owned === undefined ? undefined : lastContainerIdLine(owned);
+    if (target !== undefined && fullId !== undefined) {
+      const id = fullId.slice(0, 12);
       const prefix = dockerPrefix(target);
       const down = removesItself
         ? `${prefix} stop ${id}`
@@ -1265,6 +1267,19 @@ function detectContainer(
     }
   }
   if (!removesItself) findings.note(RM_NOTE);
+}
+
+/**
+ * The last line that is a full container ID. omp appends notices such as
+ * `Wall time: N seconds` after the command output, so the ID need not be the
+ * last line.
+ */
+function lastContainerIdLine(output: string): string | undefined {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => CONTAINER_ID.test(line))
+    .pop();
 }
 
 function otherRules(
