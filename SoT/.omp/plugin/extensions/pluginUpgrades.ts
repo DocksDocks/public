@@ -2,8 +2,9 @@
  * docks-kit-omp extension: plugin upgrade reminders for omp sessions.
  *
  * omp deletes the previous plugin folder on `omp plugin upgrade`. A running
- * omp session keeps the plugin folders that it found at startup. So its plugin
- * agents can fail after an upgrade, until the user runs /reload-plugins.
+ * omp session keeps the plugin agents that it found at startup. So these
+ * agents can fail after an upgrade, until the user runs /reload-plugins. The
+ * skills of the session resolve to the new folder through `skill://`.
  * `docks-kit sync` writes one event file for each upgrade that changed a
  * version, or that can have changed it (the version `unknown`).
  *

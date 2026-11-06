@@ -373,8 +373,10 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     const items = operations.map((operation) => describeOperation(operation, after));
     change(`omp plugins synced: ${items.join(", ")}`);
     const upgrades = versionChanges(operations, after);
-    // /reload-plugins repairs a running session after a version-changing
-    // upgrade. Each other operation (an install, a reinstall at the same
+    // /reload-plugins repairs the plugin agents and skills of a running session
+    // after a version-changing upgrade. The upgrade warning and next step name
+    // the cases that still need a restart: hooks, extension modules, and
+    // non-MCP tools. Each other operation (an install, a reinstall at the same
     // version, an npm install, or a link) still needs a restart.
     const upgradedIds = new Set(upgrades.map((upgrade) => upgrade.id));
     if (

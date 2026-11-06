@@ -84,6 +84,7 @@ config-root registry lists `docks`, omp copies it forward itself: the sync runs
 plugin operation, the sync reads the inventory again and prints one line that
 names each plugin with its version change, for example
 `omp plugins synced: docks@docks 0.21.1 -> 0.22.0, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+
 omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
 session then loses the plugin agents of that folder. A test on omp 18.16.0
 showed that `/reload-plugins` brings the agents back, and that `skill://`
@@ -98,6 +99,7 @@ operation sets it: an install, a reinstall at the same version, an npm install,
 or a link. A changed kit plugin file or omp config file also sets it. The
 restart next step `Restart omp to load any refreshed plugins, skills, or tools.`
 then prints next to the upgrade rule.
+
 The sync also writes one event file for each such upgrade into the upgrade log
 `~/.cache/docks-kit/omp-plugin-upgrades/` (folder 0700, files 0600). The file
 name is `<finishedAt ms>-<random>.json`, and the file holds
@@ -125,11 +127,11 @@ tool result of a main omp session, it takes the events that finished after
 its omp process started. It adds one reminder for the events that the session
 did not get before. The reminder names each plugin with its version change. It
 says that the plugin agents of the session may fail. It tells the agent to ask
-the user to run `/reload-plugins`, then to read each plugin skill again through
-`skill://` before it runs a skill script. It asks for a restart instead when an
-upgraded plugin ships hooks, extension modules, or non-MCP tools. A folder or
-file that the extension cannot read gives no reminder for that tool result.
-The next tool result reads it again.
+the user to run `/reload-plugins`. It then tells the agent to read each plugin
+skill again through `skill://` before it runs a skill script. It asks for a
+restart instead when an upgraded plugin ships hooks, extension modules, or
+non-MCP tools. A folder or file that the extension cannot read gives no
+reminder for that tool result. The next tool result reads it again.
 These limits apply:
 
 - omp imports extension modules only at startup. An omp process that started
