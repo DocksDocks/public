@@ -17,8 +17,9 @@
   - `||`, a pipeline, or a background job before a later command;
   - `!`, a conditional, a loop, or a function definition;
   - `&&` together with `;` or a line break.
-- The extension checks each `$( … )` or backtick substitution by itself. An
-  operator at the end of a line continues on the next line, as in the shell.
+- The extension checks each `$( … )` or backtick substitution by itself. A
+  `&&`, `||`, or `|` at the end of a line continues on the next line, as in
+  the shell.
   An `unset` of a daemon variable that may not run makes the daemon unknown,
   because the shell can inherit that variable.
 - Cost: these commands now get the generic note, although every part runs:
