@@ -86,6 +86,12 @@ function inventoryPresent(root: string, docksVersion = "0.18.0", planVersion = "
 }
 const INVENTORY_EMPTY = JSON.stringify({ npm: [], marketplace: [] });
 
+/** The npm rows of `inventoryPresent` with the given marketplace rows. */
+function inventoryWithMarketplace(root: string, marketplace: ReadonlyArray<object>): string {
+  const { npm } = JSON.parse(inventoryPresent(root)) as { npm: ReadonlyArray<object> };
+  return JSON.stringify({ npm, marketplace });
+}
+
 /** The omp argv that links the kit plugin directory under `root`. */
 function kitLink(root: string): string {
   return `plugin link ${root}/.docks-kit/omp-plugin`;
@@ -188,6 +194,15 @@ function upgradeWarnings(output: ReadonlyArray<string>): Array<string> {
     .filter((line) => line.includes("running omp sessions lose"))
     .map((line) => line.slice(line.indexOf("omp plugin ")));
 }
+
+/** The warning that sync prints for one marketplace upgrade that changed a version. */
+function upgradeWarning(id: string, before: string, after: string): string {
+  return `omp plugin ${id} ${before} -> ${after}: running omp sessions lose its plugin agents until they run /reload-plugins and read its skills again through skill:// (restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools).`;
+}
+
+const UPGRADE_NEXT_STEP =
+  "Run /reload-plugins in each running omp session, then read each plugin skill again through skill://. Restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.";
+const RESTART_NEXT_STEP = "Restart omp to load any refreshed plugins, skills, or tools.";
 
 /** Each line that contains `start`, from `start` to the line end. */
 function messageLines(output: ReadonlyArray<string>, start: string): Array<string> {
@@ -592,13 +607,10 @@ describe("omp plugin inventory", () => {
 
     await ompSync(ctx);
 
-    expect(upgradeWarnings(output)).toEqual([
-      "omp plugin docks@docks 0.18.0 -> 0.19.0: running omp sessions lose its plugin agents and skill script paths until they restart.",
-    ]);
+    expect(upgradeWarnings(output)).toEqual([upgradeWarning("docks@docks", "0.18.0", "0.19.0")]);
     expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
-    expect(ompNextSteps(ctx)).toEqual([
-      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
-    ]);
+    // The omp config files that this first sync deployed also need a restart.
+    expect(ompNextSteps(ctx)).toEqual([UPGRADE_NEXT_STEP, RESTART_NEXT_STEP]);
     const files = readdirSync(upgradeLog(root));
     expect(files).toHaveLength(1);
     expect(files[0]).toMatch(new RegExp(`^${docksFinishedAt}-[0-9a-f]+\\.json$`));
@@ -662,8 +674,8 @@ describe("omp plugin inventory", () => {
       "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
     ]);
     expect(upgradeWarnings(output)).toEqual([
-      "omp plugin docks@docks 0.18.0 -> unknown: running omp sessions lose its plugin agents and skill script paths until they restart.",
-      "omp plugin plan-lifecycle@docks 0.9.0 -> unknown: running omp sessions lose its plugin agents and skill script paths until they restart.",
+      upgradeWarning("docks@docks", "0.18.0", "unknown"),
+      upgradeWarning("plan-lifecycle@docks", "0.9.0", "unknown"),
     ]);
     expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
     expect(loggedUpgrades(root)).toEqual([
@@ -672,7 +684,145 @@ describe("omp plugin inventory", () => {
     ]);
   });
 
-  it("warns and keeps the restart advice when the upgrade log cannot be written", async () => {
+  it.each([
+    ["a version that can be read after the upgrade", "0.19.0"],
+    ["a version that cannot be read after the upgrade", "unknown"],
+  ])(
+    "advises /reload-plugins, skill://, and the restart exception for %s",
+    async (_name, after) => {
+      const root = makeRoot();
+      respondWithInventory([
+        inventoryPresent(root),
+        after === "unknown" ? "not json" : inventoryPresent(root, after, after),
+      ]);
+      const output: Array<string> = [];
+
+      await ompSync(makeCtx(root, { output }));
+
+      const warnings = upgradeWarnings(output);
+      expect(warnings).toHaveLength(2);
+      for (const warning of warnings) {
+        expect(warning).toContain(`-> ${after}:`);
+        expect(warning).toContain("until they run /reload-plugins");
+        expect(warning).toContain("read its skills again through skill://");
+        expect(warning).toContain(
+          "(restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools)",
+        );
+      }
+    },
+  );
+
+  it("prints only the upgrade rule when version-changing upgrades are the only plugin change", async () => {
+    const root = makeRoot();
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0", "0.10.0")]);
+    const ctx = makeCtx(root);
+
+    await syncPlugins(ctx);
+
+    expect(ompCommands()).toEqual([
+      "plugin list --json",
+      "plugin upgrade --scope user docks@docks",
+      "plugin upgrade --scope user plan-lifecycle@docks",
+      "plugin list --json",
+    ]);
+    expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
+    expect(ctx.nextStepTriggers.ompRestart).toBe(false);
+    expect(ompNextSteps(ctx)).toEqual([UPGRADE_NEXT_STEP]);
+  });
+
+  it("prints the upgrade rule and the restart advice when the same pass also installs a plugin", async () => {
+    const root = makeRoot();
+    // pi-intercom is missing before the pass, so the pass installs it.
+    const withoutIntercom = JSON.stringify({
+      npm: [
+        { name: "docks-kit-omp", version: "0.0.0", path: join(root, ".docks-kit", "omp-plugin") },
+      ],
+      marketplace: [
+        { id: "docks@docks", scope: "user", entries: [{ version: "0.18.0" }] },
+        { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: "0.9.0" }] },
+      ],
+    });
+    respondWithInventory([withoutIntercom, inventoryPresent(root, "0.19.0", "0.10.0")]);
+    const ctx = makeCtx(root);
+
+    await syncPlugins(ctx);
+
+    expect(ompCommands()).toEqual([
+      "plugin list --json",
+      "plugin upgrade --scope user docks@docks",
+      "plugin upgrade --scope user plan-lifecycle@docks",
+      `install pi-intercom@${PIN}`,
+      "plugin list --json",
+    ]);
+    expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
+    expect(ctx.nextStepTriggers.ompRestart).toBe(true);
+    expect(ompNextSteps(ctx)).toEqual([UPGRADE_NEXT_STEP, RESTART_NEXT_STEP]);
+  });
+
+  it.each([
+    [
+      "a marketplace reinstall at the same versions",
+      (root: string) => [inventoryPresent(root)],
+      [
+        "plugin upgrade --scope user docks@docks",
+        "plugin upgrade --scope user plan-lifecycle@docks",
+      ],
+      false,
+      [RESTART_NEXT_STEP],
+    ],
+    [
+      "a marketplace install of a missing plugin next to a version-changing upgrade",
+      (root: string) => [
+        inventoryWithMarketplace(root, [
+          { id: "docks@docks", scope: "user", entries: [{ version: "0.18.0" }] },
+        ]),
+        inventoryPresent(root, "0.19.0", "0.10.0"),
+      ],
+      [
+        "plugin upgrade --scope user docks@docks",
+        "plugin install --scope user plan-lifecycle@docks",
+      ],
+      true,
+      [UPGRADE_NEXT_STEP, RESTART_NEXT_STEP],
+    ],
+    [
+      "an upgrade whose old version the first inventory does not give",
+      (root: string) => [
+        inventoryWithMarketplace(root, [
+          { id: "docks@docks", scope: "user", entries: [] },
+          { id: "plan-lifecycle@docks", scope: "user", entries: [{ version: "0.9.0" }] },
+        ]),
+        inventoryPresent(root, "0.19.0", "0.10.0"),
+      ],
+      [
+        "plugin upgrade --scope user docks@docks",
+        "plugin upgrade --scope user plan-lifecycle@docks",
+      ],
+      true,
+      [UPGRADE_NEXT_STEP, RESTART_NEXT_STEP],
+    ],
+  ])(
+    "sets the restart trigger for %s",
+    async (_name, inventories, pluginCommands, upgraded, nextSteps) => {
+      const root = makeRoot();
+      respondWithInventory(inventories(root));
+      const ctx = makeCtx(root);
+
+      await syncPlugins(ctx);
+
+      // Only marketplace operations run, so no npm install or link sets the trigger.
+      expect(ompCommands()).toEqual([
+        "plugin list --json",
+        ...pluginCommands,
+        "plugin list --json",
+      ]);
+      expect(ctx.nextStepTriggers.ompRestart).toBe(true);
+      expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(upgraded);
+      expect(ompNextSteps(ctx)).toEqual(nextSteps);
+    },
+  );
+
+  it("warns and keeps the upgrade advice when the upgrade log cannot be written", async () => {
     const root = makeRoot();
     // A file at the log path makes the folder creation fail.
     mkdirSync(join(root, ".cache", "docks-kit"), { recursive: true });
@@ -686,16 +836,14 @@ describe("omp plugin inventory", () => {
     const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
     expect(otherLogWarnings).toEqual([]);
     expect(logWarning).toMatch(
-      /^omp plugin upgrade log not written: .+ — running omp sessions get no reminder for these upgrades and must restart$/,
+      /^omp plugin upgrade log not written: .+ — running omp sessions get no reminder for these upgrades; give each of them the advice above$/,
     );
     expect(pluginSummary(output)).toBe(
       "omp plugins synced: docks@docks 0.18.0 -> 0.19.0, plan-lifecycle@docks 0.9.0 (current)",
     );
     expect(upgradeWarnings(output)).toHaveLength(1);
     expect(ctx.failures).toEqual([]);
-    expect(ompNextSteps(ctx)).toEqual([
-      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
-    ]);
+    expect(ompNextSteps(ctx)).toEqual([UPGRADE_NEXT_STEP, RESTART_NEXT_STEP]);
   });
 
   it("warns and keeps the new event when the upgrade log cannot be pruned", async () => {

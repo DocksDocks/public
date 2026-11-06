@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-05 - docks-kit 0.22.13: advise /reload-plugins after an omp plugin upgrade
+
+### Changed
+
+- A test on omp 18.16.0 asked if `/reload-plugins` repairs a running session
+  after an upgrade removed its plugin folder (#139). After the upgrade, the
+  session lost the plugin agent, but `skill://` resolved the skill to the new
+  folder. After `/reload-plugins`, the agent and the skill both gave the new
+  version.
+- The `docks-kit sync omp` warning and next step for a marketplace upgrade that
+  changes the version now give one rule. Run `/reload-plugins` in each running
+  omp session, then read each plugin skill again through `skill://`. Restart
+  omp instead when an upgraded plugin ships hooks, extension modules, or
+  non-MCP tools, as the omp marketplace docs say.
+- A version-changing upgrade no longer sets the restart next step by itself.
+  Each other plugin operation still sets it: an install, a reinstall at the
+  same version, an npm install, or a link. A changed kit plugin or config file
+  also sets it. The restart next step then prints next to the upgrade rule.
+- A failed write of the upgrade log now warns that running omp sessions get no
+  reminder. The warning asks the user to give each session the advice above.
+- The `pluginUpgrades.ts` reminder now tells the agent to ask the user to run
+  `/reload-plugins`. It then tells the agent to read each plugin skill again
+  through `skill://` before it runs a skill script. It asks for a restart
+  instead for hooks, extension modules, or non-MCP tools. Old event files give
+  the same reminder.
+
 ## 2026-11-05 - docks-kit 0.22.12: warn when an omp plugin upgrade removes a loaded folder
 
 ### Added

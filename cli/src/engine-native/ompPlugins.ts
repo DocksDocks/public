@@ -216,7 +216,7 @@ function pruneUpgradeLog(dir: string): void {
  * Writes one new event file for each upgrade, then prunes the log. A writer
  * creates only its own files, so concurrent syncs keep the events of each other.
  * Returns a warning when a step fails. It does not throw, because the
- * upgrades are already done and the sync must still give its restart advice.
+ * upgrades are already done and the sync must still give its upgrade advice.
  */
 function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): string | undefined {
   // The kit plugin extension `pluginUpgrades.ts` reads the same folder.
@@ -238,7 +238,7 @@ function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): s
     }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `omp plugin upgrade log not written: ${detail} — running omp sessions get no reminder for these upgrades and must restart`;
+    return `omp plugin upgrade log not written: ${detail} — running omp sessions get no reminder for these upgrades; give each of them the advice above`;
   }
   try {
     pruneUpgradeLog(dir);
@@ -372,8 +372,20 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     clearProgress();
     const items = operations.map((operation) => describeOperation(operation, after));
     change(`omp plugins synced: ${items.join(", ")}`);
-    ctx.nextStepTriggers.ompRestart = true;
     const upgrades = versionChanges(operations, after);
+    // /reload-plugins repairs the plugin agents and skills of a running session
+    // after a version-changing upgrade. The upgrade warning and next step name
+    // the cases that still need a restart: hooks, extension modules, and
+    // non-MCP tools. Each other operation (an install, a reinstall at the same
+    // version, an npm install, or a link) still needs a restart.
+    const upgradedIds = new Set(upgrades.map((upgrade) => upgrade.id));
+    if (
+      operations.some(
+        (operation) => operation.kind !== "marketplace" || !upgradedIds.has(operation.id),
+      )
+    ) {
+      ctx.nextStepTriggers.ompRestart = true;
+    }
     if (after === undefined && upgrades.length > 0) {
       warn(
         "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
@@ -381,7 +393,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     }
     for (const upgrade of upgrades) {
       warn(
-        `omp plugin ${upgrade.id} ${upgrade.before} -> ${upgrade.after}: running omp sessions lose its plugin agents and skill script paths until they restart.`,
+        `omp plugin ${upgrade.id} ${upgrade.before} -> ${upgrade.after}: running omp sessions lose its plugin agents until they run /reload-plugins and read its skills again through skill:// (restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools).`,
       );
     }
     if (upgrades.length > 0) {
