@@ -103,13 +103,19 @@ export function ompSummary(ctx: Ctx, state: OmpState): void {
   if (!ctx.dryRun) echo(`omp plugins: ${state.pluginsInstalled} installed`);
 }
 
+/**
+ * The omp next steps. The upgrade rule and the restart advice are independent,
+ * because a sync can upgrade a plugin and also change a file that needs a restart.
+ */
 export function ompNextSteps(ctx: Ctx): Array<string> {
+  const steps: Array<string> = [];
   if (ctx.nextStepTriggers.ompPluginUpgraded) {
-    return [
-      "Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.",
-    ];
+    steps.push(
+      "Run /reload-plugins in each running omp session, then read each plugin skill again through skill://. Restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.",
+    );
   }
-  return ctx.verbose || ctx.nextStepTriggers.ompRestart
-    ? ["Restart omp to load any refreshed plugins, skills, or tools."]
-    : [];
+  if (ctx.verbose || ctx.nextStepTriggers.ompRestart) {
+    steps.push("Restart omp to load any refreshed plugins, skills, or tools.");
+  }
+  return steps;
 }
