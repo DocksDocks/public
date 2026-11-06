@@ -773,7 +773,7 @@ describe("omp plugin inventory", () => {
     const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
     expect(otherLogWarnings).toEqual([]);
     expect(logWarning).toMatch(
-      /^omp plugin upgrade log not written: .+ - running omp sessions get no reminder for these upgrades; give each of them the advice above$/,
+      /^omp plugin upgrade log not written: .+ — running omp sessions get no reminder for these upgrades; give each of them the advice above$/,
     );
     expect(pluginSummary(output)).toBe(
       "omp plugins synced: docks@docks 0.18.0 -> 0.19.0, plan-lifecycle@docks 0.9.0 (current)",

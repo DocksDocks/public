@@ -238,7 +238,7 @@ function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): s
     }
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `omp plugin upgrade log not written: ${detail} - running omp sessions get no reminder for these upgrades; give each of them the advice above`;
+    return `omp plugin upgrade log not written: ${detail} — running omp sessions get no reminder for these upgrades; give each of them the advice above`;
   }
   try {
     pruneUpgradeLog(dir);

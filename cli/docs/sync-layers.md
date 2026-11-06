@@ -115,7 +115,7 @@ the warning and an event with the after version `unknown`, for example
 
 A failed write or prune of the upgrade log does not fail the sync, because it
 is not a harness CLI operation. A failed write warns
-`omp plugin upgrade log not written: <error> - running omp sessions get no reminder for these upgrades; give each of them the advice above`.
+`omp plugin upgrade log not written: <error> — running omp sessions get no reminder for these upgrades; give each of them the advice above`.
 The summary line, the upgrade warnings, and the next steps stay. A failed prune
 keeps the new events and warns
 `omp plugin upgrade log not pruned: <error> — it can keep more than 100 event files`.
