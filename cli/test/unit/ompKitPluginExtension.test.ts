@@ -484,6 +484,73 @@ describe("subshell scopes", () => {
   });
 });
 
+describe("setup commands that may not run", () => {
+  const WORKTREE_NOTE =
+    "You created a git worktree. When the task no longer needs it, run `git worktree remove -- <path>`.";
+
+  it.each([
+    "true || cd /a; git worktree add wt",
+    "false && cd /a; git worktree add wt",
+    "cd /a | true; git worktree add wt",
+    "cd /a & git worktree add wt",
+    "if false; then cd /a; fi; git worktree add wt",
+    "f() { cd /a; }; git worktree add wt",
+    "case x in y) cd /a;; esac; git worktree add wt",
+    "x=$(true || cd /a; git worktree add wt)",
+    "! cd /missing && git worktree add wt",
+    "true ||\n  cd /a\ngit worktree add wt",
+    "false &&\n  cd /a\ngit worktree add wt",
+    "(true;) || cd /a; git worktree add wt",
+    "(true;) | cd /a; git worktree add wt",
+    "time ! cd /missing && git worktree add wt",
+    "f () { cd /a; }; git worktree add wt",
+    "(\n  false\n) || cd /a\ngit worktree add wt",
+    "(false;) && cd /a; git worktree add wt",
+    "echo '>'| cd /a; git worktree add wt",
+    "true '>'|| cd /a; git worktree add wt",
+    "echo \\>| cd /a; git worktree add wt",
+  ])("gives the generic note when the cd of %s may not run", (command) => {
+    const result = detect(command);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toContain(WORKTREE_NOTE);
+  });
+
+  it.each([
+    "true || export DOCKER_HOST=ssh://dev; docker compose -p app up -d",
+    "export DOCKER_HOST=ssh://dev; true || unset DOCKER_HOST; docker compose -p app up -d",
+    "false || unset DOCKER_HOST; docker compose -p app up -d",
+  ])("records no stack when the daemon of %s may not be set", (command) => {
+    const result = detect(command);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toEqual(detect('docker --context "$CTX" compose -p app up -d').notes);
+  });
+
+  it("keeps the daemon when an export that may not run changes no daemon variable", () => {
+    expect(detect("true || export FOO=1; docker compose -p app up -d").resources).toEqual([
+      expect.objectContaining({ kind: "compose", docker: DEFAULT_DAEMON }),
+    ]);
+  });
+
+  it.each([
+    ["cd /a && git worktree add b\n", resolve("/a", "b")],
+    ["cd /a &&\n  git worktree add b", resolve("/a", "b")],
+    ["git worktree add wt || true", resolve("/w", "wt")],
+    ["x=$(a || b); cd /c; git worktree add wt", resolve("/c", "wt")],
+    ["true || cd .; git worktree add wt", resolve("/w", "wt")],
+    ["# setup\ncd /a && git worktree add wt", resolve("/a", "wt")],
+    ["\ncd /a && git worktree add wt", resolve("/a", "wt")],
+    ["(\n  cd /a && git worktree add wt\n)", resolve("/a", "wt")],
+    ["cd /a && git worktree add wt && npm run dev &", resolve("/a", "wt")],
+    ["cd /a && git commit -m 'feat(' && git worktree add wt", resolve("/a", "wt")],
+    ["cd /a && time (make) && git worktree add wt", resolve("/a", "wt")],
+    ["echo x >| f; cd /a; git worktree add wt", resolve("/a", "wt")],
+    ['cd /a; echo "x">|file; git worktree add wt', resolve("/a", "wt")],
+    ["cd /a; echo \\x>|file; git worktree add wt", resolve("/a", "wt")],
+  ])("keeps the directory of %s", (command, path) => {
+    expect(worktrees(command)).toEqual([path]);
+  });
+});
+
 describe("reminders", () => {
   const resources: Array<HygieneResource> = [
     { kind: "worktree", path: "/w/feat" },
