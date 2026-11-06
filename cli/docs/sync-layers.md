@@ -85,12 +85,19 @@ plugin operation, the sync reads the inventory again and prints one line that
 names each plugin with its version change, for example
 `omp plugins synced: docks@docks 0.21.1 -> 0.22.0, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
 omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
-session then loses the plugin agents and skill script paths of that folder. For
-each marketplace upgrade that changed the version, the sync prints a warning,
-for example
-`omp plugin docks@docks 0.21.1 -> 0.22.0: running omp sessions lose its plugin agents and skill script paths until they restart.`
+session then loses the plugin agents of that folder. A test on omp 18.16.0
+showed that `/reload-plugins` brings the agents back, and that `skill://`
+resolves to the new folder (#139). The omp marketplace docs still ask for a
+restart for hooks, extension modules, and non-MCP tools. For each marketplace
+upgrade that changed the version, the sync prints a warning, for example
+`omp plugin docks@docks 0.21.1 -> 0.22.0: running omp sessions lose its plugin agents until they run /reload-plugins and read its skills again through skill:// (restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools).`
 The next step then says
-`Restart running omp sessions: a plugin upgrade removed the plugin folders that they loaded.`
+`Run /reload-plugins in each running omp session, then read each plugin skill again through skill://. Restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.`
+A version-changing upgrade does not set the restart trigger. Each other plugin
+operation sets it: an install, a reinstall at the same version, an npm install,
+or a link. A changed kit plugin file or omp config file also sets it. The
+restart next step `Restart omp to load any refreshed plugins, skills, or tools.`
+then prints next to the upgrade rule.
 The sync also writes one event file for each such upgrade into the upgrade log
 `~/.cache/docks-kit/omp-plugin-upgrades/` (folder 0700, files 0600). The file
 name is `<finishedAt ms>-<random>.json`, and the file holds
@@ -108,8 +115,8 @@ the warning and an event with the after version `unknown`, for example
 
 A failed write or prune of the upgrade log does not fail the sync, because it
 is not a harness CLI operation. A failed write warns
-`omp plugin upgrade log not written: <error> — running omp sessions get no reminder for these upgrades and must restart`.
-The summary line, the upgrade warnings, and the next step stay. A failed prune
+`omp plugin upgrade log not written: <error> - running omp sessions get no reminder for these upgrades; give each of them the advice above`.
+The summary line, the upgrade warnings, and the next steps stay. A failed prune
 keeps the new events and warns
 `omp plugin upgrade log not pruned: <error> — it can keep more than 100 event files`.
 
@@ -117,9 +124,12 @@ The kit plugin extension `pluginUpgrades.ts` reads the upgrade log. In each
 tool result of a main omp session, it takes the events that finished after
 its omp process started. It adds one reminder for the events that the session
 did not get before. The reminder names each plugin with its version change. It
-says that the session may still use the removed folders. It tells the agent to
-ask the user to restart omp. A folder or file that the extension cannot read
-gives no reminder for that tool result. The next tool result reads it again.
+says that the plugin agents of the session may fail. It tells the agent to ask
+the user to run `/reload-plugins`, then to read each plugin skill again through
+`skill://` before it runs a skill script. It asks for a restart instead when an
+upgraded plugin ships hooks, extension modules, or non-MCP tools. A folder or
+file that the extension cannot read gives no reminder for that tool result.
+The next tool result reads it again.
 These limits apply:
 
 - omp imports extension modules only at startup. An omp process that started
@@ -132,7 +142,7 @@ These limits apply:
   registry still uses. So a session on a project-scope install keeps its
   folder. For this reason, the reminder says "may".
 - An omp process that started during the upgrade can get a reminder that it
-  does not need. A restart is harmless.
+  does not need. A reload or a restart is harmless.
 - The log keeps the newest 100 events. A session that stays idle through more
   than 100 later upgrades loses the oldest ones.
 
