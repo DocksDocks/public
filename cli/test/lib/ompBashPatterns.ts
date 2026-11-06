@@ -1,6 +1,6 @@
 /**
  * Approval oracle for the kit's omp `bash.patterns`, ported from
- * `@oh-my-pi/pi-coding-agent` 18.11.1 rather than guessed: `src/tools/bash.ts`
+ * `@oh-my-pi/pi-coding-agent` 18.17.0 rather than guessed: `src/tools/bash.ts`
  * (`bashApprovalPatternToRegExp`, `bashApprovalRuleMatches`,
  * `findBashApprovalPatternRule`, `hasBashApprovalShellControl`,
  * `CRITICAL_BASH_PATTERNS`, `BashTool.approval`) and `src/tools/shell-tokenize.ts`
@@ -20,7 +20,12 @@
  *   bare safety override, which replaces a matching allow or prompt rule. In
  *   `yolo` mode, omp ignores a bare override, so the command runs.
  *
- * The port covers the default `bash.allowCompoundCommands: false` path.
+ * The port covers the default `bash.allowCompoundCommands: false` path. It
+ * leaves out two steps that the kit does not turn on:
+ *
+ * - the interceptor deny at the start of `BashTool.approval`
+ *   (`bashInterceptor.enabled`, default `false`);
+ * - the `tools.restrictedFolders` prompt (default empty).
  */
 
 export type OmpApproval = "allow" | "prompt" | "deny";
@@ -137,7 +142,7 @@ export function ompApproval(
   return rule?.approval;
 }
 
-/** `CRITICAL_BASH_PATTERNS` in omp 18.11.1 `src/tools/bash.ts`, verbatim. */
+/** `CRITICAL_BASH_PATTERNS` in omp 18.17.0 `src/tools/bash.ts`, verbatim. */
 const CRITICAL_BASH_PATTERNS: ReadonlyArray<RegExp> = [
   /\brm\s+(?:-\S+\s+)*(?:-[a-z]*[rRfF][a-z]*|--recursive|--force)\s+(?:-\S+\s+)*\//i,
   /\brm\s+(?:-\S+\s+)*--no-preserve-root\b/i,
@@ -148,7 +153,7 @@ const CRITICAL_BASH_PATTERNS: ReadonlyArray<RegExp> = [
   /:\(\)\s*\{\s*:\s*\|\s*:/i,
   />\s*\/dev\/sd[a-z]/i,
   /\bmkfs(\.|\b)/i,
-  /\bdd\s+if=.+of=\/dev\//i,
+  /\bdd\s+if=.+of=\/dev\/(?!(?:null|zero|stdout|stderr|tty|fd\/\d+)(?:[\s;&|)<>]|$))/i,
   /\bshred\s+\/dev\//i,
   /\bcryptsetup\b/i,
   />\s*\/etc\/(?:passwd|shadow|sudoers)\b/i,

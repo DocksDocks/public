@@ -338,7 +338,7 @@ Each check below is safe, because the shell never reaches `rm`.
 ## Sources
 
 - omp: `omp://tools/bash.md`, `omp://approval-mode.md`, and the
-  `@oh-my-pi/pi-coding-agent` 18.11.1 source `src/tools/bash.ts`
+  `@oh-my-pi/pi-coding-agent` 18.17.0 source `src/tools/bash.ts`
   (`CRITICAL_BASH_PATTERNS`, `BashTool.approval`).
 - Claude Code: https://code.claude.com/docs/en/permissions and
   https://code.claude.com/docs/en/permission-modes

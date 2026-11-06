@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-11-06 - docks-kit 0.22.14: container IDs after omp notices, omp 18.17.0 matcher port
+
+### Fixed
+
+- The omp hygiene extension now finds the ID of a container that a single
+  `docker run -d` command starts, also when omp adds a notice after the
+  command output. omp adds `Wall time: N seconds` to each command that runs
+  1 s or longer. Before, a slow `docker run -d` got only the generic note
+  (#142).
+- The extension now reads a container ID only from output that the
+  `docker run -d` command owns. The `mktemp` and `docks-kit scratch new` paths
+  already use this rule. Before, the extension could take an ID that another
+  command of the same call printed. An example is
+  `docker inspect -f '{{.Id}}' other || docker run -d img`. The extension then
+  told the agent to stop that unrelated container.
+- These `docker run -d` commands now get the generic note, which still names
+  `docker stop <id>`:
+  - a compound command, such as `cd x && docker run -d img`;
+  - a command behind a wrapper, such as `env` or `time`;
+  - a command that redirects its standard output or its input.
+- A single redirection of the standard error, such as `2>&1`, `2>/dev/null`,
+  or `2>>err.log`, no longer hides the path or the ID from the extension. The
+  noclobber form `2>|file` still gets the generic note.
+
+### Changed
+
+- The test port of the omp matcher for bash approval rules
+  (`cli/test/lib/ompBashPatterns.ts`) now follows omp 18.17.0. Since omp
+  18.16.0, the `dd` critical pattern does not flag a write to a pseudo-device
+  sink such as `/dev/null`. The kit ships no `dd` rule, so no kit rule changes
+  its outcome. With omp 18.16.0 or later, a user prompt rule that matches such
+  a `dd` command takes effect: the main session asks, and a subagent rejects
+  the command. Before, the critical check let that command run under the
+  kit's `yolo` mode.
+
 ## 2026-11-05 - docks-kit 0.22.13: advise /reload-plugins after an omp plugin upgrade
 
 ### Changed

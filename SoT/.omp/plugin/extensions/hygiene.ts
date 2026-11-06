@@ -62,6 +62,13 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const VARIABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
+/**
+ * A word that is one redirection of the standard error alone: `2>&1`, `2>&-`,
+ * `2>file`, `2>>file`, or the operator `2>` before its target. A second `<`
+ * or `>` in the word is a second redirection. The segment parser splits
+ * `2>|file` at the `|`, so that form gives the generic note.
+ */
+const STDERR_REDIRECT = /^2(?:>&(?:\d+|-)|>>?[^<>]*)$/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
 /** The long options of GNU mktemp, which also accepts a unique prefix of each. */
 const MKTEMP_LONG_OPTIONS: ReadonlyArray<string> = [
@@ -963,17 +970,7 @@ export function detectResources(
   };
 
   const segments = scopedSegments(command, ROOT_SCOPE);
-  // Only a command that runs alone, without a wrapper, and prints to the tool
-  // output owns that output. A substitution such as `f=$(mktemp)` captures
-  // what mktemp prints, a later command can print an unrelated path, a
-  // wrapper such as `env` or `time` stands between the command and the
-  // output, and a redirection or a process substitution sends the output
-  // elsewhere, so these get the generic note.
-  const sole = segments.length === 1 ? segments[0] : undefined;
-  const ownPath =
-    sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
-      ? lastAbsoluteLine(output)
-      : undefined;
+  const owned = ownedOutput(segments, output);
   for (const segment of segments) {
     const { assignments, words, assignsShell } = commandWords(segment.words);
     const first = words[0];
@@ -1020,7 +1017,7 @@ export function detectResources(
           ? undefined
           : dockerEnvironment(state.dockerEnvironment, assignments),
     };
-    detectCreation(context, home, output, ownPath, platform, findings);
+    detectCreation(context, home, owned, platform, findings);
     const text = segment.words.map(quote).join(" ").slice(0, COMMAND_TEXT_LIMIT);
     for (const rule of otherRules(context, segment.background, home)) {
       findings.resource({ kind: "other", category: rule.category, command: text, hint: rule.hint });
@@ -1029,11 +1026,31 @@ export function detectResources(
   return { resources: [...found.values()], notes };
 }
 
+/**
+ * The tool output when one command owns it, else undefined. A command owns
+ * the output only when it runs alone, without a wrapper, and prints to the
+ * output. These cases fail:
+ *
+ * - A substitution such as `f=$(mktemp)` captures what mktemp prints.
+ * - Another command can print an unrelated path or container ID, or `||`
+ *   can skip the command.
+ * - A wrapper such as `env` or `time` stands between the command and the
+ *   output.
+ * - A redirection or a process substitution sends the output elsewhere.
+ *
+ * The callers then give the generic note.
+ */
+function ownedOutput(segments: ReadonlyArray<ScopedSegment>, output: string): string | undefined {
+  const sole = segments.length === 1 ? segments[0] : undefined;
+  return sole !== undefined && printsToOutput(sole.words) && runsWithoutWrapper(sole.words)
+    ? output
+    : undefined;
+}
+
 function detectCreation(
   context: CommandContext,
   home: string,
-  output: string,
-  ownPath: string | undefined,
+  owned: string | undefined,
   platform: NodeJS.Platform,
   findings: Findings,
 ): void {
@@ -1050,13 +1067,14 @@ function detectCreation(
   if (docker !== undefined) {
     const { target, args } = docker;
     if (args[0] === "compose") detectCompose(args.slice(1), target, directory, home, findings);
-    else if (args[0] === "run") detectContainer(args.slice(1), target, output, findings);
+    else if (args[0] === "run") detectContainer(args.slice(1), target, owned, findings);
     else if (args[0] === "container" && args[1] === "run") {
-      detectContainer(args.slice(2), target, output, findings);
+      detectContainer(args.slice(2), target, owned, findings);
     }
     return;
   }
 
+  const ownPath = owned === undefined ? undefined : lastAbsoluteLine(owned);
   if (name === "docks-kit" && words[1] === "scratch" && words[2] === "new") {
     if (ownPath === undefined) {
       findings.note(unresolvedNote("scratch directory", "docks-kit scratch remove <path>"));
@@ -1128,18 +1146,33 @@ function mktempEffect(
   return directory ? "directory" : "file";
 }
 
-/** True when the command of the segment is its first word after the `NAME=value` words. */
+/**
+ * True when the command of the segment is its first word after the
+ * `NAME=value` words and the redirections. A redirection before the command,
+ * as in `2>/dev/null mktemp`, applies to the command itself, so it is no
+ * wrapper.
+ */
 function runsWithoutWrapper(words: ReadonlyArray<string>): boolean {
-  const first = words.find((word) => !ASSIGNMENT.test(word));
+  let first: string | undefined;
+  for (let index = 0; index < words.length && first === undefined; index++) {
+    const word = words[index] ?? "";
+    if (REDIRECT_OPERATOR.test(word)) index++;
+    else if (!ATTACHED_REDIRECT.test(word) && !ASSIGNMENT.test(word)) first = word;
+  }
   return first !== undefined && first === commandWords(words).words[0];
 }
 
-/** True when no word of the segment redirects its output or runs a process substitution. */
+/**
+ * True when the standard output of the segment reaches the tool output: no
+ * word redirects the standard output or the input, and no word runs a
+ * process substitution. A redirection of the standard error alone, such as
+ * `2>&1` or `2>/dev/null`, keeps the standard output in place.
+ */
 function printsToOutput(words: ReadonlyArray<string>): boolean {
   return !words.some(
     (word) =>
-      REDIRECT_OPERATOR.test(word) ||
-      ATTACHED_REDIRECT.test(word) ||
+      ((REDIRECT_OPERATOR.test(word) || ATTACHED_REDIRECT.test(word)) &&
+        !STDERR_REDIRECT.test(word)) ||
       word.includes("<(") ||
       word.includes(">("),
   );
@@ -1240,7 +1273,7 @@ function detectCompose(
 function detectContainer(
   args: ReadonlyArray<string>,
   target: DockerTarget | undefined,
-  output: string,
+  owned: string | undefined,
   findings: Findings,
 ): void {
   const detached = args.some(
@@ -1248,13 +1281,9 @@ function detectContainer(
   );
   const removesItself = args.some((word) => word === "--rm" || word === "--rm=true");
   if (detached) {
-    const line = output
-      .split(/\r?\n/)
-      .map((text) => text.trim())
-      .filter((text) => text !== "")
-      .pop();
-    if (target !== undefined && line !== undefined && CONTAINER_ID.test(line)) {
-      const id = line.slice(0, 12);
+    const fullId = owned === undefined ? undefined : lastContainerIdLine(owned);
+    if (target !== undefined && fullId !== undefined) {
+      const id = fullId.slice(0, 12);
       const prefix = dockerPrefix(target);
       const down = removesItself
         ? `${prefix} stop ${id}`
@@ -1265,6 +1294,19 @@ function detectContainer(
     }
   }
   if (!removesItself) findings.note(RM_NOTE);
+}
+
+/**
+ * The last line that is a full container ID. omp appends notices such as
+ * `Wall time: N seconds` after the command output, so the ID need not be the
+ * last line.
+ */
+function lastContainerIdLine(output: string): string | undefined {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => CONTAINER_ID.test(line))
+    .pop();
 }
 
 function otherRules(
