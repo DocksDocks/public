@@ -31,8 +31,9 @@
   18.16.0, the `dd` critical pattern does not flag a write to a pseudo-device
   sink such as `/dev/null`. The kit ships no `dd` rule, so no kit rule changes
   its outcome. With omp 18.16.0 or later, a user prompt rule that matches such
-  a `dd` command asks. Before, the critical check let that command run under
-  the kit's `yolo` mode.
+  a `dd` command takes effect: the main session asks, and a subagent rejects
+  the command. Before, the critical check let that command run under the
+  kit's `yolo` mode.
 
 ## 2026-11-05 - docks-kit 0.22.13: advise /reload-plugins after an omp plugin upgrade
 
