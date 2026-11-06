@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-11-06 - docks-kit 0.22.15: omp hygiene ignores setup commands that may not run
+
+### Fixed
+
+- The omp hygiene extension no longer applies a `cd`, `pushd`, `export`, or
+  `unset` that may not run to the commands after it (#143, #145). Before,
+  `true || cd /a; git worktree add wt` recorded `/a/wt`, and
+  `true || export DOCKER_HOST=ssh://dev; docker compose -p app up -d` gave a
+  cleanup command for the `ssh://dev` daemon, where another project with the
+  same name can run. These commands now get the generic note.
+- The setup state of a command is known only for a pure `&&` chain or a pure
+  `;` list. `||`, a pipeline, a background job, `!`, a conditional, a loop, a
+  function body, or `&&` mixed with `;` makes a setup command unknown when it
+  would change the directory or the Docker daemon. Each `$( … )` substitution
+  is checked by itself. An operator at the end of a line joins the next line.
+- Cost: a command that mixes `&&` and `;`, such as
+  `cd /a && npm ci; git worktree add wt`, now gets the generic note even when
+  every part runs. Commands without a setup command keep their results.
+
 ## 2026-11-06 - docks-kit 0.22.14: container IDs after omp notices, omp 18.17.0 matcher port
 
 ### Fixed
