@@ -1146,9 +1146,19 @@ function mktempEffect(
   return directory ? "directory" : "file";
 }
 
-/** True when the command of the segment is its first word after the `NAME=value` words. */
+/**
+ * True when the command of the segment is its first word after the
+ * `NAME=value` words and the redirections. A redirection before the command,
+ * as in `2>/dev/null mktemp`, applies to the command itself, so it is no
+ * wrapper.
+ */
 function runsWithoutWrapper(words: ReadonlyArray<string>): boolean {
-  const first = words.find((word) => !ASSIGNMENT.test(word));
+  let first: string | undefined;
+  for (let index = 0; index < words.length && first === undefined; index++) {
+    const word = words[index] ?? "";
+    if (REDIRECT_OPERATOR.test(word)) index++;
+    else if (!ATTACHED_REDIRECT.test(word) && !ASSIGNMENT.test(word)) first = word;
+  }
   return first !== undefined && first === commandWords(words).words[0];
 }
 

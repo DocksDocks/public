@@ -172,6 +172,8 @@ describe("detectResources", () => {
     "docker run -d --rm img 2>/dev/null",
     "docker run -d --rm img 2> err.log",
     "docker run -d --rm img 2>>err.log",
+    "2>/dev/null docker run -d --rm img",
+    "2> err.log docker run -d --rm img",
   ])("finds the id when %s redirects only standard error", (command) => {
     expect(detect(command, "/w", `${CONTAINER_ID}\n`).resources).toEqual([
       { kind: "container", id: SHORT_ID, down: `docker stop ${SHORT_ID}`, docker: DEFAULT_DAEMON },
@@ -190,6 +192,7 @@ describe("detectResources", () => {
     "docker run -d --rm img 2>&1>run.log",
     "docker run -d --rm img 2>err.log<<EOF\nx\nEOF",
     "docker run -d --rm img 2>|err.log",
+    "2>/dev/null env docker run -d --rm img",
   ])("does not take a container id from output that the run does not own: %s", (command) => {
     const result = detect(command, "/w", `${CONTAINER_ID}\n`);
     expect(result.resources).toEqual([]);
@@ -209,6 +212,15 @@ describe("detectResources", () => {
     expect(detect("docks-kit scratch new eval", "/w", `${path}\n`).resources).toEqual([
       { kind: "scratch", path },
     ]);
+  });
+
+  it.each([
+    ["docks-kit scratch new eval 2>/dev/null", "scratch"],
+    ["mktemp 2>/dev/null", "tempFile"],
+    ["2>/dev/null mktemp -d", "tempDir"],
+  ])("finds the path when %s redirects only standard error", (command, kind) => {
+    const path = join(tmpdir(), "tmp.E");
+    expect(detect(command, "/w", `${path}\n`).resources).toEqual([{ kind, path }]);
   });
 
   it("finds a mktemp directory and points to the scratch tools", () => {
