@@ -544,6 +544,8 @@ describe("setup commands that may not run", () => {
     ["cd /a && git commit -m 'feat(' && git worktree add wt", resolve("/a", "wt")],
     ["cd /a && time (make) && git worktree add wt", resolve("/a", "wt")],
     ["echo x >| f; cd /a; git worktree add wt", resolve("/a", "wt")],
+    ['cd /a; echo "x">|file; git worktree add wt', resolve("/a", "wt")],
+    ["cd /a; echo \\x>|file; git worktree add wt", resolve("/a", "wt")],
   ])("keeps the directory of %s", (command, path) => {
     expect(worktrees(command)).toEqual([path]);
   });

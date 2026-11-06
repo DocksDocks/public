@@ -507,6 +507,8 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
   let inWord = false;
   /** True when the current word holds a quoted or escaped character. */
   let wordQuoted = false;
+  /** The source index of the last character that the word took without quoting. */
+  let lastUnquoted = -1;
   /** The strip flag of a `<<` operator whose delimiter is the next word. */
   let heredocOperator: boolean | undefined;
   /** The operators after the last segment; they count only when a segment follows. */
@@ -679,9 +681,9 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       index++;
     } else if (char === "|") {
       // In `>|file` the `|` belongs to the redirection; the split stays as it
-      // was, but it separates nothing. A quoted or escaped `>` is text, so
-      // `echo '>'|` is a pipe.
-      const clobber = command[index - 1] === ">" && inWord && !wordQuoted;
+      // was, but it separates nothing. Only an unquoted `>` directly before
+      // the `|` makes a clobber, so `echo '>'|` and `echo \>|` are pipes.
+      const clobber = inWord && command[index - 1] === ">" && lastUnquoted === index - 1;
       if (clobber) {
         finishSegment(undefined);
         index++;
@@ -709,6 +711,7 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       }
       word += char;
       inWord = true;
+      lastUnquoted = index;
       index++;
     }
   }
