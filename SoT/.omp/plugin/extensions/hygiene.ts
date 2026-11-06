@@ -95,6 +95,27 @@ const RESERVED_WORDS: Record<string, true> = {
   until: true,
   time: true,
 };
+/**
+ * Reserved words that start a conditional, a loop, or a function body, where
+ * a command may run once, many times, or never.
+ */
+const COMPOUND_WORDS: Record<string, true> = {
+  if: true,
+  then: true,
+  else: true,
+  elif: true,
+  fi: true,
+  for: true,
+  select: true,
+  while: true,
+  until: true,
+  do: true,
+  done: true,
+  case: true,
+  esac: true,
+  function: true,
+  coproc: true,
+};
 
 const GIT_VALUE_OPTIONS: Record<string, true> = { "-C": true, "-c": true };
 const WORKTREE_VALUE_OPTIONS: Record<string, true> = { "-b": true, "-B": true, "--reason": true };
@@ -247,9 +268,18 @@ export interface ShellSegment {
   background: boolean;
 }
 
+/** The operator between two segments of one parse level; a newline counts as `;`. */
+type Separator = ";" | "&&" | "||" | "|" | "&";
+
 /** A segment with its subshell scope. A `cd` changes only its own scope. */
 interface ScopedSegment extends ShellSegment {
   scope: string;
+  /**
+   * False when the control syntax of the segment's parse level can skip a
+   * setup command (`cd`, `export`, `unset`) while a later command still
+   * runs. See setupStateKnown.
+   */
+  setupKnown: boolean;
 }
 
 export interface RunOptions {
@@ -456,10 +486,16 @@ export function splitShellSegments(command: string): Array<ShellSegment> {
  * scope. A `( ... )` group, a `$( ... )` substitution, and a backtick
  * substitution each get a new scope `<parent>/<n>`. A `{ ...; }` group stays
  * in the scope around it, as in bash.
+ *
+ * Each call parses one level: the command, or the text of one substitution.
+ * It stamps the segments of its level with setupStateKnown for the control
+ * syntax of that level.
  */
 function scopedSegments(command: string, rootScope: string): Array<ScopedSegment> {
   const segments: Array<ScopedSegment> = [];
   const nested: Array<ScopedSegment> = [];
+  const ownSegments: Array<ScopedSegment> = [];
+  const separators = new Set<Separator>();
   const heredocs: Array<{ delimiter: string; strip: boolean }> = [];
   const scopes = [rootScope];
   let childScopes = 0;
@@ -468,6 +504,9 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
   let inWord = false;
   /** The strip flag of a `<<` operator whose delimiter is the next word. */
   let heredocOperator: boolean | undefined;
+  /** The operator after the last segment; it counts only when a segment follows. */
+  let pendingSeparator: Separator | undefined;
+  let skipsCommands = false;
 
   const currentScope = (): string => scopes.at(-1) ?? rootScope;
   const childScope = (): string => `${currentScope()}/${childScopes++}`;
@@ -490,10 +529,25 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
     inWord = false;
   };
 
-  const finishSegment = (background: boolean): void => {
+  /**
+   * Ends the current segment. `ending` is the operator that ends it; a `(` or
+   * a `)` passes undefined, so the operator before a group counts for the
+   * first segment in the group. An empty segment keeps the operator before
+   * it: in `a ||` and a newline, the `||` joins the next line.
+   */
+  const finishSegment = (ending: Separator | undefined): void => {
     finishWord();
     segments.push(...nested.splice(0));
-    if (words.length > 0) segments.push({ words, background, scope: currentScope() });
+    if (words.length > 0) {
+      if (pendingSeparator !== undefined) separators.add(pendingSeparator);
+      if (changesControlFlow(words)) skipsCommands = true;
+      const segment = { words, background: ending === "&", scope: currentScope(), setupKnown: true };
+      segments.push(segment);
+      ownSegments.push(segment);
+      pendingSeparator = undefined;
+    }
+    if (ending === "&") skipsCommands = true;
+    if (pendingSeparator === undefined) pendingSeparator = ending;
     words = [];
   };
 
@@ -596,25 +650,27 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       const newline = command.indexOf("\n", index);
       index = newline === -1 ? command.length : newline;
     } else if (char === "\n") {
-      finishSegment(false);
+      finishSegment(";");
       index = skipHeredocBodies(index + 1);
     } else if (char === "(" && !inWord) {
-      finishSegment(false);
+      // `name ()` defines a function: its body runs only when it is called.
+      if (words.length > 0) skipsCommands = true;
+      finishSegment(undefined);
       scopes.push(childScope());
       index++;
     } else if (char === ")") {
-      finishSegment(false);
+      finishSegment(undefined);
       if (scopes.length > 1) scopes.pop();
       index++;
     } else if (char === ";") {
-      finishSegment(false);
+      finishSegment(";");
       index++;
     } else if (char === "|") {
-      finishSegment(false);
+      finishSegment(next === "|" ? "||" : "|");
       index += next === "|" || next === "&" ? 2 : 1;
     } else if (char === "&") {
       if (next === "&") {
-        finishSegment(false);
+        finishSegment("&&");
         index += 2;
       } else if (next === ">" || word.endsWith(">") || word.endsWith("<")) {
         // A redirection such as `&>file` or `2>&1`.
@@ -622,7 +678,7 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
         inWord = true;
         index++;
       } else {
-        finishSegment(true);
+        finishSegment("&");
         index++;
       }
     } else {
@@ -631,8 +687,36 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       index++;
     }
   }
-  finishSegment(false);
+  finishSegment(undefined);
+  const setupKnown = setupStateKnown(separators, skipsCommands);
+  for (const segment of ownSegments) segment.setupKnown = setupKnown;
   return segments;
+}
+
+/**
+ * True when a setup command of a parse level runs whenever a later command of
+ * the level runs. A pure `&&` chain and a pure `;` list qualify. `||`, a
+ * pipeline, a background job, `!`, a conditional, a loop, a function body,
+ * and `&&` mixed with `;` can skip a setup command while a later command
+ * runs, or run it in a subshell.
+ */
+function setupStateKnown(separators: ReadonlySet<Separator>, skipsCommands: boolean): boolean {
+  if (skipsCommands || separators.has("||") || separators.has("|")) return false;
+  return !(separators.has("&&") && separators.has(";"));
+}
+
+/**
+ * True when a segment starts a conditional, a loop, or a function body, or
+ * negates its status with `!`, which lets a `&&` chain go on after a failed
+ * command.
+ */
+function changesControlFlow(words: ReadonlyArray<string>): boolean {
+  for (const word of words) {
+    if (word === "!" || COMPOUND_WORDS[word] === true) return true;
+    if (word !== "{" && word !== "}") break;
+  }
+  // `name()` without a space is one word that ends with `(`.
+  return words.some((word) => word.endsWith("("));
 }
 
 /**
@@ -704,6 +788,24 @@ function dockerEnvironment(
     if (DOCKER_ENVIRONMENT[variable] === true) result[variable] = assignment.slice(equals + 1);
   }
   return result;
+}
+
+/**
+ * The Docker environment after an `export` or an `unset`. When the command may
+ * not run, a change makes the environment unknown, because a later command
+ * can see either value.
+ */
+function settledEnvironment(
+  segment: ScopedSegment,
+  before: Readonly<Record<string, string>> | undefined,
+  after: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (segment.setupKnown) return after;
+  if (before === undefined || after === undefined) return undefined;
+  const variables = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...variables].every((variable) => before[variable] === after[variable])
+    ? after
+    : undefined;
 }
 
 /** True when the `NAME` or `NAME=value` word names a variable that selects the Docker daemon. */
@@ -986,20 +1088,27 @@ export function detectResources(
     const state = stateOf(segment.scope);
     const args = words.slice(1);
     if (name === "cd" || name === "pushd") {
-      state.directory = changeDirectory(args, state.directory, home);
+      const directory = changeDirectory(args, state.directory, home);
+      state.directory =
+        segment.setupKnown || directory === state.directory ? directory : undefined;
       continue;
     }
     if (name === "export") {
-      state.dockerEnvironment =
+      const environment =
         state.dockerEnvironment !== undefined && exportIsTracked(args)
           ? dockerEnvironment(state.dockerEnvironment, args)
           : undefined;
+      state.dockerEnvironment = settledEnvironment(segment, state.dockerEnvironment, environment);
       continue;
     }
     if (name === "unset") {
       const variables = unsetVariables(args);
-      if (variables === undefined) state.dockerEnvironment = undefined;
-      for (const variable of variables ?? []) delete state.dockerEnvironment?.[variable];
+      let environment: Record<string, string> | undefined;
+      if (variables !== undefined && state.dockerEnvironment !== undefined) {
+        environment = { ...state.dockerEnvironment };
+        for (const variable of variables) delete environment[variable];
+      }
+      state.dockerEnvironment = settledEnvironment(segment, state.dockerEnvironment, environment);
       continue;
     }
     if (

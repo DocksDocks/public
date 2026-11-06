@@ -484,6 +484,46 @@ describe("subshell scopes", () => {
   });
 });
 
+describe("setup commands that may not run", () => {
+  const WORKTREE_NOTE =
+    "You created a git worktree. When the task no longer needs it, run `git worktree remove -- <path>`.";
+
+  it.each([
+    "true || cd /a; git worktree add wt",
+    "false && cd /a; git worktree add wt",
+    "cd /a | true; git worktree add wt",
+    "cd /a & git worktree add wt",
+    "if false; then cd /a; fi; git worktree add wt",
+    "f() { cd /a; }; git worktree add wt",
+    "case x in y) cd /a;; esac; git worktree add wt",
+    "x=$(true || cd /a; git worktree add wt)",
+    "! cd /missing && git worktree add wt",
+    "true ||\n  cd /a\ngit worktree add wt",
+    "false &&\n  cd /a\ngit worktree add wt",
+  ])("gives the generic note when the cd of %s may not run", (command) => {
+    const result = detect(command);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toContain(WORKTREE_NOTE);
+  });
+
+  it.each([
+    "true || export DOCKER_HOST=ssh://dev; docker compose -p app up -d",
+    "export DOCKER_HOST=ssh://dev; true || unset DOCKER_HOST; docker compose -p app up -d",
+  ])("records no stack when the daemon of %s may not be set", (command) => {
+    const result = detect(command);
+    expect(result.resources).toEqual([]);
+    expect(result.notes).toEqual(detect('docker --context "$CTX" compose -p app up -d').notes);
+  });
+
+  it.each([
+    ["cd /a && git worktree add b\n", resolve("/a", "b")],
+    ["git worktree add wt || true", resolve("/w", "wt")],
+    ["x=$(a || b); cd /c; git worktree add wt", resolve("/c", "wt")],
+  ])("keeps the directory of %s, whose setup commands always run", (command, path) => {
+    expect(worktrees(command)).toEqual([path]);
+  });
+});
+
 describe("reminders", () => {
   const resources: Array<HygieneResource> = [
     { kind: "worktree", path: "/w/feat" },
