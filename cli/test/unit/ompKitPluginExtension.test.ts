@@ -186,6 +186,9 @@ describe("detectResources", () => {
     "docker run -d --rm img >&2",
     "docker run -d --rm img 1>/dev/null",
     "docker run -d --rm img &>run.log",
+    "docker run -d --rm img 2>/dev/null</dev/null",
+    "docker run -d --rm img 2>&1>run.log",
+    "docker run -d --rm img 2>err.log<<EOF\nx\nEOF",
   ])("does not take a container id from output that the run does not own: %s", (command) => {
     const result = detect(command, "/w", `${CONTAINER_ID}\n`);
     expect(result.resources).toEqual([]);
