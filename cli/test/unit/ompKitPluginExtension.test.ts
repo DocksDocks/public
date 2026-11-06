@@ -506,6 +506,9 @@ describe("setup commands that may not run", () => {
     "f () { cd /a; }; git worktree add wt",
     "(\n  false\n) || cd /a\ngit worktree add wt",
     "(false;) && cd /a; git worktree add wt",
+    "echo '>'| cd /a; git worktree add wt",
+    "true '>'|| cd /a; git worktree add wt",
+    "echo \\>| cd /a; git worktree add wt",
   ])("gives the generic note when the cd of %s may not run", (command) => {
     const result = detect(command);
     expect(result.resources).toEqual([]);

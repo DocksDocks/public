@@ -679,10 +679,16 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       index++;
     } else if (char === "|") {
       // In `>|file` the `|` belongs to the redirection; the split stays as it
-      // was, but it separates nothing.
-      const clobber = inWord && word.endsWith(">");
-      finishSegment(clobber ? undefined : next === "|" ? "||" : "|");
-      index += next === "|" || next === "&" ? 2 : 1;
+      // was, but it separates nothing. A quoted or escaped `>` is text, so
+      // `echo '>'|` is a pipe.
+      const clobber = command[index - 1] === ">" && inWord && !wordQuoted;
+      if (clobber) {
+        finishSegment(undefined);
+        index++;
+      } else {
+        finishSegment(next === "|" ? "||" : "|");
+        index += next === "|" || next === "&" ? 2 : 1;
+      }
     } else if (char === "&") {
       if (next === "&") {
         finishSegment("&&");
