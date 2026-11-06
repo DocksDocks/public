@@ -62,6 +62,8 @@ const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const VARIABLE_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
+/** A redirection of the standard error alone: `2>`, `2>>`, `2>|`, `2>&1`, `2>file`. */
+const STDERR_REDIRECT = /^2>/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
 /** The long options of GNU mktemp, which also accepts a unique prefix of each. */
 const MKTEMP_LONG_OPTIONS: ReadonlyArray<string> = [
@@ -1020,13 +1022,18 @@ export function detectResources(
 }
 
 /**
- * The tool output when one command owns it, else undefined. Only a command
- * that runs alone, without a wrapper, and prints to the tool output owns that
- * output. A substitution such as `f=$(mktemp)` captures what mktemp prints,
- * another command can print an unrelated path or container ID or skip the
- * command after `||`, a wrapper such as `env` or `time` stands between the
- * command and the output, and a redirection or a process substitution sends
- * the output elsewhere, so these get the generic note.
+ * The tool output when one command owns it, else undefined. A command owns
+ * the output only when it runs alone, without a wrapper, and prints to the
+ * output. These cases fail:
+ *
+ * - A substitution such as `f=$(mktemp)` captures what mktemp prints.
+ * - Another command can print an unrelated path or container ID, or `||`
+ *   can skip the command.
+ * - A wrapper such as `env` or `time` stands between the command and the
+ *   output.
+ * - A redirection or a process substitution sends the output elsewhere.
+ *
+ * The callers then give the generic note.
  */
 function ownedOutput(segments: ReadonlyArray<ScopedSegment>, output: string): string | undefined {
   const sole = segments.length === 1 ? segments[0] : undefined;
@@ -1140,12 +1147,17 @@ function runsWithoutWrapper(words: ReadonlyArray<string>): boolean {
   return first !== undefined && first === commandWords(words).words[0];
 }
 
-/** True when no word of the segment redirects its output or runs a process substitution. */
+/**
+ * True when the standard output of the segment reaches the tool output: no
+ * word redirects the standard output or the input, and no word runs a
+ * process substitution. A redirection of the standard error alone, such as
+ * `2>&1` or `2>/dev/null`, keeps the standard output in place.
+ */
 function printsToOutput(words: ReadonlyArray<string>): boolean {
   return !words.some(
     (word) =>
-      REDIRECT_OPERATOR.test(word) ||
-      ATTACHED_REDIRECT.test(word) ||
+      ((REDIRECT_OPERATOR.test(word) || ATTACHED_REDIRECT.test(word)) &&
+        !STDERR_REDIRECT.test(word)) ||
       word.includes("<(") ||
       word.includes(">("),
   );

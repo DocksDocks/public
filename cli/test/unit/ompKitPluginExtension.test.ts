@@ -168,9 +168,25 @@ describe("detectResources", () => {
   });
 
   it.each([
+    "docker run -d --rm img 2>&1",
+    "docker run -d --rm img 2>/dev/null",
+    "docker run -d --rm img 2> err.log",
+    "docker run -d --rm img 2>>err.log",
+  ])("finds the id when %s redirects only standard error", (command) => {
+    expect(detect(command, "/w", `${CONTAINER_ID}\n`).resources).toEqual([
+      { kind: "container", id: SHORT_ID, down: `docker stop ${SHORT_ID}`, docker: DEFAULT_DAEMON },
+    ]);
+  });
+
+  it.each([
     "docker run -d img > /dev/null; docker inspect -f '{{.Id}}' other",
     "docker inspect -f '{{.Id}}' other || docker run -d --rm img",
-  ])("does not take another command's container id for %s", (command) => {
+    "docker run -d --rm img > id.txt",
+    "env docker run -d --rm img",
+    "docker run -d --rm img >&2",
+    "docker run -d --rm img 1>/dev/null",
+    "docker run -d --rm img &>run.log",
+  ])("does not take a container id from output that the run does not own: %s", (command) => {
     const result = detect(command, "/w", `${CONTAINER_ID}\n`);
     expect(result.resources).toEqual([]);
     expect(result.notes).toContain(
