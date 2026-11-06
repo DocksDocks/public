@@ -20,8 +20,9 @@
   - a compound command, such as `cd x && docker run -d img`;
   - a command behind a wrapper, such as `env` or `time`;
   - a command that redirects its standard output or its input.
-- A redirection of the standard error alone, such as `2>&1` or `2>/dev/null`,
-  no longer hides the path or the ID from the extension.
+- A single redirection of the standard error, such as `2>&1`, `2>/dev/null`,
+  or `2>>err.log`, no longer hides the path or the ID from the extension. The
+  noclobber form `2>|file` still gets the generic note.
 
 ### Changed
 
