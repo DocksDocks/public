@@ -64,10 +64,11 @@ const REDIRECT_OPERATOR = /^(?:\d+|&)?(?:<<<|<<-?|>>|>&|<&|>\||<>|>|<)$/;
 const ATTACHED_REDIRECT = /^(?:\d+|&)?[<>]/;
 /**
  * A word that is one redirection of the standard error alone: `2>&1`, `2>&-`,
- * `2>file`, `2>>file`, `2>|file`, or the operator `2>` before its target. A
- * second `<` or `>` in the word is a second redirection.
+ * `2>file`, `2>>file`, or the operator `2>` before its target. A second `<`
+ * or `>` in the word is a second redirection. The segment parser splits
+ * `2>|file` at the `|`, so that form gives the generic note.
  */
-const STDERR_REDIRECT = /^2(?:>&(?:\d+|-)|(?:>>|>\||>)[^<>]*)$/;
+const STDERR_REDIRECT = /^2(?:>&(?:\d+|-)|>>?[^<>]*)$/;
 const SHORT_CLUSTER_WITH_D = /^-[A-Za-z]*d[A-Za-z]*$/;
 /** The long options of GNU mktemp, which also accepts a unique prefix of each. */
 const MKTEMP_LONG_OPTIONS: ReadonlyArray<string> = [
