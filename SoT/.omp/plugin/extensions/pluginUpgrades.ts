@@ -3,9 +3,9 @@
  *
  * omp deletes the previous plugin folder on `omp plugin upgrade`. A running
  * omp session keeps the plugin folders that it found at startup. So its plugin
- * agents and skill script paths can fail after an upgrade. `docks-kit sync`
- * writes one event file for each upgrade that changed a version, or that can
- * have changed it (the version `unknown`).
+ * agents can fail after an upgrade, until the user runs /reload-plugins.
+ * `docks-kit sync` writes one event file for each upgrade that changed a
+ * version, or that can have changed it (the version `unknown`).
  *
  * In each tool_result of a main session, this extension reads the events that
  * finished after this omp process started. It adds one reminder for the events
@@ -93,9 +93,9 @@ export function upgradeReminder(events: ReadonlyArray<PluginUpgradeEvent>): stri
   const upgrades = events.map((event) => `${event.id} ${event.before} -> ${event.after}`);
   return [
     `docks-kit sync upgraded these omp plugins after this omp process started: ${upgrades.join(", ")}.`,
-    "omp removes the old plugin folder on upgrade.",
-    "This session may still use the removed folders, so its plugin agents and skill script paths may fail.",
-    "You must ask the user to restart omp.",
+    "omp removes the old plugin folder on upgrade, so this session's plugin agents may fail.",
+    "Ask the user to run /reload-plugins in this session, then read each plugin skill again through skill:// before you run its scripts.",
+    "Ask the user to restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.",
   ].join(" ");
 }
 

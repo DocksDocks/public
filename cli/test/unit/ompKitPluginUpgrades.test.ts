@@ -123,8 +123,18 @@ async function toolResult(
   return result?.additionalContext;
 }
 
+/** The sentences of the reminder after the one that names the upgrades. */
+const RELOAD_SENTENCES = [
+  "omp removes the old plugin folder on upgrade, so this session's plugin agents may fail.",
+  "Ask the user to run /reload-plugins in this session, then read each plugin skill again through skill:// before you run its scripts.",
+  "Ask the user to restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.",
+] as const;
+
 function reminder(upgrades: string): string {
-  return `docks-kit sync upgraded these omp plugins after this omp process started: ${upgrades}. omp removes the old plugin folder on upgrade. This session may still use the removed folders, so its plugin agents and skill script paths may fail. You must ask the user to restart omp.`;
+  return [
+    `docks-kit sync upgraded these omp plugins after this omp process started: ${upgrades}.`,
+    ...RELOAD_SENTENCES,
+  ].join(" ");
 }
 
 beforeEach(() => {
@@ -146,6 +156,38 @@ describe("plugin upgrade reminders", () => {
       on: (event: string) => events.push(event),
     } as unknown as ExtensionApi);
     expect(events).toEqual(["tool_result"]);
+  });
+
+  it("advises /reload-plugins, skill://, and the restart exception in the reminder", async () => {
+    const home = makeHome();
+    const handler = load(home, Date.now() - 1000);
+    await sync(home, inventory(home, "0.18.0", "0.9.0"), inventory(home, "0.19.0", "0.9.0"));
+
+    const text = await toolResult(handler, "s1");
+
+    expect(text).toContain("docks@docks 0.18.0 -> 0.19.0");
+    for (const sentence of RELOAD_SENTENCES) expect(text).toContain(sentence);
+  });
+
+  it("gives the same reminder for an event file in the 0.22.12 format", async () => {
+    const home = makeHome();
+    const dir = upgradeLogDir(home);
+    mkdirSync(dir, { recursive: true });
+    const finishedMs = Date.now();
+    // The file name and fields that 0.22.12 wrote for each upgrade.
+    writeFileSync(
+      join(dir, `${finishedMs}-0123456789abcdef.json`),
+      `${JSON.stringify({
+        version: 1,
+        id: "docks@docks",
+        before: "0.18.0",
+        after: "0.19.0",
+        finishedAt: new Date(finishedMs).toISOString(),
+      })}\n`,
+    );
+    const handler = load(home, finishedMs - 1000);
+
+    expect(await toolResult(handler, "s1")).toBe(reminder("docks@docks 0.18.0 -> 0.19.0"));
   });
 
   it("reminds a main session once about the upgrades that sync logged", async () => {
