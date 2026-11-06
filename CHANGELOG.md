@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-11-06 - docks-kit 0.22.14: container IDs after omp notices, omp 18.17.0 matcher port
+
+### Fixed
+
+- The omp hygiene extension now finds the ID of a detached container when omp
+  adds a notice after the command output. omp adds `Wall time: N seconds` to
+  each command that runs 1 s or longer. Before, a slow `docker run -d` got
+  only the generic note (#142).
+- The extension now reads a container ID only from output that a single
+  `docker run -d` command owns, the same rule that the `mktemp` and
+  `docks-kit scratch new` paths use. Before, it could take an ID that another
+  command of the same call printed, such as
+  `docker inspect -f '{{.Id}}' other || docker run -d img`, and tell the agent
+  to stop that container. A compound command now gets the generic note, which
+  still names `docker stop <id>`.
+
+### Changed
+
+- The test port of the omp bash approval matcher
+  (`cli/test/lib/ompBashPatterns.ts`) now follows omp 18.17.0. The `dd`
+  critical pattern no longer flags a write to a pseudo-device sink such as
+  `/dev/null`. The kit ships no `dd` rule, so no guard outcome changes.
+
 ## 2026-11-05 - docks-kit 0.22.13: advise /reload-plugins after an omp plugin upgrade
 
 ### Changed
