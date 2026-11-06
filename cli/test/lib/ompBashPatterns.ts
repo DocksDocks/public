@@ -21,9 +21,11 @@
  *   `yolo` mode, omp ignores a bare override, so the command runs.
  *
  * The port covers the default `bash.allowCompoundCommands: false` path. It
- * leaves out two steps that the kit does not turn on: the interceptor deny at
- * the start of `BashTool.approval` (`bashInterceptor.enabled`, default
- * `false`) and the `tools.restrictedFolders` prompt (default empty).
+ * leaves out two steps that the kit does not turn on:
+ *
+ * - the interceptor deny at the start of `BashTool.approval`
+ *   (`bashInterceptor.enabled`, default `false`);
+ * - the `tools.restrictedFolders` prompt (default empty).
  */
 
 export type OmpApproval = "allow" | "prompt" | "deny";
