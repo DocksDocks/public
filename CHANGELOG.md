@@ -10,14 +10,25 @@
   `true || export DOCKER_HOST=ssh://dev; docker compose -p app up -d` gave a
   cleanup command for the `ssh://dev` daemon, where another project with the
   same name can run. These commands now get the generic note.
-- The setup state of a command is known only for a pure `&&` chain or a pure
-  `;` list. `||`, a pipeline, a background job, `!`, a conditional, a loop, a
-  function body, or `&&` mixed with `;` makes a setup command unknown when it
-  would change the directory or the Docker daemon. Each `$( … )` substitution
-  is checked by itself. An operator at the end of a line joins the next line.
-- Cost: a command that mixes `&&` and `;`, such as
-  `cd /a && npm ci; git worktree add wt`, now gets the generic note even when
-  every part runs. Commands without a setup command keep their results.
+- The extension now checks whether each `cd`, `pushd`, `export`, and `unset`
+  of a command runs before the later commands. It trusts them only in a pure
+  `&&` chain or a pure `;` list. These make it treat the directory or the
+  Docker daemon as unknown:
+  - `||`, a pipeline, or a background job before a later command;
+  - `!`, a conditional, a loop, or a function definition;
+  - `&&` together with `;` or a line break.
+- The extension checks each `$( … )` or backtick substitution by itself. An
+  operator at the end of a line continues on the next line, as in the shell.
+  An `unset` of a daemon variable that may not run makes the daemon unknown,
+  because the shell can inherit that variable.
+- Cost: these commands now get the generic note, although every part runs:
+  - `cd /a && npm ci; git worktree add wt`;
+  - `cd /a || exit 1; git worktree add wt`;
+  - `cd /a && git worktree add wt 2>&1 | tail -n 5`;
+  - `cd /a; git worktree add wt || true`;
+  - `cd /a; if [ -d x ]; then echo y; fi; git worktree add wt`.
+
+  A command without a `cd`, `pushd`, `export`, or `unset` keeps its result.
 
 ## 2026-11-06 - docks-kit 0.22.14: container IDs after omp notices, omp 18.17.0 matcher port
 
