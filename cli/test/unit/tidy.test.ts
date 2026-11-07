@@ -574,7 +574,8 @@ describe("runTidy", () => {
     if (after.kind === "acquired") releaseKitLock(after.lock);
   });
 
-  it("releases the lock before the report runs", async () => {
+  // The report reads the process list only on Linux and macOS (buildTidyReport).
+  it.skipIf(process.platform === "win32")("releases the lock before the report runs", async () => {
     const quiet = join(sandbox.base, "quiet-report");
     const quietInputs: TidyInputs = {
       home: join(quiet, "home"),
