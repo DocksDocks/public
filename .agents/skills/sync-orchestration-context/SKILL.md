@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: "Use when editing docks-kit, cli/src/main.ts, cli/src/argv.ts, cli/src/argvValidate.ts, cli/src/engine.ts, or cli/src/engine-native index.ts, engineCtx.ts, syncDispatch.ts, syncConcurrency.ts, parseArgs.ts, parseModifiers.ts, modes.ts, models.ts, or liveModels.ts: sync flags, positional targets, renamed-flag hints, harness selection, model validation, DOCKS_KIT_SYNC_CONCURRENCY, the sync locks (withSyncLock, withFolderLocks, sync-lock.db, DOCKS_KIT_SYNC_LOCK_WAIT_MS), the failure ledger, or dry-run and idempotency rules. Not for settings JSON (use settings-merge-context), Codex TOML (use codex-config-merge-context), plugin passes (use plugin-bootstrap-context), universal skills (use universal-skills-context), toolchain (use toolchain-context), omp (use omp-sync-context), the lock module itself (use tidy-context), or the golden harness (use engine-native-context)."
+description: "Use when editing docks-kit, cli/src/main.ts, cli/src/argv.ts, cli/src/argvValidate.ts, cli/src/engine.ts, or cli/src/engine-native index.ts, engineCtx.ts, syncDispatch.ts, syncConcurrency.ts, parseArgs.ts, parseModifiers.ts, modes.ts, models.ts, or liveModels.ts: sync flags, positional targets, renamed-flag hints, harness selection, model validation, DOCKS_KIT_SYNC_CONCURRENCY, the sync locks (withSyncLock, withFolderLocks, folderLockPaths, withHomeAndFolderLocks, sync-lock.db, DOCKS_KIT_SYNC_LOCK_WAIT_MS), the failure ledger, or dry-run and idempotency rules. Not for settings JSON (use settings-merge-context), Codex TOML (use codex-config-merge-context), plugin passes (use plugin-bootstrap-context), universal skills (use universal-skills-context), toolchain (use toolchain-context), omp (use omp-sync-context), the lock module itself (use tidy-context), or the golden harness (use engine-native-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
@@ -36,7 +36,7 @@ metadata:
     - path: cli/src/engine-native/engineCtx.ts
       lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-283"
+      lines: "1-326"
     - path: cli/src/engine-native/kitLock.ts
       lines: "1-121"
     - path: cli/src/engine-native/syncConcurrency.ts
@@ -76,7 +76,7 @@ metadata:
     - path: cli/src/engine-native/skillsRecords.ts
       lines: "1-138"
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-123"
+      lines: "1-138"
     - path: cli/src/engine-native/ompPlugins.ts
       lines: "1-415"
     - path: cli/src/engine-native/claudePluginPasses.ts
@@ -249,8 +249,8 @@ below inside `withSyncLock` (see § Sync Lock):
    highest. Any other value exits 2 before any pipeline starts. Unprobed: no
    unit test sets an invalid value. Read the check (verify:
    `grep -n "DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3" cli/src/engine-native/syncDispatch.ts`)
-4. A writing sync takes the folder locks of the selected Codex and agents
-   folders (see § Sync Lock). `runPipelines` runs the remaining steps.
+4. A writing sync takes the folder locks of the selected Codex, agents, and
+   omp folders (see § Sync Lock). `runPipelines` runs the remaining steps.
 5. When `claude` is selected, `claudeSettings.ts preflightClaudeSettings` runs
    the abort-class check before any pipeline starts. An invalid deployed
    `~/.claude/settings.json` then stops the whole sync with exit 1.
@@ -291,9 +291,12 @@ from the embedded payload.
   for a write (`model <tool> <value>`), because a write does the same
   read-modify-write of `settings.json` and `config.toml` as sync. The read form
   (`model <tool>`) takes no lock.
-- No lock when `args` holds `--dry-run`, `-h`, or `--help` (`UNLOCKED_TOKENS`).
-  The `DRY_RUN=1` env global still takes it. A `--dry-run` sync can still
-  migrate `kit.db`; `kitDb.ts` makes that migration safe for parallel runs.
+- No lock in a dry run: `args` holds `--dry-run`, `-h`, or `--help`
+  (`UNLOCKED_TOKENS`), or `ctx.dryRun` is true. `makeCtx` sets `ctx.dryRun`
+  from the `DRY_RUN=1` env global only when `options.envGlobals` is true, so a
+  public run with a stray `DRY_RUN` writes and takes the lock. A dry-run sync
+  can still migrate `kit.db`; `kitDb.ts` makes that migration safe for
+  parallel runs.
 - The wait bound is `SYNC_LOCK_WAIT_MS` (120 000 ms).
   `DOCKS_KIT_SYNC_LOCK_WAIT_MS` (a non-negative safe integer, in ms) overrides
   it; unset or empty means the default. Any other value prints
@@ -306,27 +309,39 @@ from the embedded payload.
 - The lock goes in `finally`, also after an `ExitError`. A signal needs no
   handler: the OS releases the lock when the process ends.
 
-(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 1 with the held line and leaves HOME unchanged"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "releases the lock when the run stops with an ExitError"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 2 when the lock wait is not a non-negative safe integer"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock with --dry-run"`)
+(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 1 with the held line and leaves HOME unchanged"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "releases the lock when the run stops with an ExitError"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 2 when the lock wait is not a non-negative safe integer"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock with --dry-run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "DRY_RUN env global"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "prints the help with -h and --help while another sync holds the lock"`)
 
-Folder locks: two homes can share a Codex folder (`CODEX_HOME`) or an agents
-folder (`AGENTS_DIR`). Their home locks differ, so each writer of such a folder
-also takes `<folder>/.docks-kit-sync-lock.db` (`scratch.ts folderSyncLockPath`).
+Folder locks: two homes can share a Codex folder (`CODEX_HOME`), an agents
+folder (`AGENTS_DIR`), or an omp folder (`PI_CODING_AGENT_DIR`,
+`PI_CONFIG_DIR`, `XDG_DATA_HOME`, or a symlink). Their home locks differ, so
+each writer of such a folder also takes `<folder>/.docks-kit-sync-lock.db`
+(`scratch.ts folderSyncLockPath`).
 
 - `runSync` takes them after `parseArgs`, through
   `withFolderLocks(ctx, folders, body)`: the Codex folder (`codexPaths.ts
   codexHome`) when `codex` is selected, and `ctx.agentsDir` when `agents` is
-  selected.
-- `folderLockPaths` resolves each folder to its real path, removes
-  duplicates, and sorts the lock paths. Every run takes them in that order,
-  after the home lock, so no two runs wait on each other in a cycle.
-- The pipeline creates its folder anyway, so `runSync` creates it before the
-  lock. The lock keeps the folder mode (`privateDirectory: false`).
+  selected. When `omp` is selected, it adds the three folders of
+  `ompSync.ts ompWriteFolders`: the omp agent folder, the intercom folder, and
+  the omp data root. `ompSync` writes into the same resolved folders.
+- `folderLockPaths` canonicalizes each folder without the need for it to
+  exist: the real path of its nearest existing ancestor, joined with the rest.
+  It removes duplicates, keeps nested folders, and sorts by folder, so an
+  ancestor comes before its descendants. Every run takes the locks in that
+  order, after the home lock, so no two runs wait on each other in a cycle.
+- `withKitLocks` creates a missing folder (`mkdirSync`, recursive, mode 0700)
+  just before its lock, so the locks of its ancestors in the set are already
+  held. The mode applies only to the folders that the call creates: it runs no
+  chmod, and the lock keeps the folder mode (`privateDirectory: false`). The
+  omp pipeline then runs `ensureDirectory` (mode 0700) under the locks.
 - A writing `model codex` takes the Codex folder lock after the home lock.
   It creates no folder, so a missing Codex folder needs no lock.
-- A dry run (`ctx.dryRun`) takes no folder lock. The held line and the wait
-  bound are those of the home lock.
+- `withHomeAndFolderLocks(home, folders, err, body)` takes the home lock and
+  the folder locks outside a sync run. `docks-kit omp --fast` uses it for the
+  omp agent folder (see `omp-sync-context`).
+- A dry run (`ctx.dryRun`) takes no folder lock and creates no folder. The
+  held line and the wait bound are those of the home lock.
 
-(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared agents folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a model codex write wait while a sync holds the Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no folder lock in a dry run"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes one lock per real folder"`)
+(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared agents folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a model codex write wait while a sync holds the Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no folder lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes one lock per real folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "shared omp agent folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "creates no intercom folder in a held omp agent folder and keeps its mode"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "missing omp data root"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no omp folder lock in a dry run"`, and `bunx vitest run cli/test/unit/folderLockCreate.test.ts -t "creates a missing folder and its parents with mode 0700"`)
 
 ### Direct Modes
 

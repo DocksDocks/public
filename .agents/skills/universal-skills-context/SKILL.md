@@ -26,7 +26,7 @@ metadata:
     - path: cli/src/engine-native/os/windows.ts
       lines: "1-184"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-283"
+      lines: "1-326"
   updated: "2026-11-07"
 ---
 

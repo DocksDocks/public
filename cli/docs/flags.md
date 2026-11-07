@@ -26,7 +26,7 @@ Escape leaves it unchanged.
 
 | Flag | Effect |
 |------|--------|
-| `--dry-run` | Preview without applying; takes no sync lock |
+| `--dry-run` | Preview without applying; takes no sync lock and no folder lock |
 | `--reconcile` | Settings layer reconciled toward SoT (SoT keys win; user-only keys preserved; permissions arrays replaced) |
 | `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, and the universal skills that `~/.agents/.kit-owned-skills` names |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
@@ -38,7 +38,7 @@ Escape leaves it unchanged.
 | Variable | Effect |
 |----------|--------|
 | `DOCKS_KIT_SYNC_CONCURRENCY=1\|2\|3` | Maximum selected sync pipelines running at once. Default `3`; use `1` for serial golden/debug execution. Invalid values fail `sync` with exit 2 but do not affect `model` or `toolchain`. |
-| `DOCKS_KIT_SYNC_LOCK_WAIT_MS=<ms>` | Time that `sync` and a `model` write wait for another sync to release the sync lock. A non-negative safe integer in milliseconds (at most `9007199254740991`); unset or empty means `120000` (120 s). Any other value prints `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer` and exits 2. |
+| `DOCKS_KIT_SYNC_LOCK_WAIT_MS=<ms>` | Time that `sync`, a `model` write, and `omp --fast` wait for another sync to release a sync lock. A non-negative safe integer in milliseconds (at most `9007199254740991`); unset or empty means `120000` (120 s). Any other value prints `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer` and exits 2. |
 
 ## Sync lock
 
@@ -50,13 +50,24 @@ same files at once.
   (`DOCKS_KIT_SYNC_LOCK_WAIT_MS` changes the wait). It then prints
   `another docks-kit sync holds <path>; run sync again after it ends` and
   exits 1 with no change.
-- Two homes can share a Codex folder (`CODEX_HOME`) or an agents folder
-  (`AGENTS_DIR`). So a writing sync also holds `.docks-kit-sync-lock.db`
-  inside the Codex folder when it syncs `codex`, and inside the agents folder
-  when it syncs `agents`. A `model codex <value>` write holds the Codex folder
-  lock too. The held line then names that lock file.
-- A run with `--dry-run`, `-h`, or `--help` takes no lock. `model <tool>`
-  without a value only reads, so it takes no lock.
+- Two homes can share a Codex folder (`CODEX_HOME`), an agents folder
+  (`AGENTS_DIR`), or an omp folder (`PI_CODING_AGENT_DIR`, `PI_CONFIG_DIR`,
+  `XDG_DATA_HOME`, or a symlink). So a writing sync also holds
+  `.docks-kit-sync-lock.db` inside each such folder that it writes. For `codex`
+  this is the Codex folder, and for `agents` the agents folder. For `omp` it is
+  the omp agent folder, the intercom folder, and the omp data root. A
+  `model codex <value>` write holds the Codex folder lock too. The held line
+  then names that lock file.
+- A writing sync creates a missing folder of this set just before it takes the
+  lock of that folder, after the locks of its parent folders. Each folder that
+  it creates gets mode 0700. It does not change the mode of an existing folder.
+- `docks-kit omp --fast` holds the sync lock and the omp agent folder lock
+  while it rewrites `config.yml`. The wait and the held line are those of a
+  sync.
+- A run with `--dry-run`, `-h`, or `--help` takes no lock. A dry run through
+  the `DRY_RUN=1` env global of the private `native-raw` engine channel takes
+  no lock either. `model <tool>` without a value only reads, so it takes no
+  lock.
 - The lock goes when the run ends, also when the process is killed.
 - A held lock also delays the error of an invalid argument until the wait
   ends.

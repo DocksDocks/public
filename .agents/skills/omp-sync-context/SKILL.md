@@ -1,12 +1,12 @@
 ---
 name: omp-sync-context
-description: "Use when changing the docks-kit omp harness: the sync omp pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts), harness selection and session model in kit.db (harnesses.ts, kitDb.ts, parseArgs.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when changing the docks-kit omp harness: the sync omp pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts), harness selection and session model in kit.db (harnesses.ts, kitDb.ts, parseArgs.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries, the omp folder locks (ompWriteFolders, omp --fast), and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-123"
+      lines: "1-138"
     - path: cli/src/engine-native/ompFileDeploy.ts
       lines: "1-116"
     - path: cli/src/engine-native/ompMarketplace.ts
@@ -30,9 +30,9 @@ metadata:
     - path: cli/src/engine-native/ompOverlay.ts
       lines: "1-310"
     - path: cli/src/commands/omp.ts
-      lines: "1-433"
+      lines: "1-467"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-155"
+      lines: "1-326"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-206"
     - path: cli/src/engine-native/atomicWrite.ts
@@ -144,6 +144,34 @@ writes `config.yml` the same way.
 Verify the symlink rule:
 `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "merges a symlinked config.yml into the link target and keeps the link"`
 and `bunx vitest run cli/test/unit/ompFastMode.test.ts -t "keeps a symlinked config.yml a link"`.
+
+### Folder Locks
+
+Two homes can share an omp folder through `PI_CODING_AGENT_DIR`, a symlink,
+`XDG_DATA_HOME`, or a `PI_CONFIG_DIR` with `..`. Their home locks differ.
+So a writing `sync omp` also takes `<folder>/.docks-kit-sync-lock.db` in each
+folder of `ompSync.ts ompWriteFolders`: the `ompPaths` `agentDir`, the
+resolved intercom directory, and the `ompPaths` `dataRoot`.
+
+- `syncDispatch.ts runSync` takes these locks before `ompSync` starts.
+  `ompSync` calls the same `ompWriteFolders`, so it writes only into locked
+  folders.
+- The data root is locked also when it is missing. The lock step then creates
+  it under the locks of its ancestors. With an overridden `agentDir`, an empty
+  `<home>/<PI_CONFIG_DIR|.omp>` folder can appear.
+- `~/.docks-kit/omp-plugin` and the plugin upgrade log stay under the home, so
+  the home lock covers them.
+- `commands/omp.ts toggleFastUnderLocks` runs `docks-kit omp --fast` under the
+  home sync lock and the `agentDir` lock (`syncDispatch.ts
+  withHomeAndFolderLocks`), with the wait and the held line of a sync. It
+  locks `agentDir` only when the folder exists: a missing folder has no
+  `config.yml`, so the toggle fails and creates nothing.
+- A dry run takes no folder lock. `sync-orchestration-context` owns the lock
+  order and the folder creation rule.
+
+Verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "shared omp intercom folder"`,
+`bunx vitest run cli/test/unit/syncLock.test.ts -t "shared omp data root"`,
+and `bunx vitest run cli/test/unit/ompFastMode.test.ts -t "omp --fast under the folder lock"`.
 
 ### Private Mode Pattern
 
