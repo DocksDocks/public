@@ -44,8 +44,18 @@ stale links. `linkOrCopy` tries each kind in `hostOs().directoryLinkKinds`
 order (a relative symlink; on Windows, then an absolute junction). Then it falls
 back to a recursive copy that holds a `skillsLinks.ts COPY_MARKER` file. Later
 syncs replace a marked copy, and --prune reclaims it. Sync leaves unmarked real
-directories alone with a warning (verify:
-`bunx vitest run cli/test/unit/skillsSync.test.ts -t "creates a real symlink with the relative target"`).
+directories alone with a warning. Verify each step:
+
+- Relative symlink:
+  `bunx vitest run cli/test/unit/skillsSync.test.ts -t "creates a real symlink with the relative target"`.
+- Junction after a failed symlink:
+  `bunx vitest run cli/test/unit/skillsSync.test.ts -t "falls through from a failed symlink"`.
+- Marked copy after every link kind fails:
+  `bunx vitest run cli/test/unit/skillsSync.test.ts -t "copies the canonical skill when both symlink and junction creation fail"`.
+- Marked copy healed, unmarked directory kept with a warning:
+  `bunx vitest run cli/test/unit/skillsSync.test.ts -t "heals a marked copy back to a link"`.
+- `--prune` reclaims a marked copy:
+  `bunx vitest run cli/test/unit/skillsSync.test.ts -t "prunes only kit-created entries"`.
 
 ## Snapshot Format
 

@@ -77,8 +77,11 @@ A `--prune` run retains only the slugs that it failed to remove (verify:
 `<owner>/<repo>@<skill>` slug yields the skill name. Any other slug yields its
 last path segment. `skillBase` lowercases the name and replaces each run of
 characters outside `[a-z0-9._]` with `-`, as the CLI `sanitizeName` rule does.
-It also strips leading and trailing dots and dashes (verify:
-`bunx vitest run cli/test/unit/skillsManifest.test.ts`).
+It also strips trailing dots and dashes (verify:
+`bunx vitest run cli/test/unit/skillsManifest.test.ts -t "installs for acme/pack@My"`).
+The same regex strips leading dots and dashes. Unprobed: no unit test covers a
+leading dot or dash. Read the strip call in `skillsManifest.ts skillBase` (verify:
+`grep -nF '/^[.-]+|[.-]+$/' cli/src/engine-native/skillsManifest.ts`).
 
 `syncUniversal` skips `npx skills@<verified> add` when the canonical directory
 already exists, but still calls `healClaudeSymlink` to repair a missing or stale
@@ -86,7 +89,8 @@ symlink. After an add exits 0, `syncUniversal` warns when the canonical
 directory is still missing. The installed skill name then differs from the slug,
 so declare the slug as `<owner>/<repo>@<skill-name>` (verify:
 `bunx vitest run cli/test/unit/skillsSync.test.ts -t "reuses an existing canonical skill"`
-and the same file with `-t "warns when a successful install creates no directory"`).
+and
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "warns when a successful install creates no directory"`).
 
 `linkOrCopy` creates the Claude entry. It tries each directory link kind in
 `hostOs().directoryLinkKinds` order (`cli/src/engine-native/os/posix.ts`: a
@@ -95,7 +99,8 @@ then an absolute junction). Then it falls back to a recursive copy that holds a
 `skillsLinks.ts COPY_MARKER` file. Later syncs replace a marked copy, and
 --prune reclaims it. Sync leaves unmarked real directories alone with a warning
 (verify: `bunx vitest run cli/test/unit/skillsSync.test.ts -t "falls through from a failed symlink"`
-and the same file with `-t "heals a marked copy back to a link"`).
+and
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "heals a marked copy back to a link"`).
 
 ## Manifest Parsing
 
@@ -120,7 +125,7 @@ that form installs to every supported agent. The kit therefore names only
 
 The skills CLI behavior in this skill and its references holds for the pinned
 version. When the pin changes, re-check it in that version's `dist/cli.mjs`
-(verify: `curl -s https://unpkg.com/skills@<verified>/dist/cli.mjs | grep -n 'function parseAddOptions\|function removeCommand\|Missing required argument: source'`,
+(verify: `v=$(bun -e 'console.log((await Bun.file("SoT/toolchain.json").json()).tools["skills-cli"].verified)'); curl -s "https://unpkg.com/skills@$v/dist/cli.mjs" | grep -n 'function parseAddOptions\|function removeCommand\|Missing required argument: source'`,
 then read both functions).
 
 The kit does not call `skills remove`. In the pinned CLI, `remove` without
@@ -136,9 +141,14 @@ but are no longer declared. It deletes only what the kit created. That is the
 canonical `~/.agents/skills/<basename>` when it is a real directory that holds
 `SKILL.md`. It also deletes the kit-managed Claude entry: a symlink, a junction,
 or a marked copy. It never touches an unmarked real
-`~/.claude/skills/<basename>` or the skill directories of other agents.
-User-installed skills that never appeared in the snapshot are preserved (verify:
+`~/.claude/skills/<basename>`. It does not call `skills remove`, so it never
+touches the skill directories of other agents (verify:
 `bunx vitest run cli/test/unit/skillsSync.test.ts -t "prunes only kit-created entries"`).
+User-installed skills that never appeared in the snapshot are preserved.
+Unprobed: no unit test prunes with a skill that is absent from the snapshot.
+Read the `skillsPrune.ts reconcileRemovals` loop, which visits only the slugs
+from `readSlugs(snapshot)` (verify:
+`grep -n "readSlugs(snapshot)" cli/src/engine-native/skillsPrune.ts`).
 
 A run without `--prune` keeps the previous snapshot slugs. A later `--prune`
 therefore still removes a slug that left `skills.txt` earlier. A failed removal
