@@ -268,6 +268,31 @@ describe("skills durability", () => {
       return output.join("").split("\n");
     }
 
+    it("records each installed skill before the next install starts", async () => {
+      const root = makeHome();
+      const { owned, pending } = records(root);
+      mocks.declaredSkills = "acme/first\nacme/second\n";
+      mocks.spawnProcess.mockImplementation(async (_command: string, args: Array<string>) => {
+        const slug = args[args.indexOf("add") + 1] ?? "";
+        // The sync stops while the second install runs.
+        if (slug === "acme/second") throw new Error("stopped during the install of acme/second");
+        makeCanonical(root, "first");
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+      });
+
+      await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^stopped/);
+      expect(recordedSlugs(pending)).toEqual(["acme/second"]);
+
+      mocks.spawnProcess.mockReset();
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(existsSync(join(root, ".agents", "skills", "first"))).toBe(false);
+      expect(recordedSlugs(owned)).toEqual([]);
+      expect(recordedSlugs(pending)).toEqual([]);
+      expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    });
+
     it("prunes a skill whose install the owned record did not record", async () => {
       const root = makeHome();
       const { owned, pending, legacy } = records(root);

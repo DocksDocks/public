@@ -2,9 +2,10 @@
  * EngineNative universal-skill install pass (`npx skills@<pin> add`) with
  * Claude symlink healing. Split from skillsSync.ts; the orchestration still
  * lives there. The pass records a slug as pending before its install only
- * when the canonical directory does not exist, and moves it to the owned
- * record after the install when its directory exists (`skillsRecords.ts`).
- * A canonical directory that existed before is reused and never recorded.
+ * when the canonical directory does not exist (`skillsRecords.ts`). After
+ * the install, it moves the slug to the owned record when its directory
+ * exists. It writes both records before the next install starts. A canonical
+ * directory that existed before is reused and never recorded.
  */
 import { p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
@@ -14,6 +15,7 @@ import {
   canonicalAbsent,
   recordPendingInstall,
   settlePendingSlug,
+  writeSkillRecords,
   type SkillRecords,
 } from "./skillsRecords";
 import { normalizeManifest, skillBase } from "./skillsManifest";
@@ -91,7 +93,11 @@ export async function syncUniversal(
       },
     );
     clearProgress();
-    if (pending) settlePendingSlug(records, skillsDir, slug);
+    if (pending) {
+      // The owned record goes first, so a stop between the writes keeps the slug pending.
+      settlePendingSlug(records, skillsDir, slug);
+      writeSkillRecords(ctx, records);
+    }
     if (res.error === undefined && res.exitCode === 0) {
       added++;
       if (!isDir(p(skillsDir, base))) {
