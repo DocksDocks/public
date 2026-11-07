@@ -9,9 +9,11 @@ import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } f
 import { preflightClaudeSettings } from "./claudeSettings";
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync";
 import type { Ctx } from "./index";
+import { acquireKitLock, releaseKitLock } from "./kitLock";
 import { ompNextSteps, ompSummary, ompSync, type OmpState } from "./ompSync";
 import { skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync";
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs";
+import { syncLockPath } from "./scratch";
 import {
   runBounded,
   syncConcurrencyForManifest,
@@ -19,7 +21,61 @@ import {
   type SyncTask,
 } from "./syncConcurrency";
 
+/** The default time that a sync or a model write waits for another sync to release the sync lock. */
+export const SYNC_LOCK_WAIT_MS = 120_000;
+const SYNC_LOCK_WAIT_ERROR = "DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative integer";
+
+/** The sync lock wait bound: `DOCKS_KIT_SYNC_LOCK_WAIT_MS` in ms, or `SYNC_LOCK_WAIT_MS` when unset or empty. */
+function syncLockWaitMs(ctx: Ctx): number {
+  const configured = process.env["DOCKS_KIT_SYNC_LOCK_WAIT_MS"];
+  if (configured === undefined || configured === "") return SYNC_LOCK_WAIT_MS;
+  if (/^\d+$/.test(configured)) return Number(configured);
+  ctx.services.logger.err(SYNC_LOCK_WAIT_ERROR);
+  throw new ExitError(2);
+}
+
+/**
+ * The tokens that write nothing: `--dry-run`, and `-h`/`--help`, which make
+ * `parseArgs` print the usage or an error and exit before it reads `kit.db`.
+ */
+const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "--help": true };
+
+/**
+ * Run `body` under the sync lock `syncLockPath(ctx.home)`, unless `args` holds
+ * one of `UNLOCKED_TOKENS`. When another sync keeps the lock past the wait
+ * bound, print the held line and return 1 without a call to `body`. The lock
+ * goes when `body` ends, also when it throws; the OS releases it when the
+ * process ends.
+ */
+export async function withSyncLock(
+  ctx: Ctx,
+  args: ReadonlyArray<string>,
+  body: () => Promise<number>,
+): Promise<number> {
+  if (args.some((arg) => Object.hasOwn(UNLOCKED_TOKENS, arg))) return await body();
+  const path = syncLockPath(ctx.home);
+  const result = await acquireKitLock(path, { waitMs: syncLockWaitMs(ctx) });
+  if (result.kind === "held") {
+    ctx.services.logger.err(`another docks-kit sync holds ${path}; run sync again after it ends`);
+    return 1;
+  }
+  try {
+    return await body();
+  } finally {
+    releaseKitLock(result.lock);
+  }
+}
+
+/**
+ * Run a sync. The sync lock comes first: `parseArgs` reads the harness
+ * selection from `kit.db`, and that read can migrate `kit.db` and rename a
+ * legacy `state.json`.
+ */
 export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
+  return await withSyncLock(ctx, args, () => runSync(ctx, args));
+}
+
+async function runSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   const { acquireTerminal, echo, err } = ctx.services.logger;
   parseArgs(ctx, args);
   await validateModifierFlags(ctx);
