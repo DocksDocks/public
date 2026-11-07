@@ -150,9 +150,9 @@ jobs:
       matrix:
         shard: [1, 2]
     runs-on: windows-2025 # pinned label, never *-latest
-    # No measured run of this job yet. 3 x (setup p90 24 s + unsharded
-    # unit-test step p90 76 s + 21 s cold setup) = 363 s, rounded up.
-    timeout-minutes: 7
+    # Measured run p90 of the slower shard: 65 s (10 warm PR #154 runs).
+    # 3 x (65 s + 21 s cold setup) = 258 s, rounded up.
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
