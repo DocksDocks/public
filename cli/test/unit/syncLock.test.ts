@@ -717,7 +717,7 @@ describe("omp children of a sync", () => {
   // omp reads XDG_DATA_HOME only on Linux and macOS.
   for (const profile of [undefined, "work"]) {
     it.skipIf(process.platform === "win32")(
-      `keeps each omp child on the locked config root when the XDG candidate appears after the locks (${profile ?? "default"} profile)`,
+      `keeps each omp child on the locked config root and fails the sync when the XDG candidate appears after the locks (${profile ?? "default"} profile)`,
       async () => {
         await withHome(async (home) => {
           await withSharedFolder(async (shared) => {
@@ -740,7 +740,13 @@ describe("omp children of a sync", () => {
                 mkdirSync(candidate, { recursive: true }),
               );
 
-              expect(await runEngineNative(["sync", "omp"], services)).toBe(0);
+              // A later omp process adopts the candidate and does not see the
+              // plugins of the locked root, so the sync must not report success.
+              expect(await runEngineNative(["sync", "omp"], services)).toBe(1);
+              const moved = `omp data root moved to ${candidate} during the sync; run docks-kit sync again`;
+              expect(records).toContain(moved);
+              expect(records).toContain("--- Failures ---");
+              expect(records.slice(records.indexOf("--- Failures ---"))).toContain(`- ${moved}`);
 
               expect(existsSync(join(configRoot, FOLDER_LOCK))).toBe(true);
               expect(spawned.omp.length).toBeGreaterThan(0);

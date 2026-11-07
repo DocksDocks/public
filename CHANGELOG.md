@@ -21,7 +21,10 @@ These fixes close #163.
   pipeline writes only into them. Each `omp` command of the sync starts
   without `XDG_DATA_HOME` when the locked data root is the omp config root. So
   a `$XDG_DATA_HOME/omp` folder that another sync creates during the run
-  cannot move the plugin data to an unlocked folder.
+  cannot move the plugin data to an unlocked folder. A later `omp` uses that
+  new folder and does not see the plugins of the sync, so the sync then
+  records a failure that names the new data root and exits 1. The next sync
+  installs the plugins there.
 - `docks-kit omp --fast` now holds the sync lock and the omp agent folder lock
   while it rewrites `config.yml`. A sync and the toggle no longer overwrite
   the change of each other. It checks `config.yml` before it takes a lock, so

@@ -76,7 +76,7 @@ metadata:
     - path: cli/src/engine-native/skillsRecords.ts
       lines: "1-138"
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-137"
+      lines: "1-155"
     - path: cli/src/engine-native/ompPlugins.ts
       lines: "1-417"
     - path: cli/src/engine-native/claudePluginPasses.ts

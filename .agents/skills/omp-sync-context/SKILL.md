@@ -6,7 +6,7 @@ metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-137"
+      lines: "1-155"
     - path: cli/src/engine-native/ompFileDeploy.ts
       lines: "1-116"
     - path: cli/src/engine-native/ompMarketplace.ts
@@ -156,15 +156,20 @@ folder of `ompSync.ts ompWriteFolders`: the `ompPaths` `agentDir`, the
 resolved intercom directory, and the `ompPaths` `dataRoot`.
 
 - `syncDispatch.ts runSync` calls `ompWriteFolders` once, before the locks,
-  and passes the result into `ompSync`. `ompSync` does not call `ompPaths`
-  again, so it writes only into locked folders. A second resolution could
-  pick a `$XDG_DATA_HOME/omp` folder that another sync created after the
-  locks.
+  and passes the result into `ompSync`. `ompSync` writes only into these
+  locked folders. A second resolution could pick a `$XDG_DATA_HOME/omp`
+  folder that another sync created after the locks.
 - Every `omp` command of the marketplace and plugin passes starts through
   `ompChild.ts spawnOmp`. When the locked data root is the config root, the
   child gets no `XDG_DATA_HOME`, so the omp resolver keeps the locked root.
   When the locked data root is the XDG root, the child keeps the environment
   of the sync. This applies on the default profile and on named profiles.
+- At the end of a writing run, still under the locks, `ompSync` resolves the
+  data root again with `ompPaths` and the environment of the sync. When it
+  differs from the locked root, a later omp process would not see the
+  plugins. So `ompSync` records `omp data root moved to <root> during the
+  sync; run docks-kit sync again` through `failures.ts recordFailure`, and the
+  sync exits 1. The next sync locks and fills the new root.
 - The data root is locked also when it is missing. The lock step then creates
   it under the locks of its ancestors in the set. With an overridden
   `agentDir`, an empty `<home>/<PI_CONFIG_DIR|.omp>` folder can appear.

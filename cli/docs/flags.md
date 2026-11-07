@@ -67,7 +67,11 @@ same files at once.
   pipeline and each `omp` command that it starts use these folders. When the
   locked data root is the omp config root, each `omp` command starts without
   `XDG_DATA_HOME`. So a `$XDG_DATA_HOME/omp` folder that appears during the
-  sync does not move the plugin data to a folder without a lock.
+  sync does not move the plugin data to a folder without a lock. A later
+  `omp` uses that new folder, so the sync then prints
+  `omp data root moved to <root> during the sync; run docks-kit sync again`
+  and exits 1. The next sync locks the new folder and installs the plugins
+  there.
 - The locks cover the folder that the kit writes into, not the target of a
   symlinked file. Two homes whose `config.yml` (or another deployed file) links
   to one shared file can still overwrite the merge of each other.

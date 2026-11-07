@@ -16,6 +16,7 @@ import { isAbsolute, resolve } from "node:path";
 
 import { bunBootstrap } from "./bun";
 import { p } from "./exec";
+import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { ompPaths, type OmpPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
@@ -108,6 +109,23 @@ export async function ompSync(ctx: Ctx, folders: OmpWriteFolders): Promise<OmpSt
 
   await syncMarketplace(ctx, paths);
   const pluginsInstalled = await syncPlugins(ctx, paths);
+
+  // omp adopts `$XDG_DATA_HOME/omp` once it exists. When another sync created
+  // it during this run, a later omp process uses that root and does not see
+  // the plugins of the locked root. The next sync locks and fills the new root.
+  if (!ctx.dryRun) {
+    const currentRoot = ompPaths({
+      home: ctx.home,
+      env: process.env,
+      platform: ctx.services.platform.raw(),
+    }).dataRoot;
+    if (currentRoot !== paths.dataRoot) {
+      recordFailure(
+        ctx,
+        `omp data root moved to ${currentRoot} during the sync; run docks-kit sync again`,
+      );
+    }
+  }
   return { pluginsInstalled, agentDir };
 }
 

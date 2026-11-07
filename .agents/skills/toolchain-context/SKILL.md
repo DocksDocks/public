@@ -22,7 +22,7 @@ metadata:
     - path: cli/src/engine-native/kitDb.ts
       lines: "1-256"
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-137"
+      lines: "1-155"
     - path: cli/src/engine-native/sharedTypes.d.ts
       lines: "1-65"
     - path: SoT/toolchain.json
