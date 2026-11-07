@@ -102,9 +102,11 @@ floating `@latest` (the npm-worm / Shai-Hulud attack surface). That includes
 the `npx skills@<verified>` invocations on agents sync and the release workflow
 (actions pinned to commit SHAs, exact bun/npm versions). Two installs follow
 the host toolchain and have no pin: `rust-analyzer` (rustup) and `bubblewrap`
-(distro package manager). Marketplace plugins have no manifest pin either:
-sync installs and refreshes the Claude Code, Codex, and omp marketplace
-plugins at the version that their marketplace publishes (see `plugins`).
+(distro package manager). The existing Claude Code, Codex, and omp marketplace
+plugins have no manifest pin either: sync installs and refreshes them at the
+version that their marketplace publishes (see `plugins`). Any new install
+surface, a new marketplace or plugin source included, needs a manifest pin
+first.
 
 The kit's own package is the single exemption from the `@latest` ban. `install.sh` and `install.ps1`
 end with `bun add -g docks-kit@latest` because a global installer that pinned

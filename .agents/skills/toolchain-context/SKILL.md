@@ -37,9 +37,10 @@ unrelated sync work.
 Never add a kit-driven floating install. Every kit-driven package install from
 npm, npx, GitHub releases, or `omp install` uses the exact `verified` version
 from `SoT/toolchain.json`. `rust-analyzer` (rustup) and `bwrap` (distro package
-manager) follow the host toolchain and have no pin. Marketplace plugins follow
-the version that their marketplace publishes and have no manifest pin. Any
-other new install surface needs a manifest pin first.
+manager) follow the host toolchain and have no pin. The existing Claude Code,
+Codex, and omp marketplace plugins follow the version that their marketplace
+publishes and have no manifest pin. Any new install surface, a new marketplace
+or plugin source included, needs a manifest pin first.
 </constraint>
 
 ## Manifest Split
