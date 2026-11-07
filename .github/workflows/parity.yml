@@ -56,7 +56,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x p90 8 s = 24 s, so the 2-minute floor applies.
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -85,7 +86,9 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-26]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # 3 x (p90 + cold setup), rounded up: Ubuntu 3 x (48 s + 9 s) = 171 s,
+    # macOS 3 x (102 s + 8 s) = 330 s.
+    timeout-minutes: ${{ matrix.os == 'macos-26' && 6 || 3 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -147,7 +150,9 @@ jobs:
       matrix:
         shard: [1, 2]
     runs-on: windows-2025 # pinned label, never *-latest
-    timeout-minutes: 20
+    # No measured run of this job yet. 3 x (setup p90 24 s + unsharded
+    # unit-test step p90 76 s + 21 s cold setup) = 363 s, rounded up.
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -172,7 +177,10 @@ jobs:
     permissions:
       contents: read
     runs-on: windows-2025 # pinned label, never *-latest
-    timeout-minutes: 20
+    # No measured run of this job yet. 3 x (47 s + 21 s cold setup) = 204 s,
+    # rounded up. The 47 s is the sum of the step p90s of setup, generated
+    # payload, typecheck, runtime commands, and native smoke.
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -213,7 +221,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 20
+    # No checkout and no install, so the 2-minute floor applies.
+    timeout-minutes: 2
     steps:
       - name: All Windows jobs passed
         env:
@@ -226,7 +235,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x (p90 40 s + 9 s cold setup) = 147 s, rounded up.
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -274,7 +284,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x (p90 49 s + 9 s cold setup) = 174 s, rounded up.
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
