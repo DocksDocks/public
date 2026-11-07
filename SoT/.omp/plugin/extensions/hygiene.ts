@@ -1667,7 +1667,10 @@ const WINDOWS_CONTENTION: Record<string, true> = { EBUSY: true, EPERM: true };
 
 /**
  * True on Windows for an error that another process causes when it deletes or
- * holds the path. On POSIX, EPERM and EBUSY are real faults, so they stay errors.
+ * holds the path. A real access denial on Windows also gives EPERM, and this
+ * rule then also counts it as contention, as `tidyLock.ts` does. Thus a lasting
+ * access fault on the cache directory makes each session lose the claim
+ * without an error. On POSIX, EPERM and EBUSY are real faults, so they stay errors.
  */
 function isWindowsContention(error: unknown): boolean {
   const code = errorCode(error);
@@ -1734,9 +1737,9 @@ function isStale(path: string, nowMs: number): boolean {
  * process holds it. Only the holder of the takeover mutex replaces a stale
  * claim, and it checks the claim again while it holds the mutex. Thus two
  * processes cannot both replace the same stale claim. On Windows, a create
- * or a delete that fails because another process deletes or holds the file
- * counts as contention: this process does not get the claim, and a later
- * main session claims the sweep.
+ * that fails because another process deletes or holds the file loses the
+ * claim, and a later main session claims the sweep. A delete or a release
+ * that fails this way removes nothing.
  */
 function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
   const claim = join(cacheDir, CLAIM_FILE);
@@ -1762,7 +1765,9 @@ function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
 /**
  * Lets one process in each sweep interval start the sweep. The process that
  * holds `tidy.stamp.claim` reads the stamp again. When the sweep is still
- * due, it writes the stamp and returns true. It always releases its claim.
+ * due, it writes the stamp and returns true. In each case, it then releases its
+ * claim. When the release fails on Windows because of contention, the claim
+ * stays until it is stale.
  */
 export function claimSweep(cacheDir: string, nowMs: number): boolean {
   mkdirSync(cacheDir, { recursive: true, mode: 0o700 });

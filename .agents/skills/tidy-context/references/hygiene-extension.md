@@ -55,7 +55,7 @@ Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "reminds 
 1. Skip a subagent session (`ctx.agent?.kind === "sub"`).
 2. Read the mtime of `tidy.stamp` under `join(homedir(), ".cache", "docks-kit")`; stop unless `sweepDue`.
 3. `resolveDocksKit`; a missing binary throws before the claim, so the stamp stays old and the next session tries again.
-4. `claimSweep` takes `tidy.stamp.claim` (with a `tidy.stamp.takeover` mutex for a stale claim), reads the stamp again, writes it, and releases the claim. On Windows, `createOwned`, `removeIfPresent`, and `releaseOwned` treat EPERM and EBUSY as contention (`isWindowsContention`): another process deletes or holds the file. A create that fails this way loses the claim, so `claimSweep` returns false and a later main session claims the due sweep. A delete or a release that fails this way removes nothing, and the file stays until it is stale. On other platforms, these codes stay errors.
+4. `claimSweep` takes `tidy.stamp.claim` (with a `tidy.stamp.takeover` mutex for a stale claim), reads the stamp again, writes it, and releases the claim. On Windows, `createOwned`, `removeIfPresent`, and `releaseOwned` treat EPERM and EBUSY as contention (`isWindowsContention`): another process deletes or holds the file. A create that fails this way loses the claim, so `claimSweep` returns false and a later main session claims the due sweep. A delete or a release that fails this way removes nothing, and the file stays until it is stale. A real access denial on Windows also gives EPERM, and the rule then also counts it as contention, as `tidyLock.ts` does. On other platforms, these codes stay errors.
 5. Spawn `docks-kit tidy --apply` detached, `stdio: "ignore"`, spawn errors ignored.
 
 Consequences:
