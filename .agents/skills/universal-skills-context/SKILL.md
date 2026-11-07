@@ -8,13 +8,13 @@ metadata:
     - path: cli/src/engine-native/skillsSync.ts
       lines: "1-57"
     - path: cli/src/engine-native/skillsInstall.ts
-      lines: "1-129"
+      lines: "1-135"
     - path: cli/src/engine-native/skillsLinks.ts
       lines: "1-216"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-104"
+      lines: "1-117"
     - path: cli/src/engine-native/skillsRecords.ts
-      lines: "1-93"
+      lines: "1-128"
     - path: cli/src/engine-native/skillsManifest.ts
       lines: "1-36"
     - path: SoT/.agents/skills.txt
@@ -60,14 +60,21 @@ there only when an install of the kit created its canonical directory:
   `npx skills add`, and only when `lstat` finds no entry at the canonical
   directory (`skillsRecords.ts canonicalAbsent`, `recordPendingInstall`).
 - After the install, `settlePendingSlug` moves the slug to the owned record
-  when the directory exists, and drops it otherwise.
+  when the directory exists, and drops it otherwise. The owned line keeps the
+  `<dev>:<ino>` of the directory (`skillsRecords.ts directoryIdentity`, a
+  bigint `lstat`, so a Windows file index stays exact).
 - A canonical directory that existed before is reused and never recorded.
-- `writeSkillRecords` writes the owned record first, then the pending record,
-  and removes an empty pending record. A sync that stops between the two
-  writes keeps the pending slugs for the next sync.
+- After each install, `syncUniversal` calls `writeSkillRecords` before the
+  next install starts. It writes the owned record first, then the pending
+  record, and removes an empty pending record. So a sync that stops at any
+  point leaves each installed slug in one of the two records.
+- `--prune` removes an owned skill only while its directory keeps the
+  recorded `<dev>:<ino>`. Otherwise it prints
+  `keep <slug>: the directory is not the one that the kit installed`, keeps the
+  directory and its Claude entry, and drops the slug from the owned record.
 - Sync reads the legacy `~/.agents/.kit-managed-skills` and never writes it.
 
-(verify: `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "skill ownership records"`)
+(verify: `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "skill ownership records"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records each installed skill before the next install starts"`, and `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps an owned skill whose directory is not the one that the kit installed"`)
 </constraint>
 
 ## When To Use
@@ -81,7 +88,7 @@ there only when an install of the kit created its canonical directory:
 ```text
 ~/.agents/skills/<basename>/        canonical universal skill path
 ~/.claude/skills/<basename>         symlink -> ../../.agents/skills/<basename>
-~/.agents/.kit-owned-skills         sorted slugs that the kit installed; --prune reads only this
+~/.agents/.kit-owned-skills         sorted <slug>\t<dev>:<ino> lines of kit installs; --prune reads only this
 ~/.agents/.kit-pending-skills       slugs whose install runs; absent when empty
 ~/.agents/.kit-managed-skills       legacy snapshot of an older kit; read only
 ```
@@ -208,6 +215,11 @@ maps to the same basename (`reconcileRemovals`, `currentBases` guard).
   because only the legacy record names it. The keep line names it.
 - A directory that the user creates between a stopped sync and the next sync,
   at the path of a pending slug, becomes kit-owned.
+- The owned evidence is a `<dev>:<ino>` pair. A file system can give a new
+  directory the inode number of a deleted one. A replacement at the same path
+  with a reused inode number then reads as the kit's directory.
+- A tool that replaces the skill directory with a new one gives it a new
+  inode. `--prune` then keeps it with the keep line.
 
 ## References
 

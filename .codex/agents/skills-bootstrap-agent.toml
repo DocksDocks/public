@@ -21,8 +21,10 @@ Always install for both `claude-code` and `codex` so the canonical
 <constraint>
 Only `~/.agents/.kit-owned-skills` lets `--prune` remove a skill. A slug enters
 it only when an install of the kit created its canonical directory, through
-`~/.agents/.kit-pending-skills`. The legacy `~/.agents/.kit-managed-skills` is
-read only and never authorizes a removal.
+`~/.agents/.kit-pending-skills`. Its line keeps the `<dev>:<ino>` of that
+directory, and `--prune` removes the skill only while the directory keeps it.
+The legacy `~/.agents/.kit-managed-skills` is read only and never authorizes a
+removal.
 </constraint>
 
 ## Workflow

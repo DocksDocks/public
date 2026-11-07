@@ -4,11 +4,12 @@
  * lives there.
  *
  * The prune deletes only what the kit created: the canonical skill directory
- * of a slug in `.kit-owned-skills` and the kit-managed Claude entry. It does
- * not call `skills remove`, because that command deletes the same-named
- * directory of every known agent. A slug that only the legacy
- * `.kit-managed-skills` names is kept with a message, because an older kit
- * also recorded directories that the user made.
+ * of a slug in `.kit-owned-skills` and the kit-managed Claude entry. It
+ * removes a canonical directory only while it keeps the `<dev>:<ino>` that
+ * the owned record names. It does not call `skills remove`, because that
+ * command deletes the same-named directory of every known agent. A slug that
+ * only the legacy `.kit-managed-skills` names is kept with a message, because
+ * an older kit also recorded directories that the user made.
  */
 import { existsSync, rmSync } from "node:fs";
 import { p } from "./exec";
@@ -16,7 +17,7 @@ import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { isKitOwnedCopy, lstat, removeKitOwnedCopy, removeLink } from "./skillsLinks";
 import { normalizeManifest, skillBase } from "./skillsManifest";
-import type { SkillRecords } from "./skillsRecords";
+import { directoryIdentity, type SkillRecords } from "./skillsRecords";
 
 function removeCanonical(path: string): boolean {
   try {
@@ -30,8 +31,11 @@ function removeCanonical(path: string): boolean {
 /**
  * Removes each owned skill that the SoT no longer declares, and drops it from
  * `records.owned` (in memory). A failed removal keeps the slug, so the next
- * prune tries again. Names each legacy slug that the SoT dropped and whose
- * canonical directory the kit cannot remove; a gone directory needs no line.
+ * prune tries again. An owned slug whose directory is not the one that the
+ * kit installed is kept with a line and leaves the record, so the line prints
+ * once. A legacy slug that the SoT dropped gets a keep line while its
+ * canonical path still has an entry. Only the legacy record names it, so the
+ * kit keeps it.
  */
 export function reconcileRemovals(ctx: Ctx, manifest: string, records: SkillRecords): void {
   const { change, echo, warn } = ctx.services.logger;
@@ -56,13 +60,22 @@ export function reconcileRemovals(ctx: Ctx, manifest: string, records: SkillReco
 
   let removed = 0;
   let failed = 0;
-  for (const slug of [...records.owned].sort(compareCodepoints)) {
+  for (const slug of [...records.owned.keys()].sort(compareCodepoints)) {
     if (declared(slug)) continue;
     const base = skillBase(slug);
     const canonical = p(ctx.agentsDir, "skills", base);
-    // The skills CLI installs a canonical skill as a real directory that holds SKILL.md.
+    // The skills CLI installs a canonical skill as a real directory that holds
+    // SKILL.md. A gone directory needs only the Claude entry cleanup.
+    const canonicalStat = lstat(canonical);
     const installedCanonical =
-      lstat(canonical)?.isDirectory() === true && existsSync(p(canonical, "SKILL.md"));
+      canonicalStat?.isDirectory() === true &&
+      existsSync(p(canonical, "SKILL.md")) &&
+      directoryIdentity(canonical) === records.owned.get(slug);
+    if (canonicalStat !== undefined && !installedCanonical) {
+      warn(`keep ${slug}: the directory is not the one that the kit installed`);
+      if (!ctx.dryRun) records.owned.delete(slug);
+      continue;
+    }
     const claudeEntry = p(ctx.home, ".claude", "skills", base);
     const managedClaudeEntry =
       lstat(claudeEntry)?.isSymbolicLink() === true || isKitOwnedCopy(claudeEntry);

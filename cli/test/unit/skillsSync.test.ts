@@ -92,12 +92,19 @@ function createCanonical(root: string, base = "demo"): string {
   return canonical;
 }
 
-/** The slugs of a skill record file; none when the file does not exist. */
+/** The slugs of a skill record file, without the owned evidence; none when the file does not exist. */
 function recordedSlugs(file: string): Array<string> {
   if (!existsSync(file)) return [];
   return readFileSync(file, "utf8")
     .split("\n")
+    .map((line) => line.split("\t")[0] ?? "")
     .filter((line) => line !== "");
+}
+
+/** The `<dev>:<ino>` evidence of a directory, as the owned record keeps it. */
+function identityOf(directory: string): string {
+  const stats = lstatSync(directory, { bigint: true });
+  return `${stats.dev}:${stats.ino}`;
 }
 
 describe("skills platform behavior", () => {
@@ -363,11 +370,13 @@ describe("skills platform behavior", () => {
   it("prunes only kit-created entries without spawning and reports them in dry-run", async () => {
     const root = makeRoot();
     mocks.manifest = "";
-    const snapshot = join(root, ".agents", ".kit-owned-skills");
-    mkdirSync(dirname(snapshot), { recursive: true });
-    writeFileSync(snapshot, "acme/managed\nacme/user\n");
     const managedCanonical = createCanonical(root, "managed");
     const userCanonical = createCanonical(root, "user");
+    const snapshot = join(root, ".agents", ".kit-owned-skills");
+    writeFileSync(
+      snapshot,
+      `acme/managed\t${identityOf(managedCanonical)}\nacme/user\t${identityOf(userCanonical)}\n`,
+    );
     const managedEntry = join(root, ".claude", "skills", "managed");
     const userEntry = join(root, ".claude", "skills", "user");
     mkdirSync(managedEntry, { recursive: true });

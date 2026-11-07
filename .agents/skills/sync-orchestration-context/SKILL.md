@@ -70,11 +70,11 @@ metadata:
     - path: cli/src/engine-native/skillsSync.ts
       lines: "1-57"
     - path: cli/src/engine-native/skillsInstall.ts
-      lines: "1-129"
+      lines: "1-135"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-104"
+      lines: "1-117"
     - path: cli/src/engine-native/skillsRecords.ts
-      lines: "1-93"
+      lines: "1-128"
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-123"
     - path: cli/src/engine-native/ompPlugins.ts

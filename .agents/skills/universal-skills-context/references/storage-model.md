@@ -61,11 +61,12 @@ directories alone with a warning. Verify each step:
 
 ## Record Format
 
-Each record holds one full slug per line, sorted (`skillsRecords.ts`).
+Each record holds one full slug per line, sorted (`skillsRecords.ts`). An owned
+line also holds the identity of the directory: `<slug>\t<dev>:<ino>`.
 
 | File | Holds | Writer |
 |------|-------|--------|
-| `~/.agents/.kit-owned-skills` | The slugs whose canonical directory an install of the kit created. The only record that lets `--prune` remove a skill. | `writeSkillRecords`, first |
+| `~/.agents/.kit-owned-skills` | The slugs whose canonical directory an install of the kit created, each with the `<dev>:<ino>` of that directory. The only record that lets `--prune` remove a skill, and only while the directory keeps that identity. | `writeSkillRecords`, first, after each install and at the end of the sync |
 | `~/.agents/.kit-pending-skills` | The slugs whose install runs. A slug enters only when the canonical directory has no entry. Removed when empty. | `recordPendingInstall` before the install; `writeSkillRecords`, second |
 | `~/.agents/.kit-managed-skills` | The legacy snapshot of an older kit. It also names directories that the user made. | None; sync only reads it |
 
@@ -73,8 +74,8 @@ Each non-dry-run sync that runs the `agents` target (`syncDispatch.ts`,
 `ctx.syncAgents` branch) writes the owned and pending records. A pending slug
 left by a stopped sync moves to the owned record when its directory exists,
 else it is dropped. The pending slugs are a separate file, not a prefix in a
-shared file, because an older kit parses each line with `normalizeManifest`,
-which removes all whitespace, so it would read a prefixed line as a slug.
+shared file. An older kit parses each line with `normalizeManifest`, which
+removes all whitespace. So it would read a prefixed line as a slug.
 
 ## Gotchas
 
