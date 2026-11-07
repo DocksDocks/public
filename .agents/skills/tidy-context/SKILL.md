@@ -18,7 +18,7 @@ metadata:
     - path: cli/src/commands/scratch.ts
       lines: "1-75"
     - path: SoT/.omp/plugin/extensions/hygiene.ts
-      lines: "1-1944"
+      lines: "1-1978"
     - path: cli/test/unit/tidy.test.ts
       lines: "1-541"
     - path: cli/test/unit/tidyLock.test.ts
@@ -28,7 +28,7 @@ metadata:
     - path: cli/test/unit/scratch.test.ts
       lines: "1-187"
     - path: cli/test/unit/ompKitPluginExtension.test.ts
-      lines: "1-938"
+      lines: "1-1097"
     - path: cli/test/lib/gitSandbox.ts
       lines: "1-181"
   updated: "2026-11-07"
@@ -214,7 +214,7 @@ Re-derive before you rely on a value.
 | `isSameOrInside(parent, child)` order | A swapped call reverses a guard without a type error | `bunx vitest run cli/test/unit/tidy.test.ts -t "refuses a root that contains the home directory"` |
 | `isProtectedProcess` matches `/.omp/` or `/tern/` anywhere in `args` | An orphan started with a config path under `~/.omp/` is never stopped | `bunx vitest run cli/test/unit/tidyReport.test.ts -t "lists old orphaned tools"` |
 | `removeProjectNetworks` ignores a failed `network rm` | A network that another container uses stays with no `failed` line | By design; do not count it as a failure |
-| `hygiene.ts` copies `kitCacheDir` and `LABEL_PATTERN` | A change on one side splits `tidy.stamp` from `tidy.lock`, or lets the tool accept a label that the CLI rejects | `grep -n -e "kitCacheDir" -e "LABEL_PATTERN =" SoT/.omp/plugin/extensions/hygiene.ts cli/src/engine-native/scratch.ts` |
+| `hygiene.ts` copies `kitCacheDir`, `LABEL_PATTERN`, and the `tidyLock.ts` contention rule `isWindowsContention` | A change on one side splits `tidy.stamp` from `tidy.lock`, lets the tool accept a label that the CLI rejects, or makes the sweep claim and the tidy lock treat a Windows EPERM or EBUSY differently | `grep -n -e "kitCacheDir" -e "LABEL_PATTERN =" -e "WINDOWS_CONTENTION:" SoT/.omp/plugin/extensions/hygiene.ts cli/src/engine-native/scratch.ts cli/src/engine-native/tidyLock.ts` |
 | Untested paths | Network removal, log rotation, `--repo` listing, the apply-time scratch recheck, CLI output lines, and the `session_start` spawn have no unit test | Add a should-fail case with any change there |
 
 ## References

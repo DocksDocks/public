@@ -55,7 +55,7 @@ Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "reminds 
 1. Skip a subagent session (`ctx.agent?.kind === "sub"`).
 2. Read the mtime of `tidy.stamp` under `join(homedir(), ".cache", "docks-kit")`; stop unless `sweepDue`.
 3. `resolveDocksKit`; a missing binary throws before the claim, so the stamp stays old and the next session tries again.
-4. `claimSweep` takes `tidy.stamp.claim` (with a `tidy.stamp.takeover` mutex for a stale claim), reads the stamp again, writes it, and releases the claim.
+4. `claimSweep` takes `tidy.stamp.claim` (with a `tidy.stamp.takeover` mutex for a stale claim), reads the stamp again, writes it, and releases the claim. On Windows, `createOwned`, `removeIfPresent`, and `releaseOwned` treat EPERM and EBUSY as contention (`isWindowsContention`): another process deletes or holds the file. A create that fails this way loses the claim, so `claimSweep` returns false and a later main session claims the due sweep. A delete or a release that fails this way removes nothing, and the file stays until it is stale. On other platforms, these codes stay errors.
 5. Spawn `docks-kit tidy --apply` detached, `stdio: "ignore"`, spawn errors ignored.
 
 Consequences:
@@ -63,8 +63,9 @@ Consequences:
 - The stamp is written before the sweep runs; a failed sweep waits a full interval. Its only trace is `tidy.log`.
 - The cache directory is a literal copy of `scratch.ts kitCacheDir`. Change both together.
 - The sweep never passes `--repo`; it uses the default worktree and scratch roots.
-- No unit test covers the spawn; the tests cover `sweepDue`, `claimSweep` races, and handler registration.
+- No unit test covers the spawn; the tests cover `sweepDue`, `claimSweep` races, the Windows contention rule, and handler registration.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "lets exactly one of eight processes start the sweep"`.
+- Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "claimSweep on Windows while another process deletes a claim file"`.
 
 ## Interval and limits
 
