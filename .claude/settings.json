@@ -1,0 +1,11 @@
+{
+  "claudeMdExcludes": [
+    "**/SoT/.claude/CLAUDE.md",
+    "**/SoT/.codex/AGENTS.md",
+    "**/SoT/.omp/AGENTS.md",
+    "**/cli/test/fixtures/home-drift/.claude/CLAUDE.md",
+    "**/cli/test/fixtures/home-drift/.codex/AGENTS.md",
+    "**/cli/test/fixtures/**/CLAUDE.md",
+    "**/cli/test/fixtures/**/AGENTS.md"
+  ]
+}

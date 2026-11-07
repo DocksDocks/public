@@ -4,3 +4,6 @@ Read `docs/PLAN.md` before filing or updating a plan issue.
 The plan record is a GitHub issue.
 Track no plan markdown in this repository.
 Never restore a deleted pre-GitHub plan file as lifecycle input.
+
+Pointers here name concepts, not coordinates — if a path or symbol moved,
+trust the stated purpose and re-locate it (grep the symbol) before acting.

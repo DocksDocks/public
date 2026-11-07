@@ -1,10 +1,22 @@
-@AGENTS.md
+---
+paths:
+  - "SoT/.claude/**"
+  - "cli/src/engine-native/claude*.ts"
+  - "cli/src/engine-native/settings.ts"
+  - "cli/src/engine-native/parseModifiers.ts"
+  - "cli/test/unit/claude*.test.ts"
+  - "cli/test/unit/{settings,contract-settings,modifierValidation,pluginRefresh}.test.ts"
+  - "cli/test/unit/lsp*.test.ts"
+  - "cli/test/unit/{statusline,notify,session-start}.test.mjs"
+  - "cli/test/statusline-runtime-smoke.mjs"
+  - "cli/docs/{modifiers,plugins}.md"
+---
 
-## Claude Code
+# Claude Code
 
 Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Truth that gets synced to `~/.claude/` by `./docks-kit sync`. Edit files in `SoT/.claude/` here in the repo, then run sync — never edit `~/.claude/` directly. The skills, commands, and multi-agent pipeline ship as a separate plugin: **[DocksDocks/docks](https://github.com/DocksDocks/docks)**.
 
-### Repository structure (Claude-specific)
+## Repository structure (Claude-specific)
 
 | Path | Purpose |
 |------|---------|
@@ -13,7 +25,7 @@ Configuration specific to Claude Code. `SoT/.claude/` is the Single Source of Tr
 | `SoT/.claude/bin/` | Dependency-free Bun programs materialized into `~/.claude/bin/` for statusline, SessionStart, and Notification |
 | `SoT/.claude/mcp-servers.json` | User-scoped MCP server definitions merged into `~/.claude.json` by `claudeSync.ts syncClaudeJson, mcpServers merge` (settings.json can't hold `mcpServers`) |
 
-### Plugins
+## Plugins
 
 Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnownMarketplaces`.
 
@@ -25,11 +37,9 @@ Configured in `SoT/.claude/settings.json` under `enabledPlugins` and `extraKnown
 | `typescript-lsp` | `claude-plugins-official` | TypeScript/JavaScript language-server integration with no prompt or skill context. |
 | `rust-analyzer-lsp` | `claude-plugins-official` | Rust language-server integration with no prompt or skill context. |
 
-For Effect work in this checkout, verify API shapes against the installed declarations under `node_modules/effect/dist/cli/`. The `effect-ts-setup`, `effect-ts-port`, and `effect-ts-specialist` skills are Effect 3.x-only and do not apply.
-
 Context7, Frontend Design, Chrome DevTools, Supabase, and n8n are non-default. Install only where their project needs them; the default global inventory stays limited to the five entries above.
 
-#### Per-project plugin scoping
+### Per-project plugin scoping
 
 `enabledPlugins` values carry three distinct meanings in this kit:
 
@@ -65,7 +75,7 @@ OMP 17.0.2's `claude-plugins` provider does not honor Claude's `projectPath`; it
 
 Supabase is also absent from the default SoT. `./docks-kit sync --claude-plugin=supabase` enables it machine-wide only when every repo can safely share its account-global OAuth session; otherwise use a project-owned `.mcp.json`.
 
-#### Install plugins on a new machine
+### Install plugins on a new machine
 
 `./docks-kit sync` handles this automatically. After the settings merge it reads `extraKnownMarketplaces` and `enabledPlugins` from the SoT and runs `claude plugin marketplace add` for anything missing from `~/.claude/plugins/known_marketplaces.json` and `claude plugin install` for anything lacking a **user-scope** record in `installed_plugins.json` (records are per-scope arrays on Claude Code ≥2.1.198; a project-scope install elsewhere doesn't count). Both CLI commands are idempotent, so reruns are no-ops.
 
@@ -83,7 +93,7 @@ The three LSP plugins (`php-lsp`, `typescript-lsp`, `rust-analyzer-lsp`) carry n
 /reload-plugins
 ```
 
-### MCP Servers
+## MCP Servers
 
 MCP server *definitions* cannot live in `settings.json` — the schema rejects an `mcpServers` key (only the control keys `enabledMcpjsonServers` / `disabledMcpjsonServers` / `enableAllProjectMcpServers` are valid there). User-scoped servers live in `~/.claude.json`; project-scoped ones in a checked-in `.mcp.json`.
 
@@ -91,14 +101,13 @@ MCP server *definitions* cannot live in `settings.json` — the schema rejects a
 
 Chrome DevTools and Context7 are non-default. Add Chrome DevTools at project or user scope only for performance, network, console, or heap debugging that the project's own browser tooling cannot cover. Frontend Design is likewise an optional official plugin rather than a global default.
 
-
-### Status Line
+## Status Line
 
 Single-line display: `model | folder • branch | ctx X% (Xk/Xk) | 5h X% (reset) • 7d X% (reset)`. The branch, context, and each quota window degrade independently when their source field is unavailable. Claude's native `rate_limits` input is the only quota source, so API-key/unsupported-plan/pre-first-response sessions simply omit the 5h/7d segment.
 
 `./docks-kit sync claude` deploys `~/.claude/bin/statusline.mjs` and materializes an absolute Bun command with a missing-file guard. It has no jq/curl/OAuth credential/cache dependency and no Stop hook. If Bun cannot be resolved or bootstrapped during sync, the runtime cutover is deferred and existing legacy hook/statusline pointers and files are preserved. If Bun is later deleted after a successful cutover, the guarded statusline is a silent no-op and direct hooks recover on the next sync.
 
-### Session Management
+## Session Management
 
 Based on https://claude.com/blog/using-claude-code-session-management-and-1m-context. The 468K compact window is a *fallback*; the habits below keep sessions crisp in the first place.
 
@@ -118,7 +127,7 @@ Rule of thumb: if a turn starts with "that didn't work, try X instead," reach fo
 
 The docks plugin's commands already use Opus-orchestrator + sonnet-subagents internally. The blog validates that pattern for ad-hoc work too. **`/fork` is for ad-hoc exploration, not for plugin command pipelines** — those intentionally isolate phases (fresh context per subagent, plan-file as the only handoff) to keep token costs predictable.
 
-### Permission Mode
+## Permission Mode
 
 The kit sets `permissions.defaultMode: "auto"` — new sessions boot directly into auto mode. Claude Code 2.1.152+ removed the one-time opt-in consent that `skipAutoPermissionPrompt` previously suppressed; the key is no longer needed. Docs: https://code.claude.com/docs/en/permission-modes.
 
@@ -158,7 +167,7 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 
 **Malformed deny rules (fixed).** The kit shipped 14 deny rules whose specifier ended in a single backslash before the closing parenthesis, such as `PowerShell(rm *-Recurse* *:\)`. Claude Code's rule parser counts backslash parity, so the `\` escaped the `)` and every session start printed `Invalid permission rule … Mismatched parentheses`. The SoT now writes `\\` in those positions and the old spellings are in the retired inventory.
 
-### Hooks
+## Hooks
 
 - **SessionStart**: Direct Bun exec of `~/.claude/bin/session-start.mjs`; emits structured SessionStart hook JSON with current date/time and active config (context window, compact-window cap, effort level, thinking mode, subagent model)
 - **Claude.ai connector disable** — handled by `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported in your shell rc, which `./docks-kit sync` adds via `claudeSync.ts syncConnectorEnv, environment export` (idempotent; surgical — only claude.ai cloud connectors, MCP source #5, are disabled; plugin/project servers like supabase/n8n are untouched). On Windows, sync sets the variable in the user environment with `setx` instead of a shell rc file; open a new terminal to apply it. The old `disable-claudeai-connectors.sh` SessionStart hook — which patched `disabledMcpServers`, a field that does *not* gate account-synced connectors — was non-functional and has been **removed**. See Open Concern [2026-06-08]
@@ -166,11 +175,11 @@ The classifier tradeoff: the classifier that gates each action in auto mode is a
 - **PostToolUseFailure**: Command hook for a failed `Bash` or `PowerShell` call (matcher `Bash|PowerShell`). It adds context that tells the model to re-read the affected files before it retries, and to report a missing dependency or environment mismatch to the user instead of a blind retry. On Windows, `claudeRuntime.ts materializeClaudeSettings, host failure-hook command` rewrites the `echo` command into an encoded PowerShell `Write-Output` command.
 - **SubagentStop**: Blocks subagent completion if output lacks concrete `file:line` references (allows "no issues found" / mode-selection responses through)
 
-### Environment Variables
+## Environment Variables
 
 All configured in `SoT/.claude/settings.json` under the `env` block. The centerpiece strategy is **`model: opus` + advisor off by default + 468K compact window (`--claude-compact-window=680k` raises it to 680K for disposable containers) + high effort + per-agent-tiered subagents** — ceiling-level reasoning with the compact trigger as the per-machine knob; capability first, token cost second. Machines that benefit from advisor can opt in with `--claude-advisor=on`, which writes an Opus advisor alongside the Opus main.
 
-#### Context management
+### Context management
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -179,7 +188,7 @@ All configured in `SoT/.claude/settings.json` under the `env` block. The centerp
 
 The kit statusline shows context usage against the effective compact window, for example `ctx 64% (300k/468k)`, so 100% marks the auto-compact cap (full autocompact fires near 95% of it), not the model's full 1M window. Claude Code's native `context_window.used_percentage` is still measured against the full window; the statusline rescales it.
 
-#### Thinking & reasoning
+### Thinking & reasoning
 
 Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinking the only thinking-on mode**; 4.8 inherits this. Fixed budgets and `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` are gone.
 
@@ -187,7 +196,7 @@ Opus 4.7 removed `budget_tokens` (returns 400 error) and makes **adaptive thinki
 |----------|-------|---------|
 | `effortLevel` (top-level key, NOT the env var) | `high` | Valid persisted values: `low`/`medium`/`high`/`xhigh`. Opus 5.5's Claude API default effort is `medium`, so the kit pins `high` deliberately, one step above the model default, for agentic coding; `--claude-effort=<level>` is the per-machine override and `default` restores `high`. **Deliberately the settings key, not `CLAUDE_CODE_EFFORT_LEVEL`**: the env var is priority 1 in effort resolution and overrides per-skill/per-subagent `effort:` frontmatter (added 2.1.78–2.1.80), which would kill plugin-declared effort tiering — the settings key sets the session baseline while frontmatter wins when a skill/agent is active. `max` is session-only through `/effort`, not part of the persisted settings enum. Model-transition quirk: a new model's first run may reset settings-level effort to the model default — sync re-asserts the SoT value; confirm with `/effort`. Claude Code 2.1.280 also stops an effort level saved before `/effort` became per-model from applying to a newly released model such as Opus 5.5. |
 
-#### Model selection
+### Model selection
 
 The kit sets **`"model": "opus"`** and leaves `advisorModel` unset. `opus` is an alias, not a pinned id: the SoT `minimumVersion` of 2.1.280 ensures Claude Code resolves it to Opus 5.5, the default Opus from that release, instead of capping at Opus 5 under the former 2.1.219 floor. Keeping the alias tracks the next Opus release without a kit change and stays portable across providers that carry a different newest Opus. This floor also subsumes Fable 5.1's Claude Code ≥2.1.257 requirement. Advisor stays an explicit per-machine choice: `./docks-kit sync claude --claude-advisor=on` writes `advisorModel: opus`; `off` and `default` delete it, and a flag-less sync removes the former kit-owned advisor key from older deployments. Use `./docks-kit model claude opus` or `--claude-model=opus` for a per-machine main-model override; `default` deletes the deployed `model` key so the account default applies; a flag-less sync or `./docks-kit model claude opus` restores the SoT alias.
 
@@ -197,7 +206,7 @@ The kit sets **`"model": "opus"`** and leaves `advisorModel` unset. `opus` is an
 
 **No `fallbackModel`:** the kit stays on the SoT-pinned model for the whole main thread. `fallbackModel` (v2.1.166+; accepts a chain of up to 3 models, now turn-scoped — the next message retries the primary, bounding the cache cost to one turn) would degrade to a lesser model on an overload (529) rather than dropping the turn. The stance is softer than it was, but retained: a silent quality dip mid-task is worse than a retried turn. Sonnet subagents are spawned deliberately via agent frontmatter, not as a fallback. To opt in per-checkout during a known-bad-availability stretch, set `fallbackModel` in that checkout's `.claude/settings.local.json`.
 
-#### Output & UI
+### Output & UI
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -205,7 +214,7 @@ The kit sets **`"model": "opus"`** and leaves `advisorModel` unset. `opus` is an
 | `CLAUDE_CODE_NO_FLICKER` | `1` | Fullscreen rendering mode, no terminal flicker, adds mouse support. Requires v2.1.89+. |
 | `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` | `1` | Keeps bash commands in the project working directory instead of resetting between calls. |
 
-#### Top-level settings.json keys
+### Top-level settings.json keys
 
 | Key | Value | Notes |
 |-----|-------|-------|
@@ -227,36 +236,13 @@ The kit sets **`"model": "opus"`** and leaves `advisorModel` unset. `opus` is an
 
 Effort is pinned via the top-level `effortLevel` key — never `CLAUDE_CODE_EFFORT_LEVEL`, which would override per-skill/subagent `effort:` frontmatter (the `removed` manifest prunes the env var from synced machines). Use `/effort max` only as a session-scoped escalation; `max` is not a valid persisted `effortLevel`.
 
-#### Settings that do NOT belong in settings.json
+### Settings that do NOT belong in settings.json
 
 | Setting | Correct location | Notes |
 |---------|-----------------|-------|
 | `showTurnDuration` | `~/.claude.json` | Triggers schema validation error in settings.json. `./docks-kit sync` writes it to the right file. |
 
-### Setup
-
-```bash
-# Clone and sync the kit
-git clone <this-repo> ~/projects/public
-cd ~/projects/public
-./docks-kit harnesses                # view or change this machine's flag-less sync selection
-./docks-kit sync                     # sync this machine's harness selection (additive)
-./docks-kit sync --dry-run           # preview before applying
-./docks-kit sync --skip-bubblewrap   # skip optional bubblewrap bootstrap (Codex Linux sandbox)
-./docks-kit sync --reconcile         # reconcile settings toward SoT: SoT keys and arrays win, user-only keys kept (settings layer only)
-./docks-kit sync --prune             # uninstall plugins/marketplaces not in SoT (plugin layer only)
-./docks-kit sync --reconcile --prune # full reset to SoT (both layers)
-./docks-kit sync claude --claude-compact-window=680k  # deploy-time: raise autocompact window (any token count: 680k or 680000) for disposable sessions (model unchanged)
-./docks-kit sync claude --claude-permissive           # deploy-time: empty permissions.ask/deny — unattended commits/pushes in sandboxes
-./docks-kit sync --claude-plugin=supabase   # opt in the supabase plugin (install + enable in deployed settings)
-./docks-kit sync --claude-plugin=n8n        # opt in the n8n-mcp-skills plugin (add marketplace + install + enable); repeatable/comma-separated
-./docks-kit model claude opus        # deploy-time: set Opus explicitly (matches the SoT; standalone form of --claude-model=)
-./docks-kit status                   # show deployed vs SoT state
-./docks-kit toolchain check          # verify installed tools against SoT/toolchain.json floors
-```
-
-On Windows, replace `./docks-kit` with `.\docks-kit.ps1` in these checkout
-commands.
+## Setup
 
 In an active Claude Code session, run `/reload-plugins` after `./docks-kit sync` to activate any newly installed plugins without restarting.
 
@@ -276,11 +262,9 @@ For plugins, `./docks-kit sync` runs seven idempotent passes via the `claude plu
 
 Every `claude plugin` call runs from a neutral working directory (the system temp directory), not from the directory where you run sync. An unscoped `claude plugin marketplace remove` removes the declaration from every scope that Claude Code sees. A neutral working directory keeps pass 6 from editing the `.claude/settings.json` or `.claude/settings.local.json` of the checkout where you run sync.
 
-For Codex plugins, after deploying `SoT/.codex/config.toml` and the personal marketplace file, sync runs `codex plugin add <plugin@marketplace>` for each enabled SoT plugin. Re-running sync therefore refreshes stale Codex plugin caches instead of only updating marketplace metadata. Sync also removes the older kit-created configured Docks marketplace source so Codex uses the personal marketplace file as the single source.
-
 `--reconcile` and `--prune` are orthogonal: `--reconcile` reconciles `settings.json` through the native TypeScript merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--prune` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall kit-managed skills tracked in `~/.agents/.kit-managed-skills` that are no longer in `SoT/.agents/skills.txt`). Default sync is additive on all three layers — drift survives.
 
-#### When to use `--reconcile` and `--prune`
+### When to use `--reconcile` and `--prune`
 
 The default merge is additive on both layers: keys present in `~/.claude/settings.json` but absent from the SoT are preserved, and installed plugins not in SoT `enabledPlugins` are kept. This protects user-only additions, but it also means **drift accumulates** — neither flag-less reset can clean it up.
 
@@ -307,9 +291,7 @@ diff <(jq -rS '.extraKnownMarketplaces | keys[]' SoT/.claude/settings.json) \
 
 User-added permissions arrays are discarded by `--reconcile` (kit owns the permission model); user-added plugins and kit-managed skills missing from SoT are discarded by `--prune`. User-only top-level settings (custom env vars, mcpServers) and user-installed skills (not in `SoT/.agents/skills.txt`) are preserved — the kit only reconciles what it declares. If you want a locally-added permission or plugin to survive, add it to the SoT first.
 
-#### Deploy-time modifiers
-
-Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change the **deployed** config for a specific machine profile. The SoT is never touched, and a later flag-less sync reasserts it: Claude returns to Opus/high/advisor-off and Codex returns to its model/high effort. Modifiers run after the base merge/removal passes, are idempotent, honor `--dry-run`, and warn when their tool target is not selected. `docks-kit model <tool> <value>` is the standalone form of the model modifiers.
+### Deploy-time modifiers
 
 | Flag | Changes (deployed only) | Use when |
 |------|-------------------------|----------|
@@ -319,10 +301,7 @@ Unlike `--reconcile`/`--prune` (which reconcile toward SoT), modifiers change th
 | `--claude-compact-window=<tokens>` | `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW` → the given value (any token count: `680k` or `680000`) | **Disposable containers/sandboxes** running long autonomous work — never host machines, which stay on the SoT's 468K cap (the observed fidelity ceiling for interactive host sessions). The wider 680K window lets a container retain more before compaction when the extra headroom is worth the added rot. The flag does **not** select the model — only the compact trigger. Don't pass it on host machines: there the wider window just means later, lossier compactions |
 | `--claude-permissive` | `permissions.ask` → `[]`, `permissions.deny` → `[]` | Disposable sandboxes/containers where prompts stall autonomous work. The SoT `ask` list holds the destructive-command guards (recursive `rm`, `git rm`, `git reset --hard`, force-capable `git push`, `git clean`, `docker volume rm`, `docker system prune`, and others; see "Destructive-command guards" above). `ask` entries force prompts even in auto mode, so this flag removes those prompts and also removes the deny floor. **Never on a host machine** — the deny list (secrets reads, `sudo`, force-push to main) is the kit's safety floor; emptying it is only acceptable where the blast radius is the container |
 
-Codex mirrors the model/effort contract with `--codex-model=<m>` and
-`--codex-effort=<level>`; Codex `default` effort restores `high`.
-
-#### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
+### Optional plugins: `--claude-plugin=supabase` and `--claude-plugin=n8n`
 
 Two situational plugins are kept out of the SoT entirely and opted in per machine. Neither key is in `enabledPlugins`, so a flag-less sync installs, loads, and enables neither (an absent plugin is simply not installed). Unlike `--claude-compact-window`/`--claude-permissive`, the opt-in is **sticky**: once `--claude-plugin=<name>` installs and enables a plugin it stays until you run `--prune` — a later flag-less sync won't revert it (the SoT has no key to reassert against). The flag is repeatable and accepts comma-separated names (`--claude-plugin=supabase,n8n`); unknown names exit 2. Implemented by `claudeOptionalPlugins.ts syncOptionalPlugins, sticky opt-in install`, which runs right after `claudePluginPasses.ts syncPlugins, seven-pass reconcile`.
 
@@ -333,7 +312,7 @@ Two situational plugins are kept out of the SoT entirely and opted in per machin
 
 Without the flag neither plugin is installed, loaded, or downloaded; only `--prune` uninstalls one already present. The opt-in is **sticky** precisely because both keys are absent from the SoT: pass 7's reassert only touches SoT-declared plugins, so once a flag installs and enables one, a later flag-less sync leaves it alone.
 
-#### Pruning stale artifacts (the `removed` manifest)
+### Pruning stale artifacts (the `removed` manifest)
 
 Default sync is additive, so anything the kit *stops* shipping (a deprecated hook, a settings key it no longer sets) would otherwise linger forever on an already-synced machine — the settings merge keeps user-only keys and asset copies never delete. To clean those up, EngineNative carries a declarative **`removed` manifest** that `syncRemovals` prunes on **every** sync:
 
@@ -349,7 +328,7 @@ Default sync is additive, so anything the kit *stops* shipping (a deprecated hoo
 
 This is a **narrow, deliberate exception** to "additive by default": entries are force-removed from every synced machine, so the manifest lists **only kit-owned keys or exact permission rules** the kit used to set and has since dropped — pruned from the kit-managed `settings.json`. A deliberate per-checkout override of any of these belongs in **that checkout's `.claude/settings.local.json`**, which sync never touches; never list a key or rule the kit never owned (a user's custom env vars, `mcpServers`, permission), which the additive merge already preserves. All removals are idempotent and honor `--dry-run`. Current baseline entries include the dead `disable-claudeai-connectors.sh` hook, superseded `alert_bubble.mp3`, `showTurnDuration` in settings, stale kit env vars, and the four unsupported path-qualified `Write(...)` rules replaced by `Edit(...)`. A retired-handler pass removes only the kit's legacy RTK `PreToolUse` handler by its exact command; user `PreToolUse` handlers survive. A second, readiness-gated subset removes `statusline.sh`, `fetch-usage.sh`, `hooks/notify.sh`, and the kit's legacy Stop handler (user Stop handlers survive) only after Bun runtime assets and new settings commit successfully; deferred/failed migration preserves them. Before the retired-handler pass writes `settings.json`, it copies the file to `settings.json.bak`. Sync deletes one of the three legacy scripts only when its content matches a version the kit shipped. It renames a copy with unknown content to `<path>.bak` and keeps it. Add a newly-deprecated artifact by editing `REMOVED_MANIFEST` in `claudeRemovals.ts`.
 
-### Troubleshooting
+## Troubleshooting
 
 - **Status line missing 5h/7d usage** — Claude omits native `rate_limits` for API-key/unsupported-plan sessions and before the first API response; the statusline intentionally omits only that segment. There is no OAuth fallback or cache to clear. If the whole statusline is absent, re-run `./docks-kit sync claude` to restore Bun/runtime assets and inspect the migration warning.
 - **Auto-compact firing at the wrong time** — the kit sets `CLAUDE_CODE_AUTO_COMPACT_WINDOW=468000` (compaction at ~95% → ~445K). To delay (containers only), pass `./docks-kit sync claude --claude-compact-window=680k` or raise the value; to fire earlier in one checkout, lower it or add `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=N` **to that checkout's `.claude/settings.local.json`** (the `removed` manifest prunes it from the kit-managed `settings.json`). Both env vars at https://code.claude.com/docs/en/env-vars.
@@ -359,11 +338,9 @@ This is a **narrow, deliberate exception** to "additive by default": entries are
 - **`/plugin marketplace add DocksDocks/docks` fails with "marketplace.json not found"** — clear the partial cache: `/plugin marketplace remove docks`, then re-add `DocksDocks/docks`.
 - **Plugin commands not appearing after install** — run `/reload-plugins`. Commands are namespaced as `/docks:<name>` (e.g., `/docks:security`).
 
-### Plans
+## Plans
 
-The plan record is a GitHub issue (see `AGENTS.md` § Plans and `docs/PLAN.md`). Main context invokes `plan-manager` directly; it owns the decision through verified archive. Two read-only reviewer wrappers ship, `plan-reviewer` and `code-reviewer`.
-
-### Open Concerns
+## Open Concerns
 
 Living list of kit-level bugs, blockers, and wait-on-upstream items that can't be fixed locally. Each entry records the symptom, root cause, workaround, and how to verify resolution.
 
@@ -373,7 +350,7 @@ Entry format: `#### [YYYY-MM-DD] <short title>` with Status / Symptom / Root cau
 
 ---
 
-#### [2026-04-24] Opus 4.7+/4.8/Fable 5 thinking summaries not rendered
+### [2026-04-24] Opus 4.7+/4.8/Fable 5 thinking summaries not rendered
 
 **Status:** Open — confirmed bug, no fix in Claude Code 2.1.170 (latest, last verified 2026-06-10; root-cause issue #49268 re-verified OPEN). Carries forward to Opus 4.8 (released 2026-05-28) and applies to Fable 5 (released 2026-06-09): `thinking.display` defaults to `omitted` there too, and Fable never returns raw CoT.
 
@@ -406,7 +383,7 @@ alias claude='claude --thinking-display summarized'
 
 ---
 
-#### [2026-06-08] claude.ai account connectors auto-load into every session
+### [2026-06-08] claude.ai account connectors auto-load into every session
 
 **Status:** Workaround found + automated (2026-06-08). `ENABLE_CLAUDEAI_MCP_SERVERS=false` exported as a real **shell** env var disables all claude.ai cloud connectors; `./docks-kit sync` now ensures it (`claudeSync.ts syncConnectorEnv, environment export`). Residual gap (still Open): no settings.json key, no per-connector or per-surface (Code-vs-Chat) control — those feature requests remain unresolved.
 
