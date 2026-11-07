@@ -11,8 +11,8 @@ pruning.
 
 <constraint>
 Preserve atomic write semantics: serialize to a temporary file and replace the
-target only after successful JSON generation. Keep the backup behavior for
-existing deployed settings.
+target only after successful JSON generation. Keep the `settings.json.bak` copy
+that `commitClaudeSettings` and the `syncRemovals` settings passes make.
 </constraint>
 
 <constraint>
@@ -28,8 +28,8 @@ left untouched.
 ## Workflow
 
 1. Read `.agents/skills/settings-merge-context/SKILL.md`.
-2. Read `references/jq-pipelines.md` when changing merge semantics.
-3. Read `references/claude-json-keys.md` when changing key ownership.
+2. Read `.agents/skills/settings-merge-context/references/jq-pipelines.md` when changing merge semantics.
+3. Read `.agents/skills/settings-merge-context/references/claude-json-keys.md` when changing key ownership.
 4. Trace the relevant TypeScript function before editing.
 5. For Bun/runtime settings, trace `claudeRuntime.ts materializeClaudeSettings,
    exact sentinel locations` and the prepare → assets → commit → gated-removal

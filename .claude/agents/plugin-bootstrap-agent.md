@@ -36,8 +36,8 @@ and no `missingToolCount` entry.
 ## Workflow
 
 1. Read `.agents/skills/plugin-bootstrap-context/SKILL.md`.
-2. Read `references/seven-pass-flow.md` for pass-specific changes.
-3. Read `references/tri-state-semantics.md` before changing `enabledPlugins`.
+2. Read `.agents/skills/plugin-bootstrap-context/references/seven-pass-flow.md` for pass-specific changes.
+3. Read `.agents/skills/plugin-bootstrap-context/references/tri-state-semantics.md` before changing `enabledPlugins`.
 4. Identify whether the change is Claude marketplace, install/update, prune,
    enabled-state reassert, optional opt-in, LSP binary bootstrap, or Codex
    marketplace/plugin refresh.
