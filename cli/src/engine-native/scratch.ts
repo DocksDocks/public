@@ -34,6 +34,14 @@ export function syncLockPath(home: string): string {
   return join(kitCacheDir(home), "sync-lock.db");
 }
 
+/**
+ * The `kitLock.ts` lock inside a Codex or agents folder that a sync writes.
+ * Syncs of different homes that share the folder all take it.
+ */
+export function folderSyncLockPath(folder: string): string {
+  return join(folder, ".docks-kit-sync-lock.db");
+}
+
 export function scratchRoot(home: string): string {
   return p(kitCacheDir(home), "scratch");
 }

@@ -53,7 +53,8 @@ from the current directory.
 runEngineNative(argv, services?, options?)        index.ts
 |-- makeCtx(services, { envGlobals })             engineCtx.ts; env globals only when true
 `-- switch (argv[0])
-    |-- model -> modeModel(ctx, args)              a write runs under withSyncLock
+    |-- model -> modeModel(ctx, args)              a write runs under withSyncLock; a
+    |                                              codex write also under withFolderLocks
     |-- toolchain -> modeToolchain(ctx, args)
     `-- sync/default -> engineSync(ctx, args)     syncDispatch.ts
         |-- withSyncLock(ctx, args, ...)          ~/.cache/docks-kit/sync-lock.db; none for
@@ -64,6 +65,9 @@ runEngineNative(argv, services?, options?)        index.ts
         |       kit.db harness selection, else harnesses.ts LEGACY_SELECTION
         |-- validateModifierFlags(ctx)            parseModifiers.ts
         |-- DOCKS_KIT_SYNC_CONCURRENCY            a SyncConcurrency value; other values exit 2
+        |-- withFolderLocks(ctx, folders, ...)    <folder>/.docks-kit-sync-lock.db of the
+        |                                         selected Codex and agents folders, by real
+        |                                         path, sorted; none in a dry run
         |-- preflightClaudeSettings(ctx)          claudeSettings.ts; claude selected only:
         |                                         invalid settings.json aborts the whole sync
         |                                         before any pipeline starts
@@ -82,7 +86,7 @@ runEngineNative(argv, services?, options?)        index.ts
         |-- "--- Sync complete ---" summaries
         |-- next steps for the pipelines that ran
         |-- "--- Failures ---" ledger when recordFailure ran; returns 1
-        `-- releaseKitLock in finally
+        `-- releaseKitLock of each lock in finally
 ```
 
 Each pipeline function owns its step order. Read the function body, not a copy

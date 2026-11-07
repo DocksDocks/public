@@ -50,6 +50,11 @@ same files at once.
   (`DOCKS_KIT_SYNC_LOCK_WAIT_MS` changes the wait). It then prints
   `another docks-kit sync holds <path>; run sync again after it ends` and
   exits 1 with no change.
+- Two homes can share a Codex folder (`CODEX_HOME`) or an agents folder
+  (`AGENTS_DIR`). So a writing sync also holds `.docks-kit-sync-lock.db`
+  inside the Codex folder when it syncs `codex`, and inside the agents folder
+  when it syncs `agents`. A `model codex <value>` write holds the Codex folder
+  lock too. The held line then names that lock file.
 - A run with `--dry-run`, `-h`, or `--help` takes no lock. `model <tool>`
   without a value only reads, so it takes no lock.
 - The lock goes when the run ends, also when the process is killed.

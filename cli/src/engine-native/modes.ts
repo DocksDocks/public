@@ -3,7 +3,7 @@
  * golden-tested messages, same exit codes.
  */
 import { p } from "./exec";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { payloadText } from "../payload";
 
 import { codexHome } from "./codexPaths";
@@ -14,7 +14,7 @@ import { isObject, parseJson, type Json } from "./jq";
 import { printModels, validateClaudeModel, validateCodexModel } from "./models";
 import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
-import { withSyncLock } from "./syncDispatch";
+import { withFolderLocks, withSyncLock } from "./syncDispatch";
 import { upgradeLspServers } from "./claudeLsp";
 import { belowFloor, field, installedVersion, outdatedReport, present, report } from "./toolchain";
 import { topLevelTomlString } from "../manifests";
@@ -39,7 +39,13 @@ export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<
   }
   if (value === "") return await showModel(ctx, tool);
   // A write does the same read-modify-write of settings.json and config.toml as a sync.
-  return await withSyncLock(ctx, args, () => writeModel(ctx, tool, value));
+  return await withSyncLock(ctx, args, async () => {
+    // `model codex` writes config.toml in the Codex folder, which syncs of
+    // other homes can share. It creates no folder, so a missing one needs no lock.
+    const codexDir = codexHome(ctx.home);
+    const folders = tool === "codex" && existsSync(codexDir) ? [codexDir] : [];
+    return await withFolderLocks(ctx, folders, () => writeModel(ctx, tool, value));
+  });
 }
 
 /** Print the deployed model, the SoT model, and the model catalog of `tool`. */

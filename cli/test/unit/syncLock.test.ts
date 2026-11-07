@@ -23,7 +23,9 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -40,6 +42,7 @@ import {
   type EngineServices,
   type Logger,
 } from "../../src/engine-native/services";
+import { folderLockPaths } from "../../src/engine-native/syncDispatch";
 
 const WAIT_MS = "100";
 const CONCURRENCY_ERROR = "DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3";
@@ -148,6 +151,39 @@ async function probe(home: string): Promise<string> {
   const result = await acquireKitLock(syncLock(home), { waitMs: 0 });
   if (result.kind === "acquired") releaseKitLock(result.lock);
   return result.kind;
+}
+
+/** The lock file that a writing sync takes inside a Codex or agents folder. */
+const FOLDER_LOCK = ".docks-kit-sync-lock.db";
+const CODEX_CONFIG = 'model = "gpt-5.5"\n';
+
+function heldLineFor(lock: string): string {
+  return `another docks-kit sync holds ${lock}; run sync again after it ends`;
+}
+
+/** Run `body` with a folder outside HOME, as another home's Codex or agents folder; remove it after. */
+async function withSharedFolder(body: (folder: string) => Promise<void>): Promise<void> {
+  const folder = realpathSync.native(mkdtempSync(join(tmpdir(), "sync-shared-")));
+  try {
+    await body(folder);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/** Hold the lock inside `folder`, as a sync of another home that shares the folder does. */
+async function holdingFolderLock(
+  folder: string,
+  body: (lock: string) => Promise<void>,
+): Promise<void> {
+  const lock = join(folder, FOLDER_LOCK);
+  const held = await acquireKitLock(lock, { waitMs: 0 });
+  if (held.kind !== "acquired") throw new Error(`expected a free lock at ${lock}`);
+  try {
+    await body(lock);
+  } finally {
+    releaseKitLock(held.lock);
+  }
 }
 
 describe("sync under the sync lock", () => {
@@ -288,6 +324,110 @@ describe("model under the sync lock", () => {
           '{"model":"sonnet"}\n',
         );
       });
+    });
+  });
+});
+
+describe("folder locks of a shared Codex or agents folder", () => {
+  it("makes a sync of another home wait while a sync holds the shared Codex folder", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["CODEX_HOME"] = shared;
+        writeFileSync(join(shared, "config.toml"), CODEX_CONFIG);
+
+        await holdingFolderLock(shared, async (lock) => {
+          const before = snapshot(shared);
+          const records: Array<string> = [];
+
+          expect(await runEngineNative(["sync", "codex"], recordingServices(records))).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(snapshot(shared)).toEqual(before);
+        });
+        expect(await probe(home)).toBe("acquired");
+      });
+    });
+  });
+
+  it("makes a sync of another home wait while a sync holds the shared agents folder", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["AGENTS_DIR"] = shared;
+
+        await holdingFolderLock(shared, async (lock) => {
+          const before = snapshot(shared);
+          const records: Array<string> = [];
+
+          // `AGENTS_DIR` is an env global, which only the raw channel reads.
+          expect(
+            await runEngineNative(["sync", "agents"], recordingServices(records), {
+              envGlobals: true,
+            }),
+          ).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(snapshot(shared)).toEqual(before);
+        });
+        expect(await probe(home)).toBe("acquired");
+      });
+    });
+  });
+
+  it("makes a model codex write wait while a sync holds the Codex folder", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["CODEX_HOME"] = shared;
+        writeFileSync(join(shared, "config.toml"), CODEX_CONFIG);
+
+        await holdingFolderLock(shared, async (lock) => {
+          const records: Array<string> = [];
+
+          expect(
+            await runEngineNative(["model", "codex", "gpt-5.4"], recordingServices(records)),
+          ).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(readFileSync(join(shared, "config.toml"), "utf8")).toBe(CODEX_CONFIG);
+        });
+        expect(await probe(home)).toBe("acquired");
+      });
+    });
+  });
+
+  it("takes no folder lock in a dry run", async () => {
+    await withHome(async () => {
+      await withSharedFolder(async (shared) => {
+        process.env["CODEX_HOME"] = shared;
+        process.env["AGENTS_DIR"] = shared;
+
+        await holdingFolderLock(shared, async (lock) => {
+          const records: Array<string> = [];
+
+          await runEngineNative(
+            ["sync", "codex", "agents", "--dry-run"],
+            recordingServices(records),
+            { envGlobals: true },
+          );
+
+          expect(records).not.toContain(heldLineFor(lock));
+        });
+      });
+    });
+  });
+
+  it("takes one lock per real folder, in the sorted order of the lock paths", async () => {
+    await withSharedFolder(async (base) => {
+      const first = join(base, "a");
+      const second = join(base, "b");
+      const link = join(base, "link-to-a");
+      mkdirSync(first);
+      mkdirSync(second);
+      symlinkSync(first, link, "junction");
+
+      expect(folderLockPaths([second, link, first])).toEqual([
+        join(first, FOLDER_LOCK),
+        join(second, FOLDER_LOCK),
+      ]);
     });
   });
 });

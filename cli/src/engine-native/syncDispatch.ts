@@ -4,16 +4,21 @@
  * Split from index.ts; the `sync`/`model`/`toolchain` entry routing still
  * lives there.
  */
+import { mkdirSync, realpathSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { payloadText } from "../payload";
 import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } from "./claudeSync";
 import { preflightClaudeSettings } from "./claudeSettings";
+import { codexHome } from "./codexPaths";
 import { codexNextSteps, codexSummary, codexSync } from "./codexSync";
 import type { Ctx } from "./index";
-import { acquireKitLock, releaseKitLock } from "./kitLock";
+import { compareCodepoints } from "./jq";
+import { acquireKitLock, releaseKitLock, type KitLock } from "./kitLock";
 import { ompNextSteps, ompSummary, ompSync, type OmpState } from "./ompSync";
 import { skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync";
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs";
-import { syncLockPath } from "./scratch";
+import { folderSyncLockPath, syncLockPath } from "./scratch";
 import {
   runBounded,
   syncConcurrencyForManifest,
@@ -50,11 +55,39 @@ function syncLockWaitMs(ctx: Ctx): number {
 const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "--help": true };
 
 /**
+ * Run `body` under each lock of `paths`, taken in that order. When another
+ * sync keeps a lock past the wait bound, print the held line and return 1
+ * without a call to `body`. Each taken lock goes when the run ends, also when
+ * it throws; the OS releases the locks when the process ends.
+ */
+async function withKitLocks(
+  ctx: Ctx,
+  paths: ReadonlyArray<string>,
+  privateDirectory: boolean,
+  body: () => Promise<number>,
+): Promise<number> {
+  const waitMs = syncLockWaitMs(ctx);
+  const held: Array<KitLock> = [];
+  try {
+    for (const path of paths) {
+      const result = await acquireKitLock(path, { waitMs, privateDirectory });
+      if (result.kind === "held") {
+        ctx.services.logger.err(
+          `another docks-kit sync holds ${path}; run sync again after it ends`,
+        );
+        return 1;
+      }
+      held.push(result.lock);
+    }
+    return await body();
+  } finally {
+    for (const lock of held.reverse()) releaseKitLock(lock);
+  }
+}
+
+/**
  * Run `body` under the sync lock `syncLockPath(ctx.home)`, unless `args` holds
- * one of `UNLOCKED_TOKENS`. When another sync keeps the lock past the wait
- * bound, print the held line and return 1 without a call to `body`. The lock
- * goes when `body` ends, also when it throws; the OS releases it when the
- * process ends.
+ * one of `UNLOCKED_TOKENS`. Two syncs of the same home meet at this lock.
  */
 export async function withSyncLock(
   ctx: Ctx,
@@ -62,30 +95,47 @@ export async function withSyncLock(
   body: () => Promise<number>,
 ): Promise<number> {
   if (args.some((arg) => Object.hasOwn(UNLOCKED_TOKENS, arg))) return await body();
-  const path = syncLockPath(ctx.home);
-  const result = await acquireKitLock(path, { waitMs: syncLockWaitMs(ctx) });
-  if (result.kind === "held") {
-    ctx.services.logger.err(`another docks-kit sync holds ${path}; run sync again after it ends`);
-    return 1;
-  }
-  try {
-    return await body();
-  } finally {
-    releaseKitLock(result.lock);
-  }
+  return await withKitLocks(ctx, [syncLockPath(ctx.home)], true, body);
+}
+
+/**
+ * The folder lock path of each folder, by the real path of the folder, with
+ * no duplicates, in sorted order. Every sync takes its folder locks in this
+ * order, so no two syncs can wait on each other in a cycle. Each folder must
+ * exist.
+ */
+export function folderLockPaths(folders: ReadonlyArray<string>): Array<string> {
+  const paths = new Set(folders.map((folder) => folderSyncLockPath(realpathSync.native(folder))));
+  return [...paths].sort(compareCodepoints);
+}
+
+/**
+ * Run `body` under the folder lock of each folder in `folders`. Take it after
+ * the sync lock. Syncs of different homes can share a Codex or agents folder
+ * through `CODEX_HOME` or `AGENTS_DIR`, and their home locks differ. A dry run
+ * takes no folder lock. Each folder must exist.
+ */
+export async function withFolderLocks(
+  ctx: Ctx,
+  folders: ReadonlyArray<string>,
+  body: () => Promise<number>,
+): Promise<number> {
+  if (ctx.dryRun) return await body();
+  return await withKitLocks(ctx, folderLockPaths(folders), false, body);
 }
 
 /**
  * Run a sync. The sync lock comes first: `parseArgs` reads the harness
  * selection from `kit.db`, and that read can migrate `kit.db` and rename a
- * legacy `state.json`.
+ * legacy `state.json`. The folder locks come after `parseArgs` selects the
+ * targets.
  */
 export async function engineSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
   return await withSyncLock(ctx, args, () => runSync(ctx, args));
 }
 
 async function runSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
-  const { acquireTerminal, echo, err } = ctx.services.logger;
+  const { err } = ctx.services.logger;
   parseArgs(ctx, args);
   await validateModifierFlags(ctx);
   const configuredConcurrency = process.env["DOCKS_KIT_SYNC_CONCURRENCY"];
@@ -101,6 +151,19 @@ async function runSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
     err("DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3");
     throw new ExitError(2);
   }
+
+  // The folders that hold ownership records. A writing Codex or agents
+  // pipeline creates its folder anyway, so the lock can create it first.
+  const folders = [
+    ...(ctx.syncCodex ? [codexHome(ctx.home)] : []),
+    ...(ctx.syncAgents ? [resolve(ctx.agentsDir)] : []),
+  ];
+  if (!ctx.dryRun) for (const folder of folders) mkdirSync(folder, { recursive: true });
+  return await withFolderLocks(ctx, folders, () => runPipelines(ctx));
+}
+
+async function runPipelines(ctx: Ctx): Promise<number> {
+  const { acquireTerminal, echo } = ctx.services.logger;
   // An abort-class check runs before any pipeline starts, so the abort stops the whole sync.
   preflightClaudeSettings(ctx);
 

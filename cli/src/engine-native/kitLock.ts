@@ -33,6 +33,11 @@ export interface KitLockOptions {
   readonly now?: () => number;
   /** The wait between two tries. */
   readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * True by default: make the lock directory and set its mode to 0700. False
+   * for a lock in a folder that the caller made, so the folder keeps its mode.
+   */
+  readonly privateDirectory?: boolean;
 }
 
 /** A held lock. Give it to `releaseKitLock` exactly once. */
@@ -66,9 +71,9 @@ function tryBegin(connection: DatabaseSync): boolean {
 }
 
 /**
- * Take the lock at `path`. Make its directory with mode 0700 when necessary.
- * Return `held` when another connection, in this process or in another
- * process, keeps the lock past the wait bound.
+ * Take the lock at `path`. Make its directory with mode 0700 when necessary,
+ * unless `privateDirectory` is false. Return `held` when another connection,
+ * in this process or in another process, keeps the lock past the wait bound.
  */
 export async function acquireKitLock(
   path: string,
@@ -79,9 +84,11 @@ export async function acquireKitLock(
   const pollMs = options.pollMs ?? POLL_MS;
   const deadline = now() + options.waitMs;
 
-  const directory = dirname(path);
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  chmodSync(directory, 0o700);
+  if (options.privateDirectory !== false) {
+    const directory = dirname(path);
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    chmodSync(directory, 0o700);
+  }
   const connection = new DatabaseSync(path);
   try {
     // A busy lock must fail at once; this loop does the wait.

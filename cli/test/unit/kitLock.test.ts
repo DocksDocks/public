@@ -17,7 +17,15 @@
  */
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { once } from "node:events";
-import { mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -76,6 +84,23 @@ describe("acquireKitLock in one process", () => {
       if (POSIX) expect(statSync(directory).mode & 0o777).toBe(0o700);
     } finally {
       releaseKitLock(lock);
+    }
+  });
+
+  it("keeps the mode of the folder when privateDirectory is false", async () => {
+    const folder = join(sandbox(), "codex");
+    mkdirSync(folder, { mode: 0o755 });
+    chmodSync(folder, 0o755);
+
+    const result = await acquireKitLock(join(folder, ".docks-kit-sync-lock.db"), {
+      waitMs: 0,
+      privateDirectory: false,
+    });
+    if (result.kind !== "acquired") throw new Error("expected a free lock");
+    try {
+      if (POSIX) expect(statSync(folder).mode & 0o777).toBe(0o755);
+    } finally {
+      releaseKitLock(result.lock);
     }
   });
 
