@@ -39,7 +39,7 @@ metadata:
 Pointers here name concepts, not coordinates — if a path or symbol moved, trust the stated purpose and re-locate it (grep the symbol) before acting.
 
 <constraint>
-Start every synchronous child with `exec.ts spawnHost` and every asynchronous child with `exec.ts spawnProcess`. Never call `node:child_process` directly for a tool resolved by name: the host must resolve an absolute path and shape a Windows shim invocation together with its argv.
+Start every synchronous child with `exec.ts spawnHost` and every asynchronous child with `exec.ts spawnProcess`. Never call `node:child_process` directly for a tool resolved by name. On a host with executable suffixes (Windows), both functions resolve the name to an absolute path with `which`. They refuse a name that `which` cannot resolve (verify: `bunx vitest run cli/test/unit/exec.test.ts -t "refuses a name a suffix host cannot resolve instead of spawning it"`). On a POSIX host, both functions pass the name unchanged, and the spawn looks it up on `PATH`. Unprobed: no unit test spawns a pathless name on a POSIX host (verify: `grep -n "resolvesSuffixes ?" cli/src/engine-native/exec.ts`). Both functions also shape a Windows shim invocation together with its argv.
 </constraint>
 
 <constraint>
@@ -63,14 +63,14 @@ Output channels, change detection, the missing-dependency warn shape, and the li
 
 | Need | Use | Anchor |
 |---|---|---|
-| Sync child | `spawnHost(cmd, args, overrides, host)` | `cli/src/engine-native/exec.ts` — `spawnHost` — resolves suffixes, applies `host.invoke`, and passes that invocation's `windowsVerbatimArguments` (set only for a `.cmd`/`.bat` shim) (verify: `grep -n "export const spawnHost" cli/src/engine-native/exec.ts`) |
+| Sync child | `spawnHost(cmd, args, overrides, host)` | `cli/src/engine-native/exec.ts` — `spawnHost` — resolves suffixes, applies `host.invoke`, and passes that invocation's `windowsVerbatimArguments`. Only a `.cmd`/`.bat` shim sets the flag (verify: `bunx vitest run cli/test/unit/os/windows.test.ts -t "normalizes and escapes the Windows command shim path"`; verify: `bunx vitest run cli/test/unit/os/windows.test.ts -t "invokes an executable directly with its arguments untouched"`). Unprobed: no unit test reads the options that `spawnHost` gives `spawnSync` (verify: `grep -n "windowsVerbatimArguments: invocation" cli/src/engine-native/exec.ts`) |
 | Async child | `spawnProcess(cmd, args, { stdio, cwd, host, timeoutMs })` | `exec.ts` — `spawnProcess` — default stdio discards stderr; pass `["ignore","pipe","pipe"]` when the caller prints `processFailureSummary` |
 | Bounded probe | `captureWithin(cmd, args, ms)` → `output`/`failed`/`timed-out` | `exec.ts` — `captureWithin`, `killProcessTree` — POSIX children lead their own group (`detached`) and die by negative pid; Windows runs `taskkill /T /F` from `SystemRoot\System32` (`C:\Windows` when unset; unlike `commandInterpreter`, the value is not checked for an absolute path) |
 | Version read | `deps.resolveVersionReading` | `cli/src/engine-native/deps.ts` — `VERSION_PROBE_LIMIT_MS` — keeps "no answer in time" apart from "no version" (verify: `grep -n VERSION_PROBE_LIMIT_MS cli/src/engine-native/deps.ts`) |
 | Presence | `ctx.services.deps.probe(id)` | `deps.ts` — `pathProbe`, `findBun` — Bun must resolve to an absolute path because it is persisted into hooks |
 | Missing tool warning | `ctx.services.deps.warnMissing(id, logger, context)` | `cli/src/engine-native/services.ts` — `makeDependencyManager` — one warning per tool per manager |
 | Host fact | `hostOs(ctx.services.platform.name())` | `cli/src/engine-native/os/types.ts` — `HostOs` — facts that cannot be probed only |
-| Supported host | `HOST_TARGETS` | `cli/src/engine-native/os/targets.ts` — `HOST_TARGETS` — adding a row adds a host; `hostTargets.test.ts` checks the table against the Bash and PowerShell launcher maps, the default build target list, and the artifact names in `.github/workflows/release-cli.yml` (verify: `grep -n 'it("' cli/test/unit/hostTargets.test.ts`) |
+| Supported host | `HOST_TARGETS` | `cli/src/engine-native/os/targets.ts` — `HOST_TARGETS` — adding a row adds a host. `hostTargets.test.ts` checks the table against the Bash and PowerShell launcher maps, the default build target list, and the artifact names in `.github/workflows/release-cli.yml` (verify: `bunx vitest run cli/test/unit/hostTargets.test.ts -t "keeps the Bash launcher aligned with every POSIX host target"`; verify: `bunx vitest run cli/test/unit/hostTargets.test.ts -t "keeps the PowerShell launcher aligned with every Windows host target"`; verify: `bunx vitest run cli/test/unit/hostTargets.test.ts -t "builds exactly the four supported host targets by default"`; verify: `bunx vitest run cli/test/unit/hostTargets.test.ts -t "names every HOST_TARGETS artifact in release-cli.yml"`) |
 | Atomic write | `replaceFile(target, content, { mode })` | `cli/src/engine-native/atomicWrite.ts` — `replaceFile` — keeps a symlinked target a link (verify, prints `true`: `bun -e 'import {mkdtempSync,writeFileSync,symlinkSync,lstatSync,rmSync} from "node:fs";import {tmpdir} from "node:os";import {join} from "node:path";import {replaceFile} from "./cli/src/engine-native/atomicWrite";const d=mkdtempSync(join(tmpdir(),"rf-"));writeFileSync(join(d,"t"),"a");symlinkSync(join(d,"t"),join(d,"l"));replaceFile(join(d,"l"),"b");console.log(lstatSync(join(d,"l")).isSymbolicLink());rmSync(d,{recursive:true})'`) |
 
 ### Windows command-shim encoding
@@ -103,8 +103,8 @@ Output channels, change detection, the missing-dependency warn shape, and the li
 
 - `deps.ts DependencySpec` has no requirement class. A missing tool gets one `warnMissing` line (`cli/src/engine-native/DESIGN.md` § Missing dependencies); an abort on a missing tool needs its own check at the call site and a test (verify, prints `0`: `grep -ci requirement cli/src/engine-native/deps.ts`).
 - `deps.ts bunInstallHint` renders the host's `HostOs.bunInstaller` at the `SoT/toolchain.json` Bun pin as one download-then-run line: POSIX saves the script in a `mktemp -d` folder before `bash` runs it; Windows saves `install.ps1` with `curl.exe` and runs it with `powershell.exe` only when the download succeeds. Keep every new install hint download-then-run (`AGENTS.md` `## Security`) (verify: `bunx vitest run cli/test/unit/deps.test.ts -t "gives a pinned download-then-run Bun hint on every host"`).
-- `logger.ts` `err` writes at once even inside an exclusive section, while `warn`, `change`, and `echo` are buffered until it ends.
-- `cli/src/services.ts` builds the live services at module load. `LoggerTest`, `PlatformTest`, and `DependencyManagerTest` have no consumer (verify: `git grep -n LoggerTest -- cli`).
+- `logger.ts` `err` writes immediately, also inside an exclusive section. `warn`, `change`, and `echo` stay in a buffer until the section ends.
+- `cli/src/services.ts` builds the live services at module load. `LoggerTest`, `PlatformTest`, and `DependencyManagerTest` have no consumer (verify, prints only the three `cli/src/services.ts` definitions: `git grep -n -e LoggerTest -e PlatformTest -e DependencyManagerTest -- cli`).
 
 ## References
 
