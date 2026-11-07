@@ -219,7 +219,10 @@ describe("omp --fast under the folder lock", () => {
       const run = await pending;
 
       expect(run.exitCode).toBe(2);
-      expect(run.output).toContain(`${configPath} does not exist; run 'docks-kit sync omp' first`);
+      // The kit joins its paths with "/", so compare the path without its separator style.
+      expect(run.output.replaceAll("\\", "/")).toContain(
+        `${configPath.replaceAll("\\", "/")} does not exist; run 'docks-kit sync omp' first`,
+      );
       expect(readFileSync(configPath, "utf8")).toBe(CONFIG);
     } finally {
       if (folderLock !== undefined) releaseKitLock(folderLock);
