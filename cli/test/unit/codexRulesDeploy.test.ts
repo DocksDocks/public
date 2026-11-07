@@ -1,13 +1,54 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import type * as FsModule from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type * as Payload from "../../src/payload";
 import type { PayloadPath } from "../../src/payload";
 
 const mocks = vi.hoisted(() => ({ sotRules: new Map<string, string>() }));
+
+const faults = vi.hoisted(() => ({
+  /**
+   * While set, each `writeFileSync` on a path that starts with this prefix
+   * writes half of the data and then throws `EIO`, as an interrupted write does.
+   * The prefix covers the file and its temporary siblings.
+   */
+  interruptWritesUnder: undefined as string | undefined,
+}));
+
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof FsModule>("node:fs");
+  return {
+    ...actual,
+    writeFileSync: (
+      file: FsModule.PathOrFileDescriptor,
+      data: string | NodeJS.ArrayBufferView,
+      options?: FsModule.WriteFileOptions,
+    ) => {
+      const prefix = faults.interruptWritesUnder;
+      // The engine joins with "/" while the test joins natively; compare resolved paths.
+      if (
+        prefix === undefined ||
+        typeof file === "number" ||
+        !resolve(String(file)).startsWith(resolve(prefix))
+      ) {
+        actual.writeFileSync(file, data, options);
+        return;
+      }
+      const bytes =
+        typeof data === "string"
+          ? Buffer.from(data)
+          : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      actual.writeFileSync(file, bytes.subarray(0, bytes.length >> 1), options);
+      throw Object.assign(new Error(`EIO: injected fault, writeFileSync '${String(file)}'`), {
+        code: "EIO",
+      });
+    },
+  };
+});
 
 vi.mock("../../src/payload", async () => {
   const actual = await vi.importActual<typeof Payload>("../../src/payload");
@@ -41,6 +82,7 @@ const DROPPED_RULES = 'prefix_rule(pattern = ["git", "push"], decision = "prompt
 const roots: Array<string> = [];
 
 afterEach(() => {
+  faults.interruptWritesUnder = undefined;
   mocks.sotRules.clear();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -215,6 +257,29 @@ describe("Codex rules deploy", () => {
     expect(readFileSync(join(fixture.rulesDir, "mine.rules"), "utf8")).toBe(KIT_RULES);
     expect(records.filter(({ level }) => level === "change" || level === "warn")).toEqual([]);
     expect(readFileSync(fixture.manifest, "utf8")).toBe(`${sha256(KIT_RULES)}  docks.rules\n`);
+  });
+
+  it("keeps the previous manifest when a manifest write is interrupted", () => {
+    const fixture = codexHomeFixture();
+    sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
+    const manifestBefore = readFileSync(fixture.manifest, "utf8");
+    const dropped = p(fixture.rulesDir, "old.rules");
+
+    faults.interruptWritesUnder = fixture.manifest;
+    expect(() =>
+      sync(fixture, {
+        "docks.rules": KIT_RULES,
+        "extra.rules": 'prefix_rule(pattern = ["git", "reset"], decision = "prompt")\n',
+        "old.rules": DROPPED_RULES,
+      }),
+    ).toThrow(/^EIO/);
+    expect(readFileSync(fixture.manifest, "utf8")).toBe(manifestBefore);
+
+    faults.interruptWritesUnder = undefined;
+    const records = sync(fixture, { "docks.rules": KIT_RULES });
+
+    expect(existsSync(dropped)).toBe(false);
+    expect(records).toContainEqual({ level: "change", message: expect.stringContaining(dropped) });
   });
 
   it("reports a removal under dry run and writes nothing", () => {

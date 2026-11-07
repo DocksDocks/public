@@ -1654,24 +1654,51 @@ function mtimeMs(path: string): number | undefined {
   }
 }
 
+/**
+ * Windows keeps a deleted file "delete pending" while a handle to it is open,
+ * and refuses a new open of that name with ERROR_ACCESS_DENIED. A delete of a
+ * file that another process holds without delete sharing fails with
+ * ERROR_SHARING_VIOLATION. libuv, which runs the `node:fs` calls of Bun and
+ * Node.js on Windows, reports these errors as EPERM and EBUSY. This rule is a
+ * copy of the rule in `cli/src/engine-native/tidyLock.ts`, because this
+ * extension imports only `node:` modules.
+ */
+const WINDOWS_CONTENTION: Record<string, true> = { EBUSY: true, EPERM: true };
+
+/**
+ * True on Windows for an error that another process causes when it deletes or
+ * holds the path. On POSIX, EPERM and EBUSY are real faults, so they stay errors.
+ */
+function isWindowsContention(error: unknown): boolean {
+  const code = errorCode(error);
+  return (
+    process.platform === "win32" && typeof code === "string" && WINDOWS_CONTENTION[code] === true
+  );
+}
+
+/**
+ * Removes `path`. Ignores a path that is absent or, on Windows, a path that
+ * another process deletes or holds.
+ */
 function removeIfPresent(path: string): void {
   try {
     unlinkSync(path);
   } catch (error) {
-    if (errorCode(error) !== "ENOENT") throw error;
+    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error)) throw error;
   }
 }
 
 /**
  * Creates `path` with `wx` and writes an owner token into it. Returns the
- * token, or undefined when the file exists.
+ * token, or undefined when the file exists or, on Windows, when another
+ * process deletes it now.
  */
 function createOwned(path: string): string | undefined {
   let descriptor: number;
   try {
     descriptor = openSync(path, "wx", 0o600);
   } catch (error) {
-    if (errorCode(error) === "EEXIST") return undefined;
+    if (errorCode(error) === "EEXIST" || isWindowsContention(error)) return undefined;
     throw error;
   }
   const token = `${process.pid} ${randomUUID()}`;
@@ -1683,12 +1710,16 @@ function createOwned(path: string): string | undefined {
   return token;
 }
 
-/** Removes `path` only when it still holds `token`, so that no process removes the file of another. */
+/**
+ * Removes `path` only when it still holds `token`, so that no process removes
+ * the file of another. Ignores a path that is absent or, on Windows, a path
+ * that another process deletes or holds. Such a file stays until it is stale.
+ */
 function releaseOwned(path: string, token: string): void {
   try {
     if (readFileSync(path, "utf8") === token) unlinkSync(path);
   } catch (error) {
-    if (errorCode(error) !== "ENOENT") throw error;
+    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error)) throw error;
   }
 }
 
@@ -1702,7 +1733,10 @@ function isStale(path: string, nowMs: number): boolean {
  * Creates the claim and returns its token, or returns undefined when another
  * process holds it. Only the holder of the takeover mutex replaces a stale
  * claim, and it checks the claim again while it holds the mutex. Thus two
- * processes cannot both replace the same stale claim.
+ * processes cannot both replace the same stale claim. On Windows, a create
+ * or a delete that fails because another process deletes or holds the file
+ * counts as contention: this process does not get the claim, and a later
+ * main session claims the sweep.
  */
 function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
   const claim = join(cacheDir, CLAIM_FILE);

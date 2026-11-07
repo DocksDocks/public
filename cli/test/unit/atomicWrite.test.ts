@@ -2,16 +2,58 @@ import {
   chmodSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import type * as FsModule from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { join, resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const faults = vi.hoisted(() => ({
+  /**
+   * While set, each `writeFileSync` on a path that starts with this prefix
+   * writes half of the data and then throws `EIO`, as an interrupted write does.
+   * The prefix covers the file and its temporary siblings.
+   */
+  interruptWritesUnder: undefined as string | undefined,
+}));
+
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof FsModule>("node:fs");
+  return {
+    ...actual,
+    writeFileSync: (
+      file: FsModule.PathOrFileDescriptor,
+      data: string | NodeJS.ArrayBufferView,
+      options?: FsModule.WriteFileOptions,
+    ) => {
+      const prefix = faults.interruptWritesUnder;
+      if (
+        prefix === undefined ||
+        typeof file === "number" ||
+        !resolve(String(file)).startsWith(resolve(prefix))
+      ) {
+        actual.writeFileSync(file, data, options);
+        return;
+      }
+      const bytes =
+        typeof data === "string"
+          ? Buffer.from(data)
+          : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      actual.writeFileSync(file, bytes.subarray(0, bytes.length >> 1), options);
+      throw Object.assign(new Error(`EIO: injected fault, writeFileSync '${String(file)}'`), {
+        code: "EIO",
+      });
+    },
+  };
+});
 
 import { replaceFile } from "../../src/engine-native/atomicWrite";
 
@@ -24,6 +66,7 @@ describe("replaceFile", () => {
   });
 
   afterEach(() => {
+    faults.interruptWritesUnder = undefined;
     rmSync(sandbox, { recursive: true, force: true });
   });
 
@@ -79,5 +122,27 @@ describe("replaceFile", () => {
 
     expect(readFileSync(file, "utf8")).toBe("{}");
     expect(existsSync(`${file}.tmp`)).toBe(false);
+  });
+
+  it("replaces a file when a stale temporary sibling exists", () => {
+    const file = join(sandbox, "settings.json");
+    writeFileSync(file, "{}");
+    // A directory left at the old fixed temporary name.
+    mkdirSync(`${file}.tmp`);
+
+    replaceFile(file, '{"a":1}');
+
+    expect(readFileSync(file, "utf8")).toBe('{"a":1}');
+  });
+
+  it("leaves no temporary sibling when the write fails", () => {
+    const file = join(sandbox, "settings.json");
+    writeFileSync(file, '{"a":1}');
+
+    faults.interruptWritesUnder = file;
+    expect(() => replaceFile(file, '{"a":2,"b":3}')).toThrow(/^EIO/);
+
+    expect(readdirSync(sandbox)).toEqual(["settings.json"]);
+    expect(readFileSync(file, "utf8")).toBe('{"a":1}');
   });
 });
