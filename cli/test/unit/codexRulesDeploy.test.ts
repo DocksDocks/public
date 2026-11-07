@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type * as FsModule from "node:fs";
@@ -293,5 +301,156 @@ describe("Codex rules deploy", () => {
     expect(records).toContainEqual({ level: "echo", message: `[dry-run] remove ${dropped}` });
     expect(readFileSync(dropped, "utf8")).toBe(DROPPED_RULES);
     expect(readFileSync(fixture.manifest, "utf8")).toBe(manifestBefore);
+  });
+});
+
+const KIT_RULES_V2 = 'prefix_rule(pattern = ["rm", "-rf"], decision = "forbidden")\n';
+const DROPPED_RULES_V2 = 'prefix_rule(pattern = ["git", "push", "--force"], decision = "prompt")\n';
+const EXTRA_RULES = 'prefix_rule(pattern = ["git", "reset"], decision = "prompt")\n';
+/** The rules file that the SoT ships last; a fault on its write stops the sync after the others. */
+const LAST_RULES = 'prefix_rule(pattern = ["git", "clean"], decision = "prompt")\n';
+
+/** The manifest lines, sorted, so the test does not depend on the order of two lines for one name. */
+function manifestLines(fixture: CodexHome): Array<string> {
+  return readFileSync(fixture.manifest, "utf8")
+    .split("\n")
+    .filter((line) => line !== "")
+    .sort();
+}
+
+/**
+ * D-E1: sync writes each rules file through `replaceFile`. Before the deploy,
+ * it writes the manifest with the recorded hashes of each name plus the new
+ * kit hash of each shipped name, so a name can have two lines. Cleanup removes
+ * a dropped file when its hash is one of the recorded hashes of its name. The
+ * final manifest has one line per shipped name. Each test stops a sync after
+ * a deploy with a fault on the write of `zzz.rules`, the last shipped name.
+ */
+describe("Codex rules record ahead", () => {
+  it("keeps the previous rules file when a rules write is interrupted", () => {
+    const fixture = codexHomeFixture();
+    sync(fixture, { "docks.rules": KIT_RULES });
+    const rulesFile = join(fixture.rulesDir, "docks.rules");
+
+    faults.interruptWritesUnder = rulesFile;
+    expect(() => sync(fixture, { "docks.rules": KIT_RULES_V2 })).toThrow(/^EIO/);
+
+    expect(readFileSync(rulesFile, "utf8")).toBe(KIT_RULES);
+    expect(readdirSync(fixture.rulesDir).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+
+    faults.interruptWritesUnder = undefined;
+    sync(fixture, { "docks.rules": KIT_RULES_V2 });
+
+    expect(readFileSync(rulesFile, "utf8")).toBe(KIT_RULES_V2);
+  });
+
+  it("removes a dropped rules file whose deploy the manifest did not record", () => {
+    const fixture = codexHomeFixture();
+    sync(fixture, { "docks.rules": KIT_RULES });
+    const added = p(fixture.rulesDir, "extra.rules");
+
+    faults.interruptWritesUnder = join(fixture.rulesDir, "zzz.rules");
+    expect(() =>
+      sync(fixture, {
+        "docks.rules": KIT_RULES,
+        "extra.rules": EXTRA_RULES,
+        "zzz.rules": LAST_RULES,
+      }),
+    ).toThrow(/^EIO/);
+    expect(readFileSync(added, "utf8")).toBe(EXTRA_RULES);
+
+    faults.interruptWritesUnder = undefined;
+    const records = sync(fixture, { "docks.rules": KIT_RULES });
+
+    expect(existsSync(added)).toBe(false);
+    expect(records).toContainEqual({ level: "change", message: expect.stringContaining(added) });
+    expect(records.filter(({ level }) => level === "warn")).toEqual([]);
+    expect(readFileSync(fixture.manifest, "utf8")).toBe(`${sha256(KIT_RULES)}  docks.rules\n`);
+  });
+
+  it("removes a dropped rules file whose changed bytes the manifest did not record", () => {
+    const fixture = codexHomeFixture();
+    sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
+    const changed = p(fixture.rulesDir, "old.rules");
+
+    faults.interruptWritesUnder = join(fixture.rulesDir, "zzz.rules");
+    expect(() =>
+      sync(fixture, {
+        "docks.rules": KIT_RULES,
+        "old.rules": DROPPED_RULES_V2,
+        "zzz.rules": LAST_RULES,
+      }),
+    ).toThrow(/^EIO/);
+    expect(readFileSync(changed, "utf8")).toBe(DROPPED_RULES_V2);
+
+    faults.interruptWritesUnder = undefined;
+    const records = sync(fixture, { "docks.rules": KIT_RULES });
+
+    expect(existsSync(changed)).toBe(false);
+    expect(records).toContainEqual({ level: "change", message: expect.stringContaining(changed) });
+    expect(records.filter(({ level }) => level === "warn")).toEqual([]);
+    expect(readFileSync(fixture.manifest, "utf8")).toBe(`${sha256(KIT_RULES)}  docks.rules\n`);
+  });
+
+  it("writes one line per name after a completed sync", () => {
+    const fixture = codexHomeFixture();
+    sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
+
+    faults.interruptWritesUnder = join(fixture.rulesDir, "zzz.rules");
+    expect(() =>
+      sync(fixture, {
+        "docks.rules": KIT_RULES_V2,
+        "old.rules": DROPPED_RULES,
+        "zzz.rules": LAST_RULES,
+      }),
+    ).toThrow(/^EIO/);
+    // The stopped sync recorded the old and the new kit hash of the changed name.
+    expect(manifestLines(fixture)).toEqual(
+      [
+        `${sha256(KIT_RULES)}  docks.rules`,
+        `${sha256(KIT_RULES_V2)}  docks.rules`,
+        `${sha256(DROPPED_RULES)}  old.rules`,
+        `${sha256(LAST_RULES)}  zzz.rules`,
+      ].sort(),
+    );
+
+    faults.interruptWritesUnder = undefined;
+    sync(fixture, { "docks.rules": KIT_RULES_V2, "old.rules": DROPPED_RULES });
+
+    expect(readFileSync(fixture.manifest, "utf8")).toBe(
+      `${sha256(KIT_RULES_V2)}  docks.rules\n${sha256(DROPPED_RULES)}  old.rules\n`,
+    );
+  });
+
+  it("reads a manifest of the previous kit", () => {
+    const fixture = codexHomeFixture();
+    // The previous kit wrote one `<sha256>  <name>` line per name.
+    mkdirSync(fixture.rulesDir);
+    writeFileSync(join(fixture.rulesDir, "docks.rules"), KIT_RULES);
+    writeFileSync(join(fixture.rulesDir, "old.rules"), DROPPED_RULES);
+    writeFileSync(
+      fixture.manifest,
+      `${sha256(KIT_RULES)}  docks.rules\n${sha256(DROPPED_RULES)}  old.rules\n`,
+    );
+    const changed = p(fixture.rulesDir, "docks.rules");
+    const dropped = p(fixture.rulesDir, "old.rules");
+
+    faults.interruptWritesUnder = join(fixture.rulesDir, "zzz.rules");
+    expect(() =>
+      sync(fixture, {
+        "docks.rules": KIT_RULES_V2,
+        "old.rules": DROPPED_RULES,
+        "zzz.rules": LAST_RULES,
+      }),
+    ).toThrow(/^EIO/);
+    expect(readFileSync(changed, "utf8")).toBe(KIT_RULES_V2);
+
+    faults.interruptWritesUnder = undefined;
+    const records = sync(fixture, { "extra.rules": EXTRA_RULES });
+
+    expect(existsSync(changed)).toBe(false);
+    expect(existsSync(dropped)).toBe(false);
+    expect(records.filter(({ level }) => level === "warn")).toEqual([]);
+    expect(readFileSync(fixture.manifest, "utf8")).toBe(`${sha256(EXTRA_RULES)}  extra.rules\n`);
   });
 });
