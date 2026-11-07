@@ -305,8 +305,11 @@ describe("retired omp config keys", () => {
     expect(syncOmpRemovals(ctx, file, false)).toBe(1);
 
     expect(readFileSync(`${file}.bak`, "utf8")).toBe(source);
-    expect(statSync(file).mode & 0o777).toBe(0o600);
-    expect(statSync(`${file}.bak`).mode & 0o777).toBe(0o600);
+    // Windows has no POSIX permission bits, so only POSIX hosts can check 0600.
+    if (process.platform !== "win32") {
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+      expect(statSync(`${file}.bak`).mode & 0o777).toBe(0o600);
+    }
     expect(stderr.join("")).toContain("backup at config.yml.bak");
   });
 

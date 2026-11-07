@@ -110,6 +110,11 @@ function testCtx(home: string, records: Array<LogRecord>, dryRun = false): Ctx {
   };
 }
 
+/**
+ * syncRules joins a rules file name with the slash-stable `exec.ts p`, as every
+ * engine path does, so a test that expects a logged path must build it with `p`
+ * too. `join` gives a backslash on Windows, and the logged path has a slash.
+ */
 interface CodexHome {
   readonly home: string;
   readonly rulesDir: string;
@@ -166,7 +171,7 @@ describe("Codex rules deploy", () => {
   it("removes a dropped kit rules file that still holds the kit bytes", () => {
     const fixture = codexHomeFixture();
     sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
-    const dropped = join(fixture.rulesDir, "old.rules");
+    const dropped = p(fixture.rulesDir, "old.rules");
 
     const records = sync(fixture, { "docks.rules": KIT_RULES });
 
@@ -178,7 +183,7 @@ describe("Codex rules deploy", () => {
   it("keeps a dropped kit rules file that the user edited", () => {
     const fixture = codexHomeFixture();
     sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
-    const dropped = join(fixture.rulesDir, "old.rules");
+    const dropped = p(fixture.rulesDir, "old.rules");
     const edited = `${DROPPED_RULES}# my note\n`;
     writeFileSync(dropped, edited);
     const expectedManifest = [
@@ -215,7 +220,7 @@ describe("Codex rules deploy", () => {
   it("reports a removal under dry run and writes nothing", () => {
     const fixture = codexHomeFixture();
     sync(fixture, { "docks.rules": KIT_RULES, "old.rules": DROPPED_RULES });
-    const dropped = join(fixture.rulesDir, "old.rules");
+    const dropped = p(fixture.rulesDir, "old.rules");
     const manifestBefore = readFileSync(fixture.manifest, "utf8");
 
     const records = sync(fixture, { "docks.rules": KIT_RULES }, { dryRun: true });
