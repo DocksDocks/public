@@ -2,7 +2,7 @@
  * EngineNative skill ownership records under `~/.agents`:
  * - `.kit-pending-skills`, one slug per line: a slug whose install runs. Sync
  *   adds it before `npx skills add` only when the canonical skill directory
- *   does not exist, so it never names a directory that existed before the
+ *   does not exist. So it never names a directory that existed before the
  *   install.
  * - `.kit-owned-skills`, one `<slug>\t<dev>:<ino>` line per skill: the skills
  *   that the kit installed, with the identity of the directory that the
@@ -91,8 +91,8 @@ export function canonicalAbsent(skillsDir: string, slug: string): boolean {
 }
 
 /**
- * Ends the pending state of `slug`: it moves to the owned record with the
- * identity of its canonical directory when that directory exists, else it
+ * Ends the pending state of `slug`. When its canonical directory exists, the
+ * slug moves to the owned record with the identity of that directory. Else it
  * leaves the pending record. Changes the records in memory only;
  * `writeSkillRecords` writes them.
  */

@@ -154,7 +154,7 @@ Two cross-platform primitives need no platform branch:
 - `kitLock.ts` `acquireKitLock`: an SQLite `BEGIN IMMEDIATE` lock. The OS
   releases it when the holder process ends, on POSIX and on Windows.
 - `processes.ts` `processExited`: `process.kill(pid, 0)` throws ESRCH for an
-  exited PID on every host (libuv `uv_kill`).
+  exited PID on every host (`kill(2)` on POSIX, libuv `uv_kill` on Windows).
 
 The omp extension `SoT/.omp/plugin/extensions/hygiene.ts` is outside the
 engine. Its `isWindowsContention` reads `process.platform` and runs an EPERM

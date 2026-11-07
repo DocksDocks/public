@@ -1677,11 +1677,11 @@ function probeSucceeds(path: string): boolean {
  * Bun and Node.js on Windows. It gives EBUSY only for a sharing or lock
  * violation, so EBUSY is always contention. It gives EPERM for
  * ERROR_ACCESS_DENIED. Windows returns that error for an open or a delete of a
- * "delete pending" name, which is a deleted file that another process still
- * has open. It also returns it for a folder that denies the operation. Thus
- * EPERM counts as contention only when the probe succeeds; otherwise the
- * caller throws the EPERM. On POSIX, EPERM and EBUSY are real faults, so they
- * stay errors.
+ * "delete pending" name. Such a name is a deleted file that another process
+ * still has open. Windows also returns the error for a folder that denies the
+ * operation. Thus EPERM counts as contention only when the probe succeeds;
+ * otherwise the caller throws the EPERM. On POSIX, EPERM and EBUSY are real
+ * faults, so they stay errors.
  */
 function isWindowsContention(error: unknown, path: string): boolean {
   if (process.platform !== "win32") return false;

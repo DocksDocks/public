@@ -207,14 +207,14 @@ function writeRulesManifest(
  * that the SoT no longer ships while its bytes have one of the hashes recorded
  * for its name. An edited file stays, keeps its records, and gets a warning on
  * each sync. Sync deploys each name that the SoT ships over an existing file,
- * recorded or not. It backs up a file that differs to `<name>.bak` and
- * replaces it through a temporary file and a rename (Codex does not load the
- * `*.tmp` file), so an interrupted write keeps the previous file. Cleanup
+ * recorded or not. It backs up a file that differs to `<name>.bak`. It then
+ * replaces it through a temporary file and a rename, so an interrupted write
+ * keeps the previous file. Codex does not load the `*.tmp` file. Cleanup
  * never reads or removes a file that the SoT does not ship and no sync
  * recorded, such as the `default.rules` file of Codex.
  *
  * Record ahead: before the deploy, sync writes the manifest with the recorded
- * hashes of each name plus the kit hash of each shipped name, so a sync that
+ * hashes of each name plus the kit hash of each shipped name. So a sync that
  * stops after a deploy leaves a record of the bytes it wrote. A name whose kit
  * bytes change then has two lines. Every recorded hash is a hash of kit
  * bytes, so no record lets cleanup remove bytes that the user wrote. After the

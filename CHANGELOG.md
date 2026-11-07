@@ -7,8 +7,10 @@
 These fixes close #159.
 
 - `docks-kit tidy --apply` now holds an SQLite lock,
-  `~/.cache/docks-kit/tidy-lock.db`. The OS releases it when the holder ends.
-  The old `tidy.lock` takeover could give the lock to two runs.
+  `~/.cache/docks-kit/tidy-lock.db`. The lock is a `BEGIN IMMEDIATE`
+  transaction, so exactly one of two runs that start together gets it. The OS
+  releases it when the holder ends. The old `tidy.lock` takeover could give
+  the lock to two runs.
 - `docks-kit tidy --apply` now makes its plan under the lock. Before, a
   second run could apply a plan that it made while the first run changed the
   same resources.
@@ -17,28 +19,41 @@ These fixes close #159.
 - Each writing `docks-kit sync` and each `docks-kit model <tool> <value>` now
   holds `~/.cache/docks-kit/sync-lock.db`. Two syncs can no longer write
   ownership records that drop the items of the other.
+- Two homes can share a Codex folder (`CODEX_HOME`) or an agents folder
+  (`AGENTS_DIR`). A writing sync now also holds `.docks-kit-sync-lock.db` in
+  each Codex or agents folder that it writes, and a `model codex` write holds
+  the Codex one. So syncs of two homes that share a folder also wait for each
+  other.
 - A sync waits up to 120 s for the sync lock, then exits 1 with a message.
-  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` sets another wait. A dry run and `--help`
-  take no lock.
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` sets another wait, a non-negative safe integer
+  in ms; any other value exits 2. A dry run and `--help` take no lock.
 - `sync codex` now writes each rules file through a temporary file and a
   rename. An interrupted write no longer leaves a cut rules file.
 - `sync codex` now records the hash of each new rules file before it deploys
   the file. A rules file that an interrupted sync deployed is now removed
   when the SoT drops it.
 - Sync now adds a skill to `~/.agents/.kit-pending-skills` before it installs
-  it. When a sync stops after the install, the next sync records the skill as
-  owned, so `--prune` can remove it.
+  it, and records it as owned before the next install starts. When a sync
+  stops after an install, the next sync records the skill as owned, so
+  `--prune` can remove it.
 - A write through the kit `replaceFile` helper now removes the temporary file
   of a killed earlier write to the same file. The short temporary name now
   holds the writer's PID.
 - On Windows, the omp hygiene extension now tells a pending delete from a
   real access denial. After EPERM, it creates and deletes a probe file in the
   same folder.
-- When the probe also fails, the sweep does not start. The next tool result
-  of the main session then shows `docks-kit sweep did not start: <message>`.
+- An error of the sweep claim files or the stamp, such as a failed probe, now
+  stops the sweep. The next tool result of the main session then shows
+  `docks-kit sweep did not start: <message>` once. A missing `docks-kit`
+  launcher on PATH shows no line.
 - `--prune` no longer removes a skill directory that the user made before the
   SoT declared the same slug. The kit now records only the skills that it
-  installed, in `~/.agents/.kit-owned-skills`.
+  installed, in `~/.agents/.kit-owned-skills`, with the `<dev>:<ino>` of each
+  installed directory. `--prune` removes a skill only while its directory
+  keeps that identity. Else it prints
+  `keep <slug>: the directory is not the one that the kit installed`.
+- When a declared skill directory existed before and no record names it, each
+  sync now warns that the kit reused it and that `--prune` keeps it.
 - The kit no longer writes `~/.agents/.kit-managed-skills`. `--prune` keeps
   each skill directory that only this older record names, and prints a line
   for it.

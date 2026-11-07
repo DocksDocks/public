@@ -170,9 +170,9 @@ deployed file. `readRulesRecords` returns a set of hashes for each name.
 Every recorded hash is a hash of kit bytes, so no record lets cleanup remove
 bytes that the user wrote. An older kit that reads a two-line manifest keeps
 the last line for a name, so at worst it keeps a file with a warning.
-Residual: when a sync stops between the write-ahead and the deploy, a name
-whose file held user bytes that no sync recorded gets the "differs from the
-kit copy" warning after the SoT drops it.
+Residual: a sync can stop between the write-ahead and the deploy. A name
+whose file held user bytes that no sync recorded then gets the "differs from
+the kit copy" warning after the SoT drops it.
 (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules record ahead"` and `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`)
 
 `~/.codex/rules/default.rules` is user-learned state. The SoT does not ship

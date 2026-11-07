@@ -32,7 +32,7 @@ function removeCanonical(path: string): boolean {
  * Removes each owned skill that the SoT no longer declares, and drops it from
  * `records.owned` (in memory). A failed removal keeps the slug, so the next
  * prune tries again. An owned slug whose directory is not the one that the
- * kit installed is kept with a line and leaves the record, so the line prints
+ * kit installed is kept with a line. It leaves the record, so the line prints
  * once. A legacy slug that the SoT dropped gets a keep line while its
  * canonical path still has an entry. Only the legacy record names it, so the
  * kit keeps it.
