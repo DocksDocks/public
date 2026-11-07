@@ -223,10 +223,13 @@ active logger binding.
   `cli/test/goldens/dryrun.json`.
 - `bun run golden:mutation` compares live native mutation snapshots, argv logs,
   output, and TOML invariants to `cli/test/goldens/mutation.json`.
-- `.github/workflows/parity.yml` runs its portable lane on `ubuntu-24.04`,
-  `macos-26`, and `windows-2025`: typecheck, unit tests, host-specific runtime
-  command checks, and compilation and execution of the native host artifact.
-  The Linux-canonical snapshot lane stays on Ubuntu and runs both golden suites
+- `.github/workflows/parity.yml` runs its portable lane on `ubuntu-24.04` and
+  `macos-26`: typecheck, unit tests, host-specific runtime command checks, and
+  compilation and execution of the native host artifact. On `windows-2025`,
+  two unit-test shards and a runtime job (generated-payload check, typecheck,
+  runtime commands, native artifact) run in parallel. The check
+  `portable (windows-2025)` passes only when all three pass. The
+  Linux-canonical snapshot lane stays on Ubuntu and runs both golden suites
   plus their prove-red checks.
 - `.github/workflows/release-cli.yml` publishes four binaries (Linux x64 and
   arm64, macOS arm64, Windows x64), plus `SHA256SUMS` and the npm package.
