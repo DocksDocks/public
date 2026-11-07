@@ -10,7 +10,7 @@
   `runEngineNative`. Only that channel honors the unprefixed env globals in
   `engineCtx.ts ENV_GLOBAL_KEYS`. `engineCapture` removes them from its child
   environment.
-  (verify: `bun run test:unit -- cli/test/unit/engine.test.ts -t "strips env globals from the raw capture child and keeps the other variables"`)
+  (verify: `bunx vitest run cli/test/unit/engine.test.ts -t "strips env globals from the raw capture child and keeps the other variables"`)
 - `DOCKS_KIT_ENGINE` set to `bash` exits 2 with the removed-engine recovery
   message. It is not a fallback selector.
 - SoT comes from the embedded payload (`payload.ts payloadText`/`payloadBytes`).
@@ -45,7 +45,7 @@ executable directory. `ctx.repoDir` holds the result for display only.
 source-mode `main.ts` path for `engine.ts engineCapture`. `updateNudge` starts
 `git` through `exec.ts spawnHost`, so a Windows host never runs a `git.exe`
 from the current directory.
-(verify: `bun run test:unit -- cli/test/unit/kitHome.test.ts -t "resolveKitHome"` and `bun run test:unit -- cli/test/unit/syncUpdateNudge.test.ts -t "runs git through spawnHost"`)
+(verify: `bunx vitest run cli/test/unit/kitHome.test.ts -t "resolveKitHome"` and `bunx vitest run cli/test/unit/syncUpdateNudge.test.ts -t "runs git through spawnHost"`)
 
 ## Sync Execution Order
 
@@ -89,8 +89,15 @@ modules). The order rules that matter across pipelines:
 - `claudeSync` and `ompSync` start with `bun.ts bunBootstrap`, which is
   memoized on `ctx.bunRuntime` for the engine run.
 - `claudeSync` materializes and prepares Claude settings with no mutation, then
-  commits them. Deploy-time modifiers run after the base deploy in both
-  `claudeSync` and `codexSync`.
+  commits them. Its deploy-time modifiers run after that base deploy.
+- `codexSync` applies `--codex-model` and `--codex-effort` in two phases.
+  First, `codexToml.ts replaceTopLevelSetting` folds the values into the SoT
+  text before the `syncConfig` merge. Then `syncCodexModel` and
+  `syncCodexEffort` run after the merge and compare with the config text read
+  before it. A new Codex modifier needs both phases. A post-merge edit alone
+  writes the SoT value and then the modifier value on each run, so the file
+  is not byte-stable.
+  (verify: `bunx vitest run cli/test/unit/codexTomlMerge.test.ts -t "keeps the backup when it runs again"`)
 - `skillsSync` calls `skillsPrune.ts reconcileRemovals` only with `--prune`.
 
 ## Direct Modes
@@ -101,7 +108,7 @@ mode table. The `model` mode has two paths:
 | Invocation | Implementation | Path |
 |-----------|----------------|------|
 | `model claude` or `model codex` | `modeModel` get path | Reads deployed and SoT model, then prints the resolved catalog. |
-| `model <tool> <id>` | `modeModel` set path | Validates `<id>` with `models.ts validateClaudeModel` or `validateCodexModel`, then calls `syncClaudeModel` or `syncCodexModel`. (verify: `./docks-kit models codex` lists valid IDs) |
+| `model <tool> <id>` | `modeModel` set path | Validates `<id>` with `models.ts validateClaudeModel` or `validateCodexModel`, then calls `syncClaudeModel` or `syncCodexModel`. `validateCodexModel` rejects an ID outside `^[A-Za-z0-9._-]+$`. A charset-safe ID that is not in the catalog passes with a warning. (verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects invalid codex models without changing deployment"`) Unprobed: no unit test covers the catalog-miss warning (verify: `grep -n "applying anyway" cli/src/engine-native/models.ts`). |
 
 ## Idempotency Invariants
 
@@ -111,7 +118,7 @@ mode table. The `model` mode has two paths:
 | Claude marketplace add | Marketplace name absent from known marketplaces (`claudePluginPasses.ts syncPlugins`, pass 1). |
 | Claude plugin install | Missing user-scope install record (`claudePluginPasses.ts syncPlugins`, pass 2). |
 | Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). |
-| Codex rules copy | Byte-identical file skipped; backup before overwrite. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`; a file that no sync recorded, such as the user-learned `default.rules`, is never read or removed (`codexSync.ts syncRules`). (verify: `bun run test:unit -- cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
+| Codex rules copy | Byte-identical file skipped; backup before overwrite. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`; a file that no sync recorded, such as the user-learned `default.rules`, is never read or removed (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
 
 ## New Target Checklist
 
@@ -119,7 +126,10 @@ mode table. The `model` mode has two paths:
    `sync<Name>` selection flag to `engineCtx.ts Ctx` (initialized in `makeCtx`).
    SoT content stays in the embedded payload (`payload.ts`); `Ctx` holds no
    SoT path.
-2. Map the word in `parseArgs.ts TARGET_FLAGS` and `applySelection`.
+2. Map the word in `parseArgs.ts TARGET_FLAGS` and `applySelection`. Add a
+   `case` label for the word in the `parseArgs` target switch; without it,
+   the word exits 2 with `Unknown arg`. List the target in
+   `parseHelp.ts printUsage`.
 3. Add dependency checks at each concrete consuming operation.
 4. Add the pipeline to the `selected` list in `syncDispatch.ts engineSync`.
 5. Add summary and next-step hooks if the target has user-facing output.

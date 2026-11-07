@@ -12,7 +12,7 @@ options (verify: `grep -n 'case "--' cli/src/engine-native/parseArgs.ts`).
 - Bare value flags such as `--claude-model` exit 2 on both layers. The public
   CLI takes `--flag value` or `--flag=value`; the engine parser takes only
   `--flag=value`.
-  (verify: `bun run test:unit -- cli/test/unit/targetGrammar.test.ts -t "prints the catalog and exits 2 for a bare"`)
+  (verify: `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "prints the catalog and exits 2 for a bare"` and `bunx vitest run cli/test/unit/argv.test.ts -t "rejects Claude model followed by another flag with a catalog and value grammar"`)
 
 ## Full Truth Table
 
@@ -48,7 +48,7 @@ options (verify: `grep -n 'case "--' cli/src/engine-native/parseArgs.ts`).
 | `--codex-effort=<level>` | `ctx.codexEffort` | `codexToml.ts syncCodexEffort` | Replaces deployed top-level `model_reasoning_effort`; `default` sets the SoT level. Levels: `efforts.ts CODEX_REASONING_EFFORTS`. |
 | target word present | `ctx.targetFilterSet` | `parseArgs.ts applyDefaultSelection` | Once any target word appears, only named targets run. |
 
-(verify: `bun run test:unit -- cli/test/unit/targetGrammar.test.ts -t "rejects invalid native modifier"` and `bun run test:unit -- cli/test/unit/engine-di.test.ts -t "turns the deployed advisor on and removes it for off and default without losing user keys"`)
+(verify: `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "rejects invalid native modifier"` and `bunx vitest run cli/test/unit/engine-di.test.ts -t "turns the deployed advisor on and removes it for off and default without losing user keys"`)
 
 Default target behavior: when no target word is present, `parseArgs.ts
 applyDefaultSelection` selects the stored kit.db harness selection. When no
@@ -66,13 +66,20 @@ Model-flag validation rules live in
 | Codex personal marketplace/plugins | Additive merge still preserves user entries | No effect | Deploy and refresh enabled plugins; remove the legacy configured Docks marketplace |
 | `~/.agents/skills/` | No effect | Remove snapshot-managed slugs absent from manifest | Additive install and symlink heal |
 
-(verify: `bun run test:unit -- cli/test/unit/pluginRefresh.test.ts -t "keeps marketplaces used by project-scoped plugins during prune"`)
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "keeps marketplaces used by project-scoped plugins during prune"`)
 
 ## Deploy-Time Modifiers
 
-The `--claude-*` and `--codex-*` value flags and `--claude-permissive` in
-§ Flags are deploy-time modifiers. They run after base deployment and mutate
-deployed config away from the SoT. A later flag-less sync restores SoT values.
+These § Flags entries are deploy-time modifiers: `--claude-compact-window`,
+`--claude-permissive`, `--claude-model`, `--claude-effort`, `--claude-advisor`,
+`--codex-model`, and `--codex-effort`. They mutate deployed config away from
+the SoT. A later flag-less sync restores SoT values. `--claude-plugin` is not a
+modifier; see § Sticky Opt-Ins.
+
+`claudeSync` runs its modifiers after the base deploy. `codexSync` folds the
+Codex values into the SoT text before the `syncConfig` merge. It then runs
+`syncCodexModel` and `syncCodexEffort` after the merge.
+`dispatch-flow.md` § Sync Execution Order describes this two-phase pattern.
 
 ## Sticky Opt-Ins
 

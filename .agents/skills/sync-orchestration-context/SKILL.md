@@ -95,7 +95,7 @@ EngineNative is the only supported sync engine. The public entry chain is
 Effect command -> `cli/src/engine.ts engine` -> `runEngineNative` in
 `cli/src/engine-native/index.ts`. `DOCKS_KIT_ENGINE=bash` exits 2 with a
 message that names the `bash-engine-final` tag (`engine.ts bashRemovedMessage`).
-(verify: `bun run test:unit -- cli/test/unit/engine.test.ts -t "rejects a removed Bash engine before running the native engine"`)
+(verify: `bunx vitest run cli/test/unit/engine.test.ts -t "rejects a removed Bash engine before running the native engine"`)
 
 Pointers here name concepts, not coordinates — if a path or symbol moved, trust the stated purpose and re-locate it (grep the symbol) before acting.
 
@@ -119,7 +119,7 @@ Use `ExitError` (defined in `parseHelp.ts`, imported through `parseArgs.ts`) for
 intentional exit-2 validation failures and command-abort parity. Unknown flags,
 renamed legacy flags, bad modifier values, and selected-target model validation
 failures must abort before any mutation.
-(verify: `bun run test:unit -- cli/test/unit/targetGrammar.test.ts -t "prints the catalog and exits 2 for a bare"`)
+(verify: `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "prints the catalog and exits 2 for a bare"`)
 </constraint>
 
 <constraint>
@@ -129,18 +129,28 @@ failure ledger` prints every recorded message under `--- Failures ---` after the
 summary and returns 1, so exit 2 stays reserved for `ExitError` validation
 aborts and exit 1 means a mutation did not happen. A skip is not a failure: a
 missing harness CLI, missing git, an unavailable plugin inventory, and a missing
-Bun, LSP-server, or pi-intercom pin in `SoT/toolchain.json` keep exit 0. A
-missing `skills-cli` pin is the exception: `skillsInstall.ts skillsCli` aborts
-with `ExitError(1)` when a skill needs installation. Probe before spawning, so a
-host without the tool never records one.
-(verify: `bun run test:unit -- cli/test/unit/pluginRefresh.test.ts -t "fails the sync without installing n8n if its marketplace cannot be added"` for exit 1 with the ledger, and `-t "skips optional plugins with a warning when git is missing"` for exit 0)
+Bun, LSP-server, or pi-intercom pin in `SoT/toolchain.json` keep exit 0. Probe
+before spawning, so a host without the tool never records one.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "fails the sync without installing n8n if its marketplace cannot be added"` for exit 1 with the ledger, and `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "skips optional plugins with a warning when git is missing"` for exit 0)
+A missing `skills-cli` pin is the exception: `skillsInstall.ts skillsCli` aborts
+with `ExitError(1)` when a skill needs installation. Unprobed: no unit test
+sets an empty `skills-cli` pin. Read the abort message (verify:
+`grep -n "no verified skills-cli pin" cli/src/engine-native/skillsInstall.ts`)
 </constraint>
 
 <constraint>
 Add or change a flag in every layer that owns the public contract:
-`parseArgs.ts parseArgs` (engine vocabulary), the matching `cli/src/commands/*.ts`
-option list (public CLI), and, for a value-taking sync modifier,
-`argvValidate.ts missingModifierValue`. Then update the golden matrix.
+
+- `parseArgs.ts parseArgs` (engine vocabulary) and `parseHelp.ts printUsage`
+  (engine sync help).
+- The matching `cli/src/commands/*.ts` option list (public CLI).
+- `argvValidate.ts missingModifierValue` for a value-taking sync modifier.
+- `engineCtx.ts ModifierFlag` and `parseModifiers.ts MODIFIER_METADATA` for a
+  sync modifier.
+- `parseModifiers.ts SCALAR_MODIFIER_FLAGS` and `setModifier` for a scalar
+  modifier.
+
+Then update the golden matrix.
 </constraint>
 
 ## When To Use
@@ -163,12 +173,12 @@ this skill's description.
 | Invocation | Path | Notes |
 |-----------|------|-------|
 | `./docks-kit <args>` | Compiled binary in `cli/dist/` when its version matches and it is current, otherwise Bun-from-source | The launcher compares binary `--version` with `package.json`, and it also rejects the binary when a file under `cli/src` or `cli/docs` is newer than the binary, so stale ignored builds cannot mask newer source. |
-| `cli/src/main.ts` | Raw-channel branch, then `prepareArgv`, then the Effect CLI root command | `DOCKS_KIT_ENGINE=native-raw` or `native-capture` skips `prepareArgv` and Effect and calls `runEngineNative` directly. Otherwise mutating commands run through `engine(args)`. The root command registers `argv.ts COMMANDS`, the one subcommand list that the argv surfaces also use. Add a new subcommand only there. |
+| `cli/src/main.ts` | Raw-channel branch, then `prepareArgv`, then the Effect CLI root command | `DOCKS_KIT_ENGINE=native-raw` or `native-capture` skips `prepareArgv` and Effect and calls `runEngineNative` directly. Otherwise mutating commands run through `engine(args)`. The root command registers `argv.ts COMMANDS`, the one subcommand list that the argv surfaces also use. A new subcommand needs an entry there and a `Console.log` line in the hand-written root overview in `main.ts`. A new engine mode also needs a `case` arm in `index.ts runEngineNative`. |
 | `cli/src/argv.ts` | `prepareArgv` | Validates and normalizes argv before Effect parses it. See § Public Argv Layer. |
 | `cli/src/engine.ts` | `engine` / `engineCapture` | Runs EngineNative. `engineCapture` re-spawns a child with `DOCKS_KIT_ENGINE=native-capture`, which ignores the env globals. `native-raw` is the harness-private golden channel. |
 | `cli/src/engine-native/index.ts` | `runEngineNative(argv, services?, options?)` | Builds `ctx` through `engineCtx.ts makeCtx`, then dispatches `model`, `toolchain`, and `sync`. Any other first word also runs sync. `options.envGlobals` defaults to false; only the `main.ts` `native-raw` branch passes `{ envGlobals: true }`. |
 
-(verify: `bun run test:unit -- cli/test/unit/engine.test.ts -t "runs the public engine with env globals disabled"` and `bun run test:unit -- cli/test/unit/argv.test.ts -t "resolves every registered subcommand"`)
+(verify: `bunx vitest run cli/test/unit/engine.test.ts -t "runs the public engine with env globals disabled"` and `bunx vitest run cli/test/unit/argv.test.ts -t "resolves every registered subcommand"`)
 
 Do not add a new fallback behind `DOCKS_KIT_ENGINE`.
 
@@ -177,10 +187,15 @@ Do not add a new fallback behind `DOCKS_KIT_ENGINE`.
 `cli/src/argv.ts prepareArgv` runs before Effect parses anything. It scans argv
 against the surfaces that `argvSurface.ts buildSurfaces` derives from the
 command definitions. `argvValidate.ts validateScannedArgv` then rejects with
-exit 2, in this order: an unknown command, renamed sync flags (`isLegacyFlag`),
-unknown flags, values on boolean flags (for example `--dry-run=false`), repeated
-flags that are not repeatable, and sync modifiers with no value
-(`missingModifierValue`).
+exit 2. It checks in this order:
+
+1. An unknown command that also carries a flag that the scan cannot resolve. A
+   bare unknown command passes this layer, and Effect rejects it with exit 1.
+2. Renamed sync flags (`isLegacyFlag`).
+3. Unknown flags.
+4. Values on boolean flags, for example `--dry-run=false`.
+5. Repeated flags that are not repeatable.
+6. Sync modifiers with no value (`missingModifierValue`).
 
 - The public CLI accepts `--flag value` and `--flag=value`.
   `commands/sync.ts syncCommand` rewrites both to the `--flag=value` form that
@@ -190,7 +205,7 @@ flags that are not repeatable, and sync modifiers with no value
   `parseArgs.ts parseArgs` (engine and `native-raw`) print the same text. A new
   renamed flag needs a table entry and a `case` label in `parseArgs`.
 
-(verify: `bun run test:unit -- cli/test/unit/argv.test.ts -t "rejects legacy --omp with its positional-target rename hint"`, `-t "rejects legacy --force with its reconcile rename hint"`, and `-t "rejects a Claude plugin modifier missing its value"`)
+(verify: `bunx vitest run cli/test/unit/argv.test.ts -t "rejects legacy --omp with its positional-target rename hint"`, `bunx vitest run cli/test/unit/argv.test.ts -t "rejects legacy --force with its reconcile rename hint"`, and `bunx vitest run cli/test/unit/argv.test.ts -t "rejects a Claude plugin modifier missing its value"`)
 
 ## Core Patterns
 
@@ -205,7 +220,7 @@ Target words (`claude`, `codex`, `agents`, `omp`) call the target selector and
 set `ctx.targetFilterSet`. When it remains false, `parseArgs.ts
 applyDefaultSelection` applies the stored kit.db harness selection. When no
 selection is stored, it falls back to `harnesses.ts LEGACY_SELECTION`.
-(verify: `bun run test:unit -- cli/test/unit/targetGrammar.test.ts -t "selects exactly explicit claude and codex targets"` and `-t "uses the legacy selection silently without stored state when non-interactive"`)
+(verify: `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "selects exactly explicit claude and codex targets"` and `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "uses the legacy selection silently without stored state when non-interactive"`)
 
 Renamed legacy flags still have explicit exit-2 hint arms. Keep them as refusal
 documentation only; do not reintroduce compatibility behavior.
@@ -226,23 +241,28 @@ any other word runs `syncDispatch.ts engineSync`:
    global dependency preflight.
 3. `DOCKS_KIT_SYNC_CONCURRENCY` sets the cap to one of the
    `syncConcurrency.ts SyncConcurrency` values; unset or empty means the
-   highest. Any other value exits 2 before any pipeline starts.
-   (verify: `DOCKS_KIT_SYNC_CONCURRENCY=4 ./docks-kit sync --dry-run; echo $?` prints `2`)
+   highest. Any other value exits 2 before any pipeline starts. Unprobed: no
+   unit test sets an invalid value. Read the check (verify:
+   `grep -n "DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3" cli/src/engine-native/syncDispatch.ts`)
 4. When `claude` is selected, `claudeSettings.ts preflightClaudeSettings` runs
    the abort-class check before any pipeline starts. An invalid deployed
    `~/.claude/settings.json` then stops the whole sync with exit 1.
-   (verify: `bun run test:unit -- cli/test/unit/syncAbortPreflight.test.ts -t "stops every pipeline before it starts when Claude settings are not valid JSON"`)
+   (verify: `bunx vitest run cli/test/unit/syncAbortPreflight.test.ts -t "stops every pipeline before it starts when Claude settings are not valid JSON"`)
 5. `engineSync` adds `claudeSync`, `codexSync`, `skillsSync`, and `ompSync`
    tasks, in that order, for the selected targets only.
 6. `syncConcurrency.ts syncConcurrencyForManifest` sets the cap to 1 when the
    skills manifest is populated and both `claude` and `agents` are selected.
-   (verify: `bun run test:unit -- cli/test/unit/engine-di.test.ts -t "serializes Claude and skills only for a populated manifest"`)
+   (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "serializes Claude and skills only for a populated manifest"`)
 7. `syncConcurrency.ts runBounded` runs the tasks and keeps results in input
    order. After the first rejection, started tasks drain and queued tasks do
-   not start. On a rejection, `engineSync` prints no summary. It prints the
+   not start. `runBounded` then rejects with the failure of the first task in
+   input order.
+   (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "drains started pipelines, stops queued work, and reports the first input failure"`)
+   On a rejection, `engineSync` prints no summary. It prints the
    `--- Failures ---` ledger for failures that other pipelines recorded, then
-   rethrows the earliest rejection.
-   (verify: `bun run test:unit -- cli/test/unit/engine-di.test.ts -t "drains started pipelines, stops queued work, and reports the first input failure"`)
+   rethrows the rejection. Unprobed: no unit test rejects a pipeline inside
+   `engineSync`. Read the `catch` arm (verify:
+   `grep -n "A rejected pipeline skips the summary" cli/src/engine-native/syncDispatch.ts`)
 8. `--- Sync complete ---` summaries print, then next-step notes for the
    pipelines that ran.
 9. When any step called `recordFailure`, the `--- Failures ---` ledger lists
@@ -266,11 +286,15 @@ from the embedded payload.
 
 `parseModifiers.ts validateModifierFlags(ctx)` runs after parsing and before
 sync work. A modifier flag for a deselected target warns and clears the field.
+(verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "warns when explicitly supplied Claude modifiers are deselected"`)
 Claude values must be in the resolved catalog (`liveModels.ts resolveCatalog`)
-or match the accepted `claude-*` family with a warning
-(`models.ts validateClaudeModel`). Codex values must match the safe quoted-TOML
-charset in `models.ts validateCodexModel`; catalog misses warn only.
-(verify: `bun run test:unit -- cli/test/unit/modifierValidation.test.ts -t "warns when explicitly supplied Claude modifiers are deselected"`)
+or match the accepted `claude-*` family (`models.ts validateClaudeModel`).
+Codex values must match the safe quoted-TOML charset in
+`models.ts validateCodexModel`. Any other value exits 2 before deployment.
+(verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects an invalid claude sync modifier before creating deployment"` and `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects an invalid codex sync modifier before creating deployment"`)
+A `claude-*` value outside the catalog and a Codex catalog miss warn only.
+Unprobed: no unit test sets a catalog miss. Read the warnings (verify:
+`grep -n "applying anyway" cli/src/engine-native/models.ts`)
 
 ## Key Decisions
 
