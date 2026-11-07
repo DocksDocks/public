@@ -298,19 +298,24 @@ describe("sync under the sync lock", () => {
 
   it("takes no lock when the DRY_RUN env global is 1", async () => {
     await withHome(async (home) => {
-      process.env["DRY_RUN"] = "1";
+      await withSharedFolder(async (shared) => {
+        process.env["DRY_RUN"] = "1";
+        process.env["PI_CODING_AGENT_DIR"] = shared;
 
-      await holdingLock(home, async () => {
-        const records: Array<string> = [];
+        await holdingLock(home, async () => {
+          const before = { home: snapshot(home), shared: snapshot(shared) };
+          const records: Array<string> = [];
 
-        // Only the raw channel reads the env globals.
-        expect(
-          await runEngineNative(["sync", "claude"], recordingServices(records), {
-            envGlobals: true,
-          }),
-        ).toBe(0);
+          // Only the raw channel reads the env globals.
+          expect(
+            await runEngineNative(["sync", "claude", "omp"], recordingServices(records), {
+              envGlobals: true,
+            }),
+          ).toBe(0);
 
-        expect(records).not.toContain(heldLine(home));
+          expect(records).not.toContain(heldLine(home));
+          expect({ home: snapshot(home), shared: snapshot(shared) }).toEqual(before);
+        });
       });
     });
   });
@@ -667,7 +672,7 @@ describe("folder locks of a shared omp folder", () => {
         process.env["PI_CONFIG_DIR"] = configDir;
 
         // The first sync creates the missing data root and takes its lock.
-        await runEngineNative(["sync", "omp"], recordingServices([]));
+        expect(await runEngineNative(["sync", "omp"], recordingServices([]))).toBe(0);
         expect(existsSync(join(dataRoot, FOLDER_LOCK))).toBe(true);
 
         await withHome(async (secondHome) => {
@@ -688,11 +693,12 @@ describe("folder locks of a shared omp folder", () => {
   });
 
   it("takes no omp folder lock in a dry run", async () => {
-    await withHome(async () => {
+    await withHome(async (home) => {
       await withSharedFolder(async (shared) => {
         process.env["PI_CODING_AGENT_DIR"] = shared;
 
         await holdingFolderLock(shared, async (lock) => {
+          const before = { home: snapshot(home), shared: snapshot(shared) };
           const records: Array<string> = [];
 
           expect(
@@ -700,6 +706,7 @@ describe("folder locks of a shared omp folder", () => {
           ).toBe(0);
 
           expect(records).not.toContain(heldLineFor(lock));
+          expect({ home: snapshot(home), shared: snapshot(shared) }).toEqual(before);
         });
       });
     });
