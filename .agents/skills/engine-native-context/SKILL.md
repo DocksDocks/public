@@ -138,9 +138,16 @@ verify: `GOLDEN_FILTER='(' bun run golden:dryrun` must exit 2 with
   child spawn. No case runs the in-process `engine` path on an unsupported host.
   verify: `bunx vitest run cli/test/unit/engine.test.ts -t "host boundary"`.
 - Golden normalization canonicalizes CRLF to LF and scrubs temp paths for
-  deterministic fixtures (`goldenSnapshot.ts normalizeOutput`); that
-  normalization is not a supported-host path.
-  verify: `bunx vitest run cli/test/unit/goldenSnapshot.test.ts -t "canonicalizes CRLF"`.
+  deterministic fixtures; that normalization is not a supported-host path.
+  `goldenSnapshot.ts normalizeOutput` normalizes stdout and stderr.
+  `goldenSnapshot.ts normalizeTreeBody` normalizes each text artifact in a
+  `snapshotTree` tree.
+  `snapshotTree` hashes any other file as raw bytes, so a binary artifact keeps
+  its CRLF bytes.
+  verify (tree path only): `bunx vitest run cli/test/unit/goldenSnapshot.test.ts -t "still canonicalizes CRLF in explicitly textual artifacts"`
+  and `bunx vitest run cli/test/unit/goldenSnapshot.test.ts -t "hashes binary CRLF bytes without text normalization"`.
+  Unprobed: no unit test runs `normalizeOutput`. Read its CRLF line (verify:
+  `grep -n -A1 "function normalizeOutput" cli/test/lib/goldenSnapshot.ts`).
 
 ## Gotchas
 
