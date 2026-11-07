@@ -1,6 +1,5 @@
 import {
   chmodSync,
-  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -80,7 +79,8 @@ describe("replaceFile", () => {
 
     expect(lstatSync(link).isSymbolicLink()).toBe(true);
     expect(readFileSync(real, "utf8")).toBe("new\n");
-    expect(existsSync(`${real}.tmp`)).toBe(false);
+    // No temporary sibling is left.
+    expect(readdirSync(sandbox).sort()).toEqual(["config.yml", "dotfiles-config.yml"]);
   });
 
   it.skipIf(windows)("creates the file a dangling symlink names", () => {
@@ -121,7 +121,8 @@ describe("replaceFile", () => {
     replaceFile(file, "{}");
 
     expect(readFileSync(file, "utf8")).toBe("{}");
-    expect(existsSync(`${file}.tmp`)).toBe(false);
+    // No temporary sibling is left.
+    expect(readdirSync(sandbox)).toEqual(["new.json"]);
   });
 
   it("replaces a file when a stale temporary sibling exists", () => {

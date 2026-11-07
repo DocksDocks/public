@@ -64,13 +64,13 @@ metadata:
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-312"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "1-269"
+      lines: "1-274"
     - path: cli/src/engine-native/skillsSync.ts
       lines: "1-54"
     - path: cli/src/engine-native/skillsInstall.ts
       lines: "1-110"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-115"
+      lines: "1-116"
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-123"
     - path: cli/src/engine-native/ompPlugins.ts

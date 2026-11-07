@@ -36,7 +36,7 @@ metadata:
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-206"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-64"
+      lines: "1-105"
     - path: cli/src/engine-native/ompFastMode.ts
       lines: "1-58"
     - path: cli/src/commands/harnesses.ts

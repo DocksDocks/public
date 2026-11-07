@@ -22,7 +22,7 @@ metadata:
     - path: cli/src/engine-native/jq.ts
       lines: "1-71"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-64"
+      lines: "1-105"
     - path: cli/src/engine-native/os/posix.ts
       lines: "1-83"
     - path: cli/src/engine-native/os/windows.ts

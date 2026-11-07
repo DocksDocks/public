@@ -12,7 +12,7 @@ metadata:
     - path: cli/src/engine-native/tomlLines.ts
       lines: "1-92"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "1-269"
+      lines: "1-274"
     - path: cli/src/engine-native/codexPlugins.ts
       lines: "1-315"
     - path: cli/src/engine-native/codexHooks.ts
@@ -24,7 +24,7 @@ metadata:
     - path: cli/src/engine-native/services.ts
       lines: "1-89"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-64"
+      lines: "1-105"
     - path: cli/src/efforts.ts
       lines: "1-89"
     - path: SoT/.codex/config.toml
