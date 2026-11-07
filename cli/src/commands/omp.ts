@@ -23,8 +23,15 @@ import {
   renderFreeOverlay,
   type CatalogModel,
 } from "../engine-native/ompOverlay";
-import { FAST_ON_TIER, toggleDeployedOpenAiFast } from "../engine-native/ompFastMode";
+import {
+  FAST_ON_TIER,
+  requireDeployedConfig,
+  toggleDeployedOpenAiFast,
+  type FastToggle,
+} from "../engine-native/ompFastMode";
 import { ompPaths } from "../engine-native/ompPaths";
+import { ExitError } from "../engine-native/parseArgs";
+import { withHomeAndFolderLocks } from "../engine-native/syncDispatch";
 
 const model = Flag.String("model").pipe(
   Flag.withDescription("Free model selector to use and remember for omp sessions"),
@@ -251,6 +258,49 @@ const pickLevels = (catalogModel: CatalogModel) =>
     return { thinking, advisorThinking };
   });
 
+/**
+ * Toggle fast mode under the sync lock of `home` and the folder lock of the
+ * omp agent folder, with the wait and the held line of a sync. A sync also
+ * merges `config.yml` there. Return 0 after the toggle, 1 for a held lock,
+ * and 2 for a failed toggle or an invalid wait bound.
+ */
+async function toggleFastUnderLocks(home: string, agentDir: string): Promise<number> {
+  const configPath = p(agentDir, "config.yml");
+  const err = (line: string) => console.error(line);
+  // Check config.yml before any lock. A missing file ends the run before the
+  // lock step can create the agent folder, and a folder that a sync creates
+  // during the home lock wait is never toggled without its folder lock.
+  try {
+    requireDeployedConfig(configPath);
+  } catch (error) {
+    err(error instanceof Error ? error.message : String(error));
+    return 2;
+  }
+  try {
+    return await withHomeAndFolderLocks(home, [agentDir], err, async () => {
+      let toggle: FastToggle;
+      try {
+        toggle = toggleDeployedOpenAiFast(configPath);
+      } catch (error) {
+        err(error instanceof Error ? error.message : String(error));
+        return 2;
+      }
+      const state = toggle.next === FAST_ON_TIER ? "ON" : "OFF";
+      console.log(
+        `omp fast mode ${state} for OpenAI/Codex models: tier.openai ${toggle.previous} -> ${toggle.next} in ${configPath}`,
+      );
+      console.log(
+        "New omp sessions use it; in a running session, use /fast on|off or restart omp.",
+      );
+      return 0;
+    });
+  } catch (error) {
+    // An invalid DOCKS_KIT_SYNC_LOCK_WAIT_MS prints its error line, then throws ExitError(2).
+    if (error instanceof ExitError) return error.code;
+    throw error;
+  }
+}
+
 export const ompCommand = Command.make("omp", { model, pick, fast, args }, (config) =>
   Effect.gen(function* () {
     // Check the forwarded arguments before omp, the catalog, or kit.db, so a
@@ -266,22 +316,13 @@ export const ompCommand = Command.make("omp", { model, pick, fast, args }, (conf
       if (Option.isSome(config.model) || config.pick || config.args.length > 0) {
         return yield* bail("--fast toggles fast mode and exits; pass it alone");
       }
-      const configPath = p(
-        ompPaths({ home: engineHome(process.env), env: process.env, platform: process.platform })
-          .agentDir,
-        "config.yml",
-      );
-      const toggle = yield* Effect.try({
-        try: () => toggleDeployedOpenAiFast(configPath),
+      const home = engineHome(process.env);
+      const agentDir = ompPaths({ home, env: process.env, platform: process.platform }).agentDir;
+      const code = yield* Effect.tryPromise({
+        try: () => toggleFastUnderLocks(home, agentDir),
         catch: (error) => (error instanceof Error ? error.message : String(error)),
       }).pipe(Effect.catch((message) => bail(message)));
-      const state = toggle.next === FAST_ON_TIER ? "ON" : "OFF";
-      yield* Console.log(
-        `omp fast mode ${state} for OpenAI/Codex models: tier.openai ${toggle.previous} -> ${toggle.next} in ${configPath}`,
-      );
-      yield* Console.log(
-        "New omp sessions use it; in a running session, use /fast on|off or restart omp.",
-      );
+      if (code !== 0) return yield* Effect.sync(() => process.exit(code));
       return;
     }
 

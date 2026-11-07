@@ -35,7 +35,7 @@ vi.mock("../../src/engine-native/bun", () => ({
 }));
 
 import { syncOmpModelRemovals, syncOmpRemovals } from "../../src/engine-native/ompRemovals";
-import { ompSync } from "../../src/engine-native/ompSync";
+import { ompSync, ompWriteFolders } from "../../src/engine-native/ompSync";
 import { DEPENDENCIES } from "../../src/engine-native/deps";
 import { p } from "../../src/engine-native/exec";
 import type { Ctx } from "../../src/engine-native";
@@ -143,7 +143,8 @@ async function runOmpSync(root: string): Promise<void> {
   });
 
   try {
-    await ompSync({ ...testCtx(root), home: root });
+    const ctx = { ...testCtx(root), home: root };
+    await ompSync(ctx, ompWriteFolders(ctx));
   } finally {
     for (const [key, value] of Object.entries(restore)) {
       if (value === undefined) delete process.env[key];

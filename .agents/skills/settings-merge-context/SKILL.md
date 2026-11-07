@@ -30,7 +30,7 @@ metadata:
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-225"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-155"
+      lines: "1-337"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-206"
     - path: cli/src/engine-native/models.ts

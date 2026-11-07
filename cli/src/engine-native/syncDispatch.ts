@@ -4,8 +4,8 @@
  * Split from index.ts; the `sync`/`model`/`toolchain` entry routing still
  * lives there.
  */
-import { mkdirSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdirSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 
 import { payloadText } from "../payload";
 import { claudeNextSteps, claudeSummary, claudeSync, type ClaudeRuntimeState } from "./claudeSync";
@@ -15,7 +15,14 @@ import { codexNextSteps, codexSummary, codexSync } from "./codexSync";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { acquireKitLock, releaseKitLock, type KitLock } from "./kitLock";
-import { ompNextSteps, ompSummary, ompSync, type OmpState } from "./ompSync";
+import {
+  ompNextSteps,
+  ompSummary,
+  ompSync,
+  ompWriteFolders,
+  type OmpState,
+  type OmpWriteFolders,
+} from "./ompSync";
 import { skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync";
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs";
 import { folderSyncLockPath, syncLockPath } from "./scratch";
@@ -30,19 +37,22 @@ import {
 export const SYNC_LOCK_WAIT_MS = 120_000;
 const SYNC_LOCK_WAIT_ERROR = "DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer";
 
+/** Print one error line, as `Logger.err` does. */
+type ErrorSink = (message: string) => void;
+
 /**
  * The sync lock wait bound: `DOCKS_KIT_SYNC_LOCK_WAIT_MS` in ms, or
  * `SYNC_LOCK_WAIT_MS` when unset or empty. A value above
  * `Number.MAX_SAFE_INTEGER` exits 2: `Number` would round it or make it
  * Infinity, and an Infinity wait never ends.
  */
-function syncLockWaitMs(ctx: Ctx): number {
+function syncLockWaitMs(err: ErrorSink): number {
   const configured = process.env["DOCKS_KIT_SYNC_LOCK_WAIT_MS"];
   if (configured === undefined || configured === "") return SYNC_LOCK_WAIT_MS;
   if (/^\d+$/.test(configured) && Number.isSafeInteger(Number(configured))) {
     return Number(configured);
   }
-  ctx.services.logger.err(SYNC_LOCK_WAIT_ERROR);
+  err(SYNC_LOCK_WAIT_ERROR);
   throw new ExitError(2);
 }
 
@@ -59,22 +69,28 @@ const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "
  * sync keeps a lock past the wait bound, print the held line and return 1
  * without a call to `body`. Each taken lock goes when the run ends, also when
  * it throws; the OS releases the locks when the process ends.
+ *
+ * With `privateDirectory` false, each path is a folder lock. A missing folder
+ * is created just before its lock, so the locks of its ancestors in the set
+ * are already held. Each folder that this creates gets mode 0700, as
+ * `ompFileDeploy.ts ensureDirectory` gives the parents of an omp folder. An
+ * existing folder keeps its mode: `mkdirSync` applies `mode` only to the
+ * folders that it creates.
  */
 async function withKitLocks(
-  ctx: Ctx,
+  err: ErrorSink,
   paths: ReadonlyArray<string>,
   privateDirectory: boolean,
   body: () => Promise<number>,
 ): Promise<number> {
-  const waitMs = syncLockWaitMs(ctx);
+  const waitMs = syncLockWaitMs(err);
   const held: Array<KitLock> = [];
   try {
     for (const path of paths) {
+      if (!privateDirectory) mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
       const result = await acquireKitLock(path, { waitMs, privateDirectory });
       if (result.kind === "held") {
-        ctx.services.logger.err(
-          `another docks-kit sync holds ${path}; run sync again after it ends`,
-        );
+        err(`another docks-kit sync holds ${path}; run sync again after it ends`);
         return 1;
       }
       held.push(result.lock);
@@ -86,34 +102,51 @@ async function withKitLocks(
 }
 
 /**
- * Run `body` under the sync lock `syncLockPath(ctx.home)`, unless `args` holds
- * one of `UNLOCKED_TOKENS`. Two syncs of the same home meet at this lock.
+ * Run `body` under the sync lock `syncLockPath(ctx.home)`. Two syncs of the
+ * same home meet at this lock. A dry run takes no lock: `args` holds one of
+ * `UNLOCKED_TOKENS`, or `ctx.dryRun` is true. `makeCtx` sets `ctx.dryRun`
+ * from the `DRY_RUN` env global only on the channel that reads env globals.
  */
 export async function withSyncLock(
   ctx: Ctx,
   args: ReadonlyArray<string>,
   body: () => Promise<number>,
 ): Promise<number> {
-  if (args.some((arg) => Object.hasOwn(UNLOCKED_TOKENS, arg))) return await body();
-  return await withKitLocks(ctx, [syncLockPath(ctx.home)], true, body);
+  if (ctx.dryRun || args.some((arg) => Object.hasOwn(UNLOCKED_TOKENS, arg))) return await body();
+  return await withKitLocks(ctx.services.logger.err, [syncLockPath(ctx.home)], true, body);
 }
 
 /**
- * The folder lock path of each folder, by the real path of the folder, with
- * no duplicates, in sorted order. Every sync takes its folder locks in this
- * order, so no two syncs can wait on each other in a cycle. Each folder must
- * exist.
+ * The canonical path of `folder`, which can be missing: the real path of its
+ * nearest existing ancestor, joined with the rest of the path.
+ */
+function canonicalFolder(folder: string): string {
+  const missing: Array<string> = [];
+  let current = folder;
+  while (!existsSync(current) && dirname(current) !== current) {
+    missing.unshift(basename(current));
+    current = dirname(current);
+  }
+  return join(realpathSync.native(current), ...missing);
+}
+
+/**
+ * The folder lock path of each folder, by the canonical path of the folder,
+ * with no duplicates, sorted by folder. Every sync takes its folder locks in
+ * this order, so no two syncs can wait on each other in a cycle. An ancestor
+ * sorts before its descendants, and a nested folder keeps its own lock.
  */
 export function folderLockPaths(folders: ReadonlyArray<string>): Array<string> {
-  const paths = new Set(folders.map((folder) => folderSyncLockPath(realpathSync.native(folder))));
-  return [...paths].sort(compareCodepoints);
+  const canonical = new Set(folders.map(canonicalFolder));
+  return [...canonical].sort(compareCodepoints).map(folderSyncLockPath);
 }
 
 /**
  * Run `body` under the folder lock of each folder in `folders`. Take it after
- * the sync lock. Syncs of different homes can share a Codex or agents folder
- * through `CODEX_HOME` or `AGENTS_DIR`, and their home locks differ. A dry run
- * takes no folder lock. Each folder must exist.
+ * the sync lock. Syncs of different homes can share a Codex, agents, or omp
+ * folder, and their home locks differ. A missing folder is created under the
+ * locks of its ancestors in the set. A dry run takes no folder lock and
+ * creates nothing.
  */
 export async function withFolderLocks(
   ctx: Ctx,
@@ -121,7 +154,23 @@ export async function withFolderLocks(
   body: () => Promise<number>,
 ): Promise<number> {
   if (ctx.dryRun) return await body();
-  return await withKitLocks(ctx, folderLockPaths(folders), false, body);
+  return await withKitLocks(ctx.services.logger.err, folderLockPaths(folders), false, body);
+}
+
+/**
+ * Run `body` under the sync lock of `home` and the folder locks of `folders`,
+ * with the wait and the held line of a sync. A command that writes a sync
+ * file outside a sync run uses it. Print each error line with `err`.
+ */
+export async function withHomeAndFolderLocks(
+  home: string,
+  folders: ReadonlyArray<string>,
+  err: ErrorSink,
+  body: () => Promise<number>,
+): Promise<number> {
+  return await withKitLocks(err, [syncLockPath(home)], true, () =>
+    withKitLocks(err, folderLockPaths(folders), false, body),
+  );
 }
 
 /**
@@ -152,17 +201,22 @@ async function runSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
     throw new ExitError(2);
   }
 
-  // The folders that hold ownership records. A writing Codex or agents
-  // pipeline creates its folder anyway, so the lock can create it first.
+  // The folders that hold ownership records or omp files. A writing pipeline
+  // creates its folders anyway, so `withFolderLocks` creates each missing one
+  // under the locks of its ancestors in the set. The omp folders are resolved
+  // once, here: the omp pipeline and its omp children use these paths, so a
+  // data root that appears after the locks cannot move them.
+  const omp = ctx.syncOmp ? ompWriteFolders(ctx) : undefined;
   const folders = [
     ...(ctx.syncCodex ? [codexHome(ctx.home)] : []),
     ...(ctx.syncAgents ? [resolve(ctx.agentsDir)] : []),
+    ...(omp === undefined ? [] : [omp.paths.agentDir, omp.intercomDir, omp.paths.dataRoot]),
   ];
-  if (!ctx.dryRun) for (const folder of folders) mkdirSync(folder, { recursive: true });
-  return await withFolderLocks(ctx, folders, () => runPipelines(ctx));
+  return await withFolderLocks(ctx, folders, () => runPipelines(ctx, omp));
 }
 
-async function runPipelines(ctx: Ctx): Promise<number> {
+/** Run the selected pipelines. `omp` holds the omp folders when omp is selected. */
+async function runPipelines(ctx: Ctx, omp: OmpWriteFolders | undefined): Promise<number> {
   const { acquireTerminal, echo } = ctx.services.logger;
   // An abort-class check runs before any pipeline starts, so the abort stops the whole sync.
   preflightClaudeSettings(ctx);
@@ -199,10 +253,10 @@ async function runPipelines(ctx: Ctx): Promise<number> {
       run: async () => ({ kind: "skills", state: await skillsSync(ctx) }),
     });
   }
-  if (ctx.syncOmp) {
+  if (omp !== undefined) {
     selected.push({
       name: "omp",
-      run: async () => ({ kind: "omp", state: await ompSync(ctx) }),
+      run: async () => ({ kind: "omp", state: await ompSync(ctx, omp) }),
     });
   }
 

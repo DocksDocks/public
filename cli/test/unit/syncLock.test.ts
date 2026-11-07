@@ -1,12 +1,16 @@
 /**
- * Spec for the sync lock (plan #161, D-B). `engineSync` takes
+ * Spec for the sync lock (plans #161 and #164). `engineSync` takes
  * `<kitCacheDir(home)>/sync-lock.db` through `kitLock.ts acquireKitLock` before
- * `parseArgs`, unless its arguments hold the `--dry-run` token, and releases it
- * in `finally`. `modes.ts modeModel` takes the same lock first, unless its
- * arguments hold `--dry-run`. When another holder keeps the lock past the wait
- * bound, the run prints
+ * `parseArgs`, unless its arguments hold `--dry-run`, `-h`, or `--help`, or
+ * the run is a dry run through the `DRY_RUN` env global (`ctx.dryRun`).
+ * `modes.ts modeModel` takes the same lock first, with the same exceptions.
+ * When another holder keeps the lock past the wait bound, the run prints
  * `another docks-kit sync holds <path>; run sync again after it ends` and
  * returns exit code 1.
+ *
+ * A writing sync also takes a folder lock in each Codex, agents, and omp
+ * folder that it writes: the omp agent folder, the omp intercom folder, and
+ * the omp data root. Syncs of different homes can share these folders.
  *
  * Wait bound seam: both call sites read `DOCKS_KIT_SYNC_LOCK_WAIT_MS` from
  * `process.env` at the start of the run, as `engineSync` reads
@@ -18,6 +22,8 @@
  * process finds the lock held (`kitLock.test.ts`).
  */
 import {
+  chmodSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -25,16 +31,33 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { basename, join } from "node:path";
+import { describe, expect, it, vi } from "vitest";
+import type * as ExecModule from "../../src/engine-native/exec";
+
+/** The `omp` spawns of a sync, recorded while a test sets the array; else every spawn runs. */
+const spawned = vi.hoisted(() => ({
+  omp: undefined as Array<{ args: Array<string>; env: NodeJS.ProcessEnv | undefined }> | undefined,
+}));
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec");
+  const spawnProcess: typeof actual.spawnProcess = async (cmd, args, options) => {
+    if (cmd !== "omp" || spawned.omp === undefined) return actual.spawnProcess(cmd, args, options);
+    spawned.omp.push({ args: [...args], env: options?.env });
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+  return { ...actual, spawnProcess };
+});
 
 import { runEngineNative } from "../../src/engine-native";
 import { p } from "../../src/engine-native/exec";
 import { acquireKitLock, releaseKitLock } from "../../src/engine-native/kitLock";
+import { ompPaths } from "../../src/engine-native/ompPaths";
 import { kitCacheDir } from "../../src/engine-native/scratch";
 import {
   makeDependencyManager,
@@ -67,6 +90,11 @@ const ENV_KEYS = [
   "CLAUDE_MODEL",
   "CODEX_MODEL",
   "CODEX_HOME",
+  "PI_CODING_AGENT_DIR",
+  "OMP_PROFILE",
+  "PI_PROFILE",
+  "PI_CONFIG_DIR",
+  "XDG_DATA_HOME",
 ] as const;
 
 /** Run `body` with a temporary HOME and a small sync lock wait; restore the environment after. */
@@ -117,6 +145,31 @@ function recordingServices(records: Array<string>): EngineServices {
   };
 }
 
+/**
+ * The services of `recordingServices`, with omp and git present, so that a
+ * sync runs its `omp` commands. `beforePipelines` runs when the sync starts
+ * its pipelines, after it took its locks.
+ */
+function ompServices(records: Array<string>, beforePipelines: () => void): EngineServices {
+  const base = recordingServices(records);
+  const present: Record<string, true> = { bun: true, omp: true, git: true };
+  return {
+    ...base,
+    logger: {
+      ...base.logger,
+      acquireTerminal: (message) => {
+        beforePipelines();
+        return base.logger.acquireTerminal(message);
+      },
+    },
+    deps: makeDependencyManager(base.platform, {
+      commandExists: (name) => Object.hasOwn(present, name),
+      capture: async () => "",
+      which: (name) => (Object.hasOwn(present, name) ? `/opt/stub/bin/${name}` : ""),
+    }),
+  };
+}
+
 function syncLock(home: string): string {
   return join(kitCacheDir(home), "sync-lock.db");
 }
@@ -153,7 +206,7 @@ async function probe(home: string): Promise<string> {
   return result.kind;
 }
 
-/** The lock file that a writing sync takes inside a Codex or agents folder. */
+/** The lock file that a writing sync takes inside a Codex, agents, or omp folder. */
 const FOLDER_LOCK = ".docks-kit-sync-lock.db";
 const CODEX_CONFIG = 'model = "gpt-5.5"\n';
 
@@ -161,7 +214,7 @@ function heldLineFor(lock: string): string {
   return `another docks-kit sync holds ${lock}; run sync again after it ends`;
 }
 
-/** Run `body` with a folder outside HOME, as another home's Codex or agents folder; remove it after. */
+/** Run `body` with a folder outside HOME, as a folder of another home; remove it after. */
 async function withSharedFolder(body: (folder: string) => Promise<void>): Promise<void> {
   const folder = realpathSync.native(mkdtempSync(join(tmpdir(), "sync-shared-")));
   try {
@@ -171,13 +224,16 @@ async function withSharedFolder(body: (folder: string) => Promise<void>): Promis
   }
 }
 
-/** Hold the lock inside `folder`, as a sync of another home that shares the folder does. */
+/**
+ * Hold the lock inside `folder`, as a sync of another home that shares the
+ * folder does. As in a sync, the lock does not change the folder mode.
+ */
 async function holdingFolderLock(
   folder: string,
   body: (lock: string) => Promise<void>,
 ): Promise<void> {
   const lock = join(folder, FOLDER_LOCK);
-  const held = await acquireKitLock(lock, { waitMs: 0 });
+  const held = await acquireKitLock(lock, { waitMs: 0, privateDirectory: false });
   if (held.kind !== "acquired") throw new Error(`expected a free lock at ${lock}`);
   try {
     await body(lock);
@@ -236,6 +292,63 @@ describe("sync under the sync lock", () => {
         ).toBe(0);
 
         expect(records).not.toContain(heldLine(home));
+      });
+    });
+  });
+
+  it("takes no lock when the DRY_RUN env global is 1", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["DRY_RUN"] = "1";
+        process.env["PI_CODING_AGENT_DIR"] = shared;
+
+        await holdingLock(home, async () => {
+          const before = { home: snapshot(home), shared: snapshot(shared) };
+          const records: Array<string> = [];
+
+          // Only the raw channel reads the env globals.
+          expect(
+            await runEngineNative(["sync", "claude", "omp"], recordingServices(records), {
+              envGlobals: true,
+            }),
+          ).toBe(0);
+
+          expect(records).not.toContain(heldLine(home));
+          expect({ home: snapshot(home), shared: snapshot(shared) }).toEqual(before);
+        });
+      });
+    });
+  });
+
+  it("waits for the lock when the DRY_RUN env global is 1 but the run reads no env globals", async () => {
+    await withHome(async (home) => {
+      process.env["DRY_RUN"] = "1";
+      mkdirSync(p(home, ".claude"), { recursive: true });
+      writeFileSync(p(home, ".claude", "settings.json"), '{"model":"sonnet"}\n');
+
+      await holdingLock(home, async () => {
+        const before = snapshot(home);
+        const records: Array<string> = [];
+
+        // The public CLI ignores DRY_RUN, so this run writes and must wait.
+        expect(await runEngineNative(["sync", "claude"], recordingServices(records))).toBe(1);
+
+        expect(records).toContain(heldLine(home));
+        expect(snapshot(home)).toEqual(before);
+      });
+    });
+  });
+
+  it("prints the help with -h and --help while another sync holds the lock", async () => {
+    await withHome(async (home) => {
+      await holdingLock(home, async () => {
+        for (const flag of ["-h", "--help"]) {
+          const records: Array<string> = [];
+
+          expect(await runEngineNative(["sync", flag], recordingServices(records))).toBe(0);
+
+          expect(records).not.toContain(heldLine(home));
+        }
       });
     });
   });
@@ -317,6 +430,30 @@ describe("model under the sync lock", () => {
             ["model", "claude", "default", "--dry-run"],
             recordingServices(records),
           ),
+        ).toBe(0);
+
+        expect(records).not.toContain(heldLine(home));
+        expect(readFileSync(p(home, ".claude", "settings.json"), "utf8")).toBe(
+          '{"model":"sonnet"}\n',
+        );
+      });
+    });
+  });
+
+  it("takes no lock when the DRY_RUN env global is 1", async () => {
+    await withHome(async (home) => {
+      process.env["DRY_RUN"] = "1";
+      mkdirSync(p(home, ".claude"), { recursive: true });
+      writeFileSync(p(home, ".claude", "settings.json"), '{"model":"sonnet"}\n');
+
+      await holdingLock(home, async () => {
+        const records: Array<string> = [];
+
+        // Only the raw channel reads the env globals.
+        expect(
+          await runEngineNative(["model", "claude", "default"], recordingServices(records), {
+            envGlobals: true,
+          }),
         ).toBe(0);
 
         expect(records).not.toContain(heldLine(home));
@@ -430,4 +567,205 @@ describe("folder locks of a shared Codex or agents folder", () => {
       ]);
     });
   });
+});
+
+describe("folder locks of a shared omp folder", () => {
+  it("makes a sync of another home wait while a sync holds the shared omp agent folder", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["PI_CODING_AGENT_DIR"] = shared;
+
+        await holdingFolderLock(shared, async (lock) => {
+          const before = snapshot(shared);
+          const records: Array<string> = [];
+
+          expect(await runEngineNative(["sync", "omp"], recordingServices(records))).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(snapshot(shared)).toEqual(before);
+        });
+        expect(await probe(home)).toBe("acquired");
+      });
+    });
+  });
+
+  it("creates no intercom folder in a held omp agent folder and keeps its mode", async () => {
+    await withHome(async () => {
+      await withSharedFolder(async (shared) => {
+        // A mode other than 0700, so that a chmod to 0700 shows.
+        chmodSync(shared, 0o755);
+        process.env["PI_CODING_AGENT_DIR"] = shared;
+
+        await holdingFolderLock(shared, async (lock) => {
+          const mode = statSync(shared).mode;
+          const records: Array<string> = [];
+
+          expect(await runEngineNative(["sync", "omp"], recordingServices(records))).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(existsSync(join(shared, "intercom"))).toBe(false);
+          expect(statSync(shared).mode).toBe(mode);
+        });
+      });
+    });
+  });
+
+  it("makes a sync of another home wait while a sync holds the shared omp intercom folder", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        // The intercom root `~/.pi/agent` links to a folder that another home
+        // also uses. The omp agent folder stays `~/.omp/agent` in the home.
+        const intercom = join(shared, "intercom");
+        mkdirSync(intercom);
+        chmodSync(intercom, 0o755);
+        mkdirSync(p(home, ".pi"));
+        symlinkSync(shared, p(home, ".pi", "agent"), "junction");
+
+        await holdingFolderLock(intercom, async (lock) => {
+          const mode = statSync(intercom).mode;
+          const records: Array<string> = [];
+
+          expect(await runEngineNative(["sync", "omp"], recordingServices(records))).toBe(1);
+
+          expect(records).toContain(heldLineFor(lock));
+          expect(existsSync(join(intercom, "config.json"))).toBe(false);
+          expect(statSync(intercom).mode).toBe(mode);
+        });
+        expect(await probe(home)).toBe("acquired");
+      });
+    });
+  });
+
+  // omp reads XDG_DATA_HOME only on Linux and macOS.
+  it.skipIf(process.platform === "win32")(
+    "makes a sync of another home wait while a sync holds the shared omp data root",
+    async () => {
+      await withHome(async (home) => {
+        await withSharedFolder(async (shared) => {
+          // omp uses `$XDG_DATA_HOME/omp` as its data root only when it exists.
+          const dataRoot = join(shared, "omp");
+          mkdirSync(dataRoot);
+          process.env["XDG_DATA_HOME"] = shared;
+
+          await holdingFolderLock(dataRoot, async (lock) => {
+            const before = snapshot(shared);
+            const records: Array<string> = [];
+
+            expect(await runEngineNative(["sync", "omp"], recordingServices(records))).toBe(1);
+
+            expect(records).toContain(heldLineFor(lock));
+            expect(snapshot(shared)).toEqual(before);
+          });
+          expect(await probe(home)).toBe("acquired");
+        });
+      });
+    },
+  );
+
+  it("makes syncs of two homes meet at a missing omp data root that PI_CONFIG_DIR puts outside both homes", async () => {
+    await withHome(async (firstHome) => {
+      await withSharedFolder(async (shared) => {
+        // Both homes and `shared` are in the same temporary folder, so one
+        // PI_CONFIG_DIR value points both homes at `shared/root`.
+        const configDir = join("..", basename(shared), "root");
+        const dataRoot = join(shared, "root");
+        process.env["PI_CONFIG_DIR"] = configDir;
+
+        // The first sync creates the missing data root and takes its lock.
+        expect(await runEngineNative(["sync", "omp"], recordingServices([]))).toBe(0);
+        expect(existsSync(join(dataRoot, FOLDER_LOCK))).toBe(true);
+
+        await withHome(async (secondHome) => {
+          process.env["PI_CONFIG_DIR"] = configDir;
+
+          await holdingFolderLock(dataRoot, async (lock) => {
+            const records: Array<string> = [];
+
+            expect(await runEngineNative(["sync", "omp"], recordingServices(records))).toBe(1);
+
+            expect(records).toContain(heldLineFor(lock));
+          });
+          expect(await probe(secondHome)).toBe("acquired");
+        });
+        expect(await probe(firstHome)).toBe("acquired");
+      });
+    });
+  });
+
+  it("takes no omp folder lock in a dry run", async () => {
+    await withHome(async (home) => {
+      await withSharedFolder(async (shared) => {
+        process.env["PI_CODING_AGENT_DIR"] = shared;
+
+        await holdingFolderLock(shared, async (lock) => {
+          const before = { home: snapshot(home), shared: snapshot(shared) };
+          const records: Array<string> = [];
+
+          expect(
+            await runEngineNative(["sync", "omp", "--dry-run"], recordingServices(records)),
+          ).toBe(0);
+
+          expect(records).not.toContain(heldLineFor(lock));
+          expect({ home: snapshot(home), shared: snapshot(shared) }).toEqual(before);
+        });
+      });
+    });
+  });
+});
+
+describe("omp children of a sync", () => {
+  // omp reads XDG_DATA_HOME only on Linux and macOS.
+  for (const profile of [undefined, "work"]) {
+    it.skipIf(process.platform === "win32")(
+      `keeps each omp child on the locked config root and fails the sync when the XDG candidate appears after the locks (${profile ?? "default"} profile)`,
+      async () => {
+        await withHome(async (home) => {
+          await withSharedFolder(async (shared) => {
+            process.env["XDG_DATA_HOME"] = shared;
+            if (profile !== undefined) process.env["OMP_PROFILE"] = profile;
+            const configRoot =
+              profile === undefined ? p(home, ".omp") : p(home, ".omp", "profiles", profile);
+            // omp adopts this candidate as its data root once it exists.
+            const candidate =
+              profile === undefined
+                ? join(shared, "omp")
+                : join(shared, "omp", "profiles", profile);
+            spawned.omp = [];
+
+            try {
+              // Another sync, for example one whose PI_CONFIG_DIR is the XDG
+              // candidate, creates it after this sync chose its locks.
+              const records: Array<string> = [];
+              const services = ompServices(records, () =>
+                mkdirSync(candidate, { recursive: true }),
+              );
+
+              // A later omp process adopts the candidate and does not see the
+              // plugins of the locked root, so the sync must not report success.
+              expect(await runEngineNative(["sync", "omp"], services)).toBe(1);
+              const moved = `omp data root moved to ${candidate} during the sync; run docks-kit sync again`;
+              expect(records).toContain(moved);
+              expect(records).toContain("--- Failures ---");
+              expect(records.slice(records.indexOf("--- Failures ---"))).toContain(`- ${moved}`);
+
+              expect(existsSync(join(configRoot, FOLDER_LOCK))).toBe(true);
+              expect(spawned.omp.length).toBeGreaterThan(0);
+              for (const { args, env } of spawned.omp) {
+                const childRoot = ompPaths({
+                  home,
+                  env: env ?? process.env,
+                  platform: process.platform,
+                }).dataRoot;
+                expect({ args, childRoot }).toEqual({ args, childRoot: configRoot });
+              }
+              // The kit wrote nothing into the unlocked candidate.
+              expect(readdirSync(candidate)).toEqual([]);
+            } finally {
+              spawned.omp = undefined;
+            }
+          });
+        });
+      },
+    );
+  }
 });

@@ -5,10 +5,12 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 
-import { processFailureSummary, spawnProcess } from "./exec";
+import { p, processFailureSummary } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
+import { spawnOmp } from "./ompChild";
+import type { OmpPaths } from "./ompPaths";
 
 const MARKETPLACE_NAME = "docks";
 const MARKETPLACE_SOURCE = "https://github.com/DocksDocks/docks.git";
@@ -42,17 +44,16 @@ function registryHasDocks(registryFile: string): boolean {
  * the active registry lists docks, only the legacy registry lists it, or
  * neither does. In the middle state the kit never copies user data itself; it
  * takes the refresh path, whose own resolution inside omp performs that
- * adoption and leaves the active registry present.
+ * adoption and leaves the active registry present. `paths` are the omp paths
+ * that the sync locked.
  */
-export async function syncMarketplace(
-  ctx: Ctx,
-  registryFile: string,
-  legacyRegistryFile?: string,
-): Promise<void> {
+export async function syncMarketplace(ctx: Ctx, paths: OmpPaths): Promise<void> {
   const { change, clearProgress, echo, progress, verbose } = ctx.services.logger;
-  const registered = registryHasDocks(registryFile);
+  const registered = registryHasDocks(p(paths.dataRoot, "marketplaces.json"));
   const adoptable =
-    !registered && legacyRegistryFile !== undefined && registryHasDocks(legacyRegistryFile);
+    !registered &&
+    paths.dataRoot !== paths.configRoot &&
+    registryHasDocks(p(paths.configRoot, "marketplaces.json"));
 
   // syncPlugins owns the single skip message for both missing CLIs, and it runs
   // right after this pass. Without omp no marketplace command can run at all,
@@ -77,9 +78,11 @@ export async function syncMarketplace(
 
   if (!registered && !adoptable) {
     progress("Registering omp docks marketplace...");
-    const result = await spawnProcess("omp", ["plugin", "marketplace", "add", MARKETPLACE_SOURCE], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const result = await spawnOmp(
+      paths,
+      ["plugin", "marketplace", "add", MARKETPLACE_SOURCE],
+      ["ignore", "pipe", "pipe"],
+    );
     clearProgress();
     if (result.error === undefined && result.exitCode === 0) {
       change("omp docks marketplace registered");
@@ -102,9 +105,11 @@ export async function syncMarketplace(
     // does that and fetches nothing, so it stays inside the flag's contract
     // while leaving the active registry present.
     progress("Adopting omp docks marketplace registry...");
-    const listed = await spawnProcess("omp", ["plugin", "marketplace", "list"], {
-      stdio: ["ignore", "ignore", "pipe"],
-    });
+    const listed = await spawnOmp(
+      paths,
+      ["plugin", "marketplace", "list"],
+      ["ignore", "ignore", "pipe"],
+    );
     clearProgress();
     if (listed.error === undefined && listed.exitCode === 0) {
       change("omp docks marketplace registry adopted; refresh-only update skipped");
@@ -118,9 +123,11 @@ export async function syncMarketplace(
   }
 
   progress("Updating omp docks marketplace...");
-  const result = await spawnProcess("omp", ["plugin", "marketplace", "update", MARKETPLACE_NAME], {
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const result = await spawnOmp(
+    paths,
+    ["plugin", "marketplace", "update", MARKETPLACE_NAME],
+    ["ignore", "pipe", "pipe"],
+  );
   clearProgress();
   if (result.error === undefined && result.exitCode === 0) {
     verbose("omp docks marketplace refreshed");

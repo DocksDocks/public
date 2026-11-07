@@ -32,6 +32,7 @@ import docksKitPluginUpgrades, {
   type ExtensionApi,
 } from "../../../SoT/.omp/plugin/extensions/pluginUpgrades.ts";
 import type { Ctx } from "../../src/engine-native";
+import { ompPaths } from "../../src/engine-native/ompPaths";
 import { syncPlugins } from "../../src/engine-native/ompPlugins";
 import {
   makeDependencyManager,
@@ -87,15 +88,18 @@ async function sync(home: string, before: string, after: string): Promise<void> 
     }),
     platform,
   };
-  await syncPlugins({
-    home,
-    dryRun: false,
-    verbose: false,
-    skipPluginRefresh: false,
-    services,
-    nextStepTriggers: { ompRestart: false, ompPluginUpgraded: false },
-    failures: [],
-  } as unknown as Ctx);
+  await syncPlugins(
+    {
+      home,
+      dryRun: false,
+      verbose: false,
+      skipPluginRefresh: false,
+      services,
+      nextStepTriggers: { ompRestart: false, ompPluginUpgraded: false },
+      failures: [],
+    } as unknown as Ctx,
+    ompPaths({ home, env: {}, platform: "linux" }),
+  );
 }
 
 /** Loads the extension for `home` into a fake omp API and returns its tool_result handler. */

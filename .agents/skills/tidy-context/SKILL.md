@@ -171,7 +171,7 @@ Probes: `bunx vitest run cli/test/unit/scratch.test.ts -t "refuses a symbolic li
 - A module-level set keeps each held connection, so the garbage collector cannot close a lock that a caller dropped.
 - `releaseKitLock` runs `ROLLBACK`, closes the connection, and removes it from the set.
 - The database stays in rollback journal mode. Never set WAL on a lock file.
-- Lock files: `scratch.ts tidyApplyLockPath` gives `~/.cache/docks-kit/tidy-lock.db` (`tidy --apply`). `syncLockPath` gives `sync-lock.db` (sync and model writes; see `sync-orchestration-context`). `folderSyncLockPath` gives `<folder>/.docks-kit-sync-lock.db` in a Codex or agents folder that a sync writes. These locks keep the folder mode (`privateDirectory: false`). A legacy text `tidy.lock` is not a database, and no code reads it.
+- Lock files: `scratch.ts tidyApplyLockPath` gives `~/.cache/docks-kit/tidy-lock.db` (`tidy --apply`). `syncLockPath` gives `sync-lock.db` (sync, model writes, and `omp --fast`; see `sync-orchestration-context`). `folderSyncLockPath` gives `<folder>/.docks-kit-sync-lock.db` in a Codex, agents, or omp folder that a sync or `omp --fast` writes. These locks keep the folder mode (`privateDirectory: false`). A legacy text `tidy.lock` is not a database, and no code reads it.
 - Probes: `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 8 racing processes"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 4 racers that start at the same moment"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets a contender take the lock after the holder process gets SIGKILL"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "keeps the lock across a forced garbage collection"`.
 
 ### Report

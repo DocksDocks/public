@@ -2,7 +2,8 @@
  * EngineNative `sync omp` pipeline. config.yml merges through mergeOmpConfig
  * and models.yml through mergeOmpModels. Both preserve user-only keys.
  * Paths come from ompPaths because profiles, PI_CONFIG_DIR,
- * PI_CODING_AGENT_DIR, and XDG roots each move them.
+ * PI_CODING_AGENT_DIR, and XDG roots each move them. `runSync` resolves them
+ * once, before it takes the folder locks, and the pipeline writes only there.
  * Resolution stays within the environment and filesystem probes so no omp
  * subcommand runs under ctx.dryRun.
  *
@@ -15,8 +16,9 @@ import { isAbsolute, resolve } from "node:path";
 
 import { bunBootstrap } from "./bun";
 import { p } from "./exec";
+import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
-import { ompPaths } from "./ompPaths";
+import { ompPaths, type OmpPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncKitPlugin } from "./ompKitPlugin";
@@ -26,16 +28,49 @@ import { syncOmpModelRemovals, syncOmpRemovals } from "./ompRemovals";
 
 export interface OmpState {
   readonly pluginsInstalled: number;
+  /** The omp agent folder that the sync wrote. */
+  readonly agentDir: string;
 }
 
-export async function ompSync(ctx: Ctx): Promise<OmpState> {
-  await bunBootstrap(ctx, ctx.services);
+/** The omp folders that a sync writes. */
+export interface OmpWriteFolders {
+  readonly paths: OmpPaths;
+  /** The folder of the pi-intercom `config.json`. */
+  readonly intercomDir: string;
+}
 
+/**
+ * Resolve the omp paths and the intercom folder of this run. `runSync` calls
+ * it once, takes a folder lock in each folder, and gives the result to
+ * `ompSync`. A second resolution could pick an XDG data root that another
+ * sync created after the locks.
+ */
+export function ompWriteFolders(ctx: Ctx): OmpWriteFolders {
   const paths = ompPaths({
     home: ctx.home,
     env: process.env,
     platform: ctx.services.platform.raw(),
   });
+  // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
+  // and pi-intercom reads the trimmed value. Without a profile, the kit uses
+  // the PI_CODING_AGENT_DIR value when it is set, else ~/.pi/agent.
+  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]?.trim();
+  const intercomRoot =
+    paths.profile !== undefined
+      ? paths.agentDir
+      : intercomRootSetting !== undefined && intercomRootSetting !== ""
+        ? isAbsolute(intercomRootSetting)
+          ? intercomRootSetting
+          : resolve(process.cwd(), intercomRootSetting)
+        : p(ctx.home, ".pi", "agent");
+  return { paths, intercomDir: p(intercomRoot, "intercom") };
+}
+
+/** Run the omp pipeline in `folders`, the folders that `runSync` resolved and locked. */
+export async function ompSync(ctx: Ctx, folders: OmpWriteFolders): Promise<OmpState> {
+  await bunBootstrap(ctx, ctx.services);
+
+  const { paths, intercomDir } = folders;
   const agentDir = paths.agentDir;
   if (!ctx.dryRun) ensureDirectory(agentDir);
 
@@ -61,19 +96,6 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   const modelsBackedUp = syncMergedYaml(ctx, "SoT/.omp/models.yml", modelsFile, mergeOmpModels);
   syncOmpModelRemovals(ctx, modelsFile, modelsBackedUp);
 
-  // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
-  // and pi-intercom reads the trimmed value. Without a profile, the kit uses
-  // the PI_CODING_AGENT_DIR value when it is set, else ~/.pi/agent.
-  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]?.trim();
-  const intercomRoot =
-    paths.profile !== undefined
-      ? paths.agentDir
-      : intercomRootSetting !== undefined && intercomRootSetting !== ""
-        ? isAbsolute(intercomRootSetting)
-          ? intercomRootSetting
-          : resolve(process.cwd(), intercomRootSetting)
-        : p(ctx.home, ".pi", "agent");
-  const intercomDir = p(intercomRoot, "intercom");
   if (!ctx.dryRun) ensureDirectory(intercomDir);
   syncWholeFile(
     ctx,
@@ -85,23 +107,33 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   // The plugin pass links this directory, so the files must exist first.
   syncKitPlugin(ctx);
 
-  const legacyRegistryFile =
-    paths.dataRoot === paths.configRoot ? undefined : p(paths.configRoot, "marketplaces.json");
-  await syncMarketplace(ctx, p(paths.dataRoot, "marketplaces.json"), legacyRegistryFile);
-  const pluginsInstalled = await syncPlugins(ctx);
-  return { pluginsInstalled };
+  await syncMarketplace(ctx, paths);
+  const pluginsInstalled = await syncPlugins(ctx, paths);
+
+  // omp adopts `$XDG_DATA_HOME/omp` once it exists. When another sync created
+  // it during this run, a later omp process uses that root and does not see
+  // the plugins of the locked root. The next sync locks and fills the new root.
+  if (!ctx.dryRun) {
+    const currentRoot = ompPaths({
+      home: ctx.home,
+      env: process.env,
+      platform: ctx.services.platform.raw(),
+    }).dataRoot;
+    if (currentRoot !== paths.dataRoot) {
+      recordFailure(
+        ctx,
+        `omp data root moved to ${currentRoot} during the sync; run docks-kit sync again`,
+      );
+    }
+  }
+  return { pluginsInstalled, agentDir };
 }
 
 // -------------------------------------------------------------- summary ----
 
 export function ompSummary(ctx: Ctx, state: OmpState): void {
   const { echo } = ctx.services.logger;
-  const agentDir = ompPaths({
-    home: ctx.home,
-    env: process.env,
-    platform: ctx.services.platform.raw(),
-  }).agentDir;
-  echo(`omp:      ${agentDir}`);
+  echo(`omp:      ${state.agentDir}`);
   if (!ctx.dryRun) echo(`omp plugins: ${state.pluginsInstalled} installed`);
 }
 

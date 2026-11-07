@@ -18,7 +18,7 @@ metadata:
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-225"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-155"
+      lines: "1-337"
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-312"
     - path: cli/src/engine-native/claudeRemovals.ts

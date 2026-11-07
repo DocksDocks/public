@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-11-07 - docks-kit 0.22.20: omp folder locks and dry-run locks
+
+### Fixed
+
+These fixes close #163.
+
+- A writing `docks-kit sync omp` now holds `.docks-kit-sync-lock.db` in the
+  omp agent folder, the omp intercom folder, and the omp data root. Two homes
+  can share these folders through `PI_CODING_AGENT_DIR`, a symlink,
+  `XDG_DATA_HOME`, or a `PI_CONFIG_DIR` with `..`. Syncs of such homes now
+  wait for each other.
+- The folder locks now work for a missing folder. The sync creates the folder
+  after the locks of its ancestors in the set, with mode 0700, and then takes
+  its lock. Before, the sync created a Codex or agents folder before its
+  folder lock.
+- A sync no longer changes the mode of a shared folder that another sync
+  holds. It also creates no `intercom` folder in a held omp agent folder.
+- The sync finds the omp folders once, before it takes the locks, and the omp
+  pipeline writes only into them. Each `omp` command of the sync starts
+  without `XDG_DATA_HOME` when the locked data root is the omp config root. So
+  a `$XDG_DATA_HOME/omp` folder that another sync creates during the run
+  cannot move the plugin data to an unlocked folder. A later `omp` uses that
+  new folder and does not see the plugins of the sync, so the sync then
+  records a failure that names the new data root and exits 1. The next sync
+  installs the plugins there.
+- `docks-kit omp --fast` now holds the sync lock and the omp agent folder lock
+  while it rewrites `config.yml`. A sync and the toggle no longer overwrite
+  the change of each other. It checks `config.yml` before it takes a lock, so
+  a missing file ends the run with exit 2 and creates no omp folder.
+- A dry run through the `DRY_RUN=1` env global of the `native-raw` engine
+  channel now takes no sync lock, as `--dry-run` does. It no longer waits up
+  to 120 s for another sync.
+
 ## 2026-11-07 - docks-kit 0.22.19: kit locks and ownership records
 
 ### Fixed

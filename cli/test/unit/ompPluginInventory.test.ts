@@ -45,7 +45,12 @@ vi.mock("../../src/engine-native/bun", () => ({
 
 import type { Ctx } from "../../src/engine-native";
 import { syncPlugins } from "../../src/engine-native/ompPlugins";
-import { ompNextSteps, ompSync } from "../../src/engine-native/ompSync";
+import {
+  ompNextSteps,
+  ompSync,
+  ompWriteFolders,
+  type OmpState,
+} from "../../src/engine-native/ompSync";
 import {
   makeDependencyManager,
   makeEngineServices,
@@ -144,6 +149,16 @@ function makeCtx(
     nextStepTriggers: { ompRestart: false, ompPluginUpgraded: false },
     failures: [],
   } as unknown as Ctx;
+}
+
+/** Run the omp pipeline in the folders that a sync of `ctx` resolves, as `runSync` does. */
+function syncOmp(ctx: Ctx): Promise<OmpState> {
+  return ompSync(ctx, ompWriteFolders(ctx));
+}
+
+/** Run the plugin pass on the omp paths that a sync of `ctx` resolves. */
+function syncOmpPlugins(ctx: Ctx): Promise<number> {
+  return syncPlugins(ctx, ompWriteFolders(ctx).paths);
 }
 
 /** Every `omp` argv the pipeline spawned, as one joined string per call. */
@@ -274,7 +289,7 @@ describe("omp plugin inventory", () => {
   it("upgrades marketplace plugins already named by a composite id", async () => {
     const root = makeRoot();
     respondWithInventory(inventoryPresent(root));
-    const state = await ompSync(makeCtx(root));
+    const state = await syncOmp(makeCtx(root));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -291,7 +306,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
     const output: Array<string> = [];
 
-    await ompSync(makeCtx(root, { output }));
+    await syncOmp(makeCtx(root, { output }));
 
     expect(pluginSummary(output)).toBe(
       "omp plugins synced: docks@docks 0.18.0 -> 0.19.0, plan-lifecycle@docks 0.9.0 (current)",
@@ -303,7 +318,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory([INVENTORY_EMPTY, inventoryPresent(root, "0.19.0")]);
     const output: Array<string> = [];
 
-    await ompSync(makeCtx(root, { output }));
+    await syncOmp(makeCtx(root, { output }));
 
     expect(pluginSummary(output)).toBe(
       `omp plugins synced: docks@docks 0.19.0 (new), plan-lifecycle@docks 0.9.0 (new), pi-intercom ${PIN} (new), docks-kit-omp linked`,
@@ -323,7 +338,7 @@ describe("omp plugin inventory", () => {
       }),
     );
     const root = makeRoot();
-    const state = await ompSync(makeCtx(root));
+    const state = await syncOmp(makeCtx(root));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -363,7 +378,7 @@ describe("omp plugin inventory", () => {
     );
     respondWithInventory(inventoryPresent(root));
 
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace add https://github.com/DocksDocks/docks.git",
@@ -379,7 +394,7 @@ describe("omp plugin inventory", () => {
     process.env["XDG_DATA_HOME"] = dataHome;
     respondWithInventory(inventoryPresent(root));
 
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -395,7 +410,7 @@ describe("omp plugin inventory", () => {
     process.env["XDG_DATA_HOME"] = dataHome;
     respondWithInventory(inventoryPresent(root));
 
-    await ompSync(makeCtx(root, { skipPluginRefresh: true }));
+    await syncOmp(makeCtx(root, { skipPluginRefresh: true }));
 
     expect(ompCommands()).toEqual(["plugin marketplace list", "plugin list --json"]);
   });
@@ -406,7 +421,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory(inventoryPresent(root), "plugin marketplace list");
     const ctx = makeCtx(root, { skipPluginRefresh: true });
 
-    const state = await ompSync(ctx);
+    const state = await syncOmp(ctx);
 
     expect(ompCommands()).toEqual(["plugin marketplace list", "plugin list --json"]);
     expect(state.pluginsInstalled).toBe(4);
@@ -420,7 +435,7 @@ describe("omp plugin inventory", () => {
     const root = makeRoot();
     const ctx = makeCtx(root);
 
-    const state = await ompSync(ctx);
+    const state = await syncOmp(ctx);
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -442,7 +457,7 @@ describe("omp plugin inventory", () => {
       JSON.stringify({ npm: [{ name: "pi-intercom", version: "0.9.0" }], marketplace: [] }),
     );
     const root = makeRoot();
-    const state = await ompSync(makeCtx(root));
+    const state = await syncOmp(makeCtx(root));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -459,7 +474,7 @@ describe("omp plugin inventory", () => {
   it("skips every refresh of present plugins under --skip-plugin-refresh", async () => {
     const root = makeRoot();
     respondWithInventory(inventoryPresent(root));
-    const state = await ompSync(makeCtx(root, { skipPluginRefresh: true }));
+    const state = await syncOmp(makeCtx(root, { skipPluginRefresh: true }));
 
     expect(ompCommands()).toEqual(["plugin list --json"]);
     expect(state.pluginsInstalled).toBe(4);
@@ -470,7 +485,7 @@ describe("omp plugin inventory", () => {
       JSON.stringify({ npm: [], marketplace: [{ id: "docks@docks", scope: "user", entries: [] }] }),
     );
     const root = makeRoot();
-    const state = await ompSync(makeCtx(root, { skipPluginRefresh: true }));
+    const state = await syncOmp(makeCtx(root, { skipPluginRefresh: true }));
 
     expect(ompCommands()).toEqual([
       "plugin list --json",
@@ -487,7 +502,7 @@ describe("omp plugin inventory", () => {
     const root = makeRoot();
     const ctx = makeCtx(root, { missingTool: "git" });
 
-    const state = await ompSync(ctx);
+    const state = await syncOmp(ctx);
 
     expect(readFileSync(join(root, ".omp", "agent", "config.yml"), "utf8")).toBe("theme: dark\n");
     expect(ompCommands()).toEqual([]);
@@ -501,7 +516,7 @@ describe("omp plugin inventory", () => {
     rmSync(join(root, ".omp", "marketplaces.json"));
     const output: Array<string> = [];
 
-    await ompSync(makeCtx(root, { missingTool: "omp", dryRun: true, output }));
+    await syncOmp(makeCtx(root, { missingTool: "omp", dryRun: true, output }));
 
     const lines = output.join("").split("\n");
     expect(lines.filter((line) => line.startsWith("[dry-run] omp "))).toEqual([]);
@@ -514,7 +529,7 @@ describe("omp plugin inventory", () => {
     const root = makeRoot();
     process.env["OMP_PROFILE"] = "work";
 
-    await ompSync(makeCtx(root, { missingTool: "omp" }));
+    await syncOmp(makeCtx(root, { missingTool: "omp" }));
 
     expect(
       readFileSync(
@@ -529,7 +544,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory("not json");
     const root = makeRoot();
     const output: Array<string> = [];
-    const state = await ompSync(makeCtx(root, { output }));
+    const state = await syncOmp(makeCtx(root, { output }));
 
     expect(ompCommands()).toEqual([
       "plugin marketplace update docks",
@@ -551,7 +566,7 @@ describe("omp plugin inventory", () => {
     const root = makeRoot();
     respondWithInventory(["not json", inventoryPresent(root)]);
     const output: Array<string> = [];
-    await ompSync(makeCtx(root, { output }));
+    await syncOmp(makeCtx(root, { output }));
 
     // The first read failed, so the sync cannot know whether a plugin was new.
     expect(pluginSummary(output)).toBe(
@@ -572,7 +587,7 @@ describe("omp plugin inventory", () => {
         marketplace: [],
       }),
     );
-    const state = await ompSync(makeCtx(root, { skipPluginRefresh: true }));
+    const state = await syncOmp(makeCtx(root, { skipPluginRefresh: true }));
 
     expect(ompCommands()).toEqual([
       "plugin list --json",
@@ -588,7 +603,7 @@ describe("omp plugin inventory", () => {
     const root = makeRoot();
     const output: Array<string> = [];
 
-    await ompSync(makeCtx(root, { dryRun: true, output }));
+    await syncOmp(makeCtx(root, { dryRun: true, output }));
 
     const lines = output.join("").split("\n");
     expect(lines).toContain(`[dry-run] omp plugin link ${root}/.docks-kit/omp-plugin`);
@@ -607,7 +622,7 @@ describe("omp plugin inventory", () => {
     const output: Array<string> = [];
     const ctx = makeCtx(root, { output });
 
-    await ompSync(ctx);
+    await syncOmp(ctx);
 
     expect(upgradeWarnings(output)).toEqual([upgradeWarning("docks@docks", "0.18.0", "0.19.0")]);
     expect(ctx.nextStepTriggers.ompPluginUpgraded).toBe(true);
@@ -632,12 +647,12 @@ describe("omp plugin inventory", () => {
   it("keeps the event files of two syncs that upgrade different plugins", async () => {
     const root = makeRoot();
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
     respondWithInventory([
       inventoryPresent(root, "0.19.0"),
       inventoryPresent(root, "0.19.0", "0.10.0"),
     ]);
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
 
     expect(loggedUpgrades(root)).toEqual([
       "docks@docks 0.18.0 -> 0.19.0",
@@ -654,7 +669,7 @@ describe("omp plugin inventory", () => {
       inventoryPresent(root, "0.19.0", "0.10.0"),
     ]);
 
-    await Promise.all([syncPlugins(makeCtx(root)), syncPlugins(makeCtx(root))]);
+    await Promise.all([syncOmpPlugins(makeCtx(root)), syncOmpPlugins(makeCtx(root))]);
 
     // Both first inventory reads ran before either upgrade, so the syncs overlapped.
     expect(ompCommands().slice(0, 2)).toEqual(["plugin list --json", "plugin list --json"]);
@@ -670,7 +685,7 @@ describe("omp plugin inventory", () => {
     const output: Array<string> = [];
     const ctx = makeCtx(root, { output });
 
-    await ompSync(ctx);
+    await syncOmp(ctx);
 
     expect(messageLines(output, "omp plugin versions")).toEqual([
       "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
@@ -699,7 +714,7 @@ describe("omp plugin inventory", () => {
       ]);
       const output: Array<string> = [];
 
-      await ompSync(makeCtx(root, { output }));
+      await syncOmp(makeCtx(root, { output }));
 
       const warnings = upgradeWarnings(output);
       expect(warnings).toHaveLength(2);
@@ -719,7 +734,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0", "0.10.0")]);
     const ctx = makeCtx(root);
 
-    await syncPlugins(ctx);
+    await syncOmpPlugins(ctx);
 
     expect(ompCommands()).toEqual([
       "plugin list --json",
@@ -747,7 +762,7 @@ describe("omp plugin inventory", () => {
     respondWithInventory([withoutIntercom, inventoryPresent(root, "0.19.0", "0.10.0")]);
     const ctx = makeCtx(root);
 
-    await syncPlugins(ctx);
+    await syncOmpPlugins(ctx);
 
     expect(ompCommands()).toEqual([
       "plugin list --json",
@@ -810,7 +825,7 @@ describe("omp plugin inventory", () => {
       respondWithInventory(inventories(root));
       const ctx = makeCtx(root);
 
-      await syncPlugins(ctx);
+      await syncOmpPlugins(ctx);
 
       // Only marketplace operations run, so no npm install or link sets the trigger.
       expect(ompCommands()).toEqual([
@@ -833,7 +848,7 @@ describe("omp plugin inventory", () => {
     const output: Array<string> = [];
     const ctx = makeCtx(root, { output });
 
-    await ompSync(ctx);
+    await syncOmp(ctx);
 
     const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
     expect(otherLogWarnings).toEqual([]);
@@ -860,7 +875,7 @@ describe("omp plugin inventory", () => {
     const output: Array<string> = [];
     const ctx = makeCtx(root, { output });
 
-    await ompSync(ctx);
+    await syncOmp(ctx);
 
     const [logWarning, ...otherLogWarnings] = messageLines(output, "omp plugin upgrade log");
     expect(otherLogWarnings).toEqual([]);
@@ -881,7 +896,7 @@ describe("omp plugin inventory", () => {
     for (const name of old) writeFileSync(join(upgradeLog(root), name), "{}\n");
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
 
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
 
     const files = readdirSync(upgradeLog(root));
     expect(files).toHaveLength(100);
@@ -913,7 +928,7 @@ describe("omp plugin inventory", () => {
     }
     respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
 
-    await ompSync(makeCtx(root));
+    await syncOmp(makeCtx(root));
 
     const files = readdirSync(upgradeLog(root));
     expect(files).not.toContain(deadEventWrite);
@@ -941,7 +956,7 @@ describe("omp plugin inventory", () => {
     const output: Array<string> = [];
     const ctx = makeCtx(root, { dryRun, output });
 
-    await ompSync(ctx);
+    await syncOmp(ctx);
 
     expect(upgradeWarnings(output)).toEqual([]);
     expect(messageLines(output, "omp plugin versions")).toEqual([]);

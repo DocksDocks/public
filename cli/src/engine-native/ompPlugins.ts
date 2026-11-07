@@ -16,11 +16,13 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, readdirSync, realpathSync, unlinkSync } from "node:fs";
 
 import { removeStaleTemporaries, replaceFile } from "./atomicWrite";
-import { p, processFailureSummary, spawnProcess } from "./exec";
+import { p, processFailureSummary } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
+import { spawnOmp } from "./ompChild";
 import { KIT_PLUGIN_NAME, kitPluginDir } from "./ompKitPlugin";
+import type { OmpPaths } from "./ompPaths";
 import { kitCacheDir } from "./scratch";
 import { field } from "./toolchain";
 
@@ -85,10 +87,8 @@ function marketplaceEntryVersion(entries: unknown): string | undefined {
   return undefined;
 }
 
-async function installedPluginIdsFromCli(): Promise<InstalledPlugins | undefined> {
-  const result = await spawnProcess("omp", ["plugin", "list", "--json"], {
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+async function installedPluginIdsFromCli(paths: OmpPaths): Promise<InstalledPlugins | undefined> {
+  const result = await spawnOmp(paths, ["plugin", "list", "--json"], ["ignore", "pipe", "ignore"]);
   if (result.error !== undefined || result.exitCode !== 0) return undefined;
 
   const value = parseJson(result.stdout);
@@ -145,12 +145,13 @@ function describeOperation(
 
 async function runPluginCommand(
   ctx: Ctx,
+  paths: OmpPaths,
   plugin: string,
   args: ReadonlyArray<string>,
 ): Promise<boolean> {
   const { clearProgress, progress } = ctx.services.logger;
   progress(`Updating omp plugin ${plugin}...`);
-  const result = await spawnProcess("omp", args, { stdio: ["ignore", "pipe", "pipe"] });
+  const result = await spawnOmp(paths, args, ["ignore", "pipe", "pipe"]);
   clearProgress();
   if (result.error === undefined && result.exitCode === 0) return true;
 
@@ -257,7 +258,8 @@ function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): s
   return undefined;
 }
 
-export async function syncPlugins(ctx: Ctx): Promise<number> {
+/** Run the plugin pass. `paths` are the omp paths that the sync locked. */
+export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
 
   if (ctx.services.deps.probe("omp").state === "missing") {
@@ -296,7 +298,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
   const piIntercomPin = field("pi-intercom", "verified");
 
   progress("Checking installed omp plugins...");
-  const installed = await installedPluginIdsFromCli();
+  const installed = await installedPluginIdsFromCli(paths);
   clearProgress();
   if (installed === undefined) {
     warn("omp plugin inventory unavailable — falling back to the full refresh path");
@@ -320,7 +322,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
     const args = present
       ? ["plugin", "upgrade", "--scope", "user", pluginId]
       : ["plugin", "install", "--scope", "user", pluginId];
-    const succeeded = await runPluginCommand(ctx, pluginId, args);
+    const succeeded = await runPluginCommand(ctx, paths, pluginId, args);
     // The operation boundary: an omp process that started later loaded the new folder.
     const finishedAt = Date.now();
     if (succeeded) {
@@ -348,7 +350,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
       const args = present
         ? ["install", "--force", `pi-intercom@${piIntercomPin}`]
         : ["install", `pi-intercom@${piIntercomPin}`];
-      if (await runPluginCommand(ctx, "pi-intercom", args)) {
+      if (await runPluginCommand(ctx, paths, "pi-intercom", args)) {
         operations.push({
           kind: "npm",
           id: "pi-intercom",
@@ -367,7 +369,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
   const linkedTarget = kitPluginPath === undefined ? undefined : realPath(kitPluginPath);
   if (linkedTarget !== undefined && linkedTarget === realPath(kitDir)) {
     verbose(`omp kit plugin ${KIT_PLUGIN_NAME} already linked`);
-  } else if (await runPluginCommand(ctx, KIT_PLUGIN_NAME, ["plugin", "link", kitDir])) {
+  } else if (await runPluginCommand(ctx, paths, KIT_PLUGIN_NAME, ["plugin", "link", kitDir])) {
     operations.push({ kind: "link", id: KIT_PLUGIN_NAME });
     if (installed?.npm.has(KIT_PLUGIN_NAME) !== true) pluginsInstalled++;
   }
@@ -375,7 +377,7 @@ export async function syncPlugins(ctx: Ctx): Promise<number> {
   if (operations.length > 0) {
     // A second inventory read gives the versions that the operations left.
     progress("Reading omp plugin versions...");
-    const after = await installedPluginIdsFromCli();
+    const after = await installedPluginIdsFromCli(paths);
     clearProgress();
     const items = operations.map((operation) => describeOperation(operation, after));
     change(`omp plugins synced: ${items.join(", ")}`);

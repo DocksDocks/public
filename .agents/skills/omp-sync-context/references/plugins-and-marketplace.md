@@ -95,7 +95,7 @@ and `bunx vitest run cli/test/unit/ompPluginInventory.test.ts -t "links the kit 
 
 ## Dry Run And Refresh Rules
 
-Guard the marketplace command before every `spawnProcess("omp", ...)` call.
+Guard the marketplace command before every `ompChild.ts spawnOmp` call.
 Guard plugin inventory before its omp subprocess.
 Guard install and upgrade operations before their omp subprocesses.
 
