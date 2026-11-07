@@ -96,13 +96,15 @@ package is not at its pin.
 
 ## Supply-chain stance
 
-Every kit-driven install of third-party software from npm, npx, GitHub, or
+Every kit-driven package install from npm, npx, GitHub releases, or
 `omp install` is pinned to a `SoT/toolchain.json` `verified` version — never
 floating `@latest` (the npm-worm / Shai-Hulud attack surface). That includes
 the `npx skills@<verified>` invocations on agents sync and the release workflow
 (actions pinned to commit SHAs, exact bun/npm versions). Two installs follow
 the host toolchain and have no pin: `rust-analyzer` (rustup) and `bubblewrap`
-(distro package manager).
+(distro package manager). Marketplace plugins have no manifest pin either:
+sync installs and refreshes the Claude Code, Codex, and omp marketplace
+plugins at the version that their marketplace publishes (see `plugins`).
 
 The kit's own package is the single exemption from the `@latest` ban. `install.sh` and `install.ps1`
 end with `bun add -g docks-kit@latest` because a global installer that pinned

@@ -419,11 +419,10 @@ repository default branch. This landing work needs no additional prompt.
 
 Never treat an empty first checks result as success. Wait up to five minutes
 for checks to appear, for example with repeated `gh pr checks --json
-name,bucket`. If required checks exist, run
-`gh pr checks --watch --required`; if CI checks exist but none are required,
-run `gh pr checks --watch` to wait for all reported CI. Any failed check blocks
-merge. If the repository has no configured checks, use the green local gate as
-the check result and say so in the merge question.
+name,bucket`. Then run `gh pr checks --watch` to wait for every reported
+check, required or not, to finish. Any failed or cancelled check blocks the
+merge question. If the repository has no configured checks, use the green
+local gate as the check result and say so in the merge question.
 
 When the checks policy passes and GitHub reports the pull request mergeable,
 ask immediately with exactly two options: `Merge now` or

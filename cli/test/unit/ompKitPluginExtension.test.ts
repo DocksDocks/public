@@ -621,8 +621,10 @@ describe("reminders", () => {
       "",
       HOME,
     ).resources;
-    expect(remote?.kind === "other" ? remote.hint : "").toContain(
-      "For a production target, ask the user first.",
+    const hint = remote?.kind === "other" ? remote.hint : "";
+    expect(hint).toContain("For a production target, ask the user first.");
+    expect(hint).toContain(
+      "only when its target is local, development, dev, test, homolog, homologation, staging, or preview,",
     );
   });
 });
