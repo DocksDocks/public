@@ -53,14 +53,21 @@ from the current directory.
 runEngineNative(argv, services?, options?)        index.ts
 |-- makeCtx(services, { envGlobals })             engineCtx.ts; env globals only when true
 `-- switch (argv[0])
-    |-- model -> modeModel(ctx, args)
+    |-- model -> modeModel(ctx, args)              a write runs under withSyncLock; a
+    |                                              codex write also under withFolderLocks
     |-- toolchain -> modeToolchain(ctx, args)
     `-- sync/default -> engineSync(ctx, args)     syncDispatch.ts
+        |-- withSyncLock(ctx, args, ...)          ~/.cache/docks-kit/sync-lock.db; none for
+        |                                         --dry-run, -h, --help; held past the wait
+        |                                         bound: held line, returns 1
         |-- parseArgs(ctx, args)
         |   `-- applyDefaultSelection(ctx) when no target word:
         |       kit.db harness selection, else harnesses.ts LEGACY_SELECTION
         |-- validateModifierFlags(ctx)            parseModifiers.ts
         |-- DOCKS_KIT_SYNC_CONCURRENCY            a SyncConcurrency value; other values exit 2
+        |-- withFolderLocks(ctx, folders, ...)    <folder>/.docks-kit-sync-lock.db of the
+        |                                         selected Codex and agents folders, by real
+        |                                         path, sorted; none in a dry run
         |-- preflightClaudeSettings(ctx)          claudeSettings.ts; claude selected only:
         |                                         invalid settings.json aborts the whole sync
         |                                         before any pipeline starts
@@ -78,7 +85,8 @@ runEngineNative(argv, services?, options?)        index.ts
         |       engineSync then prints the "--- Failures ---" ledger and rethrows
         |-- "--- Sync complete ---" summaries
         |-- next steps for the pipelines that ran
-        `-- "--- Failures ---" ledger when recordFailure ran; returns 1
+        |-- "--- Failures ---" ledger when recordFailure ran; returns 1
+        `-- releaseKitLock of each lock in finally
 ```
 
 Each pipeline function owns its step order. Read the function body, not a copy
@@ -99,6 +107,9 @@ modules). The order rules that matter across pipelines:
   is not byte-stable.
   (verify: `bunx vitest run cli/test/unit/codexTomlMerge.test.ts -t "keeps the backup when it runs again"`)
 - `skillsSync` calls `skillsPrune.ts reconcileRemovals` only with `--prune`.
+- Every pipeline runs under the sync lock, so two syncs never run the
+  read-modify-write of one file at the same time. `SKILL.md` § Sync Lock owns
+  the lock rules.
 
 ## Direct Modes
 
@@ -108,7 +119,7 @@ mode table. The `model` mode has two paths:
 | Invocation | Implementation | Path |
 |-----------|----------------|------|
 | `model claude` or `model codex` | `modeModel` get path | Reads deployed and SoT model, then prints the resolved catalog. |
-| `model <tool> <id>` | `modeModel` set path | Validates `<id>` with `models.ts validateClaudeModel` or `validateCodexModel`, then calls `syncClaudeModel` or `syncCodexModel`. `validateCodexModel` rejects an ID outside `^[A-Za-z0-9._-]+$`. A charset-safe ID that is not in the catalog passes with a warning. (verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects invalid codex models without changing deployment"`) Unprobed: no unit test covers the catalog-miss warning (verify: `grep -n "applying anyway" cli/src/engine-native/models.ts`). |
+| `model <tool> <id>` | `modeModel` set path | Takes the sync lock unless the arguments hold `--dry-run`. Validates `<id>` with `models.ts validateClaudeModel` or `validateCodexModel`, then calls `syncClaudeModel` or `syncCodexModel`. `validateCodexModel` rejects an ID outside `^[A-Za-z0-9._-]+$`. A charset-safe ID that is not in the catalog passes with a warning. (verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects invalid codex models without changing deployment"`; `bunx vitest run cli/test/unit/syncLock.test.ts -t "model under the sync lock"`) Unprobed: no unit test covers the catalog-miss warning (verify: `grep -n "applying anyway" cli/src/engine-native/models.ts`). |
 
 ## Idempotency Invariants
 
@@ -117,8 +128,8 @@ mode table. The `model` mode has two paths:
 | Claude settings first install | Deployed settings file absent (`claudeSettings.ts prepareClaudeSettings`). |
 | Claude marketplace add | Marketplace name absent from known marketplaces (`claudePluginPasses.ts syncPlugins`, pass 1). |
 | Claude plugin install | Missing user-scope install record (`claudePluginPasses.ts syncPlugins`, pass 2). |
-| Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). |
-| Codex rules copy | Sync skips a byte-identical file. It deploys each name that the SoT ships over an existing file, recorded or not. It backs up a file that differs to `<name>.bak` and replaces it. Sync removes a rules file that the SoT dropped only while the file holds the kit bytes recorded in `.kit-managed-rules`. Cleanup never reads or removes a file that the SoT does not ship and no sync recorded, such as the user-learned `default.rules` (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
+| Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). A directory that existed before is reused and never recorded as kit-owned. |
+| Codex rules copy | Sync skips a byte-identical file. It deploys each name that the SoT ships over an existing file, recorded or not, through `atomicWrite.ts replaceFile`. It backs up a file that differs to `<name>.bak` and replaces it. Before the deploy it writes `.kit-managed-rules` with the new kit hash of each shipped name. Sync removes a rules file that the SoT dropped only while the file holds kit bytes whose hash `.kit-managed-rules` records. Cleanup never reads or removes a file that the SoT does not ship and no sync recorded, such as the user-learned `default.rules` (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
 
 ## New Target Checklist
 

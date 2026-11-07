@@ -2,8 +2,9 @@
  * Safe sweep of agent leftovers. `planTidy` lists what can go: merged idle
  * linked worktrees and their containers, containers of gone or idle agent
  * directories, orphaned processes in agent directories, and idle scratch
- * entries. `applyTidy` performs a plan under a lock file. Each check fails
- * closed: a candidate that a check cannot prove safe stays, with its reason.
+ * entries. `applyTidy` performs a plan; its caller holds the tidy lock. Each
+ * check fails closed: a candidate that a check cannot prove safe stays, with
+ * its reason.
  */
 import {
   appendFileSync,
@@ -20,9 +21,9 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 
 import { spawnProcess, type AsyncProcessResult } from "./exec";
 import { ensureDirectory } from "./ompFileDeploy";
+import { processExited } from "./processes";
 import { isSameOrInside, kitCacheDir, removeTemporaryPath } from "./scratch";
 import { runBounded } from "./syncConcurrency";
-import { acquireTidyLock, releaseTidyLock } from "./tidyLock";
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 24 * HOUR_MS;
@@ -49,10 +50,6 @@ export function agentWorktreeRoot(home: string, env: NodeJS.ProcessEnv): string 
   const dataHome =
     xdg !== undefined && xdg !== "" && isAbsolute(xdg) ? xdg : join(home, ".local", "share");
   return join(dataHome, "agent-worktrees");
-}
-
-export function tidyLockPath(home: string): string {
-  return join(kitCacheDir(home), "tidy.lock");
 }
 
 export function tidyLogPath(home: string): string {
@@ -324,12 +321,7 @@ async function darwinProcesses(uid: number): Promise<ReadonlyArray<ProcessRow> |
   return resolveProcessCwds(rows, (pid) => {
     const cwd = cwds.get(pid);
     if (cwd !== undefined) return { kind: "cwd", path: cwd };
-    try {
-      process.kill(pid, 0);
-    } catch (cause) {
-      if (errorCode(cause) === "ESRCH") return { kind: "exited" };
-    }
-    return { kind: "unreadable" };
+    return processExited(pid) ? { kind: "exited" } : { kind: "unreadable" };
   });
 }
 
@@ -1162,135 +1154,126 @@ async function removeProjectNetworks(
 }
 
 /**
- * Perform a plan under the tidy lock. Order: stop processes, remove worktrees
- * (their containers first), prune each touched repository, stop containers,
- * remove containers, remove scratch entries. Never `git worktree remove --force`.
- * Every Docker call uses the endpoint that the plan verified.
+ * Perform a plan. The caller holds the tidy lock from before `planTidy`. Order:
+ * stop processes, remove worktrees (their containers first), prune each
+ * touched repository, stop containers, remove containers, remove scratch
+ * entries. Never `git worktree remove --force`. Every Docker call uses the
+ * endpoint that the plan verified.
  */
 export async function applyTidy(
   plan: TidyPlan,
   inputs: TidyInputs,
   host: TidyHost,
 ): Promise<{
-  readonly locked: boolean;
   readonly failures: number;
   readonly lines: ReadonlyArray<string>;
 }> {
   ensureDirectory(kitCacheDir(inputs.home));
-  const lockPath = tidyLockPath(inputs.home);
-  const lock = acquireTidyLock(lockPath, host.now());
-  if (lock === undefined) {
-    return { locked: true, failures: 0, lines: [`another docks-kit tidy run holds ${lockPath}`] };
-  }
-  try {
-    const lines: Array<string> = [];
-    let failures = 0;
-    const done = (outcome: "removed" | "stopped", subject: string): void => {
-      lines.push(`${outcome} ${subject}`);
-    };
-    const failed = (subject: string, detail: string): void => {
-      failures += 1;
-      lines.push(`failed ${subject}: ${detail}`);
-    };
-    const byKind = <K extends TidyAction["kind"]>(kind: K) =>
-      plan.actions.filter(
-        (action): action is Extract<TidyAction, { kind: K }> => action.kind === kind,
-      );
+  const lines: Array<string> = [];
+  let failures = 0;
+  const done = (outcome: "removed" | "stopped", subject: string): void => {
+    lines.push(`${outcome} ${subject}`);
+  };
+  const failed = (subject: string, detail: string): void => {
+    failures += 1;
+    lines.push(`failed ${subject}: ${detail}`);
+  };
+  const byKind = <K extends TidyAction["kind"]>(kind: K) =>
+    plan.actions.filter(
+      (action): action is Extract<TidyAction, { kind: K }> => action.kind === kind,
+    );
 
-    for (const action of byKind("stop-process")) {
-      const subject = actionSubject(action);
-      try {
-        process.kill(action.pid, "SIGTERM");
-        done("stopped", subject);
-      } catch (cause) {
-        if (errorCode(cause) === "ESRCH") done("stopped", subject);
-        else failed(subject, errorMessage(cause));
-      }
-    }
-    // A container action without a verified local endpoint fails and changes nothing.
-    const runDocker = localDocker(host, plan.docker);
-    const noDocker =
-      plan.docker.kind === "missing" ? "docker unavailable" : notLocalMessage(plan.docker.endpoint);
-
-    const touched = new Set<string>();
-    for (const action of byKind("remove-worktree")) {
-      const subject = actionSubject(action);
-      if (action.containerIds.length > 0) {
-        if (runDocker === undefined) {
-          failed(subject, noDocker);
-          continue;
-        }
-        const removed = await runDocker(["rm", "--force", "--volumes", ...action.containerIds]);
-        if (removed.code !== 0) {
-          failed(subject, `docker rm: ${firstLine(removed)}`);
-          continue;
-        }
-        await removeProjectNetworks(action.projects, runDocker);
-      }
-      touched.add(action.repo);
-      const result = await host.git(["-C", action.repo, "worktree", "remove", "--", action.path]);
-      if (result.code === 0) done("removed", subject);
-      else failed(subject, firstLine(result));
-    }
-    for (const repo of touched) {
-      const result = await host.git(["-C", repo, "worktree", "prune"]);
-      if (result.code !== 0) failed(`worktree prune in ${repo}`, firstLine(result));
-    }
-
-    for (const action of byKind("stop-containers")) {
-      if (runDocker === undefined) {
-        failed(actionSubject(action), noDocker);
-        continue;
-      }
-      const result = await runDocker(["stop", ...action.ids]);
-      if (result.code === 0) done("stopped", actionSubject(action));
-      else failed(actionSubject(action), firstLine(result));
-    }
-
-    for (const action of byKind("remove-containers")) {
-      if (runDocker === undefined) {
-        failed(actionSubject(action), noDocker);
-        continue;
-      }
-      const result = await runDocker(["rm", "--force", "--volumes", ...action.ids]);
-      if (result.code !== 0) {
-        failed(actionSubject(action), firstLine(result));
-        continue;
-      }
-      await removeProjectNetworks(action.project === "" ? [] : [action.project], runDocker);
-      done("removed", actionSubject(action));
-    }
-
-    const scratch = agentRoots(inputs).scratchRoot;
-    for (const action of byKind("remove-scratch")) {
-      const subject = actionSubject(action);
-      if (scratch === undefined) {
-        failed(subject, "the scratch root is refused");
-        continue;
-      }
-      let activity: number | undefined;
-      try {
-        activity = entryActivity(action.path);
-      } catch (cause) {
-        lines.push(`kept ${subject}: ${errorMessage(cause)}`);
-        continue;
-      }
-      if (activity !== undefined && host.now() - activity < SCRATCH_IDLE_MS) {
-        lines.push(`kept ${subject}: active ${hours(host.now() - activity)} h ago`);
-        continue;
-      }
-      const outcome = removeTemporaryPath(action.path, [scratch], inputs.home);
-      if (outcome.kind === "removed") done("removed", subject);
-      else failed(subject, outcome.reason);
-    }
-
+  for (const action of byKind("stop-process")) {
+    const subject = actionSubject(action);
     try {
-      appendLog(tidyLogPath(inputs.home), lines, host.now());
+      process.kill(action.pid, "SIGTERM");
+      done("stopped", subject);
     } catch (cause) {
-      failed(`log ${tidyLogPath(inputs.home)}`, errorMessage(cause));
+      if (errorCode(cause) === "ESRCH") done("stopped", subject);
+      else failed(subject, errorMessage(cause));
     }
-    return { locked: false, failures, lines };
-  } finally {
-    releaseTidyLock(lock);
   }
+  // A container action without a verified local endpoint fails and changes nothing.
+  const runDocker = localDocker(host, plan.docker);
+  const noDocker =
+    plan.docker.kind === "missing" ? "docker unavailable" : notLocalMessage(plan.docker.endpoint);
+
+  const touched = new Set<string>();
+  for (const action of byKind("remove-worktree")) {
+    const subject = actionSubject(action);
+    if (action.containerIds.length > 0) {
+      if (runDocker === undefined) {
+        failed(subject, noDocker);
+        continue;
+      }
+      const removed = await runDocker(["rm", "--force", "--volumes", ...action.containerIds]);
+      if (removed.code !== 0) {
+        failed(subject, `docker rm: ${firstLine(removed)}`);
+        continue;
+      }
+      await removeProjectNetworks(action.projects, runDocker);
+    }
+    touched.add(action.repo);
+    const result = await host.git(["-C", action.repo, "worktree", "remove", "--", action.path]);
+    if (result.code === 0) done("removed", subject);
+    else failed(subject, firstLine(result));
+  }
+  for (const repo of touched) {
+    const result = await host.git(["-C", repo, "worktree", "prune"]);
+    if (result.code !== 0) failed(`worktree prune in ${repo}`, firstLine(result));
+  }
+
+  for (const action of byKind("stop-containers")) {
+    if (runDocker === undefined) {
+      failed(actionSubject(action), noDocker);
+      continue;
+    }
+    const result = await runDocker(["stop", ...action.ids]);
+    if (result.code === 0) done("stopped", actionSubject(action));
+    else failed(actionSubject(action), firstLine(result));
+  }
+
+  for (const action of byKind("remove-containers")) {
+    if (runDocker === undefined) {
+      failed(actionSubject(action), noDocker);
+      continue;
+    }
+    const result = await runDocker(["rm", "--force", "--volumes", ...action.ids]);
+    if (result.code !== 0) {
+      failed(actionSubject(action), firstLine(result));
+      continue;
+    }
+    await removeProjectNetworks(action.project === "" ? [] : [action.project], runDocker);
+    done("removed", actionSubject(action));
+  }
+
+  const scratch = agentRoots(inputs).scratchRoot;
+  for (const action of byKind("remove-scratch")) {
+    const subject = actionSubject(action);
+    if (scratch === undefined) {
+      failed(subject, "the scratch root is refused");
+      continue;
+    }
+    let activity: number | undefined;
+    try {
+      activity = entryActivity(action.path);
+    } catch (cause) {
+      lines.push(`kept ${subject}: ${errorMessage(cause)}`);
+      continue;
+    }
+    if (activity !== undefined && host.now() - activity < SCRATCH_IDLE_MS) {
+      lines.push(`kept ${subject}: active ${hours(host.now() - activity)} h ago`);
+      continue;
+    }
+    const outcome = removeTemporaryPath(action.path, [scratch], inputs.home);
+    if (outcome.kind === "removed") done("removed", subject);
+    else failed(subject, outcome.reason);
+  }
+
+  try {
+    appendLog(tidyLogPath(inputs.home), lines, host.now());
+  } catch (cause) {
+    failed(`log ${tidyLogPath(inputs.home)}`, errorMessage(cause));
+  }
+  return { failures, lines };
 }

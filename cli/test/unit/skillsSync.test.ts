@@ -92,6 +92,21 @@ function createCanonical(root: string, base = "demo"): string {
   return canonical;
 }
 
+/** The slugs of a skill record file, without the owned evidence; none when the file does not exist. */
+function recordedSlugs(file: string): Array<string> {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, "utf8")
+    .split("\n")
+    .map((line) => line.split("\t")[0] ?? "")
+    .filter((line) => line !== "");
+}
+
+/** The `<dev>:<ino>` evidence of a directory, as the owned record keeps it. */
+function identityOf(directory: string): string {
+  const stats = lstatSync(directory, { bigint: true });
+  return `${stats.dev}:${stats.ino}`;
+}
+
 describe("skills platform behavior", () => {
   beforeEach(() => {
     mocks.manifest = "acme/demo\n";
@@ -245,7 +260,10 @@ describe("skills platform behavior", () => {
     expect(state.present).toBe(0);
     expect(ctx.nextStepTriggers.skillsRestart).toBe(false);
     expect(existsSync(join(root, ".agents", "skills", "demo"))).toBe(false);
-    expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("acme/demo\n");
+    // D-E2: the kit records a skill only after its install creates the directory.
+    expect(existsSync(join(root, ".agents", ".kit-managed-skills"))).toBe(false);
+    expect(recordedSlugs(join(root, ".agents", ".kit-owned-skills"))).not.toContain("acme/demo");
+    expect(recordedSlugs(join(root, ".agents", ".kit-pending-skills"))).not.toContain("acme/demo");
     expect(output.stderr.join("")).toContain("Failed to install universal skill: acme/demo");
     // The remedy names the pinned package, never a floating `npx skills`.
     expect(output.stderr.join("")).toMatch(
@@ -281,7 +299,15 @@ describe("skills platform behavior", () => {
     expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# demo\n");
     expect(readlinkSync(link)).toBe(relative(dirname(link), canonical));
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
-    expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("acme/demo\n");
+    // D-E2: the directory existed before, so the kit does not record it and warns once.
+    expect(recordedSlugs(join(root, ".agents", ".kit-owned-skills"))).toEqual([]);
+    expect(existsSync(join(root, ".agents", ".kit-managed-skills"))).toBe(false);
+    expect(
+      output.stderr
+        .join("")
+        .split("\n")
+        .filter((line) => line.includes("demo") && line.includes("--prune")),
+    ).toHaveLength(1);
   });
 
   it("warns when a successful install creates no directory named after the slug", async () => {
@@ -300,22 +326,38 @@ describe("skills platform behavior", () => {
   it("uses the @<skill> part of a slug as the installed directory", async () => {
     const root = makeRoot();
     mocks.manifest = "acme/pack@demo\n";
-    const canonical = createCanonical(root);
+    // D-E2: the kit owns only a directory that its install created.
+    mocks.spawnProcess.mockImplementation(async () => {
+      createCanonical(root);
+      return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+    });
+    const canonical = join(root, ".agents", "skills", "demo");
     const output = { stderr: [] as Array<string>, stdout: [] as Array<string> };
 
     await skillsSync(makeCtx(root, output));
     const link = join(root, ".claude", "skills", "demo");
 
-    expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
+    const [, args] = mocks.spawnProcess.mock.calls[0] as [string, Array<string>];
+    expect(args.slice(2, 4)).toEqual(["add", "acme/pack@demo"]);
+    expect(existsSync(join(canonical, "SKILL.md"))).toBe(true);
+
+    // The install created the directory, so the slug is owned. A second plain
+    // sync reuses it, heals the Claude link, and warns about nothing.
+    const second = { stderr: [] as Array<string>, stdout: [] as Array<string> };
+    await skillsSync(makeCtx(root, second));
+
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
     expect(readlinkSync(link)).toBe(relative(dirname(link), canonical));
+    expect(second.stderr.join("")).not.toContain("--prune keeps it");
 
     mocks.manifest = "";
     await skillsSync(makeCtx(root, output, { prune: true }));
 
-    expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
     expect(existsSync(canonical)).toBe(false);
     expect(() => lstatSync(link)).toThrow();
-    expect(readFileSync(join(root, ".agents", ".kit-managed-skills"), "utf8")).toBe("");
+    expect(readFileSync(join(root, ".agents", ".kit-owned-skills"), "utf8")).toBe("");
   });
 
   it("accepts an absolute link that resolves to the canonical skill without a heal", async () => {
@@ -337,11 +379,13 @@ describe("skills platform behavior", () => {
   it("prunes only kit-created entries without spawning and reports them in dry-run", async () => {
     const root = makeRoot();
     mocks.manifest = "";
-    const snapshot = join(root, ".agents", ".kit-managed-skills");
-    mkdirSync(dirname(snapshot), { recursive: true });
-    writeFileSync(snapshot, "acme/managed\nacme/user\n");
     const managedCanonical = createCanonical(root, "managed");
     const userCanonical = createCanonical(root, "user");
+    const owned = join(root, ".agents", ".kit-owned-skills");
+    writeFileSync(
+      owned,
+      `acme/managed\t${identityOf(managedCanonical)}\nacme/user\t${identityOf(userCanonical)}\n`,
+    );
     const managedEntry = join(root, ".claude", "skills", "managed");
     const userEntry = join(root, ".claude", "skills", "user");
     mkdirSync(managedEntry, { recursive: true });
@@ -357,12 +401,12 @@ describe("skills platform behavior", () => {
     expect(readFileSync(join(userEntry, "user.txt"), "utf8")).toBe("keep\n");
     // `skills remove` deletes the same-named directory of every known agent.
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
-    expect(readFileSync(snapshot, "utf8")).toBe("");
+    expect(readFileSync(owned, "utf8")).toBe("");
 
     const dryRoot = makeRoot();
-    const drySnapshot = join(dryRoot, ".agents", ".kit-managed-skills");
-    mkdirSync(dirname(drySnapshot), { recursive: true });
-    writeFileSync(drySnapshot, "acme/managed\n");
+    const dryOwned = join(dryRoot, ".agents", ".kit-owned-skills");
+    mkdirSync(dirname(dryOwned), { recursive: true });
+    writeFileSync(dryOwned, "acme/managed\n");
     const dryManagedEntry = join(dryRoot, ".claude", "skills", "managed");
     mkdirSync(dryManagedEntry, { recursive: true });
     writeFileSync(join(dryManagedEntry, COPY_MARKER), "");

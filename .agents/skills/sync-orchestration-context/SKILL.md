@@ -1,6 +1,6 @@
 ---
 name: sync-orchestration-context
-description: "Use when editing docks-kit, cli/src/main.ts, cli/src/argv.ts, cli/src/argvValidate.ts, cli/src/engine.ts, or cli/src/engine-native index.ts, engineCtx.ts, syncDispatch.ts, syncConcurrency.ts, parseArgs.ts, parseModifiers.ts, modes.ts, models.ts, or liveModels.ts: sync flags, positional targets, renamed-flag hints, harness selection, model validation, DOCKS_KIT_SYNC_CONCURRENCY, the failure ledger, or dry-run and idempotency rules. Not for settings JSON (use settings-merge-context), Codex TOML (use codex-config-merge-context), plugin passes (use plugin-bootstrap-context), universal skills (use universal-skills-context), toolchain (use toolchain-context), omp (use omp-sync-context), or the golden harness (use engine-native-context)."
+description: "Use when editing docks-kit, cli/src/main.ts, cli/src/argv.ts, cli/src/argvValidate.ts, cli/src/engine.ts, or cli/src/engine-native index.ts, engineCtx.ts, syncDispatch.ts, syncConcurrency.ts, parseArgs.ts, parseModifiers.ts, modes.ts, models.ts, or liveModels.ts: sync flags, positional targets, renamed-flag hints, harness selection, model validation, DOCKS_KIT_SYNC_CONCURRENCY, the sync locks (withSyncLock, withFolderLocks, sync-lock.db, DOCKS_KIT_SYNC_LOCK_WAIT_MS), the failure ledger, or dry-run and idempotency rules. Not for settings JSON (use settings-merge-context), Codex TOML (use codex-config-merge-context), plugin passes (use plugin-bootstrap-context), universal skills (use universal-skills-context), toolchain (use toolchain-context), omp (use omp-sync-context), the lock module itself (use tidy-context), or the golden harness (use engine-native-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
@@ -36,7 +36,9 @@ metadata:
     - path: cli/src/engine-native/engineCtx.ts
       lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-155"
+      lines: "1-283"
+    - path: cli/src/engine-native/kitLock.ts
+      lines: "1-121"
     - path: cli/src/engine-native/syncConcurrency.ts
       lines: "1-55"
     - path: cli/src/engine-native/failures.ts
@@ -50,7 +52,7 @@ metadata:
     - path: cli/src/engine-native/harnesses.ts
       lines: "1-144"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-178"
+      lines: "1-196"
     - path: cli/src/engine-native/models.ts
       lines: "1-101"
     - path: cli/src/engine-native/liveModels.ts
@@ -64,17 +66,19 @@ metadata:
     - path: cli/src/engine-native/claudeSync.ts
       lines: "1-312"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "1-274"
+      lines: "1-314"
     - path: cli/src/engine-native/skillsSync.ts
-      lines: "1-54"
+      lines: "1-57"
     - path: cli/src/engine-native/skillsInstall.ts
-      lines: "1-110"
+      lines: "1-135"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-116"
+      lines: "1-117"
+    - path: cli/src/engine-native/skillsRecords.ts
+      lines: "1-138"
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-123"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-408"
+      lines: "1-415"
     - path: cli/src/engine-native/claudePluginPasses.ts
       lines: "1-426"
     - path: cli/src/engine-native/claudeOptionalPlugins.ts
@@ -231,7 +235,8 @@ documentation only; do not reintroduce compatibility behavior.
 `makeCtx` reads the unprefixed env globals (`ENV_GLOBAL_KEYS`) only when
 `options.envGlobals` is true. `runEngineNative` then switches on the first
 word. `model` runs `modeModel`, `toolchain` runs `modeToolchain`, and `sync` or
-any other word runs `syncDispatch.ts engineSync`:
+any other word runs `syncDispatch.ts engineSync`. `engineSync` runs the steps
+below inside `withSyncLock` (see § Sync Lock):
 
 1. `parseArgs` reads target words and flags. With no target word,
    `applyDefaultSelection` uses the kit.db harness selection, or
@@ -244,16 +249,18 @@ any other word runs `syncDispatch.ts engineSync`:
    highest. Any other value exits 2 before any pipeline starts. Unprobed: no
    unit test sets an invalid value. Read the check (verify:
    `grep -n "DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3" cli/src/engine-native/syncDispatch.ts`)
-4. When `claude` is selected, `claudeSettings.ts preflightClaudeSettings` runs
+4. A writing sync takes the folder locks of the selected Codex and agents
+   folders (see § Sync Lock). `runPipelines` runs the remaining steps.
+5. When `claude` is selected, `claudeSettings.ts preflightClaudeSettings` runs
    the abort-class check before any pipeline starts. An invalid deployed
    `~/.claude/settings.json` then stops the whole sync with exit 1.
    (verify: `bunx vitest run cli/test/unit/syncAbortPreflight.test.ts -t "stops every pipeline before it starts when Claude settings are not valid JSON"`)
-5. `engineSync` adds `claudeSync`, `codexSync`, `skillsSync`, and `ompSync`
+6. `engineSync` adds `claudeSync`, `codexSync`, `skillsSync`, and `ompSync`
    tasks, in that order, for the selected targets only.
-6. `syncConcurrency.ts syncConcurrencyForManifest` sets the cap to 1 when the
+7. `syncConcurrency.ts syncConcurrencyForManifest` sets the cap to 1 when the
    skills manifest is populated and both `claude` and `agents` are selected.
    (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "serializes Claude and skills only for a populated manifest"`)
-7. `syncConcurrency.ts runBounded` runs the tasks and keeps results in input
+8. `syncConcurrency.ts runBounded` runs the tasks and keeps results in input
    order. After the first rejection, started tasks drain and queued tasks do
    not start. `runBounded` then rejects with the failure of the first task in
    input order.
@@ -263,19 +270,69 @@ any other word runs `syncDispatch.ts engineSync`:
    rethrows the rejection. Unprobed: no unit test rejects a pipeline inside
    `engineSync`. Read the `catch` arm (verify:
    `grep -n "A rejected pipeline skips the summary" cli/src/engine-native/syncDispatch.ts`)
-8. `--- Sync complete ---` summaries print, then next-step notes for the
+9. `--- Sync complete ---` summaries print, then next-step notes for the
    pipelines that ran.
-9. When any step called `recordFailure`, the `--- Failures ---` ledger lists
-   each message, and `engineSync` returns 1.
+10. When any step called `recordFailure`, the `--- Failures ---` ledger lists
+    each message, and `engineSync` returns 1.
 
 Target selection alone decides which pipelines run. Each pipeline reads SoT
 from the embedded payload.
+
+### Sync Lock
+
+`syncDispatch.ts withSyncLock(ctx, args, body)` runs `body` under
+`~/.cache/docks-kit/sync-lock.db` (`scratch.ts syncLockPath`, a
+`kitLock.ts acquireKitLock` lock; `tidy-context` owns the lock module).
+
+- `engineSync` takes the lock before `parseArgs`. `parseArgs` reads the
+  harness selection from `kit.db`, and that read can migrate `kit.db` and
+  rename a legacy `state.json`.
+- `modes.ts modeModel` parses its own arguments first. It takes the lock only
+  for a write (`model <tool> <value>`), because a write does the same
+  read-modify-write of `settings.json` and `config.toml` as sync. The read form
+  (`model <tool>`) takes no lock.
+- No lock when `args` holds `--dry-run`, `-h`, or `--help` (`UNLOCKED_TOKENS`).
+  The `DRY_RUN=1` env global still takes it. A `--dry-run` sync can still
+  migrate `kit.db`; `kitDb.ts` makes that migration safe for parallel runs.
+- The wait bound is `SYNC_LOCK_WAIT_MS` (120 000 ms).
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` (a non-negative safe integer, in ms) overrides
+  it; unset or empty means the default. Any other value prints
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer` and exits 2.
+  A digit string above `Number.MAX_SAFE_INTEGER` also exits 2, because
+  `Number` would round it or make it Infinity.
+- Held past the bound: print
+  `another docks-kit sync holds <path>; run sync again after it ends` and
+  return 1, with no call to `body`.
+- The lock goes in `finally`, also after an `ExitError`. A signal needs no
+  handler: the OS releases the lock when the process ends.
+
+(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 1 with the held line and leaves HOME unchanged"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "releases the lock when the run stops with an ExitError"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 2 when the lock wait is not a non-negative safe integer"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock with --dry-run"`)
+
+Folder locks: two homes can share a Codex folder (`CODEX_HOME`) or an agents
+folder (`AGENTS_DIR`). Their home locks differ, so each writer of such a folder
+also takes `<folder>/.docks-kit-sync-lock.db` (`scratch.ts folderSyncLockPath`).
+
+- `runSync` takes them after `parseArgs`, through
+  `withFolderLocks(ctx, folders, body)`: the Codex folder (`codexPaths.ts
+  codexHome`) when `codex` is selected, and `ctx.agentsDir` when `agents` is
+  selected.
+- `folderLockPaths` resolves each folder to its real path, removes
+  duplicates, and sorts the lock paths. Every run takes them in that order,
+  after the home lock, so no two runs wait on each other in a cycle.
+- The pipeline creates its folder anyway, so `runSync` creates it before the
+  lock. The lock keeps the folder mode (`privateDirectory: false`).
+- A writing `model codex` takes the Codex folder lock after the home lock.
+  It creates no folder, so a missing Codex folder needs no lock.
+- A dry run (`ctx.dryRun`) takes no folder lock. The held line and the wait
+  bound are those of the home lock.
+
+(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a sync of another home wait while a sync holds the shared agents folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "makes a model codex write wait while a sync holds the Codex folder"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no folder lock in a dry run"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes one lock per real folder"`)
 
 ### Direct Modes
 
 | Invocation | Implementation | Behavior |
 |-----------|----------------|----------|
-| `model <tool> [value]` | `modeModel` | Get or set deployed Claude/Codex model; set paths reuse the deploy-time modifier functions. |
+| `model <tool> [value]` | `modeModel` | Get or set deployed Claude/Codex model; set paths reuse the deploy-time modifier functions. A set without `--dry-run` runs under the sync lock; a Codex set also takes the Codex folder lock. |
 | `models [tool]` | `modelsCommand` in `cli/src/commands/models.ts` -> `resolveCatalog` | Effect command, not an EngineNative mode. Prints the live list of each requested or enabled harness with `SoT/models.json` aliases and notes, or the curated list with its fallback reason when the live list is unavailable. |
 | `toolchain check` | `modeToolchain` -> `report` | Prints the toolchain table. |
 | `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
@@ -316,6 +373,13 @@ Unprobed: no unit test sets a catalog miss. Read the warnings (verify:
   `native-raw` path private to the harness.
 - A failed universal-skill install warns and does not reach the
   `--- Failures ---` ledger (`skillsInstall.ts syncUniversal`).
+- A held sync lock delays every check that runs under it. An invalid argument
+  or a bad `DOCKS_KIT_SYNC_CONCURRENCY` value exits 2 only after the lock wait
+  ends. A rejected sync leaves `~/.cache/docks-kit/sync-lock.db` in HOME.
+  (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "rejects unsupported effort and advisor values before any deployment change"`)
+- Never call `withSyncLock` inside a run that already holds the sync lock. A
+  second acquire in one process finds the lock held, waits the full bound, and
+  exits 1.
 
 ## References
 

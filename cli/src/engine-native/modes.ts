@@ -3,7 +3,7 @@
  * golden-tested messages, same exit codes.
  */
 import { p } from "./exec";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { payloadText } from "../payload";
 
 import { codexHome } from "./codexPaths";
@@ -14,12 +14,13 @@ import { isObject, parseJson, type Json } from "./jq";
 import { printModels, validateClaudeModel, validateCodexModel } from "./models";
 import { defaultLiveInputs, resolveCatalog } from "./liveModels";
 import { bunBootstrap } from "./bun";
+import { withFolderLocks, withSyncLock } from "./syncDispatch";
 import { upgradeLspServers } from "./claudeLsp";
 import { belowFloor, field, installedVersion, outdatedReport, present, report } from "./toolchain";
 import { topLevelTomlString } from "../manifests";
 
 export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
-  const { echo, err, warn } = ctx.services.logger;
+  const { err } = ctx.services.logger;
   let tool: "claude" | "codex" | "" = "";
   let value = "";
   for (const arg of args) {
@@ -36,39 +37,56 @@ export async function modeModel(ctx: Ctx, args: ReadonlyArray<string>): Promise<
     err("Usage: model <claude|codex> [value] [--dry-run]");
     return 2;
   }
-  const catalog = await resolveCatalog(tool, defaultLiveInputs(ctx.home));
-  if (value === "") {
-    if (tool === "claude") {
-      const deployed = p(ctx.home, ".claude", "settings.json");
-      const result = readConfig(deployed);
-      if (result.kind === "missing") {
-        warn("~/.claude/settings.json missing");
-        return 0;
-      }
-      if (result.kind === "read-error") {
-        err(`Failed to read ~/.claude/settings.json: ${String(result.error)}`);
-        return 1;
-      }
-      echo(`deployed: ${jsonModelText(result.data)}`);
-      echo(`SoT:      ${jsonModelText(payloadText("SoT/.claude/settings.json"))}`);
-    } else {
-      const deployed = p(codexHome(ctx.home), "config.toml");
-      const result = readConfig(deployed);
-      if (result.kind === "missing") {
-        warn(`${deployed} missing`);
-        return 0;
-      }
-      if (result.kind === "read-error") {
-        err(`Failed to read ${deployed}: ${String(result.error)}`);
-        return 1;
-      }
-      echo(`deployed: ${topLevelTomlString(result.data, "model") ?? ""}`);
-      echo(`SoT:      ${topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model") ?? ""}`);
-    }
-    printModels(ctx, catalog);
-    return 0;
-  }
+  if (value === "") return await showModel(ctx, tool);
+  // A write does the same read-modify-write of settings.json and config.toml as a sync.
+  return await withSyncLock(ctx, args, async () => {
+    // `model codex` writes config.toml in the Codex folder, which syncs of
+    // other homes can share. It creates no folder, so a missing one needs no lock.
+    const codexDir = codexHome(ctx.home);
+    const folders = tool === "codex" && existsSync(codexDir) ? [codexDir] : [];
+    return await withFolderLocks(ctx, folders, () => writeModel(ctx, tool, value));
+  });
+}
 
+/** Print the deployed model, the SoT model, and the model catalog of `tool`. */
+async function showModel(ctx: Ctx, tool: "claude" | "codex"): Promise<number> {
+  const { echo, err, warn } = ctx.services.logger;
+  const catalog = await resolveCatalog(tool, defaultLiveInputs(ctx.home));
+  if (tool === "claude") {
+    const deployed = p(ctx.home, ".claude", "settings.json");
+    const result = readConfig(deployed);
+    if (result.kind === "missing") {
+      warn("~/.claude/settings.json missing");
+      return 0;
+    }
+    if (result.kind === "read-error") {
+      err(`Failed to read ~/.claude/settings.json: ${String(result.error)}`);
+      return 1;
+    }
+    echo(`deployed: ${jsonModelText(result.data)}`);
+    echo(`SoT:      ${jsonModelText(payloadText("SoT/.claude/settings.json"))}`);
+  } else {
+    const deployed = p(codexHome(ctx.home), "config.toml");
+    const result = readConfig(deployed);
+    if (result.kind === "missing") {
+      warn(`${deployed} missing`);
+      return 0;
+    }
+    if (result.kind === "read-error") {
+      err(`Failed to read ${deployed}: ${String(result.error)}`);
+      return 1;
+    }
+    echo(`deployed: ${topLevelTomlString(result.data, "model") ?? ""}`);
+    echo(`SoT:      ${topLevelTomlString(payloadText("SoT/.codex/config.toml"), "model") ?? ""}`);
+  }
+  printModels(ctx, catalog);
+  return 0;
+}
+
+/** Validate `value` against the model catalog of `tool`, then write it. */
+async function writeModel(ctx: Ctx, tool: "claude" | "codex", value: string): Promise<number> {
+  const { err } = ctx.services.logger;
+  const catalog = await resolveCatalog(tool, defaultLiveInputs(ctx.home));
   if (tool === "claude") {
     if (!validateClaudeModel(ctx, value, catalog)) {
       printModels(ctx, catalog);

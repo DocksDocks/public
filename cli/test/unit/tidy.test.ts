@@ -6,13 +6,15 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
-  unlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { runTidy } from "../../src/commands/tidy";
+import { acquireKitLock, releaseKitLock } from "../../src/engine-native/kitLock";
 import { kitCacheDir } from "../../src/engine-native/scratch";
 import {
   applyTidy,
@@ -21,7 +23,6 @@ import {
   orphanParents,
   planTidy,
   resolveProcessCwds,
-  tidyLockPath,
   tidyLogPath,
   type CwdProbe,
   type ListedProcess,
@@ -452,30 +453,156 @@ describe("planTidy without a verified local Docker endpoint", () => {
   });
 });
 
-describe("applyTidy", () => {
-  it("changes nothing while another run holds a fresh lock", async () => {
-    const host = stubHost();
-    const plan = await planTidy(inputs, host);
-    mkdirSync(kitCacheDir(sandbox.home), { recursive: true });
-    const lock = tidyLockPath(sandbox.home);
-    writeFileSync(lock, `${process.pid} ${new Date().toISOString()}\n`);
+/**
+ * Seam for `tidy --apply` under the lock (plan #161, D-B). `commands/tidy.ts`
+ * exports:
+ *
+ *   runTidy(
+ *     options: { readonly apply: boolean; readonly report: boolean },
+ *     inputs: TidyInputs,
+ *     host: TidyHost,
+ *   ): Effect.Effect<void>
+ *
+ * `tidyCommand` resolves `--repo` into `inputs.repo` and then runs
+ * `runTidy({ apply, report }, inputs, defaultTidyHost())`. With `apply`,
+ * `runTidy` takes `<kitCacheDir(inputs.home)>/tidy-lock.db` through
+ * `acquireKitLock(path, { waitMs: 0 })` before `planTidy`, and releases it
+ * after the apply. When another holder has the lock, it prints only
+ * `another docks-kit tidy run holds <path>` and leaves `process.exitCode`
+ * unset. A dry run takes no lock. Each line goes out through `Console.log`.
+ */
+describe("runTidy", () => {
+  function tidyLock(home: string): string {
+    return join(kitCacheDir(home), "tidy-lock.db");
+  }
+
+  /** Run `runTidy`, and return the printed lines and the exit code that it set. */
+  async function run(
+    options: { readonly apply: boolean; readonly report: boolean },
+    tidyInputs: TidyInputs,
+    host: TidyHost,
+  ): Promise<{ lines: Array<string>; exitCode: typeof process.exitCode }> {
+    const saved = process.exitCode;
+    process.exitCode = undefined;
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      await Effect.runPromise(runTidy(options, tidyInputs, host));
+      return {
+        lines: log.mock.calls.map((args) => args.map(String).join(" ")),
+        exitCode: process.exitCode,
+      };
+    } finally {
+      log.mockRestore();
+      process.exitCode = saved;
+    }
+  }
+
+  it("prints the held line and plans nothing while another run holds the lock", async () => {
+    const lock = tidyLock(sandbox.home);
+    const held = await acquireKitLock(lock, { waitMs: 0 });
+    if (held.kind !== "acquired") throw new Error(`expected a free lock at ${lock}`);
+    let listings = 0;
+    const host = stubHost({
+      processes: async () => {
+        listings += 1;
+        return rows;
+      },
+    });
     calls.length = 0;
 
-    const outcome = await applyTidy(plan, inputs, host);
+    try {
+      const result = await run({ apply: true, report: false }, inputs, host);
 
-    expect(outcome).toEqual({
-      locked: true,
-      failures: 0,
-      lines: [`another docks-kit tidy run holds ${lock}`],
-    });
-    expect(calls).toEqual([]);
-    expect(existsSync(sandbox.worktrees.merged)).toBe(true);
-    expect(existsSync(join(sandbox.scratchRoot, "old-ab12"))).toBe(true);
-    expect(wipOrphan.exitCode).toBeNull();
-    expect(wipOrphan.signalCode).toBeNull();
-    unlinkSync(lock);
+      expect(result.lines).toEqual([`another docks-kit tidy run holds ${lock}`]);
+      expect(result.exitCode ?? 0).toBe(0);
+      expect(listings).toBe(0);
+      expect(calls).toEqual([]);
+      expect(existsSync(sandbox.worktrees.merged)).toBe(true);
+      expect(existsSync(join(sandbox.scratchRoot, "old-ab12"))).toBe(true);
+      expect(wipOrphan.exitCode).toBeNull();
+      expect(wipOrphan.signalCode).toBeNull();
+    } finally {
+      releaseKitLock(held.lock);
+    }
   });
 
+  it("plans without the lock in a dry run", async () => {
+    const lock = tidyLock(sandbox.home);
+    const held = await acquireKitLock(lock, { waitMs: 0 });
+    if (held.kind !== "acquired") throw new Error(`expected a free lock at ${lock}`);
+
+    try {
+      const result = await run({ apply: false, report: false }, inputs, stubHost());
+
+      expect(result.lines).not.toContain(`another docks-kit tidy run holds ${lock}`);
+      expect(result.lines.some((line) => line.startsWith("Dry run: "))).toBe(true);
+      expect(existsSync(sandbox.worktrees.merged)).toBe(true);
+    } finally {
+      releaseKitLock(held.lock);
+    }
+  });
+
+  it("plans only under the lock", async () => {
+    // A separate home with empty roots and no containers, so the plan is empty
+    // and the apply changes nothing in the shared sandbox.
+    const quiet = join(sandbox.base, "quiet");
+    const quietInputs: TidyInputs = {
+      home: join(quiet, "home"),
+      worktreeRoot: join(quiet, "worktrees"),
+      scratchRoot: join(quiet, "scratch"),
+    };
+    for (const directory of Object.values(quietInputs)) mkdirSync(directory, { recursive: true });
+    const lock = tidyLock(quietInputs.home);
+    const duringPlan: Array<string> = [];
+    const host = stubHost({
+      ps: ok(""),
+      processes: async () => {
+        const probe = await acquireKitLock(lock, { waitMs: 0 });
+        if (probe.kind === "acquired") releaseKitLock(probe.lock);
+        duringPlan.push(probe.kind);
+        return [];
+      },
+    });
+
+    const result = await run({ apply: true, report: false }, quietInputs, host);
+
+    expect(duringPlan).toEqual(["held"]);
+    expect(result.lines).toContain("Nothing to tidy.");
+    expect(result.exitCode ?? 0).toBe(0);
+    const after = await acquireKitLock(lock, { waitMs: 0 });
+    expect(after.kind).toBe("acquired");
+    if (after.kind === "acquired") releaseKitLock(after.lock);
+  });
+
+  // The report reads the process list only on Linux and macOS (buildTidyReport).
+  it.skipIf(process.platform === "win32")("releases the lock before the report runs", async () => {
+    const quiet = join(sandbox.base, "quiet-report");
+    const quietInputs: TidyInputs = {
+      home: join(quiet, "home"),
+      worktreeRoot: join(quiet, "worktrees"),
+      scratchRoot: join(quiet, "scratch"),
+    };
+    for (const directory of Object.values(quietInputs)) mkdirSync(directory, { recursive: true });
+    const lock = tidyLock(quietInputs.home);
+    // planTidy reads the processes once, and the report reads them once after it.
+    const lockStates: Array<string> = [];
+    const host = stubHost({
+      ps: ok(""),
+      processes: async () => {
+        const probe = await acquireKitLock(lock, { waitMs: 0 });
+        if (probe.kind === "acquired") releaseKitLock(probe.lock);
+        lockStates.push(probe.kind);
+        return [];
+      },
+    });
+
+    await run({ apply: true, report: true }, quietInputs, host);
+
+    expect(lockStates).toEqual(["held", "acquired"]);
+  });
+});
+
+describe("applyTidy", () => {
   it("fails each container action when the plan carries no local endpoint", async () => {
     const host = stubHost();
     const plan = await planTidy(inputs, host);
@@ -506,7 +633,6 @@ describe("applyTidy", () => {
 
     const outcome = await applyTidy(plan, inputs, host);
 
-    expect(outcome.locked).toBe(false);
     expect(outcome.failures).toBe(0);
     expect(existsSync(sandbox.worktrees.merged)).toBe(false);
     expect(sandbox.git(sandbox.main, "worktree", "list")).not.toContain("merged");
@@ -533,7 +659,6 @@ describe("applyTidy", () => {
 
     expect(existsSync(join(sandbox.scratchRoot, "old-ab12"))).toBe(false);
     expect(existsSync(join(sandbox.scratchRoot, "fresh-cd34"))).toBe(true);
-    expect(existsSync(tidyLockPath(sandbox.home))).toBe(false);
     const log = readFileSync(tidyLogPath(sandbox.home), "utf8");
     expect(log).toContain(`removed worktree ${sandbox.worktrees.merged} with 1 container`);
     expect(log).toMatch(/^\d{4}-\d{2}-\d{2}T\S+ stopped process /m);

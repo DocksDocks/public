@@ -6,14 +6,15 @@
  *   creates, and it adds a reminder that names the cleanup command.
  * - The session_stop handler lists the recorded resources that still exist.
  * - The session_start handler of a main session starts `docks-kit tidy --apply`
- *   in the background, at most one time in each sweep interval.
+ *   in the background, at most one time in each sweep interval. When the
+ *   sweep cannot start, the next tool result of the main session tells why.
  *
  * The module imports only node: modules, so omp loads it without a package
  * install. No subprocess uses a command interpreter, so a tool argument never
  * gets to a shell.
  */
 import { execFile, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   accessSync,
   chmodSync,
@@ -22,6 +23,7 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   statSync,
   unlinkSync,
@@ -462,9 +464,7 @@ async function runDocksKit(
   const output = [result.stdout.trim(), result.stderr.trim()].filter((text) => text !== "");
   if (result.code === 0) return result.stdout;
   const status = result.code === null ? "was stopped" : `exited with code ${result.code}`;
-  throw new Error(
-    output.length > 0 ? output.join("\n") : `docks-kit ${args.join(" ")} ${status}`,
-  );
+  throw new Error(output.length > 0 ? output.join("\n") : `docks-kit ${args.join(" ")} ${status}`);
 }
 
 // --------------------------------------------------------- shell parsing ----
@@ -551,7 +551,12 @@ function scopedSegments(command: string, rootScope: string): Array<ScopedSegment
       for (const separator of pendingSeparators) separators.add(separator);
       pendingSeparators.clear();
       if (changesControlFlow(words)) skipsCommands = true;
-      const segment = { words, background: ending === "&", scope: currentScope(), setupKnown: true };
+      const segment = {
+        words,
+        background: ending === "&",
+        scope: currentScope(),
+        setupKnown: true,
+      };
       segments.push(segment);
       ownSegments.push(segment);
     }
@@ -959,7 +964,8 @@ function gitArguments(
     const word = words[index] ?? "";
     if (GIT_VALUE_OPTIONS[word] === true) {
       const value = words[index + 1];
-      if (word === "-C") current = value === undefined ? undefined : resolvePath(value, current, home);
+      if (word === "-C")
+        current = value === undefined ? undefined : resolvePath(value, current, home);
       index += 2;
     } else if (word.startsWith("-")) {
       index++;
@@ -1130,8 +1136,7 @@ export function detectResources(
     const args = words.slice(1);
     if (name === "cd" || name === "pushd") {
       const directory = changeDirectory(args, state.directory, home);
-      state.directory =
-        segment.setupKnown || directory === state.directory ? directory : undefined;
+      state.directory = segment.setupKnown || directory === state.directory ? directory : undefined;
       continue;
     }
     if (name === "export") {
@@ -1280,7 +1285,11 @@ function mktempEffect(
     if (word.startsWith("--")) {
       const typed = word.split("=", 1)[0] ?? word;
       const matches = MKTEMP_LONG_OPTIONS.filter((option) => option.startsWith(typed));
-      const option = matches.includes(typed) ? typed : matches.length === 1 ? matches[0] : undefined;
+      const option = matches.includes(typed)
+        ? typed
+        : matches.length === 1
+          ? matches[0]
+          : undefined;
       // mktemp stops on an unknown or ambiguous option, so it creates nothing.
       if (option === undefined || option === "--dry-run" || option === "--help") return "nothing";
       if (option === "--version") return "nothing";
@@ -1465,11 +1474,7 @@ function lastContainerIdLine(output: string): string | undefined {
     .pop();
 }
 
-function otherRules(
-  context: CommandContext,
-  background: boolean,
-  home: string,
-): Array<OtherRule> {
+function otherRules(context: CommandContext, background: boolean, home: string): Array<OtherRule> {
   const { name, words } = context;
   const rules: Array<OtherRule> = [];
   const args = words.slice(1);
@@ -1477,21 +1482,12 @@ function otherRules(
   const hasAny = (...candidates: Array<string>): boolean => candidates.some(has);
   const global = hasAny("-g", "--global");
 
-  if (
-    background ||
-    name === "nohup" ||
-    name === "setsid" ||
-    name === "disown" ||
-    has("disown")
-  ) {
+  if (background || name === "nohup" || name === "setsid" || name === "disown" || has("disown")) {
     rules.push(BACKGROUND);
   }
 
   const detachFlag = args.some((word) => SHORT_CLUSTER_WITH_D.test(word));
-  if (
-    ((name === "tmux" && hasAny("new", "new-session")) || name === "screen") &&
-    detachFlag
-  ) {
+  if (((name === "tmux" && hasAny("new", "new-session")) || name === "screen") && detachFlag) {
     rules.push(TERMINAL);
   }
 
@@ -1654,29 +1650,43 @@ function mtimeMs(path: string): number | undefined {
   }
 }
 
-/**
- * Windows keeps a deleted file "delete pending" while a handle to it is open,
- * and refuses a new open of that name with ERROR_ACCESS_DENIED. A delete of a
- * file that another process holds without delete sharing fails with
- * ERROR_SHARING_VIOLATION. libuv, which runs the `node:fs` calls of Bun and
- * Node.js on Windows, reports these errors as EPERM and EBUSY. This rule is a
- * copy of the rule in `cli/src/engine-native/tidyLock.ts`, because this
- * extension imports only `node:` modules.
- */
-const WINDOWS_CONTENTION: Record<string, true> = { EBUSY: true, EPERM: true };
+/** A probe file of the claim or of the takeover mutex: `<file>.<pid>.<16 hex>.probe`. */
+const PROBE_FILE = /^tidy\.stamp\.(?:claim|takeover)\.(\d+)\.[0-9a-f]{16}\.probe$/;
 
 /**
- * True on Windows for an error that another process causes when it deletes or
- * holds the path. A real access denial on Windows also gives EPERM, and this
- * rule then also counts it as contention, as `tidyLock.ts` does. Thus a lasting
- * access fault on the cache directory makes each session lose the claim
- * without an error. On POSIX, EPERM and EBUSY are real faults, so they stay errors.
+ * Creates `<path>.<pid>.<16 hex>.probe` with `wx`, then removes it. True when
+ * both calls succeed: the folder lets this process create and delete files.
+ * False when a call fails: the folder can deny the operation. A process that
+ * stops between the two calls leaves the probe file, and removeExitedProbes
+ * removes it later.
  */
-function isWindowsContention(error: unknown): boolean {
+function probeSucceeds(path: string): boolean {
+  const probe = `${path}.${process.pid}.${randomBytes(8).toString("hex")}.probe`;
+  try {
+    closeSync(openSync(probe, "wx", 0o600));
+    unlinkSync(probe);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True on Windows for an error of an operation on `path` that another process
+ * causes when it deletes or holds `path`. libuv runs the `node:fs` calls of
+ * Bun and Node.js on Windows. It gives EBUSY only for a sharing or lock
+ * violation, so EBUSY is always contention. It gives EPERM for
+ * ERROR_ACCESS_DENIED. Windows returns that error for an open or a delete of a
+ * "delete pending" name. Such a name is a deleted file that another process
+ * still has open. Windows also returns the error for a folder that denies the
+ * operation. Thus EPERM counts as contention only when the probe succeeds;
+ * otherwise the caller throws the EPERM. On POSIX, EPERM and EBUSY are real
+ * faults, so they stay errors.
+ */
+function isWindowsContention(error: unknown, path: string): boolean {
+  if (process.platform !== "win32") return false;
   const code = errorCode(error);
-  return (
-    process.platform === "win32" && typeof code === "string" && WINDOWS_CONTENTION[code] === true
-  );
+  return code === "EBUSY" || (code === "EPERM" && probeSucceeds(path));
 }
 
 /**
@@ -1687,21 +1697,21 @@ function removeIfPresent(path: string): void {
   try {
     unlinkSync(path);
   } catch (error) {
-    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error)) throw error;
+    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error, path)) throw error;
   }
 }
 
 /**
  * Creates `path` with `wx` and writes an owner token into it. Returns the
  * token, or undefined when the file exists or, on Windows, when another
- * process deletes it now.
+ * process deletes or holds it now.
  */
 function createOwned(path: string): string | undefined {
   let descriptor: number;
   try {
     descriptor = openSync(path, "wx", 0o600);
   } catch (error) {
-    if (errorCode(error) === "EEXIST" || isWindowsContention(error)) return undefined;
+    if (errorCode(error) === "EEXIST" || isWindowsContention(error, path)) return undefined;
     throw error;
   }
   const token = `${process.pid} ${randomUUID()}`;
@@ -1722,7 +1732,35 @@ function releaseOwned(path: string, token: string): void {
   try {
     if (readFileSync(path, "utf8") === token) unlinkSync(path);
   } catch (error) {
-    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error)) throw error;
+    if (errorCode(error) !== "ENOENT" && !isWindowsContention(error, path)) throw error;
+  }
+}
+
+/** True when no process has `pid`: `process.kill(pid, 0)` fails with ESRCH. */
+function hasExited(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    return errorCode(error) === "ESRCH";
+  }
+}
+
+/**
+ * Removes each probe file of the claim and of the takeover mutex whose process
+ * has exited. Keeps the probe file of a running process, which removes it.
+ * The removal is best effort and makes no probe. So a folder that denies
+ * deletes keeps the file and cannot get a new probe file on each sweep.
+ */
+function removeExitedProbes(cacheDir: string): void {
+  for (const name of readdirSync(cacheDir)) {
+    const pid = PROBE_FILE.exec(name)?.[1];
+    if (pid === undefined || !hasExited(Number(pid))) continue;
+    try {
+      unlinkSync(join(cacheDir, name));
+    } catch {
+      // The next sweep tries again.
+    }
   }
 }
 
@@ -1736,11 +1774,14 @@ function isStale(path: string, nowMs: number): boolean {
  * Creates the claim and returns its token, or returns undefined when another
  * process holds it. Only the holder of the takeover mutex replaces a stale
  * claim, and it checks the claim again while it holds the mutex. A stale
- * takeover can still let two processes in (issue #159). On Windows, a create
- * that fails because another process deletes or holds the file gives no token
- * for that attempt. When the claim is then stale or gone, the takeover path
- * can still take it; otherwise a later main session claims the sweep. A
- * delete or a release that fails this way removes nothing.
+ * takeover can still let two processes claim the sweep. Each then starts
+ * `docks-kit tidy --apply`, and the second one finds `tidy-lock.db` held and
+ * stops, or plans from the current state after the first one ends. Thus a
+ * duplicate claim only adds load; the claim limits load and does not protect
+ * files. On Windows, a create that fails because another process deletes or
+ * holds the file gives no token for that attempt. When the claim is then stale
+ * or gone, the takeover path can still take it; otherwise a later main session
+ * claims the sweep. A delete or a release that fails this way removes nothing.
  */
 function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
   const claim = join(cacheDir, CLAIM_FILE);
@@ -1764,15 +1805,17 @@ function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
 }
 
 /**
- * Lets one process in each sweep interval start the sweep. The process that
- * holds `tidy.stamp.claim` reads the stamp again. When the sweep is still
- * due, it writes the stamp and returns true. In each case, it then releases its
- * claim. When the release fails on Windows because of contention, the claim
- * stays until it is stale.
+ * Lets one process in each sweep interval start the sweep. It first removes
+ * the probe files of exited processes. The process that holds
+ * `tidy.stamp.claim` reads the stamp again. When the sweep is still due, it
+ * writes the stamp and returns true. In each case, it then releases its claim.
+ * When the release fails on Windows because of contention, the claim stays
+ * until it is stale.
  */
 export function claimSweep(cacheDir: string, nowMs: number): boolean {
   mkdirSync(cacheDir, { recursive: true, mode: 0o700 });
   chmodSync(cacheDir, 0o700);
+  removeExitedProbes(cacheDir);
   const token = acquireClaim(cacheDir, nowMs);
   if (token === undefined) return false;
   try {
@@ -1797,10 +1840,7 @@ export function claimSweep(cacheDir: string, nowMs: number): boolean {
 const ledger = new Map<string, HygieneResource>();
 const reminded = new Set<string>();
 
-async function dockerListsAny(
-  target: DockerTarget,
-  args: ReadonlyArray<string>,
-): Promise<boolean> {
+async function dockerListsAny(target: DockerTarget, args: ReadonlyArray<string>): Promise<boolean> {
   try {
     const result = await run("docker", [...target.options, ...args], {
       env: { ...process.env, ...target.environment },
@@ -1837,10 +1877,32 @@ function textResult(text: string, details: Record<string, unknown>): ToolResult 
   return { content: [{ type: "text", text }], details };
 }
 
+/**
+ * Records each resource that a bash command created and returns its reminder
+ * lines and the notes on resources that the command can create.
+ */
+function resourceLines(event: ToolResultEvent, ctx: ExtensionContext): Array<string> {
+  if (event.toolName !== "bash" || event.isError === true) return [];
+  const command = event.input?.["command"];
+  if (typeof command !== "string" || !TRIGGER.test(command)) return [];
+  const cwd = resolve(ctx.cwd, String(event.input?.["cwd"] ?? "."));
+  const output = (event.content ?? [])
+    .map((block) => (block.type === "text" && typeof block.text === "string" ? block.text : ""))
+    .join("\n");
+  const { resources, notes } = detectResources(command, cwd, output, homedir());
+  for (const resource of resources) ledger.set(resourceKey(resource), resource);
+  return [...resources.map(creationReminder), ...notes];
+}
+
 // ------------------------------------------------------------- extension ----
 
 export default function docksKitOmp(pi: ExtensionApi): void {
   const z = pi.zod;
+  /**
+   * The message of the error that stopped the last sweep start. The next tool
+   * result of the main session shows it one time.
+   */
+  let sweepError: string | undefined;
 
   pi.registerTool<{ label: string }>({
     name: "scratch_new",
@@ -1911,21 +1973,17 @@ export default function docksKitOmp(pi: ExtensionApi): void {
   });
 
   pi.on("tool_result", async (event, ctx) => {
+    let lines: Array<string>;
     try {
-      if (event.toolName !== "bash" || event.isError === true) return undefined;
-      const command = event.input?.["command"];
-      if (typeof command !== "string" || !TRIGGER.test(command)) return undefined;
-      const cwd = resolve(ctx.cwd, String(event.input?.["cwd"] ?? "."));
-      const output = (event.content ?? [])
-        .map((block) => (block.type === "text" && typeof block.text === "string" ? block.text : ""))
-        .join("\n");
-      const { resources, notes } = detectResources(command, cwd, output, homedir());
-      for (const resource of resources) ledger.set(resourceKey(resource), resource);
-      const lines = [...resources.map(creationReminder), ...notes];
-      return lines.length === 0 ? undefined : { additionalContext: lines.join("\n") };
+      lines = resourceLines(event, ctx);
     } catch {
-      return undefined;
+      lines = [];
     }
+    if (ctx.agent?.kind !== "sub" && sweepError !== undefined) {
+      lines.push(`docks-kit sweep did not start: ${sweepError}`);
+      sweepError = undefined;
+    }
+    return lines.length === 0 ? undefined : { additionalContext: lines.join("\n") };
   });
 
   pi.on("session_stop", async (event) => {
@@ -1965,7 +2023,14 @@ export default function docksKitOmp(pi: ExtensionApi): void {
       const cacheDir = join(homedir(), ".cache", "docks-kit");
       const now = Date.now();
       if (!sweepDue(mtimeMs(join(cacheDir, STAMP_FILE)), now)) return undefined;
-      const docksKit = resolveDocksKit();
+      let docksKit: string;
+      try {
+        docksKit = resolveDocksKit();
+      } catch {
+        // A checkout user who runs ./docks-kit has no launcher on PATH. A line
+        // in each session would only repeat that, so the sweep stays silent.
+        return undefined;
+      }
       if (!claimSweep(cacheDir, now)) return undefined;
       const child = spawn(docksKit, ["tidy", "--apply"], {
         cwd: homedir(),
@@ -1976,8 +2041,10 @@ export default function docksKitOmp(pi: ExtensionApi): void {
       });
       child.on("error", () => {});
       child.unref();
-    } catch {
-      // A sweep that cannot start must not stop the session.
+    } catch (error) {
+      // A sweep that cannot start must not stop the session; the next tool
+      // result of the main session reports it.
+      sweepError = error instanceof Error ? error.message : String(error);
     }
     return undefined;
   });

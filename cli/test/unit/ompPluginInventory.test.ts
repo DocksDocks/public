@@ -6,6 +6,8 @@
  * row also carries `path`: the kit links its directory unless that entry
  * already resolves to it.
  */
+import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -889,6 +891,34 @@ describe("omp plugin inventory", () => {
     if (process.platform !== "win32") {
       expect(statSync(upgradeLog(root)).mode & 0o777).toBe(0o700);
     }
+  });
+
+  // D-F: `pruneUpgradeLog` removes a temporary file that a killed event write
+  // left, when its name is `<event name>.<pid>.<16 hex>.tmp` and the PID exited.
+  it("removes the temporary file of a dead event writer", async () => {
+    const root = makeRoot();
+    mkdirSync(upgradeLog(root), { recursive: true });
+    const { pid: deadPid } = spawnSync(process.execPath, ["-e", ""]);
+    if (deadPid === undefined) throw new Error("the exited child gave no PID");
+    const unique = (): string => randomBytes(8).toString("hex");
+    const deadEventWrite = `1000-aa.json.${deadPid}.${unique()}.tmp`;
+    const kept = [
+      // The log does not own a name that is not an event name.
+      `notes.json.${deadPid}.${unique()}.tmp`,
+      // This process is alive.
+      `1001-aa.json.${process.pid}.${unique()}.tmp`,
+    ];
+    for (const name of [deadEventWrite, ...kept]) {
+      writeFileSync(join(upgradeLog(root), name), '{"vers');
+    }
+    respondWithInventory([inventoryPresent(root), inventoryPresent(root, "0.19.0")]);
+
+    await ompSync(makeCtx(root));
+
+    const files = readdirSync(upgradeLog(root));
+    expect(files).not.toContain(deadEventWrite);
+    expect(files.filter((name) => name.endsWith(".tmp")).sort()).toEqual([...kept].sort());
+    expect(loggedUpgrades(root)).toEqual(["docks@docks 0.18.0 -> 0.19.0"]);
   });
 
   it.each([

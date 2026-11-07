@@ -1,9 +1,10 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -13,12 +14,18 @@ import {
 } from "node:fs";
 import type * as FsModule from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const faults = vi.hoisted(() => ({
-  /** Errors to throw once: the next `call` of `node:fs` on `path` throws `code`. */
-  pending: [] as Array<{ call: string; path: string; code: string }>,
+  /**
+   * Errors to throw once: the next `call` of `node:fs` on a matching path
+   * throws `code`. An "exact" fault matches only `path`; a "prefix" fault
+   * matches each path that starts with `path`.
+   */
+  pending: [] as Array<{ call: string; path: string; code: string; match: "exact" | "prefix" }>,
+  /** Each wrapped call and its path, also a call that throws an injected fault. */
+  seen: [] as Array<{ call: string; path: string }>,
 }));
 
 vi.mock("node:fs", async () => {
@@ -29,12 +36,16 @@ vi.mock("node:fs", async () => {
     real: Real,
   ): Real {
     return ((path: FsModule.PathLike, ...rest: Array<never>) => {
+      const target = String(path);
+      faults.seen.push({ call, path: target });
       const index = faults.pending.findIndex(
-        (fault) => fault.call === call && fault.path === String(path),
+        (fault) =>
+          fault.call === call &&
+          (fault.match === "prefix" ? target.startsWith(fault.path) : target === fault.path),
       );
       if (index !== -1) {
         const { code } = faults.pending.splice(index, 1)[0]!;
-        throw Object.assign(new Error(`${code}: injected fault, ${call} '${String(path)}'`), {
+        throw Object.assign(new Error(`${code}: injected fault, ${call} '${target}'`), {
           code,
         });
       }
@@ -97,7 +108,9 @@ function worktrees(command: string): Array<string> {
 
 afterEach(() => {
   faults.pending.length = 0;
+  faults.seen.length = 0;
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -819,13 +832,17 @@ describe("sweep scheduling", () => {
       vi.spyOn(process, "platform", "get").mockReturnValue("win32");
     }
 
-    /** Make the next `call` of `node:fs` on `path` throw an error with `code`, once. */
+    /**
+     * Make the next `call` of `node:fs` throw an error with `code`, once: on
+     * `path` itself ("exact") or on each path that starts with `path` ("prefix").
+     */
     function inject(
       call: "openSync" | "readFileSync" | "unlinkSync",
       path: string,
       code: string,
+      match: "exact" | "prefix" = "exact",
     ): void {
-      faults.pending.push({ call, path, code });
+      faults.pending.push({ call, path, code, match });
     }
 
     /** Call claimSweep once: `true`, `false`, or `threw <code>` for an error that escapes. */
@@ -928,6 +945,177 @@ describe("sweep scheduling", () => {
 
       expect(attempt(cacheDir, Date.now())).toBe(`threw ${code}`);
       expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+    });
+
+    /**
+     * Seam (D-G): on win32, after an EPERM from the `wx` create of a claim file
+     * (`openSync`), from its removal (`unlinkSync`), or from the read at release
+     * (`readFileSync`), the claim code makes a probe. It creates
+     * `<path>.<pid>.<16 lowercase hex>.probe` with `openSync(probe, "wx")`, then
+     * removes it with `unlinkSync(probe)`. `<path>` is the path of the failed
+     * call and `<pid>` is `process.pid`. When both probe calls succeed, the
+     * EPERM is contention. When a probe call fails with EPERM, claimSweep throws
+     * the original EPERM. EBUSY is contention and makes no probe. claimSweep
+     * removes a `.probe` file of the claim or of the takeover mutex when its
+     * PID has exited, and keeps it while its PID runs.
+     */
+    describe("probe after an EPERM", () => {
+      interface Site {
+        site: string;
+        call: "openSync" | "readFileSync" | "unlinkSync";
+        /** Makes the files that the claim code finds before the fault. */
+        prepare(claim: string, nowMs: number): void;
+        /** The result of claimSweep when the EPERM is contention. */
+        contention: "true" | "false";
+      }
+
+      const SITES: Array<Site> = [
+        {
+          site: "the create of the claim",
+          call: "openSync",
+          prepare: (claim) => writeFileSync(claim, ""),
+          contention: "false",
+        },
+        {
+          site: "the removal of a stale claim",
+          call: "unlinkSync",
+          prepare: (claim, nowMs) => makeStale(claim, nowMs),
+          contention: "false",
+        },
+        {
+          site: "the read of its claim at release",
+          call: "readFileSync",
+          prepare: () => {},
+          contention: "true",
+        },
+      ];
+
+      const PROBE_STEPS = [
+        { step: "create", probeCall: "openSync" },
+        { step: "removal", probeCall: "unlinkSync" },
+      ] as const;
+
+      const PROBE_TAIL = /^[0-9a-f]{16}\.probe$/;
+
+      /** The start of each probe name of `path` in this process: `<path>.<pid>.`. */
+      function probePrefix(path: string): string {
+        return `${path}.${process.pid}.`;
+      }
+
+      /** The probe paths of `path` that `call` of `node:fs` received. */
+      function probeCalls(call: "openSync" | "unlinkSync", path: string): Array<string> {
+        const prefix = probePrefix(path);
+        return faults.seen
+          .filter(
+            (seen) =>
+              seen.call === call &&
+              seen.path.startsWith(prefix) &&
+              PROBE_TAIL.test(seen.path.slice(prefix.length)),
+          )
+          .map((seen) => seen.path);
+      }
+
+      /** The names of the `.probe` files in `cacheDir`. */
+      function probeFiles(cacheDir: string): Array<string> {
+        return readdirSync(cacheDir)
+          .filter((name) => name.endsWith(".probe"))
+          .sort();
+      }
+
+      it.each(SITES)(
+        "returns $contention when $site fails with EPERM and the probe works",
+        ({ call, prepare, contention }) => {
+          const cacheDir = sandbox();
+          const now = Date.now();
+          const claim = join(cacheDir, "tidy.stamp.claim");
+          prepare(claim, now);
+          onWindows();
+          inject(call, claim, "EPERM");
+
+          expect(attempt(cacheDir, now)).toBe(contention);
+          expect(faults.pending).toEqual([]);
+          const created = probeCalls("openSync", claim);
+          expect(created).toHaveLength(1);
+          expect(probeCalls("unlinkSync", claim)).toEqual(created);
+          expect(probeFiles(cacheDir)).toEqual([]);
+        },
+      );
+
+      it.each(SITES.flatMap((site) => PROBE_STEPS.map((step) => ({ ...site, ...step }))))(
+        "throws the EPERM of $site when the $step of the probe fails with EPERM",
+        ({ call, prepare, probeCall }) => {
+          const cacheDir = sandbox();
+          const now = Date.now();
+          const claim = join(cacheDir, "tidy.stamp.claim");
+          prepare(claim, now);
+          onWindows();
+          inject(call, claim, "EPERM");
+          inject(probeCall, probePrefix(claim), "EPERM", "prefix");
+
+          expect(() => claimSweep(cacheDir, now)).toThrow(
+            `EPERM: injected fault, ${call} '${claim}'`,
+          );
+          expect(faults.pending).toEqual([]);
+        },
+      );
+
+      it("returns false and makes no probe when the create of the claim fails with EBUSY", () => {
+        const cacheDir = sandbox();
+        const now = Date.now();
+        const claim = join(cacheDir, "tidy.stamp.claim");
+        writeFileSync(claim, "");
+        onWindows();
+        inject("openSync", claim, "EBUSY");
+
+        expect(attempt(cacheDir, now)).toBe("false");
+        expect(faults.pending).toEqual([]);
+        expect(probeCalls("openSync", claim)).toEqual([]);
+        expect(probeFiles(cacheDir)).toEqual([]);
+      });
+
+      it("removes the probe files of an exited process and keeps the probe file of a live process", async () => {
+        const cacheDir = sandbox();
+        const exited = spawnSync(process.execPath, ["-e", ""]).pid;
+        // The child runs until its stdin closes or it is killed.
+        const live = spawn(process.execPath, ["-e", "process.stdin.resume()"], {
+          stdio: ["pipe", "ignore", "ignore"],
+        });
+        const { promise: liveExit, resolve: exitDone } = Promise.withResolvers<void>();
+        live.once("exit", () => exitDone());
+        try {
+          expect(live.pid).toBeTypeOf("number");
+          const liveProbe = `tidy.stamp.claim.${String(live.pid)}.0123456789abcdef.probe`;
+          for (const name of [
+            `tidy.stamp.claim.${exited}.0123456789abcdef.probe`,
+            `tidy.stamp.takeover.${exited}.fedcba9876543210.probe`,
+            liveProbe,
+          ]) {
+            writeFileSync(join(cacheDir, name), "");
+          }
+          onWindows();
+
+          expect(attempt(cacheDir, Date.now())).toBe("true");
+          expect(probeFiles(cacheDir)).toEqual([liveProbe]);
+        } finally {
+          live.kill();
+          await liveExit;
+        }
+      });
+
+      it("makes no probe for an exited probe file that the folder does not let it remove", () => {
+        const cacheDir = sandbox();
+        const exited = spawnSync(process.execPath, ["-e", ""]).pid;
+        const deadProbe = join(cacheDir, `tidy.stamp.claim.${exited}.0123456789abcdef.probe`);
+        writeFileSync(deadProbe, "");
+        onWindows();
+        // The folder denies deletes: the removal fails, and so would the removal of a probe of it.
+        inject("unlinkSync", deadProbe, "EPERM");
+        inject("unlinkSync", `${deadProbe}.`, "EPERM", "prefix");
+
+        expect(attempt(cacheDir, Date.now())).toBe("true");
+        expect(probeCalls("openSync", deadProbe)).toEqual([]);
+        expect(probeFiles(cacheDir)).toEqual([basename(deadProbe)]);
+      });
     });
   });
 });
@@ -1093,5 +1281,52 @@ describe("extension handlers", () => {
       { cwd: "/w" },
     );
     expect(result).toBeUndefined();
+  });
+
+  /**
+   * Seam (D-G): the session_start handler keeps the message of an error that
+   * stops the sweep. The next tool_result of the main session (`ctx.agent`
+   * absent or `kind: "main"`) adds the line
+   * `docks-kit sweep did not start: <message>` to its additionalContext, one
+   * time. A tool_result of a subagent does not show or use the line.
+   */
+  it("shows a sweep error once, on the next tool result of the main session", async () => {
+    const home = sandbox();
+    const bin = sandbox();
+    // resolveDocksKit only checks the file; the sweep stops before it starts docks-kit.
+    const launcher = join(bin, process.platform === "win32" ? "docks-kit.exe" : "docks-kit");
+    writeFileSync(launcher, "#!/bin/sh\n");
+    chmodSync(launcher, 0o755);
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("USERPROFILE", home);
+    vi.stubEnv("PATH", bin);
+    const claim = join(home, ".cache", "docks-kit", "tidy.stamp.claim");
+    faults.pending.push({ call: "openSync", path: claim, code: "EACCES", match: "exact" });
+    const { handlers } = load();
+
+    expect(await handlers.get("session_start")?.({}, { cwd: "/w" })).toBeUndefined();
+    expect(faults.pending).toEqual([]);
+    const subagentResult = await handlers.get("tool_result")?.(
+      { toolName: "bash", input: { command: "ls" }, content: [], isError: false },
+      { cwd: "/w", agent: { kind: "sub" } },
+    );
+    expect(subagentResult).toBeUndefined();
+    expect(await bash(handlers, "ls")).toBe(
+      `docks-kit sweep did not start: EACCES: injected fault, openSync '${claim}'`,
+    );
+    expect(await bash(handlers, "ls")).toBeUndefined();
+  });
+
+  it("shows no sweep error and makes no claim when docks-kit is not on PATH", async () => {
+    const home = sandbox();
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("USERPROFILE", home);
+    // A checkout user who runs ./docks-kit has no launcher on PATH.
+    vi.stubEnv("PATH", sandbox());
+    const { handlers } = load();
+
+    expect(await handlers.get("session_start")?.({}, { cwd: "/w" })).toBeUndefined();
+    expect(await bash(handlers, "ls")).toBeUndefined();
+    expect(existsSync(join(home, ".cache", "docks-kit", "tidy.stamp.claim"))).toBe(false);
   });
 });

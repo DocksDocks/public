@@ -1,12 +1,23 @@
 /**
  * EngineNative universal-skill install pass (`npx skills@<pin> add`) with
  * Claude symlink healing. Split from skillsSync.ts; the orchestration still
- * lives there.
+ * lives there. The pass records a slug as pending before its install only
+ * when the canonical directory does not exist (`skillsRecords.ts`). After
+ * the install, it moves the slug to the owned record when its directory
+ * exists. It writes both records before the next install starts. A canonical
+ * directory that existed before is reused and never recorded.
  */
 import { p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { ExitError } from "./parseArgs";
 import { healClaudeSymlink, isDir } from "./skillsLinks";
+import {
+  canonicalAbsent,
+  recordPendingInstall,
+  settlePendingSlug,
+  writeSkillRecords,
+  type SkillRecords,
+} from "./skillsRecords";
 import { normalizeManifest, skillBase } from "./skillsManifest";
 import { field } from "./toolchain";
 
@@ -29,6 +40,7 @@ export async function syncUniversal(
   state: SkillsState,
   skillsDir: string,
   manifest: string,
+  records: SkillRecords,
 ): Promise<void> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
   if (ctx.services.deps.probe("npx").state === "missing") {
@@ -60,19 +72,32 @@ export async function syncUniversal(
 
     if (isDir(p(skillsDir, base))) {
       already++;
+      if (!records.owned.has(slug) && !records.legacy.has(slug)) {
+        warn(
+          `Universal skill ${slug}: reused the existing ~/.agents/skills/${base}; the kit did not install it, so --prune keeps it`,
+        );
+      }
       if (healClaudeSymlink(ctx, skillsDir, base)) healed++;
       continue;
     }
 
+    const cli = skillsCli(ctx);
+    const pending = canonicalAbsent(skillsDir, slug);
+    if (pending) recordPendingInstall(records, slug);
     progress(`Installing universal skill ${slug}...`);
     const res = await spawnProcess(
       "npx",
-      ["--yes", skillsCli(ctx), "add", slug, "-g", "-y", "-a", "claude-code", "codex"],
+      ["--yes", cli, "add", slug, "-g", "-y", "-a", "claude-code", "codex"],
       {
         stdio: "ignore",
       },
     );
     clearProgress();
+    if (pending) {
+      // The owned record goes first, so a stop between the writes keeps the slug pending.
+      settlePendingSlug(records, skillsDir, slug);
+      writeSkillRecords(ctx, records);
+    }
     if (res.error === undefined && res.exitCode === 0) {
       added++;
       if (!isDir(p(skillsDir, base))) {

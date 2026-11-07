@@ -1,18 +1,20 @@
 ---
 name: universal-skills-context
-description: "Use when modifying cli/src/engine-native/skillsSync.ts (orchestration), skillsInstall.ts syncUniversal/skillsCli, skillsLinks.ts healClaudeSymlink/linkOrCopy/COPY_MARKER, skillsPrune.ts reconcileRemovals/updateSnapshot, skillsManifest.ts normalizeManifest/skillBase, or SoT/.agents/skills.txt. Covers source-first skills CLI args, universal storage, symlink healing, and the prune snapshot. Not for Bun bootstrap or the skills-cli pin entry (use toolchain-context), or sync targets and flag parsing (use sync-orchestration-context)."
+description: "Use when modifying cli/src/engine-native/skillsSync.ts (orchestration), skillsInstall.ts syncUniversal/skillsCli, skillsLinks.ts healClaudeSymlink/linkOrCopy/COPY_MARKER, skillsPrune.ts reconcileRemovals, skillsRecords.ts readSkillRecords/recordPendingInstall/settlePendingSlug/writeSkillRecords, skillsManifest.ts normalizeManifest/skillBase, or SoT/.agents/skills.txt. Covers source-first skills CLI args, universal storage, symlink healing, and the ownership records that --prune reads. Not for Bun bootstrap or the skills-cli pin entry (use toolchain-context), or sync targets and flag parsing (use sync-orchestration-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/skillsSync.ts
-      lines: "1-54"
+      lines: "1-57"
     - path: cli/src/engine-native/skillsInstall.ts
-      lines: "1-110"
+      lines: "1-135"
     - path: cli/src/engine-native/skillsLinks.ts
       lines: "1-216"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-116"
+      lines: "1-117"
+    - path: cli/src/engine-native/skillsRecords.ts
+      lines: "1-138"
     - path: cli/src/engine-native/skillsManifest.ts
       lines: "1-36"
     - path: SoT/.agents/skills.txt
@@ -24,7 +26,7 @@ metadata:
     - path: cli/src/engine-native/os/windows.ts
       lines: "1-184"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-155"
+      lines: "1-283"
   updated: "2026-11-07"
 ---
 
@@ -51,12 +53,30 @@ path.
 </constraint>
 
 <constraint>
-`updateSnapshot` must run last in `skillsSync`, so a run that aborts mid-way
-leaves the snapshot with its prior content (verify: `updateSnapshot` is the last
-call in `skillsSync.ts skillsSync`). It writes the declared slugs plus
-`retainedSlugs`. A run without `--prune` retains every previous snapshot slug.
-A `--prune` run retains only the slugs that it failed to remove (verify:
-`bunx vitest run cli/test/unit/skillsDurability.test.ts`).
+Only `~/.agents/.kit-owned-skills` lets `--prune` remove a skill. Record a slug
+there only when an install of the kit created its canonical directory:
+
+- `syncUniversal` adds a slug to `~/.agents/.kit-pending-skills` before
+  `npx skills add`, and only when `lstat` finds no entry at the canonical
+  directory (`skillsRecords.ts canonicalAbsent`, `recordPendingInstall`).
+- After the install, `settlePendingSlug` moves the slug to the owned record
+  when the directory exists, and drops it otherwise. The owned line keeps the
+  `<dev>:<ino>` of the directory (`skillsRecords.ts directoryIdentity`, a
+  bigint `lstat`, so a Windows file index stays exact). A slug that the owned
+  record already names keeps its identity when a later sync settles it again.
+  A new install first drops the stale owned line of its slug.
+- A canonical directory that existed before is reused and never recorded.
+- After each install, `syncUniversal` calls `writeSkillRecords` before the
+  next install starts. It writes the owned record first, then the pending
+  record, and removes an empty pending record. So a sync that stops at any
+  point leaves each installed slug in one of the two records.
+- `--prune` removes an owned skill only while its directory keeps the
+  recorded `<dev>:<ino>`. Otherwise it prints
+  `keep <slug>: the directory is not the one that the kit installed`, keeps the
+  directory and its Claude entry, and drops the slug from the owned record.
+- Sync reads the legacy `~/.agents/.kit-managed-skills` and never writes it.
+
+(verify: `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "skill ownership records"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records each installed skill before the next install starts"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps an owned skill whose directory is not the one that the kit installed"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps the owned evidence when a sync settles the same pending slug again"`, and `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records the new directory when the kit installs an owned skill again"`)
 </constraint>
 
 ## When To Use
@@ -70,7 +90,9 @@ A `--prune` run retains only the slugs that it failed to remove (verify:
 ```text
 ~/.agents/skills/<basename>/        canonical universal skill path
 ~/.claude/skills/<basename>         symlink -> ../../.agents/skills/<basename>
-~/.agents/.kit-managed-skills       sorted snapshot of kit-tracked slugs
+~/.agents/.kit-owned-skills         sorted <slug>\t<dev>:<ino> lines of kit installs; --prune reads only this
+~/.agents/.kit-pending-skills       slugs whose install runs; absent when empty
+~/.agents/.kit-managed-skills       legacy snapshot of an older kit; read only
 ```
 
 `skillsManifest.ts skillBase` derives `<basename>` from a slug. An
@@ -92,6 +114,14 @@ so declare the slug as `<owner>/<repo>@<skill-name>` (verify:
 and
 `bunx vitest run cli/test/unit/skillsSync.test.ts -t "warns when a successful install creates no directory"`).
 
+A reused directory is not kit-owned. For a declared slug whose directory
+existed before and is in neither the owned nor the legacy record, each sync
+warns `Universal skill <slug>: reused the existing ~/.agents/skills/<base>; the
+kit did not install it, so --prune keeps it` (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "never records a skill directory that existed before the install"`).
+A dry run prints no such line (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "prints no reuse warning in a dry run"`).
+
 `linkOrCopy` creates the Claude entry. It tries each directory link kind in
 `hostOs().directoryLinkKinds` order (`cli/src/engine-native/os/posix.ts`: a
 relative symlink; `cli/src/engine-native/os/windows.ts`: a relative symlink,
@@ -104,7 +134,7 @@ and
 
 ## Manifest Parsing
 
-`normalizeManifest` is the shared parser for install, removal, and snapshot
+`normalizeManifest` is the shared parser for install, removal, and record
 flows. It strips blank lines, whole-line comments, inline comments, and
 whitespace before producing one slug per line. Do not parse `skills.txt` ad hoc.
 Verify: `bun -e 'import { normalizeManifest } from "./cli/src/engine-native/skillsManifest.ts"; console.log(normalizeManifest("  acme/pack@demo  # note\n# comment\n\n"))'`
@@ -133,29 +163,46 @@ The kit does not call `skills remove`. In the pinned CLI, `remove` without
 directory, real directory or link. `skills remove` rejects `-a '*'`
 (`Invalid agents: *`, exit 1).
 
-## Prune Snapshot
+## Ownership Records And Prune
 
-`reconcileRemovals` runs only when `ctx.prune` is true. It compares the previous
-snapshot against the current manifest and removes slugs that were kit-managed
-but are no longer declared. It deletes only what the kit created. That is the
+`skillsSync.ts skillsSync` runs in this order:
+
+1. `readSkillRecords` reads the owned, pending, and legacy records.
+2. A leftover pending slug from a stopped sync moves to the owned record when
+   its directory exists, else it is dropped (`settlePendingSlug`). Sync writes
+   the records.
+3. `syncUniversal` installs the declared slugs (see the constraint above).
+4. With `--prune`, `reconcileRemovals` removes owned slugs that the SoT no
+   longer declares.
+5. `writeSkillRecords` writes the records.
+
+`reconcileRemovals` runs only when `ctx.prune` is true. It visits only the
+slugs in `records.owned`. It deletes only what the kit created. That is the
 canonical `~/.agents/skills/<basename>` when it is a real directory that holds
 `SKILL.md`. It also deletes the kit-managed Claude entry: a symlink, a junction,
 or a marked copy. It never touches an unmarked real
 `~/.claude/skills/<basename>`. It does not call `skills remove`, so it never
 touches the skill directories of other agents (verify:
 `bunx vitest run cli/test/unit/skillsSync.test.ts -t "prunes only kit-created entries"`).
-User-installed skills that never appeared in the snapshot are preserved.
-Unprobed: no unit test prunes with a skill that is absent from the snapshot.
-Read the `skillsPrune.ts reconcileRemovals` loop, which visits only the slugs
-from `readSlugs(snapshot)` (verify:
-`grep -n "readSlugs(snapshot)" cli/src/engine-native/skillsPrune.ts`).
+User-installed skills that the owned record does not name are preserved
+(verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "never records a skill directory that existed before the install"`).
 
-A run without `--prune` keeps the previous snapshot slugs. A later `--prune`
-therefore still removes a slug that left `skills.txt` earlier. A failed removal
-stays in the snapshot for the next `--prune` (verify:
-`bunx vitest run cli/test/unit/skillsDurability.test.ts`). The prune keeps the
-directories of a dropped slug when a declared slug still maps to the same
-basename (`reconcileRemovals`, `currentBases` guard).
+A legacy entry never authorizes a removal, because an older kit also recorded
+directories that the user made. For each legacy slug that the SoT dropped, that
+is not owned, and whose canonical directory still exists, `--prune` prints
+`keep <slug>: an older kit recorded it, so the kit cannot prove it installed
+it; remove it by hand if the kit did` (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps a legacy snapshot entry on prune and names it"`).
+
+A run without `--prune` keeps every owned slug. A later `--prune` therefore
+still removes a slug that left `skills.txt` earlier. A failed removal stays in
+the owned record for the next `--prune` (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps a dropped slug tracked through a plain sync"`
+and
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "retains a failed removal"`).
+The prune keeps the directories of a dropped slug when a declared slug still
+maps to the same basename (`reconcileRemovals`, `currentBases` guard).
 
 ## Gotchas
 
@@ -164,9 +211,18 @@ basename (`reconcileRemovals`, `currentBases` guard).
 - An unmarked real directory at `~/.claude/skills/<name>` masks the canonical
   skill for Claude Code; sync warns but does not delete user content. A copy
   that holds a `COPY_MARKER` file is kit-owned; sync replaces it.
-- A failed install can still be present in the snapshot because the snapshot
-  records kit-tracked slugs, not install success. It holds the declared slugs
-  plus previously tracked slugs that no successful --prune removed yet.
+- A failed install leaves no record: `settlePendingSlug` drops a pending slug
+  whose directory does not exist (verify:
+  `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "drops a pending slug whose install failed"`).
+- A skill that an older kit really installed is no longer pruned on its own,
+  because only the legacy record names it. The keep line names it.
+- A directory that the user creates between a stopped sync and the next sync,
+  at the path of a pending slug, becomes kit-owned.
+- The owned evidence is a `<dev>:<ino>` pair. A file system can give a new
+  directory the inode number of a deleted one. A replacement at the same path
+  with a reused inode number then reads as the kit's directory.
+- A tool that replaces the skill directory with a new one gives it a new
+  inode. `--prune` then keeps it with the keep line.
 
 ## References
 

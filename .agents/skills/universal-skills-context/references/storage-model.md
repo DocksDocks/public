@@ -13,7 +13,9 @@ canonical universal path and the Claude Code symlink.
 |   `-- <basename>/
 |       |-- SKILL.md
 |       `-- references/
-`-- .kit-managed-skills
+|-- .kit-owned-skills       kit-installed slugs; the only --prune record
+|-- .kit-pending-skills     installs in progress
+`-- .kit-managed-skills     legacy record of an older kit; read only
 
 ~/.claude/
 `-- skills/
@@ -57,18 +59,30 @@ directories alone with a warning. Verify each step:
 - `--prune` reclaims a marked copy:
   `bunx vitest run cli/test/unit/skillsSync.test.ts -t "prunes only kit-created entries"`.
 
-## Snapshot Format
+## Record Format
 
-`~/.agents/.kit-managed-skills` contains one full slug per line, sorted. It
-holds the declared slugs plus previously tracked slugs that no successful
-`--prune` has removed yet. Each non-dry-run sync that runs the `agents` target
-(`syncDispatch.ts`, `ctx.syncAgents` branch) recomputes it in
-`skillsPrune.ts updateSnapshot`. `--prune` uses it to identify removed
-kit-managed skills.
+Each record holds one full slug per line, sorted (`skillsRecords.ts`). An owned
+line also holds the identity of the directory: `<slug>\t<dev>:<ino>`.
+
+| File | Holds | Writer |
+|------|-------|--------|
+| `~/.agents/.kit-owned-skills` | The slugs whose canonical directory an install of the kit created, each with the `<dev>:<ino>` of that directory. The only record that lets `--prune` remove a skill, and only while the directory keeps that identity. | `writeSkillRecords`, first, after each install and at the end of the sync |
+| `~/.agents/.kit-pending-skills` | The slugs whose install runs. A slug enters only when the canonical directory has no entry. Removed when empty. | `recordPendingInstall` before the install; `writeSkillRecords`, second |
+| `~/.agents/.kit-managed-skills` | The legacy snapshot of an older kit. It also names directories that the user made. | None; sync only reads it |
+
+Each non-dry-run sync that runs the `agents` target (`syncDispatch.ts`,
+`ctx.syncAgents` branch) writes the owned and pending records. A pending slug
+left by a stopped sync moves to the owned record when its directory exists,
+else it is dropped. The pending slugs are a separate file, not a prefix in a
+shared file. An older kit parses each line with `normalizeManifest`, which
+removes all whitespace. So it would read a prefixed line as a slug.
 
 ## Gotchas
 
-- User-installed skills without snapshot entries are not pruned by the kit.
+- User-installed skills that the owned record does not name are never pruned
+  by the kit, also when the legacy record names them. `--prune` prints a
+  `keep` line for a legacy slug that the SoT dropped and whose directory
+  exists.
 - `--prune` deletes only the kit-created canonical directory and the
   kit-managed Claude entry. It never touches the skill directories of other
   agents.

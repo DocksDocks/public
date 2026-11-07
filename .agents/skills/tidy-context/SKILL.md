@@ -1,34 +1,36 @@
 ---
 name: tidy-context
-description: "Use when modifying the docks-kit agent-leftover sweep or checked temporary-path removal: tidy.ts planTidy, applyTidy, agentRoots, checkWorktree, isLocalDockerEndpoint, localDocker, resolveProcessCwds, or isProtectedProcess; tidyLock.ts acquireTidyLock and the tidy.lock takeover mutex; tidyReport.ts buildTidyReport; scratch.ts createScratchDir, allowedRemovalRoots, or removeTemporaryPath; commands tidy.ts and scratch.ts (docks-kit tidy --apply, --repo, --report; docks-kit scratch new and remove); or the omp extension hygiene.ts with scratch_new, scratch_remove, tidy_report, detectResources, and claimSweep over tidy.stamp.claim. Not for agent cleanup conduct inside a session (use workspace-hygiene) or deployment and linking of the docks-kit-omp plugin (use omp-sync-context)."
+description: "Use when modifying the docks-kit agent-leftover sweep or checked temporary-path removal: tidy.ts planTidy, applyTidy, agentRoots, checkWorktree, isLocalDockerEndpoint, localDocker, resolveProcessCwds, or isProtectedProcess; kitLock.ts acquireKitLock and the tidy-lock.db apply lock; processes.ts processExited; tidyReport.ts buildTidyReport; scratch.ts createScratchDir, allowedRemovalRoots, or removeTemporaryPath; commands tidy.ts runTidy and scratch.ts (docks-kit tidy --apply, --repo, --report; docks-kit scratch new and remove); or the omp extension hygiene.ts with scratch_new, scratch_remove, tidy_report, detectResources, claimSweep over tidy.stamp.claim, and its Windows EPERM probe. Not for agent cleanup conduct inside a session (use workspace-hygiene) or deployment and linking of the docks-kit-omp plugin (use omp-sync-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/tidy.ts
-      lines: "1-1296"
+      lines: "1-1279"
     - path: cli/src/engine-native/tidyReport.ts
       lines: "1-509"
-    - path: cli/src/engine-native/tidyLock.ts
-      lines: "1-163"
+    - path: cli/src/engine-native/kitLock.ts
+      lines: "1-121"
+    - path: cli/src/engine-native/processes.ts
+      lines: "1-16"
     - path: cli/src/engine-native/scratch.ts
-      lines: "1-188"
+      lines: "1-206"
     - path: cli/src/commands/tidy.ts
-      lines: "1-91"
+      lines: "1-148"
     - path: cli/src/commands/scratch.ts
       lines: "1-75"
     - path: SoT/.omp/plugin/extensions/hygiene.ts
-      lines: "1-1984"
+      lines: "1-2051"
     - path: cli/test/unit/tidy.test.ts
-      lines: "1-541"
-    - path: cli/test/unit/tidyLock.test.ts
-      lines: "1-375"
+      lines: "1-665"
+    - path: cli/test/unit/kitLock.test.ts
+      lines: "1-398"
     - path: cli/test/unit/tidyReport.test.ts
       lines: "1-168"
     - path: cli/test/unit/scratch.test.ts
       lines: "1-187"
     - path: cli/test/unit/ompKitPluginExtension.test.ts
-      lines: "1-1097"
+      lines: "1-1332"
     - path: cli/test/lib/gitSandbox.ts
       lines: "1-181"
   updated: "2026-11-07"
@@ -54,10 +56,10 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 |---|---|
 | A new leftover class, keep reason, or threshold | `cli/src/engine-native/tidy.ts` — `planTidy`, `checkWorktree` |
 | Apply order, signals, Docker or git removal calls | `cli/src/engine-native/tidy.ts` — `applyTidy` |
-| Lock file format, staleness, takeover | `cli/src/engine-native/tidyLock.ts` — `acquireTidyLock` |
+| The apply lock: when it is taken, what a held lock prints | `cli/src/commands/tidy.ts` — `runTidy`; `cli/src/engine-native/kitLock.ts` — `acquireKitLock` |
 | `--report` sections, hints, process filters | `cli/src/engine-native/tidyReport.ts` — `buildTidyReport` |
 | Scratch creation, removal roots, path trust | `cli/src/engine-native/scratch.ts` — `createScratchDir`, `removeTemporaryPath` |
-| CLI flags, output lines, exit status | `cli/src/commands/tidy.ts` — `tidyCommand`; `cli/src/commands/scratch.ts` — `scratchCommand` |
+| CLI flags, output lines, exit status | `cli/src/commands/tidy.ts` — `runTidy`, `tidyCommand`; `cli/src/commands/scratch.ts` — `scratchCommand` |
 | omp tools, reminders, the background sweep | `SoT/.omp/plugin/extensions/hygiene.ts`; see `references/hygiene-extension.md` |
 
 ## Core Patterns
@@ -65,11 +67,13 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 ### Module map
 
 - `cli/src/engine-native/tidy.ts` — `planTidy` — read-only plan; it runs only listing commands. Unprobed: no unit test asserts the kind of each command. Read each `runDocker` and `host.git` call that `planTidy` reaches (verify: `grep -n -e "runDocker(\[" -e "host.git(\[" cli/src/engine-native/tidy.ts`)
-- `cli/src/engine-native/tidy.ts` — `applyTidy` — performs a `TidyPlan` under `tidy.lock` and appends to `tidy.log` (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "changes nothing while another run holds a fresh lock"`; `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"`)
+- `cli/src/engine-native/tidy.ts` — `applyTidy` — performs a `TidyPlan` and appends to `tidy.log`; its caller holds `tidy-lock.db` (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"`)
 - `cli/src/engine-native/tidy.ts` — `TidyHost`, `defaultTidyHost` — the injection seam for `git`, `docker`, `dockerEndpoint`, `run`, `processes`, `now` (verify: `grep -n "export interface TidyHost" cli/src/engine-native/tidy.ts`)
-- `cli/src/engine-native/tidyLock.ts` — `acquireTidyLock`, `releaseTidyLock` — node-only lock module, so a test child can load it alone (verify: `grep -n 'from "' cli/src/engine-native/tidyLock.ts`)
+- `cli/src/commands/tidy.ts` — `runTidy` — `tidyCommand` resolves the inputs and calls it. With `--apply`, it takes `tidy-lock.db` before `planTidy` and releases it before `--report` runs (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "plans only under the lock"` and `bunx vitest run cli/test/unit/tidy.test.ts -t "releases the lock before the report runs"`)
+- `cli/src/engine-native/kitLock.ts` — `acquireKitLock`, `releaseKitLock` — the SQLite lock of `tidy --apply` and of sync. It imports only `node:` modules, so a test child can load it alone (verify: `grep -n 'from "' cli/src/engine-native/kitLock.ts`)
+- `cli/src/engine-native/processes.ts` — `processExited` — true only when `process.kill(pid, 0)` throws ESRCH. `tidy.ts darwinProcesses` (the macOS cwd probe) uses it to tell an exited PID from an unreadable cwd. Unprobed: no unit test runs the macOS probe (verify: `grep -n "processExited(pid)" cli/src/engine-native/tidy.ts`)
 - `cli/src/engine-native/tidyReport.ts` — `buildTidyReport` — read-only sections; reuses `tidy.ts` helpers (verify: `grep -n 'from "./tidy"' cli/src/engine-native/tidyReport.ts`)
-- `cli/src/engine-native/scratch.ts` — `kitCacheDir`, `scratchRoot` — owner of `~/.cache/docks-kit` and its `scratch/` child (verify: `grep -n "export function kitCacheDir" cli/src/engine-native/scratch.ts`)
+- `cli/src/engine-native/scratch.ts` — `kitCacheDir`, `scratchRoot`, `tidyApplyLockPath`, `syncLockPath` — owner of `~/.cache/docks-kit`, its `scratch/` child, and the lock files `tidy-lock.db` and `sync-lock.db` (verify: `grep -n -e "export function kitCacheDir" -e "LockPath(home" cli/src/engine-native/scratch.ts`)
 
 ### Plan model
 
@@ -131,13 +135,14 @@ Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "removes the merged idle w
 
 ### Apply order
 
-1. Acquire `tidy.lock`; when another run holds it, return `locked: true` and change nothing.
-2. SIGTERM each `stop-process` PID.
+1. `runTidy` takes `tidy-lock.db` with `waitMs: 0`, then runs `planTidy`. When another run holds the lock, it prints only `another docks-kit tidy run holds <path>`, with no plan and no report, and leaves the exit code unset.
+2. `applyTidy` sends SIGTERM to each `stop-process` PID.
 3. Each `remove-worktree`: `docker rm --force --volumes` its containers, remove its compose networks, then `git worktree remove -- <path>`; then `git worktree prune` once per touched repository.
 4. `docker stop` for `stop-containers`; `docker rm --force --volumes` plus networks for `remove-containers`.
-5. Scratch removals; append all lines to `tidy.log` (rotated to `tidy.log.1` past the byte limit); release the lock.
+5. Scratch removals; append all lines to `tidy.log` (rotated to `tidy.log.1` past the byte limit).
+6. `runTidy` releases the lock (`Effect.acquireUseRelease`), then runs `--report` when it is set.
 
-Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` asserts the order, the `--host` prefix, and no git `--force`.
+Probes: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` asserts the order, the `--host` prefix, and no git `--force`. `bunx vitest run cli/test/unit/tidy.test.ts -t "prints the held line and plans nothing while another run holds the lock"` asserts step 1. `bunx vitest run cli/test/unit/tidy.test.ts -t "releases the lock before the report runs"` asserts step 6.
 
 ### Temporary-path removal
 
@@ -160,11 +165,14 @@ Probes: `bunx vitest run cli/test/unit/scratch.test.ts -t "refuses a symbolic li
 
 ### Lock
 
-- Text `<pid> <ISO time> <token>`, created with `wx`.
-- Stale when absent, older than `LOCK_STALE_MS` by mtime, or its PID is dead (ESRCH).
-- Takeover only under `<lock>.takeover`; the holder checks staleness again before it unlinks. A takeover mutex older than `TAKEOVER_STALE_MS` is removed once.
-- On Windows, EPERM and EBUSY from another process count as absent or held.
-- Probe: `bunx vitest run cli/test/unit/tidyLock.test.ts -t "lets exactly one of 8 racing processes"`.
+- `kitLock.ts acquireKitLock(path, { waitMs })` makes the directory (mode 0700), opens `DatabaseSync(path)`, and sets `busy_timeout = 0`. It tries `BEGIN IMMEDIATE` every `POLL_MS` until it succeeds or `waitMs` ends. It returns `{ kind: "acquired", lock }` or `{ kind: "held" }`.
+- The lock is the RESERVED lock of that transaction, and only one connection can hold RESERVED. `BEGIN EXCLUSIVE` is wrong here: two racers that each hold SHARED while they move up can both fail at `waitMs: 0`.
+- At most one connection, in any process, holds the lock. The OS releases it when the holder process ends for any reason. A paused holder keeps it. No staleness rule and no takeover exist.
+- A module-level set keeps each held connection, so the garbage collector cannot close a lock that a caller dropped.
+- `releaseKitLock` runs `ROLLBACK`, closes the connection, and removes it from the set.
+- The database stays in rollback journal mode. Never set WAL on a lock file.
+- Lock files: `scratch.ts tidyApplyLockPath` gives `~/.cache/docks-kit/tidy-lock.db` (`tidy --apply`). `syncLockPath` gives `sync-lock.db` (sync and model writes; see `sync-orchestration-context`). `folderSyncLockPath` gives `<folder>/.docks-kit-sync-lock.db` in a Codex or agents folder that a sync writes. These locks keep the folder mode (`privateDirectory: false`). A legacy text `tidy.lock` is not a database, and no code reads it.
+- Probes: `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 8 racing processes"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 4 racers that start at the same moment"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets a contender take the lock after the holder process gets SIGKILL"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "keeps the lock across a forced garbage collection"`.
 
 ### Report
 
@@ -182,7 +190,7 @@ Re-derive before you rely on a value.
 |---|---|---|
 | `WORKTREE_IDLE_MS`, `STACK_IDLE_MS`, `SCRATCH_IDLE_MS` | Worktree, container/orphan, and scratch idle thresholds | `grep -n -e "WORKTREE_IDLE_MS =" -e "STACK_IDLE_MS =" -e "SCRATCH_IDLE_MS =" cli/src/engine-native/tidy.ts` |
 | `LOG_ROTATE_BYTES` | `tidy.log` size that triggers rotation | `grep -n "LOG_ROTATE_BYTES =" cli/src/engine-native/tidy.ts` |
-| `LOCK_STALE_MS`, `TAKEOVER_STALE_MS` | Lock and takeover-mutex staleness | `grep -n "STALE_MS =" cli/src/engine-native/tidyLock.ts` |
+| `POLL_MS` | Time between two lock tries | `grep -n "POLL_MS =" cli/src/engine-native/kitLock.ts` |
 | `REPORT_PROCESS_AGE_MS`, `RECENT_MS` | Report process age and "recent" window | `grep -n -e "REPORT_PROCESS_AGE_MS =" -e "RECENT_MS =" cli/src/engine-native/tidyReport.ts` |
 | `SWEEP_INTERVAL_MS`, `CLAIM_STALE_MS` | Background sweep interval and claim staleness | `grep -n -e "SWEEP_INTERVAL_MS =" -e "CLAIM_STALE_MS =" SoT/.omp/plugin/extensions/hygiene.ts` |
 
@@ -190,12 +198,13 @@ Re-derive before you rely on a value.
 
 | Decision | Why | Probe |
 |---|---|---|
-| Plan and apply are separate; the CLI is a dry run without `--apply` | The user and the agent see every action and keep reason first | Unprobed: no unit test runs `tidyCommand`. Read the `config.apply` branch (verify: `grep -n "config.apply" cli/src/commands/tidy.ts`) |
+| Plan and apply are separate; the CLI is a dry run without `--apply` | The user and the agent see every action and keep reason first | `bunx vitest run cli/test/unit/tidy.test.ts -t "plans without the lock in a dry run"` |
+| `--apply` plans under the lock | A plan made outside the lock can wait behind another apply and then act on stale worktrees and PIDs | `bunx vitest run cli/test/unit/tidy.test.ts -t "plans only under the lock"` |
 | Docker endpoint verified once per run and carried in `TidyPlan.docker` | `DOCKER_HOST` or a context can send a plain `docker` call to a remote host; a compose label does not prove a local daemon | `bunx vitest run cli/test/unit/tidy.test.ts -t "fails each container action when the plan carries no local endpoint"` |
 | No process list keeps every in-use-dependent candidate | An unreadable cwd could belong to a process in an agent directory | `bunx vitest run cli/test/unit/tidy.test.ts -t "process list is unavailable"` |
 | Worktree removal never uses `--force` | git refuses a dirty or locked worktree, a second guard after `checkWorktree` | `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` |
 | Scratch removal reuses `removeTemporaryPath` | One checked deletion path for the CLI, the omp tool, and tidy | `bunx vitest run cli/test/unit/scratch.test.ts -t "removeTemporaryPath"` |
-| Lock release compares the token; takeover checks only staleness | A release never removes the lock of another run. A takeover removes any lock that `lockIsStale` reports, also while its run still lives (see Gotchas) | `bunx vitest run cli/test/unit/tidyLock.test.ts -t "removes the lock only while it still carries the token"` |
+| An SQLite lock with no takeover | A file lock with a stale reclaim kept a window where two runs held it, and a takeover could remove the lock of a live run. The OS releases an SQLite lock when its holder ends, so no staleness rule is necessary | `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets a contender take the lock after the holder process gets SIGKILL"` |
 | The workstation sweep runs without a question | Owner decision; read it in the root `AGENTS.md` owner-decision bullet, not here | `grep -n "resources on the workstation are always development" AGENTS.md` |
 
 ## Gotchas
@@ -208,14 +217,16 @@ Re-derive before you rely on a value.
 | `missing` docker is not `containersUnknown` | With no `docker` CLI, worktrees are still removed | `bunx vitest run cli/test/unit/tidy.test.ts -t "keeps the worktree rule when docker is not installed"` |
 | Silent skips | A container group outside the territory, a stopped group in a present directory, a vanished scratch entry, or an orphan with no cwd gets no `keep` line | Read `planTidy` before you claim "everything is listed" |
 | Windows has no process list | Every worktree and scratch entry stays, and the orphan rule is off | `grep -n "process.platform ===" cli/src/engine-native/tidy.ts` |
-| A held lock exits 0 | A script reads "another docks-kit tidy run holds" as success | `applyTidy` returns `failures: 0` with `locked: true`; `tidyCommand` sets exit 1 only for failures |
-| The plan runs outside the lock | A plan that waits behind another apply acts on stale worktrees and PIDs; only scratch activity is checked again | Recheck any new destructive action inside `applyTidy` |
-| Lock staleness checks mtime before the PID | An apply that runs past `LOCK_STALE_MS` can be taken over while it still runs | Unprobed: no unit test holds a live PID with an old mtime. Read `lockIsStale` (verify: `grep -n -A 6 "function lockIsStale" cli/src/engine-native/tidyLock.ts`) |
+| A held lock exits 0 | A script reads "another docks-kit tidy run holds" as success | `runTidy` leaves the exit code unset when the lock is held; `bunx vitest run cli/test/unit/tidy.test.ts -t "prints the held line and plans nothing while another run holds the lock"` |
+| `applyTidy` does not take the lock | A new caller that skips `runTidy` applies a plan with no lock, next to a running sweep | Call `applyTidy` only through `runTidy`: `grep -rn "applyTidy(" cli/src` |
+| A paused or hung holder keeps the lock | A stopped `tidy --apply` (SIGSTOP, a hung `git` or `docker` call) makes every later apply print the held line until it ends | End the holder process; the OS then releases the lock |
+| A second acquire in one process gets `held` | A nested call that takes the same lock again waits the full bound, then reports the lock as held | Take each lock once per run: `bunx vitest run cli/test/unit/kitLock.test.ts -t "refuses a second acquire in the same process"` |
+| Any read of a lock file in the holder process drops the lock | POSIX ends every lock of a process when the process closes any descriptor of the file (https://www.sqlite.org/howtocorrupt.html, section 2.2); another run then takes the lock while the first still holds its transaction | Only `kitLock.ts` opens a lock file: `git grep -n -e "tidy-lock.db" -e "sync-lock.db" -- cli/src/engine-native` names only `scratch.ts` |
 | `isSameOrInside(parent, child)` order | A swapped call reverses a guard without a type error | `bunx vitest run cli/test/unit/tidy.test.ts -t "refuses a root that contains the home directory"` |
 | `isProtectedProcess` matches `/.omp/` or `/tern/` anywhere in `args` | An orphan started with a config path under `~/.omp/` is never stopped | `bunx vitest run cli/test/unit/tidyReport.test.ts -t "lists old orphaned tools"` |
 | `removeProjectNetworks` ignores a failed `network rm` | A network that another container uses stays with no `failed` line | By design; do not count it as a failure |
-| `hygiene.ts` copies `kitCacheDir`, `LABEL_PATTERN`, and the `tidyLock.ts` contention rule `isWindowsContention` | A change on one side splits `tidy.stamp` from `tidy.lock`, lets the tool accept a label that the CLI rejects, or makes the sweep claim and the tidy lock treat a Windows EPERM or EBUSY differently | `grep -n -e "kitCacheDir" -e "LABEL_PATTERN =" -e "WINDOWS_CONTENTION:" SoT/.omp/plugin/extensions/hygiene.ts cli/src/engine-native/scratch.ts cli/src/engine-native/tidyLock.ts` |
-| Untested paths | Network removal, log rotation, `--repo` listing, the apply-time scratch recheck, CLI output lines, and the `session_start` spawn have no unit test | Add a should-fail case with any change there |
+| `hygiene.ts` copies `kitCacheDir`, `LABEL_PATTERN`, and `processes.ts processExited` (as `hasExited`) | A change on one side splits `tidy.stamp` from `tidy-lock.db`, lets the tool accept a label that the CLI rejects, or makes the probe cleanup and the CLI disagree on when a PID has exited | `grep -n -e "kitCacheDir" -e "LABEL_PATTERN =" -e "function hasExited" -e "function processExited" SoT/.omp/plugin/extensions/hygiene.ts cli/src/engine-native/scratch.ts cli/src/engine-native/processes.ts` |
+| Untested paths | Network removal, log rotation, `--repo` listing, the apply-time scratch recheck, the `tidyCommand` input resolution, and the `session_start` spawn have no unit test | Add a should-fail case with any change there |
 
 ## References
 

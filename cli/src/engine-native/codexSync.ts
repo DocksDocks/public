@@ -14,7 +14,7 @@ import {
   payloadText,
   type PayloadPath,
 } from "../payload";
-import { replaceTextIfChanged } from "./atomicWrite";
+import { replaceFile, replaceTextIfChanged } from "./atomicWrite";
 import { syncConfig } from "./codexConfig";
 import { removeRetiredImportedHooks } from "./codexHooks";
 import { codexHome } from "./codexPaths";
@@ -165,28 +165,62 @@ function sha256Hex(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-/** The rules files that earlier syncs wrote: file name to the sha256 of the kit bytes. */
-function readRulesRecords(manifestFile: string): Map<string, string> {
-  const records = new Map<string, string>();
+/**
+ * The rules files that syncs wrote: file name to the sha256 hashes of the kit
+ * bytes recorded for it, in manifest order. A sync that stopped after its
+ * write-ahead can leave two lines, so two hashes, for one name.
+ */
+function readRulesRecords(manifestFile: string): Map<string, Set<string>> {
+  const records = new Map<string, Set<string>>();
   if (!existsSync(manifestFile)) return records;
   for (const line of readFileSync(manifestFile, "utf8").split("\n")) {
     const record = RULES_RECORD.exec(line);
-    if (record !== null) records.set(record[2]!, record[1]!);
+    if (record === null) continue;
+    const name = record[2]!;
+    const hashes = records.get(name) ?? new Set<string>();
+    hashes.add(record[1]!);
+    records.set(name, hashes);
   }
   return records;
 }
 
 /**
+ * Replaces the manifest with one `<sha256>  <name>` line per recorded hash,
+ * sorted by name. A name keeps the order of its hashes. Writes no manifest
+ * when there is no record and no manifest.
+ */
+function writeRulesManifest(
+  manifestFile: string,
+  records: ReadonlyMap<string, ReadonlySet<string>>,
+): void {
+  const manifest = [...records]
+    .sort(([left], [right]) => compareCodepoints(left, right))
+    .flatMap(([name, hashes]) => [...hashes].map((hash) => `${hash}  ${name}\n`))
+    .join("");
+  if (manifest !== "" || existsSync(manifestFile)) replaceTextIfChanged(manifestFile, manifest);
+}
+
+/**
  * Deploys the SoT rules files and records each one in `manifestFile`. Codex
- * applies every file in `rules/`, so a file that the SoT dropped keeps its old
- * rules active. Each sync therefore removes a recorded file that the SoT no
- * longer ships while the file holds the recorded kit bytes. An edited file
- * stays, keeps its record, and gets a warning on each sync. Sync deploys each
- * name that the SoT ships over an existing file, recorded or not. It backs up
- * a file that differs to `<name>.bak` and replaces it. Cleanup never reads or
- * removes a file that the SoT does not ship and no sync recorded, such as the
- * `default.rules` file of Codex. Sync replaces the manifest through a temporary
- * file and a rename, so an interrupted sync keeps the previous manifest.
+ * applies every `*.rules` file in `rules/`, so a file that the SoT dropped
+ * keeps its old rules active. Each sync therefore removes a recorded file
+ * that the SoT no longer ships while its bytes have one of the hashes recorded
+ * for its name. An edited file stays, keeps its records, and gets a warning on
+ * each sync. Sync deploys each name that the SoT ships over an existing file,
+ * recorded or not. It backs up a file that differs to `<name>.bak`. It then
+ * replaces it through a temporary file and a rename, so an interrupted write
+ * keeps the previous file. Codex does not load the `*.tmp` file. Cleanup
+ * never reads or removes a file that the SoT does not ship and no sync
+ * recorded, such as the `default.rules` file of Codex.
+ *
+ * Record ahead: before the deploy, sync writes the manifest with the recorded
+ * hashes of each name plus the kit hash of each shipped name. So a sync that
+ * stops after a deploy leaves a record of the bytes it wrote. A name whose kit
+ * bytes change then has two lines. Every recorded hash is a hash of kit
+ * bytes, so no record lets cleanup remove bytes that the user wrote. After the
+ * deploy, sync writes one line per shipped name, and a kept name keeps its
+ * hashes. Both writes go through a temporary file and a rename, so an
+ * interrupted write keeps the previous manifest.
  */
 export function syncRules(
   ctx: Ctx,
@@ -198,7 +232,8 @@ export function syncRules(
   const ruleFiles = sotRules.filter((path) => path.endsWith(".rules")).sort(compareCodepoints);
   const fileName = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
   const shippedNames = new Set(ruleFiles.map(fileName));
-  const nextRecords = new Map<string, string>();
+  const recorded = readRulesRecords(manifestFile);
+  const nextRecords = new Map<string, ReadonlySet<string>>();
   const firstRule = sotRules[0];
 
   if (ctx.dryRun) {
@@ -209,15 +244,24 @@ export function syncRules(
     }
   } else if (firstRule !== undefined) {
     mkdirSync(userRulesDir, { recursive: true });
-    let rulesChanged = false;
-    for (const ruleFile of ruleFiles) {
-      const userRuleFile = p(userRulesDir, fileName(ruleFile));
+    const deploys = ruleFiles.map((ruleFile) => {
       const content = payloadBytes(ruleFile);
-      nextRecords.set(fileName(ruleFile), sha256Hex(content));
+      return { name: fileName(ruleFile), content, hash: sha256Hex(content) };
+    });
+    const ahead = new Map(recorded);
+    for (const { name, hash } of deploys) {
+      ahead.set(name, new Set([...(recorded.get(name) ?? []), hash]));
+      nextRecords.set(name, new Set([hash]));
+    }
+    writeRulesManifest(manifestFile, ahead);
+
+    let rulesChanged = false;
+    for (const { name, content } of deploys) {
+      const userRuleFile = p(userRulesDir, name);
       const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(content);
       if (identical) continue;
       if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`);
-      writeFileSync(userRuleFile, content);
+      replaceFile(userRuleFile, content);
       rulesChanged = true;
     }
     if (rulesChanged) {
@@ -226,15 +270,15 @@ export function syncRules(
     } else if (ruleFiles.length > 0) verbose("Codex rules already in sync");
   }
 
-  for (const [name, recordedHash] of readRulesRecords(manifestFile)) {
+  for (const [name, recordedHashes] of recorded) {
     if (shippedNames.has(name)) continue;
     const file = p(userRulesDir, name);
     if (!existsSync(file)) continue;
-    if (sha256Hex(readFileSync(file)) !== recordedHash) {
+    if (!recordedHashes.has(sha256Hex(readFileSync(file)))) {
       warn(
         `Codex rules: kept ${file}: the SoT no longer ships it, and it differs from the kit copy. Review it and delete it if you do not need its rules.`,
       );
-      nextRecords.set(name, recordedHash);
+      nextRecords.set(name, recordedHashes);
       continue;
     }
     if (ctx.dryRun) {
@@ -247,11 +291,7 @@ export function syncRules(
   }
   if (ctx.dryRun) return;
 
-  const manifest = [...nextRecords]
-    .sort(([left], [right]) => compareCodepoints(left, right))
-    .map(([name, hash]) => `${hash}  ${name}\n`)
-    .join("");
-  if (manifest !== "" || existsSync(manifestFile)) replaceTextIfChanged(manifestFile, manifest);
+  writeRulesManifest(manifestFile, nextRecords);
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): void {

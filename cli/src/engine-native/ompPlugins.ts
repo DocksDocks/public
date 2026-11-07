@@ -15,7 +15,7 @@
 import { randomBytes } from "node:crypto";
 import { chmodSync, mkdirSync, readdirSync, realpathSync, unlinkSync } from "node:fs";
 
-import { replaceFile } from "./atomicWrite";
+import { removeStaleTemporaries, replaceFile } from "./atomicWrite";
 import { p, processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
@@ -194,8 +194,15 @@ function versionChanges(
   return upgrades;
 }
 
-/** Removes the oldest event files beyond the newest UPGRADE_EVENTS_KEPT. */
+/**
+ * Removes the oldest event files beyond the newest UPGRADE_EVENTS_KEPT, and
+ * the temporary files that killed event writes left.
+ */
 function pruneUpgradeLog(dir: string): void {
+  removeStaleTemporaries(
+    dir,
+    (target) => target.kind === "name" && UPGRADE_EVENT_FILE.test(target.name),
+  );
   const events = readdirSync(dir).flatMap((name) => {
     const match = UPGRADE_EVENT_FILE.exec(name);
     return match === null ? [] : [{ name, finishedAt: Number(match[1]) }];

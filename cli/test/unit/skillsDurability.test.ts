@@ -1,9 +1,11 @@
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readlinkSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -23,11 +25,11 @@ const mocks = vi.hoisted(() => ({
 
 const faults = vi.hoisted(() => ({
   /**
-   * While set, each `writeFileSync` on a path that starts with this prefix
+   * Each `writeFileSync` on a path that starts with one of these prefixes
    * writes half of the data and then throws `EIO`, as an interrupted write does.
-   * The prefix covers the file and its temporary siblings.
+   * A prefix covers the file and its temporary siblings.
    */
-  interruptWritesUnder: undefined as string | undefined,
+  interruptWritesUnder: [] as ReadonlyArray<string>,
 }));
 
 vi.mock("node:fs", async () => {
@@ -48,11 +50,11 @@ vi.mock("node:fs", async () => {
       data: string | NodeJS.ArrayBufferView,
       options?: FsModule.WriteFileOptions,
     ) => {
-      const prefix = faults.interruptWritesUnder;
       if (
-        prefix === undefined ||
         typeof file === "number" ||
-        !resolve(String(file)).startsWith(resolve(prefix))
+        !faults.interruptWritesUnder.some((prefix) =>
+          resolve(String(file)).startsWith(resolve(prefix)),
+        )
       ) {
         actual.writeFileSync(file, data, options);
         return;
@@ -84,10 +86,14 @@ import {
 
 const roots: Array<string> = [];
 
-function makeCtx(root: string, prune: boolean): Ctx {
+/** `output`, when given, collects the stdout and stderr text of the sync. */
+function makeCtx(root: string, prune: boolean, output?: Array<string>): Ctx {
   const platform = makePlatform("linux");
+  const write = (chunk: string): void => {
+    output?.push(chunk);
+  };
   const services = {
-    ...makeEngineServices({ sinks: { stderr: () => {}, stdout: () => {} } }),
+    ...makeEngineServices({ sinks: { stderr: write, stdout: write } }),
     deps: makeDependencyManager(platform, {
       commandExists: (name) => name === "npx",
       capture: async () => "",
@@ -107,13 +113,21 @@ function makeCtx(root: string, prune: boolean): Ctx {
   } as Ctx;
 }
 
-function seedOrphan(root: string): { canonical: string; snapshot: string } {
+/** The `<dev>:<ino>` evidence of a directory, as the owned record keeps it. */
+function identityOf(directory: string): string {
+  const stats = lstatSync(directory, { bigint: true });
+  return `${stats.dev}:${stats.ino}`;
+}
+
+/** An installed skill that the owned record names with its evidence (D-E2). */
+function seedOrphan(root: string): { canonical: string; owned: string; line: string } {
   const canonical = join(root, ".agents", "skills", "orphan");
   mkdirSync(canonical, { recursive: true });
   writeFileSync(join(canonical, "SKILL.md"), "# orphan\n");
-  const snapshot = join(root, ".agents", ".kit-managed-skills");
-  writeFileSync(snapshot, "acme/orphan\n");
-  return { canonical, snapshot };
+  const owned = join(root, ".agents", ".kit-owned-skills");
+  const line = `acme/orphan\t${identityOf(canonical)}\n`;
+  writeFileSync(owned, line);
+  return { canonical, owned, line };
 }
 
 describe("skills durability", () => {
@@ -130,7 +144,7 @@ describe("skills durability", () => {
   });
 
   afterEach(() => {
-    faults.interruptWritesUnder = undefined;
+    faults.interruptWritesUnder = [];
     mocks.failRemovalOf = undefined;
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
   });
@@ -149,57 +163,347 @@ describe("skills durability", () => {
   it("keeps a dropped slug tracked through a plain sync until a prune removes it", async () => {
     const root = mkdtempSync(join(tmpdir(), "docks-skills-carry-"));
     roots.push(root);
-    const { canonical, snapshot } = seedOrphan(root);
+    const { canonical, owned, line } = seedOrphan(root);
 
     await skillsSync(makeCtx(root, false));
-    expect(readFileSync(snapshot, "utf8")).toBe("acme/orphan\n");
+    expect(readFileSync(owned, "utf8")).toBe(line);
     expect(existsSync(canonical)).toBe(true);
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
 
     await skillsSync(makeCtx(root, true));
     expect(existsSync(canonical)).toBe(false);
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
-    expect(readFileSync(snapshot, "utf8")).toBe("");
+    expect(readFileSync(owned, "utf8")).toBe("");
   });
 
-  it("retains a failed removal in the snapshot and retries it on the next prune", async () => {
+  it("retains a failed removal in the owned record and retries it on the next prune", async () => {
     const root = mkdtempSync(join(tmpdir(), "docks-skills-prune-retry-"));
     roots.push(root);
     const ctx = makeCtx(root, true);
-    const { canonical, snapshot } = seedOrphan(root);
+    const { canonical, owned, line } = seedOrphan(root);
     mocks.failRemovalOf = canonical;
 
     await skillsSync(ctx);
     expect(existsSync(canonical)).toBe(true);
-    expect(readFileSync(snapshot, "utf8")).toBe("acme/orphan\n");
+    expect(readFileSync(owned, "utf8")).toBe(line);
 
     mocks.failRemovalOf = undefined;
     await skillsSync(ctx);
     expect(existsSync(canonical)).toBe(false);
-    expect(readFileSync(snapshot, "utf8")).toBe("");
+    expect(readFileSync(owned, "utf8")).toBe("");
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
   });
 
-  it("keeps the previous snapshot when a snapshot write is interrupted", async () => {
-    const root = mkdtempSync(join(tmpdir(), "docks-skills-snapshot-write-"));
+  it("keeps the previous owned record when an owned record write is interrupted", async () => {
+    const root = mkdtempSync(join(tmpdir(), "docks-skills-owned-write-"));
     roots.push(root);
-    const { canonical, snapshot } = seedOrphan(root);
-    // An installed canonical skill, so the sync does not spawn an install.
+    const { canonical, owned, line } = seedOrphan(root);
     const kept = join(root, ".agents", "skills", "keep");
-    mkdirSync(kept);
-    writeFileSync(join(kept, "SKILL.md"), "# keep\n");
+    // D-E2: the kit owns `keep` only when its install creates the directory.
+    mocks.spawnProcess.mockImplementation(async () => {
+      mkdirSync(kept, { recursive: true });
+      writeFileSync(join(kept, "SKILL.md"), "# keep\n");
+      return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+    });
     mocks.declaredSkills = "acme/keep\n";
 
-    faults.interruptWritesUnder = snapshot;
+    faults.interruptWritesUnder = [owned];
     await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^EIO/);
-    expect(readFileSync(snapshot, "utf8")).toBe("acme/orphan\n");
+    expect(readFileSync(owned, "utf8")).toBe(line);
 
-    faults.interruptWritesUnder = undefined;
+    faults.interruptWritesUnder = [];
     await skillsSync(makeCtx(root, true));
 
     expect(existsSync(canonical)).toBe(false);
     expect(existsSync(kept)).toBe(true);
-    expect(readFileSync(snapshot, "utf8")).toBe("acme/keep\n");
-    expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    expect(readFileSync(owned, "utf8")).toBe(`acme/keep\t${identityOf(kept)}\n`);
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * D-E2: three record files under `~/.agents`.
+   * - `.kit-pending-skills`, one slug per line: before `npx skills add`, sync
+   *   adds the slug when the canonical skill directory does not exist. After
+   *   the install, a slug whose directory exists moves to the owned record;
+   *   else it leaves the pending record. Sync writes the owned record before
+   *   the slug leaves the pending record, and before the next install. At
+   *   sync start, a leftover pending slug moves to the owned record when its
+   *   directory exists; else sync drops it.
+   * - `.kit-owned-skills`, one `<slug>\t<dev>:<ino>` line per skill: the only
+   *   record that lets `--prune` remove a skill, and only while the directory
+   *   still has that `dev:ino`.
+   * - `.kit-managed-skills`: the legacy snapshot. Sync reads it and never
+   *   writes it; its entries never let `--prune` remove a skill.
+   */
+  describe("skill ownership records", () => {
+    function records(root: string): { owned: string; pending: string; legacy: string } {
+      const agents = join(root, ".agents");
+      return {
+        owned: join(agents, ".kit-owned-skills"),
+        pending: join(agents, ".kit-pending-skills"),
+        legacy: join(agents, ".kit-managed-skills"),
+      };
+    }
+
+    /** The slugs of a record file, without the owned evidence; none when the file does not exist. */
+    function recordedSlugs(file: string): Array<string> {
+      if (!existsSync(file)) return [];
+      return readFileSync(file, "utf8")
+        .split("\n")
+        .map((line) => (line.split("\t")[0] ?? "").trim())
+        .filter((line) => line !== "");
+    }
+
+    function makeHome(): string {
+      const root = mkdtempSync(join(tmpdir(), "docks-skills-owned-"));
+      roots.push(root);
+      return root;
+    }
+
+    /** A canonical skill directory with SKILL.md, as the skills CLI or a user makes it. */
+    function makeCanonical(root: string, base: string): string {
+      const canonical = join(root, ".agents", "skills", base);
+      mkdirSync(canonical, { recursive: true });
+      writeFileSync(join(canonical, "SKILL.md"), `# ${base}\n`);
+      return canonical;
+    }
+
+    /** `npx skills add <owner>/<name>` succeeds and creates `~/.agents/skills/<name>`. */
+    function installsSucceed(root: string): void {
+      mocks.spawnProcess.mockImplementation(async (_command: string, args: Array<string>) => {
+        const slug = args[args.indexOf("add") + 1] ?? "";
+        makeCanonical(root, slug.slice(slug.lastIndexOf("/") + 1));
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+      });
+    }
+
+    function textLines(output: ReadonlyArray<string>): Array<string> {
+      return output.join("").split("\n");
+    }
+
+    it("records each installed skill before the next install starts", async () => {
+      const root = makeHome();
+      const { owned, pending } = records(root);
+      mocks.declaredSkills = "acme/first\nacme/second\n";
+      mocks.spawnProcess.mockImplementation(async (_command: string, args: Array<string>) => {
+        const slug = args[args.indexOf("add") + 1] ?? "";
+        // The sync stops while the second install runs.
+        if (slug === "acme/second") throw new Error("stopped during the install of acme/second");
+        makeCanonical(root, "first");
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+      });
+
+      await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^stopped/);
+      expect(recordedSlugs(pending)).toEqual(["acme/second"]);
+
+      mocks.spawnProcess.mockReset();
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(existsSync(join(root, ".agents", "skills", "first"))).toBe(false);
+      expect(recordedSlugs(owned)).toEqual([]);
+      expect(recordedSlugs(pending)).toEqual([]);
+      expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    });
+
+    it("keeps an owned skill whose directory is not the one that the kit installed, and names it", async () => {
+      const root = makeHome();
+      const { owned } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      installsSucceed(root);
+      await skillsSync(makeCtx(root, false));
+      expect(recordedSlugs(owned)).toEqual(["acme/demo"]);
+
+      // The user deletes the skill and makes a new directory at the same path.
+      // The new directory exists before the old one goes, so its inode differs.
+      const canonical = join(root, ".agents", "skills", "demo");
+      const replacement = makeCanonical(root, "mine");
+      rmSync(canonical, { recursive: true });
+      renameSync(replacement, canonical);
+
+      mocks.declaredSkills = "";
+      const output: Array<string> = [];
+      await skillsSync(makeCtx(root, true, output));
+
+      expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# mine\n");
+      const keepLines = textLines(output)
+        .filter((line) => line.includes("keep acme/demo"))
+        .map((line) => line.slice(line.indexOf("keep acme/demo")));
+      expect(keepLines).toEqual([
+        "keep acme/demo: the directory is not the one that the kit installed",
+      ]);
+      expect(recordedSlugs(owned)).toEqual([]);
+    });
+
+    it("keeps the owned evidence when a sync settles the same pending slug again", async () => {
+      const root = makeHome();
+      const { owned, pending } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      // The sync stops after the owned record write and before the pending
+      // record goes, so both records name the slug. The removal fails only
+      // after the install, not in the record write at sync start.
+      mocks.spawnProcess.mockImplementation(async () => {
+        makeCanonical(root, "demo");
+        mocks.failRemovalOf = pending;
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+      });
+      await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^EBUSY/);
+      mocks.failRemovalOf = undefined;
+      expect(recordedSlugs(owned)).toEqual(["acme/demo"]);
+      expect(recordedSlugs(pending)).toEqual(["acme/demo"]);
+
+      // The user replaces the directory before the next sync.
+      const canonical = join(root, ".agents", "skills", "demo");
+      const replacement = makeCanonical(root, "mine");
+      rmSync(canonical, { recursive: true });
+      renameSync(replacement, canonical);
+
+      await skillsSync(makeCtx(root, false));
+      expect(recordedSlugs(pending)).toEqual([]);
+
+      mocks.declaredSkills = "";
+      const output: Array<string> = [];
+      await skillsSync(makeCtx(root, true, output));
+
+      expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# mine\n");
+      const keepLines = textLines(output)
+        .filter((line) => line.includes("keep acme/demo"))
+        .map((line) => line.slice(line.indexOf("keep acme/demo")));
+      expect(keepLines).toEqual([
+        "keep acme/demo: the directory is not the one that the kit installed",
+      ]);
+    });
+
+    it("records the new directory when the kit installs an owned skill again", async () => {
+      const root = makeHome();
+      const { owned } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      installsSucceed(root);
+      await skillsSync(makeCtx(root, false));
+
+      // The user deletes the skill; the next sync installs it again.
+      const canonical = join(root, ".agents", "skills", "demo");
+      rmSync(canonical, { recursive: true });
+      await skillsSync(makeCtx(root, false));
+      expect(mocks.spawnProcess).toHaveBeenCalledTimes(2);
+      expect(readFileSync(owned, "utf8")).toBe(`acme/demo\t${identityOf(canonical)}\n`);
+
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(existsSync(canonical)).toBe(false);
+      expect(recordedSlugs(owned)).toEqual([]);
+    });
+
+    it("prunes a skill whose install the owned record did not record", async () => {
+      const root = makeHome();
+      const { owned, pending, legacy } = records(root);
+      mocks.declaredSkills = "acme/fresh\n";
+      installsSucceed(root);
+      const canonical = join(root, ".agents", "skills", "fresh");
+
+      // The sync stops after the install and before it records the skill. The
+      // legacy snapshot is in the list, so a kit that still writes it stops there too.
+      faults.interruptWritesUnder = [owned, legacy];
+      await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^EIO/);
+      expect(existsSync(join(canonical, "SKILL.md"))).toBe(true);
+
+      faults.interruptWritesUnder = [];
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(existsSync(canonical)).toBe(false);
+      expect(recordedSlugs(owned)).toEqual([]);
+      expect(recordedSlugs(pending)).toEqual([]);
+    });
+
+    it("never records a skill directory that existed before the install", async () => {
+      const root = makeHome();
+      const { owned, pending, legacy } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      const canonical = makeCanonical(root, "demo");
+      const output: Array<string> = [];
+
+      await skillsSync(makeCtx(root, false, output));
+
+      expect(mocks.spawnProcess).not.toHaveBeenCalled();
+      expect(recordedSlugs(owned)).toEqual([]);
+      expect(recordedSlugs(pending)).toEqual([]);
+      expect(existsSync(legacy)).toBe(false);
+      // One warning tells the user that --prune keeps the directory.
+      expect(
+        textLines(output).filter((line) => line.includes("demo") && line.includes("--prune")),
+      ).toHaveLength(1);
+
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# demo\n");
+    });
+
+    it("prints no reuse warning in a dry run", async () => {
+      const root = makeHome();
+      mocks.declaredSkills = "acme/demo\n";
+      makeCanonical(root, "demo");
+      const output: Array<string> = [];
+      const ctx = makeCtx(root, false, output);
+      ctx.dryRun = true;
+
+      await skillsSync(ctx);
+
+      expect(textLines(output).filter((line) => line.includes("--prune keeps it"))).toEqual([]);
+      expect(textLines(output)).toContain("[dry-run] universal skill present: demo");
+    });
+
+    it("drops a pending slug whose install failed", async () => {
+      const root = makeHome();
+      const { owned, pending, legacy } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      // An earlier sync stopped before the install of `acme/old` made its directory.
+      mkdirSync(join(root, ".agents", "skills"), { recursive: true });
+      writeFileSync(pending, "acme/old\n");
+      mocks.spawnProcess.mockResolvedValue({
+        error: undefined,
+        exitCode: 1,
+        stdout: "",
+        stderr: "",
+      });
+
+      await skillsSync(makeCtx(root, false));
+
+      expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
+      expect(existsSync(join(root, ".agents", "skills", "demo"))).toBe(false);
+      expect(recordedSlugs(pending)).toEqual([]);
+      expect(recordedSlugs(owned)).toEqual([]);
+      expect(existsSync(legacy)).toBe(false);
+
+      installsSucceed(root);
+      await skillsSync(makeCtx(root, false));
+
+      expect(recordedSlugs(owned)).toEqual(["acme/demo"]);
+      expect(recordedSlugs(pending)).toEqual([]);
+    });
+
+    it("keeps a legacy snapshot entry on prune and names it", async () => {
+      const root = makeHome();
+      const { legacy } = records(root);
+      const dropped = makeCanonical(root, "old");
+      makeCanonical(root, "stays");
+      writeFileSync(legacy, "acme/old\nacme/stays\n");
+      mocks.declaredSkills = "acme/stays\n";
+      const output: Array<string> = [];
+
+      await skillsSync(makeCtx(root, true, output));
+
+      expect(readFileSync(join(dropped, "SKILL.md"), "utf8")).toBe("# old\n");
+      expect(readFileSync(legacy, "utf8")).toBe("acme/old\nacme/stays\n");
+      const keepLines = textLines(output)
+        .filter((line) => line.includes("keep acme/"))
+        .map((line) => line.slice(line.indexOf("keep acme/")));
+      expect(keepLines).toEqual([
+        "keep acme/old: an older kit recorded it, so the kit cannot prove it installed it; remove it by hand if the kit did",
+      ]);
+      expect(mocks.spawnProcess).not.toHaveBeenCalled();
+    });
   });
 });

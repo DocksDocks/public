@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 import { runBounded, runEngineNative, syncConcurrencyForManifest } from "../../src/engine-native";
 import { p } from "../../src/engine-native/exec";
@@ -424,6 +424,19 @@ describe("skills sync summary", () => {
 });
 
 describe("native CLI argument and output behavior", () => {
+  /**
+   * The sync lock comes before the argument checks (plan #161, D-B), so a
+   * rejected sync leaves only the lock file and its folders in HOME.
+   */
+  const ONLY_SYNC_LOCK = [".cache", ".cache/docks-kit", ".cache/docks-kit/sync-lock.db"];
+
+  /** Every entry below `home`, with `/` separators, sorted. */
+  function entriesBelow(home: string): Array<string> {
+    return readdirSync(home, { recursive: true, encoding: "utf8" })
+      .map((name) => name.split(sep).join("/"))
+      .sort();
+  }
+
   async function withIsolatedHome(run: (home: string) => Promise<void>): Promise<void> {
     const home = mkdtempSync(join(tmpdir(), "engine-di-"));
     const keys = [
@@ -523,7 +536,7 @@ describe("native CLI argument and output behavior", () => {
     });
   });
 
-  it("rejects unsupported effort and advisor values before touching the home", async () => {
+  it("rejects unsupported effort and advisor values before any deployment change; only the sync lock file appears", async () => {
     await withIsolatedHome(async (home) => {
       for (const [target, flag, catalog, error] of [
         [
@@ -558,11 +571,11 @@ describe("native CLI argument and output behavior", () => {
           message: expect.stringContaining(error),
         });
       }
-      expect(readdirSync(home)).toEqual([]);
+      expect(entriesBelow(home)).toEqual(ONLY_SYNC_LOCK);
     });
   });
 
-  it("rejects inline and separate explicit-empty scalar values without changing files", async () => {
+  it("rejects inline and separate explicit-empty scalar values before any deployment change; only the sync lock file appears", async () => {
     await withIsolatedHome(async (home) => {
       for (const [target, flag, catalog, error] of [
         ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
@@ -583,7 +596,7 @@ describe("native CLI argument and output behavior", () => {
           });
         }
       }
-      expect(readdirSync(home)).toEqual([]);
+      expect(entriesBelow(home)).toEqual(ONLY_SYNC_LOCK);
     });
   });
 
@@ -597,7 +610,7 @@ describe("native CLI argument and output behavior", () => {
         level: "err",
         message: "--claude-permissive does not take a value",
       });
-      expect(readdirSync(home)).toEqual([]);
+      expect(entriesBelow(home)).toEqual(ONLY_SYNC_LOCK);
     });
   });
 
