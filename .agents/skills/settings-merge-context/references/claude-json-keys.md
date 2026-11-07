@@ -17,10 +17,19 @@ rules. The placement constraint itself lives in
 
 When `~/.claude.json` is absent, `syncClaudeJson` creates a minimal object with
 kit-owned keys, written with mode `0o600` because the file holds MCP server
-credentials. When it exists, the function patches only those keys and
-preserves Claude Code project state plus user-owned keys. An invalid or
-non-object `~/.claude.json` is reported and left unedited.
-(verify: `bunx vitest run cli/test/unit/claudeSync.test.ts -t "creates a missing ~/.claude.json with owner-only mode"`; POSIX only)
+credentials. A rewrite of an existing file keeps that mode.
+(verify: `bunx vitest run cli/test/unit/claudeSync.test.ts -t "creates a missing ~/.claude.json with owner-only mode"`
+and `bunx vitest run cli/test/unit/claudeSync.test.ts -t "keeps owner-only modes on rewritten Claude JSON files"`; POSIX only)
+
+A non-object `~/.claude.json` is reported and left unedited.
+(verify: `bunx vitest run cli/test/unit/claudeSettingsTruth.test.ts -t "rejects a non-object Claude state document without replacing it"`)
+Unparseable JSON takes the same skip branch. Unprobed: no unit test feeds
+invalid JSON (verify: `grep -n "not valid JSON" cli/src/engine-native/claudeSync.ts`)
+
+When the file exists, the function patches only the kit keys. It preserves
+Claude Code project state plus user-owned keys. Unprobed: no unit test checks
+that a patch keeps `projects` and user keys. Read the `applyFilter` closure in
+`claudeSync.ts syncClaudeJson` (verify: `grep -n -A9 "const applyFilter" cli/src/engine-native/claudeSync.ts`)
 
 `mcpServers` from `SoT/.claude/mcp-servers.json` merge additively through
 `jq.ts deepMerge`. SoT-declared server keys win; user-declared servers survive.

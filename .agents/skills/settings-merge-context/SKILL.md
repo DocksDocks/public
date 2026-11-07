@@ -31,6 +31,10 @@ metadata:
       lines: "1-225"
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-155"
+    - path: cli/src/engine-native/parseArgs.ts
+      lines: "1-206"
+    - path: cli/src/engine-native/models.ts
+      lines: "1-101"
     - path: cli/src/efforts.ts
       lines: "1-89"
     - path: SoT/.claude/settings.json
@@ -63,11 +67,15 @@ deploy-time modifiers and `syncClaudeJson` write without a backup.
 </constraint>
 
 <constraint>
-Validate existing JSON before merging. `claudeSettings.ts preflightClaudeSettings`
-runs from `syncDispatch.ts` before any pipeline starts: a corrupt deployed
-settings file is reported, left untouched, and aborts the sync. Never merge
-into a parse failure.
+Validate existing JSON before merging. When `claude` is selected,
+`claudeSettings.ts preflightClaudeSettings` runs from `syncDispatch.ts` before
+any pipeline starts. A corrupt deployed settings file is reported, left
+untouched, and aborts the sync. When `claude` is not selected, the preflight
+returns without a check, and the other pipelines run. Never merge into a parse
+failure.
 (verify: `bunx vitest run cli/test/unit/syncAbortPreflight.test.ts -t "stops every pipeline before it starts when Claude settings are not valid JSON"`)
+Unprobed: no unit test covers the skip when `claude` is not selected. Read the
+`ctx.syncClaude` guard (verify: `grep -n -A2 "export function preflightClaudeSettings" cli/src/engine-native/claudeSettings.ts`)
 </constraint>
 
 <constraint>
@@ -90,15 +98,22 @@ into a parse failure.
 
 | Mode | Function | Behavior |
 |------|----------|----------|
-| First install | `prepareClaudeSettings` absent-target path | Serializes `mergeSettings(materialized, {})` (or `reconcileSettings` under `--reconcile`), so permission arrays are sorted and a second sync finds no change; `commitClaudeSettings` atomically creates the deployed file. |
+| First install | `prepareClaudeSettings` absent-target path | The default mode serializes `mergeSettings(materialized, {})`, so permission arrays are sorted and a second default sync finds no change. `--reconcile` serializes `reconcileSettings(materialized, {})`, which keeps the SoT array order. If an SoT array is not sorted, a later default sync sorts it and writes `settings.json.bak`. `commitClaudeSettings` atomically creates the deployed file. |
 | Default | `mergeSettings(repo, user)` | Deep merge with repo values winning, but `permissions.allow`, `deny`, and `ask` are unioned and deduped. |
 | `--reconcile` | `reconcileSettings(repo, user)` | Deep merge with repo values winning; permissions arrays are replaced by SoT values. |
 
-User-only top-level keys survive both merge modes. `claudeRemovals.ts syncRemovals,
-curated removed-manifest pass` force-prunes only manifest-listed settings keys,
-exact permission-array members, exact retired kit hook handlers, and stale files.
-(verify: `bunx vitest run cli/test/unit/contract-settings.test.ts -t "settings merge contract"`
-and `bunx vitest run cli/test/unit/claudeRuntime.test.ts -t "installs the merged form, so a second sync with the same SoT finds no change"`)
+(verify: `bunx vitest run cli/test/unit/claudeRuntime.test.ts -t "installs the merged form, so a second sync with the same SoT finds no change"`
+and `grep -n -A1 "export function reconcileSettings" cli/src/engine-native/settings.ts`)
+
+User-only top-level keys survive both merge modes.
+(verify: `bunx vitest run cli/test/unit/contract-settings.test.ts -t "settings merge contract"`)
+`claudeRemovals.ts syncRemovals, curated removed-manifest pass` force-prunes only
+manifest-listed settings keys, exact permission-array members, exact retired kit
+hook handlers, and stale files.
+(verify: `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "prunes withdrawn plugin keys but leaves user and shipped plugins enabled as configured"`
+and `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "removes obsolete Write permission rules without touching user or current Edit rules"`
+and `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "removes only the retired kit hook handlers and keeps user PreToolUse and Stop handlers"`
+and `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "removes home-relative retired commands even while runtime migration is deferred"`)
 
 ## Retired Rules
 
@@ -119,9 +134,9 @@ rules by platform.
 </constraint>
 
 `SoT/.claude/settings.json` is the only place a shipped rule is declared.
-`claudeRemovals.ts REMOVED_MANIFEST.permissionRules` is the full prune set: it
-spreads `claudeRetired.ts RETIRED_PERMISSION_RULES` and adds a few older exact
-rules inline. Add new retirements to `RETIRED_PERMISSION_RULES`.
+`claudeRemovals.ts REMOVED_MANIFEST.permissionRules` is the full prune set. It
+spreads `claudeRetired.ts RETIRED_PERMISSION_RULES` and adds other exact rules
+inline. Add new retirements to `RETIRED_PERMISSION_RULES`.
 (verify: `grep -n -A12 'permissionRules:' cli/src/engine-native/claudeRemovals.ts`)
 
 To restore an exact retired rule for one checkout, put it in that checkout's
@@ -171,8 +186,15 @@ SoT values, except user-only keys that the SoT does not declare.
 | `--claude-effort=<level>` | `claudeSettingsModifiers.ts syncClaudeEffort` | Sets `.effortLevel`; `default` sets the SoT default level (`efforts.ts resolveEffort`). |
 | `--claude-advisor=on\|off\|default` | `claudeSettingsModifiers.ts syncClaudeAdvisor` | Sets `.advisorModel` to `opus` for `on`; deletes it for `off` and `default`. |
 
-Flag grammar lives in `parseModifiers.ts parseCompactWindow` and
-`efforts.ts CLAUDE_ADVISOR_STATES`.
+Flag grammar owners:
+
+- `--claude-compact-window`: `parseModifiers.ts parseCompactWindow`.
+- `--claude-model`: `models.ts validateClaudeModel`.
+- `--claude-effort`: `efforts.ts CLAUDE_EFFORT_LEVELS`, plus `default` from
+  `efforts.ts effortModifierValues`.
+- `--claude-advisor`: `efforts.ts CLAUDE_ADVISOR_STATES`.
+- `--claude-permissive`: takes no value. `parseArgs.ts parseArgs` rejects
+  `--claude-permissive=<value>`.
 
 ## Key Decisions
 
