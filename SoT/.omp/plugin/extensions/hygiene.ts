@@ -2023,7 +2023,14 @@ export default function docksKitOmp(pi: ExtensionApi): void {
       const cacheDir = join(homedir(), ".cache", "docks-kit");
       const now = Date.now();
       if (!sweepDue(mtimeMs(join(cacheDir, STAMP_FILE)), now)) return undefined;
-      const docksKit = resolveDocksKit();
+      let docksKit: string;
+      try {
+        docksKit = resolveDocksKit();
+      } catch {
+        // A checkout user who runs ./docks-kit has no launcher on PATH. A line
+        // in each session would only repeat that, so the sweep stays silent.
+        return undefined;
+      }
       if (!claimSweep(cacheDir, now)) return undefined;
       const child = spawn(docksKit, ["tidy", "--apply"], {
         cwd: homedir(),

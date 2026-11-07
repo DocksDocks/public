@@ -1316,4 +1316,17 @@ describe("extension handlers", () => {
     );
     expect(await bash(handlers, "ls")).toBeUndefined();
   });
+
+  it("shows no sweep error and makes no claim when docks-kit is not on PATH", async () => {
+    const home = sandbox();
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("USERPROFILE", home);
+    // A checkout user who runs ./docks-kit has no launcher on PATH.
+    vi.stubEnv("PATH", sandbox());
+    const { handlers } = load();
+
+    expect(await handlers.get("session_start")?.({}, { cwd: "/w" })).toBeUndefined();
+    expect(await bash(handlers, "ls")).toBeUndefined();
+    expect(existsSync(join(home, ".cache", "docks-kit", "tidy.stamp.claim"))).toBe(false);
+  });
 });

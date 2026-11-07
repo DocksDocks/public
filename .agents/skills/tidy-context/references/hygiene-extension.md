@@ -9,7 +9,7 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 - Import only `node:` modules; omp loads the file without a package install.
 - Start every subprocess without a shell: `run` (`execFile`, `shell: false`) for the tools and the Docker checks, and `spawn` with `shell: false` for the sweep. A tool argument never reaches a shell.
 - `resolveDocksKit` takes only an absolute PATH entry; on Windows only `docks-kit.exe`.
-- Each event handler (`tool_result`, `session_stop`, `session_start`) catches its errors, so a hygiene failure never stops a session. `session_start` keeps the message of a caught error for the next main-session tool result (see `session_start` handler). A tool rethrows its error through `toError`, which maps ENOENT to the "not on PATH" message.
+- Each event handler (`tool_result`, `session_stop`, `session_start`) catches its errors, so a hygiene failure never stops a session. `session_start` keeps the message of a caught error, except a missing launcher, for the next main-session tool result (see `session_start` handler). A tool rethrows its error through `toError`, which maps ENOENT to the "not on PATH" message.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "passes shell syntax to the child as one literal argument"`.
 
 ## Tools
@@ -56,10 +56,10 @@ Probes: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "reminds
 
 1. Skip a subagent session (`ctx.agent?.kind === "sub"`).
 2. Read the mtime of `tidy.stamp` under `join(homedir(), ".cache", "docks-kit")`; stop unless `sweepDue`.
-3. `resolveDocksKit`; a missing binary throws before the claim, so the stamp stays old and the next session tries again.
+3. `resolveDocksKit`; a missing binary ends the handler before the claim, with no line. The stamp stays old, and the next session tries again. A checkout user who runs `./docks-kit` has no launcher on PATH, so a line would show in each session.
 4. `claimSweep` first removes the probe files of exited processes (`removeExitedProbes`, see below). It then takes `tidy.stamp.claim` (with a `tidy.stamp.takeover` mutex for a stale claim), reads the stamp again, writes it, and releases the claim.
 5. Spawn `docks-kit tidy --apply` detached, `stdio: "ignore"`, spawn errors ignored.
-6. Any error in steps 2 to 5 keeps its message in `sweepError`. The next main-session tool result shows it once (see `tool_result` handler). A missing `docks-kit` also gives this line, with the "not on PATH" text.
+6. Any other error in steps 2 to 5, such as an error of the claim files or the stamp, keeps its message in `sweepError`. The next main-session tool result shows it once (see `tool_result` handler). A missing `docks-kit` gives no line.
 
 The claim limits load; it does not protect files (`acquireClaim` comment). A stale takeover can still let two sessions claim the same sweep. Each one starts `tidy --apply`. The second one finds `tidy-lock.db` held and stops, or plans from the current state after the first one ends (`commands/tidy.ts runTidy`, see the SKILL `### Lock`).
 
@@ -75,7 +75,7 @@ Windows contention (`isWindowsContention`), used by `createOwned`, `removeIfPres
 
 Consequences:
 
-- The stamp is written before the sweep runs; a failed sweep waits a full interval. Its only trace is `tidy.log`. A sweep that does not start shows one `docks-kit sweep did not start` line.
+- The stamp is written before the sweep runs; a failed sweep waits a full interval. Its only trace is `tidy.log`. A sweep that does not start because of a claim or stamp error shows one `docks-kit sweep did not start` line.
 - The cache directory is a literal copy of `scratch.ts kitCacheDir`. Change both together.
 - The sweep never passes `--repo`; it uses the default worktree and scratch roots.
 - No unit test covers the spawn; the tests cover `sweepDue`, `claimSweep` races, the Windows contention rule and its probe, the probe cleanup, the sweep error line, and handler registration.
@@ -84,6 +84,7 @@ Consequences:
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "when the create of the probe fails with EPERM"`.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "removes the probe files of an exited process"`.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "makes no probe for an exited probe file that the folder does not let it remove"`.
+- Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "shows no sweep error and makes no claim when docks-kit is not on PATH"`.
 
 ## Interval and limits
 
