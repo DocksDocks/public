@@ -11,8 +11,8 @@
  * Wait bound seam: both call sites read `DOCKS_KIT_SYNC_LOCK_WAIT_MS` from
  * `process.env` at the start of the run, as `engineSync` reads
  * `DOCKS_KIT_SYNC_CONCURRENCY`. Unset or empty means `SYNC_LOCK_WAIT_MS`
- * (120 000 ms); a non-negative integer is the wait in ms. These tests set it to
- * a small value, so that a held lock ends the run quickly.
+ * (120 000 ms); a non-negative safe integer is the wait in ms. These tests
+ * set it to a small value, so that a held lock ends the run quickly.
  *
  * Each test holds the lock in this process; a second acquire in the same
  * process finds the lock held (`kitLock.test.ts`).
@@ -43,6 +43,7 @@ import {
 
 const WAIT_MS = "100";
 const CONCURRENCY_ERROR = "DOCKS_KIT_SYNC_CONCURRENCY must be 1, 2, or 3";
+const WAIT_ERROR = "DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer";
 
 const ENV_KEYS = [
   "HOME",
@@ -222,6 +223,27 @@ describe("sync under the sync lock", () => {
         expect(blocked).toContain(heldLine(home));
         expect(blocked).not.toContain(CONCURRENCY_ERROR);
       });
+    });
+  });
+
+  it("exits 2 when the lock wait is not a non-negative safe integer", async () => {
+    await withHome(async (home) => {
+      mkdirSync(p(home, ".claude"), { recursive: true });
+      writeFileSync(p(home, ".claude", "settings.json"), '{"model":"sonnet"}\n');
+      // `Number` makes the first value Infinity and rounds the second.
+      for (const waitMs of ["9".repeat(400), String(Number.MAX_SAFE_INTEGER + 1)]) {
+        process.env["DOCKS_KIT_SYNC_LOCK_WAIT_MS"] = waitMs;
+        const records: Array<string> = [];
+
+        expect(
+          await runEngineNative(["model", "claude", "default"], recordingServices(records)),
+        ).toBe(2);
+
+        expect(records).toContain(WAIT_ERROR);
+        expect(readFileSync(p(home, ".claude", "settings.json"), "utf8")).toBe(
+          '{"model":"sonnet"}\n',
+        );
+      }
     });
   });
 });

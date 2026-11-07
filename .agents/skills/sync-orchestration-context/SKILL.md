@@ -36,7 +36,7 @@ metadata:
     - path: cli/src/engine-native/engineCtx.ts
       lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-211"
+      lines: "1-220"
     - path: cli/src/engine-native/kitLock.ts
       lines: "1-114"
     - path: cli/src/engine-native/syncConcurrency.ts
@@ -290,18 +290,21 @@ from the embedded payload.
   read-modify-write of `settings.json` and `config.toml` as sync. The read form
   (`model <tool>`) takes no lock.
 - No lock when `args` holds `--dry-run`, `-h`, or `--help` (`UNLOCKED_TOKENS`).
-  The `DRY_RUN=1` env global still takes it.
+  The `DRY_RUN=1` env global still takes it. A `--dry-run` sync can still
+  migrate `kit.db`; `kitDb.ts` makes that migration safe for parallel runs.
 - The wait bound is `SYNC_LOCK_WAIT_MS` (120 000 ms).
-  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` (a non-negative integer, in ms) overrides it;
-  unset or empty means the default. Any other value prints
-  `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative integer` and exits 2.
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` (a non-negative safe integer, in ms) overrides
+  it; unset or empty means the default. Any other value prints
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer` and exits 2.
+  A digit string above `Number.MAX_SAFE_INTEGER` also exits 2, because
+  `Number` would round it or make it Infinity.
 - Held past the bound: print
   `another docks-kit sync holds <path>; run sync again after it ends` and
   return 1, with no call to `body`.
 - The lock goes in `finally`, also after an `ExitError`. A signal needs no
   handler: the OS releases the lock when the process ends.
 
-(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 1 with the held line and leaves HOME unchanged"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "releases the lock when the run stops with an ExitError"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock with --dry-run"`)
+(verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 1 with the held line and leaves HOME unchanged"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock in a dry run"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "releases the lock when the run stops with an ExitError"`, `bunx vitest run cli/test/unit/syncLock.test.ts -t "exits 2 when the lock wait is not a non-negative safe integer"`, and `bunx vitest run cli/test/unit/syncLock.test.ts -t "takes no lock with --dry-run"`)
 
 ### Direct Modes
 

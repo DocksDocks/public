@@ -23,20 +23,29 @@ import {
 
 /** The default time that a sync or a model write waits for another sync to release the sync lock. */
 export const SYNC_LOCK_WAIT_MS = 120_000;
-const SYNC_LOCK_WAIT_ERROR = "DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative integer";
+const SYNC_LOCK_WAIT_ERROR = "DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer";
 
-/** The sync lock wait bound: `DOCKS_KIT_SYNC_LOCK_WAIT_MS` in ms, or `SYNC_LOCK_WAIT_MS` when unset or empty. */
+/**
+ * The sync lock wait bound: `DOCKS_KIT_SYNC_LOCK_WAIT_MS` in ms, or
+ * `SYNC_LOCK_WAIT_MS` when unset or empty. A value above
+ * `Number.MAX_SAFE_INTEGER` exits 2: `Number` would round it or make it
+ * Infinity, and an Infinity wait never ends.
+ */
 function syncLockWaitMs(ctx: Ctx): number {
   const configured = process.env["DOCKS_KIT_SYNC_LOCK_WAIT_MS"];
   if (configured === undefined || configured === "") return SYNC_LOCK_WAIT_MS;
-  if (/^\d+$/.test(configured)) return Number(configured);
+  if (/^\d+$/.test(configured) && Number.isSafeInteger(Number(configured))) {
+    return Number(configured);
+  }
   ctx.services.logger.err(SYNC_LOCK_WAIT_ERROR);
   throw new ExitError(2);
 }
 
 /**
- * The tokens that write nothing: `--dry-run`, and `-h`/`--help`, which make
- * `parseArgs` print the usage or an error and exit before it reads `kit.db`.
+ * The tokens that skip the sync lock. `-h` and `--help` make `parseArgs`
+ * print the usage or an error and exit before it reads `kit.db`. A
+ * `--dry-run` sync writes no kit file except a `kit.db` migration, which
+ * `kitDb.ts` makes safe for parallel runs.
  */
 const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "--help": true };
 

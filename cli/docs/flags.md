@@ -38,7 +38,7 @@ Escape leaves it unchanged.
 | Variable | Effect |
 |----------|--------|
 | `DOCKS_KIT_SYNC_CONCURRENCY=1\|2\|3` | Maximum selected sync pipelines running at once. Default `3`; use `1` for serial golden/debug execution. Invalid values fail `sync` with exit 2 but do not affect `model` or `toolchain`. |
-| `DOCKS_KIT_SYNC_LOCK_WAIT_MS=<ms>` | Time that `sync` and a `model` write wait for another sync to release the sync lock. A non-negative integer in milliseconds; unset or empty means `120000` (120 s). Any other value prints `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative integer` and exits 2. |
+| `DOCKS_KIT_SYNC_LOCK_WAIT_MS=<ms>` | Time that `sync` and a `model` write wait for another sync to release the sync lock. A non-negative safe integer in milliseconds (at most `9007199254740991`); unset or empty means `120000` (120 s). Any other value prints `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative safe integer` and exits 2. |
 
 ## Sync lock
 
