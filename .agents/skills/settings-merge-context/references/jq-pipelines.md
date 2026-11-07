@@ -2,14 +2,9 @@
 
 The production implementation is TypeScript (`settings.ts` and
 `claudeSettings.ts`). The jq snippets below are the compatibility spec preserved in
-tests, because they define the historical merge behavior.
-
-## Critical Constraints
-
-- Write to a temporary file first, then replace the target.
-- Validate deployed JSON before merging.
-- `$user * $repo` means repo wins on conflicts because jq object merge uses the
-  right operand on scalar/object conflicts.
+`cli/test/unit/settings.test.ts`, because they define the historical merge
+behavior. Write and validation rules live in
+`.agents/skills/settings-merge-context/SKILL.md` constraints.
 
 ## Default Additive Merge
 
@@ -35,12 +30,16 @@ arrays are replaced wholesale by the SoT arrays.
 
 ## Why Operand Order Matters
 
+jq object merge uses the right operand on scalar/object conflicts, so
+`$user * $repo` means repo wins.
+
 | Expression | Conflict winner |
 |------------|-----------------|
 | `$user * $repo` | SoT/repo |
 | `$repo * $user` | User |
 
 The kit uses repo-wins so prompt/config changes propagate forward.
+(verify: `bunx vitest run cli/test/unit/settings.test.ts -t "jq differential"`; the suite skips when `jq` is absent)
 
 ## `~/.claude.json`
 
@@ -68,3 +67,5 @@ document before iterating path strings; otherwise every key appears absent.
 - jq slurp order matters: repo is first, user is second.
 - jq `//` treats both `null` and `false` as fallback triggers; TypeScript ports
   must account for that where relevant.
+- `settings.ts permissionArray` drops non-string members and non-array values,
+  where jq would keep the members or fail on the concat.

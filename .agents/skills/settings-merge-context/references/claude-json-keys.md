@@ -1,9 +1,8 @@
 # Key Placement: settings.json vs ~/.claude.json
 
-## Critical Constraint
-
-`showTurnDuration` belongs only in `~/.claude.json`. Putting it in
-`~/.claude/settings.json` produces a schema validation warning.
+This file owns the per-key placement table and the `~/.claude.json` patch
+rules. The placement constraint itself lives in
+`.agents/skills/settings-merge-context/SKILL.md` constraints.
 
 ## Key Location Table
 
@@ -17,19 +16,20 @@
 ## Creation And Patch Behavior
 
 When `~/.claude.json` is absent, `syncClaudeJson` creates a minimal object with
-kit-owned keys. When it exists, the function patches only those keys and
-preserves Claude Code project state plus user-owned keys.
+kit-owned keys, written with mode `0o600` because the file holds MCP server
+credentials. When it exists, the function patches only those keys and
+preserves Claude Code project state plus user-owned keys. An invalid or
+non-object `~/.claude.json` is reported and left unedited.
+(verify: `bunx vitest run cli/test/unit/claudeSync.test.ts -t "creates a missing ~/.claude.json with owner-only mode"`; POSIX only)
 
-`mcpServers` from `SoT/.claude/mcp-servers.json` merge additively. SoT-declared
-server keys win; user-declared servers survive.
+`mcpServers` from `SoT/.claude/mcp-servers.json` merge additively through
+`jq.ts deepMerge`. SoT-declared server keys win; user-declared servers survive.
 
-## Disabling claude.ai Cloud Connectors
+## Cloud Connectors
 
-Cloud connectors are account-synced. No field in `settings.json` or
-`~/.claude.json` disables them. The working lever is a persisted user
-environment variable (a shell profile export on POSIX, `HKCU\Environment` via
-`setx` on Windows): `ENABLE_CLAUDEAI_MCP_SERVERS=false`, written idempotently by
-`syncConnectorEnv`.
+Cloud connectors are not a JSON key. `syncConnectorEnv` owns the
+environment-variable lever; see `.agents/skills/settings-merge-context/SKILL.md`
+§ Key Placement And Connector Env.
 
 ## Adding A New Key
 
@@ -43,5 +43,4 @@ environment variable (a shell profile export on POSIX, `HKCU\Environment` via
 
 - `syncClaudeJson` must never replace `projects` state.
 - Removed-key pruning can target `~/.claude.json`, but only through the curated
-  removed manifest.
-- User-scoped MCP servers belong in `~/.claude.json`, not `settings.json`.
+  removed manifest (`claudeRemovals.ts REMOVED_MANIFEST.claudeJsonKeys`).
