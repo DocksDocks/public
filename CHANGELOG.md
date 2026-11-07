@@ -5,25 +5,31 @@
 ### Fixed
 
 - On Windows, the omp hygiene extension no longer throws at session start
-  when another omp process deletes or holds the sweep claim file or its
-  takeover file (#157). Windows reports such a file as EPERM or EBUSY while
-  the delete is pending. The extension now treats these codes as contention,
-  as the `docks-kit tidy` lock does: the session does not get the claim, and
-  a later main session starts the due sweep. On other platforms, these codes
-  stay errors.
+  when another omp process deletes or holds a sweep claim file (#157). A new
+  open of a file whose delete is pending fails with EPERM. A delete of a file
+  that another process holds without delete sharing fails with EBUSY. The
+  extension now treats these codes as contention, as the `docks-kit tidy`
+  lock does. A failed create or stale-file delete loses the claim, so a later
+  main session starts the due sweep. A failed release leaves the claim file
+  until it is stale. A real access denial on Windows also gives EPERM, and
+  the extension then also counts it as contention. On other platforms, these
+  codes stay errors.
 - `sync codex` now writes `~/.codex/.kit-managed-rules`, and the skills sync
   writes `~/.agents/.kit-managed-skills`, through a temporary file and a
-  rename. Before, an interrupted write could cut the file, so the next sync
-  could keep a rules file that the SoT dropped, and `--prune` could keep a
-  skill that the SoT dropped. Every kit writer that replaces a user file now
-  uses a temporary name that is unique to the write and removes that file
-  when the write fails. A stale `<file>.tmp` no longer blocks the write.
+  rename. Before, an interrupted write could cut the file. The next sync
+  could then keep a rules file that the SoT dropped, and `--prune` could keep
+  a skill that the SoT dropped. Each write through the kit `replaceFile`
+  helper now uses a temporary name that is unique to the write. A write that
+  throws removes its temporary file. A process that is killed during a write
+  can leave one temporary file. A stale `<file>.tmp` no longer blocks the
+  write.
 - The release-artifact test now checks each artifact list of
   `release-cli.yml` alone, so a name in one list cannot hide a gap in the
-  other. The root `AGENTS.md`, the skills, and the `syncRules` comment now say
-  that sync replaces each shipped rules file over an existing file, recorded
-  or not, with a backup. The Open Concerns format line now names the `###`
-  heading that the entries use.
+  other. The root `AGENTS.md`, the skills, and the `syncRules` comment now
+  state how sync treats an existing rules file, recorded or not. Sync skips a
+  byte-identical file and backs up a file that differs before it replaces it.
+  The Open Concerns format line now names the `###` heading that the entries
+  use.
 
 ## 2026-11-06 - docks-kit 0.22.17: thirteen source defects fixed
 

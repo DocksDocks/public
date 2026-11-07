@@ -118,7 +118,7 @@ mode table. The `model` mode has two paths:
 | Claude marketplace add | Marketplace name absent from known marketplaces (`claudePluginPasses.ts syncPlugins`, pass 1). |
 | Claude plugin install | Missing user-scope install record (`claudePluginPasses.ts syncPlugins`, pass 2). |
 | Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). |
-| Codex rules copy | Byte-identical file skipped. Each name that the SoT ships is deployed over an existing file, recorded or not: a file that differs is backed up to `<name>.bak` and replaced. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`. Cleanup never reads or removes a file that the SoT does not ship and no sync recorded, such as the user-learned `default.rules` (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
+| Codex rules copy | Sync skips a byte-identical file. It deploys each name that the SoT ships over an existing file, recorded or not. It backs up a file that differs to `<name>.bak` and replaces it. Sync removes a rules file that the SoT dropped only while the file holds the kit bytes recorded in `.kit-managed-rules`. Cleanup never reads or removes a file that the SoT does not ship and no sync recorded, such as the user-learned `default.rules` (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
 
 ## New Target Checklist
 
