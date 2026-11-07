@@ -381,6 +381,20 @@ describe("skills durability", () => {
       expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# demo\n");
     });
 
+    it("prints no reuse warning in a dry run", async () => {
+      const root = makeHome();
+      mocks.declaredSkills = "acme/demo\n";
+      makeCanonical(root, "demo");
+      const output: Array<string> = [];
+      const ctx = makeCtx(root, false, output);
+      ctx.dryRun = true;
+
+      await skillsSync(ctx);
+
+      expect(textLines(output).filter((line) => line.includes("--prune keeps it"))).toEqual([]);
+      expect(textLines(output)).toContain("[dry-run] universal skill present: demo");
+    });
+
     it("drops a pending slug whose install failed", async () => {
       const root = makeHome();
       const { owned, pending, legacy } = records(root);

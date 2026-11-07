@@ -115,9 +115,10 @@ and
 A reused directory is not kit-owned. For a declared slug whose directory
 existed before and is in neither the owned nor the legacy record, each sync
 warns `Universal skill <slug>: reused the existing ~/.agents/skills/<base>; the
-kit did not install it, so --prune keeps it`. A dry run prints no such line
-(verify:
+kit did not install it, so --prune keeps it` (verify:
 `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "never records a skill directory that existed before the install"`).
+A dry run prints no such line (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts -t "prints no reuse warning in a dry run"`).
 
 `linkOrCopy` creates the Claude entry. It tries each directory link kind in
 `hostOs().directoryLinkKinds` order (`cli/src/engine-native/os/posix.ts`: a

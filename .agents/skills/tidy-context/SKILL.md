@@ -22,7 +22,7 @@ metadata:
     - path: SoT/.omp/plugin/extensions/hygiene.ts
       lines: "1-2051"
     - path: cli/test/unit/tidy.test.ts
-      lines: "1-639"
+      lines: "1-665"
     - path: cli/test/unit/kitLock.test.ts
       lines: "1-398"
     - path: cli/test/unit/tidyReport.test.ts
@@ -69,7 +69,7 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 - `cli/src/engine-native/tidy.ts` — `planTidy` — read-only plan; it runs only listing commands. Unprobed: no unit test asserts the kind of each command. Read each `runDocker` and `host.git` call that `planTidy` reaches (verify: `grep -n -e "runDocker(\[" -e "host.git(\[" cli/src/engine-native/tidy.ts`)
 - `cli/src/engine-native/tidy.ts` — `applyTidy` — performs a `TidyPlan` and appends to `tidy.log`; its caller holds `tidy-lock.db` (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"`)
 - `cli/src/engine-native/tidy.ts` — `TidyHost`, `defaultTidyHost` — the injection seam for `git`, `docker`, `dockerEndpoint`, `run`, `processes`, `now` (verify: `grep -n "export interface TidyHost" cli/src/engine-native/tidy.ts`)
-- `cli/src/commands/tidy.ts` — `runTidy` — `tidyCommand` resolves the inputs and calls it. With `--apply`, it takes `tidy-lock.db` before `planTidy` and releases it before `--report` runs (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "plans only under the lock"`)
+- `cli/src/commands/tidy.ts` — `runTidy` — `tidyCommand` resolves the inputs and calls it. With `--apply`, it takes `tidy-lock.db` before `planTidy` and releases it before `--report` runs (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "plans only under the lock"` and `bunx vitest run cli/test/unit/tidy.test.ts -t "releases the lock before the report runs"`)
 - `cli/src/engine-native/kitLock.ts` — `acquireKitLock`, `releaseKitLock` — the SQLite lock of `tidy --apply` and of sync. It imports only `node:` modules, so a test child can load it alone (verify: `grep -n 'from "' cli/src/engine-native/kitLock.ts`)
 - `cli/src/engine-native/processes.ts` — `processExited` — true only when `process.kill(pid, 0)` throws ESRCH. `tidy.ts darwinProcesses` (the macOS cwd probe) uses it to tell an exited PID from an unreadable cwd. Unprobed: no unit test runs the macOS probe (verify: `grep -n "processExited(pid)" cli/src/engine-native/tidy.ts`)
 - `cli/src/engine-native/tidyReport.ts` — `buildTidyReport` — read-only sections; reuses `tidy.ts` helpers (verify: `grep -n 'from "./tidy"' cli/src/engine-native/tidyReport.ts`)
@@ -142,7 +142,7 @@ Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "removes the merged idle w
 5. Scratch removals; append all lines to `tidy.log` (rotated to `tidy.log.1` past the byte limit).
 6. `runTidy` releases the lock (`Effect.acquireUseRelease`), then runs `--report` when it is set.
 
-Probes: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` asserts the order, the `--host` prefix, and no git `--force`. `bunx vitest run cli/test/unit/tidy.test.ts -t "prints the held line and plans nothing while another run holds the lock"` asserts step 1.
+Probes: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` asserts the order, the `--host` prefix, and no git `--force`. `bunx vitest run cli/test/unit/tidy.test.ts -t "prints the held line and plans nothing while another run holds the lock"` asserts step 1. `bunx vitest run cli/test/unit/tidy.test.ts -t "releases the lock before the report runs"` asserts step 6.
 
 ### Temporary-path removal
 

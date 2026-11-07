@@ -573,6 +573,32 @@ describe("runTidy", () => {
     expect(after.kind).toBe("acquired");
     if (after.kind === "acquired") releaseKitLock(after.lock);
   });
+
+  it("releases the lock before the report runs", async () => {
+    const quiet = join(sandbox.base, "quiet-report");
+    const quietInputs: TidyInputs = {
+      home: join(quiet, "home"),
+      worktreeRoot: join(quiet, "worktrees"),
+      scratchRoot: join(quiet, "scratch"),
+    };
+    for (const directory of Object.values(quietInputs)) mkdirSync(directory, { recursive: true });
+    const lock = tidyLock(quietInputs.home);
+    // planTidy reads the processes once, and the report reads them once after it.
+    const lockStates: Array<string> = [];
+    const host = stubHost({
+      ps: ok(""),
+      processes: async () => {
+        const probe = await acquireKitLock(lock, { waitMs: 0 });
+        if (probe.kind === "acquired") releaseKitLock(probe.lock);
+        lockStates.push(probe.kind);
+        return [];
+      },
+    });
+
+    await run({ apply: true, report: true }, quietInputs, host);
+
+    expect(lockStates).toEqual(["held", "acquired"]);
+  });
 });
 
 describe("applyTidy", () => {
