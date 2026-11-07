@@ -35,10 +35,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # A superseded pull request commit is noise, but a superseded `main` commit
-  # would be left with no green run, which is the record a later bisect reads.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A pull request keeps one group, so a newer head cancels the stale run.
+  # Every other run gets its own group. In one group, GitHub replaces a
+  # pending run with the newer run, also with `cancel-in-progress: false`.
+  # The old shared `main` group did this to run 39826349216 (2026-10-22): it
+  # ended cancelled with 0 jobs, so its `main` commit got no green run. With
+  # a group per run, every `main` run finishes.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
