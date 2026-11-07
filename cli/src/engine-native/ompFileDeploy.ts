@@ -36,7 +36,7 @@ function writePrivateFile(target: string, content: string): void {
   chmodSync(target, 0o600);
 }
 
-function backupPrivateFile(target: string): void {
+export function backupPrivateFile(target: string): void {
   copyFileSync(target, `${target}.bak`);
   chmodSync(`${target}.bak`, 0o600);
 }
@@ -69,12 +69,17 @@ export function syncWholeFile(
   ctx.nextStepTriggers.ompRestart = true;
 }
 
+/**
+ * Merges the SoT YAML into the deployed file. Returns true when this call wrote
+ * `<target>.bak`, so a later pass on the same file in this sync keeps that
+ * pre-sync backup instead of replacing it with the merged bytes.
+ */
 export function syncMergedYaml(
   ctx: Ctx,
   sourcePath: OmpTextPayloadPath,
   target: string,
   merge: (sotText: string, deployedText: string) => string,
-): void {
+): boolean {
   const { change, echo, verbose } = ctx.services.logger;
   const source = payloadDisplayPath(sourcePath);
   const sotText = payloadText(sourcePath);
@@ -83,23 +88,23 @@ export function syncMergedYaml(
   if (!existsSync(target)) {
     if (ctx.dryRun) {
       echo(`[dry-run] cp ${source} -> ${target}`);
-      return;
+      return false;
     }
     writePrivateFile(target, sotText);
     change(`omp ${name} installed`);
     ctx.nextStepTriggers.ompRestart = true;
-    return;
+    return false;
   }
 
   const deployedText = readFileSync(target, "utf8");
   const merged = merge(sotText, deployedText);
   if (merged === deployedText) {
     verbose(`omp ${name} already in sync`);
-    return;
+    return false;
   }
   if (ctx.dryRun) {
     echo(`[dry-run] merge ${source} -> ${target} (backup at ${target}.bak)`);
-    return;
+    return false;
   }
 
   backupPrivateFile(target);
@@ -107,4 +112,5 @@ export function syncMergedYaml(
   replaceFile(target, merged, { mode: 0o600 });
   change(`omp ${name} merged (backup at ${name}.bak)`);
   ctx.nextStepTriggers.ompRestart = true;
+  return true;
 }

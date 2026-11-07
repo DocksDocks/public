@@ -53,11 +53,13 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
     "omp mcp.json already in sync",
     "omp mcp.json synced",
   );
-  syncMergedYaml(ctx, "SoT/.omp/config.yml", p(agentDir, "config.yml"), mergeOmpConfig);
+  const configFile = p(agentDir, "config.yml");
+  const configBackedUp = syncMergedYaml(ctx, "SoT/.omp/config.yml", configFile, mergeOmpConfig);
   // mergeOmpConfig is additive, so the prune must run on the merged result.
-  syncOmpRemovals(ctx, p(agentDir, "config.yml"));
-  syncMergedYaml(ctx, "SoT/.omp/models.yml", p(agentDir, "models.yml"), mergeOmpModels);
-  syncOmpModelRemovals(ctx, p(agentDir, "models.yml"));
+  syncOmpRemovals(ctx, configFile, configBackedUp);
+  const modelsFile = p(agentDir, "models.yml");
+  const modelsBackedUp = syncMergedYaml(ctx, "SoT/.omp/models.yml", modelsFile, mergeOmpModels);
+  syncOmpModelRemovals(ctx, modelsFile, modelsBackedUp);
 
   // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
   // and pi-intercom reads the trimmed value. Without a profile, the kit uses

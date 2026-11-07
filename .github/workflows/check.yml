@@ -1,10 +1,11 @@
 name: check
 
 # Fast check gate on every push and pull request: lint, format check,
-# typecheck, unit tests, and both golden suites through the `check` package
-# script. `parity.yml` adds the dependency audit, generated-payload check,
-# package/runtime/native smokes, source-entry goldens, and prove-red runs;
-# release stays in `release-cli.yml`.
+# typecheck, the generated-payload check, unit tests, and both golden suites
+# through the `check` package script. `parity.yml` adds the dependency audit,
+# package/runtime/native smokes, source-entry goldens, and prove-red runs,
+# and it repeats the generated-payload check; release stays in
+# `release-cli.yml`.
 
 on:
   push:

@@ -19,7 +19,6 @@ import {
   spliceOmpBoundary,
   subcommandName as scanSubcommandName,
   type ArgvSurfaces,
-  type CommandValue,
 } from "./argvSurface";
 import { validateScannedArgv } from "./argvValidate";
 
@@ -27,13 +26,17 @@ export type ArgvOutcome =
   | { readonly kind: "reject"; readonly message: string; readonly exitCode: number }
   | { readonly kind: "accept"; readonly args: ReadonlyArray<string> };
 
-const COMMANDS: ReadonlyArray<CommandValue> = [
+/**
+ * The one subcommand list. `main.ts` registers it with Effect, and the argv
+ * surfaces below accept the same words. The order is the `--help` order.
+ */
+export const COMMANDS = [
   syncCommand,
   harnessesCommand,
   updateCommand,
   modelCommand,
-  toolchainCommand,
   modelsCommand,
+  toolchainCommand,
   statusCommand,
   pluginsCommand,
   skillsCommand,
@@ -41,7 +44,7 @@ const COMMANDS: ReadonlyArray<CommandValue> = [
   ompCommand,
   scratchCommand,
   tidyCommand,
-];
+] as const;
 
 const SURFACES: ArgvSurfaces = buildSurfaces(COMMANDS, GlobalFlag.BuiltIns);
 

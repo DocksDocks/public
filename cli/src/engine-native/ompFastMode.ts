@@ -4,8 +4,10 @@
  * OpenAI and OpenAI-Codex models; `none` omits `service_tier`. The SoT does not
  * declare `tier.openai`, so the additive sync merge keeps the toggled value.
  */
-import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { isMap, parseDocument } from "yaml";
+
+import { replaceFile } from "./atomicWrite";
 
 export const FAST_ON_TIER = "priority";
 export const FAST_OFF_TIER = "none";
@@ -42,15 +44,15 @@ export function toggleOpenAiFast(configText: string): FastToggle {
   return { previous, next, text: doc.toString() };
 }
 
-/** Toggle `tier.openai` in the deployed config.yml with an atomic 0600 write. */
+/**
+ * Toggle `tier.openai` in the deployed config.yml with an atomic 0600 write.
+ * replaceFile writes through a symlinked config.yml, so the link stays.
+ */
 export function toggleDeployedOpenAiFast(configPath: string): FastToggle {
   if (!existsSync(configPath)) {
     throw new Error(`${configPath} does not exist; run 'docks-kit sync omp' first`);
   }
   const toggle = toggleOpenAiFast(readFileSync(configPath, "utf8"));
-  const temporary = `${configPath}.tmp`;
-  writeFileSync(temporary, toggle.text, { mode: 0o600 });
-  chmodSync(temporary, 0o600);
-  renameSync(temporary, configPath);
+  replaceFile(configPath, toggle.text, { mode: 0o600 });
   return toggle;
 }

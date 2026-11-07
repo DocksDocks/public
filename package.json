@@ -1,6 +1,6 @@
 {
   "name": "docks-kit",
-  "version": "0.22.16",
+  "version": "0.22.17",
   "description": "Portable AI coding agent config kit — SoT sync engine + typed CLI for Claude Code, Codex, and universal agent skills",
   "type": "module",
   "license": "MIT",
@@ -44,7 +44,7 @@
     "lint:effect": "effect-tsgo diagnostics --project cli/tsconfig.json --strict --format text",
     "format": "bun fmt --no-script cli/src cli/test cli/scripts vitest.config.ts",
     "format:check": "bun fmt --no-script --check cli/src cli/test cli/scripts vitest.config.ts",
-    "check": "bun run --parallel lint lint:effect format:check typecheck test"
+    "check": "bun run --parallel lint lint:effect format:check typecheck check:generated test"
   },
   "dependencies": {
     "@effect/platform-bun": "4.1.2",

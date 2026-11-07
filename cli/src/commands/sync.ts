@@ -1,27 +1,27 @@
 import { Argument, Command, Flag } from "effect/cli";
 import { Effect, Option } from "effect";
-import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { bail, engine } from "../engine";
+import { spawnHost } from "../engine-native/exec";
 import type { Logger } from "../engine-native/logger";
 import { kitHome } from "../kitHome";
 import { LoggerService } from "../services";
 
 /** Best-effort update autodetection: nudge (never block, never fail) when
  * the kit checkout is behind its upstream. Silent on detached HEADs, no
- * upstream, no network, no git. */
-const updateNudge = (logger: Logger): void => {
+ * upstream, no network, no git. git starts through spawnHost, so a Windows
+ * host never runs a `git.exe` from the current directory. */
+export const updateNudge = (logger: Logger): void => {
   try {
     const home = kitHome();
     if (!existsSync(join(home, ".git"))) return;
     if (
-      spawnSync("git", ["-C", home, "fetch", "--quiet"], { stdio: "ignore", timeout: 4000 })
+      spawnHost("git", ["-C", home, "fetch", "--quiet"], { stdio: "ignore", timeout: 4000 })
         .status !== 0
     )
       return;
-    const res = spawnSync("git", ["-C", home, "rev-list", "--count", "HEAD..@{u}"], {
-      encoding: "utf8",
+    const res = spawnHost("git", ["-C", home, "rev-list", "--count", "HEAD..@{u}"], {
       stdio: ["ignore", "pipe", "ignore"],
     });
     const behind = (res.stdout ?? "").trim();

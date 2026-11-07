@@ -5,9 +5,9 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/codexConfig.ts
-      lines: "1-218"
+      lines: "1-214"
     - path: cli/src/engine-native/codexToml.ts
-      lines: "1-385"
+      lines: "1-303"
     - path: SoT/.codex/config.toml
       lines: "1-44"
     - path: SoT/.codex/rules/docks.rules

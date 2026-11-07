@@ -54,7 +54,7 @@ export interface HostOs {
   readonly toolchainOs: string;
   /** Bubblewrap is the Linux-only Codex sandbox runtime. */
   readonly supportsBubblewrap: boolean;
-  /** Directory-link mechanisms tried in order before `skillsSync.ts linkOrCopy` copies. */
+  /** Directory-link mechanisms tried in order before `skillsLinks.ts linkOrCopy` copies. */
   readonly directoryLinkKinds: ReadonlyArray<DirectoryLinkKind>;
   /** One-line install command for a tool whose package differs per OS. */
   readonly installHint: (tool: HintedTool) => string;

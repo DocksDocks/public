@@ -355,6 +355,32 @@ describe("Codex TOML merge durability", () => {
     }
   });
 
+  it("keeps a one-table merge stable across repeated syncs", () => {
+    const root = mkdtempSync(join(tmpdir(), "codex-one-table-merge-"));
+    const oneTableSot = "[features]\nfoo = true\n";
+    const config = prepareConfig(root, 'model = "m"\n');
+
+    try {
+      syncConfig(testCtx(root), oneTableSot, config);
+      const afterFirst = readFileSync(config, "utf8");
+      const firstBackup = readFileSync(`${config}.bak`, "utf8");
+
+      for (let run = 2; run <= 3; run++) {
+        const records: Array<LogRecord> = [];
+        syncConfig(testCtx(root, records), oneTableSot, config);
+
+        expect(readFileSync(config, "utf8")).toBe(afterFirst);
+        expect(readFileSync(`${config}.bak`, "utf8")).toBe(firstBackup);
+        expect(records).toContainEqual({
+          level: "verbose",
+          message: "Codex config already in sync",
+        });
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["the retired kit value", 'personality = "pragmatic"', undefined],
     ["a user-set value", 'personality = "friendly"', "friendly"],

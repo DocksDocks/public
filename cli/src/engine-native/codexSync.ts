@@ -3,7 +3,8 @@
  * avoid a TOML library because reformatting user configs would be a behavior
  * change. Guard order, message strings, and backup behavior are golden-tested.
  */
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 import { resolveEffort } from "../efforts";
 import {
@@ -18,7 +19,7 @@ import { removeRetiredImportedHooks } from "./codexHooks";
 import { codexHome } from "./codexPaths";
 import { removeLegacyDocksMarketplace, syncMarketplace, syncPlugins } from "./codexPlugins";
 import { replaceTopLevelSetting, syncCodexEffort, syncCodexModel } from "./codexToml";
-import { p, spawnProcess } from "./exec";
+import { p, spawnProcess, writeTextIfChanged } from "./exec";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { hostOs } from "./os";
@@ -61,7 +62,12 @@ export async function codexSync(ctx: Ctx): Promise<void> {
   removeRetiredImportedHooks(ctx, codexDir);
   syncCodexModel(ctx, ctx.codexModel, deployedBefore);
   syncCodexEffort(ctx, ctx.codexEffort, deployedBefore);
-  syncRules(ctx, payloadPaths("SoT/.codex/rules/"), p(codexDir, "rules"));
+  syncRules(
+    ctx,
+    payloadPaths("SoT/.codex/rules/"),
+    p(codexDir, "rules"),
+    p(codexDir, ".kit-managed-rules"),
+  );
   syncAgentsMd(ctx, payloadText("SoT/.codex/AGENTS.md"), p(codexDir, "AGENTS.md"));
   const unresolvedMarketplace = syncMarketplace(
     ctx,
@@ -151,36 +157,96 @@ function bwrapDetectPmInstallCmd(ctx: Ctx): string {
 
 // ------------------------------------------------------- rules + agents ----
 
-function syncRules(ctx: Ctx, sotRules: ReadonlyArray<PayloadPath>, userRulesDir: string): void {
-  const { change, echo, verbose } = ctx.services.logger;
+/** One `<sha256>  <file name>` line of the rules manifest, the `sha256sum` format. */
+const RULES_RECORD = /^([0-9a-f]{64}) {2}([^/\\]+\.rules)$/;
+
+function sha256Hex(bytes: Uint8Array): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/** The rules files that earlier syncs wrote: file name to the sha256 of the kit bytes. */
+function readRulesRecords(manifestFile: string): Map<string, string> {
+  const records = new Map<string, string>();
+  if (!existsSync(manifestFile)) return records;
+  for (const line of readFileSync(manifestFile, "utf8").split("\n")) {
+    const record = RULES_RECORD.exec(line);
+    if (record !== null) records.set(record[2]!, record[1]!);
+  }
+  return records;
+}
+
+/**
+ * Deploys the SoT rules files and records each one in `manifestFile`. Codex
+ * applies every file in `rules/`, so a file that the SoT dropped keeps its old
+ * rules active. A recorded file that the SoT no longer ships is therefore
+ * removed on every sync while it holds the recorded kit bytes. An edited file
+ * stays, keeps its record, and gets a warning on each sync. A file that no sync
+ * recorded, such as the `default.rules` file of Codex, is never read or removed.
+ */
+export function syncRules(
+  ctx: Ctx,
+  sotRules: ReadonlyArray<PayloadPath>,
+  userRulesDir: string,
+  manifestFile: string,
+): void {
+  const { change, echo, verbose, warn } = ctx.services.logger;
+  const ruleFiles = sotRules.filter((path) => path.endsWith(".rules")).sort(compareCodepoints);
+  const fileName = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
+  const shippedNames = new Set(ruleFiles.map(fileName));
+  const nextRecords = new Map<string, string>();
   const firstRule = sotRules[0];
-  if (firstRule === undefined) return;
-  const firstDisplay = payloadDisplayPath(firstRule);
-  const sotRulesDir = firstDisplay.slice(0, firstDisplay.lastIndexOf("/"));
 
   if (ctx.dryRun) {
-    echo(`[dry-run] cp ${sotRulesDir}/*.rules -> ${userRulesDir}/`);
-    return;
+    if (firstRule !== undefined) {
+      const firstDisplay = payloadDisplayPath(firstRule);
+      const sotRulesDir = firstDisplay.slice(0, firstDisplay.lastIndexOf("/"));
+      echo(`[dry-run] cp ${sotRulesDir}/*.rules -> ${userRulesDir}/`);
+    }
+  } else if (firstRule !== undefined) {
+    mkdirSync(userRulesDir, { recursive: true });
+    let rulesChanged = false;
+    for (const ruleFile of ruleFiles) {
+      const userRuleFile = p(userRulesDir, fileName(ruleFile));
+      const content = payloadBytes(ruleFile);
+      nextRecords.set(fileName(ruleFile), sha256Hex(content));
+      const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(content);
+      if (identical) continue;
+      if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`);
+      writeFileSync(userRuleFile, content);
+      rulesChanged = true;
+    }
+    if (rulesChanged) {
+      change("Codex rules synced");
+      ctx.nextStepTriggers.codexRestart = true;
+    } else if (ruleFiles.length > 0) verbose("Codex rules already in sync");
   }
 
-  mkdirSync(userRulesDir, { recursive: true });
-  let sawRules = false;
-  let rulesChanged = false;
-  const ruleFiles = sotRules.filter((path) => path.endsWith(".rules")).sort(compareCodepoints);
-  for (const ruleFile of ruleFiles) {
-    sawRules = true;
-    const userRuleFile = p(userRulesDir, ruleFile.slice(ruleFile.lastIndexOf("/") + 1));
-    const content = payloadBytes(ruleFile);
-    const identical = existsSync(userRuleFile) && readFileSync(userRuleFile).equals(content);
-    if (identical) continue;
-    if (existsSync(userRuleFile)) copyFileSync(userRuleFile, `${userRuleFile}.bak`);
-    writeFileSync(userRuleFile, content);
-    rulesChanged = true;
-  }
-  if (rulesChanged) {
-    change("Codex rules synced");
+  for (const [name, recordedHash] of readRulesRecords(manifestFile)) {
+    if (shippedNames.has(name)) continue;
+    const file = p(userRulesDir, name);
+    if (!existsSync(file)) continue;
+    if (sha256Hex(readFileSync(file)) !== recordedHash) {
+      warn(
+        `Codex rules: kept ${file}: the SoT no longer ships it, and it differs from the kit copy. Review it and delete it if you do not need its rules.`,
+      );
+      nextRecords.set(name, recordedHash);
+      continue;
+    }
+    if (ctx.dryRun) {
+      echo(`[dry-run] remove ${file}`);
+      continue;
+    }
+    rmSync(file, { force: true });
+    change(`Codex rules: removed ${file}; the SoT no longer ships it`);
     ctx.nextStepTriggers.codexRestart = true;
-  } else if (sawRules) verbose("Codex rules already in sync");
+  }
+  if (ctx.dryRun) return;
+
+  const manifest = [...nextRecords]
+    .sort(([left], [right]) => compareCodepoints(left, right))
+    .map(([name, hash]) => `${hash}  ${name}\n`)
+    .join("");
+  if (manifest !== "" || existsSync(manifestFile)) writeTextIfChanged(manifestFile, manifest);
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): void {
