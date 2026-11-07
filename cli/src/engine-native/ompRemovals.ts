@@ -9,10 +9,12 @@
  * sync, without `--reconcile`. Message strings and prune semantics are part of
  * the contract.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { isMap, isScalar, isSeq, parseDocument, type YAMLMap } from "yaml";
+import { replaceFile } from "./atomicWrite";
 import type { Ctx } from "./index";
+import { backupPrivateFile } from "./ompFileDeploy";
 import { bashPatternKey, bashRuleKey } from "./ompYaml";
 
 type RetiredScalar = string | number | boolean;
@@ -296,12 +298,17 @@ const retiredBashRules: Pruner = (root) => {
   return pruned;
 };
 
-/** Applies each pruner to one deployed omp YAML file. */
+/**
+ * Applies each pruner to one deployed omp YAML file. `alreadyBackedUp` is true
+ * when the merge of this sync already wrote `<file>.bak`; a second backup would
+ * replace those pre-sync bytes with the merged bytes.
+ */
 function pruneRetired(
   ctx: Ctx,
   file: string,
   label: string,
   pruners: ReadonlyArray<Pruner>,
+  alreadyBackedUp: boolean,
 ): number {
   const { change, echo, verbose, warn } = ctx.services.logger;
   if (!existsSync(file)) return 0;
@@ -325,33 +332,54 @@ function pruneRetired(
     echo(`[dry-run] prune ${file}: ${pruned.join(", ")}`);
     return pruned.length;
   }
-  writeFileSync(file, String(doc));
-  change(`omp ${label} pruned ${pruned.length} retired entr(ies): ${pruned.join(", ")}`);
+  if (!alreadyBackedUp) backupPrivateFile(file);
+  // replaceFile writes through a symlinked file, so the link stays.
+  replaceFile(file, String(doc), { mode: 0o600 });
+  const backupNote = alreadyBackedUp ? "" : ` (backup at ${label}.bak)`;
+  change(
+    `omp ${label} pruned ${pruned.length} retired entr(ies): ${pruned.join(", ")}${backupNote}`,
+  );
   return pruned.length;
 }
 
 /** Prunes retired kit-owned keys and bash rules from a deployed omp config.yml. */
-export function syncOmpRemovals(ctx: Ctx, configFile: string): number {
-  return pruneRetired(ctx, configFile, "config.yml", [
-    retiredKeys([
-      ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
-        path,
-        (node) => isScalar(node) && node.value === value,
+export function syncOmpRemovals(ctx: Ctx, configFile: string, alreadyBackedUp: boolean): number {
+  return pruneRetired(
+    ctx,
+    configFile,
+    "config.yml",
+    [
+      retiredKeys([
+        ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
+          path,
+          (node) => isScalar(node) && node.value === value,
+        ]),
+        ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
       ]),
-      ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
-    ]),
-    retiredBashRules,
-  ]);
+      retiredBashRules,
+    ],
+    alreadyBackedUp,
+  );
 }
 
 /** Prunes retired kit-owned blocks from a deployed omp models.yml. */
-export function syncOmpModelRemovals(ctx: Ctx, modelsFile: string): number {
-  return pruneRetired(ctx, modelsFile, "models.yml", [
-    retiredKeys(
-      OMP_RETIRED_MODEL_BLOCKS.map(([path, block]): RetiredEntry => [
-        path,
-        (node) => isMap(node) && isDeepStrictEqual(node.toJSON(), block),
-      ]),
-    ),
-  ]);
+export function syncOmpModelRemovals(
+  ctx: Ctx,
+  modelsFile: string,
+  alreadyBackedUp: boolean,
+): number {
+  return pruneRetired(
+    ctx,
+    modelsFile,
+    "models.yml",
+    [
+      retiredKeys(
+        OMP_RETIRED_MODEL_BLOCKS.map(([path, block]): RetiredEntry => [
+          path,
+          (node) => isMap(node) && isDeepStrictEqual(node.toJSON(), block),
+        ]),
+      ),
+    ],
+    alreadyBackedUp,
+  );
 }

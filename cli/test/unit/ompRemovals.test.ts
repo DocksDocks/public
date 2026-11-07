@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  chmodSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -158,14 +160,14 @@ describe("retired omp config keys", () => {
   it("prunes a key whose deployed value still matches the value the kit shipped", () => {
     const { file, root } = deployConfig("symbolPreset: unicode\nsteeringMode: all\n");
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
     expect(parse(readFileSync(file, "utf8"))).toEqual({ steeringMode: "all" });
   });
 
   it("keeps a retired key the user changed away from the shipped value", () => {
     const { file, root } = deployConfig("theme:\n  dark: nord\n");
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(0);
     expect(parse(readFileSync(file, "utf8"))).toEqual({ theme: { dark: "nord" } });
   });
 
@@ -174,7 +176,7 @@ describe("retired omp config keys", () => {
       "providers:\n  webSearchOrder:\n    - brave\n  fetch: auto\n",
     );
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
     expect(parse(readFileSync(file, "utf8"))).toEqual({ providers: { fetch: "auto" } });
   });
 
@@ -183,7 +185,7 @@ describe("retired omp config keys", () => {
       "tui:\n  textSizing: false\n  tight: false\nstatusLine:\n  transparent: false\n  compactThinkingLevel: false\n",
     );
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(3);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(3);
     expect(parse(readFileSync(file, "utf8"))).toEqual({
       statusLine: { compactThinkingLevel: false },
     });
@@ -198,7 +200,7 @@ describe("retired omp config keys", () => {
       "# kit-owned omp configuration\n\n# no longer set by the kit\nautoResume: false\n\n# roles below\nmodelRoles:\n  default: anthropic/claude-opus-5\n",
     );
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
     const after = readFileSync(file, "utf8");
     expect(after).toContain("# kit-owned omp configuration");
     expect(after).toContain("# roles below");
@@ -211,7 +213,7 @@ describe("retired omp config keys", () => {
     const source = "symbolPreset: unicode\nautoResume: false\n";
     const { file, root } = deployConfig(source);
 
-    expect(syncOmpRemovals(testCtx(root, true), file)).toBe(2);
+    expect(syncOmpRemovals(testCtx(root, true), file, false)).toBe(2);
     expect(readFileSync(file, "utf8")).toBe(source);
   });
 
@@ -219,7 +221,7 @@ describe("retired omp config keys", () => {
     const source = "symbolPreset: unicode\n  : : broken\n   - [\n";
     const { file, root } = deployConfig(source);
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(source);
   });
 
@@ -230,7 +232,7 @@ describe("retired omp config keys", () => {
       "steeringMode: all\n\n# kit-owned omp configuration\n\n# about autoResume\nautoResume: false\n",
     );
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
     const after = readFileSync(file, "utf8");
     expect(after).toContain("# kit-owned omp configuration");
     expect(after).toContain("steeringMode: all");
@@ -246,7 +248,7 @@ describe("retired omp config keys", () => {
       "tui:\n  keepMe: 1\n\n  # tui section header\n\n  # about tight\n  tight: false\nsteeringMode: all\n",
     );
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
     const after = readFileSync(file, "utf8");
     const header = after.indexOf("# tui section header");
     expect(header).toBeGreaterThan(after.indexOf("keepMe: 1"));
@@ -289,6 +291,41 @@ describe("retired omp config keys", () => {
       steeringMode: "all",
     });
   });
+
+  it("backs up a pruned config.yml and keeps mode 0600", () => {
+    const source = "symbolPreset: unicode\nsteeringMode: all\n";
+    const { file, root } = deployConfig(source);
+    chmodSync(file, 0o644);
+    // The logger writes `change` lines to stderr.
+    const stderr: Array<string> = [];
+    const base = testCtx(root);
+    const logger = makeLogger({ stderr: (chunk) => stderr.push(chunk), progress: () => {} });
+    const ctx: Ctx = { ...base, services: { ...base.services, logger } };
+
+    expect(syncOmpRemovals(ctx, file, false)).toBe(1);
+
+    expect(readFileSync(`${file}.bak`, "utf8")).toBe(source);
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(statSync(`${file}.bak`).mode & 0o777).toBe(0o600);
+    expect(stderr.join("")).toContain("backup at config.yml.bak");
+  });
+
+  // A second backup in the same sync would replace the pre-sync bytes with
+  // the merged bytes, so the prune must keep the backup of the merge.
+  it("keeps the pre-sync backup when the merge and the prune both change config.yml", async () => {
+    const root = mkdtempSync(join(tmpdir(), "omp-removals-backup-"));
+    roots.push(root);
+    const agentDir = join(root, ".omp", "agent");
+    mkdirSync(agentDir, { recursive: true });
+    const file = join(agentDir, "config.yml");
+    const source = "symbolPreset: unicode\nuserOnly: 1\n";
+    writeFileSync(file, source);
+
+    await runOmpSync(root);
+
+    expect(parse(readFileSync(file, "utf8"))).toEqual({ userOnly: 1, steeringMode: "all" });
+    expect(readFileSync(`${file}.bak`, "utf8")).toBe(source);
+  });
 });
 
 /**
@@ -326,7 +363,7 @@ describe("retired omp bash.patterns rules", () => {
   it("prunes retired kit rules and keeps kit and user rules that differ", () => {
     const { file, root } = deployConfig(DEPLOYED_RULES);
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(5);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(5);
     const after = readFileSync(file, "utf8");
     expect(parse(after)).toEqual({ bash: { patterns: KEPT_RULES } });
     expect(after).not.toContain("# Allow, ahead of the prompts below.");
@@ -372,7 +409,7 @@ describe("retired omp bash.patterns rules", () => {
     ].join("\n");
     const { file, root } = deployConfig(deployed);
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(retired.length);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(retired.length);
     expect(parse(readFileSync(file, "utf8"))).toEqual({ bash: { patterns: kept } });
   });
 
@@ -380,7 +417,7 @@ describe("retired omp bash.patterns rules", () => {
     const { file, root } = deployConfig(DEPLOYED_RULES);
     const stdout: Array<string> = [];
 
-    expect(syncOmpRemovals(testCtx(root, true, stdout), file)).toBe(5);
+    expect(syncOmpRemovals(testCtx(root, true, stdout), file, false)).toBe(5);
     expect(readFileSync(file, "utf8")).toBe(DEPLOYED_RULES);
     expect(stdout.join("")).toContain(
       `[dry-run] prune ${file}: bash.patterns "git rm -- *" (allow), bash.patterns "rm" (prompt)`,
@@ -389,10 +426,10 @@ describe("retired omp bash.patterns rules", () => {
 
   it("changes nothing on a second run", () => {
     const { file, root } = deployConfig(DEPLOYED_RULES);
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(5);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(5);
     const once = readFileSync(file, "utf8");
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(once);
   });
 
@@ -400,7 +437,7 @@ describe("retired omp bash.patterns rules", () => {
     const source = readFileSync(join(kitHome(), "SoT", ".omp", "config.yml"), "utf8");
     const { file, root } = deployConfig(source);
 
-    expect(syncOmpRemovals(testCtx(root), file)).toBe(0);
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(0);
     expect(readFileSync(file, "utf8")).toBe(source);
   });
 
@@ -459,7 +496,7 @@ describe("retired omp models.yml blocks", () => {
       `providers:\n  anthropic:\n    modelOverrides:\n${SHIPPED_OPUS_BLOCK}  openai-codex:\n    baseUrl: https://example.test\n`,
     );
 
-    expect(syncOmpModelRemovals(testCtx(root), file)).toBe(1);
+    expect(syncOmpModelRemovals(testCtx(root), file, false)).toBe(1);
     expect(parse(readFileSync(file, "utf8"))).toEqual({
       providers: { "openai-codex": { baseUrl: "https://example.test" } },
     });
@@ -471,7 +508,7 @@ describe("retired omp models.yml blocks", () => {
       `providers:\n  anthropic:\n    apiKey: secret\n    modelOverrides:\n${edited}`,
     );
 
-    expect(syncOmpModelRemovals(testCtx(root), file)).toBe(0);
+    expect(syncOmpModelRemovals(testCtx(root), file, false)).toBe(0);
     expect(parse(readFileSync(file, "utf8"))).toHaveProperty(
       ["providers", "anthropic", "modelOverrides", "claude-opus-5-5", "thinking", "defaultLevel"],
       "max",
