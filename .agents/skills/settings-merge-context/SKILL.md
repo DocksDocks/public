@@ -5,11 +5,11 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-310"
+      lines: "1-312"
     - path: cli/src/engine-native/claudeSettings.ts
-      lines: "1-174"
+      lines: "1-201"
     - path: cli/src/engine-native/claudeRemovals.ts
-      lines: "1-195"
+      lines: "1-383"
     - path: cli/src/engine-native/claudeRuntime.ts
       lines: "1-157"
     - path: cli/src/engine-native/claudeSettingsModifiers.ts
@@ -19,10 +19,10 @@ metadata:
     - path: cli/src/engine-native/claudeRetired.ts
       lines: "1-165"
     - path: SoT/.claude/settings.json
-      lines: "1-372"
+      lines: "1-1005"
     - path: SoT/.claude/mcp-servers.json
       lines: "1-3"
-  updated: "2026-10-14"
+  updated: "2026-11-06"
 ---
 
 # Settings Merge
@@ -129,7 +129,8 @@ connectors.
 
 ## Deploy-Time Modifiers
 
-`syncCompactWindow`, `syncPermissive`, and `syncClaudeModel` run after the
+`syncCompactWindow`, `syncPermissive`, `syncClaudeModel`, `syncClaudeEffort`,
+and `syncClaudeAdvisor` run after the
 prepared settings commit and mutate only deployed settings. A later flag-less sync restores
 SoT values, except user-only keys that the SoT does not declare.
 
@@ -138,6 +139,8 @@ SoT values, except user-only keys that the SoT does not declare.
 | `--claude-compact-window=<n|Nk>` | `syncCompactWindow` | Sets `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW`. |
 | `--claude-permissive` | `syncPermissive` | Clears `permissions.ask` and `permissions.deny`. |
 | `--claude-model=<m>` | `claudeSettingsModifiers.ts syncClaudeModel` | Sets `.model`, or deletes it for `default`. |
+| `--claude-effort=<level>` | `claudeSettingsModifiers.ts syncClaudeEffort` | Sets `.effortLevel`; `default` sets the SoT default level. |
+| `--claude-advisor=on\|off\|default` | `claudeSettingsModifiers.ts syncClaudeAdvisor` | Sets `.advisorModel` to `opus` for `on`; deletes it for `off` and `default`. |
 
 ## Key Decisions
 
@@ -154,8 +157,10 @@ SoT values, except user-only keys that the SoT does not declare.
   or `hooks.Stop`, because user handlers share that key.
 - `claudeRemovals.ts pruneRetiredHookHandlers, retired hook-handler pass`
   removes only handlers whose `command` exactly equals a command the kit once
-  shipped. These are the legacy RTK rewrite handler under `hooks.PreToolUse`
-  and the legacy `fetch-usage.sh` handler under `hooks.Stop`. The Stop removal
+  shipped. These are the legacy RTK rewrite handlers under `hooks.PreToolUse`
+  (`rtk-rewrite.sh` and `rtk hook claude`), and under `hooks.Stop` the legacy
+  `fetch-usage.sh` handler and the two `ffplay … alert_bubble.mp3` handlers
+  (local file and GitHub URL). The Stop removal
   runs only when the runtime is ready. The pass drops a group with no handlers
   left, and an event key with no groups left or with a null or non-array value.
   It copies `settings.json` to `settings.json.bak` before it writes. The
@@ -167,8 +172,10 @@ SoT values, except user-only keys that the SoT does not declare.
   `runtimeReady` branch and increments the shared `filesRemoved` counter.
 - Exact permission-rule entries remove only the listed strings and preserve all
   other user rules. `claudeRemovals.ts syncRemovals, runtime-ready manifest
-  expansion` gates only the legacy statusline/Notification/Stop subset; baseline
-  stale entries remain unconditional.
+  expansion` gates only the legacy statusline/Notification/Stop subset; the
+  other baseline stale entries remain unconditional. The one exception is the
+  `advisorModel` settings key: sync prunes it only when `--claude-advisor` is
+  not set.
 - The authoring `SoT/.claude/settings.json` contains named sentinels. Only
   `claudeRuntime.ts materializeClaudeSettings, exact sentinel locations` may
   replace or omit them, and no sentinel-bearing document may reach disk.

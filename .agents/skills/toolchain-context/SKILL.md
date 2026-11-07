@@ -5,20 +5,20 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/commands/toolchain.ts
-      lines: "1-74"
+      lines: "1-80"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-173"
+      lines: "1-178"
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-292"
     - path: cli/src/engine-native/claudeSync.ts
-      lines: "1-276"
+      lines: "1-312"
     - path: cli/src/engine-native/bun.ts
-      lines: "1-96"
+      lines: "1-120"
     - path: cli/src/engine-native/claudeLsp.ts
-      lines: "1-260"
+      lines: "1-301"
     - path: SoT/toolchain.json
       lines: "1-38"
-  updated: "2026-09-24"
+  updated: "2026-11-06"
 ---
 
 # Toolchain Verified-Version Floors
@@ -34,14 +34,18 @@ unrelated sync work.
 </constraint>
 
 <constraint>
-Never add a kit-driven floating install. Every kit-driven install uses the exact
-`verified` version from `SoT/toolchain.json`.
+Never add a kit-driven floating install. Every kit-driven install from npm,
+npx, GitHub, or `omp install` uses the exact `verified` version from
+`SoT/toolchain.json`. `rust-analyzer` (rustup) and `bwrap` (distro package
+manager) follow the host toolchain and have no pin; any other new install
+surface needs a manifest pin first.
 </constraint>
 
 ## Manifest Split
 
 - `kind: check/managed/pin` describes whether the tool is reported, managed by
-  the kit, or a manifest pin for an `npx`-style tool. jq and curl are check-only;
+  the kit, or a version pin for a package installed through another tool (`npx`
+  or `omp install`). jq and curl are check-only;
   consumers decide whether a missing optional tool prevents an operation.
 - `policy: present` installs a missing managed tool and leaves a present tool
   alone.
@@ -106,7 +110,7 @@ upgradeLspServers`.
 
 | Tool | Owner | Notes |
 |------|-------|-------|
-| `bun` | `bun.ts bunBootstrap, per-engine-run memo` | Resolves an existing Bun or download-then-runs the pinned installer once per EngineNative invocation; shared by the Claude runtime and direct `toolchain ensure bun`. |
+| `bun` | `bun.ts bunBootstrap, per-engine-run memo` | Resolves an existing Bun or download-then-runs the pinned installer once per EngineNative invocation; shared by the Claude runtime (`claudeSync.ts`), `sync omp` (`ompSync.ts ompSync`), and direct `toolchain ensure bun`. |
 
 ## Gotchas
 

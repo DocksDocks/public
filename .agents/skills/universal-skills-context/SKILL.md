@@ -13,10 +13,10 @@ metadata:
     - path: cli/src/engine-native/skillsPrune.ts
       lines: "1-115"
     - path: cli/src/engine-native/skillsManifest.ts
-      lines: "1-33"
+      lines: "1-36"
     - path: SoT/.agents/skills.txt
       lines: "1-3"
-  updated: "2026-10-14"
+  updated: "2026-11-06"
 ---
 
 # Universal Skills Bootstrap

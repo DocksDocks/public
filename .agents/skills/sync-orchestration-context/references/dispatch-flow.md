@@ -20,9 +20,10 @@
 ```text
 ./docks-kit
 |-- cli/dist/docks-kit-<os>-<arch>  preferred only when binary version matches package.json
+|                                   and no file under cli/src or cli/docs is newer than it
 `-- Bun from source
     |-- find_bun and bootstrap Bun when needed
-    |-- bun install --frozen-lockfile when node_modules is absent
+    |-- bun install --frozen-lockfile when node_modules/effect is absent
     `-- bun cli/src/main.ts "$@"
         `-- Effect CLI root command
             `-- mutating commands call engine(args)
@@ -91,6 +92,7 @@ runEngineNative(argv, services?, options?)        index.ts
         |       |-- syncMergedYaml + syncOmpRemovals: config.yml
         |       |-- syncMergedYaml + syncOmpModelRemovals: models.yml
         |       |-- syncWholeFile: intercom config.json
+        |       |-- syncKitPlugin(ctx)
         |       |-- syncMarketplace(ctx)
         |       `-- syncPlugins(ctx)
         |-- syncConcurrencyForManifest            syncConcurrency.ts; cap 1 when the skills
@@ -119,6 +121,7 @@ runEngineNative(argv, services?, options?)        index.ts
 | `toolchain check` | `modeToolchain` -> `report` | Prints the doctor table. |
 | `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
 | `toolchain outdated [--refresh]` | `modeToolchain` -> `outdatedReport` | Compares each `verified` pin with the newest upstream release; report only. |
+| `toolchain upgrade [--dry-run]` | `modeToolchain` -> `claudeLsp.ts upgradeLspServers` | Raises each npm-owned LSP server below its `verified` pin to that pin. |
 
 ## Idempotency Invariants
 

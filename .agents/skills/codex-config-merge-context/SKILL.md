@@ -5,14 +5,14 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/codexConfig.ts
-      lines: "1-158"
+      lines: "1-218"
     - path: cli/src/engine-native/codexToml.ts
-      lines: "1-248"
+      lines: "1-385"
     - path: SoT/.codex/config.toml
       lines: "1-44"
     - path: SoT/.codex/rules/docks.rules
-      lines: "1-113"
-  updated: "2026-10-14"
+      lines: "1-157"
+  updated: "2026-11-06"
 ---
 
 # Codex Config Merge
@@ -58,11 +58,14 @@ installed or user namespaces are blocked.
    `use_legacy_landlock` and an empty `[features]` table.
 4. `codexConfig.ts removeRetiredPluginTables, staging retirement pass` strips
    retired kit-owned plugin tables.
-5. `codexToml.ts mergeTopLevelSettings, staging top-level merge` replaces or
+5. `codexConfig.ts removeRetiredTopLevelSettings, staging retired-setting pass`
+   drops a top-level line that holds exactly a retired kit value
+   (`personality = "pragmatic"`). A different user value stays.
+6. `codexToml.ts mergeTopLevelSettings, staging top-level merge` replaces or
    inserts SoT top-level `key = value` lines before the first table.
-6. `codexToml.ts mergeTableSettings, staging table merge` deletes each
+7. `codexToml.ts mergeTableSettings, staging table merge` deletes each
    SoT-declared table from the staging file and appends the SoT block.
-7. A changed staging file backs up and replaces the deployed config; a byte-identical
+8. A changed staging file backs up and replaces the deployed config; a byte-identical
    staging file is discarded without writing `config.toml.bak`.
 
 `codexConfig.ts removeRetiredPluginTablesText, retired-plugin line transform`
@@ -91,7 +94,14 @@ state and is never touched because it is not present in the SoT rules directory.
 
 ```text
 prefix_rule(pattern=["cmd", "subcmd"], decision="<allow|prompt|forbidden>")
+prefix_rule(pattern=["cmd", ["-a", "-b"]], decision="forbidden", justification="<reason>")
 ```
+
+A nested list in `pattern` lists alternative tokens for one argv position.
+`justification` is optional and states the reason for the decision. When more
+than one rule matches, Codex applies the strictest
+decision (`forbidden` > `prompt` > `allow`), so an allow rule cannot loosen a
+prompt or a forbidden rule.
 
 Prefix rules match argv prefixes, not shell strings. Include enough tokens that
 an allowed prefix cannot be turned into a write or exec by a later flag.

@@ -48,7 +48,7 @@ behavior for removed flag names.
 | Engine dispatch | `runEngineNative` in `index.ts`, `makeCtx` in `engineCtx.ts`, `engineSync` in `syncDispatch.ts` |
 | Sync scheduling | `runBounded`, `syncConcurrencyForManifest` in `syncConcurrency.ts` |
 | Flags and targets | `parseArgs`, `applyDefaultSelection` in `parseArgs.ts`; `validateModifierFlags` in `parseModifiers.ts` |
-| Direct modes | `modeModel`, `modeToolchain`, `printModels` |
+| Direct modes | `modeModel`, `modeToolchain` in `modes.ts`; the `models` command is the Effect command `modelsCommand` in `commands/models.ts`, not an EngineNative mode |
 | Removed engine guard | `DOCKS_KIT_ENGINE` handling in `cli/src/engine.ts` |
 
 ## Success Criteria

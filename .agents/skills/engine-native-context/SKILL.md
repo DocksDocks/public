@@ -5,26 +5,26 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/index.ts
-      lines: "1-60"
+      lines: "1-68"
     - path: cli/src/engine.ts
-      lines: "1-100"
+      lines: "1-134"
     - path: cli/test/unit/engine.test.ts
-      lines: "1-75"
+      lines: "1-309"
     - path: cli/test/golden-dryrun.ts
-      lines: "1-213"
+      lines: "1-230"
     - path: cli/test/golden-mutation.ts
-      lines: "1-360"
+      lines: "1-813"
     - path: cli/test/lib/goldenResources.ts
-      lines: "1-353"
+      lines: "1-361"
     - path: cli/test/lib/goldenExecution.ts
-      lines: "1-288"
+      lines: "1-298"
     - path: cli/test/lib/goldenSnapshot.ts
-      lines: "1-180"
+      lines: "1-189"
     - path: cli/test/lib/goldenCli.ts
       lines: "1-52"
     - path: cli/test/lib/goldenMutationCatalog.ts
-      lines: "1-154"
-  updated: "2026-09-11"
+      lines: "1-201"
+  updated: "2026-11-06"
 ---
 
 # EngineNative Golden Contract
