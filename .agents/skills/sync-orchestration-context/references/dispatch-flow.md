@@ -10,6 +10,7 @@
   `runEngineNative`. Only that channel honors the unprefixed env globals in
   `engineCtx.ts ENV_GLOBAL_KEYS`. `engineCapture` removes them from its child
   environment.
+  (verify: `bun run test:unit -- cli/test/unit/engine.test.ts -t "strips env globals from the raw capture child and keeps the other variables"`)
 - `DOCKS_KIT_ENGINE` set to `bash` exits 2 with the removed-engine recovery
   message. It is not a fallback selector.
 - SoT comes from the embedded payload (`payload.ts payloadText`/`payloadBytes`).
@@ -25,10 +26,13 @@
     |-- find_bun and bootstrap Bun when needed
     |-- bun install --frozen-lockfile when node_modules/effect is absent
     `-- bun cli/src/main.ts "$@"
-        `-- Effect CLI root command
-            `-- mutating commands call engine(args)
-                `-- cli/src/engine.ts
-                    `-- runEngineNative(args, services, { envGlobals: false })
+        |-- DOCKS_KIT_ENGINE=native-raw|native-capture
+        |   `-- runEngineNative(rawArgs, undefined, { envGlobals: rawChannel === "native-raw" })
+        `-- prepareArgv(argv)                        argv.ts; argvValidate.ts rejects with exit 2
+            `-- Effect CLI root command                 subcommands: argv.ts COMMANDS
+                `-- mutating commands call engine(args)
+                    `-- cli/src/engine.ts
+                        `-- runEngineNative(args, services, { envGlobals: false })
 ```
 
 `kitHome()` (`kitHome.ts resolveKitHome`) identifies a kit root by a
@@ -36,6 +40,12 @@
 Next, it takes the nearest such ancestor of the module directory, the
 executable directory, or the cwd, in that order. Last, it falls back to the
 executable directory. `ctx.repoDir` holds the result for display only.
+`kitHome()` also selects the update target (`commands/update.ts`), the status
+`Kit home`, the checkout that `commands/sync.ts updateNudge` checks, and the
+source-mode `main.ts` path for `engine.ts engineCapture`. `updateNudge` starts
+`git` through `exec.ts spawnHost`, so a Windows host never runs a `git.exe`
+from the current directory.
+(verify: `bun run test:unit -- cli/test/unit/kitHome.test.ts -t "resolveKitHome"` and `bun run test:unit -- cli/test/unit/syncUpdateNudge.test.ts -t "runs git through spawnHost"`)
 
 ## Sync Execution Order
 
@@ -48,53 +58,17 @@ runEngineNative(argv, services?, options?)        index.ts
     `-- sync/default -> engineSync(ctx, args)     syncDispatch.ts
         |-- parseArgs(ctx, args)
         |   `-- applyDefaultSelection(ctx) when no target word:
-        |       kit.db harness selection, else claude/codex/agents
+        |       kit.db harness selection, else harnesses.ts LEGACY_SELECTION
         |-- validateModifierFlags(ctx)            parseModifiers.ts
-        |-- DOCKS_KIT_SYNC_CONCURRENCY            1|2|3, default 3; other values exit 2
-        |-- preflightClaudeSettings(ctx)          claudeSettings.ts; invalid settings.json aborts
-        |                                         the whole sync before any pipeline starts
+        |-- DOCKS_KIT_SYNC_CONCURRENCY            a SyncConcurrency value; other values exit 2
+        |-- preflightClaudeSettings(ctx)          claudeSettings.ts; claude selected only:
+        |                                         invalid settings.json aborts the whole sync
+        |                                         before any pipeline starts
         |-- selected tasks, in input order; runBounded runs them below
-        |   |-- claudeSync(ctx) when claude is selected
-        |   |   |-- bunBootstrap(ctx) first, memoized for this engine run
-        |   |   |-- materialize + prepareClaudeSettings(ctx), no mutation
-        |   |   |-- syncClaudeRuntime(ctx) when Bun is ready
-        |   |   |-- syncClaudeMd(ctx)
-        |   |   |-- commitClaudeSettings(ctx)
-        |   |   |-- syncRemovals(ctx), legacy subset readiness-gated
-        |   |   |-- syncCompactWindow(ctx)
-        |   |   |-- syncPermissive(ctx)
-        |   |   |-- syncClaudeModel(ctx)
-        |   |   |-- syncClaudeEffort(ctx)
-        |   |   |-- syncClaudeAdvisor(ctx)
-        |   |   |-- syncClaudeJson(ctx)
-        |   |   |-- syncConnectorEnv(ctx)
-        |   |   |-- syncPlugins(ctx)
-        |   |   |-- syncOptionalPlugins(ctx)
-        |   |   `-- syncLspServers(ctx)
-        |   |-- codexSync(ctx) when codex is selected
-        |   |   |-- ensureBubblewrap(ctx)
-        |   |   |-- syncConfig(ctx)
-        |   |   |-- removeRetiredImportedHooks(ctx)
-        |   |   |-- syncCodexModel(ctx)
-        |   |   |-- syncCodexEffort(ctx)
-        |   |   |-- syncRules(ctx)
-        |   |   |-- syncAgentsMd(ctx)
-        |   |   |-- syncMarketplace(ctx)
-        |   |   |-- removeLegacyDocksMarketplace(ctx)
-        |   |   `-- syncPlugins(ctx)
-        |   |-- skillsSync(ctx) when agents is selected
-        |   |   |-- syncUniversal(ctx)
-        |   |   |-- reconcileRemovals(ctx) when prune
-        |   |   `-- updateSnapshot(ctx)
-        |   `-- ompSync(ctx) when omp is selected
-        |       |-- bunBootstrap(ctx), memoized
-        |       |-- syncWholeFile: AGENTS.md, mcp.json
-        |       |-- syncMergedYaml + syncOmpRemovals: config.yml
-        |       |-- syncMergedYaml + syncOmpModelRemovals: models.yml
-        |       |-- syncWholeFile: intercom config.json
-        |       |-- syncKitPlugin(ctx)
-        |       |-- syncMarketplace(ctx)
-        |       `-- syncPlugins(ctx)
+        |   |-- claudeSync(ctx) when claude is selected        claudeSync.ts
+        |   |-- codexSync(ctx) when codex is selected          codexSync.ts
+        |   |-- skillsSync(ctx) when agents is selected        skillsSync.ts
+        |   `-- ompSync(ctx) when omp is selected              ompSync.ts
         |-- syncConcurrencyForManifest            syncConcurrency.ts; cap 1 when the skills
         |                                         manifest is populated and claude and agents
         |                                         are both selected
@@ -107,38 +81,47 @@ runEngineNative(argv, services?, options?)        index.ts
         `-- "--- Failures ---" ledger when recordFailure ran; returns 1
 ```
 
-`models` is not an EngineNative mode. The Effect command in
-`cli/src/commands/models.ts` serves it.
+Each pipeline function owns its step order. Read the function body, not a copy
+here (verify: `sed -n '/^export async function claudeSync/,/^}/p' cli/src/engine-native/claudeSync.ts`;
+use the same command for `codexSync`, `skillsSync`, and `ompSync` in their
+modules). The order rules that matter across pipelines:
+
+- `claudeSync` and `ompSync` start with `bun.ts bunBootstrap`, which is
+  memoized on `ctx.bunRuntime` for the engine run.
+- `claudeSync` materializes and prepares Claude settings with no mutation, then
+  commits them. Deploy-time modifiers run after the base deploy in both
+  `claudeSync` and `codexSync`.
+- `skillsSync` calls `skillsPrune.ts reconcileRemovals` only with `--prune`.
 
 ## Direct Modes
 
+`.agents/skills/sync-orchestration-context/SKILL.md` § Direct Modes owns the
+mode table. The `model` mode has two paths:
+
 | Invocation | Implementation | Path |
 |-----------|----------------|------|
-| `model claude` | `modeModel` get path | Reads deployed and SoT model plus catalog. |
-| `model claude opus` | `modeModel` set path | Validates then calls `syncClaudeModel`. |
-| `model codex gpt-5.5` | `modeModel` set path | Validates then calls `syncCodexModel`. |
-| `models claude` | `modelsCommand` in `cli/src/commands/models.ts` -> `resolveCatalog` | Effect command, not an EngineNative mode. Prints the live Anthropic list with `SoT/models.json` aliases and notes; curated fallback names its reason. |
-| `toolchain check` | `modeToolchain` -> `report` | Prints the doctor table. |
-| `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
-| `toolchain outdated [--refresh]` | `modeToolchain` -> `outdatedReport` | Compares each `verified` pin with the newest upstream release; report only. |
-| `toolchain upgrade [--dry-run]` | `modeToolchain` -> `claudeLsp.ts upgradeLspServers` | Raises each npm-owned LSP server below its `verified` pin to that pin. |
+| `model claude` or `model codex` | `modeModel` get path | Reads deployed and SoT model, then prints the resolved catalog. |
+| `model <tool> <id>` | `modeModel` set path | Validates `<id>` with `models.ts validateClaudeModel` or `validateCodexModel`, then calls `syncClaudeModel` or `syncCodexModel`. (verify: `./docks-kit models codex` lists valid IDs) |
 
 ## Idempotency Invariants
 
 | Step | Pre-check |
 |------|-----------|
-| Claude settings first install | Deployed settings file absent. |
-| Claude marketplace add | Marketplace name absent from known marketplaces. |
-| Claude plugin install | Missing user-scope install record. |
-| Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent. |
-| Codex rules copy | Backup before overwrite; user-learned `default.rules` is outside SoT. |
+| Claude settings first install | Deployed settings file absent (`claudeSettings.ts prepareClaudeSettings`). |
+| Claude marketplace add | Marketplace name absent from known marketplaces (`claudePluginPasses.ts syncPlugins`, pass 1). |
+| Claude plugin install | Missing user-scope install record (`claudePluginPasses.ts syncPlugins`, pass 2). |
+| Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). |
+| Codex rules copy | Byte-identical file skipped; backup before overwrite. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`; a file that no sync recorded, such as the user-learned `default.rules`, is never read or removed (`codexSync.ts syncRules`). (verify: `bun run test:unit -- cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
 
 ## New Target Checklist
 
-1. Add the SoT directory and target selection state to `Ctx`.
-2. Add positional target parsing in `parseArgs`.
+1. Add the harness name to `harnesses.ts Harness` and `HARNESSES`, and a
+   `sync<Name>` selection flag to `engineCtx.ts Ctx` (initialized in `makeCtx`).
+   SoT content stays in the embedded payload (`payload.ts`); `Ctx` holds no
+   SoT path.
+2. Map the word in `parseArgs.ts TARGET_FLAGS` and `applySelection`.
 3. Add dependency checks at each concrete consuming operation.
 4. Add the pipeline to the `selected` list in `syncDispatch.ts engineSync`.
 5. Add summary and next-step hooks if the target has user-facing output.
-6. Mirror the target in `cli/src/commands/sync.ts`.
+6. Mirror the target in `cli/src/commands/sync.ts VALID_TARGETS`.
 7. Add or update golden cases for selected-target and default-selection behavior.
