@@ -4,8 +4,8 @@
  *
  * Ownership split: SoT/toolchain.json + toolchain.ts keep version floors, pin
  * policy, and the doctor report, while bun.ts bunBootstrap owns the one managed
- * install; this registry owns WHICH external tools exist, whether they are
- * required, and the one-line command that installs a missing one.
+ * install; this registry owns WHICH external tools exist and the one-line
+ * command that installs a missing one.
  */
 import { isAbsolute } from "node:path";
 
@@ -13,6 +13,8 @@ import { capture, captureWithin, commandExists, p, which, type CaptureOutcome } 
 import { engineHome } from "./harnesses";
 import { isObject, parseJson } from "./jq";
 import { hostOs, platformName, rawPlatform } from "./os";
+import type { Invocation } from "./os/types";
+import { field } from "./toolchain";
 
 export type ToolId =
   | "git"
@@ -36,9 +38,6 @@ export type ToolId =
   | "dnf"
   | "pacman"
   | "zypper";
-
-/** required = the engine aborts when missing; optional = warn + degrade. */
-export type Requirement = "required" | "optional";
 
 export type ProbeResult =
   | { readonly state: "present"; readonly path?: string }
@@ -69,7 +68,6 @@ export const VERSION_PROBE_LIMIT_MS = 60_000;
 
 export interface DependencySpec {
   readonly id: ToolId;
-  readonly requirement: Requirement;
   readonly versionArgs: ReadonlyArray<string>;
   /** Platform-correct one-line install command (param injectable for tests). */
   readonly installHint: (platform?: NodeJS.Platform) => string;
@@ -89,17 +87,42 @@ interface SpecOptions {
 
 const spec = (
   id: ToolId,
-  requirement: Requirement,
   installHint: (platform?: NodeJS.Platform) => string,
   options: SpecOptions = {},
 ): DependencySpec => ({
   id,
-  requirement,
   versionArgs: options.versionArgs ?? ["--version"],
   installHint,
   resolve: options.resolve,
   version: options.version,
 });
+
+/** One shell word. Double quotes keep a `$tmp` or `$env:TEMP` reference live in sh and PowerShell. */
+function shellWord(word: string): string {
+  return /^[\w./:=@+-]+$/.test(word) ? word : `"${word}"`;
+}
+
+function commandLine({ command, args }: Invocation): string {
+  return [command, ...args].map(shellWord).join(" ");
+}
+
+/**
+ * The pinned installer that `bun.ts runBunBootstrap` runs, as one
+ * download-then-run command line. The script is saved before it runs, so a
+ * truncated download never runs as a partial script.
+ */
+function bunInstallHint(pf: NodeJS.Platform = rawPlatform()): string {
+  const host = hostOs(platformName(pf));
+  const pin = field("bun", "verified");
+  if (host.id === "windows") {
+    const { download, run } = host.bunInstaller(pin, "$env:TEMP");
+    // Windows PowerShell 5.1 resolves a bare `curl` to its Invoke-WebRequest alias.
+    const downloadLine = commandLine({ ...download, command: `${download.command}.exe` });
+    return `${downloadLine}; if ($LASTEXITCODE -eq 0) { ${commandLine(run)} }`;
+  }
+  const { download, run } = host.bunInstaller(pin, "$tmp");
+  return `tmp=$(mktemp -d) && ${commandLine(download)} && ${commandLine(run)}`;
+}
 
 // Presence is the injected executor's verdict; `which` only resolves WHERE the
 // tool is, which on Windows is the `.cmd`/`.exe` candidate rather than the name.
@@ -169,35 +192,22 @@ const versionNpmGlobal =
 export const defaultProbeExecutor: ProbeExecutor = { commandExists, capture, captureWithin, which };
 
 export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
-  git: spec("git", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git")),
-  jq: spec("jq", "optional", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq")),
-  curl: spec("curl", "optional", (pf = rawPlatform()) =>
-    hostOs(platformName(pf)).installHint("curl"),
-  ),
-  node: spec(
-    "node",
-    "optional",
-    () => "install Node.js via https://nodejs.org (or your package manager)",
-  ),
+  git: spec("git", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("git")),
+  jq: spec("jq", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("jq")),
+  curl: spec("curl", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("curl")),
+  node: spec("node", () => "install Node.js via https://nodejs.org (or your package manager)"),
   npm: spec(
     "npm",
-    "optional",
     () => "ships with Node.js — install via https://nodejs.org (or your package manager)",
   ),
   npx: spec(
     "npx",
-    "optional",
     () => "ships with Node.js — install via https://nodejs.org (or your package manager)",
   ),
-  claude: spec("claude", "optional", (pf = rawPlatform()) =>
-    hostOs(platformName(pf)).installHint("claude"),
-  ),
-  codex: spec("codex", "optional", (pf = rawPlatform()) =>
-    hostOs(platformName(pf)).installHint("codex"),
-  ),
+  claude: spec("claude", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("claude")),
+  codex: spec("codex", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("codex")),
   omp: spec(
     "omp",
-    "optional",
     () =>
       "install omp from https://github.com/can1357/oh-my-pi (an existing install updates with `omp update`, or through the tool that manages it, such as Tern)",
     {
@@ -205,7 +215,7 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
         (await exec.capture("omp", ["--version"])).trim().replace(/^omp[/v]/, ""),
     },
   ),
-  bun: spec("bun", "optional", () => "curl -fsSL https://bun.sh/install | bash", {
+  bun: spec("bun", bunInstallHint, {
     resolve: resolveBun,
     version: async (exec) => {
       const bun = findBun(exec);
@@ -213,43 +223,33 @@ export const DEPENDENCIES: Record<ToolId, DependencySpec> = {
       return await exec.capture(bun.command, ["--version"]);
     },
   }),
-  bwrap: spec(
-    "bwrap",
-    "optional",
-    () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)",
-  ),
-  ffplay: spec(
-    "ffplay",
-    "optional",
-    (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("ffplay"),
-    {
-      versionArgs: ["-version"],
-      resolve: pathProbe("ffplay"),
-    },
-  ),
-  intelephense: spec("intelephense", "optional", () => "npm install -g intelephense", {
+  bwrap: spec("bwrap", () => "sudo apt install -y bubblewrap (or dnf/pacman/zypper equivalent)"),
+  ffplay: spec("ffplay", (pf = rawPlatform()) => hostOs(platformName(pf)).installHint("ffplay"), {
+    versionArgs: ["-version"],
+    resolve: pathProbe("ffplay"),
+  }),
+  intelephense: spec("intelephense", () => "npm install -g intelephense", {
     resolve: pathProbe("intelephense"),
     version: versionNpmGlobal("intelephense"),
   }),
   "typescript-language-server": spec(
     "typescript-language-server",
-    "optional",
     () => "npm install -g typescript-language-server typescript",
     {
       resolve: pathProbe("typescript-language-server"),
     },
   ),
-  tsc: spec("tsc", "optional", () => "npm install -g typescript", {
+  tsc: spec("tsc", () => "npm install -g typescript", {
     resolve: pathProbe("tsc"),
   }),
-  "rust-analyzer": spec("rust-analyzer", "optional", () => "rustup component add rust-analyzer", {
+  "rust-analyzer": spec("rust-analyzer", () => "rustup component add rust-analyzer", {
     resolve: pathProbe("rust-analyzer"),
   }),
-  rustup: spec("rustup", "optional", () => "install the Rust toolchain from https://rustup.rs"),
-  "apt-get": spec("apt-get", "optional", () => "install apt via your Linux distribution"),
-  dnf: spec("dnf", "optional", () => "install dnf via your Linux distribution"),
-  pacman: spec("pacman", "optional", () => "install pacman via your Linux distribution"),
-  zypper: spec("zypper", "optional", () => "install zypper via your Linux distribution"),
+  rustup: spec("rustup", () => "install the Rust toolchain from https://rustup.rs"),
+  "apt-get": spec("apt-get", () => "install apt via your Linux distribution"),
+  dnf: spec("dnf", () => "install dnf via your Linux distribution"),
+  pacman: spec("pacman", () => "install pacman via your Linux distribution"),
+  zypper: spec("zypper", () => "install zypper via your Linux distribution"),
 };
 
 export function resolveDependency(
