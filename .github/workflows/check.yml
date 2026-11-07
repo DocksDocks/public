@@ -1,20 +1,33 @@
 name: check
 
-# Fast check gate on every push and pull request: lint, format check,
-# typecheck, unit tests, and both golden suites through the `check` package
-# script. `parity.yml` adds the dependency audit, generated-payload check,
-# package/runtime/native smokes, source-entry goldens, and prove-red runs;
-# release stays in `release-cli.yml`.
+# Fast check gate on pushes to `main` and on pull requests: lint, format
+# check, typecheck, unit tests, and both golden suites through the `check`
+# package script. `parity.yml` adds the dependency audit, generated-payload
+# check, package/runtime/native smokes, source-entry goldens, and prove-red
+# runs; release stays in `release-cli.yml`.
 
 on:
+  # Only `main` pushes start a `push` run. With no branch filter, each push to
+  # a pull request branch also started a `push` run on the SHA that the
+  # `pull_request` run tests. Of 318 `check` runs since 2026-09-13, 150 (47 %)
+  # repeated a SHA that another `check` run tested: 92 branch pushes, 24
+  # `main` heads, and 34 `cli-v*` tags. Every `cli-v*` tag is on `main`, so
+  # the `main` run of that commit covers it, and the `release-cli.yml` build
+  # runs `test:ci` again.
   push:
+    branches: [main]
   pull_request:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # A superseded pull request commit is noise, but a superseded `main` commit
-  # would be left with no green run, which is the record a later bisect reads.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A pull request keeps one group, so a newer head cancels the stale run.
+  # Every other run gets its own group. In one group, GitHub replaces a
+  # pending run with the newer run, also with `cancel-in-progress: false`.
+  # The old shared `main` group did this to run 39826349216
+  # (`golden-regression`, 2026-10-22): it ended cancelled with 0 jobs, so its
+  # `main` commit got no green run. With a group per run, every `main` run
+  # finishes.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
