@@ -71,7 +71,7 @@ Do not edit `OMP_RETIRED_BASH_KEYS`, because it is a lookup map that
 `ompRemovals.ts` derives from `OMP_RETIRED_BASH_RULES`.
 `ompRemovals.ts deletePath` also removes each ancestor mapping that a deletion
 leaves empty.
-It keeps a section-header comment above the deleted key: the header moves onto
+It keeps a section-header comment above the deleted key. The header moves onto
 the next key, or becomes the mapping's trailing comment when no key follows.
 A dry run prints `[dry-run] prune` with the entry names and writes nothing.
 An unparseable file gets a warning and stays untouched.
