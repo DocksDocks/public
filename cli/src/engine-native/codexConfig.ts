@@ -8,13 +8,9 @@ import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "n
 
 import { payloadDisplayPath } from "../payload";
 import { replaceFile } from "./atomicWrite";
-import {
-  isTomlHeaderLine,
-  mergeTableSettings,
-  mergeTopLevelSettings,
-  tomlContinuationLines,
-} from "./codexToml";
+import { mergeTableSettings, mergeTopLevelSettings } from "./codexToml";
 import type { Ctx } from "./index";
+import { isTomlHeaderLine, tomlContinuationLines } from "./tomlLines";
 
 // --------------------------------------------------------------- config ----
 

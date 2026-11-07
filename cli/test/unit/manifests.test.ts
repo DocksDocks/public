@@ -83,6 +83,19 @@ describe("manifest resolvers", () => {
     expect(parseToml(toml)["model"]).toBe(value);
   });
 
+  it("reads a top-level key after a multi-line array", () => {
+    const toml = 'notify = [\n  ["a"],\n]\nmodel = "gpt-x"\n';
+    expect(topLevelTomlString(toml, "model")).toBe("gpt-x");
+    expect(parseToml(toml)["model"]).toBe("gpt-x");
+  });
+
+  it("reads a quoted top-level key", () => {
+    for (const toml of ['"model" = "quoted"\n', "'model' = \"quoted\"\n"]) {
+      expect(topLevelTomlString(toml, "model")).toBe("quoted");
+      expect(parseToml(toml)["model"]).toBe("quoted");
+    }
+  });
+
   it("reads only the top-level Codex model, even when a profile overrides it", () => {
     mocks.codexConfig = 'model = "top-model"\n[profiles.audit]\nmodel = "table-model"\n';
     expect(sotCodexModel()).toBe("top-model");

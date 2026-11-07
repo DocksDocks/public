@@ -8,12 +8,12 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { payloadDisplayPath } from "../payload";
 import { replaceFile } from "./atomicWrite";
 import { PLUGIN_TABLE_HEADER } from "./codexConfig";
-import { isTomlHeaderLine } from "./codexToml";
 import { p, processFailureSummary, spawnProcess } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
 import { compareCodepoints, isObject, jqStringify, parseJson, type Json } from "./jq";
 import type { JsonObject } from "./sharedTypes";
+import { isTomlHeaderLine } from "./tomlLines";
 
 // ---------------------------------------------------------- marketplace ----
 
