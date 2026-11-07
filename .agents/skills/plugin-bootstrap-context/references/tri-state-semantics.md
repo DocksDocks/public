@@ -17,13 +17,15 @@ they mean installed but globally disabled.
 
 | Plugin ID | Value | Effect |
 |-----------|-------|--------|
-| `docks@docks` | `true` | Installed and active globally. |
-| `typescript-lsp@claude-plugins-official` | `true` | Installed and active globally. |
-| `supabase@claude-plugins-official` | absent | Installed only by `--claude-plugin=supabase`. |
-| `n8n-mcp-skills@n8n-mcp-skills` | absent | Installed only by `--claude-plugin=n8n`. |
+| illustrative `some-plugin@marketplace` | `true` | Installed and active globally. |
 | illustrative `some-plugin@marketplace` | `false` | Installed, globally disabled, project can enable. |
+| an optional plugin id | absent | Installed only by its `--claude-plugin=<name>` flag. |
 
-The current SoT ships no `false` entry, but the value remains supported.
+The shipped ids and values live in `SoT/.claude/settings.json` `enabledPlugins`
+(verify: `bun -e 'console.log(JSON.parse(await Bun.file("SoT/.claude/settings.json").text()).enabledPlugins)'`).
+The value `false` is supported whether or not the SoT ships one. The optional
+plugin names live in `parseModifiers.ts KNOWN_CLAUDE_OPTIN_PLUGINS`
+(verify: `bun -e 'console.log((await import("./cli/src/engine-native/parseModifiers.ts")).KNOWN_CLAUDE_OPTIN_PLUGINS)'`).
 
 ## Per-Project Enable Pattern
 
@@ -41,10 +43,21 @@ project-level override.
 ## Removing A Plugin
 
 1. Delete the key from SoT `enabledPlugins`.
-2. Run `docks-kit sync --prune`.
+2. Add `enabledPlugins.<id>` to `claudeRemovals.ts REMOVED_MANIFEST.settingsKeys`.
+   Every sync then deletes the stale key from deployed settings, with or without
+   `--prune`.
+   (verify: `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "prunes withdrawn plugin keys but leaves user and shipped plugins enabled as configured"`)
+3. The user runs the prune; an agent does not run it. Warning: `--prune` also
+   removes hand-installed user-scope plugins and extra marketplaces that are
+   absent from the SoT. First preview the changes with
+   `docks-kit sync claude --prune --dry-run`. Then run
+   `docks-kit sync claude --prune` to uninstall the user-scope install record
+   (plugin pass 5).
 
 `--reconcile` alone does not delete removed plugin keys because the settings
-merge preserves user-only keys. Removal is a plugin-layer prune operation.
+merge (`settings.ts reconcileSettings`) preserves user-only keys. Key removal
+belongs to the `claudeRemovals.ts` registry; uninstall belongs to plugin pass 5
+under `--prune`.
 
 ## Gotchas
 

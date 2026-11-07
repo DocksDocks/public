@@ -1,18 +1,27 @@
 # Line-Based TOML Merger
 
-The implementation is TypeScript, but it deliberately keeps the old line-based
-TOML transform semantics. Do not replace it with a TOML parser that rewrites
-formatting.
+The merger is line-based on purpose. Do not replace it with a TOML parser that
+rewrites formatting.
 
-## Critical Constraints
+## Constraints
 
 - Pass order is fixed: scrub deprecated features, remove retired plugin tables,
   remove retired top-level settings, merge top-level keys, then replace table
   blocks.
 - Table blocks are replaced wholesale.
-- Writes go through a temporary file/replacement path.
-- `replaceTopLevelSetting` is shared by SoT top-level merge and
-  `syncCodexModel`.
+- `codexConfig.ts syncConfig` writes a first install directly with
+  `writeFileSync`. The staging copy is also a plain `writeFileSync`. The
+  staging passes and the replacement of an existing config go through
+  `atomicWrite.ts replaceFile` (temporary file, then rename).
+- `replaceTopLevelSetting` is shared by the SoT top-level merge, the
+  `codexSync.ts codexSync` modifier pre-merge, `syncCodexModel`, and
+  `syncCodexEffort`.
+- `tomlLines.ts` owns the line grammar: `isTomlHeaderLine`,
+  `keyValueSeparator`, and `tomlContinuationLines`, which marks the lines that
+  continue a multi-line string, array, or inline table. `codexToml.ts`,
+  `codexConfig.ts`, `codexPlugins.ts`, and `manifests.ts topLevelTomlString`
+  import it. The module imports nothing, so `manifests.ts` reads a Codex config
+  without a runtime import cycle.
 
 ## Pass 1: Top-Level Key Replacement
 
@@ -27,6 +36,8 @@ header and calls `replaceTopLevelSetting` for each line.
 - Appends at EOF when the file has no table.
 - Leaves matching text inside tables untouched.
 
+Verify: `bunx vitest run cli/test/unit/contract-codex-toml.test.ts -t "keeps a table-scoped key while replacing the top-level key"`.
+
 ## Pass 2: Wholesale Table Replacement
 
 `mergeTableSettings` finds each SoT table header, extracts the whole SoT block,
@@ -34,12 +45,15 @@ deletes every deployed block whose header decodes to the same TOML key path
 (`codexToml.ts tomlTableHeader`: whitespace inside the brackets, a trailing
 `# comment`, and quoted/escaped keys are normalized, so `[ tui ] # note` and
 `[plugins.'docks@docks']` match), then appends the SoT block with a blank-line
-separator.
+separator. Blank lines at the end of the kept text are dropped first, so a
+repeated sync adds no blank line before the table (verify:
+`bunx vitest run cli/test/unit/codexTomlMerge.test.ts -t "keeps a one-table merge stable across repeated syncs"`).
 
 A run of blank and `#` comment lines directly after the last key line of a
 deleted block is kept, without its leading blank lines. Such a run usually
 belongs to the next table or is commented-out config. Comment lines before a
-later key line of the same block are interior to the block and are deleted.
+later key line of the same block are interior to the block and are deleted
+(verify: `bunx vitest run cli/test/unit/codexTomlMerge.test.ts -t "keeps comment lines that follow a replaced managed table"`).
 
 ## Edge Cases
 
@@ -57,8 +71,11 @@ later key line of the same block are interior to the block and are deleted.
 `codexConfig.ts scrubDeprecatedFeatures, pre-merge staging scrub` removes a
 `use_legacy_landlock` entry inside `[features]` (the header must be a bare
 `[features]` line) and removes an empty `[features]` table
-left behind. It runs before merge passes so the deprecated key cannot survive
-through table replacement.
+left behind. It runs before the merge passes. While the SoT declares
+`[features]`, the table replacement also drops the key, so a broken pass shows
+only as a missing log line. Verify: `bun run golden:mutation` fails on a
+missing "Codex: scrubbed deprecated [features].use_legacy_landlock" output line
+when the pass breaks.
 
 ## Retired Plugin Table Removal
 
@@ -67,13 +84,19 @@ shares `codexConfig.ts PLUGIN_TABLE_HEADER, plugin-table grammar` with
 `codexPlugins.ts enabledPluginIdsFromText, enabled-table scan` and tests ids
 against `codexConfig.ts RETIRED_PLUGIN_IDS, curated retirement record`. A matching
 retired header starts skipping and is dropped. Skipping ends at the next line
-starting with `[`. A surviving plugin header matches the same regex, clears
-skipping, and is emitted.
+whose first non-blank character is `[` (`tomlLines.ts isTomlHeaderLine`). The
+pass does not track continuation lines, so a `[` line inside a multi-line value
+also ends skipping. A surviving plugin header matches the same regex, clears
+skipping, and is emitted. Verify:
+`bunx vitest run cli/test/unit/codexRetiredPlugins.test.ts -t "removeRetiredPluginTablesText"`.
 
 `codexConfig.ts removeRetiredPluginTables, staging presence guard` returns without
-writing when no retired table is present, so a clean config stays byte-identical
-and `codexConfig.ts syncConfig, change-sensitive backup` does not create a
-spurious `config.toml.bak`. The pass runs on the staging copy after
+writing when no retired table is present. The line transform alone returns a
+config without a retired table unchanged when the config ends in a newline
+(verify: `bunx vitest run cli/test/unit/codexRetiredPlugins.test.ts -t "leaves a config without retired plugin tables byte-identical"`).
+Unprobed: no unit test proves the guard itself. Read the guard (verify:
+`grep -n "present.length === 0" cli/src/engine-native/codexConfig.ts`).
+The pass runs on the staging copy after
 `codexConfig.ts scrubDeprecatedFeatures, staging scrub pass` and before
 `codexToml.ts mergeTopLevelSettings, staging top-level merge`; `codexConfig.ts
 syncConfig, dry-run branch` returns before staging, so the pass prints nothing
@@ -84,10 +107,14 @@ under `--dry-run`.
 `codexConfig.ts removeRetiredTopLevelSettings, staging retired-setting pass`
 runs after the retired plugin table pass and before `codexToml.ts
 mergeTopLevelSettings, staging top-level merge`. It drops a top-level line
-(before the first table header) that holds exactly a retired kit value from
-`codexConfig.ts RETIRED_TOP_LEVEL_SETTINGS`, now `personality = "pragmatic"`.
-A different user value stays. The pass writes nothing when no retired line is
-present.
+(before the first table header) that holds exactly a retired kit value listed
+in `codexConfig.ts RETIRED_TOP_LEVEL_SETTINGS`
+(verify: `grep -n -A10 'RETIRED_TOP_LEVEL_SETTINGS:' cli/src/engine-native/codexConfig.ts`).
+A different user value stays (verify:
+`bunx vitest run cli/test/unit/codexTomlMerge.test.ts -t "handles a deployed top-level personality"`).
+Unprobed: no unit test proves that the pass writes nothing when no retired line
+is present. Read the early return (verify:
+`grep -n "removed.length === 0" cli/src/engine-native/codexConfig.ts`).
 
 ## Gotchas
 

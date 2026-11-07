@@ -1,13 +1,14 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when changing the docks-kit omp harness: the sync omp pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts), harness selection and session model in kit.db (harnesses.ts, kitDb.ts, parseArgs.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
+  pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-121"
+      lines: "1-123"
     - path: cli/src/engine-native/ompFileDeploy.ts
-      lines: "1-110"
+      lines: "1-116"
     - path: cli/src/engine-native/ompMarketplace.ts
       lines: "1-133"
     - path: cli/src/engine-native/ompPlugins.ts
@@ -15,7 +16,7 @@ metadata:
     - path: cli/src/engine-native/ompKitPlugin.ts
       lines: "1-108"
     - path: cli/src/engine-native/ompRemovals.ts
-      lines: "1-357"
+      lines: "1-385"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/ompPaths.ts
@@ -33,14 +34,22 @@ metadata:
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-155"
     - path: cli/src/engine-native/parseArgs.ts
-      lines: "1-196"
-  updated: "2026-11-06"
+      lines: "1-206"
+    - path: cli/src/engine-native/atomicWrite.ts
+      lines: "1-64"
+    - path: cli/src/engine-native/ompFastMode.ts
+      lines: "1-58"
+    - path: cli/src/commands/harnesses.ts
+      lines: "1-80"
+  updated: "2026-11-07"
 ---
 
 # omp Sync Context
 
 EngineNative owns omp configuration deployment, plugin reconciliation, and harness selection.
 Use this context for omp-specific behavior only.
+
+Pointers here name concepts, not coordinates — if a path or symbol moved, trust the stated purpose and re-locate it (grep the symbol) before acting.
 
 <constraint>
 Do not run any `omp` subcommand when `ctx.dryRun` is true.
@@ -54,36 +63,6 @@ Create directories with mode `0700`.
 Write files with mode `0600`.
 Run `chmod` after each creation or write.
 `mkdirSync` and `writeFileSync` apply `mode` only when they create a path.
-</constraint>
-
-<constraint>
-Read marketplace plugin identity from the composite `id` field, and count a row
-as installed only when its `scope` is `user`.
-omp emits one row per scope holding the plugin, so a project-only match leaves
-the user scope empty and `upgrade --scope user` fails.
-Read npm plugin identity from `name` plus `version`.
-A wrong key makes every run attempt a failing reinstall.
-</constraint>
-
-<constraint>
-Treat three marketplace states, because omp copies a legacy config-root
-registry forward when it first resolves an XDG data root: the active registry
-lists docks, only the legacy registry lists it, or neither does.
-Register with `marketplace add` only in the third state.
-In the second state let omp perform the copy: `marketplace update` normally,
-and the read-only `marketplace list` under `--skip-plugin-refresh`, which never
-fetches.
-</constraint>
-
-<constraint>
-`ompMarketplace.ts syncMarketplace, probe guard` returns before any spawn when the omp
-or git probe reports `missing`, because it runs before `syncPlugins` holds those
-probes. Without the guard a host that lacks omp records a false marketplace
-failure and the sync exits 1. Print no second skip line there: `syncPlugins`
-already emits the single `warnMissing` message.
-Report a real non-zero omp exit through `failures.ts recordFailure`, in
-`syncMarketplace` and in `runPluginCommand`. Keep `warn` for the missing
-toolchain pin and the unavailable-inventory fallback.
 </constraint>
 
 <constraint>
@@ -104,15 +83,25 @@ Deploy `AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` to `agentDir`, an
 Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 </constraint>
 
+Plugin identity, the marketplace registry states, the probe guard, and
+failure reporting are constraints too. Read
+`references/plugins-and-marketplace.md` before you change `ompMarketplace.ts`
+or `ompPlugins.ts`.
+
+Verify path resolution:
+`bunx vitest run cli/test/unit/ompPaths.test.ts -t "disables XDG while a PI_CODING_AGENT_DIR override is active"`
+and `bunx vitest run cli/test/unit/ompPaths.test.ts -t "prefers OMP_PROFILE even when empty, and otherwise falls back to PI_PROFILE"`.
+
 ## When To Use
 
 - Change `ompSync`, `ompSummary`, or `ompNextSteps` in `ompSync.ts`.
 - Change `mergeOmpConfig`, `mergeOmpModels`, or the shared `mergeYamlDocuments` core in `ompYaml.ts`.
 - Change omp path resolution in `ompPaths.ts` — `ompPaths`.
 - Change omp deployment file modes, backups, or restart triggers.
+- Change the retired-entry prune in `ompRemovals.ts` — `syncOmpRemovals` or `syncOmpModelRemovals`.
 - Change omp marketplace registration or plugin reconciliation.
 - Change `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, or `writeOmpSessionModel` in `harnesses.ts`.
-- Change the free-session run overlay in `ompOverlay.ts` or the launcher in `commands/omp.ts`.
+- Change the free-session run overlay in `ompOverlay.ts` or the launcher in `cli/src/commands/omp.ts`.
 - Change the omp pipeline branch in `syncDispatch.ts` — `engineSync`.
 - Change default harness resolution in `parseArgs`.
 
@@ -144,9 +133,17 @@ Use `~/.pi/agent` when the value is absent or empty.
 Create the `ompPaths` `agentDir` only outside dry-run mode.
 Create the resolved intercom directory only outside dry-run mode.
 Back up a differing deployed file before replacement.
+The retired-entry prune shares the backup of the merge that runs before it in
+the same sync (see `references/yaml-merge.md`).
 Set every backup file to mode `0600`.
-Replace a merged `config.yml` or `models.yml` through `atomicWrite.ts replaceFile`
-with mode `0600`. The temporary file and rename keep a symlinked target as a link.
+Replace a merged or pruned `config.yml` or `models.yml` through
+`atomicWrite.ts replaceFile` with mode `0600`. The temporary file and rename
+keep a symlinked target as a link. `ompFastMode.ts toggleDeployedOpenAiFast`
+writes `config.yml` the same way.
+
+Verify the symlink rule:
+`bunx vitest run cli/test/unit/ompRemovals.test.ts -t "merges a symlinked config.yml into the link target and keeps the link"`
+and `bunx vitest run cli/test/unit/ompFastMode.test.ts -t "keeps a symlinked config.yml a link"`.
 
 ### Private Mode Pattern
 
@@ -162,194 +159,15 @@ writeFileSync(target, content, { mode: 0o600 })
 chmodSync(target, 0o600)
 ```
 
-## YAML Merge Contract
+Verify the private modes and the kit plugin rules:
+`bunx vitest run cli/test/unit/ompKitPlugin.test.ts -t "writes the plugin package with the kit version and private modes"`
+and `bunx vitest run cli/test/unit/ompKitPlugin.test.ts -t "removes stale files and empty directories from the plugin directory"`.
 
-Treat the deployed document as the merge base.
-Let Source of Truth keys win every conflict.
-Merge mapping nodes recursively when both sides contain mappings.
-Replace every other Source of Truth node, including scalars and sequences.
-The one exception is the `bash.patterns` sequence in `config.yml`:
-`ompYaml.ts mergeBashPatterns` keeps the user's command rules and groups all
-rules by approval.
-Preserve deployed-only keys by default.
-`ompFileDeploy.ts syncMergedYaml`, shared YAML deployment, receives the file-specific
-merge as an argument: `mergeOmpConfig` for `config.yml` and `mergeOmpModels`
-for `models.yml`. Both wrap `ompYaml.ts mergeYamlDocuments`, the generic
-mapping merge, and name their file in every diagnostic.
+## References
 
-`mergeOmpModels` drops nothing. A user `models.yml` may carry provider
-credentials and custom models the kit never declares.
-
-`mergeOmpConfig` prunes one deployed-only key class.
-Inspect keys directly under `retry.fallbackChains`.
-Drop each key containing a slash character.
-Preserve unknown role keys without a slash.
-
-A slash-bearing key names a model or provider wildcard.
-omp resolves that wildcard before role chains.
-A stale wildcard can shadow every kit-managed role chain.
-
-Keep the exception at the direct `retry.fallbackChains` level.
-Do not prune slash-bearing keys from unrelated mappings.
-Validate both YAML roots as mappings when the deployed document is non-empty.
-Return Source of Truth text when the deployed document is empty.
-Reject invalid deployed YAML without writing the target.
-
-| Node relationship | Result |
-|---|---|
-| Both nodes are mappings | Merge recursively. |
-| Source of Truth node is scalar or sequence | Replace the deployed node. |
-| `config.yml` `bash.patterns` sequence | Keep user rules; order kit deny, user deny, user prompt, kit prompt, other user rules, kit allow. |
-| Key exists only in deployed content | Preserve it. |
-| Direct fallback-chain key contains `/` | Prune it. |
-| Unknown fallback role has no `/` | Preserve it. |
-
-Anchor this behavior at `ompYaml.ts` — `mergeOmpConfig` — fallback wildcard predicate over the shared merge.
-Do not replace this parser with a line-based YAML merge.
-
-## Plugin Inventory Contract
-
-Call `omp plugin list --json` once for inventory before the plugin operations.
-Expect top-level `marketplace` and `npm` arrays.
-Return the fallback refresh path when the inventory shape is invalid.
-
-Read each marketplace row from its composite `id` field.
-The value already has the `<plugin>@<marketplace>` form.
-Compare it with `docks@docks` and `plan-lifecycle@docks`.
-Use the same value for install and upgrade commands.
-A marketplace row has no top-level version. Read the version from the first
-`entries[]` item that has a string `version`.
-Accept the row only when its `scope` is `user`, because omp reports one row per
-scope and `upgrade --scope user` fails while the user scope is empty.
-
-Read each npm row from `name`, `version`, and `path`.
-Use `name` to find `pi-intercom` and the kit plugin `docks-kit-omp`.
-Compare the `pi-intercom` `version` with the verified toolchain pin.
-Use the exact verified version for installation.
-
-```ts
-// BAD — marketplace rows do not use name as their installed identity.
-const present = row.name === pluginId
-
-// GOOD — id is the composite install and upgrade token, and scope says where
-// the plugin is active.
-const present = row.id === pluginId && row.scope === "user"
-```
-
-Install a missing marketplace plugin with user scope.
-Upgrade a user-scope marketplace plugin unless refreshes are skipped.
-Install a missing npm plugin even when refreshes are skipped.
-Refresh a present npm plugin only when its version differs.
-Pass `--force` only when replacing a present npm plugin version.
-Link the kit plugin with `omp plugin link <kitPluginDir>` unless its npm row `path` resolves to the real kit plugin directory.
-Run the link also under `--skip-plugin-refresh` and when the inventory is unavailable.
-
-When at least one plugin operation succeeds, call `omp plugin list --json` one
-more time and print one summary line that names each operation:
-`omp plugins synced: docks@docks 0.21.1 -> 0.22.0, plan-lifecycle@docks 0.9.0 (current), pi-intercom 0.14.0 (new), docks-kit-omp linked`.
-An id without a version means the second inventory did not give one.
-Do not read the inventory again when no operation ran, in a dry run, or when omp or git is missing.
-`ompKitPlugin.ts syncKitPlugin` adds `(docks-kit-omp <old> -> <new>)` to its line
-when the deployed `package.json` had a different version.
-
-## Dry Run And Refresh Rules
-
-Guard the marketplace command before every `spawnProcess("omp", ...)` call.
-Guard plugin inventory before its omp subprocess.
-Guard install and upgrade operations before their omp subprocesses.
-
-A dry run prints the marketplace command only when the active registry lacks
-docks: `add` when no registry lists it, `update` when only the legacy registry
-does, and `list` in that same state under `--skip-plugin-refresh`.
-A dry run prints all planned plugin installations.
-A dry run does not probe plugin inventory through omp.
-A dry run checks PATH for omp and git first. When either tool is missing, the
-dry run prints the same single skip warning as a real run and previews no omp
-command.
-A dry run does not use omp's own `--dry-run` option.
-
-`--skip-plugin-refresh` does not mean skip plugins.
-Skip marketplace updates when the marketplace already exists.
-Skip marketplace plugin upgrades when each plugin already exists.
-Skip npm replacement when any `pi-intercom` version already exists.
-Install every missing plugin regardless of this flag.
-
-| State | Normal sync | With `--skip-plugin-refresh` |
-|---|---|---|
-| Marketplace absent from both registries | Register with `add` | Register with `add` |
-| Marketplace only in the legacy registry | Adopt with `update` | Adopt with the non-fetching `list` |
-| Marketplace in the active registry | Update | Skip update |
-| Marketplace plugin missing from user scope | Install | Install |
-| Marketplace plugin present in user scope | Upgrade | Skip upgrade |
-| npm plugin missing | Install pinned version | Install pinned version |
-| npm plugin at wrong version | Force pinned version | Skip replacement |
-| Kit plugin not linked, or linked elsewhere | `omp plugin link` | `omp plugin link` |
-
-Anchor this behavior at `ompMarketplace.ts syncMarketplace` and `ompPlugins.ts syncPlugins` — dry-run and refresh boundaries.
-
-## Local State Store
-
-Store the selection and the omp session model in the SQLite store
-`~/.docks-kit/kit.db`, tables `harness_selection` and `omp_session`.
-Resolve that path from the engine home with `kitDb.ts kitDbFile`.
-Open the store only through `kitDb.ts withKitDb`, which applies the migrations.
-Append a new migration to `kitDb.ts MIGRATIONS`; never edit a shipped entry.
-Normalize entries into `claude`, `codex`, `agents`, and `omp` order.
-Reject an empty or wholly unknown write.
-Write the state directory with mode `0700`.
-Chmod the database file to mode `0600`.
-Never create the store on a read when neither `kit.db` nor `state.json` exists.
-
-`withKitDb` imports a legacy `~/.docks-kit/state.json` once, when both tables
-are empty, and renames it to `state.json.migrated`.
-Each table has one writer, so a write to one key cannot drop the other.
-
-Treat a missing, corrupt, or too-new store as no stored selection.
-Resolve no stored selection to `claude`, `codex`, and `agents`.
-Keep omp opt-in when no state exists.
-Let explicit positional targets override the stored selection.
-
-`sync` never prompts for a selection.
-`sync` never writes the selection file.
-The `docks-kit harnesses` command owns prompting and persistence.
-Off a terminal, that command only prints the current selection.
-With no stored selection, its picker pre-ticks every harness in `HARNESSES`, omp included.
-The pre-tick changes no stored state until the user saves the picker.
-
-`docks-kit omp` writes the `omp_session` table and a run overlay under
-`kitCacheDir`. `docks-kit omp --fast` writes only `tier.openai` in the deployed
-`config.yml`, through `ompFastMode.ts toggleDeployedOpenAiFast`.
-The session model entry stores a required free model selector, an optional session thinking level,
-and an optional advisor thinking level.
-Compute both levels once at set time from the catalog row of the chosen model.
-Derive each level from that model's own ladder, never from the global ladder
-constant: five free models publish no `medium`, and two publish no ladder.
-Store no level for a model without a ladder, and render a bare selector for it.
-An invented level makes omp fail when the session starts, not when the user
-chooses the model.
-Treat a missing, blank, or malformed entry as no stored model, and resolve it
-to `DEFAULT_OMP_SESSION_MODEL`.
-Never throw on a corrupt entry, because a launcher that refuses to start is
-worse than one that starts on the default free model.
-Drop each level field independently when it is blank, so a stale level never
-survives a switch to a level-free model.
-
-Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — SQLite tables opened through `kitDb.ts withKitDb`, one writer per table.
-Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains, including the chains keyed by the free model at every level.
-
-The launcher enforces the free model before omp starts.
-Reject each forwarded flag that can select a model, in both forms and also after a `--`, because omp can read that `--` as a flag value.
-Start omp with `launch` first, so a forwarded subcommand name becomes message text.
-Pass the session model as an explicit `--model`, so a restored session model cannot replace it.
-Set the three model variables in the child environment instead of removing them, because omp refills an unset variable from its `.env` files.
-Check the session model against the free catalog of every candidate profile.
-Do not claim that the launcher covers these paths, which can still select a paid model: in-session selection (`Alt+M`, `Alt+P`, `/switch`, `/model`, `/modelpreset`, `/resume`, and a seance subagent), the `web` role and its chain, the model-kind roles `image`, `speech`, and `dictation`, and extensions and hooks (`-e`, `--hook`, `--plugin-dir`).
-An `Alt+M` assignment of the `default` role writes `modelRoles.default` to the deployed `~/.omp/agent/config.yml`, so it also changes later plain `omp` runs.
-`cli/docs/omp-models.md` `### Model selection outside the launcher` lists these paths.
-Anchor input checks at `commands/omp.ts` — `rejectedForwardedFlag` and `forwardedProfile` — the rejected model flags and the candidate profiles, scanned past `--`.
-Anchor the launch at `ompOverlay.ts` — `buildOmpArgs` and `ompChildEnvironment` — `launch` first, the explicit `--model`, the model variables, and the `PI_CONFIG_FILES` append.
-Anchor resolution at `parseArgs.ts` — `applyDefaultSelection` — explicit target precedence and legacy fallback.
-Anchor dispatch at `syncDispatch.ts` — `engineSync` omp branch — selected pipeline execution.
+- `references/yaml-merge.md` - YAML merge contract and the retired-entry prune.
+- `references/plugins-and-marketplace.md` - plugin and marketplace constraints, inventory contract, dry-run and refresh rules.
+- `references/state-and-launcher.md` - kit.db state store, harness selection, session model, and the free-session launcher.
 
 ## Change Checklist
 

@@ -1,8 +1,9 @@
 ---
 name: plugin-bootstrap-context
-description: "Use when modifying cli/src/engine-native/claudePluginPasses.ts plugin functions syncPlugins, pluginUserScopeInstalled, claudeOptionalPlugins.ts syncOptionalPlugins, enableOptionalPlugin, claudeLsp.ts syncLspServers, or cli/src/engine-native/codexPlugins.ts marketplace/plugin functions syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, syncPlugins; covers enabledPlugins tri-state, seven-pass reconcile, Codex marketplace dedup, and opt-in plugin behavior."
+description: "Use when modifying cli/src/engine-native/claudePluginPasses.ts syncPlugins or pluginUserScopeInstalled, claudeOptionalPlugins.ts syncOptionalPlugins or enableOptionalPlugin, claudeLsp.ts syncLspServers, or cli/src/engine-native/codexPlugins.ts syncMarketplace, removeLegacyDocksMarketplace, enabledPluginIds, or syncPlugins; covers the enabledPlugins tri-state, the seven-pass Claude plugin reconcile, --claude-plugin opt-ins, LSP binary bootstrap, and Codex personal marketplace merge. Not for settings.json merge (use settings-merge-context), Codex config.toml merge (use codex-config-merge-context), sync flag parsing (use sync-orchestration-context), toolchain pins (use toolchain-context), or omp plugins (use omp-sync-context)."
 user-invocable: false
 metadata:
+  pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/claudePluginPasses.ts
       lines: "1-426"
@@ -14,43 +15,70 @@ metadata:
       lines: "1-301"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
+    - path: cli/src/engine-native/parseModifiers.ts
+      lines: "1-225"
+    - path: cli/src/engine-native/syncDispatch.ts
+      lines: "1-155"
+    - path: cli/src/engine-native/claudeSync.ts
+      lines: "1-312"
+    - path: cli/src/engine-native/claudeRemovals.ts
+      lines: "1-383"
+    - path: cli/src/engine-native/settings.ts
+      lines: "1-42"
+    - path: cli/src/engine-native/codexSync.ts
+      lines: "1-269"
+    - path: cli/src/engine-native/codexStatus.ts
+      lines: "1-25"
     - path: SoT/.claude/settings.json
       lines: "985-999"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-36"
-  updated: "2026-11-06"
+    - path: SoT/.codex/config.toml
+      lines: "40-44"
+    - path: SoT/toolchain.json
+      lines: "1-38"
+  updated: "2026-11-07"
 ---
 
 # Plugin Bootstrap
 
-Plugin bootstrap is implemented in EngineNative but keeps the same behavioral
-contracts: Claude plugin reconcile is seven logical passes, `enabledPlugins`
-has true/false/absent semantics, and Codex marketplace merging is additive with
-SoT entries winning on name collisions.
+Claude plugin reconcile is seven logical passes, `enabledPlugins` has
+true/false/absent semantics, and Codex marketplace merging is additive with SoT
+entries winning on name collisions.
+
+Pointers here name concepts, not coordinates — if a path or symbol moved, trust the stated purpose and re-locate it (grep the symbol) before acting.
 
 <constraint>
 The `--prune` keep test for Claude plugins is key presence, not truthiness.
 A plugin declared as `"id@marketplace": false` is installed and kept; only an
-absent key is removed by prune. A plugin that this run opts in with
-`--claude-plugin` is also kept.
+absent key is removed by prune. Unprobed: no unit test has a SoT `false` key
+under `--prune`. Read the `kitPluginIds` set in `claudePluginPasses.ts syncPlugins`
+(verify: `grep -n "kitPluginIds" cli/src/engine-native/claudePluginPasses.ts`).
+A plugin that this run opts in with `--claude-plugin` is also kept.
+(verify: `bunx vitest run cli/test/unit/claudeSettingsTruth.test.ts -t "prune keeps an explicitly requested optional plugin and its marketplace"`)
 </constraint>
 
 <constraint>
 Never remove the `claude-plugins-official` marketplace. Prune protects it even
 when it removes extra marketplaces. It is not built in: Claude Code registers
 it only in an interactive session, so pass 1 adds it on demand.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "adds the official marketplace on a fresh home before installing its plugins"`)
 </constraint>
 
 <constraint>
 Marketplace prune must preserve any marketplace referenced by a project- or
 local-scope install record. Removing that shared cache invalidates the scoped
 installation even when the user-scope uninstall is correctly scoped.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "keeps marketplaces used by project-scoped plugins during prune"`)
 </constraint>
 
 <constraint>
-The enabled-state reassert pass runs every sync after install/uninstall work.
-Fresh `claude plugin install` enables plugins as a side effect, so SoT `false`
-entries must be disabled through the Claude CLI before the JSON normalization.
+The enabled-state reassert pass runs on every sync that reaches the plugin
+passes (not dry-run, and not when `claude` or `git` is missing), after the
+install/uninstall work. Fresh `claude plugin install` enables plugins as a side
+effect, so SoT `false` entries must be disabled through the Claude CLI before
+the JSON normalization.
+(verify: `bunx vitest run cli/test/unit/claudeSettingsTruth.test.ts -t "disables a SoT-false plugin at user scope from a neutral directory"`)
 </constraint>
 
 ## When To Use
@@ -58,24 +86,24 @@ entries must be disabled through the Claude CLI before the JSON normalization.
 - Adding, removing, or changing `enabledPlugins` entries.
 - Changing `extraKnownMarketplaces` or marketplace removal protection.
 - Debugging why a plugin survived `--prune`.
-- Changing optional `--claude-plugin=supabase` / `--claude-plugin=n8n` behavior.
+- Changing optional `--claude-plugin=<name>` behavior.
 - Changing Codex personal marketplace merge or `codex plugin add` refresh.
 - Changing LSP binary bootstrap for official Claude LSP plugins.
 
 ## Claude Tri-State
 
-| Value | Installed by kit | Global state | Survives `--prune` |
-|-------|------------------|--------------|--------------------|
-| `true` | Yes | Enabled | Yes |
-| `false` | Yes | Disabled, project can enable | Yes |
-| absent | No | Not available | No |
+`true` and `false` keys are both installed by the kit and both survive
+`--prune`; `false` is installed but globally disabled. An absent key is not
+installed, and `--prune` removes its user-scope install. The full value matrix,
+the per-project enable pattern, and the removal procedure live in
+`.agents/skills/plugin-bootstrap-context/references/tri-state-semantics.md`.
 
-Plugin IDs must use `<name>@<marketplace>`. Setting a plugin to `false` does not
-remove it; deleting the key and running `--prune` removes the user-scope install.
+Plugin IDs must use `<name>@<marketplace>`; the passes derive the marketplace
+from the text after the last `@`. Setting a plugin to `false` does not remove it.
 
 ## Seven Logical Passes
 
-All live in `syncPlugins(ctx, claudeDir)`:
+All live in `claudePluginPasses.ts syncPlugins(ctx, claudeDir)`:
 
 1. Add missing marketplaces from `extraKnownMarketplaces`. When a kit-owned
    plugin id ends in `@claude-plugins-official` and that marketplace is absent
@@ -99,56 +127,84 @@ All live in `syncPlugins(ctx, claudeDir)`:
 Kit-owned plugin ids are the SoT `enabledPlugins` keys plus this run's
 `--claude-plugin` opt-ins. Kit-owned marketplaces are the SoT
 `extraKnownMarketplaces` keys plus the source marketplace of each kit-owned
-plugin id.
+plugin id. Pass-by-pass detail lives in
+`.agents/skills/plugin-bootstrap-context/references/seven-pass-flow.md`.
 
 Every `claude plugin` command runs through `claudePluginPasses.ts cli` with the
 system temp directory (`os.tmpdir()`) as its working directory. Project and
 local settings in the directory where the user runs sync therefore never
 change. Pass 6 keeps its unscoped `claude plugin marketplace remove <name>`.
 
-A failed marketplace or plugin command never aborts the remaining passes, but it
-is no longer silent: pass its warning through `failures.ts recordFailure`, which
-warns in place and records the message so `syncDispatch.ts engineSync, failure ledger`
-lists it under `--- Failures ---` and returns exit 1. Keep the aggregate
-`N plugin operation(s) failed` roll-up a plain `warn`, because every counted
-site already records itself. A missing CLI, missing git, and a missing toolchain
-pin are warn-only skips with exit 0. An unavailable plugin inventory is a
-warn-only fallback, not a skip. It records no ledger row, but the pass then
-takes the full refresh path. Any marketplace or plugin command that fails there
-is recorded and fails the run.
+A failed command in the seven passes does not stop the remaining passes. Each
+failure site in `claudePluginPasses.ts syncPlugins` calls
+`failures.ts recordFailure` and increments a counter; it does not return.
+Unprobed: no unit test asserts that a pass runs after a failed pass. Read the
+failure sites (verify: `grep -n "recordFailure" cli/src/engine-native/claudePluginPasses.ts`).
+`recordFailure` warns in place and records the message. Then
+`syncDispatch.ts engineSync, failure ledger` lists it under `--- Failures ---`
+and returns exit 1.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "records the stderr cause of a failed update, not the stdout progress line"`)
+
+`claudeOptionalPlugins.ts enableOptionalPlugin` is different: a failed step
+stops the later steps for that plugin. A failed marketplace add records a
+failure and skips the install and the enable of that plugin.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "fails the sync without installing n8n if its marketplace cannot be added"`)
+
+Keep the aggregate `N plugin operation(s) failed` roll-up a plain `warn`,
+because every counted site already records itself. A missing `git` is a
+warn-only skip with exit 0.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "skips optional plugins with a warning when git is missing"`)
+A missing CLI and a missing toolchain pin are also warn-only skips. Unprobed: no
+unit test checks the exit code of these two skips. Read the skip branches
+(verify: `grep -n -e 'state === "missing"' -e "has no verified version" cli/src/engine-native/claudePluginPasses.ts cli/src/engine-native/claudeLsp.ts`).
 
 ## Optional Plugins
 
 `syncOptionalPlugins` consumes `ctx.claudePlugins`, populated by the repeatable
 `--claude-plugin=<name>` flag. The allow-list is
-`parseModifiers.ts KNOWN_CLAUDE_OPTIN_PLUGINS` (re-exported by `parseArgs.ts`),
-enforced by `parseModifiers.ts parseClaudePlugin`, and is currently `supabase`
-and `n8n`.
+`parseModifiers.ts KNOWN_CLAUDE_OPTIN_PLUGINS`, enforced by
+`parseModifiers.ts parseClaudePlugin`.
+(verify: `bunx vitest run cli/test/unit/modifierValidation.test.ts -t "rejects an invalid CLAUDE_PLUGINS token after a valid one"`)
+The source list is the owner of the names; read it there and do not copy it
+into docs.
+(verify: `bun -e 'console.log((await import("./cli/src/engine-native/parseModifiers.ts")).KNOWN_CLAUDE_OPTIN_PLUGINS)'`)
 
-| Opt-in | Behavior |
-|--------|----------|
-| `supabase` | Installs/enables `supabase@claude-plugins-official`. `syncPlugins` runs first, and its pass 1 adds the official marketplace when it is not registered yet. |
-| `n8n` | Adds the `czlonkowski/n8n-skills` marketplace if needed, then installs/enables `n8n-mcp-skills@n8n-mcp-skills`. |
+An opt-in is defined in three places, and the three must agree:
 
-These keys are absent from the SoT, so the opt-in is sticky. Only a `--prune`
+1. Its name in `parseModifiers.ts KNOWN_CLAUDE_OPTIN_PLUGINS`.
+2. Its install and enable branch in `claudeOptionalPlugins.ts syncOptionalPlugins`.
+   The branch gives the plugin id and the marketplace repo. The repo is empty
+   when an earlier pass registers the marketplace.
+3. Its plugin id in the `kitPluginIds` set of `claudePluginPasses.ts syncPlugins`.
+
+The `kitPluginIds` set keeps the plugin and its marketplace through `--prune`.
+For a `@claude-plugins-official` id, the set also makes pass 1 add the official
+marketplace.
+`claudeSync.ts` runs `syncPlugins` before `syncOptionalPlugins`.
+
+Opt-in keys are absent from the SoT, so the opt-in is sticky. Only a `--prune`
 run without that plugin's `--claude-plugin` flag removes an installed optional
 plugin.
 
 ## LSP Server Channels
 
 `syncLspServers` reads the SoT `enabledPlugins` keys, probes the binary each
-enabled plugin needs, then delegates to one of two local install channels.
+LSP plugin needs, then delegates to one of two local install channels.
 
-| Channel | Function | Tools |
-|---------|----------|-------|
-| npm global | `installNpmServers` | intelephense, typescript-language-server, typescript |
-| rustup component | `installRustAnalyzer` | rust-analyzer |
+| Channel | Function | Serves |
+|---------|----------|--------|
+| npm global | `installNpmServers` | the `php-lsp` and `typescript-lsp` servers (the `lspPkg` calls in `syncLspServers`) |
+| rustup component | `installRustAnalyzer` | the `rust-analyzer-lsp` server |
 
-The npm channel keeps the verified pins in `SoT/toolchain.json`. It skips the
-typescript-language-server install when host Node is below the floor. The
-rustup channel runs `rustup component add rust-analyzer`. That row carries no
-verified pin, because the component version follows the host Rust toolchain.
-`bubblewrap` already takes the same stance for a distro package.
+The npm channel installs the `verified` pin of each tool row in
+`SoT/toolchain.json` and skips a package whose row has no pin. It skips the
+typescript-language-server install when host Node is below the `node` row's
+`floor`.
+(verify: `bunx vitest run cli/test/unit/lspNodeFloor.test.ts -t "refuses the server install below the Node floor and names the remedy"`)
+The rustup channel runs `rustup component add rust-analyzer`. Its
+`rust-analyzer` row carries no verified pin, because the component version
+follows the host Rust toolchain; the `bwrap` row takes the same stance for a
+distro package.
 
 ## Codex Marketplace And Plugins
 
@@ -161,10 +217,13 @@ When the deployed file has a string `name` that differs from the SoT `name`,
 `codexPlugins.ts syncMarketplace` does not merge or write the file. It warns
 once: rename the marketplace to the SoT name or move the plugins, then re-run
 sync. Codex takes the `@marketplace` part of a plugin id from that top-level
-`name`. `codexPlugins.ts syncPlugins` therefore skips `codex plugin add` for each
-SoT id whose `@marketplace` suffix differs from the deployed name. It records no
-failure for those ids. The kit never forces the SoT name, because that would
-orphan the user's existing `<plugin>@<user-name>` tables.
+`name`. `syncMarketplace` then returns the SoT name, and `codexSync.ts` passes it
+to `codexPlugins.ts syncPlugins`, which skips `codex plugin add` for each SoT id
+whose `@marketplace` suffix is that SoT name, because Codex cannot resolve it.
+Ids from other marketplaces are still added. It records no failure for the
+skipped ids. The kit never forces the SoT name, because that would orphan the
+user's existing `<plugin>@<user-name>` tables.
+(verify: `bunx vitest run cli/test/unit/codexMarketplace.test.ts -t "leaves a differently named marketplace alone and adds no kit plugin"`)
 
 `removeLegacyDocksMarketplace` cleans up the old configured Docks marketplace
 when it points at the same Git source. `syncPlugins` parses enabled plugin
@@ -174,12 +233,16 @@ count the enabled plugins of the deployed `~/.codex/config.toml` for the status
 output. Ordinary `syncPlugins` runs `codex plugin add`
 for each enabled id so installed plugin caches refresh. With `ctx.skipPluginRefresh`,
 the supported `codex plugin list --json` inventory filters the operation to missing
-ids; an invalid inventory falls back to the full refresh path.
+ids. An unavailable or invalid inventory is a warn-only fallback, not a skip: it
+records no ledger row, and the pass takes the full refresh path, where any
+failed `codex plugin add` is recorded and fails the run.
+(verify: `bunx vitest run cli/test/unit/codexRetiredPlugins.test.ts -t "refreshes enabled plugins when the CLI returns unusable inventory"`)
 
 ## Key Decisions
 
 - User-scope install records matter. Project/local records do not satisfy the
   kit's global install contract.
+  (verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "installs a user copy when a kit plugin exists only in a project"`)
 - Project/local records protect their marketplace cache from prune even though
   they do not satisfy the kit's user-scope install contract.
 - `false` entries are still installed because they support project-level enable.
@@ -189,6 +252,7 @@ ids; an invalid inventory falls back to the full refresh path.
   and a present `rustup` probe. A host without rustup gets one verbose-only
   note and no warning. That host is not counted toward `missingToolCount`,
   which is why `LSP server binaries present` still prints there.
+  (verify: `bunx vitest run cli/test/unit/lspRustServer.test.ts -t "stays silent on a host without rustup"`)
 - Codex config and marketplace deployment can proceed even when the Codex CLI is
   absent; plugin refresh degrades to a warning and manual command.
 
@@ -200,8 +264,13 @@ ids; an invalid inventory falls back to the full refresh path.
   calling the disable verb.
 - A project-level `enabledPlugins: true` override is ignored when the user-scope
   key is absent; a project-scope plugin installation is an independent record.
+- Deleting a key from SoT `enabledPlugins` does not make the kit delete it from
+  deployed settings, because the settings merge and pass 7 keep user-only keys.
+  Withdrawn keys go through `claudeRemovals.ts REMOVED_MANIFEST.settingsKeys`;
+  see the removal procedure in
+  `.agents/skills/plugin-bootstrap-context/references/tri-state-semantics.md`.
 
 ## References
 
-- `references/seven-pass-flow.md` - pass-by-pass reconcile details.
-- `references/tri-state-semantics.md` - value and prune behavior matrix.
+- `.agents/skills/plugin-bootstrap-context/references/seven-pass-flow.md` - pass-by-pass reconcile details.
+- `.agents/skills/plugin-bootstrap-context/references/tri-state-semantics.md` - value matrix, prune behavior, and plugin removal.

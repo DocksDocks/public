@@ -1,8 +1,9 @@
 ---
 name: universal-skills-context
-description: "Use when modifying cli/src/engine-native/skillsSync.ts (orchestration), skillsInstall.ts syncUniversal/skillsCli, skillsLinks.ts healClaudeSymlink/linkOrCopy/COPY_MARKER, skillsPrune.ts reconcileRemovals/updateSnapshot, skillsManifest.ts normalizeManifest/skillBase, or SoT/.agents/skills.txt; covers source-first skills CLI args, universal storage, symlink healing, and the prune snapshot. Not for Bun bootstrap or toolchain behavior; use toolchain-context."
+description: "Use when modifying cli/src/engine-native/skillsSync.ts (orchestration), skillsInstall.ts syncUniversal/skillsCli, skillsLinks.ts healClaudeSymlink/linkOrCopy/COPY_MARKER, skillsPrune.ts reconcileRemovals/updateSnapshot, skillsManifest.ts normalizeManifest/skillBase, or SoT/.agents/skills.txt. Covers source-first skills CLI args, universal storage, symlink healing, and the prune snapshot. Not for Bun bootstrap or the skills-cli pin entry (use toolchain-context), or sync targets and flag parsing (use sync-orchestration-context)."
 user-invocable: false
 metadata:
+  pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/skillsSync.ts
       lines: "1-54"
@@ -16,7 +17,15 @@ metadata:
       lines: "1-36"
     - path: SoT/.agents/skills.txt
       lines: "1-3"
-  updated: "2026-11-06"
+    - path: SoT/toolchain.json
+      lines: "1-38"
+    - path: cli/src/engine-native/os/posix.ts
+      lines: "1-83"
+    - path: cli/src/engine-native/os/windows.ts
+      lines: "1-184"
+    - path: cli/src/engine-native/syncDispatch.ts
+      lines: "1-155"
+  updated: "2026-11-07"
 ---
 
 # Universal Skills Bootstrap
@@ -24,6 +33,8 @@ metadata:
 Universal skills are declared in `SoT/.agents/skills.txt` and installed into
 `~/.agents/skills/` so Codex can read them natively and Claude Code can follow a
 symlink from `~/.claude/skills/`.
+
+Pointers here name concepts, not coordinates — if a path or symbol moved, trust the stated purpose and re-locate it (grep the symbol) before acting.
 
 `SoT/.agents/skills.txt` is empty by default.
 
@@ -40,10 +51,12 @@ path.
 </constraint>
 
 <constraint>
-`updateSnapshot` must run last in `skillsSync`. It writes the declared slugs
-plus `retainedSlugs`. A run without `--prune` retains every previous snapshot
-slug. A `--prune` run retains only the slugs that it failed to remove. If a run
-aborts mid-way, the snapshot keeps its prior content.
+`updateSnapshot` must run last in `skillsSync`, so a run that aborts mid-way
+leaves the snapshot with its prior content (verify: `updateSnapshot` is the last
+call in `skillsSync.ts skillsSync`). It writes the declared slugs plus
+`retainedSlugs`. A run without `--prune` retains every previous snapshot slug.
+A `--prune` run retains only the slugs that it failed to remove (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts`).
 </constraint>
 
 ## When To Use
@@ -64,24 +77,38 @@ aborts mid-way, the snapshot keeps its prior content.
 `<owner>/<repo>@<skill>` slug yields the skill name. Any other slug yields its
 last path segment. `skillBase` lowercases the name and replaces each run of
 characters outside `[a-z0-9._]` with `-`, as the CLI `sanitizeName` rule does.
-It also strips leading and trailing dots and dashes.
+It also strips trailing dots and dashes (verify:
+`bunx vitest run cli/test/unit/skillsManifest.test.ts -t "installs for acme/pack@My"`).
+The same regex strips leading dots and dashes. Unprobed: no unit test covers a
+leading dot or dash. Read the strip call in `skillsManifest.ts skillBase` (verify:
+`grep -nF '/^[.-]+|[.-]+$/' cli/src/engine-native/skillsManifest.ts`).
 
 `syncUniversal` skips `npx skills@<verified> add` when the canonical directory
 already exists, but still calls `healClaudeSymlink` to repair a missing or stale
 symlink. After an add exits 0, `syncUniversal` warns when the canonical
 directory is still missing. The installed skill name then differs from the slug,
-so declare the slug as `<owner>/<repo>@<skill-name>`.
+so declare the slug as `<owner>/<repo>@<skill-name>` (verify:
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "reuses an existing canonical skill"`
+and
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "warns when a successful install creates no directory"`).
 
-`linkOrCopy` creates the Claude entry. It tries a relative symlink, then
-(Windows) an absolute junction, then a recursive copy marked with
-`.docks-kit-copied-skill`. Later syncs replace a marked copy, and --prune
-reclaims it. Sync leaves unmarked real directories alone with a warning.
+`linkOrCopy` creates the Claude entry. It tries each directory link kind in
+`hostOs().directoryLinkKinds` order (`cli/src/engine-native/os/posix.ts`: a
+relative symlink; `cli/src/engine-native/os/windows.ts`: a relative symlink,
+then an absolute junction). Then it falls back to a recursive copy that holds a
+`skillsLinks.ts COPY_MARKER` file. Later syncs replace a marked copy, and
+--prune reclaims it. Sync leaves unmarked real directories alone with a warning
+(verify: `bunx vitest run cli/test/unit/skillsSync.test.ts -t "falls through from a failed symlink"`
+and
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "heals a marked copy back to a link"`).
 
 ## Manifest Parsing
 
 `normalizeManifest` is the shared parser for install, removal, and snapshot
 flows. It strips blank lines, whole-line comments, inline comments, and
 whitespace before producing one slug per line. Do not parse `skills.txt` ad hoc.
+Verify: `bun -e 'import { normalizeManifest } from "./cli/src/engine-native/skillsManifest.ts"; console.log(normalizeManifest("  acme/pack@demo  # note\n# comment\n\n"))'`
+prints `[ "acme/pack@demo" ]`.
 
 ## Correct CLI Invocation
 
@@ -89,14 +116,21 @@ whitespace before producing one slug per line. Do not parse `skills.txt` ad hoc.
 npx --yes skills@<verified> add <slug> -g -y -a claude-code codex
 ```
 
-`<verified>` is the `skills-cli.verified` pin in `SoT/toolchain.json`. The slug
-is positional and must come first. The CLI accepts `add -a '*'`, but that form
-installs to every supported agent. The kit therefore names only `claude-code`
-and `codex`.
+`<verified>` is the `tools["skills-cli"].verified` pin in `SoT/toolchain.json`,
+which `skillsInstall.ts skillsCli` reads (verify:
+`bun -e 'console.log((await Bun.file("SoT/toolchain.json").json()).tools["skills-cli"].verified)'`).
+The slug is positional and must come first. The CLI accepts `add -a '*'`, but
+that form installs to every supported agent. The kit therefore names only
+`claude-code` and `codex`.
 
-The kit does not call `skills remove`. In the pinned skills-cli 1.7.0, `remove`
-without `-a` targets every known agent. It recursively deletes each same-named
-skill directory, real directory or link. `skills remove` rejects `-a '*'`
+The skills CLI behavior in this skill and its references holds for the pinned
+version. When the pin changes, re-check it in that version's `dist/cli.mjs`
+(verify: `v=$(bun -e 'console.log((await Bun.file("SoT/toolchain.json").json()).tools["skills-cli"].verified)'); curl -s "https://unpkg.com/skills@$v/dist/cli.mjs" | grep -n 'function parseAddOptions\|function removeCommand\|Missing required argument: source'`,
+then read both functions).
+
+The kit does not call `skills remove`. In the pinned CLI, `remove` without
+`-a` targets every known agent. It recursively deletes each same-named skill
+directory, real directory or link. `skills remove` rejects `-a '*'`
 (`Invalid agents: *`, exit 1).
 
 ## Prune Snapshot
@@ -107,27 +141,37 @@ but are no longer declared. It deletes only what the kit created. That is the
 canonical `~/.agents/skills/<basename>` when it is a real directory that holds
 `SKILL.md`. It also deletes the kit-managed Claude entry: a symlink, a junction,
 or a marked copy. It never touches an unmarked real
-`~/.claude/skills/<basename>` or the skill directories of other agents.
+`~/.claude/skills/<basename>`. It does not call `skills remove`, so it never
+touches the skill directories of other agents (verify:
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "prunes only kit-created entries"`).
 User-installed skills that never appeared in the snapshot are preserved.
+Unprobed: no unit test prunes with a skill that is absent from the snapshot.
+Read the `skillsPrune.ts reconcileRemovals` loop, which visits only the slugs
+from `readSlugs(snapshot)` (verify:
+`grep -n "readSlugs(snapshot)" cli/src/engine-native/skillsPrune.ts`).
 
 A run without `--prune` keeps the previous snapshot slugs. A later `--prune`
 therefore still removes a slug that left `skills.txt` earlier. A failed removal
-stays in the snapshot for the next `--prune`. The prune keeps the directories of
-a dropped slug when a declared slug still maps to the same basename.
+stays in the snapshot for the next `--prune` (verify:
+`bunx vitest run cli/test/unit/skillsDurability.test.ts`). The prune keeps the
+directories of a dropped slug when a declared slug still maps to the same
+basename (`reconcileRemovals`, `currentBases` guard).
 
 ## Gotchas
 
 - With the slug after `-a`, the variadic flag takes the slug as an agent name,
-  and skills@1.7.0 exits 1 with `Missing required argument: source`.
+  and the pinned CLI exits 1 with `Missing required argument: source`.
 - An unmarked real directory at `~/.claude/skills/<name>` masks the canonical
   skill for Claude Code; sync warns but does not delete user content. A copy
-  marked with `.docks-kit-copied-skill` is kit-owned; sync replaces it.
+  that holds a `COPY_MARKER` file is kit-owned; sync replaces it.
 - A failed install can still be present in the snapshot because the snapshot
   records kit-tracked slugs, not install success. It holds the declared slugs
   plus previously tracked slugs that no successful --prune removed yet.
 
 ## References
 
-- `references/storage-model.md` - path diagram and symlink rules.
-- `references/cli-arg-trap.md` - source-first argument-order regression context
-  and the reason the kit does not call `skills remove`.
+- `.agents/skills/universal-skills-context/references/storage-model.md` - path
+  diagram and symlink rules.
+- `.agents/skills/universal-skills-context/references/cli-arg-trap.md` -
+  source-first argument-order context and the reason the kit does not call
+  `skills remove`.

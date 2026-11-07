@@ -27,8 +27,10 @@ Always install for both `claude-code` and `codex` so the canonical
 ## Workflow
 
 1. Read `.agents/skills/universal-skills-context/SKILL.md`.
-2. Read `references/storage-model.md` for path/symlink changes.
-3. Read `references/cli-arg-trap.md` before changing the skills CLI invocation.
+2. Read `.agents/skills/universal-skills-context/references/storage-model.md`
+   for path/symlink changes.
+3. Read `.agents/skills/universal-skills-context/references/cli-arg-trap.md`
+   before changing the skills CLI invocation.
 4. Hand off to `sync-mechanic-agent` for target parsing or orchestration changes.
 
 ## Key Symbols
@@ -55,9 +57,10 @@ Always install for both `claude-code` and `codex` so the canonical
 ## Gotchas
 
 - With the slug after `-a`, the variadic flag takes the slug as an agent name,
-  and skills@1.7.0 exits 1 with `Missing required argument: source`.
+  and the pinned skills CLI (`tools["skills-cli"].verified` in
+  `SoT/toolchain.json`) exits 1 with `Missing required argument: source`.
 - Unmarked real directories at `~/.claude/skills/<name>` are user content; warn,
-  do not delete automatically. A copy marked with `.docks-kit-copied-skill` is
-  kit-owned: sync replaces it, and `--prune` reclaims it.
-- `--prune` must not call `skills remove`. In skills@1.7.0, that command
-  deletes the same-named skill directory of every known agent.
+  do not delete automatically. A copy that holds a `skillsLinks.ts COPY_MARKER`
+  file is kit-owned: sync replaces it, and `--prune` reclaims it.
+- `--prune` must not call `skills remove`. In the pinned skills CLI, that
+  command deletes the same-named skill directory of every known agent.
