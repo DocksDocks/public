@@ -376,7 +376,7 @@ Unprobed: no unit test sets a catalog miss. Read the warnings (verify:
 - A held sync lock delays every check that runs under it. An invalid argument
   or a bad `DOCKS_KIT_SYNC_CONCURRENCY` value exits 2 only after the lock wait
   ends. A rejected sync leaves `~/.cache/docks-kit/sync-lock.db` in HOME.
-  (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "rejects unsupported effort and advisor values before touching the home"`)
+  (verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "rejects unsupported effort and advisor values before any deployment change"`)
 - Never call `withSyncLock` inside a run that already holds the sync lock. A
   second acquire in one process finds the lock held, waits the full bound, and
   exits 1.

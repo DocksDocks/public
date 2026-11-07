@@ -176,7 +176,7 @@ describe("skills durability", () => {
     expect(readFileSync(owned, "utf8")).toBe("");
   });
 
-  it("retains a failed removal in the snapshot and retries it on the next prune", async () => {
+  it("retains a failed removal in the owned record and retries it on the next prune", async () => {
     const root = mkdtempSync(join(tmpdir(), "docks-skills-prune-retry-"));
     roots.push(root);
     const ctx = makeCtx(root, true);
@@ -194,8 +194,8 @@ describe("skills durability", () => {
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
   });
 
-  it("keeps the previous snapshot when a snapshot write is interrupted", async () => {
-    const root = mkdtempSync(join(tmpdir(), "docks-skills-snapshot-write-"));
+  it("keeps the previous owned record when an owned record write is interrupted", async () => {
+    const root = mkdtempSync(join(tmpdir(), "docks-skills-owned-write-"));
     roots.push(root);
     const { canonical, owned, line } = seedOrphan(root);
     const kept = join(root, ".agents", "skills", "keep");

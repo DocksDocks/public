@@ -342,6 +342,15 @@ describe("skills platform behavior", () => {
     expect(args.slice(2, 4)).toEqual(["add", "acme/pack@demo"]);
     expect(existsSync(join(canonical, "SKILL.md"))).toBe(true);
 
+    // The install created the directory, so the slug is owned. A second plain
+    // sync reuses it, heals the Claude link, and warns about nothing.
+    const second = { stderr: [] as Array<string>, stdout: [] as Array<string> };
+    await skillsSync(makeCtx(root, second));
+
+    expect(mocks.spawnProcess).toHaveBeenCalledTimes(1);
+    expect(readlinkSync(link)).toBe(relative(dirname(link), canonical));
+    expect(second.stderr.join("")).not.toContain("--prune keeps it");
+
     mocks.manifest = "";
     await skillsSync(makeCtx(root, output, { prune: true }));
 
@@ -372,9 +381,9 @@ describe("skills platform behavior", () => {
     mocks.manifest = "";
     const managedCanonical = createCanonical(root, "managed");
     const userCanonical = createCanonical(root, "user");
-    const snapshot = join(root, ".agents", ".kit-owned-skills");
+    const owned = join(root, ".agents", ".kit-owned-skills");
     writeFileSync(
-      snapshot,
+      owned,
       `acme/managed\t${identityOf(managedCanonical)}\nacme/user\t${identityOf(userCanonical)}\n`,
     );
     const managedEntry = join(root, ".claude", "skills", "managed");
@@ -392,12 +401,12 @@ describe("skills platform behavior", () => {
     expect(readFileSync(join(userEntry, "user.txt"), "utf8")).toBe("keep\n");
     // `skills remove` deletes the same-named directory of every known agent.
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
-    expect(readFileSync(snapshot, "utf8")).toBe("");
+    expect(readFileSync(owned, "utf8")).toBe("");
 
     const dryRoot = makeRoot();
-    const drySnapshot = join(dryRoot, ".agents", ".kit-owned-skills");
-    mkdirSync(dirname(drySnapshot), { recursive: true });
-    writeFileSync(drySnapshot, "acme/managed\n");
+    const dryOwned = join(dryRoot, ".agents", ".kit-owned-skills");
+    mkdirSync(dirname(dryOwned), { recursive: true });
+    writeFileSync(dryOwned, "acme/managed\n");
     const dryManagedEntry = join(dryRoot, ".claude", "skills", "managed");
     mkdirSync(dryManagedEntry, { recursive: true });
     writeFileSync(join(dryManagedEntry, COPY_MARKER), "");

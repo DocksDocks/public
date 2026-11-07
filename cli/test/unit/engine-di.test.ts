@@ -536,7 +536,7 @@ describe("native CLI argument and output behavior", () => {
     });
   });
 
-  it("rejects unsupported effort and advisor values before touching the home", async () => {
+  it("rejects unsupported effort and advisor values before any deployment change; only the sync lock file appears", async () => {
     await withIsolatedHome(async (home) => {
       for (const [target, flag, catalog, error] of [
         [
@@ -575,7 +575,7 @@ describe("native CLI argument and output behavior", () => {
     });
   });
 
-  it("rejects inline and separate explicit-empty scalar values without changing files", async () => {
+  it("rejects inline and separate explicit-empty scalar values before any deployment change; only the sync lock file appears", async () => {
     await withIsolatedHome(async (home) => {
       for (const [target, flag, catalog, error] of [
         ["claude", "--claude-effort", "Available claude effort levels", "Invalid Claude effort ''"],
