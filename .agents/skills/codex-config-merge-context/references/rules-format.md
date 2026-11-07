@@ -58,9 +58,9 @@ and can move workspace files into the read-only `.git` directory, for example
 
 | File | Owner | Sync behavior |
 |------|-------|---------------|
-| `~/.codex/rules/docks.rules` | Kit | Copied wholesale from SoT and recorded in `~/.codex/.kit-managed-rules`. |
+| `~/.codex/rules/docks.rules` | Kit | Copied wholesale from SoT and recorded in `~/.codex/.kit-managed-rules`. An existing file that differs is backed up to `docks.rules.bak` and replaced, recorded or not. |
 | A recorded rules file that the SoT dropped | Kit | Removed while it holds the recorded kit bytes; kept with a warning after a user edit. |
-| `~/.codex/rules/default.rules` | User/Codex | Never read or removed, because no sync records it. |
+| `~/.codex/rules/default.rules` | User/Codex | Never read or removed, because the SoT does not ship that name and no sync records it. |
 
 Verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`.
 

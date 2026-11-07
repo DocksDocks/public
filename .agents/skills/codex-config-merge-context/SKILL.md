@@ -152,9 +152,16 @@ records each deployed file and the sha256 of its kit bytes in
 removes the deployed copy while it still holds the recorded kit bytes. A
 dropped file that the user edited stays, keeps its record, and gets a warning
 (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`).
-`~/.codex/rules/default.rules` is user-learned state. No sync records it, so
-sync never reads or removes it (verify:
+`~/.codex/rules/default.rules` is user-learned state. The SoT does not ship
+that name and no sync records it, so sync never reads or removes it (verify:
 `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`).
+Sync still deploys each name that the SoT ships over an existing file,
+recorded or not: it backs up a file that differs to `<name>.bak` and replaces
+it. This includes an existing `docks.rules` on the first sync after the upgrade
+that added the manifest. Sync writes the manifest through
+`atomicWrite.ts replaceTextIfChanged`, so an interrupted sync keeps the
+previous complete manifest (verify:
+`bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "keeps the previous manifest when a manifest write is interrupted"`).
 Root `AGENTS.md` (Codex SoT notes) owns the manifest line format and the
 `--dry-run` output.
 
