@@ -44,14 +44,19 @@ export function toggleOpenAiFast(configText: string): FastToggle {
   return { previous, next, text: doc.toString() };
 }
 
+/** Throw the error of the toggle when the deployed config.yml is missing. */
+export function requireDeployedConfig(configPath: string): void {
+  if (!existsSync(configPath)) {
+    throw new Error(`${configPath} does not exist; run 'docks-kit sync omp' first`);
+  }
+}
+
 /**
  * Toggle `tier.openai` in the deployed config.yml with an atomic 0600 write.
  * replaceFile writes through a symlinked config.yml, so the link stays.
  */
 export function toggleDeployedOpenAiFast(configPath: string): FastToggle {
-  if (!existsSync(configPath)) {
-    throw new Error(`${configPath} does not exist; run 'docks-kit sync omp' first`);
-  }
+  requireDeployedConfig(configPath);
   const toggle = toggleOpenAiFast(readFileSync(configPath, "utf8"));
   replaceFile(configPath, toggle.text, { mode: 0o600 });
   return toggle;

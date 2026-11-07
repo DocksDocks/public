@@ -1,6 +1,6 @@
 import { Argument, Command, Flag, Prompt } from "effect/cli";
 import { Console, Effect, Option } from "effect";
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { bail } from "../engine";
 import { capture, p, spawnHost, which } from "../engine-native/exec";
 import { kitCacheDir } from "../engine-native/scratch";
@@ -25,6 +25,7 @@ import {
 } from "../engine-native/ompOverlay";
 import {
   FAST_ON_TIER,
+  requireDeployedConfig,
   toggleDeployedOpenAiFast,
   type FastToggle,
 } from "../engine-native/ompFastMode";
@@ -266,11 +267,17 @@ const pickLevels = (catalogModel: CatalogModel) =>
 async function toggleFastUnderLocks(home: string, agentDir: string): Promise<number> {
   const configPath = p(agentDir, "config.yml");
   const err = (line: string) => console.error(line);
-  // A missing agent folder has no config.yml, so the toggle fails. Lock it
-  // only when it exists, so that the failed run creates no folder.
-  const folders = existsSync(agentDir) ? [agentDir] : [];
+  // Check config.yml before any lock. A missing file ends the run before the
+  // lock step can create the agent folder, and a folder that a sync creates
+  // during the home lock wait is never toggled without its folder lock.
   try {
-    return await withHomeAndFolderLocks(home, folders, err, async () => {
+    requireDeployedConfig(configPath);
+  } catch (error) {
+    err(error instanceof Error ? error.message : String(error));
+    return 2;
+  }
+  try {
+    return await withHomeAndFolderLocks(home, [agentDir], err, async () => {
       let toggle: FastToggle;
       try {
         toggle = toggleDeployedOpenAiFast(configPath);
