@@ -12,9 +12,10 @@ WRONG:   npx --yes skills@<verified> add -g -y -a claude-code codex <slug>
 CORRECT: npx --yes skills@<verified> add <slug> -g -y -a claude-code codex
 ```
 
-`<verified>` is the `skills-cli.verified` pin in `SoT/toolchain.json`. With the
-slug after `-a`, the variadic flag takes the slug as an agent name, and
-skills@1.7.0 exits 1 with `Missing required argument: source`.
+`<verified>` is the skills CLI pin. `.agents/skills/universal-skills-context/SKILL.md`
+§ Correct CLI Invocation names the pin key and the commands that re-check this
+behavior. With the slug after `-a`, the variadic flag takes the slug as an agent
+name, and the pinned CLI exits 1 with `Missing required argument: source`.
 
 ## Good / Bad Comparison
 
@@ -22,7 +23,7 @@ skills@1.7.0 exits 1 with `Missing required argument: source`.
 |------|-----|-----|
 | `skills@<verified> add <slug> -g -y -a claude-code codex` | `skills@<verified> add -a claude-code codex <slug>` | Variadic `-a` swallows the slug. |
 | `-a claude-code codex` | `-a claude-code` | Single-agent mode can skip the canonical universal path. |
-| `-a claude-code codex` | `-a '*'` | skills@1.7.0 accepts it but installs to every supported agent. |
+| `-a claude-code codex` | `-a '*'` | The pinned CLI accepts it but installs to every supported agent. |
 
 ## Remove Invocation
 
@@ -36,7 +37,7 @@ Remove is positional in the CLI:
 npx --yes skills@<verified> remove --global <basename> -y
 ```
 
-In skills@1.7.0, `remove` without `-a` targets every known agent, not only the
+In the pinned CLI, `remove` without `-a` targets every known agent, not only the
 detected agents. It recursively deletes each same-named skill directory, real
 directory or link. That includes an unmarked real `~/.claude/skills/<basename>`
 and unrelated directories of other agents. `skills remove` rejects `-a '*'`

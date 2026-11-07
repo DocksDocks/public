@@ -40,17 +40,21 @@ entry under `~/.claude/skills/`. `skillsManifest.ts skillBase` derives
 
 `healClaudeSymlink` accepts a link (symlink or junction) that resolves to the
 canonical directory; relative symlinks are the preferred form. Sync replaces
-stale links. `linkOrCopy` tries a relative symlink, then (Windows) an absolute
-junction, then a recursive copy marked with `.docks-kit-copied-skill`. Later
+stale links. `linkOrCopy` tries each kind in `hostOs().directoryLinkKinds`
+order (a relative symlink; on Windows, then an absolute junction). Then it falls
+back to a recursive copy that holds a `skillsLinks.ts COPY_MARKER` file. Later
 syncs replace a marked copy, and --prune reclaims it. Sync leaves unmarked real
-directories alone with a warning.
+directories alone with a warning (verify:
+`bunx vitest run cli/test/unit/skillsSync.test.ts -t "creates a real symlink with the relative target"`).
 
 ## Snapshot Format
 
 `~/.agents/.kit-managed-skills` contains one full slug per line, sorted. It
 holds the declared slugs plus previously tracked slugs that no successful
-`--prune` has removed yet. Every real sync rewrites it, and `--prune` uses it to
-identify removed kit-managed skills.
+`--prune` has removed yet. Each non-dry-run sync that runs the `agents` target
+(`syncDispatch.ts`, `ctx.syncAgents` branch) recomputes it in
+`skillsPrune.ts updateSnapshot`. `--prune` uses it to identify removed
+kit-managed skills.
 
 ## Gotchas
 
