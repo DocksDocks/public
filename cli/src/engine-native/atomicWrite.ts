@@ -6,8 +6,8 @@
  * - The replaced file keeps its permission bits unless the caller sets them.
  * - Each write uses its own temporary name, so two writers never write into
  *   the same temporary file.
- * - A write that throws removes its temporary file. A process that is killed
- *   during a write can leave one.
+ * - A write that throws tries to remove its temporary file. A failed removal,
+ *   or a process that is killed during a write, can leave one.
  */
 import { randomBytes } from "node:crypto";
 import {

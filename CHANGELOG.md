@@ -9,8 +9,9 @@
   open of a file whose delete is pending fails with EPERM. A delete of a file
   that another process holds without delete sharing fails with EBUSY. The
   extension now treats these codes as contention, as the `docks-kit tidy`
-  lock does. A failed create or stale-file delete loses the claim, so a later
-  main session starts the due sweep. A failed release leaves the claim file
+  lock does. A failed create loses the claim, so a later main session starts
+  the due sweep. A failed stale-file delete removes nothing, and the next
+  exclusive create decides the claim. A failed release leaves the claim file
   until it is stale. A real access denial on Windows also gives EPERM, and
   the extension then also counts it as contention. On other platforms, these
   codes stay errors.
@@ -20,9 +21,9 @@
   could then keep a rules file that the SoT dropped, and `--prune` could keep
   a skill that the SoT dropped. Each write through the kit `replaceFile`
   helper now uses a temporary name that is unique to the write. A write that
-  throws removes its temporary file. A process that is killed during a write
-  can leave one temporary file. A stale `<file>.tmp` no longer blocks the
-  write.
+  throws tries to remove its temporary file. A failed removal, or a process
+  that is killed during a write, can leave one temporary file. A stale
+  `<file>.tmp` no longer blocks the write.
 - The release-artifact test now checks each artifact list of
   `release-cli.yml` alone, so a name in one list cannot hide a gap in the
   other. The root `AGENTS.md`, the skills, and the `syncRules` comment now
