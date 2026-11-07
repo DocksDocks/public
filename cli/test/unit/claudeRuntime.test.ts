@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -267,7 +275,7 @@ describe("Claude settings prepare/commit seam", () => {
         userSetting: true,
         permissions: { allow: [], deny: [], ask: [] },
       });
-      expect(existsSync(`${path}.tmp`)).toBe(false);
+      expect(readdirSync(claudeDir).filter((name) => name.endsWith(".tmp"))).toEqual([]);
       expect(existsSync(`${path}.bak`)).toBe(false);
       expect(test.ctx.nextStepTriggers.claudeRestart).toBe(true);
       expect(test.lines.join("")).toContain("Settings installed");
@@ -323,7 +331,7 @@ describe("Claude settings prepare/commit seam", () => {
         `Aborting sync: ${claudeDir}/settings.json is not valid JSON`,
       );
       expect(readFileSync(path, "utf8")).toBe("not-json");
-      expect(existsSync(`${path}.tmp`)).toBe(false);
+      expect(readdirSync(claudeDir).filter((name) => name.endsWith(".tmp"))).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -345,7 +353,7 @@ describe("Claude settings prepare/commit seam", () => {
       ).toThrow("Claude settings contain unresolved runtime sentinels");
       expect(readFileSync(path, "utf8")).toBe(previous);
       expect(existsSync(`${path}.bak`)).toBe(false);
-      expect(existsSync(`${path}.tmp`)).toBe(false);
+      expect(readdirSync(claudeDir).filter((name) => name.endsWith(".tmp"))).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
