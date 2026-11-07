@@ -44,7 +44,7 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 <constraint>
 1. Fail closed. A check that cannot prove a candidate safe keeps it, with a reason in `TidyPlan.kept` or `TidyPlan.notes`. An `lstat` error, a missing process list, or a non-local Docker endpoint never counts as "absent" or "idle".
 2. Send every tidy Docker call through `tidy.ts localDocker`. Never call `host.docker` directly; the runner checks `isLocalDockerEndpoint` again and puts `--host <endpoint>` first.
-3. Delete only through `scratch.ts removeTemporaryPath` (scratch entries) and `git worktree remove` without `--force` (worktrees). Never add `rmSync`, `rm -rf`, or `--force` on a worktree removal to tidy.
+3. Delete leftover files and directories only through `scratch.ts removeTemporaryPath` (scratch entries) and `git worktree remove` without `--force` (worktrees). Container, volume, and network removal goes through `tidy.ts localDocker` (constraint 2). Never add `rmSync`, `rm -rf`, or `--force` on a worktree removal to tidy.
 4. Policy facts have one home. Read the `cli/AGENTS.md` module-layout rows for `scratch.ts` and `tidy.ts`, and the root `AGENTS.md` owner-decision bullet that every workstation resource is development; point at them and do not copy them.
 </constraint>
 
@@ -64,10 +64,10 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 
 ### Module map
 
-- `cli/src/engine-native/tidy.ts` — `planTidy` — read-only plan; it runs only listing commands (verify: `grep -n "export async function planTidy" cli/src/engine-native/tidy.ts`)
-- `cli/src/engine-native/tidy.ts` — `applyTidy` — performs a `TidyPlan` under `tidy.lock` and appends to `tidy.log` (verify: `grep -n "export async function applyTidy" cli/src/engine-native/tidy.ts`)
+- `cli/src/engine-native/tidy.ts` — `planTidy` — read-only plan; it runs only listing commands. Unprobed: no unit test asserts the kind of each command. Read each `runDocker` and `host.git` call that `planTidy` reaches (verify: `grep -n -e "runDocker(\[" -e "host.git(\[" cli/src/engine-native/tidy.ts`)
+- `cli/src/engine-native/tidy.ts` — `applyTidy` — performs a `TidyPlan` under `tidy.lock` and appends to `tidy.log` (verify: `bunx vitest run cli/test/unit/tidy.test.ts -t "changes nothing while another run holds a fresh lock"`; `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"`)
 - `cli/src/engine-native/tidy.ts` — `TidyHost`, `defaultTidyHost` — the injection seam for `git`, `docker`, `dockerEndpoint`, `run`, `processes`, `now` (verify: `grep -n "export interface TidyHost" cli/src/engine-native/tidy.ts`)
-- `cli/src/engine-native/tidyLock.ts` — `acquireTidyLock`, `releaseTidyLock` — node-only lock module, so a test child can load it alone (verify: `grep -n "^import" cli/src/engine-native/tidyLock.ts`)
+- `cli/src/engine-native/tidyLock.ts` — `acquireTidyLock`, `releaseTidyLock` — node-only lock module, so a test child can load it alone (verify: `grep -n 'from "' cli/src/engine-native/tidyLock.ts`)
 - `cli/src/engine-native/tidyReport.ts` — `buildTidyReport` — read-only sections; reuses `tidy.ts` helpers (verify: `grep -n 'from "./tidy"' cli/src/engine-native/tidyReport.ts`)
 - `cli/src/engine-native/scratch.ts` — `kitCacheDir`, `scratchRoot` — owner of `~/.cache/docks-kit` and its `scratch/` child (verify: `grep -n "export function kitCacheDir" cli/src/engine-native/scratch.ts`)
 
@@ -109,11 +109,15 @@ Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "removes the merged idle w
 - A container group inside a removable worktree joins that `remove-worktree` action (no separate idle check).
 - A group in the territory whose directory `lstat` reports absent: `remove-containers`. An unknown `lstat` state keeps it with a note.
 - A running group in a present directory needs an owner (linked worktree or first-level scratch entry), an idle owner, and no process cwd inside: `stop-containers`.
-- Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "no container action, and every removable worktree stays"`; also `-t "fails each container action when the plan carries no local endpoint"`.
+- Probes: `bunx vitest run cli/test/unit/tidy.test.ts -t "no container action, and every removable worktree stays"`; `bunx vitest run cli/test/unit/tidy.test.ts -t "fails each container action when the plan carries no local endpoint"`.
 
 ### Orphan process rule
 
-- A row qualifies when its parent is in `orphanParents` (PID 1 or a user `systemd`), its age reaches the stack idle threshold, its cwd is readable and inside the worktree or scratch root, and `isProtectedProcess` is false.
+- A process row qualifies when all of these are true:
+  - Its parent is in `orphanParents` (PID 1 or a user `systemd`).
+  - Its age reaches the stack idle threshold.
+  - Its cwd is readable and inside the worktree root or the scratch root.
+  - `isProtectedProcess` is false.
 - `resolveProcessCwds` drops an exited PID, keeps a known service with an unreadable cwd (`UNREADABLE_CWD_NAMES`) without a cwd, and returns `undefined` for any other unreadable cwd.
 - Apply sends SIGTERM only; ESRCH counts as stopped.
 - Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "returns undefined when any other live process has an unreadable cwd"`.
@@ -137,11 +141,22 @@ Probe: `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then th
 
 ### Temporary-path removal
 
-`removeTemporaryPath` refuses at the first failed check: the path exists; it is not a symbolic link (also with trailing separators); its real path is strictly inside one root and is no root; it does not contain home; on POSIX, the user owns it and no other user can change a directory on its path (`untrustedParent`); it is on the root's filesystem.
+`removeTemporaryPath` removes a path only when all checks pass. It runs the checks in this order and refuses at the first failed check:
 
-`allowedRemovalRoots` takes the scratch root and `tmpdir()`, plus `/tmp` and `/var/tmp` off Windows. It drops a root that does not resolve, a duplicate, a filesystem root, a root that contains home, and an untrusted root (`isTrustedRoot`: owned by neither the user nor root, writable by group or others without the sticky bit, or below a directory that another user can change).
+1. The path exists.
+2. It is not a symbolic link, also with trailing separators.
+3. Its real path is strictly inside one root and is not a root.
+4. It does not contain home.
+5. On POSIX, the user owns it, and no other user can change a directory on its path (`untrustedParent`).
+6. It is on the filesystem of its root.
 
-Probes: `bunx vitest run cli/test/unit/scratch.test.ts -t "refuses a symbolic link and a link escape"`; `-t "drops a root that others can write without the sticky bit"`.
+`allowedRemovalRoots` takes the scratch root and `tmpdir()`. Except on Windows, it also takes `/tmp` and `/var/tmp`. It drops a root that does not resolve, a duplicate, a filesystem root, and a root that contains home. It also drops an untrusted root (`isTrustedRoot`). A root is untrusted when one of these is true:
+
+- Neither the user nor root owns it.
+- Group or others can write it, and it has no sticky bit.
+- It is below a directory that another user can change.
+
+Probes: `bunx vitest run cli/test/unit/scratch.test.ts -t "refuses a symbolic link and a link escape"`; `bunx vitest run cli/test/unit/scratch.test.ts -t "drops a root that others can write without the sticky bit"`.
 
 ### Lock
 
@@ -176,11 +191,11 @@ Re-derive before you rely on a value.
 | Decision | Why | Probe |
 |---|---|---|
 | Plan and apply are separate; the CLI is a dry run without `--apply` | The user and the agent see every action and keep reason first | Unprobed: no unit test runs `tidyCommand`. Read the `config.apply` branch (verify: `grep -n "config.apply" cli/src/commands/tidy.ts`) |
-| Docker endpoint verified once per run and carried in `TidyPlan.docker` | `DOCKER_HOST` or a context can send a plain `docker` call to a remote host; a compose label does not prove a local daemon | `bunx vitest run cli/test/unit/tidy.test.ts -t "isLocalDockerEndpoint"` |
+| Docker endpoint verified once per run and carried in `TidyPlan.docker` | `DOCKER_HOST` or a context can send a plain `docker` call to a remote host; a compose label does not prove a local daemon | `bunx vitest run cli/test/unit/tidy.test.ts -t "fails each container action when the plan carries no local endpoint"` |
 | No process list keeps every in-use-dependent candidate | An unreadable cwd could belong to a process in an agent directory | `bunx vitest run cli/test/unit/tidy.test.ts -t "process list is unavailable"` |
 | Worktree removal never uses `--force` | git refuses a dirty or locked worktree, a second guard after `checkWorktree` | `bunx vitest run cli/test/unit/tidy.test.ts -t "containers first, then the worktree"` |
 | Scratch removal reuses `removeTemporaryPath` | One checked deletion path for the CLI, the omp tool, and tidy | `bunx vitest run cli/test/unit/scratch.test.ts -t "removeTemporaryPath"` |
-| Lock release and takeover compare the token | A run never removes the lock of another run | `bunx vitest run cli/test/unit/tidyLock.test.ts -t "removes the lock only while it still carries the token"` |
+| Lock release compares the token; takeover checks only staleness | A release never removes the lock of another run. A takeover removes any lock that `lockIsStale` reports, also while its run still lives (see Gotchas) | `bunx vitest run cli/test/unit/tidyLock.test.ts -t "removes the lock only while it still carries the token"` |
 | The workstation sweep runs without a question | Owner decision; read it in the root `AGENTS.md` owner-decision bullet, not here | `grep -n "resources on the workstation are always development" AGENTS.md` |
 
 ## Gotchas
@@ -195,7 +210,7 @@ Re-derive before you rely on a value.
 | Windows has no process list | Every worktree and scratch entry stays, and the orphan rule is off | `grep -n "process.platform ===" cli/src/engine-native/tidy.ts` |
 | A held lock exits 0 | A script reads "another docks-kit tidy run holds" as success | `applyTidy` returns `failures: 0` with `locked: true`; `tidyCommand` sets exit 1 only for failures |
 | The plan runs outside the lock | A plan that waits behind another apply acts on stale worktrees and PIDs; only scratch activity is checked again | Recheck any new destructive action inside `applyTidy` |
-| Lock staleness checks mtime before the PID | An apply that runs past `LOCK_STALE_MS` can be taken over while it still runs | `bunx vitest run cli/test/unit/tidyLock.test.ts -t "takes over a stale lock"` |
+| Lock staleness checks mtime before the PID | An apply that runs past `LOCK_STALE_MS` can be taken over while it still runs | Unprobed: no unit test holds a live PID with an old mtime. Read `lockIsStale` (verify: `grep -n -A 6 "function lockIsStale" cli/src/engine-native/tidyLock.ts`) |
 | `isSameOrInside(parent, child)` order | A swapped call reverses a guard without a type error | `bunx vitest run cli/test/unit/tidy.test.ts -t "refuses a root that contains the home directory"` |
 | `isProtectedProcess` matches `/.omp/` or `/tern/` anywhere in `args` | An orphan started with a config path under `~/.omp/` is never stopped | `bunx vitest run cli/test/unit/tidyReport.test.ts -t "lists old orphaned tools"` |
 | `removeProjectNetworks` ignores a failed `network rm` | A network that another container uses stays with no `failed` line | By design; do not count it as a failure |
