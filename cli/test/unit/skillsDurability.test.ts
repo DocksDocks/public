@@ -335,6 +335,66 @@ describe("skills durability", () => {
       expect(recordedSlugs(owned)).toEqual([]);
     });
 
+    it("keeps the owned evidence when a sync settles the same pending slug again", async () => {
+      const root = makeHome();
+      const { owned, pending } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      // The sync stops after the owned record write and before the pending
+      // record goes, so both records name the slug. The removal fails only
+      // after the install, not in the record write at sync start.
+      mocks.spawnProcess.mockImplementation(async () => {
+        makeCanonical(root, "demo");
+        mocks.failRemovalOf = pending;
+        return { error: undefined, exitCode: 0, stdout: "", stderr: "" };
+      });
+      await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^EBUSY/);
+      mocks.failRemovalOf = undefined;
+      expect(recordedSlugs(owned)).toEqual(["acme/demo"]);
+      expect(recordedSlugs(pending)).toEqual(["acme/demo"]);
+
+      // The user replaces the directory before the next sync.
+      const canonical = join(root, ".agents", "skills", "demo");
+      const replacement = makeCanonical(root, "mine");
+      rmSync(canonical, { recursive: true });
+      renameSync(replacement, canonical);
+
+      await skillsSync(makeCtx(root, false));
+      expect(recordedSlugs(pending)).toEqual([]);
+
+      mocks.declaredSkills = "";
+      const output: Array<string> = [];
+      await skillsSync(makeCtx(root, true, output));
+
+      expect(readFileSync(join(canonical, "SKILL.md"), "utf8")).toBe("# mine\n");
+      const keepLines = textLines(output)
+        .filter((line) => line.includes("keep acme/demo"))
+        .map((line) => line.slice(line.indexOf("keep acme/demo")));
+      expect(keepLines).toEqual([
+        "keep acme/demo: the directory is not the one that the kit installed",
+      ]);
+    });
+
+    it("records the new directory when the kit installs an owned skill again", async () => {
+      const root = makeHome();
+      const { owned } = records(root);
+      mocks.declaredSkills = "acme/demo\n";
+      installsSucceed(root);
+      await skillsSync(makeCtx(root, false));
+
+      // The user deletes the skill; the next sync installs it again.
+      const canonical = join(root, ".agents", "skills", "demo");
+      rmSync(canonical, { recursive: true });
+      await skillsSync(makeCtx(root, false));
+      expect(mocks.spawnProcess).toHaveBeenCalledTimes(2);
+      expect(readFileSync(owned, "utf8")).toBe(`acme/demo\t${identityOf(canonical)}\n`);
+
+      mocks.declaredSkills = "";
+      await skillsSync(makeCtx(root, true));
+
+      expect(existsSync(canonical)).toBe(false);
+      expect(recordedSlugs(owned)).toEqual([]);
+    });
+
     it("prunes a skill whose install the owned record did not record", async () => {
       const root = makeHome();
       const { owned, pending, legacy } = records(root);

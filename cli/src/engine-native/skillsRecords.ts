@@ -93,18 +93,28 @@ export function canonicalAbsent(skillsDir: string, slug: string): boolean {
 /**
  * Ends the pending state of `slug`. When its canonical directory exists, the
  * slug moves to the owned record with the identity of that directory. Else it
- * leaves the pending record. Changes the records in memory only;
- * `writeSkillRecords` writes them.
+ * leaves the pending record. A slug that the owned record already names keeps
+ * its identity. A sync that stopped between the two record writes leaves the
+ * slug in both records, and the directory can change before the next sync.
+ * Changes the records in memory only; `writeSkillRecords` writes them.
  */
 export function settlePendingSlug(records: SkillRecords, skillsDir: string, slug: string): void {
-  if (!records.pending.delete(slug)) return;
+  if (!records.pending.delete(slug) || records.owned.has(slug)) return;
   const canonical = p(skillsDir, skillBase(slug));
   const identity = isDir(canonical) ? directoryIdentity(canonical) : undefined;
   if (identity !== undefined) records.owned.set(slug, identity);
 }
 
-/** Records `slug` as pending and writes the pending record before its install starts. */
+/**
+ * Records `slug` as pending and writes the pending record before its install
+ * starts. The canonical directory is gone, so an owned identity of the slug is
+ * stale. It leaves the owned record first, so the install can record the new
+ * directory.
+ */
 export function recordPendingInstall(records: SkillRecords, slug: string): void {
+  if (records.owned.delete(slug)) {
+    replaceTextIfChanged(records.ownedFile, ownedLines(records.owned));
+  }
   records.pending.add(slug);
   replaceTextIfChanged(records.pendingFile, slugLines(records.pending));
 }

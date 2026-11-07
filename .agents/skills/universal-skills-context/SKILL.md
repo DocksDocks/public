@@ -14,7 +14,7 @@ metadata:
     - path: cli/src/engine-native/skillsPrune.ts
       lines: "1-117"
     - path: cli/src/engine-native/skillsRecords.ts
-      lines: "1-128"
+      lines: "1-138"
     - path: cli/src/engine-native/skillsManifest.ts
       lines: "1-36"
     - path: SoT/.agents/skills.txt
@@ -62,7 +62,9 @@ there only when an install of the kit created its canonical directory:
 - After the install, `settlePendingSlug` moves the slug to the owned record
   when the directory exists, and drops it otherwise. The owned line keeps the
   `<dev>:<ino>` of the directory (`skillsRecords.ts directoryIdentity`, a
-  bigint `lstat`, so a Windows file index stays exact).
+  bigint `lstat`, so a Windows file index stays exact). A slug that the owned
+  record already names keeps its identity when a later sync settles it again.
+  A new install first drops the stale owned line of its slug.
 - A canonical directory that existed before is reused and never recorded.
 - After each install, `syncUniversal` calls `writeSkillRecords` before the
   next install starts. It writes the owned record first, then the pending
@@ -74,7 +76,7 @@ there only when an install of the kit created its canonical directory:
   directory and its Claude entry, and drops the slug from the owned record.
 - Sync reads the legacy `~/.agents/.kit-managed-skills` and never writes it.
 
-(verify: `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "skill ownership records"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records each installed skill before the next install starts"`, and `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps an owned skill whose directory is not the one that the kit installed"`)
+(verify: `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "skill ownership records"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records each installed skill before the next install starts"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps an owned skill whose directory is not the one that the kit installed"`, `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "keeps the owned evidence when a sync settles the same pending slug again"`, and `bunx vitest run cli/test/unit/skillsDurability.test.ts -t "records the new directory when the kit installs an owned skill again"`)
 </constraint>
 
 ## When To Use
