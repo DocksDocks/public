@@ -12,7 +12,7 @@ metadata:
     - path: cli/src/main.ts
       lines: "1-105"
     - path: cli/src/engine-native/exec.ts
-      lines: "1-360"
+      lines: "1-363"
     - path: cli/src/engine-native/jq.ts
       lines: "1-71"
     - path: cli/src/engine-native/parseHelp.ts

@@ -6,13 +6,13 @@ metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-138"
+      lines: "1-137"
     - path: cli/src/engine-native/ompFileDeploy.ts
       lines: "1-116"
     - path: cli/src/engine-native/ompMarketplace.ts
-      lines: "1-133"
+      lines: "1-140"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-408"
+      lines: "1-417"
     - path: cli/src/engine-native/ompKitPlugin.ts
       lines: "1-108"
     - path: cli/src/engine-native/ompRemovals.ts
@@ -32,7 +32,7 @@ metadata:
     - path: cli/src/commands/omp.ts
       lines: "1-467"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-326"
+      lines: "1-336"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-206"
     - path: cli/src/engine-native/atomicWrite.ts

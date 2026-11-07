@@ -95,6 +95,8 @@ export interface AsyncProcessOptions {
   readonly stdio?: SpawnOptions["stdio"];
   /** Working directory for the child; the parent's when absent. */
   readonly cwd?: string;
+  /** Environment of the child; the parent's when absent. */
+  readonly env?: NodeJS.ProcessEnv;
   /** Host whose executable resolution and argv shaping apply; tests inject it. */
   readonly host?: HostOs;
   /**
@@ -133,6 +135,7 @@ export function spawnProcess(
     child = spawn(invocation.command, [...invocation.args], {
       stdio: options.stdio ?? ["ignore", "pipe", "ignore"],
       ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+      ...(options.env !== undefined ? { env: options.env } : {}),
       // A bounded child leads its own process group on POSIX, so a timeout
       // can end the processes that it started too (see killProcessTree).
       ...(options.timeoutMs !== undefined && !WINDOWS_PROCESS ? { detached: true } : {}),

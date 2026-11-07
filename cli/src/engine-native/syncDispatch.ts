@@ -15,7 +15,14 @@ import { codexNextSteps, codexSummary, codexSync } from "./codexSync";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { acquireKitLock, releaseKitLock, type KitLock } from "./kitLock";
-import { ompNextSteps, ompSummary, ompSync, ompWriteFolders, type OmpState } from "./ompSync";
+import {
+  ompNextSteps,
+  ompSummary,
+  ompSync,
+  ompWriteFolders,
+  type OmpState,
+  type OmpWriteFolders,
+} from "./ompSync";
 import { skillsNextSteps, skillsSummary, skillsSync, type SkillsState } from "./skillsSync";
 import { ExitError, parseArgs, validateModifierFlags } from "./parseArgs";
 import { folderSyncLockPath, syncLockPath } from "./scratch";
@@ -195,17 +202,20 @@ async function runSync(ctx: Ctx, args: ReadonlyArray<string>): Promise<number> {
 
   // The folders that hold ownership records or omp files. A writing pipeline
   // creates its folders anyway, so `withFolderLocks` creates each missing one
-  // under the locks of its ancestors.
+  // under the locks of its ancestors in the set. The omp folders are resolved
+  // once, here: the omp pipeline and its omp children use these paths, so a
+  // data root that appears after the locks cannot move them.
   const omp = ctx.syncOmp ? ompWriteFolders(ctx) : undefined;
   const folders = [
     ...(ctx.syncCodex ? [codexHome(ctx.home)] : []),
     ...(ctx.syncAgents ? [resolve(ctx.agentsDir)] : []),
     ...(omp === undefined ? [] : [omp.paths.agentDir, omp.intercomDir, omp.paths.dataRoot]),
   ];
-  return await withFolderLocks(ctx, folders, () => runPipelines(ctx));
+  return await withFolderLocks(ctx, folders, () => runPipelines(ctx, omp));
 }
 
-async function runPipelines(ctx: Ctx): Promise<number> {
+/** Run the selected pipelines. `omp` holds the omp folders when omp is selected. */
+async function runPipelines(ctx: Ctx, omp: OmpWriteFolders | undefined): Promise<number> {
   const { acquireTerminal, echo } = ctx.services.logger;
   // An abort-class check runs before any pipeline starts, so the abort stops the whole sync.
   preflightClaudeSettings(ctx);
@@ -242,10 +252,10 @@ async function runPipelines(ctx: Ctx): Promise<number> {
       run: async () => ({ kind: "skills", state: await skillsSync(ctx) }),
     });
   }
-  if (ctx.syncOmp) {
+  if (omp !== undefined) {
     selected.push({
       name: "omp",
-      run: async () => ({ kind: "omp", state: await ompSync(ctx) }),
+      run: async () => ({ kind: "omp", state: await ompSync(ctx, omp) }),
     });
   }
 

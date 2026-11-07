@@ -26,7 +26,7 @@ metadata:
     - path: cli/src/commands/sync.ts
       lines: "1-191"
     - path: cli/src/engine-native/exec.ts
-      lines: "1-360"
+      lines: "1-363"
     - path: cli/src/commands/models.ts
       lines: "1-75"
     - path: cli/src/commands/update.ts
@@ -36,7 +36,7 @@ metadata:
     - path: cli/src/engine-native/engineCtx.ts
       lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-326"
+      lines: "1-336"
     - path: cli/src/engine-native/kitLock.ts
       lines: "1-121"
     - path: cli/src/engine-native/syncConcurrency.ts
@@ -76,9 +76,9 @@ metadata:
     - path: cli/src/engine-native/skillsRecords.ts
       lines: "1-138"
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-138"
+      lines: "1-137"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-415"
+      lines: "1-417"
     - path: cli/src/engine-native/claudePluginPasses.ts
       lines: "1-426"
     - path: cli/src/engine-native/claudeOptionalPlugins.ts

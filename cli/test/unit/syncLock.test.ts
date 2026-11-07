@@ -37,11 +37,27 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type * as ExecModule from "../../src/engine-native/exec";
+
+/** The `omp` spawns of a sync, recorded while a test sets the array; else every spawn runs. */
+const spawned = vi.hoisted(() => ({
+  omp: undefined as Array<{ args: Array<string>; env: NodeJS.ProcessEnv | undefined }> | undefined,
+}));
+vi.mock("../../src/engine-native/exec", async () => {
+  const actual = await vi.importActual<typeof ExecModule>("../../src/engine-native/exec");
+  const spawnProcess: typeof actual.spawnProcess = async (cmd, args, options) => {
+    if (cmd !== "omp" || spawned.omp === undefined) return actual.spawnProcess(cmd, args, options);
+    spawned.omp.push({ args: [...args], env: options?.env });
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+  return { ...actual, spawnProcess };
+});
 
 import { runEngineNative } from "../../src/engine-native";
 import { p } from "../../src/engine-native/exec";
 import { acquireKitLock, releaseKitLock } from "../../src/engine-native/kitLock";
+import { ompPaths } from "../../src/engine-native/ompPaths";
 import { kitCacheDir } from "../../src/engine-native/scratch";
 import {
   makeDependencyManager,
@@ -125,6 +141,31 @@ function recordingServices(records: Array<string>): EngineServices {
       commandExists: (name) => name === "bun",
       capture: async () => "",
       which: (name) => (name === "bun" ? bun : ""),
+    }),
+  };
+}
+
+/**
+ * The services of `recordingServices`, with omp and git present, so that a
+ * sync runs its `omp` commands. `beforePipelines` runs when the sync starts
+ * its pipelines, after it took its locks.
+ */
+function ompServices(records: Array<string>, beforePipelines: () => void): EngineServices {
+  const base = recordingServices(records);
+  const present: Record<string, true> = { bun: true, omp: true, git: true };
+  return {
+    ...base,
+    logger: {
+      ...base.logger,
+      acquireTerminal: (message) => {
+        beforePipelines();
+        return base.logger.acquireTerminal(message);
+      },
+    },
+    deps: makeDependencyManager(base.platform, {
+      commandExists: (name) => Object.hasOwn(present, name),
+      capture: async () => "",
+      which: (name) => (Object.hasOwn(present, name) ? `/opt/stub/bin/${name}` : ""),
     }),
   };
 }
@@ -663,4 +704,55 @@ describe("folder locks of a shared omp folder", () => {
       });
     });
   });
+});
+
+describe("omp children of a sync", () => {
+  // omp reads XDG_DATA_HOME only on Linux and macOS.
+  for (const profile of [undefined, "work"]) {
+    it.skipIf(process.platform === "win32")(
+      `keeps each omp child on the locked config root when the XDG candidate appears after the locks (${profile ?? "default"} profile)`,
+      async () => {
+        await withHome(async (home) => {
+          await withSharedFolder(async (shared) => {
+            process.env["XDG_DATA_HOME"] = shared;
+            if (profile !== undefined) process.env["OMP_PROFILE"] = profile;
+            const configRoot =
+              profile === undefined ? p(home, ".omp") : p(home, ".omp", "profiles", profile);
+            // omp adopts this candidate as its data root once it exists.
+            const candidate =
+              profile === undefined
+                ? join(shared, "omp")
+                : join(shared, "omp", "profiles", profile);
+            spawned.omp = [];
+
+            try {
+              // Another sync, for example one whose PI_CONFIG_DIR is the XDG
+              // candidate, creates it after this sync chose its locks.
+              const records: Array<string> = [];
+              const services = ompServices(records, () =>
+                mkdirSync(candidate, { recursive: true }),
+              );
+
+              expect(await runEngineNative(["sync", "omp"], services)).toBe(0);
+
+              expect(existsSync(join(configRoot, FOLDER_LOCK))).toBe(true);
+              expect(spawned.omp.length).toBeGreaterThan(0);
+              for (const { args, env } of spawned.omp) {
+                const childRoot = ompPaths({
+                  home,
+                  env: env ?? process.env,
+                  platform: process.platform,
+                }).dataRoot;
+                expect({ args, childRoot }).toEqual({ args, childRoot: configRoot });
+              }
+              // The kit wrote nothing into the unlocked candidate.
+              expect(readdirSync(candidate)).toEqual([]);
+            } finally {
+              spawned.omp = undefined;
+            }
+          });
+        });
+      },
+    );
+  }
 });

@@ -6,7 +6,7 @@ metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/exec.ts
-      lines: "1-360"
+      lines: "1-363"
     - path: cli/src/engine-native/deps.ts
       lines: "1-309"
     - path: cli/src/engine-native/os/types.ts
