@@ -18,7 +18,7 @@ they mean installed but globally disabled.
 | Plugin ID | Value | Effect |
 |-----------|-------|--------|
 | `docks@docks` | `true` | Installed and active globally. |
-| `context7@claude-plugins-official` | `true` | Installed and active globally. |
+| `typescript-lsp@claude-plugins-official` | `true` | Installed and active globally. |
 | `supabase@claude-plugins-official` | absent | Installed only by `--claude-plugin=supabase`. |
 | `n8n-mcp-skills@n8n-mcp-skills` | absent | Installed only by `--claude-plugin=n8n`. |
 | illustrative `some-plugin@marketplace` | `false` | Installed, globally disabled, project can enable. |

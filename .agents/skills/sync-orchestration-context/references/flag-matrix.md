@@ -26,6 +26,7 @@
 | Flag | Field |
 |------|-------|
 | `--dry-run` | `ctx.dryRun` |
+| `--verbose` | `ctx.verbose` |
 | `--skip-bubblewrap` | `ctx.skipBubblewrap` |
 | `--skip-plugin-refresh` | `ctx.skipPluginRefresh` |
 | `--reconcile` | `ctx.reconcile` |
@@ -34,7 +35,10 @@
 | `--claude-permissive` | `ctx.claudePermissive` |
 | `--claude-plugin=<name>` | `ctx.claudePlugins` |
 | `--claude-model=<m>` | `ctx.claudeModel` |
+| `--claude-effort=<level>` | `ctx.claudeEffort` |
+| `--claude-advisor=on\|off\|default` | `ctx.claudeAdvisor` |
 | `--codex-model=<m>` | `ctx.codexModel` |
+| `--codex-effort=<level>` | `ctx.codexEffort` |
 | target word present | `ctx.targetFilterSet` |
 
 Default target behavior: when no target word is present, `parseArgs.ts
@@ -48,7 +52,7 @@ fallback). Once any target word appears, only named targets run.
 |-------|---------------|-----------|---------|
 | `~/.claude/settings.json` | SoT keys win; permissions arrays replaced | No effect | Additive merge; permissions unioned |
 | Claude plugins/marketplaces | No effect | Remove kit-managed records absent from SoT | Additive install/update |
-| Codex personal marketplace/plugins | Additive merge still preserves user entries | Remove legacy configured Docks marketplace only | Deploy and refresh enabled plugins |
+| Codex personal marketplace/plugins | Additive merge still preserves user entries | No effect | Deploy and refresh enabled plugins; remove the legacy configured Docks marketplace |
 | `~/.agents/skills/` | No effect | Remove snapshot-managed slugs absent from manifest | Additive install and symlink heal |
 
 ## Deploy-Time Modifiers
@@ -61,7 +65,10 @@ A later flag-less sync restores SoT values.
 | `--claude-compact-window=<n|Nk>` | `syncCompactWindow` | Sets `env.CLAUDE_CODE_AUTO_COMPACT_WINDOW`. |
 | `--claude-permissive` | `syncPermissive` | Clears Claude ask/deny arrays. |
 | `--claude-model=<m>` | `syncClaudeModel` | Sets or deletes deployed `.model`. |
-| `--codex-model=<m>` | `syncCodexModel` | Replaces deployed top-level `model = "..."`
+| `--claude-effort=<level>` | `syncClaudeEffort` | Sets deployed `.effortLevel`; `default` sets the SoT level. |
+| `--claude-advisor=on\|off\|default` | `syncClaudeAdvisor` | Sets deployed `.advisorModel` to `opus`, or deletes it. |
+| `--codex-model=<m>` | `syncCodexModel` | Replaces deployed top-level `model = "..."` |
+| `--codex-effort=<level>` | `codexToml.ts syncCodexEffort` | Replaces deployed top-level `model_reasoning_effort`; `default` sets the SoT level. |
 
 ## Sticky Opt-Ins
 

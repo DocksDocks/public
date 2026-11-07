@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-11-06 - docks-kit 0.22.16: documentation matches the code
+
+### Fixed
+
+- A documentation audit found about 100 claims that no longer matched the
+  code, the SoT, or the tests (#147). The corrections cover the root
+  `AGENTS.md`, `CLAUDE.md`, and `README.md`, `docs/PLAN.md`,
+  `cli/src/engine-native/DESIGN.md`, the `docks-kit docs` topics and their
+  summaries, the kit-mechanic skills and their references, and the Claude Code
+  and Codex wrapper agents.
+- The `docks-kit docs` summary of `sync-layers` now names the four sync
+  targets.
+- The omp hygiene reminder for a remote resource now names all eight
+  non-production target names: local, development, dev, test, homolog,
+  homologation, staging, and preview. Before, it named five.
+- `docks-kit toolchain check` now labels the `pi-intercom` pin
+  `(omp install)`, the tool that installs it. Before, it said `(npx)`.
+- The docs now say that omp 18.8.8 and later replace a compaction pin at or
+  above the context window with the reserve-based budget; omp 18.4.4 through
+  18.8.7 clamp it to one token below the window.
+- The Codex reviewer agents in `.codex/agents/` now take the inputs of the
+  issue-backed plan lifecycle (issue number, export path, round number, mode,
+  and diff paths) instead of a plan file path.
+
 ## 2026-11-06 - docks-kit 0.22.15: omp hygiene ignores setup commands that may not run
 
 ### Fixed

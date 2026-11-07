@@ -1,40 +1,40 @@
 ---
 name: omp-sync-context
-description: "Use when modifying cli/src/engine-native/ompSync.ts exports ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, the kit omp plugin, dry-run, refresh, harness state, and the free-session run overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when modifying cli/src/engine-native/ompSync.ts ompSync, ompSummary, or ompNextSteps; ompFileDeploy.ts syncWholeFile or syncMergedYaml; ompMarketplace.ts syncMarketplace; ompPlugins.ts syncPlugins; ompKitPlugin.ts syncKitPlugin; ompRemovals.ts syncOmpRemovals or syncOmpModelRemovals; ompPaths.ts ompPaths; ompYaml.ts mergeOmpConfig or mergeOmpModels; ompOverlay.ts renderFreeOverlay, parseFreeModels, ladderCeiling, advisorLevelFor, planEffortChoice, advisorRecommendation, buildOmpArgs, or ompChildEnvironment; harnesses.ts readHarnessSelection, writeHarnessSelection, readOmpSessionModel, or writeOmpSessionModel; kitDb.ts withKitDb or MIGRATIONS; commands/omp.ts ompCommand, rejectedForwardedFlag, or forwardedProfile; or syncDispatch.ts engineSync and parseArgs.ts parseArgs for omp. Covers omp paths, deployment, YAML merge, plugins, dry-run, refresh, harness state, and the free-session overlay and launcher. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-77"
+      lines: "1-121"
     - path: cli/src/engine-native/ompFileDeploy.ts
       lines: "1-110"
     - path: cli/src/engine-native/ompMarketplace.ts
-      lines: "1-131"
+      lines: "1-133"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-251"
+      lines: "1-408"
     - path: cli/src/engine-native/ompKitPlugin.ts
       lines: "1-108"
     - path: cli/src/engine-native/ompRemovals.ts
-      lines: "1-216"
+      lines: "1-357"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/ompPaths.ts
-      lines: "1-101"
+      lines: "1-123"
     - path: cli/src/engine-native/ompYaml.ts
-      lines: "1-128"
+      lines: "1-213"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-120"
+      lines: "1-144"
     - path: cli/src/engine-native/kitDb.ts
-      lines: "1-245"
+      lines: "1-256"
     - path: cli/src/engine-native/ompOverlay.ts
-      lines: "1-309"
+      lines: "1-310"
     - path: cli/src/commands/omp.ts
       lines: "1-433"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-139"
-    - path: cli/src/engine-native/parseModifiers.ts
-      lines: "1-222"
-  updated: "2026-10-27"
+      lines: "1-155"
+    - path: cli/src/engine-native/parseArgs.ts
+      lines: "1-196"
+  updated: "2026-11-06"
 ---
 
 # omp Sync Context
@@ -141,7 +141,7 @@ Resolve a relative value against the current working directory.
 Use an absolute value without modification.
 Use `~/.pi/agent` when the value is absent or empty.
 
-Create `~/.omp/agent` only outside dry-run mode.
+Create the `ompPaths` `agentDir` only outside dry-run mode.
 Create the resolved intercom directory only outside dry-run mode.
 Back up a differing deployed file before replacement.
 Set every backup file to mode `0600`.
@@ -168,6 +168,9 @@ Treat the deployed document as the merge base.
 Let Source of Truth keys win every conflict.
 Merge mapping nodes recursively when both sides contain mappings.
 Replace every other Source of Truth node, including scalars and sequences.
+The one exception is the `bash.patterns` sequence in `config.yml`:
+`ompYaml.ts mergeBashPatterns` keeps the user's command rules and groups all
+rules by approval.
 Preserve deployed-only keys by default.
 `ompFileDeploy.ts syncMergedYaml`, shared YAML deployment, receives the file-specific
 merge as an argument: `mergeOmpConfig` for `config.yml` and `mergeOmpModels`
@@ -196,6 +199,7 @@ Reject invalid deployed YAML without writing the target.
 |---|---|
 | Both nodes are mappings | Merge recursively. |
 | Source of Truth node is scalar or sequence | Replace the deployed node. |
+| `config.yml` `bash.patterns` sequence | Keep user rules; order kit deny, user deny, user prompt, kit prompt, other user rules, kit allow. |
 | Key exists only in deployed content | Preserve it. |
 | Direct fallback-chain key contains `/` | Prune it. |
 | Unknown fallback role has no `/` | Preserve it. |
@@ -312,8 +316,10 @@ Off a terminal, that command only prints the current selection.
 With no stored selection, its picker pre-ticks every harness in `HARNESSES`, omp included.
 The pre-tick changes no stored state until the user saves the picker.
 
-`docks-kit omp` owns the `ompSession` key and writes nothing else.
-It stores a required free model selector, an optional session thinking level,
+`docks-kit omp` writes the `omp_session` table and a run overlay under
+`kitCacheDir`. `docks-kit omp --fast` writes only `tier.openai` in the deployed
+`config.yml`, through `ompFastMode.ts toggleDeployedOpenAiFast`.
+The session model entry stores a required free model selector, an optional session thinking level,
 and an optional advisor thinking level.
 Compute both levels once at set time from the catalog row of the chosen model.
 Derive each level from that model's own ladder, never from the global ladder
@@ -328,7 +334,7 @@ worse than one that starts on the default free model.
 Drop each level field independently when it is blank, so a stale level never
 survives a switch to a level-free model.
 
-Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — versioned local state over one merge helper.
+Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — SQLite tables opened through `kitDb.ts withKitDb`, one writer per table.
 Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains, including the chains keyed by the free model at every level.
 
 The launcher enforces the free model before omp starts.

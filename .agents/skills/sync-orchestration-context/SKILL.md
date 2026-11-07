@@ -5,11 +5,11 @@ user-invocable: false
 metadata:
   source_files:
     - path: cli/src/engine.ts
-      lines: "1-99"
+      lines: "1-134"
     - path: cli/src/engine-native/index.ts
       lines: "1-68"
     - path: cli/src/engine-native/engineCtx.ts
-      lines: "1-154"
+      lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-155"
     - path: cli/src/engine-native/syncConcurrency.ts
@@ -17,16 +17,16 @@ metadata:
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: cli/src/engine-native/parseArgs.ts
-      lines: "1-194"
+      lines: "1-196"
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-225"
     - path: cli/src/engine-native/modes.ts
-      lines: "1-173"
+      lines: "1-178"
     - path: cli/src/engine-native/models.ts
-      lines: "1-98"
+      lines: "1-101"
     - path: cli/src/engine-native/liveModels.ts
-      lines: "1-263"
-  updated: "2026-10-14"
+      lines: "1-264"
+  updated: "2026-11-06"
 ---
 
 # Sync Engine Orchestration
@@ -97,9 +97,9 @@ kit-mechanic skill.
 
 | Invocation | Path | Notes |
 |-----------|------|-------|
-| `./docks-kit <args>` | Version-matching compiled binary in `cli/dist/`, otherwise Bun-from-source | The launcher compares binary `--version` with `package.json`, so stale ignored builds cannot mask newer source. |
+| `./docks-kit <args>` | Compiled binary in `cli/dist/` when its version matches and it is current, otherwise Bun-from-source | The launcher compares binary `--version` with `package.json`, and it also rejects the binary when a file under `cli/src` or `cli/docs` is newer than the binary, so stale ignored builds cannot mask newer source. |
 | `cli/src/main.ts` | Effect CLI root command | Parses commands and routes mutating commands through `engine(args)`. |
-| `cli/src/engine.ts` | `engine` / `engineCapture` | Runs EngineNative. `native-raw` child re-spawn remains harness/private compiled-binary plumbing. |
+| `cli/src/engine.ts` | `engine` / `engineCapture` | Runs EngineNative. `engineCapture` re-spawns a child with `DOCKS_KIT_ENGINE=native-capture`, which ignores the env globals. `native-raw` is the harness-private golden channel. |
 | `cli/src/engine-native/index.ts` | `runEngineNative(argv, services?, options?)` | Builds `ctx` through `engineCtx.ts makeCtx`, then dispatches `model`, `toolchain`, and `sync`. Any other first word also runs sync. `options.envGlobals` defaults to false; only the `main.ts` `native-raw` branch passes `{ envGlobals: true }`. |
 
 `models` is not an EngineNative mode. The Effect command in
@@ -122,12 +122,16 @@ selection is stored, it falls back to `claude`, `codex`, and `agents`
 | Flag | Context field | Notes |
 |------|---------------|-------|
 | `--dry-run` | `ctx.dryRun` | Preview only. |
+| `--verbose` | `ctx.verbose` | Also prints no-op confirmations. The Effect `sync` command also accepts `-v`. |
 | `--reconcile` | `ctx.reconcile` | Settings layer only. |
 | `--prune` | `ctx.prune` | Plugin, marketplace, and kit-managed skills removals. |
 | `--skip-bubblewrap` | `ctx.skipBubblewrap` | Skips optional bubblewrap bootstrap for the Codex Linux sandbox. |
 | `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | Installs missing plugins but skips refresh-only calls; no command passes it automatically. |
 | `--claude-model=<m>` | `ctx.claudeModel` | Validated before sync mutations. |
+| `--claude-effort=<level>` | `ctx.claudeEffort` | Sets deployed `effortLevel` through `claudeSettingsModifiers.ts syncClaudeEffort`; `default` restores the SoT level. |
+| `--claude-advisor=on\|off\|default` | `ctx.claudeAdvisor` | Sets or deletes deployed `advisorModel` through `claudeSettingsModifiers.ts syncClaudeAdvisor`. |
 | `--codex-model=<m>` | `ctx.codexModel` | Charset gate blocks TOML injection. |
+| `--codex-effort=<level>` | `ctx.codexEffort` | Sets deployed `model_reasoning_effort` through `codexToml.ts syncCodexEffort`; `default` restores the SoT level. |
 | `--claude-compact-window=<n|Nk>` | `ctx.claudeCompactWindow` | Normalized by `parseCompactWindow`. |
 | `--claude-permissive` | `ctx.claudePermissive` | Clears deployed ask/deny arrays. |
 | `--claude-plugin=<name>` | `ctx.claudePlugins` | Repeatable; allow-list is `supabase`, `n8n`. |
@@ -180,6 +184,7 @@ from the embedded payload.
 | `toolchain check` | `modeToolchain` -> `report` | Prints the toolchain table. |
 | `toolchain ensure bun` | `modeToolchain` -> `bunBootstrap` | Installs the pinned Bun release when Bun is missing. |
 | `toolchain outdated [--refresh]` | `modeToolchain` -> `outdatedReport` | Compares each `verified` pin with the newest upstream release; report only. |
+| `toolchain upgrade [--dry-run]` | `modeToolchain` -> `claudeLsp.ts upgradeLspServers` | Raises each npm-owned LSP server below its `verified` pin to that pin. |
 
 ### Model Validation
 

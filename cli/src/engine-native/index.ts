@@ -2,7 +2,7 @@
  * EngineNative — the supported sync/model/toolchain engine.
  *
  * Golden suites drive it through main.ts's harness-private `native-raw`
- * channel, which bypasses @effect/cli so tests see the internal argv
+ * channel, which bypasses effect/cli so tests see the internal argv
  * vocabulary directly.
  *
  * Split: run context lives in `engineCtx.ts`, scheduling in

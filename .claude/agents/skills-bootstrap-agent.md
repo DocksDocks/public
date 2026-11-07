@@ -42,7 +42,6 @@ Always install for both `claude-code` and `codex` so the canonical
 | Claude symlink repair | `skillsLinks.ts healClaudeSymlink`, `linkOrCopy` |
 | Prune removals | `skillsPrune.ts reconcileRemovals` |
 | Snapshot | `skillsPrune.ts updateSnapshot` |
-| Bun dependency | `bun.ts bunBootstrap` (toolchain owner; do not duplicate) |
 
 ## Success Criteria
 

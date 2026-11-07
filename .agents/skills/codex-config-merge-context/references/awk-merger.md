@@ -7,7 +7,8 @@ formatting.
 ## Critical Constraints
 
 - Pass order is fixed: scrub deprecated features, remove retired plugin tables,
-  merge top-level keys, then replace table blocks.
+  remove retired top-level settings, merge top-level keys, then replace table
+  blocks.
 - Table blocks are replaced wholesale.
 - Writes go through a temporary file/replacement path.
 - `replaceTopLevelSetting` is shared by SoT top-level merge and
@@ -77,6 +78,16 @@ spurious `config.toml.bak`. The pass runs on the staging copy after
 `codexToml.ts mergeTopLevelSettings, staging top-level merge`; `codexConfig.ts
 syncConfig, dry-run branch` returns before staging, so the pass prints nothing
 under `--dry-run`.
+
+## Retired Top-Level Setting Removal
+
+`codexConfig.ts removeRetiredTopLevelSettings, staging retired-setting pass`
+runs after the retired plugin table pass and before `codexToml.ts
+mergeTopLevelSettings, staging top-level merge`. It drops a top-level line
+(before the first table header) that holds exactly a retired kit value from
+`codexConfig.ts RETIRED_TOP_LEVEL_SETTINGS`, now `personality = "pragmatic"`.
+A different user value stays. The pass writes nothing when no retired line is
+present.
 
 ## Gotchas
 

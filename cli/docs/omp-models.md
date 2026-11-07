@@ -346,7 +346,7 @@ has measured both at the other levels.
 ### GPT-5.6 Sol (OpenAI) - previous generation
 
 The role map no longer uses GPT-5.6 Sol. This table stays as the measured
-baseline for the current Sol task role.
+baseline for the GPT-6.1 Sol `task` retry fallback.
 
 | Level | Index | Cost/task | Tokens/task | Index tokens | Speed t/s | TTFT s | TB 4.0 |
 |---|---:|---:|---:|---:|---:|---:|---:|

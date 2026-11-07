@@ -52,7 +52,8 @@ Data source: all keys from SoT `enabledPlugins`, regardless of value.
 For each plugin id:
 
 1. Skip if `pluginUserScopeInstalled(installedPlugins, pluginId)` is true.
-2. Refresh marketplace manifests once before the first install attempt.
+2. If the plugin's source marketplace is present and not yet refreshed in this
+   run, refresh that marketplace once (`refreshedMarketplaces`).
 3. Run `claude plugin install <pluginId>`.
 
 The scope-aware install predicate requires a `scope: "user"` record. Project or
@@ -132,9 +133,13 @@ on `.name` collision while preserving user-only entries.
 
 ## Codex Enabled-Plugin Parser
 
-`enabledPluginIds` scans `SoT/.codex/config.toml` for plugin tables whose body
+`syncPlugins` calls the private `enabledPluginIdsFromText`, which scans the
+`SoT/.codex/config.toml` text for plugin tables whose body
 contains `enabled = true`. Omitted `enabled` defaults to disabled. The parser
 flushes at every table boundary and EOF so each table is emitted at most once.
 The update fast path cross-checks those desired ids against `codex plugin list
 --json` and calls `codex plugin add` only for missing installed rows. Invalid
 inventory output falls back to ordinary full refresh.
+The exported `enabledPluginIds(configFile)` is a file wrapper over the same
+parser. Its one caller, `codexStatus.ts`, counts the enabled plugins of the
+deployed `~/.codex/config.toml` for the status output.

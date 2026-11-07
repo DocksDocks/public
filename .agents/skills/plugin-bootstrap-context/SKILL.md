@@ -7,18 +7,18 @@ metadata:
     - path: cli/src/engine-native/claudePluginPasses.ts
       lines: "1-426"
     - path: cli/src/engine-native/codexPlugins.ts
-      lines: "1-290"
+      lines: "1-315"
     - path: cli/src/engine-native/claudeOptionalPlugins.ts
       lines: "1-126"
     - path: cli/src/engine-native/claudeLsp.ts
-      lines: "1-282"
+      lines: "1-301"
     - path: cli/src/engine-native/failures.ts
       lines: "1-16"
     - path: SoT/.claude/settings.json
-      lines: "220-270"
+      lines: "985-999"
     - path: SoT/.codex/plugins/marketplace.json
       lines: "1-36"
-  updated: "2026-10-14"
+  updated: "2026-11-06"
 ---
 
 # Plugin Bootstrap
@@ -81,8 +81,9 @@ All live in `syncPlugins(ctx, claudeDir)`:
    plugin id ends in `@claude-plugins-official` and that marketplace is absent
    from `known_marketplaces.json`, also run
    `claude plugin marketplace add anthropics/claude-plugins-official`.
-2. Install SoT-declared plugins missing a user-scope install record; refresh
-   marketplace manifests once before the first install attempt.
+2. Install SoT-declared plugins missing a user-scope install record. Before
+   the first install from a marketplace, refresh that source marketplace once
+   per run, and only when the marketplace is present.
 3. Refresh kit-owned marketplace manifests unless `ctx.skipPluginRefresh` is
    set.
 4. Update kit-owned plugins that have a user-scope install record, best-effort,
@@ -166,8 +167,11 @@ failure for those ids. The kit never forces the SoT name, because that would
 orphan the user's existing `<plugin>@<user-name>` tables.
 
 `removeLegacyDocksMarketplace` cleans up the old configured Docks marketplace
-when it points at the same Git source. `enabledPluginIds` parses enabled plugin
-tables from `SoT/.codex/config.toml`; ordinary `syncPlugins` runs `codex plugin add`
+when it points at the same Git source. `syncPlugins` parses enabled plugin
+tables from `SoT/.codex/config.toml` with the private `enabledPluginIdsFromText`.
+The exported `enabledPluginIds` is the file wrapper that `codexStatus.ts` uses to
+count the enabled plugins of the deployed `~/.codex/config.toml` for the status
+output. Ordinary `syncPlugins` runs `codex plugin add`
 for each enabled id so installed plugin caches refresh. With `ctx.skipPluginRefresh`,
 the supported `codex plugin list --json` inventory filters the operation to missing
 ids; an invalid inventory falls back to the full refresh path.

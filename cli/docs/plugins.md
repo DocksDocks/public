@@ -38,11 +38,14 @@ A marketplace or plugin command that exits non-zero is warned in place AND
 recorded, then listed under a `--- Failures ---` block after the summary; the
 sync exits 1. A stale plugin therefore no longer looks like a clean sync.
 
-Not a failure: a missing harness CLI, missing git, and a missing
-`SoT/toolchain.json` pin. Those stay warn-and-skip with exit 0, so a host
-without Claude, Codex, or omp installed still syncs its deployed config
-cleanly. An unavailable plugin inventory warns without a ledger row and falls
-back to the full refresh, whose failed commands are recorded.
+Not a failure: a missing harness CLI, missing git, and a missing LSP, Bun, or
+`pi-intercom` pin in `SoT/toolchain.json`. Those stay warn-and-skip with exit
+0, so a host without Claude, Codex, or omp installed still syncs its deployed
+config cleanly. A missing `skills-cli` pin is different: when `npx` is
+available and `SoT/.agents/skills.txt` names a skill that is not installed yet,
+the agents sync stops with exit 1, in a dry run too. An unavailable plugin
+inventory warns without a ledger row and falls back to the full refresh, whose
+failed commands are recorded.
 
 ## Optional opt-ins
 

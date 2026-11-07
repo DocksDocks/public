@@ -9,17 +9,24 @@ the kit. Only files under `SoT/.codex/rules/` are kit-managed.
 
 ```text
 prefix_rule(pattern=["cmd", "subcmd"], decision="<allow|prompt|forbidden>")
+prefix_rule(pattern=["cmd", ["-a", "-b"]], decision="forbidden", justification="<reason>")
 ```
 
-- `pattern` is an argv-prefix array.
+- `pattern` is an argv-prefix array. A nested list at one position lists
+  alternative tokens for that position, for example `["rm", ["-r", "-rf"], "/"]`.
 - `decision` is `allow`, `prompt`, or `forbidden`.
+- `justification` is optional and states the reason for the decision.
+
+When more than one rule matches, Codex applies the strictest decision
+(`forbidden` > `prompt` > `allow`). An allow rule in another `.rules` file
+therefore cannot loosen a `prompt` or `forbidden` rule.
 
 ## Decision Tiers
 
 | Tier | Value | Meaning |
 |------|-------|---------|
-| Read-only | `allow` | Runs outside the sandbox without a prompt. |
-| Mutating | `prompt` | User confirmation required. |
+| Safe without a prompt | `allow` | Runs outside the sandbox without a prompt. Mostly read-only commands; `trash`, which moves files to the trash, is also `allow`. |
+| Mutating | `prompt` | Approval required. The approvals reviewer in `config.toml` (`approvals_reviewer = "auto_review"`) gets the request, not always a person. |
 | Destructive/escalation | `forbidden` | Always blocked. |
 
 ## Pattern Matching

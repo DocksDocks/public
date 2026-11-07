@@ -215,7 +215,7 @@ const GLOBAL_INSTALL: OtherRule = {
 };
 const REMOTE: OtherRule = {
   category: "remote resource",
-  hint: "Delete it with the provider's command only when its target is development, test, homologation, staging, or preview, and the task no longer needs it. For a production target, ask the user first. If you do not delete it, name it in your final answer.",
+  hint: "Delete it with the provider's command only when its target is local, development, dev, test, homolog, homologation, staging, or preview, and the task no longer needs it. For a production target, ask the user first. If you do not delete it, name it in your final answer.",
 };
 const STASH: OtherRule = {
   category: "git stash",

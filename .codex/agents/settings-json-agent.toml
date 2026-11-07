@@ -48,7 +48,7 @@ left untouched.
 | Root Claude JSON | `syncClaudeJson` |
 | Cloud connector env | `syncConnectorEnv` |
 | Removed manifest | `syncRemovals` |
-| Deploy modifiers | `syncCompactWindow`, `syncPermissive`, `syncClaudeModel` |
+| Deploy modifiers | `syncCompactWindow`, `syncPermissive`, `syncClaudeModel`, `syncClaudeEffort`, `syncClaudeAdvisor` |
 
 ## Success Criteria
 

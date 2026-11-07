@@ -127,11 +127,11 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
   `docks-kit docs command-guards`.
 - **Agent cleanup (omp)** — `docks-kit scratch` creates agent temporary
   directories and removes agent temporary files and directories with checked
-  paths, and `docks-kit tidy` removes merged idle worktrees, their containers,
-  orphaned processes, and idle scratch directories; `--report` lists other
-  disk and memory use. The kit omp plugin `docks-kit-omp` exposes these as
-  tools, reminds the agent of what it created, and runs the sweep at most
-  once per 12 hours.
+  paths. `docks-kit tidy` lists merged idle worktrees, their containers,
+  orphaned processes, and idle scratch directories, and `docks-kit tidy
+  --apply` removes them; `--report` lists other disk and memory use. The kit
+  omp plugin `docks-kit-omp` exposes these as tools, reminds the agent of
+  what it created, and runs the sweep at most once per 12 hours.
 
 ## Repository map
 
