@@ -238,8 +238,10 @@ post-install `bwrap` re-probe, the `unshare` call, and its error warning).
   It finds a quoted key (verify:
   `bunx vitest run cli/test/unit/manifests.test.ts -t "reads a quoted top-level key"`).
   Unprobed: no unit test covers the undefined result for a dotted or escaped
-  key or for a value that is not a string. Read `manifests.ts tomlKeyName`
-  (verify: `grep -n -A3 "function tomlKeyName" cli/src/manifests.ts`).
+  key or for a value that is not a string. `manifests.ts tomlKeyName` decodes
+  the key (verify: `grep -n -A3 "function tomlKeyName" cli/src/manifests.ts`).
+  `topLevelTomlString` accepts only a quoted string value (verify:
+  `grep -n "const value = line.slice" cli/src/manifests.ts`).
 
 ## References
 

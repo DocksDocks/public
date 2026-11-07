@@ -74,7 +74,9 @@ These § Flags entries are deploy-time modifiers: `--claude-compact-window`,
 `--claude-permissive`, `--claude-model`, `--claude-effort`, `--claude-advisor`,
 `--codex-model`, and `--codex-effort`. They mutate deployed config away from
 the SoT. A later flag-less sync restores SoT values. `--claude-plugin` is not a
-modifier; see § Sticky Opt-Ins.
+deploy-time modifier, because it is a sticky opt-in (§ Sticky Opt-Ins). It is
+still an `engineCtx.ts ModifierFlag`, and `parseModifiers.ts addClaudePlugin`
+records it for `MODIFIER_METADATA` validation.
 
 `claudeSync` runs its modifiers after the base deploy. `codexSync` folds the
 Codex values into the SoT text before the `syncConfig` merge. It then runs
