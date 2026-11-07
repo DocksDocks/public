@@ -147,8 +147,18 @@ normalization injectable for tests. These direct reads remain:
 - `tidy.ts` `listProcesses`;
 - `tidyReport.ts` `memorySection`, `processSection`, `trashSection`,
   `scheduledSection`, and `buildTidyReport`;
-- `scratch.ts` `removeTemporaryPath`;
-- `tidyLock.ts` `isWindowsContention`.
+- `scratch.ts` `removeTemporaryPath`.
+
+Two cross-platform primitives need no platform branch:
+
+- `kitLock.ts` `acquireKitLock`: an SQLite `BEGIN EXCLUSIVE` lock. The OS
+  releases it when the holder process ends, on POSIX and on Windows.
+- `processes.ts` `processExited`: `process.kill(pid, 0)` throws ESRCH for an
+  exited PID on every host (libuv `uv_kill`).
+
+The omp extension `SoT/.omp/plugin/extensions/hygiene.ts` is outside the
+engine. Its `isWindowsContention` reads `process.platform` and runs an EPERM
+probe on win32 only.
 
 Per-OS facts live in `os/linux.ts`, `os/darwin.ts`, and `os/windows.ts` behind
 `HostOs`; consumers select those facts through the package rather than branching

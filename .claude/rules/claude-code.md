@@ -262,7 +262,7 @@ For plugins, `./docks-kit sync` runs seven idempotent passes via the `claude plu
 
 Every `claude plugin` call runs from a neutral working directory (the system temp directory), not from the directory where you run sync. An unscoped `claude plugin marketplace remove` removes the declaration from every scope that Claude Code sees. A neutral working directory keeps pass 6 from editing the `.claude/settings.json` or `.claude/settings.local.json` of the checkout where you run sync.
 
-`--reconcile` and `--prune` are orthogonal: `--reconcile` reconciles `settings.json` through the native TypeScript merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--prune` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall kit-managed skills tracked in `~/.agents/.kit-managed-skills` that are no longer in `SoT/.agents/skills.txt`). Default sync is additive on all three layers — drift survives.
+`--reconcile` and `--prune` are orthogonal: `--reconcile` reconciles `settings.json` through the native TypeScript merge (SoT-declared keys win, `permissions.{allow,deny,ask}` arrays are replaced wholesale by SoT, user-only top-level keys and nested objects are preserved), `--prune` reconciles the plugin layer (uninstall + marketplace remove) AND the skills layer (uninstall the skills named in `~/.agents/.kit-owned-skills` that are no longer in `SoT/.agents/skills.txt`; the legacy `~/.agents/.kit-managed-skills` is read only and never authorizes a removal). Default sync is additive on all three layers — drift survives.
 
 ### When to use `--reconcile` and `--prune`
 

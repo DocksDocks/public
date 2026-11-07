@@ -26,9 +26,9 @@ Escape leaves it unchanged.
 
 | Flag | Effect |
 |------|--------|
-| `--dry-run` | Preview without applying |
+| `--dry-run` | Preview without applying; takes no sync lock |
 | `--reconcile` | Settings layer reconciled toward SoT (SoT keys win; user-only keys preserved; permissions arrays replaced) |
-| `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, universal skills |
+| `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, and the universal skills that `~/.agents/.kit-owned-skills` names |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
 | `--skip-plugin-refresh` | Install missing Claude, Codex, and omp plugins but skip refresh-only updates |
 | `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
@@ -38,6 +38,23 @@ Escape leaves it unchanged.
 | Variable | Effect |
 |----------|--------|
 | `DOCKS_KIT_SYNC_CONCURRENCY=1\|2\|3` | Maximum selected sync pipelines running at once. Default `3`; use `1` for serial golden/debug execution. Invalid values fail `sync` with exit 2 but do not affect `model` or `toolchain`. |
+| `DOCKS_KIT_SYNC_LOCK_WAIT_MS=<ms>` | Time that `sync` and a `model` write wait for another sync to release the sync lock. A non-negative integer in milliseconds; unset or empty means `120000` (120 s). Any other value prints `DOCKS_KIT_SYNC_LOCK_WAIT_MS must be a non-negative integer` and exits 2. |
+
+## Sync lock
+
+`sync` and `model <tool> <value>` hold the lock
+`~/.cache/docks-kit/sync-lock.db` while they run, so two runs never write the
+same files at once.
+
+- A run waits up to 120 s for another run to release the lock
+  (`DOCKS_KIT_SYNC_LOCK_WAIT_MS` changes the wait). It then prints
+  `another docks-kit sync holds <path>; run sync again after it ends` and
+  exits 1 with no change.
+- A run with `--dry-run`, `-h`, or `--help` takes no lock. `model <tool>`
+  without a value only reads, so it takes no lock.
+- The lock goes when the run ends, also when the process is killed.
+- A held lock also delays the error of an invalid argument until the wait
+  ends.
 
 ## Per-tool flags
 
@@ -106,7 +123,7 @@ forwarded `--model` stops the launcher with exit 2, also behind `--`.
 | `scratch new <label>` | Create a private directory (mode 0700) `~/.cache/docks-kit/scratch/<label>-XXXXXX` and print its path; the label matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` |
 | `scratch remove <path>...` | Remove each path whose real path is strictly inside the scratch root, the system temporary directory, or `/var/tmp`; print `removed <path>` or `refused <path>: <reason>`; exit 1 when any path is refused |
 | `tidy` | List the safe leftover actions (`remove`, `stop`) and the kept candidates (`keep`) with reasons; change nothing |
-| `tidy --apply` | Perform those actions under the lock `~/.cache/docks-kit/tidy.lock` and append the outcomes to `~/.cache/docks-kit/tidy.log`; exit 1 when an action fails |
+| `tidy --apply` | Take the lock `~/.cache/docks-kit/tidy-lock.db`, then plan, perform those actions, and append the outcomes to `~/.cache/docks-kit/tidy.log`; exit 1 when an action fails. When another run holds the lock, print only `another docks-kit tidy run holds <path>`, with no plan and no report, and exit 0. A dry run (`tidy` without `--apply`) and the `--report` sections take no lock |
 | `tidy --repo <path>` | Take the worktree candidates only from that repository, at any location |
 | `tidy --report` | After the plan, print read-only sections on memory, temporary directories, processes, Docker, caches, Trash, git, agent histories, scheduled jobs, and global installs |
 

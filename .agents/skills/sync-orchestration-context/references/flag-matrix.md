@@ -64,7 +64,7 @@ Model-flag validation rules live in
 | `~/.claude/settings.json` | SoT keys win; permissions arrays replaced | No effect | Additive merge; permissions unioned |
 | Claude plugins/marketplaces | No effect | Remove user-scope plugins and extra marketplaces absent from SoT, including hand-installed ones (`claudePluginPasses.ts syncPlugins`, passes 5-6) | Additive install/update |
 | Codex personal marketplace/plugins | Additive merge still preserves user entries | No effect | Deploy and refresh enabled plugins; remove the legacy configured Docks marketplace |
-| `~/.agents/skills/` | No effect | Remove snapshot-managed slugs absent from manifest | Additive install and symlink heal |
+| `~/.agents/skills/` | No effect | Remove slugs in `~/.agents/.kit-owned-skills` that the manifest no longer lists; keep legacy `.kit-managed-skills` entries with a `keep` line | Additive install and symlink heal; record kit installs in `.kit-owned-skills` |
 
 (verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "keeps marketplaces used by project-scoped plugins during prune"`)
 

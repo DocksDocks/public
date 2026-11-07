@@ -58,11 +58,15 @@ and can move workspace files into the read-only `.git` directory, for example
 
 | File | Owner | Sync behavior |
 |------|-------|---------------|
-| `~/.codex/rules/docks.rules` | Kit | Sync copies it wholesale from the SoT and records it in `~/.codex/.kit-managed-rules`. Sync backs up an existing file that differs to `docks.rules.bak` and replaces it, recorded or not. |
-| A recorded rules file that the SoT dropped | Kit | Removed while it holds the recorded kit bytes; kept with a warning after a user edit. |
+| `~/.codex/rules/docks.rules` | Kit | Sync copies it wholesale from the SoT through `atomicWrite.ts replaceFile` and records the sha256 of its kit bytes in `~/.codex/.kit-managed-rules` before the copy. Sync backs up an existing file that differs to `docks.rules.bak` and replaces it, recorded or not. |
+| A recorded rules file that the SoT dropped | Kit | Removed while its hash is one of the hashes recorded for its name; kept with a warning after a user edit. |
 | `~/.codex/rules/default.rules` | User/Codex | Never read or removed, because the SoT does not ship that name and no sync records it. |
 
-Verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`.
+The manifest can hold two lines for one name. Before the deploy, sync writes
+the new kit hash next to the recorded hash. When the sync completes, it writes
+one line per shipped name. `SKILL.md` § Rules Deployment owns the steps.
+
+Verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"` and `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules record ahead"`.
 
 ## Gotchas
 

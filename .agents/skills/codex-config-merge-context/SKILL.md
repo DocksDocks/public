@@ -12,7 +12,7 @@ metadata:
     - path: cli/src/engine-native/tomlLines.ts
       lines: "1-92"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "1-274"
+      lines: "1-314"
     - path: cli/src/engine-native/codexPlugins.ts
       lines: "1-315"
     - path: cli/src/engine-native/codexHooks.ts
@@ -24,7 +24,7 @@ metadata:
     - path: cli/src/engine-native/services.ts
       lines: "1-89"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-123"
+      lines: "1-224"
     - path: cli/src/efforts.ts
       lines: "1-89"
     - path: SoT/.codex/config.toml
@@ -147,20 +147,41 @@ Both modifiers are deploy-only; a later flag-less sync restores the SoT value.
 
 `codexSync.ts syncRules, kit rules manifest` copies kit-managed `*.rules` files
 from `SoT/.codex/rules/` and backs up a deployed file that it changes. It
-records each deployed file and the sha256 of its kit bytes in
-`~/.codex/.kit-managed-rules`. When the SoT drops a recorded file, each sync
-removes the deployed copy while it still holds the recorded kit bytes. A
-dropped file that the user edited stays, keeps its record, and gets a warning
-(verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`).
+writes each file through `atomicWrite.ts replaceFile`. An interrupted write
+keeps the previous file, and Codex never loads the `*.tmp` sibling, because it
+reads only `*.rules` files (verify:
+`bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "keeps the previous rules file when a rules write is interrupted"`).
+
+`~/.codex/.kit-managed-rules` records the sha256 of the kit bytes of each
+deployed file. `readRulesRecords` returns a set of hashes for each name.
+
+1. Record ahead: before the deploy loop, sync writes the manifest with each
+   recorded set plus the new kit hash of each shipped name. A name whose kit
+   bytes change then has two lines. A sync that stops after a deploy thus
+   leaves a record of the bytes it wrote.
+2. Deploy: sync skips a byte-identical file and replaces every other shipped
+   name (step above).
+3. Cleanup: when the SoT drops a recorded file, sync removes the deployed copy
+   while its hash is in the set of its name. A dropped file that the user
+   edited stays, keeps its set, and gets a warning.
+4. Final manifest: one line per shipped name, plus the kept set of each kept
+   dropped name.
+
+Every recorded hash is a hash of kit bytes, so no record lets cleanup remove
+bytes that the user wrote. An older kit that reads a two-line manifest keeps
+the last line for a name, so at worst it keeps a file with a warning.
+Residual: when a sync stops between the write-ahead and the deploy, a name
+whose file held user bytes that no sync recorded gets the "differs from the
+kit copy" warning after the SoT drops it.
+(verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules record ahead"` and `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "Codex rules deploy"`)
+
 `~/.codex/rules/default.rules` is user-learned state. The SoT does not ship
 that name and no sync records it, so sync never reads or removes it (verify:
 `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`).
 Sync still deploys each name that the SoT ships over an existing file,
 recorded or not: it backs up a file that differs to `<name>.bak` and replaces
-it. This includes an existing `docks.rules` on the first sync after the upgrade
-that added the manifest. Sync writes the manifest through
-`atomicWrite.ts replaceTextIfChanged`, so an interrupted sync keeps the
-previous complete manifest (verify:
+it. Both manifest writes go through `atomicWrite.ts replaceTextIfChanged`, so
+an interrupted sync keeps the previous complete manifest (verify:
 `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "keeps the previous manifest when a manifest write is interrupted"`).
 Root `AGENTS.md` (Codex SoT notes) owns the manifest line format and the
 `--dry-run` output.
