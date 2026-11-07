@@ -24,7 +24,7 @@ metadata:
     - path: cli/src/engine-native/os/targets.ts
       lines: "1-77"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-105"
+      lines: "1-123"
     - path: cli/src/engine-native/logger.ts
       lines: "1-196"
     - path: cli/src/engine-native/services.ts

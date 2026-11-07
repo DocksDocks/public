@@ -12,7 +12,7 @@ import {
 } from "node:fs";
 import type * as FsModule from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const faults = vi.hoisted(() => ({
@@ -22,6 +22,10 @@ const faults = vi.hoisted(() => ({
    * The prefix covers the file and its temporary siblings.
    */
   interruptWritesUnder: undefined as string | undefined,
+  /** While set, `renameSync` throws an error with this code and renames nothing. */
+  renameErrorCode: undefined as string | undefined,
+  /** While set, `unlinkSync` throws an error with this code and removes nothing. */
+  unlinkErrorCode: undefined as string | undefined,
 }));
 
 vi.mock("node:fs", async () => {
@@ -51,6 +55,28 @@ vi.mock("node:fs", async () => {
         code: "EIO",
       });
     },
+    renameSync: (from: FsModule.PathLike, to: FsModule.PathLike) => {
+      const code = faults.renameErrorCode;
+      if (code === undefined) {
+        actual.renameSync(from, to);
+        return;
+      }
+      throw Object.assign(new Error(`${code}: injected fault, rename '${String(from)}'`), {
+        code,
+        syscall: "rename",
+      });
+    },
+    unlinkSync: (path: FsModule.PathLike) => {
+      const code = faults.unlinkErrorCode;
+      if (code === undefined) {
+        actual.unlinkSync(path);
+        return;
+      }
+      throw Object.assign(new Error(`${code}: injected fault, unlink '${String(path)}'`), {
+        code,
+        syscall: "unlink",
+      });
+    },
   };
 });
 
@@ -66,6 +92,8 @@ describe("replaceFile", () => {
 
   afterEach(() => {
     faults.interruptWritesUnder = undefined;
+    faults.renameErrorCode = undefined;
+    faults.unlinkErrorCode = undefined;
     rmSync(sandbox, { recursive: true, force: true });
   });
 
@@ -145,5 +173,42 @@ describe("replaceFile", () => {
 
     expect(readdirSync(sandbox)).toEqual(["settings.json"]);
     expect(readFileSync(file, "utf8")).toBe('{"a":1}');
+  });
+
+  it.skipIf(windows)("replaces a symlinked file whose target has a long name", () => {
+    // 250 characters: the name plus `.<pid>.<16 hex>.tmp` exceeds the 255-byte limit.
+    const real = join(sandbox, `${"a".repeat(245)}.json`);
+    const link = join(sandbox, "settings.json");
+    writeFileSync(real, "{}");
+    symlinkSync(real, link);
+
+    replaceFile(link, '{"a":1}');
+
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(readFileSync(real, "utf8")).toBe('{"a":1}');
+    // No temporary sibling is left.
+    expect(readdirSync(sandbox).sort()).toEqual([basename(real), "settings.json"].sort());
+  });
+
+  it("throws the rename error when the cleanup also fails", () => {
+    const file = join(sandbox, "settings.json");
+    writeFileSync(file, '{"a":1}');
+
+    faults.renameErrorCode = "EPERM";
+    faults.unlinkErrorCode = "EBUSY";
+    expect(() => replaceFile(file, '{"a":2}')).toThrow(/^EPERM: injected fault, rename /);
+
+    expect(readFileSync(file, "utf8")).toBe('{"a":1}');
+  });
+
+  it("leaves no temporary sibling when the rename fails", () => {
+    // A directory at the target path makes the rename fail.
+    const file = join(sandbox, "settings.json");
+    mkdirSync(file);
+
+    expect(() => replaceFile(file, '{"a":1}')).toThrow();
+
+    expect(readdirSync(sandbox)).toEqual(["settings.json"]);
+    expect(statSync(file).isDirectory()).toBe(true);
   });
 });

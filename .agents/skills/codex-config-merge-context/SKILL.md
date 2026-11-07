@@ -24,7 +24,7 @@ metadata:
     - path: cli/src/engine-native/services.ts
       lines: "1-89"
     - path: cli/src/engine-native/atomicWrite.ts
-      lines: "1-105"
+      lines: "1-123"
     - path: cli/src/efforts.ts
       lines: "1-89"
     - path: SoT/.codex/config.toml
