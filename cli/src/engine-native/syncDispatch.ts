@@ -64,8 +64,11 @@ const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "
  * it throws; the OS releases the locks when the process ends.
  *
  * With `privateDirectory` false, each path is a folder lock. A missing folder
- * is created with no chmod just before its lock, so the locks taken before it
- * already guard its ancestors.
+ * is created just before its lock, so the locks taken before it already guard
+ * its ancestors. Each folder that this creates gets mode 0700, as
+ * `ompFileDeploy.ts ensureDirectory` gives the parents of an omp folder. An
+ * existing folder keeps its mode: `mkdirSync` applies `mode` only to the
+ * folders that it creates.
  */
 async function withKitLocks(
   err: ErrorSink,
@@ -77,7 +80,7 @@ async function withKitLocks(
   const held: Array<KitLock> = [];
   try {
     for (const path of paths) {
-      if (!privateDirectory) mkdirSync(dirname(path), { recursive: true });
+      if (!privateDirectory) mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
       const result = await acquireKitLock(path, { waitMs, privateDirectory });
       if (result.kind === "held") {
         err(`another docks-kit sync holds ${path}; run sync again after it ends`);
