@@ -20,7 +20,7 @@ metadata:
     - path: cli/src/commands/scratch.ts
       lines: "1-75"
     - path: SoT/.omp/plugin/extensions/hygiene.ts
-      lines: "1-2036"
+      lines: "1-2044"
     - path: cli/test/unit/tidy.test.ts
       lines: "1-639"
     - path: cli/test/unit/kitLock.test.ts
@@ -30,7 +30,7 @@ metadata:
     - path: cli/test/unit/scratch.test.ts
       lines: "1-187"
     - path: cli/test/unit/ompKitPluginExtension.test.ts
-      lines: "1-1304"
+      lines: "1-1319"
     - path: cli/test/lib/gitSandbox.ts
       lines: "1-181"
   updated: "2026-11-07"

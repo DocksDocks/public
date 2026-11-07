@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import type * as FsModule from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const faults = vi.hoisted(() => ({
@@ -1100,6 +1100,21 @@ describe("sweep scheduling", () => {
           live.kill();
           await liveExit;
         }
+      });
+
+      it("makes no probe for an exited probe file that the folder does not let it remove", () => {
+        const cacheDir = sandbox();
+        const exited = spawnSync(process.execPath, ["-e", ""]).pid;
+        const deadProbe = join(cacheDir, `tidy.stamp.claim.${exited}.0123456789abcdef.probe`);
+        writeFileSync(deadProbe, "");
+        onWindows();
+        // The folder denies deletes: the removal fails, and so would the removal of a probe of it.
+        inject("unlinkSync", deadProbe, "EPERM");
+        inject("unlinkSync", `${deadProbe}.`, "EPERM", "prefix");
+
+        expect(attempt(cacheDir, Date.now())).toBe("true");
+        expect(probeCalls("openSync", deadProbe)).toEqual([]);
+        expect(probeFiles(cacheDir)).toEqual([basename(deadProbe)]);
       });
     });
   });

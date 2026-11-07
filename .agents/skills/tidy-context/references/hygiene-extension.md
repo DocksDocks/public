@@ -69,6 +69,7 @@ Windows contention (`isWindowsContention`), used by `createOwned`, `removeIfPres
 - EPERM runs a probe (`probeSucceeds`). Windows gives `ERROR_ACCESS_DENIED` (EPERM) both for a "delete pending" name and for a folder that denies the operation. The probe creates `<path>.<pid>.<16 hex>.probe` with `wx`, closes it, and removes it. When both steps succeed, the EPERM is contention. When either step fails, for any reason, the caller throws the original EPERM.
 - On contention, a create gives no token for that attempt. When the claim is then stale or gone, the takeover path can still take it; otherwise `claimSweep` returns false and a later main session claims the due sweep. A delete or a release removes nothing, and the file stays until it is stale.
 - A process that stops between the probe create and its removal leaves a `.probe` file with its PID. `removeExitedProbes` removes a `tidy.stamp.claim.*.probe` or `tidy.stamp.takeover.*.probe` file when `hasExited` reports its PID (ESRCH). It keeps the file of a live process.
+- `removeExitedProbes` unlinks with a best-effort `unlinkSync` that ignores errors and makes no probe. A folder that denies deletes keeps the dead probe file and gets no nested probe file on each due session.
 - Residual: a deny ACL on the claim file itself, not on the folder, still reads as contention.
 - On other platforms, EPERM and EBUSY stay errors.
 
@@ -82,6 +83,7 @@ Consequences:
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "claimSweep on Windows while another process deletes a claim file"`.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "when the create of the probe fails with EPERM"`.
 - Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "removes the probe files of an exited process"`.
+- Probe: `bunx vitest run cli/test/unit/ompKitPluginExtension.test.ts -t "makes no probe for an exited probe file that the folder does not let it remove"`.
 
 ## Interval and limits
 

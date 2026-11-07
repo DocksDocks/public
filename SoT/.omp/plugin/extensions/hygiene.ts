@@ -1673,14 +1673,15 @@ function probeSucceeds(path: string): boolean {
 
 /**
  * True on Windows for an error of an operation on `path` that another process
- * causes when it deletes or holds `path`. libuv, which runs the `node:fs`
- * calls of Bun and Node.js on Windows, gives EBUSY only for a sharing or lock
+ * causes when it deletes or holds `path`. libuv runs the `node:fs` calls of
+ * Bun and Node.js on Windows. It gives EBUSY only for a sharing or lock
  * violation, so EBUSY is always contention. It gives EPERM for
- * ERROR_ACCESS_DENIED, which Windows returns both for an open or a delete of a
- * "delete pending" name (a deleted file that another process still has open)
- * and for a folder that denies the operation. Thus EPERM is contention only
- * when the probe succeeds; otherwise the caller throws the EPERM. On POSIX,
- * EPERM and EBUSY are real faults, so they stay errors.
+ * ERROR_ACCESS_DENIED. Windows returns that error for an open or a delete of a
+ * "delete pending" name, which is a deleted file that another process still
+ * has open. It also returns it for a folder that denies the operation. Thus
+ * EPERM counts as contention only when the probe succeeds; otherwise the
+ * caller throws the EPERM. On POSIX, EPERM and EBUSY are real faults, so they
+ * stay errors.
  */
 function isWindowsContention(error: unknown, path: string): boolean {
   if (process.platform !== "win32") return false;
@@ -1748,11 +1749,18 @@ function hasExited(pid: number): boolean {
 /**
  * Removes each probe file of the claim and of the takeover mutex whose process
  * has exited. Keeps the probe file of a running process, which removes it.
+ * The removal is best effort and makes no probe. So a folder that denies
+ * deletes keeps the file and cannot get a new probe file on each sweep.
  */
 function removeExitedProbes(cacheDir: string): void {
   for (const name of readdirSync(cacheDir)) {
     const pid = PROBE_FILE.exec(name)?.[1];
-    if (pid !== undefined && hasExited(Number(pid))) removeIfPresent(join(cacheDir, name));
+    if (pid === undefined || !hasExited(Number(pid))) continue;
+    try {
+      unlinkSync(join(cacheDir, name));
+    } catch {
+      // The next sweep tries again.
+    }
   }
 }
 
