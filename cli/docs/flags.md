@@ -30,7 +30,7 @@ Escape leaves it unchanged.
 | `--reconcile` | Settings layer reconciled toward SoT (SoT keys win; user-only keys preserved; permissions arrays replaced) |
 | `--prune` | Uninstall kit-managed installs not in SoT: plugins, marketplaces, universal skills |
 | `--skip-bubblewrap` | Skip optional bubblewrap bootstrap (Codex Linux sandbox) |
-| `--skip-plugin-refresh` | Install missing Claude/Codex plugins but skip refresh-only updates |
+| `--skip-plugin-refresh` | Install missing Claude, Codex, and omp plugins but skip refresh-only updates |
 | `--verbose` / `-v` | Also print no-op confirmations (already in sync, up to date, left as-is); accepted on `sync`, `model`, and `toolchain` |
 
 ## Environment overrides
@@ -60,7 +60,7 @@ ignored with a warning; Claude modifiers never touch Codex config and vice versa
 
 | Flag | Effect |
 |------|--------|
-| `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost; recorded in `~/.docks-kit/kit.db` (table `omp_session`) |
+| `--model <selector>` | Session model for this run and later runs; rejected unless the live catalog reports zero input and output cost with `pricingStatus` `free` or `unknown`; recorded in `~/.docks-kit/kit.db` (table `omp_session`) |
 | `--pick` | Interactive picker over free catalog models; records the choice the same way |
 | `--fast` | Toggle `tier.openai` between `priority` and `none` in the deployed `~/.omp/agent/config.yml`, print the change, and exit; the same tier omp's `/fast on` selects for OpenAI and Codex models |
 
@@ -77,10 +77,11 @@ The launcher rejects a forwarded `--config`, `--model`, `--smol`, `--slow`,
 in the `--flag value` and the `--flag=value` form and also after a `--`. It
 exits with code 2 before omp starts. The error names the flag and the
 recoveries: `--model <selector>` before the other arguments or `--pick` for a
-free model, `omp` directly for a paid model, and `PI_CONFIG_FILES` for another
-config file. The launcher sets `PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and
-`PI_PLAN_MODEL` to the free role values, warns once for each exported value
-that it replaces, and appends the overlay to `PI_CONFIG_FILES`. See
+free model, and `omp` directly for a paid model. For a forwarded `--config`, it
+also names `PI_CONFIG_FILES` for another config file. The launcher sets
+`PI_SMOL_MODEL`, `PI_SLOW_MODEL`, and `PI_PLAN_MODEL` to the free role values,
+warns once for each exported value that it replaces, and appends the overlay
+to `PI_CONFIG_FILES`. See
 [omp-models.md](omp-models.md#free-session-launcher-docks-kit-omp) for the
 full policy and the paths that stay outside the launcher.
 
@@ -121,3 +122,4 @@ Old flags exit with a rename hint — there is no compat behavior.
 | `--680k` | `--claude-compact-window=680k` |
 | `--permissive` | `--claude-permissive` |
 | `--supabase` / `--n8n` | `--claude-plugin=supabase` / `--claude-plugin=n8n` |
+| `--skip-rtk` | `--skip-bubblewrap` |

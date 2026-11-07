@@ -9,8 +9,10 @@ threshold, and what omp's reserve-based default computes on each model lane.
 `packages/agent/src/compaction/compaction.ts` selects the trigger from three
 branches, in priority order.
 
-1. A positive `compaction.thresholdTokens` wins. omp clamps it to the range 1
-   through `contextWindow - 1`.
+1. A positive `compaction.thresholdTokens` wins. A value below the window is
+   exact. For a value at or above the window, the behavior depends on the omp
+   release. omp 18.4.4 through 18.8.7 clamps the value to `contextWindow - 1`.
+   omp 18.8.8 and later fall back to the reserve-based budget of branch 3.
 2. Otherwise a positive `compaction.thresholdPercent` applies. omp clamps the
    percent to the range 1 through 99 and computes
    `floor(contextWindow * percent / 100)`.
@@ -31,10 +33,11 @@ constant.
 
 | Lane | Window | Reserve | Threshold | Percent of window |
 |---|---:|---:|---:|---:|
-| `openai-codex/*` | 272,000 | 40,800 | 231,200 | 85.0% |
+| `openai-codex/gpt-6-astra`, `openai-codex/gpt-6-luna` | 272,000 | 40,800 | 231,200 | 85.0% |
+| `openai-codex/gpt-6.1-sol`, `openai-codex/gpt-6.1-terra` | 500,000 | 75,000 | 425,000 | 85.0% |
 | `anthropic/*` | 1,000,000 | 150,000 | 850,000 | 85.0% |
 
-Both lanes compact at the same fraction of their own window. The absolute
+Every lane compacts at the same fraction of its own window. The absolute
 trigger differs only because the windows differ.
 
 ## Why the kit no longer pins 231200
@@ -81,10 +84,13 @@ The command must print `-1`.
 
 ## The clamp hazard a fixed pin carries
 
-The fixed-token branch clamps the pinned value to `contextWindow - 1`. On any
-model whose window is below the pinned value, the reserve collapses to one
-token, so omp compacts only once the context is already full. The
-reserve-based default always leaves at least 15% of the window free.
+In omp 18.4.4 through 18.8.7, the fixed-token branch clamps the pinned value
+to `contextWindow - 1`. On any model whose window is at or below the pinned
+value, the reserve collapses to one token, so omp compacts only once the
+context is already full. omp 18.8.8 and later fall back to the reserve-based
+budget for such a pin, so this collapse does not occur there. The kit floor is
+omp 18.4.4, so a supported host can still have the clamp. The reserve-based
+default always leaves at least 15% of the window free.
 
 No current role model has a window below 272,000, so the hazard was latent
 rather than live. Not pinning removes it entirely, including for any future

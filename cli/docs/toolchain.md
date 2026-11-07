@@ -4,7 +4,7 @@
 
 | Field | Meaning |
 |-------|---------|
-| `kind` | `check` (doctor visibility) / `managed` (kit-managed install) / `pin` (no binary — a version pin for npx-invoked tools, e.g. `skills-cli`) |
+| `kind` | `check` (doctor visibility) / `managed` (kit-managed install) / `pin` (no binary — a version pin for a package that the kit installs through another tool: `npx` for `skills-cli`, `omp install` for `pi-intercom`; the optional `via` field names that tool in the doctor table, and the default is `npx`) |
 | `policy` | Installation policy; `present` installs when missing and never upgrades |
 | `floor` | Minimum acceptable version shown in the doctor table |
 | `verified` | Last kit-tested version and the exact pin for kit-driven installs |
@@ -37,8 +37,10 @@ server as an npm global for the `typescript-lsp` plugin, so an older Node runs
 a server its own manifest rejects. `docks-kit toolchain check` prints
 `below-floor` for a Node older than 22.22.2. The sync pass reads the same
 floor: it skips the `typescript-language-server` install on such a host, warns
-with the host Node version, and installs the other language servers. Nothing
-else consults the floor, so a host below it still runs every kit operation.
+with the host Node version, and installs the other language servers.
+`docks-kit toolchain upgrade` also reads the floor: it skips the
+`typescript-language-server` upgrade on such a host and warns. Nothing else
+consults the floor, so a host below it still runs every other kit operation.
 
 ## rust-analyzer: no floor, no pin
 
@@ -62,8 +64,9 @@ the component is not installed. When `rust-analyzer --version` does not answer
 within 60 s, sync warns, stops the probe, and does not add the component on that
 run. `rustup update` is the user's remedy for an old component.
 
-A lagging server shows as `below-floor` in `docks-kit toolchain check`. To move
-the npm servers to their `verified` pins, run:
+A server below its `floor` shows as `below-floor` in `docks-kit toolchain check`.
+A server at or above its floor but below its `verified` pin shows as `ok`.
+To move every npm server that is below its `verified` pin to that pin, run:
 
 ```bash
 docks-kit toolchain upgrade --dry-run   # print the npm command
@@ -72,8 +75,9 @@ docks-kit toolchain upgrade             # run it
 
 `toolchain upgrade` (`claudeLsp.ts upgradeLspServers`) reads `npm ls -g` to see
 which of `intelephense`, `typescript-language-server`, and `typescript` npm
-owns. It runs one `npm install -g <pkg>@<verified>` for each npm-owned package
-below its pin. A package already at or above its pin stays as it is. It leaves
+owns. It runs one `npm install -g` command that names every npm-owned package
+below its pin as `<pkg>@<verified>`. A package already at or above its pin
+stays as it is. It leaves
 these alone and warns:
 
 - A binary on PATH that npm does not own. It came from another installer, so
@@ -92,13 +96,15 @@ package is not at its pin.
 
 ## Supply-chain stance
 
-Every kit-driven install of third-party software is pinned to a
-`SoT/toolchain.json` `verified` version — never floating `@latest` (the
-npm-worm / Shai-Hulud attack surface). That includes the
-`npx skills@<verified>` invocations on agents sync and the release workflow
-(actions pinned to commit SHAs, exact bun/npm versions).
+Every kit-driven install of third-party software from npm, npx, GitHub, or
+`omp install` is pinned to a `SoT/toolchain.json` `verified` version — never
+floating `@latest` (the npm-worm / Shai-Hulud attack surface). That includes
+the `npx skills@<verified>` invocations on agents sync and the release workflow
+(actions pinned to commit SHAs, exact bun/npm versions). Two installs follow
+the host toolchain and have no pin: `rust-analyzer` (rustup) and `bubblewrap`
+(distro package manager).
 
-The kit's own package is the single exemption. `install.sh` and `install.ps1`
+The kit's own package is the single exemption from the `@latest` ban. `install.sh` and `install.ps1`
 end with `bun add -g docks-kit@latest` because a global installer that pinned
 itself would install a fixed old kit forever. The exemption covers `docks-kit`
 alone; both installers still pin the Bun installer they download to the

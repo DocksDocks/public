@@ -70,8 +70,8 @@ the retired kit `bash.patterns` rules in `OMP_RETIRED_BASH_RULES` (exact
 `match` and `approval` pairs, including the 492 former kit prompt rules
 retired in 0.22.8), config.yml keys whose deployed value still equals the value the kit used to
 ship, `providers.webSearchOrder` at any value, and the retired
-`anthropic.modelOverrides.claude-opus-5-5` block in models.yml while it still
-matches the shipped block.
+`providers.anthropic.modelOverrides.claude-opus-5-5` block in models.yml while
+it still matches the shipped block.
 Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
 registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
 through `omp plugin`, and `pi-intercom` is installed at its
@@ -159,8 +159,10 @@ directory is `<config root>/agent`, where the config root is
 directory never moves under XDG. Only the data root that holds
 `marketplaces.json` does: on Linux and macOS, with no agent-dir override
 active, an existing `$XDG_DATA_HOME/omp` (or `$XDG_DATA_HOME/omp/profiles/<name>`
-for a named profile) is adopted. The intercom file keeps pi-intercom's own
-root: `$PI_CODING_AGENT_DIR/intercom`, else `~/.pi/agent/intercom`.
+for a named profile) is adopted. Under a named profile, the intercom file goes
+into `<agent directory>/intercom`. Otherwise it goes into
+`$PI_CODING_AGENT_DIR/intercom` when that variable is set, else
+`~/.pi/agent/intercom`.
 
 ## Reconcile flags
 

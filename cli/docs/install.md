@@ -113,8 +113,8 @@ installed plugins even when the kit is already current. Pass `--no-sync`, then
 run `docks-kit sync --skip-plugin-refresh` to skip the refresh-only work.
 A compiled binary inside a checkout updates the checkout; on the next invocation
 the launcher bypasses that now-stale binary and uses updated source until rebuilt.
-Every `docks-kit sync` also does a best-effort behind-upstream check and
-nudges when the checkout is stale (silent offline / detached / no git).
+Every `docks-kit sync` except `--dry-run` also does a best-effort behind-upstream
+check and nudges when the checkout is stale (silent offline / detached / no git).
 
 ## Recovering a broken global install
 

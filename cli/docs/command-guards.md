@@ -55,7 +55,7 @@ that `eval` starts.
 | Recursive `rm` (`-r`, `-R`, `-rf`, `-fr`, `-rfv`, `-ri`, `-ir`, `-Ri`, `-iR`, `--recursive`, other listed clusters) | deny, also behind any prefix (`env`, `xargs`, `nice`, `find -exec`, `git rm -r`) | ask | ask (every `rm` asks) |
 | `rm` with an `r` or `f` option before an absolute path, `--no-preserve-root` | deny | ask if recursive, else classifier | ask |
 | Any other `rm`: one file, several files, a glob, `-f` | run | glob asks; the rest goes to the classifier | ask |
-| `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask | ask (every `find` asks) |
+| `find ... -delete`, `find ... -exec rm` (also `-execdir`, `-ok`, `-okdir`), `xargs rm` | deny, in every position and by path | ask for `-delete`, `-exec rm` and `-execdir rm`; `-ok`/`-okdir rm` and a non-recursive `xargs rm` go to the classifier | ask (every `find` asks) |
 | `git clean`, `git reset --hard` | run | ask | ask |
 | `git push` that could force: see below | run, unless a deny above matches | ask | ask (every `git push` asks) |
 | A `$` or a backtick anywhere after `git push` in the same command | deny, also after a shell keyword, a wrapper, or a path before `git`: see below | ask for a word that starts with `$` or a backtick | ask (every `git push` asks) |
