@@ -47,7 +47,11 @@ project-level override.
    Every sync then deletes the stale key from deployed settings, with or without
    `--prune`.
    (verify: `bunx vitest run cli/test/unit/claudeMigration.test.ts -t "prunes withdrawn plugin keys but leaves user and shipped plugins enabled as configured"`)
-3. Run `docks-kit sync --prune` to uninstall the user-scope install record
+3. The user runs the prune; an agent does not run it. Warning: `--prune` also
+   removes hand-installed user-scope plugins and extra marketplaces that are
+   absent from the SoT. First preview the changes with
+   `docks-kit sync claude --prune --dry-run`. Then run
+   `docks-kit sync claude --prune` to uninstall the user-scope install record
    (plugin pass 5).
 
 `--reconcile` alone does not delete removed plugin keys because the settings

@@ -48,14 +48,17 @@ local installs do not satisfy the kit's user-scope install contract.
 ## Pass 3: Marketplace Update
 
 Runs `claude plugin marketplace update <name>` for each kit-owned marketplace
-unless `ctx.skipPluginRefresh` is true. A non-zero exit does not stop the remaining
-passes, but it is recorded through `recordFailure` and fails the run, because a
-silent refresh failure leaves the marketplace clone pinned at an old commit
-while install and enable-state still look clean. Pass 2 refreshes each source
-marketplace once before its install and records the same way; pass 3 skips a
-name already in `refreshedMarketplaces`, so one marketplace is fetched at most
-once per run and one failure produces one ledger row.
+unless `ctx.skipPluginRefresh` is true.
 (verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "refreshes only SoT marketplaces and SoT user-scope plugins"`)
+A non-zero exit does not stop the remaining passes. It is recorded through
+`recordFailure` and fails the run. A silent refresh failure leaves the
+marketplace clone pinned at an old commit while install and enable-state still
+look clean. Pass 2 refreshes each source marketplace once before its install
+and records a failure the same way. Pass 3 skips a name already in
+`refreshedMarketplaces`. Thus one marketplace is fetched at most once per run,
+and one failure produces one ledger row. Unprobed: no unit test makes pass 2
+refresh a marketplace and then runs pass 3. Read the `refreshedMarketplaces`
+checks (verify: `grep -n "refreshedMarketplaces" cli/src/engine-native/claudePluginPasses.ts`).
 
 Passes 2 and 3 skip a marketplace that is not present: not added in this run,
 and absent from an existing, readable `known_marketplaces.json`. A missing
@@ -87,7 +90,10 @@ Runs only under `ctx.prune`.
 For each installed plugin id, test whether it is kit-owned: an SoT
 `enabledPlugins` key or an opt-in of this run. If not, uninstall only the
 user-scope record with `claude plugin uninstall -y --scope user <id>`. A key
-with value `false` is present and therefore kept.
+with value `false` is present and therefore kept. Unprobed: no unit test has a
+SoT `false` key under `--prune`. Read the `kitPluginIds` set
+(verify: `grep -n "kitPluginIds" cli/src/engine-native/claudePluginPasses.ts`).
+An opt-in of this run is kept.
 (verify: `bunx vitest run cli/test/unit/claudeSettingsTruth.test.ts -t "prune keeps an explicitly requested optional plugin and its marketplace"`)
 
 ## Pass 6: Remove Extra Marketplaces

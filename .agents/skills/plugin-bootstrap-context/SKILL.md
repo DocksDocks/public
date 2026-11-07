@@ -51,8 +51,10 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 <constraint>
 The `--prune` keep test for Claude plugins is key presence, not truthiness.
 A plugin declared as `"id@marketplace": false` is installed and kept; only an
-absent key is removed by prune. A plugin that this run opts in with
-`--claude-plugin` is also kept.
+absent key is removed by prune. Unprobed: no unit test has a SoT `false` key
+under `--prune`. Read the `kitPluginIds` set in `claudePluginPasses.ts syncPlugins`
+(verify: `grep -n "kitPluginIds" cli/src/engine-native/claudePluginPasses.ts`).
+A plugin that this run opts in with `--claude-plugin` is also kept.
 (verify: `bunx vitest run cli/test/unit/claudeSettingsTruth.test.ts -t "prune keeps an explicitly requested optional plugin and its marketplace"`)
 </constraint>
 
@@ -133,14 +135,28 @@ system temp directory (`os.tmpdir()`) as its working directory. Project and
 local settings in the directory where the user runs sync therefore never
 change. Pass 6 keeps its unscoped `claude plugin marketplace remove <name>`.
 
-A failed marketplace or plugin command never aborts the remaining passes. Pass
-its warning through `failures.ts recordFailure`, which warns in place and
-records the message so `syncDispatch.ts engineSync, failure ledger` lists it
-under `--- Failures ---` and returns exit 1. Keep the aggregate
-`N plugin operation(s) failed` roll-up a plain `warn`, because every counted
-site already records itself. A missing CLI, missing git, and a missing toolchain
-pin are warn-only skips with exit 0.
+A failed command in the seven passes does not stop the remaining passes. Each
+failure site in `claudePluginPasses.ts syncPlugins` calls
+`failures.ts recordFailure` and increments a counter; it does not return.
+Unprobed: no unit test asserts that a pass runs after a failed pass. Read the
+failure sites (verify: `grep -n "recordFailure" cli/src/engine-native/claudePluginPasses.ts`).
+`recordFailure` warns in place and records the message. Then
+`syncDispatch.ts engineSync, failure ledger` lists it under `--- Failures ---`
+and returns exit 1.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "records the stderr cause of a failed update, not the stdout progress line"`)
+
+`claudeOptionalPlugins.ts enableOptionalPlugin` is different: a failed step
+stops the later steps for that plugin. A failed marketplace add records a
+failure and skips the install and the enable of that plugin.
 (verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "fails the sync without installing n8n if its marketplace cannot be added"`)
+
+Keep the aggregate `N plugin operation(s) failed` roll-up a plain `warn`,
+because every counted site already records itself. A missing `git` is a
+warn-only skip with exit 0.
+(verify: `bunx vitest run cli/test/unit/pluginRefresh.test.ts -t "skips optional plugins with a warning when git is missing"`)
+A missing CLI and a missing toolchain pin are also warn-only skips. Unprobed: no
+unit test checks the exit code of these two skips. Read the skip branches
+(verify: `grep -n -e 'state === "missing"' -e "has no verified version" cli/src/engine-native/claudePluginPasses.ts cli/src/engine-native/claudeLsp.ts`).
 
 ## Optional Plugins
 
@@ -153,13 +169,17 @@ The source list is the owner of the names; read it there and do not copy it
 into docs.
 (verify: `bun -e 'console.log((await import("./cli/src/engine-native/parseModifiers.ts")).KNOWN_CLAUDE_OPTIN_PLUGINS)'`)
 
-An opt-in has three homes that must agree: its name in
-`KNOWN_CLAUDE_OPTIN_PLUGINS`, its install/enable branch in
-`claudeOptionalPlugins.ts syncOptionalPlugins` (plugin id plus marketplace repo,
-empty when an earlier pass registers the marketplace), and its plugin id in the
-`kitPluginIds` set of `claudePluginPasses.ts syncPlugins`. That set keeps the
-plugin and its marketplace through `--prune`, and for a `@claude-plugins-official`
-id it makes pass 1 add the official marketplace.
+An opt-in is defined in three places, and the three must agree:
+
+1. Its name in `parseModifiers.ts KNOWN_CLAUDE_OPTIN_PLUGINS`.
+2. Its install and enable branch in `claudeOptionalPlugins.ts syncOptionalPlugins`.
+   The branch gives the plugin id and the marketplace repo. The repo is empty
+   when an earlier pass registers the marketplace.
+3. Its plugin id in the `kitPluginIds` set of `claudePluginPasses.ts syncPlugins`.
+
+The `kitPluginIds` set keeps the plugin and its marketplace through `--prune`.
+For a `@claude-plugins-official` id, the set also makes pass 1 add the official
+marketplace.
 `claudeSync.ts` runs `syncPlugins` before `syncOptionalPlugins`.
 
 Opt-in keys are absent from the SoT, so the opt-in is sticky. Only a `--prune`
