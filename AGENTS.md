@@ -191,7 +191,7 @@ review, implement, and code review. It uses bounded repair and fresh re-review
 in both review phases, then archives. Internal `plan-reviewer` returns one
 readable pre-implementation verdict block per round. Two read-only reviewer
 wrappers ship: `plan-reviewer` and `code-reviewer`.
-The explicit-only `yolo` skill runs the same workflow and asks only before merge.
+The explicit-only `yolo` skill runs the same workflow. It still asks before merge, on a review stall, before a production cleanup, and before a step after the landing merge, as the contract's Yolo runs section says.
 </constraint>
 
 After the marker and blank line, the record carries exactly seven sections.
