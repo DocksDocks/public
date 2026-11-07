@@ -38,7 +38,7 @@ metadata:
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-211"
     - path: cli/src/engine-native/kitLock.ts
-      lines: "1-111"
+      lines: "1-114"
     - path: cli/src/engine-native/syncConcurrency.ts
       lines: "1-55"
     - path: cli/src/engine-native/failures.ts

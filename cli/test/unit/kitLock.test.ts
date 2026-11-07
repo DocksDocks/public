@@ -11,7 +11,7 @@
  *   acquireKitLock(path: string, options: KitLockOptions): Promise<KitLockResult>;
  *   releaseKitLock(lock: KitLock): void;
  *
- * The lock is an SQLite `BEGIN EXCLUSIVE` transaction on `path`. Another
+ * The lock is an SQLite `BEGIN IMMEDIATE` transaction on `path`. Another
  * connection, in this process or in another process, cannot take it while the
  * holder keeps it. The OS releases it when the holder process ends.
  */
@@ -152,26 +152,32 @@ describe("acquireKitLock in one process", () => {
 });
 
 /**
- * Each racer loads the lock module, prints `ready`, and waits for `go` on
- * stdin. It then tries the lock with a short wait, prints the result kind, and
- * holds a lock that it took until `release`, so that no late racer can find
- * the lock free. The module path comes from argv, so the child loads it with
- * `import()`.
+ * Each racer loads the lock module, prints `ready`, and waits for `go <ms>` on
+ * stdin. It spins until the clock reaches `<ms>`, so that all racers start at
+ * the same moment. It then tries the lock with the wait from argv, prints the
+ * result kind, and holds a lock that it took until `release`. So no late racer
+ * can find the lock free. The module path comes from argv, so the child loads
+ * it with `import()`.
  */
 const RACER = `
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
-const [modulePath, lockPath] = process.argv.slice(2);
+const [modulePath, lockPath, waitMs] = process.argv.slice(2);
 const { acquireKitLock, releaseKitLock } = await import(pathToFileURL(modulePath).href);
 const commands = createInterface({ input: process.stdin })[Symbol.asyncIterator]();
 process.stdout.write("ready\\n");
-await commands.next();
-const result = await acquireKitLock(lockPath, { waitMs: 500 });
+const go = await commands.next();
+const startAt = Number(String(go.value).split(" ")[1]);
+while (Date.now() < startAt) {}
+const result = await acquireKitLock(lockPath, { waitMs: Number(waitMs) });
 process.stdout.write(result.kind + "\\n");
 await commands.next();
 if (result.kind === "acquired") releaseKitLock(result.lock);
 process.exit(0);
 `;
+
+/** The time from the `go` command to the shared start, so that every racer has read it. */
+const START_DELAY_MS = 200;
 
 /**
  * The holder takes the lock inside a function and keeps no reference to the
@@ -208,9 +214,9 @@ interface Child {
   stdinError: string;
 }
 
-function startChild(script: string, lock: string): Child {
+function startChild(script: string, lock: string, args: ReadonlyArray<string> = []): Child {
   // Bun runs the child, because it loads the TypeScript module without a build step.
-  const child = spawn(BUN_RUNTIME, [script, LOCK_MODULE, lock], { stdio: "pipe" });
+  const child = spawn(BUN_RUNTIME, [script, LOCK_MODULE, lock, ...args], { stdio: "pipe" });
   children.push(child);
   const started: Child = {
     child,
@@ -270,12 +276,17 @@ async function expectLines(
   ).toEqual([]);
 }
 
-/** One round: start 8 racers on one lock, release them all, and return their results. */
-async function raceOnce(lock: string, script: string): Promise<Array<string>> {
-  const racers = Array.from({ length: RACERS }, () => startChild(script, lock));
+/** One round: start `count` racers on one lock, release them all, and return their results. */
+async function raceOnce(
+  lock: string,
+  script: string,
+  count: number,
+  waitMs: number,
+): Promise<Array<string>> {
+  const racers = Array.from({ length: count }, () => startChild(script, lock, [String(waitMs)]));
 
   await expectLines(racers, await Promise.all(racers.map(nextLine)), { ready: true });
-  send(racers, "go");
+  send(racers, `go ${Date.now() + START_DELAY_MS}`);
   const results = await Promise.all(racers.map(nextLine));
   send(racers, "release");
   await Promise.all(racers.map((racer) => racer.closed));
@@ -293,9 +304,27 @@ describe("acquireKitLock across processes", () => {
       const lock = join(base, "race-lock.db");
 
       for (let round = 0; round < 5; round += 1) {
-        const results = await raceOnce(lock, script);
+        const results = await raceOnce(lock, script, RACERS, 500);
         expect(results.filter((result) => result === "acquired")).toHaveLength(1);
         expect(results.filter((result) => result === "held")).toHaveLength(RACERS - 1);
+      }
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // With `BEGIN EXCLUSIVE`, each racer holds SHARED while it tries to move up,
+  // so all racers could fail at once (self-review round 1 of plan #161).
+  it(
+    "lets exactly one of 4 racers that start at the same moment take the lock with no wait, in each of 10 rounds",
+    async () => {
+      const base = sandbox();
+      const script = join(base, "racer.mjs");
+      writeFileSync(script, RACER);
+      const lock = join(base, "zero-wait-lock.db");
+
+      for (let round = 0; round < 10; round += 1) {
+        const results = await raceOnce(lock, script, 4, 0);
+        expect(results.filter((result) => result === "acquired")).toHaveLength(1);
       }
     },
     SPAWN_TIMEOUT_MS,

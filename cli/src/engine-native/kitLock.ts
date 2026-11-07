@@ -1,15 +1,18 @@
 /**
- * Kit locks: an SQLite `BEGIN EXCLUSIVE` transaction on a dedicated database
+ * Kit locks: an SQLite `BEGIN IMMEDIATE` transaction on a dedicated database
  * file. Only `node:` imports, so that a test child process can load this
  * module alone.
  *
- * - At most one connection, in any process, holds the lock.
+ * - The lock is the RESERVED lock of the transaction. At most one connection,
+ *   in any process, holds it.
+ * - `BEGIN IMMEDIATE` takes RESERVED with no wait for other readers. With
+ *   `BEGIN EXCLUSIVE`, two racers that each hold SHARED can both fail.
  * - The OS releases the lock when the holder process ends for any reason. A
  *   paused holder keeps it.
  * - The database stays in rollback journal mode. Never set WAL on a lock file.
  * - A module-level set keeps each open connection, so that the garbage
  *   collector cannot close a lock that a caller dropped.
- * - Only this module opens a lock file. Each run takes a lock once.
+ * - Only this module opens a lock file. Each run takes each lock once.
  */
 import { chmodSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
@@ -51,10 +54,10 @@ function isBusy(cause: unknown): boolean {
   return typeof cause.errcode === "number" && (cause.errcode & 0xff) === SQLITE_BUSY;
 }
 
-/** Start the exclusive transaction. False when another connection holds the lock. */
+/** Start the write transaction. False when another connection holds the lock. */
 function tryBegin(connection: DatabaseSync): boolean {
   try {
-    connection.exec("BEGIN EXCLUSIVE");
+    connection.exec("BEGIN IMMEDIATE");
     return true;
   } catch (cause) {
     if (isBusy(cause)) return false;

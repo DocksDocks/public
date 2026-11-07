@@ -10,7 +10,7 @@ metadata:
     - path: cli/src/engine-native/tidyReport.ts
       lines: "1-509"
     - path: cli/src/engine-native/kitLock.ts
-      lines: "1-111"
+      lines: "1-114"
     - path: cli/src/engine-native/processes.ts
       lines: "1-16"
     - path: cli/src/engine-native/scratch.ts
@@ -24,7 +24,7 @@ metadata:
     - path: cli/test/unit/tidy.test.ts
       lines: "1-639"
     - path: cli/test/unit/kitLock.test.ts
-      lines: "1-344"
+      lines: "1-373"
     - path: cli/test/unit/tidyReport.test.ts
       lines: "1-168"
     - path: cli/test/unit/scratch.test.ts
@@ -165,13 +165,14 @@ Probes: `bunx vitest run cli/test/unit/scratch.test.ts -t "refuses a symbolic li
 
 ### Lock
 
-- `kitLock.ts acquireKitLock(path, { waitMs })` makes the directory (mode 0700), opens `DatabaseSync(path)`, and sets `busy_timeout = 0`. It tries `BEGIN EXCLUSIVE` every `POLL_MS` until it succeeds or `waitMs` ends. It returns `{ kind: "acquired", lock }` or `{ kind: "held" }`.
+- `kitLock.ts acquireKitLock(path, { waitMs })` makes the directory (mode 0700), opens `DatabaseSync(path)`, and sets `busy_timeout = 0`. It tries `BEGIN IMMEDIATE` every `POLL_MS` until it succeeds or `waitMs` ends. It returns `{ kind: "acquired", lock }` or `{ kind: "held" }`.
+- The lock is the RESERVED lock of that transaction, and only one connection can hold RESERVED. `BEGIN EXCLUSIVE` is wrong here: two racers that each hold SHARED while they move up can both fail at `waitMs: 0`.
 - At most one connection, in any process, holds the lock. The OS releases it when the holder process ends for any reason. A paused holder keeps it. No staleness rule and no takeover exist.
 - A module-level set keeps each held connection, so the garbage collector cannot close a lock that a caller dropped.
 - `releaseKitLock` runs `ROLLBACK`, closes the connection, and removes it from the set.
 - The database stays in rollback journal mode. Never set WAL on a lock file.
 - Lock files: `scratch.ts tidyApplyLockPath` gives `~/.cache/docks-kit/tidy-lock.db` (`tidy --apply`). `syncLockPath` gives `sync-lock.db` (sync and model writes; see `sync-orchestration-context`). A legacy text `tidy.lock` is not a database, and no code reads it.
-- Probes: `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 8 racing processes"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets a contender take the lock after the holder process gets SIGKILL"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "keeps the lock across a forced garbage collection"`.
+- Probes: `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 8 racing processes"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets exactly one of 4 racers that start at the same moment"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "lets a contender take the lock after the holder process gets SIGKILL"`; `bunx vitest run cli/test/unit/kitLock.test.ts -t "keeps the lock across a forced garbage collection"`.
 
 ### Report
 
