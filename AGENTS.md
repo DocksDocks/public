@@ -205,7 +205,7 @@ GitHub `state` and `stateReason` determine closed status. Review records live
 only in issue comments. Each reviewer returns one markdown block.
 The manager posts that block as one issue comment. The latest trusted eligible
 comment per review kind wins. Its author must equal the plan's sole assignee.
-Both review phases use fresh inputs and run at most five rounds. They stop on
+Both review phases use fresh inputs for each round. They stop on
 pass. Ask the user to continue or block when a round makes no progress, the
 same finding returns after a repair, round 5 does not pass, or dispatch fails
 again without a relevant change. If no answer is available, record the reason
@@ -241,7 +241,7 @@ before it runs; when `ask` is unavailable the step is set `blocked` and the plan
 reason becomes the first `## Open questions` line, `Blocked: <reason>`.
 Persisted effects record intent only. Routine issue publication and landing
 actions are outside the Steps table.
-A user-invoked `yolo` run replaces these asks, the five-round stop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
+A user-invoked `yolo` run replaces these asks, the continue-or-block question of the review loop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
 
 Render a plan body verbatim only when the user names that plan and asks to see it. After a write, report the one-line header strip and the changed lines only; a write never re-renders the body.
 
