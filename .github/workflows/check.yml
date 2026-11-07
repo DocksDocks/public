@@ -11,10 +11,11 @@ on:
   # Only `main` pushes start a `push` run. With no branch filter, each push to
   # a pull request branch also started a `push` run on the SHA that the
   # `pull_request` run tests. Of 318 `check` runs since 2026-09-13, 150 (47 %)
-  # repeated a SHA that another `check` run tested: 92 branch pushes, 24
-  # `main` heads, and 34 `cli-v*` tags. Every `cli-v*` tag is on `main`, so
-  # the `main` run of that commit covers it, and the `release-cli.yml` build
-  # runs `test:ci` again.
+  # repeated a SHA that another `check` run tested: 116 branch pushes (92 with
+  # a `pull_request` run on the same SHA, 24 at a `main` head) and 34
+  # `cli-v*` tag pushes. Every `cli-v*` tag is on `main`, so the `main` run of
+  # that commit covers it, and the `release-cli.yml` build runs `test:ci`
+  # again.
   push:
     branches: [main]
   pull_request:
@@ -23,7 +24,7 @@ concurrency:
   # A pull request keeps one group, so a newer head cancels the stale run.
   # Every other run gets its own group. In one group, GitHub replaces a
   # pending run with the newer run, also with `cancel-in-progress: false`.
-  # The old shared `main` group did this to run 39826349216
+  # The shared `main` group of `parity.yml` did this to run 39826349216
   # (`golden-regression`, 2026-10-22): it ended cancelled with 0 jobs, so its
   # `main` commit got no green run. With a group per run, every `main` run
   # finishes.

@@ -137,10 +137,10 @@ jobs:
         run: bun run smoke:native
 
   # Windows unit tests in two Vitest shards. One Windows job ran every step
-  # in series and was the longest leg (median 111 s, p90 123 s over 27 warm
-  # runs); its unit-test step alone took a median of 68 s (p90 76 s). Two
-  # shards run in parallel on separate runners. The shard file lists together
-  # equal the unsharded list, and the test counts add up.
+  # in series and was the longest leg (`pull_request` median 111 s, p90
+  # 118 s over 27 warm runs); its unit-test step alone took a median of 68 s
+  # (p90 76 s). Two shards run in parallel on separate runners. The shard
+  # file lists together equal the unsharded list, and the test counts add up.
   portable-windows-unit:
     name: portable (windows-2025) unit ${{ matrix.shard }}/2
     permissions:
@@ -177,9 +177,8 @@ jobs:
     permissions:
       contents: read
     runs-on: windows-2025 # pinned label, never *-latest
-    # No measured run of this job yet. 3 x (47 s + 21 s cold setup) = 204 s,
-    # rounded up. The 47 s is the sum of the step p90s of setup, generated
-    # payload, typecheck, runtime commands, and native smoke.
+    # Measured run p90: 47 s (10 warm PR #154 runs).
+    # 3 x (47 s + 21 s cold setup) = 204 s, rounded up.
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -213,13 +212,16 @@ jobs:
 
   # Gate for the split Windows lane. It keeps the check name
   # `portable (windows-2025)` of the former single Windows job, and it fails
-  # when a shard or the runtime job fails, is cancelled, or is skipped.
+  # when a shard or the runtime job fails, or is cancelled or skipped while
+  # the run goes on. When the whole run is cancelled, `!cancelled()` skips the
+  # gate, and GitHub counts a skipped job as passing for a required check; the
+  # shard and runtime checks then report `cancelled`.
   portable-windows:
     name: portable (windows-2025)
     needs: [portable-windows-unit, portable-windows-runtime]
     if: ${{ !cancelled() }}
-    permissions:
-      contents: read
+    # No checkout and no API call, so the job token gets no scope.
+    permissions: {}
     runs-on: ubuntu-24.04 # pinned label, never *-latest
     # No checkout and no install, so the 2-minute floor applies.
     timeout-minutes: 2
