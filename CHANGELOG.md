@@ -9,12 +9,13 @@
   open of a file whose delete is pending fails with EPERM. A delete of a file
   that another process holds without delete sharing fails with EBUSY. The
   extension now treats these codes as contention, as the `docks-kit tidy`
-  lock does. A failed create loses the claim, so a later main session starts
-  the due sweep. A failed stale-file delete removes nothing, and the next
-  exclusive create decides the claim. A failed release leaves the claim file
-  until it is stale. A real access denial on Windows also gives EPERM, and
-  the extension then also counts it as contention. On other platforms, these
-  codes stay errors.
+  lock does. A failed create gives no token for that attempt. When the claim
+  is then stale or gone, the takeover path can still take it; otherwise a
+  later main session starts the due sweep. A failed stale-file delete removes
+  nothing, and the next exclusive create decides the claim. A failed release
+  leaves the claim file until it is stale. A real access denial on Windows
+  also gives EPERM, and the extension then also counts it as contention. On
+  other platforms, these codes stay errors.
 - `sync codex` now writes `~/.codex/.kit-managed-rules`, and the skills sync
   writes `~/.agents/.kit-managed-skills`, through a temporary file and a
   rename. Before, an interrupted write could cut the file. The next sync

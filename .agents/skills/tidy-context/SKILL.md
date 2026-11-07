@@ -18,7 +18,7 @@ metadata:
     - path: cli/src/commands/scratch.ts
       lines: "1-75"
     - path: SoT/.omp/plugin/extensions/hygiene.ts
-      lines: "1-1983"
+      lines: "1-1984"
     - path: cli/test/unit/tidy.test.ts
       lines: "1-541"
     - path: cli/test/unit/tidyLock.test.ts

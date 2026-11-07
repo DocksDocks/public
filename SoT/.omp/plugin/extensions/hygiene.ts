@@ -1735,11 +1735,12 @@ function isStale(path: string, nowMs: number): boolean {
 /**
  * Creates the claim and returns its token, or returns undefined when another
  * process holds it. Only the holder of the takeover mutex replaces a stale
- * claim, and it checks the claim again while it holds the mutex. Thus two
- * processes cannot both replace the same stale claim. On Windows, a create
- * that fails because another process deletes or holds the file loses the
- * claim, and a later main session claims the sweep. A delete or a release
- * that fails this way removes nothing.
+ * claim, and it checks the claim again while it holds the mutex. A stale
+ * takeover can still let two processes in (issue #159). On Windows, a create
+ * that fails because another process deletes or holds the file gives no token
+ * for that attempt. When the claim is then stale or gone, the takeover path
+ * can still take it; otherwise a later main session claims the sweep. A
+ * delete or a release that fails this way removes nothing.
  */
 function acquireClaim(cacheDir: string, nowMs: number): string | undefined {
   const claim = join(cacheDir, CLAIM_FILE);
