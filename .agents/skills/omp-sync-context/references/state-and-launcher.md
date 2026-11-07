@@ -19,7 +19,8 @@ Never create the store on a read when neither `kit.db` nor `state.json` exists.
 are empty, and renames it to `state.json.migrated`.
 Each table has one writer, so a write to one key cannot drop the other.
 
-Treat a missing, corrupt, or too-new store as no stored selection.
+`harnesses.ts readHarnessSelection` treats a missing, corrupt, or too-new store
+as no stored selection.
 Resolve no stored selection to `claude`, `codex`, and `agents`.
 Keep omp opt-in when no state exists.
 Let explicit positional targets override the stored selection.
@@ -27,7 +28,10 @@ Let explicit positional targets override the stored selection.
 `sync` never prompts for a selection.
 `sync` never writes the selection file.
 The `docks-kit harnesses` command owns prompting and persistence.
-Off a terminal, that command only prints the current selection.
+It reads the store through `harnesses.ts loadHarnessSelection`.
+On a corrupt or too-new store, `commands/harnesses.ts harnessesCommand` exits 1.
+It prints no selection and opens no picker.
+Off a terminal, with a readable store, that command only prints the current selection.
 With no stored selection, its picker pre-ticks every harness in `HARNESSES`, omp included.
 The pre-tick changes no stored state until the user saves the picker.
 
@@ -72,6 +76,8 @@ Verify the store and the selection:
 `bunx vitest run cli/test/unit/harnessSelection.test.ts -t "creates no store when a read finds neither file"`,
 `bunx vitest run cli/test/unit/harnessSelection.test.ts -t "refuses an empty selection without erasing stored harnesses"`,
 `bunx vitest run cli/test/unit/harnessSelection.test.ts -t "treats a corrupt SQLite store as missing selection and session state"`,
+`bunx vitest run cli/test/unit/harnessesCommand.test.ts -t "fails with the store path when kit.db is corrupt"`,
+`bunx vitest run cli/test/unit/harnessesCommand.test.ts -t "fails with the upgrade hint when the store has a newer schema"`,
 `bunx vitest run cli/test/unit/harnessSelection.test.ts -t "leaves no stale level behind when a level-free model overwrites a levelled one"`,
 `bunx vitest run cli/test/unit/harnessesCommand.test.ts -t "does not open the picker when stdin is not a terminal"`,
 and `bunx vitest run cli/test/unit/targetGrammar.test.ts -t "keeps an explicit target after a modifier ahead of a stored selection"`.

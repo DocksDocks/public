@@ -64,8 +64,15 @@ on every sync, without `--reconcile`.
 Each pass deletes only entries from the inventories in `ompRemovals.ts`:
 `OMP_RETIRED_VALUES` (only while the deployed value still equals the value
 the kit shipped), `OMP_RETIRED_KEYS`, the retired `bash.patterns` rules in
-`OMP_RETIRED_BASH_KEYS`, and
+`OMP_RETIRED_BASH_RULES` and `RETIRED_PROMPT_MATCHES`, and
 `OMP_RETIRED_MODEL_BLOCKS` (only while the deployed block is unchanged).
+Add a retired rule to `OMP_RETIRED_BASH_RULES` or `RETIRED_PROMPT_MATCHES`.
+Do not edit `OMP_RETIRED_BASH_KEYS`, because it is a lookup map that
+`ompRemovals.ts` derives from `OMP_RETIRED_BASH_RULES`.
+`ompRemovals.ts deletePath` also removes each ancestor mapping that a deletion
+leaves empty.
+It keeps a section-header comment above the deleted key: the header moves onto
+the next key, or becomes the mapping's trailing comment when no key follows.
 A dry run prints `[dry-run] prune` with the entry names and writes nothing.
 An unparseable file gets a warning and stays untouched.
 
@@ -80,6 +87,9 @@ bytes, not the merged bytes.
 Verify the prune:
 `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "runs as part of ompSync, after the additive config merge"`,
 `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "keeps a retired key the user changed away from the shipped value"`,
+`bunx vitest run cli/test/unit/ompRemovals.test.ts -t "removes a mapping emptied by pruning and keeps one that still holds a key"`,
+`bunx vitest run cli/test/unit/ompRemovals.test.ts -t "keeps a carried header when the pruned key was last in its mapping"`,
+`bunx vitest run cli/test/unit/ompRemovals.test.ts -t "keeps a carried header inside the mapping it came from"`,
 `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "reports the count under dry run and leaves the file byte-identical"`,
 `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "backs up a pruned config.yml and keeps mode 0600"`,
 and `bunx vitest run cli/test/unit/ompRemovals.test.ts -t "keeps the pre-sync backup when the merge and the prune both change config.yml"`.
