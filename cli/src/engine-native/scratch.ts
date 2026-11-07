@@ -24,6 +24,16 @@ export function kitCacheDir(home: string): string {
   return p(home, ".cache", "docks-kit");
 }
 
+/** The `kitLock.ts` lock that `docks-kit tidy --apply` holds while it plans and applies. */
+export function tidyApplyLockPath(home: string): string {
+  return join(kitCacheDir(home), "tidy-lock.db");
+}
+
+/** The `kitLock.ts` lock that `docks-kit sync` and `docks-kit model` hold while they write. */
+export function syncLockPath(home: string): string {
+  return join(kitCacheDir(home), "sync-lock.db");
+}
+
 export function scratchRoot(home: string): string {
   return p(kitCacheDir(home), "scratch");
 }
