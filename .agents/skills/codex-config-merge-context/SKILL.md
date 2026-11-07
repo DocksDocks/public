@@ -82,9 +82,12 @@ bubblewrap cannot be installed or user namespaces are blocked.
 2. Existing deployed config is copied to a staging file with a leading BOM
    removed and CRLF line ends converted to LF; no backup is written yet.
 3. `codexConfig.ts scrubDeprecatedFeatures, staging scrub pass` removes
-   `use_legacy_landlock` and an empty `[features]` table
-   (verify: `bun run golden:mutation` fails with "deprecated use_legacy_landlock
-   survived the scrub" when the pass breaks).
+   `use_legacy_landlock` and an empty `[features]` table. While the SoT
+   declares `[features]`, the table merge also drops the key. A broken pass
+   then shows only as a missing log line
+   (verify: `bun run golden:mutation` fails on a missing
+   "Codex: scrubbed deprecated [features].use_legacy_landlock" output line
+   when the pass breaks).
 4. `codexConfig.ts removeRetiredPluginTables, staging retirement pass` strips
    retired kit-owned plugin tables.
 5. `codexConfig.ts removeRetiredTopLevelSettings, staging retired-setting pass`
@@ -104,13 +107,19 @@ bubblewrap cannot be installed or user namespaces are blocked.
 shares `codexConfig.ts PLUGIN_TABLE_HEADER, plugin-table grammar` with
 `codexPlugins.ts enabledPluginIdsFromText, enabled-table scan` and checks ids
 against `codexConfig.ts RETIRED_PLUGIN_IDS, curated retirement record`. A retired
-plugin header starts skipping and is dropped; skipping ends at the next table
-header line, while a surviving plugin header both matches the regex and clears
+plugin header starts skipping and is dropped. Skipping ends at the next line
+whose first non-blank character is `[` (`tomlLines.ts isTomlHeaderLine`). The
+pass does not track continuation lines, so a `[` line inside a multi-line value
+also ends skipping. A surviving plugin header both matches the regex and clears
 skipping.
 
 `codexConfig.ts removeRetiredPluginTables, staging presence guard` returns before
-writing when no retired table is present, preserving a clean config byte for
-byte (verify: `bunx vitest run cli/test/unit/codexRetiredPlugins.test.ts -t "leaves a config without retired plugin tables byte-identical"`).
+writing when no retired table is present. The line transform alone returns a
+config without a retired table unchanged when the config ends in a newline
+(verify: `bunx vitest run cli/test/unit/codexRetiredPlugins.test.ts -t "leaves a config without retired plugin tables byte-identical"`).
+Unprobed: no unit test proves the guard itself. Without the guard, the
+transform adds a final newline to a file that has none. Read the guard (verify:
+`grep -n "present.length === 0" cli/src/engine-native/codexConfig.ts`).
 `codexConfig.ts syncConfig, dry-run branch` returns before the staging
 pipeline, so this cleanup prints nothing under `--dry-run`.
 
@@ -185,19 +194,22 @@ hooks exist.
 
 `codexPaths.ts codexHome` returns a non-empty `CODEX_HOME` (resolved when
 relative), else `<home>/.codex`. Every kit read or write of Codex state goes
-through it (verify: `git grep -n '"\.codex"' cli/src` lists only
-`codexPaths.ts`).
+through it, with one exception. `tidyReport.ts HISTORIES` measures
+`<home>/.codex/sessions` and ignores `CODEX_HOME` (verify:
+`git grep -nE "['\"]\.codex(/|['\"])" cli/src` lists only `codexPaths.ts`
+and `tidyReport.ts`).
 
 ## Bubblewrap
 
 `codexSync.ts ensureBubblewrap` returns early when `codexSync.ts bwrapSupportedOs`
 reports no bubblewrap support (macOS, Windows, unknown hosts) and when `bwrap`
 is already present. When `bwrap` is missing, it detects a package-manager
-install command, runs it, and then validates unprivileged user namespaces with
-`unshare -Ur true`. An existing `bwrap` gets no namespace probe. Ubuntu
-AppArmor restrictions can block that probe after install; the sync warns and
-continues (verify: `grep -n 'probe("bwrap")\|skipBubblewrap\|unshare' cli/src/engine-native/codexSync.ts`
-lists the presence return, then the skip branch, then the namespace probe).
+install command, runs it, probes `bwrap` again, and then validates unprivileged
+user namespaces with `unshare -Ur true`. An existing `bwrap` gets no namespace
+probe. Ubuntu AppArmor restrictions can block that probe after install; the
+sync warns and continues (verify: `grep -n 'probe("bwrap")\|skipBubblewrap\|unshare' cli/src/engine-native/codexSync.ts`
+prints five lines in order: the presence return, the skip branch, the
+post-install `bwrap` re-probe, the `unshare` call, and its error warning).
 
 ## Key Decisions
 
@@ -221,9 +233,13 @@ lists the presence return, then the skip branch, then the namespace probe).
   `tomlLines.ts` line grammar (`isTomlHeaderLine`, `keyValueSeparator`,
   `tomlContinuationLines`) that the merge passes use. A change to that grammar
   changes the merge and this reader together. The reader finds a key after a
-  multi-line array and a quoted key. It returns undefined for a dotted or
-  escaped key and for a value that is not a string (verify:
+  multi-line array (verify:
   `bunx vitest run cli/test/unit/manifests.test.ts -t "reads a top-level key after a multi-line array"`).
+  It finds a quoted key (verify:
+  `bunx vitest run cli/test/unit/manifests.test.ts -t "reads a quoted top-level key"`).
+  Unprobed: no unit test covers the undefined result for a dotted or escaped
+  key or for a value that is not a string. Read `manifests.ts tomlKeyName`
+  (verify: `grep -n -A3 "function tomlKeyName" cli/src/manifests.ts`).
 
 ## References
 

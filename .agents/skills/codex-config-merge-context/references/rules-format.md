@@ -44,8 +44,8 @@ A command with no rule runs inside the SoT `workspace-write` sandbox with no
 prompt. A read command with a reachable write or exec flag therefore stays
 without a rule or gets `prompt`. The comment block above the `rg` rule in
 `SoT/.codex/rules/docks.rules` lists those commands and their write or exec
-flags, and `cli/test/unit/codexSyncRules.test.ts` holds one "does not allow"
-case per flag (verify:
+flags. `cli/test/unit/codexSyncRules.test.ts` holds a "does not allow" case for
+each listed flag except `sed -ni` (verify:
 `bunx vitest run cli/test/unit/codexSyncRules.test.ts -t "does not allow"`).
 Add a new excluded command to both places.
 
