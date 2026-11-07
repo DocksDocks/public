@@ -1138,7 +1138,9 @@
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
         ".omp/": "dir",
+        ".omp/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/": "dir",
+        ".omp/agent/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/AGENTS.md": "sha256:5869fef0010ab5788d1c9329ba97d1cf1e471398f1fe6552f36e5fb2db2d1c6b",
         ".omp/agent/config.yml": "sha256:7fdb2152a80e8e140c9a212f8417f315c7414f1b43939fa1e1478e43c7503561",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
@@ -1146,6 +1148,7 @@
         ".pi/": "dir",
         ".pi/agent/": "dir",
         ".pi/agent/intercom/": "dir",
+        ".pi/agent/intercom/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".pi/agent/intercom/config.json": "sha256:6797d34701435422f64ac3f52a71c851b13f905ad6aef2f16a9cf8bca9e298b6"
       }
     },
@@ -1171,7 +1174,9 @@
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
         ".omp/": "dir",
+        ".omp/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/": "dir",
+        ".omp/agent/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/AGENTS.md": "sha256:5869fef0010ab5788d1c9329ba97d1cf1e471398f1fe6552f36e5fb2db2d1c6b",
         ".omp/agent/config.yml": "sha256:7fdb2152a80e8e140c9a212f8417f315c7414f1b43939fa1e1478e43c7503561",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
@@ -1179,6 +1184,7 @@
         ".pi/": "dir",
         ".pi/agent/": "dir",
         ".pi/agent/intercom/": "dir",
+        ".pi/agent/intercom/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".pi/agent/intercom/config.json": "sha256:6797d34701435422f64ac3f52a71c851b13f905ad6aef2f16a9cf8bca9e298b6"
       }
     },
@@ -1204,7 +1210,9 @@
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
         ".omp/": "dir",
+        ".omp/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/": "dir",
+        ".omp/agent/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/AGENTS.md": "sha256:5869fef0010ab5788d1c9329ba97d1cf1e471398f1fe6552f36e5fb2db2d1c6b",
         ".omp/agent/config.yml": "sha256:7fdb2152a80e8e140c9a212f8417f315c7414f1b43939fa1e1478e43c7503561",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
@@ -1212,6 +1220,7 @@
         ".pi/": "dir",
         ".pi/agent/": "dir",
         ".pi/agent/intercom/": "dir",
+        ".pi/agent/intercom/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".pi/agent/intercom/config.json": "sha256:6797d34701435422f64ac3f52a71c851b13f905ad6aef2f16a9cf8bca9e298b6"
       }
     },
@@ -1237,7 +1246,9 @@
         ".docks-kit/omp-plugin/skills/workspace-hygiene/": "dir",
         ".docks-kit/omp-plugin/skills/workspace-hygiene/SKILL.md": "sha256:c5697516c41857971bc29e7d89cc8e039299b0a5fc554be4399b8a0e1a7603ec",
         ".omp/": "dir",
+        ".omp/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/": "dir",
+        ".omp/agent/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".omp/agent/AGENTS.md": "sha256:5869fef0010ab5788d1c9329ba97d1cf1e471398f1fe6552f36e5fb2db2d1c6b",
         ".omp/agent/config.yml": "sha256:7fdb2152a80e8e140c9a212f8417f315c7414f1b43939fa1e1478e43c7503561",
         ".omp/agent/mcp.json": "sha256:b1c4773ba124c2c379f0bb5e4fbc6107773e9c3542c093ec1e4ea37f28860c18",
@@ -1245,6 +1256,7 @@
         ".pi/": "dir",
         ".pi/agent/": "dir",
         ".pi/agent/intercom/": "dir",
+        ".pi/agent/intercom/.docks-kit-sync-lock.db": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         ".pi/agent/intercom/config.json": "sha256:6797d34701435422f64ac3f52a71c851b13f905ad6aef2f16a9cf8bca9e298b6"
       }
     },

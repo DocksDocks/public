@@ -16,7 +16,7 @@ import { isAbsolute, resolve } from "node:path";
 import { bunBootstrap } from "./bun";
 import { p } from "./exec";
 import type { Ctx } from "./index";
-import { ompPaths } from "./ompPaths";
+import { ompPaths, type OmpPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncKitPlugin } from "./ompKitPlugin";
@@ -28,14 +28,42 @@ export interface OmpState {
   readonly pluginsInstalled: number;
 }
 
-export async function ompSync(ctx: Ctx): Promise<OmpState> {
-  await bunBootstrap(ctx, ctx.services);
+/** The omp folders that a sync writes. */
+export interface OmpWriteFolders {
+  readonly paths: OmpPaths;
+  /** The folder of the pi-intercom `config.json`. */
+  readonly intercomDir: string;
+}
 
+/**
+ * Resolve the omp paths and the intercom folder of this run. `ompSync` writes
+ * into them, and `runSync` takes a folder lock in each of them first.
+ */
+export function ompWriteFolders(ctx: Ctx): OmpWriteFolders {
   const paths = ompPaths({
     home: ctx.home,
     env: process.env,
     platform: ctx.services.platform.raw(),
   });
+  // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
+  // and pi-intercom reads the trimmed value. Without a profile, the kit uses
+  // the PI_CODING_AGENT_DIR value when it is set, else ~/.pi/agent.
+  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]?.trim();
+  const intercomRoot =
+    paths.profile !== undefined
+      ? paths.agentDir
+      : intercomRootSetting !== undefined && intercomRootSetting !== ""
+        ? isAbsolute(intercomRootSetting)
+          ? intercomRootSetting
+          : resolve(process.cwd(), intercomRootSetting)
+        : p(ctx.home, ".pi", "agent");
+  return { paths, intercomDir: p(intercomRoot, "intercom") };
+}
+
+export async function ompSync(ctx: Ctx): Promise<OmpState> {
+  await bunBootstrap(ctx, ctx.services);
+
+  const { paths, intercomDir } = ompWriteFolders(ctx);
   const agentDir = paths.agentDir;
   if (!ctx.dryRun) ensureDirectory(agentDir);
 
@@ -61,19 +89,6 @@ export async function ompSync(ctx: Ctx): Promise<OmpState> {
   const modelsBackedUp = syncMergedYaml(ctx, "SoT/.omp/models.yml", modelsFile, mergeOmpModels);
   syncOmpModelRemovals(ctx, modelsFile, modelsBackedUp);
 
-  // omp exports PI_CODING_AGENT_DIR as the agent directory of a named profile,
-  // and pi-intercom reads the trimmed value. Without a profile, the kit uses
-  // the PI_CODING_AGENT_DIR value when it is set, else ~/.pi/agent.
-  const intercomRootSetting = process.env["PI_CODING_AGENT_DIR"]?.trim();
-  const intercomRoot =
-    paths.profile !== undefined
-      ? paths.agentDir
-      : intercomRootSetting !== undefined && intercomRootSetting !== ""
-        ? isAbsolute(intercomRootSetting)
-          ? intercomRootSetting
-          : resolve(process.cwd(), intercomRootSetting)
-        : p(ctx.home, ".pi", "agent");
-  const intercomDir = p(intercomRoot, "intercom");
   if (!ctx.dryRun) ensureDirectory(intercomDir);
   syncWholeFile(
     ctx,
