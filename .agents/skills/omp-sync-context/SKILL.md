@@ -1,6 +1,6 @@
 ---
 name: omp-sync-context
-description: "Use when changing the docks-kit omp harness: the sync omp pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts), harness selection and session model in kit.db (harnesses.ts, kitDb.ts, parseArgs.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries, the omp folder locks (ompWriteFolders, omp --fast), and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when changing the docks-kit omp harness: the sync omp pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts, ompChild.ts), harness selection and session model in kit.db (harnesses.ts, kitDb.ts, parseArgs.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries, the omp folder locks and the omp child environment (ompWriteFolders, spawnOmp, omp --fast), and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
@@ -30,15 +30,17 @@ metadata:
     - path: cli/src/engine-native/ompOverlay.ts
       lines: "1-310"
     - path: cli/src/commands/omp.ts
-      lines: "1-467"
+      lines: "1-474"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-336"
+      lines: "1-337"
     - path: cli/src/engine-native/parseArgs.ts
       lines: "1-206"
     - path: cli/src/engine-native/atomicWrite.ts
       lines: "1-123"
     - path: cli/src/engine-native/ompFastMode.ts
-      lines: "1-58"
+      lines: "1-63"
+    - path: cli/src/engine-native/ompChild.ts
+      lines: "1-26"
     - path: cli/src/commands/harnesses.ts
       lines: "1-80"
   updated: "2026-11-07"
@@ -153,24 +155,38 @@ So a writing `sync omp` also takes `<folder>/.docks-kit-sync-lock.db` in each
 folder of `ompSync.ts ompWriteFolders`: the `ompPaths` `agentDir`, the
 resolved intercom directory, and the `ompPaths` `dataRoot`.
 
-- `syncDispatch.ts runSync` takes these locks before `ompSync` starts.
-  `ompSync` calls the same `ompWriteFolders`, so it writes only into locked
-  folders.
+- `syncDispatch.ts runSync` calls `ompWriteFolders` once, before the locks,
+  and passes the result into `ompSync`. `ompSync` does not call `ompPaths`
+  again, so it writes only into locked folders. A second resolution could
+  pick a `$XDG_DATA_HOME/omp` folder that another sync created after the
+  locks.
+- Every `omp` command of the marketplace and plugin passes starts through
+  `ompChild.ts spawnOmp`. When the locked data root is the config root, the
+  child gets no `XDG_DATA_HOME`, so the omp resolver keeps the locked root.
+  When the locked data root is the XDG root, the child keeps the environment
+  of the sync. This applies on the default profile and on named profiles.
 - The data root is locked also when it is missing. The lock step then creates
-  it under the locks of its ancestors. With an overridden `agentDir`, an empty
-  `<home>/<PI_CONFIG_DIR|.omp>` folder can appear.
+  it under the locks of its ancestors in the set. With an overridden
+  `agentDir`, an empty `<home>/<PI_CONFIG_DIR|.omp>` folder can appear.
 - `~/.docks-kit/omp-plugin` and the plugin upgrade log stay under the home, so
   the home lock covers them.
-- `commands/omp.ts toggleFastUnderLocks` runs `docks-kit omp --fast` under the
-  home sync lock and the `agentDir` lock (`syncDispatch.ts
-  withHomeAndFolderLocks`), with the wait and the held line of a sync. It
-  locks `agentDir` only when the folder exists: a missing folder has no
-  `config.yml`, so the toggle fails and creates nothing.
+- `commands/omp.ts toggleFastUnderLocks` checks `<agentDir>/config.yml` before
+  any lock (`ompFastMode.ts requireDeployedConfig`). A missing file exits 2,
+  and the run creates no omp folder. Otherwise it runs `docks-kit omp --fast`
+  under the home sync lock and always the `agentDir` lock
+  (`syncDispatch.ts withHomeAndFolderLocks`), with the wait and the held line
+  of a sync.
+- The locks cover the folder that the kit deploys into, not the target of a
+  symlinked file. A lock in the target folder would put a lock file into a
+  folder that the user manages, such as a dotfiles repository. Residual: two
+  homes whose `config.yml` (or another deployed file) links to one shared
+  file can overwrite the merge of each other.
 - A dry run takes no folder lock. `sync-orchestration-context` owns the lock
   order and the folder creation rule.
 
 Verify: `bunx vitest run cli/test/unit/syncLock.test.ts -t "shared omp intercom folder"`,
 `bunx vitest run cli/test/unit/syncLock.test.ts -t "shared omp data root"`,
+`bunx vitest run cli/test/unit/syncLock.test.ts -t "keeps each omp child on the locked config root"`,
 and `bunx vitest run cli/test/unit/ompFastMode.test.ts -t "omp --fast under the folder lock"`.
 
 ### Private Mode Pattern

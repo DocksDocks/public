@@ -59,11 +59,22 @@ same files at once.
   `model codex <value>` write holds the Codex folder lock too. The held line
   then names that lock file.
 - A writing sync creates a missing folder of this set just before it takes the
-  lock of that folder, after the locks of its parent folders. Each folder that
-  it creates gets mode 0700. It does not change the mode of an existing folder.
-- `docks-kit omp --fast` holds the sync lock and the omp agent folder lock
-  while it rewrites `config.yml`. The wait and the held line are those of a
-  sync.
+  lock of that folder, after the locks of its ancestors in the set. Each folder
+  that it creates gets mode 0700. The lock step does not change the mode of an
+  existing folder. The omp pipeline then sets mode 0700 on the omp agent folder
+  and the intercom folder.
+- A sync finds the omp folders once, before it takes the locks. The omp
+  pipeline and each `omp` command that it starts use these folders. When the
+  locked data root is the omp config root, each `omp` command starts without
+  `XDG_DATA_HOME`. So a `$XDG_DATA_HOME/omp` folder that appears during the
+  sync does not move the plugin data to a folder without a lock.
+- The locks cover the folder that the kit writes into, not the target of a
+  symlinked file. Two homes whose `config.yml` (or another deployed file) links
+  to one shared file can still overwrite the merge of each other.
+- `docks-kit omp --fast` checks `config.yml` before it takes a lock. When the
+  file is missing, it exits 2 and creates no omp folder. Otherwise it holds the
+  sync lock and the omp agent folder lock while it rewrites `config.yml`. The
+  wait and the held line are those of a sync.
 - A run with `--dry-run`, `-h`, or `--help` takes no lock. A dry run through
   the `DRY_RUN=1` env global of the private `native-raw` engine channel takes
   no lock either. `model <tool>` without a value only reads, so it takes no

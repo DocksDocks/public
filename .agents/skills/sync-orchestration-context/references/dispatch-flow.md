@@ -65,12 +65,16 @@ runEngineNative(argv, services?, options?)        index.ts
         |       kit.db harness selection, else harnesses.ts LEGACY_SELECTION
         |-- validateModifierFlags(ctx)            parseModifiers.ts
         |-- DOCKS_KIT_SYNC_CONCURRENCY            a SyncConcurrency value; other values exit 2
+        |-- ompWriteFolders(ctx)                  omp selected only; resolved once, before
+        |                                         the locks; ompSync and its omp children
+        |                                         use the result
         |-- withFolderLocks(ctx, folders, ...)    <folder>/.docks-kit-sync-lock.db of the
         |                                         selected Codex and agents folders and, for
         |                                         omp, the ompWriteFolders agent, intercom, and
         |                                         data root folders; canonical, sorted
         |                                         ancestor-first; a missing folder is made
-        |                                         under its ancestor locks; none in a dry run
+        |                                         under the locks of its ancestors in the
+        |                                         set; none in a dry run
         |-- preflightClaudeSettings(ctx)          claudeSettings.ts; claude selected only:
         |                                         invalid settings.json aborts the whole sync
         |                                         before any pipeline starts
@@ -78,7 +82,7 @@ runEngineNative(argv, services?, options?)        index.ts
         |   |-- claudeSync(ctx) when claude is selected        claudeSync.ts
         |   |-- codexSync(ctx) when codex is selected          codexSync.ts
         |   |-- skillsSync(ctx) when agents is selected        skillsSync.ts
-        |   `-- ompSync(ctx) when omp is selected              ompSync.ts
+        |   `-- ompSync(ctx, omp) when omp is selected         ompSync.ts
         |-- syncConcurrencyForManifest            syncConcurrency.ts; cap 1 when the skills
         |                                         manifest is populated and claude and agents
         |                                         are both selected

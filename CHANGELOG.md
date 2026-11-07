@@ -12,13 +12,20 @@ These fixes close #163.
   `XDG_DATA_HOME`, or a `PI_CONFIG_DIR` with `..`. Syncs of such homes now
   wait for each other.
 - The folder locks now work for a missing folder. The sync creates the folder
-  after the locks of its parent folders, with mode 0700, and then takes its
-  lock. Before, the sync created a Codex or agents folder before any lock.
+  after the locks of its ancestors in the set, with mode 0700, and then takes
+  its lock. Before, the sync created a Codex or agents folder before its
+  folder lock.
 - A sync no longer changes the mode of a shared folder that another sync
   holds. It also creates no `intercom` folder in a held omp agent folder.
+- The sync finds the omp folders once, before it takes the locks, and the omp
+  pipeline writes only into them. Each `omp` command of the sync starts
+  without `XDG_DATA_HOME` when the locked data root is the omp config root. So
+  a `$XDG_DATA_HOME/omp` folder that another sync creates during the run
+  cannot move the plugin data to an unlocked folder.
 - `docks-kit omp --fast` now holds the sync lock and the omp agent folder lock
   while it rewrites `config.yml`. A sync and the toggle no longer overwrite
-  the change of each other.
+  the change of each other. It checks `config.yml` before it takes a lock, so
+  a missing file ends the run with exit 2 and creates no omp folder.
 - A dry run through the `DRY_RUN=1` env global of the `native-raw` engine
   channel now takes no sync lock, as `--dry-run` does. It no longer waits up
   to 120 s for another sync.

@@ -36,7 +36,7 @@ metadata:
     - path: cli/src/engine-native/engineCtx.ts
       lines: "1-157"
     - path: cli/src/engine-native/syncDispatch.ts
-      lines: "1-336"
+      lines: "1-337"
     - path: cli/src/engine-native/kitLock.ts
       lines: "1-121"
     - path: cli/src/engine-native/syncConcurrency.ts
@@ -322,7 +322,8 @@ each writer of such a folder also takes `<folder>/.docks-kit-sync-lock.db`
   codexHome`) when `codex` is selected, and `ctx.agentsDir` when `agents` is
   selected. When `omp` is selected, it adds the three folders of
   `ompSync.ts ompWriteFolders`: the omp agent folder, the intercom folder, and
-  the omp data root. `ompSync` writes into the same resolved folders.
+  the omp data root. `runSync` resolves them once, before the locks, and passes
+  them into `ompSync` (see `omp-sync-context`).
 - `folderLockPaths` canonicalizes each folder without the need for it to
   exist: the real path of its nearest existing ancestor, joined with the rest.
   It removes duplicates, keeps nested folders, and sorts by folder, so an

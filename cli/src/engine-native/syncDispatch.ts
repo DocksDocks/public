@@ -71,8 +71,8 @@ const UNLOCKED_TOKENS: Record<string, true> = { "--dry-run": true, "-h": true, "
  * it throws; the OS releases the locks when the process ends.
  *
  * With `privateDirectory` false, each path is a folder lock. A missing folder
- * is created just before its lock, so the locks taken before it already guard
- * its ancestors. Each folder that this creates gets mode 0700, as
+ * is created just before its lock, so the locks of its ancestors in the set
+ * are already held. Each folder that this creates gets mode 0700, as
  * `ompFileDeploy.ts ensureDirectory` gives the parents of an omp folder. An
  * existing folder keeps its mode: `mkdirSync` applies `mode` only to the
  * folders that it creates.
@@ -145,7 +145,8 @@ export function folderLockPaths(folders: ReadonlyArray<string>): Array<string> {
  * Run `body` under the folder lock of each folder in `folders`. Take it after
  * the sync lock. Syncs of different homes can share a Codex, agents, or omp
  * folder, and their home locks differ. A missing folder is created under the
- * locks of its ancestors. A dry run takes no folder lock and creates nothing.
+ * locks of its ancestors in the set. A dry run takes no folder lock and
+ * creates nothing.
  */
 export async function withFolderLocks(
   ctx: Ctx,
