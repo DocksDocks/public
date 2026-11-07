@@ -322,7 +322,11 @@ prompt. In Claude Code, any form with `--empty` or `--restore` asks.
   so user rules stay. `--reconcile` replaces the arrays with the SoT arrays.
 - **Codex**: sync writes `~/.codex/rules/docks.rules` whole. Keep your own
   rules in another `.rules` file, such as `default.rules`. Codex applies the
-  strictest rule across all files.
+  strictest rule across all files. Sync records each kit rules file in
+  `~/.codex/.kit-managed-rules`. When the SoT drops a kit rules file, sync
+  removes the deployed copy while it holds the kit bytes. A dropped file that
+  you edited stays, and each sync warns about it. Sync never removes a file
+  that it did not write, such as `default.rules`.
 
 ## Check the deployed rules
 
