@@ -45,7 +45,8 @@ jobs:
   resolve:
     permissions: {}
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # 3 x p90 4 s = 12 s, so the 2-minute floor applies.
+    timeout-minutes: 2
     outputs:
       tag: ${{ steps.identity.outputs.tag }}
       release_version: ${{ steps.identity.outputs.release_version }}
@@ -69,7 +70,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 3 x (p90 74 s + 9 s cold setup) = 249 s, rounded up.
+    timeout-minutes: 5
     steps:
       # No `ref:` override. An empty `ref` makes actions/checkout pin the
       # event's commit and assert it, which is exactly the guarantee a release
@@ -275,8 +277,10 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-24.04
-    # The artifact download took 9.5 minutes in the cli-v0.20.1 run.
-    timeout-minutes: 30
+    # 3 x p90 43 s = 129 s, rounded up. Known risk: the artifact download
+    # took 9.5 minutes in the cli-v0.20.1 run, and a cancelled release needs
+    # a manual dispatch.
+    timeout-minutes: 3
     steps:
       - name: Download release artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -317,7 +321,9 @@ jobs:
     permissions:
       id-token: write
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # 3 x p90 45 s = 135 s, rounded up. One of the last 30 successful runs
+    # took 241 s, which is more than this limit.
+    timeout-minutes: 3
     steps:
       - name: Download release artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

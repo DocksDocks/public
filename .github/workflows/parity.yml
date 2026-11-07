@@ -1,6 +1,9 @@
 name: golden-regression
 
-# EngineNative portable and Linux-canonical golden-regression gates.
+# EngineNative portable and Linux-canonical golden-regression gates. The
+# portable lane runs as one job each on Linux and macOS. On Windows, two
+# unit-test shards and one runtime job run in parallel, and the gate job
+# `portable (windows-2025)` passes only when all three pass.
 
 on:
   push:
@@ -35,10 +38,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # A superseded pull request commit is noise, but a superseded `main` commit
-  # would be left with no green run, which is the record a later bisect reads.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # A pull request keeps one group, so a newer head cancels the stale run.
+  # Every other run gets its own group. In one group, GitHub replaces a
+  # pending run with the newer run, also with `cancel-in-progress: false`.
+  # The old shared `main` group did this to run 39826349216 (2026-10-22): it
+  # ended cancelled with 0 jobs, so its `main` commit got no green run. With
+  # a group per run, every `main` run finishes.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -49,7 +56,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x p90 8 s = 24 s, so the 2-minute floor applies.
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -68,16 +76,19 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color
 
-  # Portable lane proves the typed CLI, runtime commands, and native host artifact.
+  # Portable lane proves the typed CLI, runtime commands, and native host
+  # artifact on Linux and macOS. The Windows jobs below run the same lane.
   portable:
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-26, windows-2025]
+        os: [ubuntu-24.04, macos-26]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # 3 x (p90 + cold setup), rounded up: Ubuntu 3 x (48 s + 9 s) = 171 s,
+    # macOS 3 x (102 s + 8 s) = 330 s.
+    timeout-minutes: ${{ matrix.os == 'macos-26' && 6 || 3 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -116,13 +127,80 @@ jobs:
         run: bun run smoke:package
 
       - name: Materialized Claude runtime commands (POSIX shell + p95)
-        if: runner.os != 'Windows'
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run test:runtime:posix
 
+      - name: Compile and execute the native host artifact
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run smoke:native
+
+  # Windows unit tests in two Vitest shards. One Windows job ran every step
+  # in series and was the longest leg (`pull_request` median 111 s, p90
+  # 118 s over 27 warm runs); its unit-test step alone took a median of 68 s
+  # (p90 76 s). Two shards run in parallel on separate runners. The shard
+  # file lists together equal the unsharded list, and the test counts add up.
+  portable-windows-unit:
+    name: portable (windows-2025) unit ${{ matrix.shard }}/2
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    runs-on: windows-2025 # pinned label, never *-latest
+    # Measured run p90 of the slower shard: 65 s (10 warm PR #154 runs).
+    # 3 x (65 s + 21 s cold setup) = 258 s, rounded up.
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-bun-cache
+
+      - name: Install dependencies
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun install --frozen-lockfile
+
+      - name: Unit tests (vitest shard)
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run test:unit --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  # Every Windows step except the unit tests. The runtime step (median 18 s)
+  # and the native smoke (median 1 s) do not read the unit-test bundle, so
+  # they run on their own runner in parallel with the shards. A runtime step
+  # in a shard job would compete with Vitest for the 4 CPUs of the runner.
+  portable-windows-runtime:
+    name: portable (windows-2025) runtime
+    permissions:
+      contents: read
+    runs-on: windows-2025 # pinned label, never *-latest
+    # Measured run p90: 47 s (10 warm PR #154 runs).
+    # 3 x (47 s + 21 s cold setup) = 204 s, rounded up.
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-bun-cache
+
+      - name: Install dependencies
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun install --frozen-lockfile
+
+      - name: Generated payload is fresh
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run check:generated
+
+      - name: Typecheck
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: bun run typecheck
+
       - name: Materialized Claude runtime commands (Windows + p95)
-        if: runner.os == 'Windows'
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run test:runtime:windows
@@ -132,12 +210,35 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run smoke:native
 
+  # Gate for the split Windows lane. It keeps the check name
+  # `portable (windows-2025)` of the former single Windows job, and it fails
+  # when a shard or the runtime job fails, or is cancelled or skipped while
+  # the run goes on. When the whole run is cancelled, `!cancelled()` skips the
+  # gate, and GitHub counts a skipped job as passing for a required check; the
+  # shard and runtime checks then report `cancelled`.
+  portable-windows:
+    name: portable (windows-2025)
+    needs: [portable-windows-unit, portable-windows-runtime]
+    if: ${{ !cancelled() }}
+    # No checkout and no API call, so the job token gets no scope.
+    permissions: {}
+    runs-on: ubuntu-24.04 # pinned label, never *-latest
+    # No checkout and no install, so the 2-minute floor applies.
+    timeout-minutes: 2
+    steps:
+      - name: All Windows jobs passed
+        env:
+          UNIT: ${{ needs.portable-windows-unit.result }}
+          RUNTIME: ${{ needs.portable-windows-runtime.result }}
+        run: test "$UNIT" = success && test "$RUNTIME" = success
+
   # Snapshot lane keeps Linux-canonical goldens and their prove-red checks.
   golden-dryrun:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x (p90 40 s + 9 s cold setup) = 147 s, rounded up.
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -185,7 +286,8 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-24.04 # pinned label, never *-latest
-    timeout-minutes: 10
+    # 3 x (p90 49 s + 9 s cold setup) = 174 s, rounded up.
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
