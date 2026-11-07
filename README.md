@@ -149,7 +149,7 @@ and a later flag-less sync reverts them. Full reference: `docks-kit docs flags`
 | `docks-kit` / `docks-kit.ps1` | POSIX and Windows launchers (binary → Bun-from-source) |
 | `install.sh` / `install.ps1` | POSIX and Windows global installers |
 | `docs/PLAN.md` | Plan record standard; plans are GitHub issues |
-| `AGENTS.md` / `CLAUDE.md` | Agent-facing engineering rules / Claude Code specifics |
+| `AGENTS.md` / `.claude/rules/claude-code.md` | Agent-facing engineering rules / Claude Code specifics (path-scoped rule) |
 
 ## Platform support
 
@@ -180,5 +180,5 @@ are versioned config snapshots without shipping the authoring `SoT/` tree.
   omp-models, omp-context, command-guards, toolchain, plugins, install,
   platforms (works offline, bundled with the CLI)
 - [`AGENTS.md`](AGENTS.md) — engineering rules for agents working on the kit
-- [`CLAUDE.md`](CLAUDE.md) — Claude Code specifics: env vars, session
+- [`.claude/rules/claude-code.md`](.claude/rules/claude-code.md) — Claude Code specifics: env vars, session
   management, permission mode, open concerns
