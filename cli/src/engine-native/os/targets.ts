@@ -7,7 +7,10 @@
  * - the artifact names and `uname` keys in the Bash launcher `docks-kit`;
  * - the artifact name and processor architecture in `docks-kit.ps1`;
  * - the default `TARGETS` list of `cli/build-binaries.sh`;
- * - the four artifact names in `.github/workflows/release-cli.yml`.
+ * - the four artifact names in each of the two lists of
+ *   `.github/workflows/release-cli.yml`: the `with.path` list of the
+ *   `actions/upload-artifact` step in job `build`, and the `for asset in`
+ *   list of the `gh release upload` step in job `github-release`.
  * The same test also checks two facts outside this table: the generated Bun
  * pin in the two launchers and the two installers equals the
  * `SoT/toolchain.json` pin, and `docks-kit.ps1` and `install.ps1` hold only

@@ -14,12 +14,13 @@ import {
   payloadText,
   type PayloadPath,
 } from "../payload";
+import { replaceTextIfChanged } from "./atomicWrite";
 import { syncConfig } from "./codexConfig";
 import { removeRetiredImportedHooks } from "./codexHooks";
 import { codexHome } from "./codexPaths";
 import { removeLegacyDocksMarketplace, syncMarketplace, syncPlugins } from "./codexPlugins";
 import { replaceTopLevelSetting, syncCodexEffort, syncCodexModel } from "./codexToml";
-import { p, spawnProcess, writeTextIfChanged } from "./exec";
+import { p, spawnProcess } from "./exec";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { hostOs } from "./os";
@@ -178,10 +179,14 @@ function readRulesRecords(manifestFile: string): Map<string, string> {
 /**
  * Deploys the SoT rules files and records each one in `manifestFile`. Codex
  * applies every file in `rules/`, so a file that the SoT dropped keeps its old
- * rules active. A recorded file that the SoT no longer ships is therefore
- * removed on every sync while it holds the recorded kit bytes. An edited file
- * stays, keeps its record, and gets a warning on each sync. A file that no sync
- * recorded, such as the `default.rules` file of Codex, is never read or removed.
+ * rules active. Each sync therefore removes a recorded file that the SoT no
+ * longer ships while the file holds the recorded kit bytes. An edited file
+ * stays, keeps its record, and gets a warning on each sync. Sync deploys each
+ * name that the SoT ships over an existing file, recorded or not. It backs up
+ * a file that differs to `<name>.bak` and replaces it. Cleanup never reads or
+ * removes a file that the SoT does not ship and no sync recorded, such as the
+ * `default.rules` file of Codex. Sync replaces the manifest through a temporary
+ * file and a rename, so an interrupted sync keeps the previous manifest.
  */
 export function syncRules(
   ctx: Ctx,
@@ -246,7 +251,7 @@ export function syncRules(
     .sort(([left], [right]) => compareCodepoints(left, right))
     .map(([name, hash]) => `${hash}  ${name}\n`)
     .join("");
-  if (manifest !== "" || existsSync(manifestFile)) writeTextIfChanged(manifestFile, manifest);
+  if (manifest !== "" || existsSync(manifestFile)) replaceTextIfChanged(manifestFile, manifest);
 }
 
 function syncAgentsMd(ctx: Ctx, sotAgentsMdText: string, userAgentsMd: string): void {

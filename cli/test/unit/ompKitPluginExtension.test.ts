@@ -11,9 +11,43 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
+import type * as FsModule from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const faults = vi.hoisted(() => ({
+  /** Errors to throw once: the next `call` of `node:fs` on `path` throws `code`. */
+  pending: [] as Array<{ call: string; path: string; code: string }>,
+}));
+
+vi.mock("node:fs", async () => {
+  const actual = await vi.importActual<typeof FsModule>("node:fs");
+  /** Wrap `real` so that a pending fault for `call` on the path throws once. */
+  function faulty<Real extends (path: FsModule.PathLike, ...rest: Array<never>) => unknown>(
+    call: string,
+    real: Real,
+  ): Real {
+    return ((path: FsModule.PathLike, ...rest: Array<never>) => {
+      const index = faults.pending.findIndex(
+        (fault) => fault.call === call && fault.path === String(path),
+      );
+      if (index !== -1) {
+        const { code } = faults.pending.splice(index, 1)[0]!;
+        throw Object.assign(new Error(`${code}: injected fault, ${call} '${String(path)}'`), {
+          code,
+        });
+      }
+      return real(path, ...rest);
+    }) as Real;
+  }
+  return {
+    ...actual,
+    openSync: faulty("openSync", actual.openSync),
+    readFileSync: faulty("readFileSync", actual.readFileSync),
+    unlinkSync: faulty("unlinkSync", actual.unlinkSync),
+  };
+});
 
 import docksKitOmp, {
   claimSweep,
@@ -62,6 +96,8 @@ function worktrees(command: string): Array<string> {
 }
 
 afterEach(() => {
+  faults.pending.length = 0;
+  vi.restoreAllMocks();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -770,6 +806,129 @@ describe("sweep scheduling", () => {
     expect(claimSweep(cacheDir, Date.now())).toBe(false);
     expect(existsSync(claim)).toBe(true);
     expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+  });
+
+  /**
+   * On Windows, a file that one process deletes stays "delete pending" while a
+   * handle to it is open. libuv then reports EPERM when a process opens or
+   * deletes that name, and EBUSY when an open handle does not share delete
+   * access. Each test injects one such error where a process can meet it.
+   */
+  describe("claimSweep on Windows while another process deletes a claim file", () => {
+    function onWindows(): void {
+      vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    }
+
+    /** Make the next `call` of `node:fs` on `path` throw an error with `code`, once. */
+    function inject(
+      call: "openSync" | "readFileSync" | "unlinkSync",
+      path: string,
+      code: string,
+    ): void {
+      faults.pending.push({ call, path, code });
+    }
+
+    /** Call claimSweep once: `true`, `false`, or `threw <code>` for an error that escapes. */
+    function attempt(cacheDir: string, nowMs: number): string {
+      try {
+        return String(claimSweep(cacheDir, nowMs));
+      } catch (cause) {
+        return `threw ${String((cause as NodeJS.ErrnoException).code)}`;
+      }
+    }
+
+    it("returns false and changes no file when the create of the claim fails with EPERM", () => {
+      const cacheDir = sandbox();
+      const now = Date.now();
+      const claim = join(cacheDir, "tidy.stamp.claim");
+      const takeover = join(cacheDir, "tidy.stamp.takeover");
+      makeStale(claim, now);
+      // Another process holds the takeover mutex and deletes the stale claim now.
+      writeFileSync(takeover, "2 other-token");
+      onWindows();
+      inject("openSync", claim, "EPERM");
+
+      expect(attempt(cacheDir, now)).toBe("false");
+      expect(faults.pending).toEqual([]);
+      expect(readFileSync(claim, "utf8")).toBe("1 stale-token");
+      expect(readFileSync(takeover, "utf8")).toBe("2 other-token");
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+    });
+
+    it("returns false when the removal of a stale takeover mutex fails with EBUSY, then claims on the next call", () => {
+      const cacheDir = sandbox();
+      const now = Date.now();
+      const claim = join(cacheDir, "tidy.stamp.claim");
+      const takeover = join(cacheDir, "tidy.stamp.takeover");
+      makeStale(claim, now);
+      makeStale(takeover, now);
+      onWindows();
+      inject("unlinkSync", takeover, "EBUSY");
+
+      expect(attempt(cacheDir, now)).toBe("false");
+      expect(faults.pending).toEqual([]);
+      expect(readFileSync(claim, "utf8")).toBe("1 stale-token");
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+      // The next process replaces the stale takeover mutex and the stale claim.
+      expect(attempt(cacheDir, now)).toBe("true");
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(true);
+      expect(existsSync(claim)).toBe(false);
+      expect(existsSync(takeover)).toBe(false);
+    });
+
+    it("returns false and releases the takeover mutex when the removal of a stale claim fails with EPERM, then claims on the next call", () => {
+      const cacheDir = sandbox();
+      const now = Date.now();
+      const claim = join(cacheDir, "tidy.stamp.claim");
+      const takeover = join(cacheDir, "tidy.stamp.takeover");
+      makeStale(claim, now);
+      onWindows();
+      inject("unlinkSync", claim, "EPERM");
+
+      expect(attempt(cacheDir, now)).toBe("false");
+      expect(faults.pending).toEqual([]);
+      expect(existsSync(takeover)).toBe(false);
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+      // The next process replaces the stale claim.
+      expect(attempt(cacheDir, now)).toBe("true");
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(true);
+      expect(existsSync(claim)).toBe(false);
+    });
+
+    it("returns true and writes the stamp when the removal of its claim at release fails with EPERM", () => {
+      const cacheDir = sandbox();
+      const now = Date.now();
+      onWindows();
+      inject("unlinkSync", join(cacheDir, "tidy.stamp.claim"), "EPERM");
+
+      expect(attempt(cacheDir, now)).toBe("true");
+      expect(faults.pending).toEqual([]);
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(true);
+    });
+
+    it("returns true and writes the stamp when the read of its claim at release fails with EPERM", () => {
+      const cacheDir = sandbox();
+      const now = Date.now();
+      onWindows();
+      inject("readFileSync", join(cacheDir, "tidy.stamp.claim"), "EPERM");
+
+      expect(attempt(cacheDir, now)).toBe("true");
+      expect(faults.pending).toEqual([]);
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(true);
+    });
+
+    it.each([
+      { platform: "win32", code: "EACCES" },
+      { platform: "win32", code: "EIO" },
+      { platform: "linux", code: "EPERM" },
+    ] as const)("throws $code from the create of the claim on $platform", ({ platform, code }) => {
+      const cacheDir = sandbox();
+      vi.spyOn(process, "platform", "get").mockReturnValue(platform);
+      inject("openSync", join(cacheDir, "tidy.stamp.claim"), code);
+
+      expect(attempt(cacheDir, Date.now())).toBe(`threw ${code}`);
+      expect(existsSync(join(cacheDir, "tidy.stamp"))).toBe(false);
+    });
   });
 });
 

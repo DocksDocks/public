@@ -219,7 +219,8 @@ describe("Claude runtime migration transaction", () => {
   it("writes runtime assets before settings commit and preserves fallbacks when that commit fails", () => {
     const original = stableStringify(LEGACY_SETTINGS);
     const variant = legacyVariant(original);
-    mkdirSync(join(variant, ".claude", "settings.json.tmp"));
+    // A directory at the backup name makes the settings commit fail before it replaces the file.
+    mkdirSync(join(variant, ".claude", "settings.json.bak"));
     const run = runEngine(["sync", "claude"], variant, makeStubDir());
     try {
       expect(run.exitCode, run.output).toBe(1);

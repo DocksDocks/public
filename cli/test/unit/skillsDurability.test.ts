@@ -14,9 +14,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ExecModule from "../../src/engine-native/exec";
 
 const mocks = vi.hoisted(() => ({
+  /** The SoT `skills.txt` text. */
+  declaredSkills: "",
   failRemovalOf: undefined as string | undefined,
   payloadText: vi.fn<(path: string) => string>(),
   spawnProcess: vi.fn(),
+}));
+
+const faults = vi.hoisted(() => ({
+  /**
+   * While set, each `writeFileSync` on a path that starts with this prefix
+   * writes half of the data and then throws `EIO`, as an interrupted write does.
+   * The prefix covers the file and its temporary siblings.
+   */
+  interruptWritesUnder: undefined as string | undefined,
 }));
 
 vi.mock("node:fs", async () => {
@@ -31,6 +42,29 @@ vi.mock("node:fs", async () => {
       )
         throw new Error("EBUSY: resource busy");
       actual.rmSync(path, options);
+    },
+    writeFileSync: (
+      file: FsModule.PathOrFileDescriptor,
+      data: string | NodeJS.ArrayBufferView,
+      options?: FsModule.WriteFileOptions,
+    ) => {
+      const prefix = faults.interruptWritesUnder;
+      if (
+        prefix === undefined ||
+        typeof file === "number" ||
+        !resolve(String(file)).startsWith(resolve(prefix))
+      ) {
+        actual.writeFileSync(file, data, options);
+        return;
+      }
+      const bytes =
+        typeof data === "string"
+          ? Buffer.from(data)
+          : Buffer.from(data.buffer, data.byteOffset, data.byteLength);
+      actual.writeFileSync(file, bytes.subarray(0, bytes.length >> 1), options);
+      throw Object.assign(new Error(`EIO: injected fault, writeFileSync '${String(file)}'`), {
+        code: "EIO",
+      });
     },
   };
 });
@@ -84,10 +118,11 @@ function seedOrphan(root: string): { canonical: string; snapshot: string } {
 
 describe("skills durability", () => {
   beforeEach(() => {
+    mocks.declaredSkills = "";
     mocks.failRemovalOf = undefined;
     mocks.spawnProcess.mockReset();
     mocks.payloadText.mockReset().mockImplementation((path) => {
-      if (path === "SoT/.agents/skills.txt") return "";
+      if (path === "SoT/.agents/skills.txt") return mocks.declaredSkills;
       if (path === "SoT/.claude/settings.json") return '{"enabledPlugins":{}}';
       if (path === "SoT/toolchain.json") return '{"tools":{"skills-cli":{"verified":"1.5.15"}}}';
       throw new Error(`Unexpected payload: ${path}`);
@@ -95,6 +130,7 @@ describe("skills durability", () => {
   });
 
   afterEach(() => {
+    faults.interruptWritesUnder = undefined;
     mocks.failRemovalOf = undefined;
     for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
   });
@@ -141,6 +177,29 @@ describe("skills durability", () => {
     await skillsSync(ctx);
     expect(existsSync(canonical)).toBe(false);
     expect(readFileSync(snapshot, "utf8")).toBe("");
+    expect(mocks.spawnProcess).not.toHaveBeenCalled();
+  });
+
+  it("keeps the previous snapshot when a snapshot write is interrupted", async () => {
+    const root = mkdtempSync(join(tmpdir(), "docks-skills-snapshot-write-"));
+    roots.push(root);
+    const { canonical, snapshot } = seedOrphan(root);
+    // An installed canonical skill, so the sync does not spawn an install.
+    const kept = join(root, ".agents", "skills", "keep");
+    mkdirSync(kept);
+    writeFileSync(join(kept, "SKILL.md"), "# keep\n");
+    mocks.declaredSkills = "acme/keep\n";
+
+    faults.interruptWritesUnder = snapshot;
+    await expect(skillsSync(makeCtx(root, false))).rejects.toThrow(/^EIO/);
+    expect(readFileSync(snapshot, "utf8")).toBe("acme/orphan\n");
+
+    faults.interruptWritesUnder = undefined;
+    await skillsSync(makeCtx(root, true));
+
+    expect(existsSync(canonical)).toBe(false);
+    expect(existsSync(kept)).toBe(true);
+    expect(readFileSync(snapshot, "utf8")).toBe("acme/keep\n");
     expect(mocks.spawnProcess).not.toHaveBeenCalled();
   });
 });

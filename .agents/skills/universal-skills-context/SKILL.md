@@ -12,7 +12,7 @@ metadata:
     - path: cli/src/engine-native/skillsLinks.ts
       lines: "1-216"
     - path: cli/src/engine-native/skillsPrune.ts
-      lines: "1-115"
+      lines: "1-116"
     - path: cli/src/engine-native/skillsManifest.ts
       lines: "1-36"
     - path: SoT/.agents/skills.txt

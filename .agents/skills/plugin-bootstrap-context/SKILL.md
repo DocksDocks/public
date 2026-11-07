@@ -26,7 +26,7 @@ metadata:
     - path: cli/src/engine-native/settings.ts
       lines: "1-42"
     - path: cli/src/engine-native/codexSync.ts
-      lines: "1-269"
+      lines: "1-274"
     - path: cli/src/engine-native/codexStatus.ts
       lines: "1-25"
     - path: SoT/.claude/settings.json

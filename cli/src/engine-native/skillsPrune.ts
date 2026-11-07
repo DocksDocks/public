@@ -8,7 +8,8 @@
  * that command deletes the same-named directory of every known agent.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
-import { p, writeTextIfChanged } from "./exec";
+import { replaceTextIfChanged } from "./atomicWrite";
+import { p } from "./exec";
 import type { Ctx } from "./index";
 import { compareCodepoints } from "./jq";
 import { isKitOwnedCopy, lstat, removeKitOwnedCopy, removeLink } from "./skillsLinks";
@@ -111,5 +112,5 @@ export function updateSnapshot(
   const sorted = [...new Set([...normalizeManifest(manifest), ...retainedSlugs])].sort(
     compareCodepoints,
   );
-  writeTextIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "");
+  replaceTextIfChanged(snapshot, sorted.length > 0 ? `${sorted.join("\n")}\n` : "");
 }
