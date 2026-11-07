@@ -44,8 +44,9 @@ and the plan issue is the tracker that points at it.
 
 ## Labels
 
-`plan.mjs new` creates five labels idempotently with `gh label create --force`:
-`plan`, `plan:drafting`, `plan:planned`, `plan:ongoing`, and `plan:blocked`.
+`plan.mjs new` creates the missing labels of these five with `gh label create`,
+without `--force`: `plan`, `plan:drafting`, `plan:planned`, `plan:ongoing`, and
+`plan:blocked`.
 The writable plan statuses are `drafting`, `planned`, `ongoing`, and `blocked`.
 Every plan issue carries `plan`. An open plan normally carries one phase label.
 Status writes remove other phase labels before applying the target label.
@@ -164,8 +165,9 @@ Work starts when the status is neither `drafting` nor `planned`.
 Applying `plan:ongoing` at any time also marks work as started.
 After work starts, only `ongoing` and `blocked` are legal targets.
 Completion and retirement are issue closure results, not status transitions.
-`plan.mjs archive` does not close the issue. `plan.mjs retire` closes it as not
-planned.
+`plan.mjs archive` closes an open `ongoing` plan as completed only when GitHub
+leaves it open after the landing merge. `plan.mjs retire` closes the plan as
+not planned.
 
 ## Lifecycle commands
 
@@ -187,39 +189,35 @@ resolves the target repository from that checkout's GitHub remote.
 | `plan.mjs status <issue> <status> [--reason <text>]` | Apply an open-plan status. Maintain the blocked reason and phase labels. |
 | `plan.mjs step <issue> <step-id> <status>` | Apply one step status. Require an ongoing plan, except terminal repair on a finished plan. |
 | `plan.mjs list [--status <s>]` | List plan issues by derived status. Show open plans before closed plans. |
-| `plan.mjs archive <issue>` | Verify terminal steps, trusted code review, and merged closure. Remove stale phase labels. |
+| `plan.mjs archive <issue> --pr <pr>` | Verify terminal steps, trusted code review, and the merged landing pull request `<pr>`. Close an open `ongoing` plan as completed when GitHub does not. Remove stale phase labels. |
 | `plan.mjs retire <issue> --reason <text>` | Close an eligible plan as not planned. Remove phase labels. |
+| `plan.mjs reopen <issue> --pr <pr>` | Reopen a plan that the merged partial pull request `<pr>` closed through its linked branch. Claim an unassigned plan. |
 
 Open non-terminal step statuses may change freely. A `done` or `skipped` step is
 immutable. A finished plan permits only terminal step repair.
 
 ## Archive verification
 
-`plan.mjs archive` verifies lifecycle state. It requires all Steps rows to be
-terminal. It also requires the latest trusted eligible code-review comment to
-carry `Code-review: pass`. The issue must already be closed as completed.
-An eligible merged pull request must prove that closure. On success, the
-command removes stale phase labels. It prints
-`plan #<n> finished (closed by <url>)`. A recognized critical or high severity
-field changes a code-review pass to `fixes-required`.
+`plan.mjs archive <issue> --pr <pr>` verifies lifecycle state. `<pr>` is the
+landing pull request. The command requires all Steps rows to be terminal. It
+also requires the latest trusted eligible code-review comment to carry
+`Code-review: pass`. A recognized critical or high severity field changes a
+code-review pass to `fixes-required`.
 
-The verifier reads the issue's `closedByPullRequestsReferences` with
-`excludeUserLinked: true`. It accepts only keyword-linked merged pull requests.
-A manually linked pull request never proves a landing.
+The named pull request is the landing proof. It must be merged, its base must
+be the repository default branch, and its description must carry a GitHub
+closing keyword for this issue, such as `Closes #<issue>`. A title, a sidebar
+link, or a merge into another branch is not proof.
 
-Either proof suffices, and the verifier tries them in one order. It first looks
-for an eligible keyword closer. Only when that connection holds none does it
-examine the latest closure. A pull-request closer is itself verified as a
-candidate closing pull request. A commit closer supplies its
-`associatedPullRequests`. Any other latest closer supplies no fallback proof.
-An ineligible keyword reference, such as one still open, therefore never hides
-a valid closure proof. The verifier accepts only merged pull requests whose
-base matches that repository's default branch.
-
-Earlier closure events do not count. An issue closed by a commit, reopened, then
-closed by hand has no commit proof. A commit pushed straight to the default
-branch has no associated merged pull request. Archive refuses both cases.
-It never performs the merge or closes the issue.
+The plan must be `ongoing` or `finished`. GitHub can leave the plan open after
+the landing merge, for example when the repository turns off its auto-close
+setting. For an open plan, `archive` first waits up to about 60 seconds for the
+GitHub close. When GitHub does not close the plan, `archive` closes it as
+completed, with a `Closed by archive` comment that names the pull request.
+Then it removes stale phase labels and prints
+`plan #<n> finished (closed by <url>)`. Do not close the plan by hand. When
+`archive` fails after it closed the plan, run the same command again. It never
+performs the merge.
 
 ## Writing the record
 
@@ -235,8 +233,8 @@ After a conflict, re-read the record and re-apply the intent.
 `step` requires an open `ongoing` plan, except that a `finished` plan accepts a
 step mutation when the target status is terminal (`done` or `skipped`). This
 repairs a closed-but-unarchived record without creating a new closure event.
-Never reopen the issue for this repair: `archive` trusts only the latest
-closure, so reopening would discard the eligible closure proof.
+This repair needs no reopen. To move a step of a finished plan to a
+non-terminal status, reopen the issue first.
 
 An export copy is a snapshot of one body revision, not a live view. The `step`
 and `edit` commands rewrite body bytes. A status change also rewrites body bytes
@@ -295,7 +293,7 @@ Review records live in issue comments, not in the plan body.
 
 Before every dispatch, the manager runs `plan.mjs export <issue>` and passes the
 printed absolute path; the reviewer reads the export path the manager supplies.
-For code review, the manager also supplies a fresh complete-candidate diff.
+For code review, the manager also supplies the diffs of the round mode.
 
 The reviewer returns one markdown block. The manager posts that block as one
 issue comment without editing it. These examples show both review kinds:
@@ -325,35 +323,49 @@ The comment author must equal that assignee. For each review kind, the latest
 trusted eligible comment wins. Creation time sets the order. API order breaks
 ties. Missing trusted review comments derive as `none`.
 
-A code-review pass changes to `fixes-required` when a finding starts with
-`- [critical]`, `- [high]`, `critical:`, or `high:`.
-Matching ignores case. Severity words elsewhere in finding prose do not count.
+A code-review pass changes to `fixes-required` when any line contains
+`[critical]` or `[high]`, or starts with `critical:`, `high:`,
+`severity: critical`, or `severity: high`. Matching ignores case, Markdown
+emphasis, code marks, blockquote markers, and list markers. A bare severity
+word inside finding prose does not count.
 
-Both review phases run at most five rounds. Each round uses a fresh plan export;
-each code-review round also uses a fresh complete-candidate diff. On rounds 1
-through 4, a `repair` or `fixes-required` verdict requires every reproduced or
-named finding to be fixed, followed by a fresh export or diff and a fresh
-review. A repair that changes no relevant bytes is no progress. A finding
-repeated in the next round survived its fix. Either condition stops the loop,
-as does `repair` or `fixes-required` in round 5; there is no sixth-round repair.
+Each round uses a fresh plan export. Each code-review round names one mode:
+`full`, `panel`, or `delta`. A `full` round sends the full candidate diff to
+one `code-reviewer`. A `panel` round sends the full diff and a focus diff to
+three `code-reviewer` dispatches, one per lens (`correctness`,
+`spec-and-tests`, `text-and-safety`). A `delta` round reviews only the delta
+diff from the previous round's reviewed head to the current reviewed head. The
+Code-review rounds section of the installed contract sets when each mode
+applies. Before the next round, a `repair` or `fixes-required` verdict requires
+every reproduced or named finding to be fixed, followed by a fresh export or
+diff and a fresh review. A repair that changes no relevant bytes is no
+progress. A finding repeated in the next round survived its fix. Ask the user
+to continue or block when a round makes no progress, the same finding returns
+after a repair, round 5 does not pass, or dispatch fails again without a
+relevant change. If no answer is available, record the reason and block. A
+yolo run uses the round ceiling of the contract's Yolo runs section instead.
 
 A plan-review `blocked` verdict routes its user-only decision through
 `## Open questions` and `ask`; the verdict alone is not a lifecycle block. A
-technical code-review `blocked` verdict stops immediately. After implementation
-has started, a technical block or any terminal repair failure requires the
-manager to commit and normally push all current work to the verified linked
-branch before recording the blocker, setting the plan `blocked`, and stopping.
+code-review `blocked` verdict for hunks that the reviewer left unread sends
+that reviewer again with the same inputs and the unread paths; a second such
+block on the same reviewed head counts as a dispatch that failed again without
+a relevant change. A code-review `blocked` verdict for another input is
+resolved before the next verdict is requested. When the plan blocks after
+implementation has started, the manager commits and normally pushes all
+current work to the verified linked branch before it records the blocker and
+sets the plan `blocked`.
 
 ## Phases
 
 1. **Decide.** Phase 1 asks exactly one question with exactly three options, in this order and wording: `Plan and implement now`, `Plan only, stop at planned`, `Implement directly` - and skips the question only when the request already settles the mode.
 2. **Draft.** Create the plan issue, write the goal and research hypothesis, and keep provisional Steps and Acceptance tables while status remains `drafting`.
 3. **Research.** Verify facts and sources. Choose the durable fix. Bind the files. Complete Acceptance. Set the plan `planned`.
-4. **Plan review.** Run up to five rounds from fresh exports. Post each reviewer block as one issue comment. Fix reproduced findings and dispatch a fresh review; stop on pass, no progress, a finding surviving its fix, or `repair` in round five. Route every `blocked` user-only decision through `## Open questions` and `ask`, including in round five. A plan-only run stops at `planned` only after plan review passes.
+4. **Plan review.** Run rounds from fresh exports. Post each reviewer block as one issue comment. Fix reproduced findings and dispatch a fresh review; stop on pass. Ask the user to continue or block when a round makes no progress, the same finding returns after a repair, round 5 does not pass, or dispatch fails again without a relevant change. If no answer is available, record the reason and block. Route every `blocked` user-only decision through `## Open questions` and `ask`, including in round five. A plan-only run stops at `planned` only after plan review passes.
 5. **Implement.** Set the plan `ongoing`, verify and check out its GitHub-linked branch before changing implementation bytes, move each step through its legal states, and record real Acceptance output in `## Verification Results` before the closing merge.
-6. **Code review.** Run up to five rounds from fresh complete-candidate diffs and fresh plan exports. Post each reviewer block as one issue comment. Fix every critical and high finding and dispatch a fresh review; stop on pass, no progress, a finding surviving its fix, a technical block, or `fixes-required` in round five. Before recording a technical block or terminal repair failure, commit and normally push all current work to the linked plan branch. Every step must be terminal and code review must pass before the closing merge; archive verifies those facts afterward.
+6. **Code review.** Run rounds from fresh plan exports, each with the diffs of its round mode (`full`, `panel`, or `delta`). Post each reviewer block as one issue comment. Fix every critical and high finding and dispatch a fresh review; stop on pass. A code-review `blocked` verdict follows the rule in Review records. Ask the user to continue or block when a round makes no progress, the same finding returns after a repair, round 5 does not pass, or dispatch fails again without a relevant change. If no answer is available, record the reason and block. Before recording a blocker after implementation, commit and normally push all current work to the linked plan branch. Every step must be terminal and code review must pass before the closing merge; archive verifies those facts afterward.
 
-Build the review diff from the complete candidate pull request, not only the
+Build the full diff from the complete candidate pull request, not only the
 dirty worktree. Resolve and fetch the repository default branch, then compute
 `<merge-base>` with `git merge-base <default-remote-ref> HEAD`. Cover one net
 tracked candidate with `git diff <merge-base> -- <changed paths>`. Add one
@@ -369,7 +381,7 @@ invalidates the pass and blocks merge.
 A step whose `Effect` is not `local` requires an in-session `ask` confirmation
 immediately before it runs; when `ask` is unavailable the step is set `blocked`
 and `Blocked: <unconfirmed effect>` is recorded first in `## Open questions`.
-A user-invoked `yolo` run replaces these asks, the five-round stop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
+A user-invoked `yolo` run replaces these asks, the continue-or-block question of the review loop, and the `blocked`-verdict question with the Yolo runs section of the installed `plan-lifecycle` contract.
 
 Routine plan issue publication is authorized by the settled mode and needs no
 repeated repository picker. Routine linked-branch creation, commits, and normal
@@ -405,14 +417,13 @@ After `Code-review: pass`, commit and push any remaining reviewed bytes, then
 create or update one pull request carrying `Closes #<issue>` and targeting the
 repository default branch. This landing work needs no additional prompt.
 
-Never treat an empty first checks result as success. Retry
-`gh pr checks --json name,bucket` at most 12 times with a 10-second delay until
-checks appear. If required checks exist, run
+Never treat an empty first checks result as success. Wait up to five minutes
+for checks to appear, for example with repeated `gh pr checks --json
+name,bucket`. If required checks exist, run
 `gh pr checks --watch --required`; if CI checks exist but none are required,
 run `gh pr checks --watch` to wait for all reported CI. Any failed check blocks
-merge. If no checks appear, continue only when repository inspection confirms
-that no pull-request CI is configured; otherwise leave the pull request open
-with a named no-checks blocker and do not show the merge prompt.
+merge. If the repository has no configured checks, use the green local gate as
+the check result and say so in the merge question.
 
 When the checks policy passes and GitHub reports the pull request mergeable,
 ask immediately with exactly two options: `Merge now` or
@@ -427,9 +438,10 @@ or diff changed, block merge. Invoke `gh pr merge` with
 strategy only after the fresh `Merge now` answer.
 
 Only the pull request that lands the completed work carries `Closes #<issue>`.
-A partial pull request carries plain `Refs #<issue>`. `archive` verifies the
-merged result rather than causing it. A plan that never lands is retired, not
-archived.
+A partial pull request carries plain `Refs #<issue>`. GitHub can still close
+the issue on its merge through the linked branch; then run
+`plan.mjs reopen <issue> --pr <pr>`. `archive` verifies the merged result; it
+never performs the merge. A plan that never lands is retired, not archived.
 
 ## Portability
 
