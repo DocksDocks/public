@@ -155,7 +155,12 @@ verify: `grep -rn 'bunBootstrap(' cli/src/engine-native` lists the callers;
   and never call the real registry or GitHub.
 - Keep `cli/src/commands/toolchain.ts MANAGED` aligned with the `modeToolchain`
   ensure `switch`; both must name the same managed tools.
+  The cue pins `MANAGED` to `bun` and proves that `ensure bun` reaches the
+  `bun` case.
   verify: `bunx vitest run cli/test/unit/toolchain.test.ts -t "public toolchain ensure"`.
+  Unprobed: no test fails on a new `modeToolchain` case that `MANAGED` lacks.
+  Compare both lists by hand (verify: `grep -n "MANAGED = " cli/src/commands/toolchain.ts`
+  and `grep -nE 'case "|managed tools only' cli/src/engine-native/modes.ts`).
 - Installer downloads and npm global packages are supply-chain sensitive. Bump
   `verified` only after testing the release.
 - The public CLI reaches Bun bootstrap only after the supported-host check
