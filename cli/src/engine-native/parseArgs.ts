@@ -36,6 +36,32 @@ const TARGET_FLAGS = {
   omp: "syncOmp",
 } satisfies Record<Harness, TargetFlag>;
 
+/**
+ * The rename hint for each retired sync flag. The engine prints it here, and
+ * the public CLI layer (`argvValidate.ts`) rejects the same flag with the same
+ * text, so the two paths cannot drift.
+ */
+export const LEGACY_FLAG_HINTS = {
+  "--claude": "--claude was renamed: pass the target as a word, e.g. 'sync claude'",
+  "--codex": "--codex was renamed: pass the target as a word, e.g. 'sync codex'",
+  "--agents": "--agents was renamed: pass the target as a word, e.g. 'sync agents'",
+  "--omp": "--omp was renamed: pass the target as a word, e.g. 'sync omp'",
+  "--force": "--force was renamed to --reconcile",
+  "--remove-plugins":
+    "--remove-plugins was renamed to --prune (it also removes marketplaces + kit-managed skills)",
+  "--680k": "--680k was renamed to --claude-compact-window=680k",
+  "--permissive": "--permissive was renamed to --claude-permissive",
+  "--supabase": "--supabase was renamed to --claude-plugin=supabase",
+  "--n8n": "--n8n was renamed to --claude-plugin=n8n",
+  "--skip-rtk": "--skip-rtk was renamed to --skip-bubblewrap",
+} as const satisfies Record<string, string>;
+
+type LegacyFlag = keyof typeof LEGACY_FLAG_HINTS;
+
+/** Own-key check, so a word such as `constructor` never reads an Object prototype member. */
+export const isLegacyFlag = (flag: string): flag is LegacyFlag =>
+  Object.hasOwn(LEGACY_FLAG_HINTS, flag);
+
 function selectTarget(ctx: Ctx, target: Harness): void {
   ctx[TARGET_FLAGS[target]] = true;
   ctx.targetFilterSet = true;
@@ -131,30 +157,14 @@ export function parseArgs(ctx: Ctx, args: ReadonlyArray<string>): void {
       case "--codex":
       case "--agents":
       case "--omp":
-        err(`${arg} was renamed: pass the target as a word, e.g. 'sync ${arg.slice(2)}'`);
-        throw new ExitError(2);
       case "--force":
-        err("--force was renamed to --reconcile");
-        throw new ExitError(2);
       case "--remove-plugins":
-        err(
-          "--remove-plugins was renamed to --prune (it also removes marketplaces + kit-managed skills)",
-        );
-        throw new ExitError(2);
       case "--680k":
-        err("--680k was renamed to --claude-compact-window=680k");
-        throw new ExitError(2);
       case "--permissive":
-        err("--permissive was renamed to --claude-permissive");
-        throw new ExitError(2);
       case "--supabase":
-        err("--supabase was renamed to --claude-plugin=supabase");
-        throw new ExitError(2);
       case "--n8n":
-        err("--n8n was renamed to --claude-plugin=n8n");
-        throw new ExitError(2);
       case "--skip-rtk":
-        err("--skip-rtk was renamed to --skip-bubblewrap");
+        err(LEGACY_FLAG_HINTS[arg]);
         throw new ExitError(2);
       case "-h":
       case "--help":
