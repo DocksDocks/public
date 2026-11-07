@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-11-07 - docks-kit 0.22.19: kit locks and ownership records
+
+### Fixed
+
+These fixes close #159.
+
+- `docks-kit tidy --apply` now holds an SQLite lock,
+  `~/.cache/docks-kit/tidy-lock.db`. The OS releases it when the holder ends.
+  The old `tidy.lock` takeover could give the lock to two runs.
+- `docks-kit tidy --apply` now makes its plan under the lock. Before, a
+  second run could apply a plan that it made while the first run changed the
+  same resources.
+- A second hygiene sweep claim now only starts a second `tidy --apply`. That
+  run finds the lock held and stops, or plans from the current state.
+- Each writing `docks-kit sync` and each `docks-kit model <tool> <value>` now
+  holds `~/.cache/docks-kit/sync-lock.db`. Two syncs can no longer write
+  ownership records that drop the items of the other.
+- A sync waits up to 120 s for the sync lock, then exits 1 with a message.
+  `DOCKS_KIT_SYNC_LOCK_WAIT_MS` sets another wait. A dry run and `--help`
+  take no lock.
+- `sync codex` now writes each rules file through a temporary file and a
+  rename. An interrupted write no longer leaves a cut rules file.
+- `sync codex` now records the hash of each new rules file before it deploys
+  the file. A rules file that an interrupted sync deployed is now removed
+  when the SoT drops it.
+- Sync now adds a skill to `~/.agents/.kit-pending-skills` before it installs
+  it. When a sync stops after the install, the next sync records the skill as
+  owned, so `--prune` can remove it.
+- A write through the kit `replaceFile` helper now removes the temporary file
+  of a killed earlier write to the same file. The short temporary name now
+  holds the writer's PID.
+- On Windows, the omp hygiene extension now tells a pending delete from a
+  real access denial. After EPERM, it creates and deletes a probe file in the
+  same folder.
+- When the probe also fails, the sweep does not start. The next tool result
+  of the main session then shows `docks-kit sweep did not start: <message>`.
+- `--prune` no longer removes a skill directory that the user made before the
+  SoT declared the same slug. The kit now records only the skills that it
+  installed, in `~/.agents/.kit-owned-skills`.
+- The kit no longer writes `~/.agents/.kit-managed-skills`. `--prune` keeps
+  each skill directory that only this older record names, and prints a line
+  for it.
+
 ## 2026-11-07 - docks-kit 0.22.18: Windows sweep claim and atomic ownership manifests
 
 ### Fixed
