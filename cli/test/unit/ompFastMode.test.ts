@@ -1,9 +1,26 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { parse } from "yaml";
 
-import { toggleOpenAiFast } from "../../src/engine-native/ompFastMode";
+import { toggleDeployedOpenAiFast, toggleOpenAiFast } from "../../src/engine-native/ompFastMode";
 import { mergeOmpConfig } from "../../src/engine-native/ompYaml";
 import { payloadText } from "../../src/payload";
+
+const roots: Array<string> = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
 
 const CONFIG = `# user note
 tier:
@@ -51,5 +68,24 @@ describe("toggleOpenAiFast", () => {
     const deployed = toggleOpenAiFast(CONFIG).text;
     const merged = parse(mergeOmpConfig(payloadText("SoT/.omp/config.yml"), deployed));
     expect(merged.tier.openai).toBe("priority");
+  });
+});
+
+describe("toggleDeployedOpenAiFast", () => {
+  it("keeps a symlinked config.yml a link", () => {
+    const root = mkdtempSync(join(tmpdir(), "omp-fast-link-"));
+    roots.push(root);
+    const dotfiles = join(root, "dotfiles");
+    mkdirSync(dotfiles);
+    const linkTarget = join(dotfiles, "config.yml");
+    writeFileSync(linkTarget, CONFIG);
+    const configPath = join(root, "config.yml");
+    symlinkSync(linkTarget, configPath);
+
+    const toggle = toggleDeployedOpenAiFast(configPath);
+
+    expect(toggle).toMatchObject({ previous: "none", next: "priority" });
+    expect(lstatSync(configPath).isSymbolicLink()).toBe(true);
+    expect(parse(readFileSync(linkTarget, "utf8")).tier.openai).toBe("priority");
   });
 });

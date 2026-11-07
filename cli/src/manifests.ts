@@ -7,6 +7,11 @@ import { isObject, readJsonFile } from "./engine-native/jq";
 import type { JsonObject } from "./engine-native/sharedTypes";
 import { skillBase } from "./engine-native/skillsManifest";
 import { COPY_MARKER } from "./engine-native/skillsSync";
+import {
+  isTomlHeaderLine,
+  keyValueSeparator,
+  tomlContinuationLines,
+} from "./engine-native/tomlLines";
 import { payloadText } from "./payload";
 
 export type Tool = "claude" | "codex";
@@ -22,11 +27,26 @@ export const deployedClaudeSettings = (): any | undefined => {
   return existsSync(p) ? readJson(p) : undefined;
 };
 
+/** The name of a bare, `"…"`, or `'…'` key; undefined for a dotted or escaped key. */
+function tomlKeyName(keyText: string): string | undefined {
+  const key = keyText.trim().match(/^(?:([A-Za-z0-9_-]+)|"([^"\\]*)"|'([^']*)')$/);
+  return key?.[1] ?? key?.[2] ?? key?.[3];
+}
+
+/**
+ * The string value of a top-level key. Lines that continue a multi-line value
+ * are skipped, and the scan stops at the first table header.
+ */
 export function topLevelTomlString(text: string, setting: string): string | undefined {
-  for (const line of text.split(/\r?\n/)) {
-    if (/^\s*\[/.test(line)) return undefined;
-    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]+)"|'([^']*)')/);
-    if (assignment?.[1] === setting) return assignment[2] ?? assignment[3];
+  const lines = text.split(/\r?\n/);
+  const continuation = tomlContinuationLines(lines);
+  for (const [index, line] of lines.entries()) {
+    if (continuation[index] === true) continue;
+    if (isTomlHeaderLine(line)) return undefined;
+    const separator = keyValueSeparator(line);
+    if (separator === undefined || tomlKeyName(line.slice(0, separator)) !== setting) continue;
+    const value = line.slice(separator + 1).match(/^\s*(?:"([^"]+)"|'([^']*)')/);
+    if (value !== null) return value[1] ?? value[2];
   }
   return undefined;
 }

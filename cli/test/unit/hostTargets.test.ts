@@ -66,6 +66,12 @@ describe("host target script contracts", () => {
     );
   });
 
+  it("names every HOST_TARGETS artifact in release-cli.yml", () => {
+    expect(mentionedArtifacts(repoFile(".github/workflows/release-cli.yml"))).toEqual(
+      sorted(HOST_TARGETS.map(({ artifact }) => artifact)),
+    );
+  });
+
   it("keeps the generated Bun pin synchronized across every launcher and installer", () => {
     const manifest = JSON.parse(repoFile("SoT/toolchain.json")) as {
       tools: { bun: { verified: string } };

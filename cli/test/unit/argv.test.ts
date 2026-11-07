@@ -13,7 +13,24 @@ vi.mock("../../docs/omp-models.md", () => ({ default: "" }));
 vi.mock("../../docs/omp-context.md", () => ({ default: "" }));
 vi.mock("../../docs/command-guards.md", () => ({ default: "" }));
 
-import { prepareArgv, subcommandName } from "../../src/argv";
+import { COMMANDS, prepareArgv, subcommandName } from "../../src/argv";
+
+/** The subcommands in registration order, which is also the `--help` order. */
+const REGISTERED_SUBCOMMANDS = [
+  "sync",
+  "harnesses",
+  "update",
+  "model",
+  "models",
+  "toolchain",
+  "status",
+  "plugins",
+  "skills",
+  "docs",
+  "omp",
+  "scratch",
+  "tidy",
+] as const;
 
 describe("argument validation", () => {
   it.each([
@@ -118,6 +135,11 @@ describe("argument validation", () => {
       "rejects legacy --agents with its positional-target rename hint",
       "--agents",
       "--agents was renamed: pass the target as a word, e.g. 'sync agents'",
+    ],
+    [
+      "rejects legacy --omp with its positional-target rename hint",
+      "--omp",
+      "--omp was renamed: pass the target as a word, e.g. 'sync omp'",
     ],
   ] as const)("%s", (_name, flag, message) => {
     expect(prepareArgv(["sync", flag])).toEqual({ kind: "reject", message, exitCode: 2 });
@@ -392,5 +414,13 @@ describe("subcommand resolution", () => {
     ["returns no subcommand for a root global flag", ["--help"], undefined],
   ] as const)("%s", (_name, input, expected) => {
     expect(subcommandName(input)).toBe(expected);
+  });
+});
+
+describe("registered subcommands", () => {
+  it.each(REGISTERED_SUBCOMMANDS)("resolves every registered subcommand: %s", (name) => {
+    expect(COMMANDS.map((command) => command.name)).toEqual(REGISTERED_SUBCOMMANDS);
+    expect(subcommandName([name])).toBe(name);
+    expect(prepareArgv([name, "--help"])).toEqual({ kind: "accept", args: [name, "--help"] });
   });
 });

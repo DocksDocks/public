@@ -6,24 +6,11 @@
  */
 
 import { KNOWN_CLAUDE_OPTIN_PLUGINS } from "./engine-native/parseModifiers";
+import { isLegacyFlag, LEGACY_FLAG_HINTS } from "./engine-native/parseArgs";
 import { modelCatalog } from "./engine-native/models";
 import { advisorCatalog, advisorFlagGrammar, effortCatalog, effortFlagGrammar } from "./efforts";
 import type { Tool } from "./manifests";
 import type { ArgvSurfaces, FlagSurface, ScannedFlag } from "./argvSurface";
-
-const LEGACY_HINTS: Readonly<Record<string, string>> = {
-  "--force": "--force was renamed to --reconcile",
-  "--remove-plugins":
-    "--remove-plugins was renamed to --prune (it also removes marketplaces + kit-managed skills)",
-  "--680k": "--680k was renamed to --claude-compact-window=680k",
-  "--permissive": "--permissive was renamed to --claude-permissive",
-  "--supabase": "--supabase was renamed to --claude-plugin=supabase",
-  "--n8n": "--n8n was renamed to --claude-plugin=n8n",
-  "--skip-rtk": "--skip-rtk was renamed to --skip-bubblewrap",
-  "--claude": "--claude was renamed: pass the target as a word, e.g. 'sync claude'",
-  "--codex": "--codex was renamed: pass the target as a word, e.g. 'sync codex'",
-  "--agents": "--agents was renamed: pass the target as a word, e.g. 'sync agents'",
-};
 
 const modelCatalogHint = (tool: Tool): string => {
   const catalog = modelCatalog(tool);
@@ -76,8 +63,7 @@ export const validateScannedArgv = (
 
   if (subcommand === "sync") {
     for (const flag of flags) {
-      const hint = LEGACY_HINTS[flag.name];
-      if (hint !== undefined) return hint;
+      if (isLegacyFlag(flag.name)) return LEGACY_FLAG_HINTS[flag.name];
     }
   }
 

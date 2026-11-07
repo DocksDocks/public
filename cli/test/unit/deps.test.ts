@@ -1,6 +1,6 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -133,6 +133,26 @@ describe("DependencyManager registry", () => {
     expect(DEPENDENCIES.codex.installHint("win32")).toBe(
       "$tmp = Join-Path $env:TEMP 'codex-install.ps1'; curl.exe -fsSL https://chatgpt.com/codex/install.ps1 -o $tmp; if ($LASTEXITCODE -eq 0) { $env:CODEX_NON_INTERACTIVE = '1'; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $tmp }",
     );
+  });
+
+  it("gives a pinned download-then-run Bun hint on every host", () => {
+    const toolchain = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "..", "..", "..", "SoT", "toolchain.json"), "utf8"),
+    ) as { tools: { bun: { verified: string } } };
+    const pin = toolchain.tools.bun.verified;
+    const posixHint = `tmp=$(mktemp -d) && curl -fsSL https://bun.sh/install -o "$tmp/install.sh" && bash "$tmp/install.sh" bun-v${pin}`;
+
+    expect(DEPENDENCIES.bun.installHint("linux")).toBe(posixHint);
+    expect(DEPENDENCIES.bun.installHint("darwin")).toBe(posixHint);
+    expect(DEPENDENCIES.bun.installHint("win32")).toBe(
+      `curl.exe -fsSL https://bun.sh/install.ps1 -o "$env:TEMP/install.ps1"; if ($LASTEXITCODE -eq 0) { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$env:TEMP/install.ps1" -Version ${pin} }`,
+    );
+    for (const platform of ["linux", "darwin", "win32"] as const) {
+      const hint = DEPENDENCIES.bun.installHint(platform);
+      expect(hint, platform).toContain(pin);
+      expect(hint, platform).toContain("https://bun.sh/install");
+      expect(hint, platform).not.toMatch(/\|\s*(?:bash|sh|iex)\b/);
+    }
   });
 
   it("directs users to Node.js when the skills bootstrap cannot find npx", () => {

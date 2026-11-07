@@ -3,21 +3,8 @@ import { Command, CliOutput } from "effect/cli";
 import { BunRuntime, BunServices } from "@effect/platform-bun";
 import { Console, Effect, Layer } from "effect";
 import { EngineServicesLive } from "./services";
-import { docsCommand } from "./commands/docs";
-import { harnessesCommand } from "./commands/harnesses";
-import { modelCommand } from "./commands/model";
-import { modelsCommand } from "./commands/models";
-import { ompCommand } from "./commands/omp";
-import { pluginsCommand } from "./commands/plugins";
-import { skillsCommand } from "./commands/skills";
-import { scratchCommand } from "./commands/scratch";
-import { statusCommand } from "./commands/status";
-import { syncCommand } from "./commands/sync";
-import { toolchainCommand } from "./commands/toolchain";
-import { tidyCommand } from "./commands/tidy";
-import { updateCommand } from "./commands/update";
 import { GENERATED_PACKAGE_VERSION } from "./generated/sotPayload";
-import { prepareArgv } from "./argv";
+import { COMMANDS, prepareArgv } from "./argv";
 import { runEngineNative } from "./engine-native";
 
 const root = Command.make("docks-kit", {}, () =>
@@ -46,7 +33,9 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log(
       "  docks-kit scratch new|remove              agent temporary files and directories",
     );
-    yield* Console.log("  docks-kit tidy [--apply] [--repo <path>]  remove safe agent leftovers");
+    yield* Console.log(
+      "  docks-kit tidy [--apply] [--repo <path>] [--report] remove safe agent leftovers",
+    );
     yield* Console.log("");
     yield* Console.log(
       "Run 'docks-kit --help' for full option listings (also: --wizard, --completions).",
@@ -57,21 +46,7 @@ const root = Command.make("docks-kit", {}, () =>
   Command.withDescription(
     "Portable AI coding agent config kit — SoT sync engine + helpers for Claude Code, Codex, and universal agent skills.",
   ),
-  Command.withSubcommands([
-    syncCommand,
-    harnessesCommand,
-    updateCommand,
-    modelCommand,
-    modelsCommand,
-    toolchainCommand,
-    statusCommand,
-    pluginsCommand,
-    skillsCommand,
-    docsCommand,
-    ompCommand,
-    scratchCommand,
-    tidyCommand,
-  ]),
+  Command.withSubcommands(COMMANDS),
 );
 
 // v4's default formatter renders `name vversion`, but the `docks-kit` launcher

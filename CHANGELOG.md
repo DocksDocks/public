@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-11-06 - docks-kit 0.22.17: thirteen source defects fixed
+
+### Fixed
+
+- `docks-kit omp --fast` now keeps a symlinked `~/.omp/agent/config.yml` a
+  link and writes the toggled tier into the file that the link names (#150).
+  Before, it replaced the link with a regular file.
+- When `sync omp` prunes retired entries from `config.yml` or `models.yml`, it
+  now writes the file atomically with mode 0600 and backs it up to `.bak`
+  first. When the merge of the same sync already made a backup, the prune
+  keeps that backup of the pre-sync bytes. Before, the prune wrote the file in
+  place, kept its old mode, and made no backup.
+- `docks-kit model codex` and `docks-kit status` now read a top-level Codex
+  `model` that follows a multi-line array, such as a multi-line `notify`, and a
+  quoted key such as `"model" = "…"`. Before, they showed no model.
+- `sync codex` now removes a rules file from `~/.codex/rules/` when the SoT no
+  longer ships it and the file still holds the kit bytes. Each sync records the
+  kit rules files in `~/.codex/.kit-managed-rules`. A dropped file that you
+  edited stays, and each sync warns about it. A file that the kit did not
+  write, such as `default.rules`, is never removed.
+- `docks-kit sync --omp` now fails with the rename hint `--omp was renamed:
+  pass the target as a word, e.g. 'sync omp'`, as the other target flags do.
+  Before, it failed with `unknown flag --omp for 'sync'`.
+- The Codex config merge no longer adds a blank line and a new `.bak` on each
+  sync when the SoT declares only one table.
+- The `docks-kit` overview line for `tidy` now names `--report`.
+- Internal fixes: one list registers the subcommands for both the argument
+  check and Effect; the engine and the public CLI read one table of rename
+  hints; the sync update check starts `git` through the host-aware launcher;
+  the missing-Bun hint is the pinned download-then-run installer instead of a
+  pipe into `bash`; the unread dependency `requirement` field is gone;
+  `bun run check` runs the generated-payload check; and two source comments
+  now match the code.
+
 ## 2026-11-06 - docks-kit 0.22.16: documentation matches the code
 
 ### Fixed

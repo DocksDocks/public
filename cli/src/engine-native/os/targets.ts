@@ -1,8 +1,17 @@
 /**
- * Host-to-artifact map (Platform seam in DESIGN.md). Every launcher, installer,
- * build script, and release workflow selects a compiled binary from this one
- * table; cli/test/unit/hostTargets.test.ts parses those scripts and fails when
- * any of them drifts from it.
+ * Host-to-artifact map (Platform seam in DESIGN.md). The two launchers select
+ * a compiled binary from this table, `cli/build-binaries.sh` builds its
+ * targets, and `release-cli.yml` publishes its artifacts. Each of these files
+ * lists the names by hand, so `cli/test/unit/hostTargets.test.ts` checks them
+ * against this table:
+ * - the artifact names and `uname` keys in the Bash launcher `docks-kit`;
+ * - the artifact name and processor architecture in `docks-kit.ps1`;
+ * - the default `TARGETS` list of `cli/build-binaries.sh`;
+ * - the four artifact names in `.github/workflows/release-cli.yml`.
+ * The same test also checks two facts outside this table: the generated Bun
+ * pin in the two launchers and the two installers equals the
+ * `SoT/toolchain.json` pin, and `docks-kit.ps1` and `install.ps1` hold only
+ * ASCII bytes.
  *
  * Membership here is the support matrix: adding a row is how a host becomes
  * supported, and `requireSupportedHost` in cli/src/engine.ts admits exactly the
