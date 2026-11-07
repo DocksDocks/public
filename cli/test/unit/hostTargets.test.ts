@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { HOST_TARGETS } from "../../src/engine-native/os/targets";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const ARTIFACT_PATTERN = /\bdocks-kit-(?:linux|darwin|windows)-[a-z0-9-]+(?:\.exe)?\b/g;
 const PIN_BLOCK_PATTERN = /# BEGIN GENERATED BUN PIN\r?\n([\s\S]*?)\r?\n# END GENERATED BUN PIN/g;
+const RELEASE_WORKFLOW = ".github/workflows/release-cli.yml";
 
 function repoFile(path: string): string {
   return readFileSync(resolve(REPO_DIR, path), "utf8");
@@ -29,6 +31,43 @@ function defaultBuildTargets(source: string): Array<string> {
   const assignment = source.match(/\|\|\s*TARGETS=\(([^)]*)\)/)?.[1];
   expect(assignment, "default TARGETS assignment").toBeDefined();
   return assignment?.trim().split(/\s+/) ?? [];
+}
+
+/** The artifact names in each release list of release-cli.yml. */
+interface ReleaseLists {
+  /** Job `build`, the `actions/upload-artifact` step, `with.path`. */
+  readonly upload: Array<string>;
+  /** Job `github-release`, the `for asset in ...; do` words of the `gh release upload` step. */
+  readonly release: Array<string>;
+}
+
+interface WorkflowStep {
+  readonly uses?: string;
+  readonly run?: string;
+  readonly with?: { readonly path?: string };
+}
+
+interface Workflow {
+  readonly jobs: Record<string, { readonly steps: ReadonlyArray<WorkflowStep> }>;
+}
+
+/** Read each release list alone, so that a name in one list cannot hide a gap in the other. */
+function releaseListArtifacts(source: string): ReleaseLists {
+  const { jobs } = parse(source) as Workflow;
+  const uploads = jobs.build?.steps.filter(({ uses }) =>
+    uses?.startsWith("actions/upload-artifact@"),
+  );
+  expect(uploads, "upload-artifact steps in job build").toHaveLength(1);
+  const releases = jobs["github-release"]?.steps.filter(({ run }) =>
+    run?.includes("gh release upload"),
+  );
+  expect(releases, "gh release upload steps in job github-release").toHaveLength(1);
+  const assets = releases?.[0]?.run?.match(/\bfor asset in ([^;]*); do\b/)?.[1];
+  expect(assets, "for asset in ...; do word list").toBeDefined();
+  return {
+    upload: mentionedArtifacts(uploads?.[0]?.with?.path ?? ""),
+    release: mentionedArtifacts(assets ?? ""),
+  };
 }
 
 describe("host target script contracts", () => {
@@ -67,9 +106,26 @@ describe("host target script contracts", () => {
   });
 
   it("names every HOST_TARGETS artifact in release-cli.yml", () => {
-    expect(mentionedArtifacts(repoFile(".github/workflows/release-cli.yml"))).toEqual(
-      sorted(HOST_TARGETS.map(({ artifact }) => artifact)),
-    );
+    const names = sorted(HOST_TARGETS.map(({ artifact }) => artifact));
+
+    expect(releaseListArtifacts(repoFile(RELEASE_WORKFLOW))).toEqual({
+      upload: names,
+      release: names,
+    });
+  });
+
+  it("finds an artifact missing from only one release-cli.yml list", () => {
+    const source = repoFile(RELEASE_WORKFLOW);
+    const names = sorted(HOST_TARGETS.map(({ artifact }) => artifact));
+    const dropped = "docks-kit-darwin-arm64";
+    const others = names.filter((name) => name !== dropped);
+    const withoutUpload = source.replace(new RegExp(`^[ \\t]*cli/dist/${dropped}\\r?\\n`, "m"), "");
+    const withoutRelease = source.replace(new RegExp(`(for asset in [^;]*?) ${dropped}\\b`), "$1");
+
+    expect(withoutUpload, "upload list copy").not.toBe(source);
+    expect(releaseListArtifacts(withoutUpload)).toEqual({ upload: others, release: names });
+    expect(withoutRelease, "release list copy").not.toBe(source);
+    expect(releaseListArtifacts(withoutRelease)).toEqual({ upload: names, release: others });
   });
 
   it("keeps the generated Bun pin synchronized across every launcher and installer", () => {

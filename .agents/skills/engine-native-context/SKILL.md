@@ -18,7 +18,7 @@ metadata:
     - path: cli/src/engine-native/parseHelp.ts
       lines: "1-66"
     - path: cli/src/engine-native/os/targets.ts
-      lines: "1-74"
+      lines: "1-77"
     - path: cli/src/engine-native/codexToml.ts
       lines: "1-7"
     - path: cli/test/unit/engine.test.ts

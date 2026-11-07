@@ -22,7 +22,7 @@ metadata:
     - path: cli/src/engine-native/os/windows.ts
       lines: "1-184"
     - path: cli/src/engine-native/os/targets.ts
-      lines: "1-74"
+      lines: "1-77"
     - path: cli/src/engine-native/atomicWrite.ts
       lines: "1-105"
     - path: cli/src/engine-native/logger.ts
