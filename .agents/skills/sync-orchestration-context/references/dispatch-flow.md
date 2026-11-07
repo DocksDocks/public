@@ -118,7 +118,7 @@ mode table. The `model` mode has two paths:
 | Claude marketplace add | Marketplace name absent from known marketplaces (`claudePluginPasses.ts syncPlugins`, pass 1). |
 | Claude plugin install | Missing user-scope install record (`claudePluginPasses.ts syncPlugins`, pass 2). |
 | Universal skill install | Canonical `~/.agents/skills/<basename>` directory absent (`skillsInstall.ts syncUniversal`). |
-| Codex rules copy | Byte-identical file skipped; backup before overwrite. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`; a file that no sync recorded, such as the user-learned `default.rules`, is never read or removed (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
+| Codex rules copy | Byte-identical file skipped; backup before overwrite. A rules file that the SoT dropped is removed only while it holds the kit bytes recorded in `.kit-managed-rules`. A file that no sync recorded, such as the user-learned `default.rules`, is never read or removed (`codexSync.ts syncRules`). (verify: `bunx vitest run cli/test/unit/codexRulesDeploy.test.ts -t "never removes a rules file the kit did not write"`) |
 
 ## New Target Checklist
 
