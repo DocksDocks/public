@@ -1,14 +1,14 @@
 /**
  * Run overlay for `docks-kit omp`. The overlay merges over the deployed omp
  * config for one run only. It sets the 16 roles in ROLE_ORDER to the free
- * model and empties the 13 retry chains in FALLBACK_ORDER and the chains keyed
+ * model and empties the 12 retry chains in FALLBACK_ORDER and the chains keyed
  * by the free model. omp merges the overlay key by key, so each deployed retry
  * chain that is not in FALLBACK_ORDER stays as deployed. The `web` role and
  * its retry chain are not in the overlay, so the deployed web-search provider
  * order applies, and that order can include a paid chat model. A deployed
- * `plan`, `slow`, or `designer` chain also stays, but a retry of the free
- * model uses the empty chain keyed by that model first. Every other key falls
- * through to the deployed config.
+ * `advisor`, `plan`, `slow`, or `designer` chain also stays, but a retry of
+ * the free model uses the empty chain keyed by that model first. Every other
+ * key falls through to the deployed config.
  */
 import { createHash } from "node:crypto";
 import { delimiter } from "node:path";
@@ -35,7 +35,7 @@ export const THINKING_LADDER: ReadonlyArray<string> = [
  * One overlay file per distinct model and level combination, so a second
  * launcher cannot rewrite the file a running session still reads. omp
  * reloads a changed overlay mid-session, so the digest covers the exact
- * rendered overlay: the selector, both levels, and every rendered key. A
+ * rendered overlay: the selector, the level, and every rendered key. A
  * selector carries a slash and may carry other characters a host rejects in
  * a file name, so unsafe characters in the readable prefix become hyphens.
  */
@@ -47,14 +47,16 @@ export function overlayFileName(model: OmpSessionModel): string {
 
 /**
  * Role keys in the order used by SoT/.omp/config.yml for readable diffs. The
- * SoT does not set `memory` and `judge`, so they come last. An unset role
- * falls back to the omp built-in priority chain, which can name a paid model.
- * The `web` role is left out on purpose, so the deployed web-search provider
- * order applies.
+ * SoT does not set `advisor`, `memory`, and `judge`, so they come last. An
+ * unset role falls back to the omp built-in priority chain, which can name a
+ * paid model. omp takes the `/advisor on` model from the `advisor` role and
+ * uses `slow` only when that role is unset, so the overlay pins `advisor`
+ * too: a deployed or project advisor role would otherwise send the advisor
+ * to a paid model. The `web` role is left out on purpose, so the
+ * deployed web-search provider order applies.
  */
 const ROLE_ORDER: ReadonlyArray<string> = [
   "smol",
-  "advisor",
   "designer",
   "plan",
   "commit",
@@ -67,6 +69,7 @@ const ROLE_ORDER: ReadonlyArray<string> = [
   "switch_fable",
   "astra",
   "reviewer",
+  "advisor",
   "memory",
   "judge",
 ];
@@ -78,7 +81,6 @@ const ROLE_ORDER: ReadonlyArray<string> = [
  */
 const FALLBACK_ORDER: ReadonlyArray<string> = [
   "default",
-  "advisor",
   "task",
   "vision",
   "smol",
@@ -148,28 +150,11 @@ export function ladderCeiling(levels: ReadonlyArray<string>): string | undefined
 }
 
 /**
- * Resolve the advisor level from the model own ladder. The advisor runs
- * quick review passes, so it takes the highest level at or below medium,
- * and the lowest level when the ladder starts above medium. The result
- * never exceeds the ladder ceiling by construction.
- */
-export function advisorLevelFor(levels: ReadonlyArray<string>): string | undefined {
-  const known = THINKING_LADDER.filter((level) => levels.includes(level));
-  if (known.length === 0) return undefined;
-  const mediumIndex = THINKING_LADDER.indexOf("medium");
-  let advisor: string | undefined;
-  for (const level of known) {
-    if ((THINKING_LADDER.indexOf(level) as number) <= (mediumIndex as number)) advisor = level;
-  }
-  return advisor ?? (known[0] as string);
-}
-
-/**
  * What the picker may ask about thinking levels for one model. omp accepts a
  * `:level` suffix on a role only for a level the model publishes, so the
  * question set comes from the model own ladder: no ladder means no question,
- * a single level means no choice to make, and two or more levels mean the
- * user can split the advisor from the other roles.
+ * a single level means no choice to make, and two or more levels mean one
+ * level choice for every role.
  */
 export type EffortPlan =
   | { readonly kind: "none" }
@@ -184,39 +169,19 @@ export function planEffortChoice(levels: ReadonlyArray<string>): EffortPlan {
   return { kind: "choose", levels: known, highest: known[known.length - 1] as string };
 }
 
-/**
- * Recommend an advisor level for a chosen main level. The advisor runs quick
- * review passes, so it sits two steps down the model own ladder, and it
- * clamps to the lowest level the model publishes. Steps count positions in
- * that model ladder, not the global ladder, so a sparse ladder such as
- * `high, max` still recommends a real level.
- */
-export function advisorRecommendation(
-  levels: ReadonlyArray<string>,
-  main: string,
-): string | undefined {
-  const known = THINKING_LADDER.filter((level) => levels.includes(level));
-  const index = known.indexOf(main);
-  if (index < 0) return known[0];
-  return known[Math.max(0, index - 2)];
-}
-
 /** A thinking level the overlay can render, or undefined for a blank one. */
 function renderableLevel(level: string | undefined): string | undefined {
   return typeof level === "string" && level.trim() !== "" ? level : undefined;
 }
 
 /**
- * The value the overlay gives one role. The overlay, the session `--model`,
+ * The value the overlay gives every role. The overlay, the session `--model`,
  * and the child environment all use it, so the three cannot drift apart. A
  * model without a level gets the bare selector so the deployed level applies.
  */
-function roleValue(model: OmpSessionModel, role: string): string {
+function roleValue(model: OmpSessionModel): string {
   const thinking = renderableLevel(model.thinking);
-  if (thinking === undefined) return model.selector;
-  const level =
-    role === "advisor" ? (renderableLevel(model.advisorThinking) ?? thinking) : thinking;
-  return `${model.selector}:${level}`;
+  return thinking === undefined ? model.selector : `${model.selector}:${thinking}`;
 }
 
 /**
@@ -230,7 +195,7 @@ export function renderFreeOverlay(model: OmpSessionModel): string {
   if (thinking !== undefined) lines.push(`defaultThinkingLevel: ${thinking}`);
   lines.push("modelRoles:");
   for (const role of ROLE_ORDER) {
-    lines.push(`  ${role}: ${roleValue(model, role)}`);
+    lines.push(`  ${role}: ${roleValue(model)}`);
   }
   if (thinking !== undefined) lines.push("task:", `  maxEffort: ${thinking}`);
   lines.push("retry:", "  fallbackChains:");
@@ -258,22 +223,11 @@ export function buildOmpArgs(
   session: OmpSessionModel,
   passthrough: ReadonlyArray<string>,
 ): ReadonlyArray<string> {
-  return [
-    "launch",
-    "--config",
-    overlayPath,
-    "--model",
-    roleValue(session, "default"),
-    ...passthrough,
-  ];
+  return ["launch", "--config", overlayPath, "--model", roleValue(session), ...passthrough];
 }
 
 // Variables that omp reads at launch to set a role above every config layer.
-const MODEL_ENV_ROLES: ReadonlyArray<readonly [string, string]> = [
-  ["PI_SMOL_MODEL", "smol"],
-  ["PI_SLOW_MODEL", "slow"],
-  ["PI_PLAN_MODEL", "plan"],
-];
+const MODEL_ENV_NAMES: ReadonlyArray<string> = ["PI_SMOL_MODEL", "PI_SLOW_MODEL", "PI_PLAN_MODEL"];
 
 export interface OmpChildEnvironment {
   readonly env: Record<string, string | undefined>;
@@ -300,8 +254,8 @@ export function ompChildEnvironment(
     PI_CONFIG_FILES: [...inherited, overlayPath].join(delimiter),
   };
   const replaced: Array<string> = [];
-  for (const [name, role] of MODEL_ENV_ROLES) {
-    const value = roleValue(session, role);
+  const value = roleValue(session);
+  for (const name of MODEL_ENV_NAMES) {
     const previous = parent[name];
     if (previous !== undefined && previous !== "" && previous !== value) replaced.push(name);
     env[name] = value;

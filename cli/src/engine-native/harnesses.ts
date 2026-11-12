@@ -18,7 +18,6 @@ export type { OmpSessionModel };
 export const DEFAULT_OMP_SESSION_MODEL: OmpSessionModel = {
   selector: "opencode-zen/muse-spark-1.3-contributor-free",
   thinking: "xhigh",
-  advisorThinking: "medium",
 };
 
 function isHarness(value: unknown): value is Harness {
@@ -104,17 +103,13 @@ export function writeHarnessSelection(home: string, selection: ReadonlyArray<Har
 export function readOmpSessionModel(home: string): OmpSessionModel | undefined {
   try {
     return withKitDb(home, "read", (db) => {
-      const row = db
-        .prepare("SELECT selector, thinking, advisor_thinking FROM omp_session WHERE id = 1")
-        .get();
+      const row = db.prepare("SELECT selector, thinking FROM omp_session WHERE id = 1").get();
       const selector = row?.["selector"];
       if (!isNonBlankString(selector)) return undefined;
       const thinking = row?.["thinking"];
-      const advisorThinking = row?.["advisor_thinking"];
       const model: OmpSessionModel = {
         selector,
         ...(isNonBlankString(thinking) ? { thinking } : {}),
-        ...(isNonBlankString(advisorThinking) ? { advisorThinking } : {}),
       };
       return model;
     });
@@ -129,16 +124,15 @@ export function writeOmpSessionModel(home: string, model: OmpSessionModel): void
   if (!isNonBlankString(model.selector)) {
     throw new Error("Omp session model selector must be a non-empty string");
   }
-  // Store blank or absent levels as NULL so a switch to a level-free model
+  // Store a blank or absent level as NULL so a switch to a level-free model
   // leaves no stale level behind.
   const thinking = nonBlankOrNull(model.thinking);
-  const advisorThinking = nonBlankOrNull(model.advisorThinking);
   withKitDb(home, "write", (db) =>
     db
       .prepare(
-        `INSERT INTO omp_session (id, selector, thinking, advisor_thinking) VALUES (1, ?, ?, ?)
-ON CONFLICT(id) DO UPDATE SET selector = excluded.selector, thinking = excluded.thinking, advisor_thinking = excluded.advisor_thinking`,
+        `INSERT INTO omp_session (id, selector, thinking) VALUES (1, ?, ?)
+ON CONFLICT(id) DO UPDATE SET selector = excluded.selector, thinking = excluded.thinking`,
       )
-      .run(model.selector, thinking, advisorThinking),
+      .run(model.selector, thinking),
   );
 }

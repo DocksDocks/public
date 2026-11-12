@@ -39,10 +39,10 @@ Every `docks-kit omp` launch writes a run overlay under `kitCacheDir`;
 only `--model` or `--pick` writes the `omp_session` table.
 `docks-kit omp --fast` writes only `tier.openai` in the deployed
 `config.yml`, through `ompFastMode.ts toggleDeployedOpenAiFast`.
-The session model entry stores a required free model selector, an optional session thinking level,
-and an optional advisor thinking level.
-Compute both levels once at set time from the catalog row of the chosen model.
-Derive each level from that model's own ladder, never from the global ladder
+The session model entry stores a required free model selector and an optional session thinking level.
+Every overlay role, `advisor` included, runs that one level.
+Compute the level once at set time from the catalog row of the chosen model.
+Derive the level from that model's own ladder, never from the global ladder
 constant: free-model ladders differ per model, and some publish no `medium`
 or no ladder (`cli/docs/omp-models.md`; verify: `omp models --json`).
 Store no level for a model without a ladder, and render a bare selector for it.
@@ -52,11 +52,11 @@ Treat a missing, blank, or malformed entry as no stored model, and resolve it
 to `DEFAULT_OMP_SESSION_MODEL`.
 Never throw on a corrupt entry, because a launcher that refuses to start is
 worse than one that starts on the default free model.
-Drop each level field independently when it is blank, so a stale level never
+Drop the level field when it is blank, so a stale level never
 survives a switch to a level-free model.
 
 Anchor storage at `harnesses.ts` — `readHarnessSelection`, `writeHarnessSelection`, `readOmpSessionModel`, and `writeOmpSessionModel` — SQLite tables opened through `kitDb.ts withKitDb`, one writer per table.
-Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `advisorLevelFor`, `planEffortChoice`, `advisorRecommendation`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, the advisor suggestion, and empty fallback chains, including the chains keyed by the free model at every level.
+Anchor rendering at `ompOverlay.ts` — `ladderCeiling`, `planEffortChoice`, and `renderFreeOverlay` — per-model ladder derivation, the picker question set, and empty fallback chains, including the chains keyed by the free model at every level.
 
 The launcher enforces the free model before omp starts.
 Reject each forwarded flag that can select a model, in both forms and also after a `--`, because omp can read that `--` as a flag value.

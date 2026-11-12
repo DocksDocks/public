@@ -1,21 +1,12 @@
 statusLine:
   compactThinkingLevel: false
 
-defaultThinkingLevel: high
-
 cycleOrder:
   - smol
   - default
   - slow
   - fable
   - astra
-
-tier:
-  anthropic: none
-
-advisor:
-  enabled: true
-  syncBacklog: "1"
 
 github:
   enabled: true
@@ -29,14 +20,9 @@ browser:
 task:
   eager: always
   showResolvedModelBadge: true
-  softRequestBudget: 200
-  softRequestBudgetNotice: true
-  batch: true
   enableLsp: true
-  enableEffort: false
   maxEffort: xhigh
   maxConcurrency: 16
-  maxRecursionDepth: 2
   maxRuntimeMs: 3600000
   agentIdleTtlMs: 120000
   agentModelOverrides:
@@ -52,7 +38,6 @@ task:
 
 modelRoles:
   smol: openai-codex/gpt-6-luna:medium
-  advisor: anthropic/claude-opus-5-5:medium
   designer: anthropic/claude-opus-5-5:high
   plan: anthropic/claude-opus-5-5:xhigh
   commit: openai-codex/gpt-6-luna:medium
@@ -83,16 +68,12 @@ display:
   showTokenUsage: true
 
 providers:
-  anthropic:
-    serverSideFallback: false
-  fetch: auto
   webSearchTimeoutSeconds: 30
 
 retry:
   fallbackChains:
     default:
       - openai-codex/gpt-6.1-sol:high
-    advisor: []
     task:
       - openai-codex/gpt-6.1-sol:high
     vision:
@@ -132,19 +113,11 @@ retry:
       - web/mojeek
       - web/public
 
-includeWorkspaceTree: false
-
 branchSummary:
   enabled: true
 
 commands:
   enableOpencodeProject: false
-  enableOpencodeUser: false
-
-skills:
-  enableClaudeUser: false
-  enableCodexUser: false
-  enableAgentsUser: true
 
 steeringMode: all
 
@@ -153,24 +126,20 @@ dev:
   autoqaConsent: denied
 
 compaction:
-  thresholdTokens: -1
   idleEnabled: true
   handoffSaveToDisk: true
 
 doubleEscapeAction: tree
-textVerbosity: low
 
 features:
   unexpectedStopDetection: smart
 
 codexResets:
-  autoRedeem: "no"
+  autoRedeem5h: "no"
+  autoRedeemWeekly: "no"
 
 startup:
   quiet: true
-
-tools:
-  approvalMode: yolo
 
 bash:
   # First match wins. omp checks deny rules against the whole line and each

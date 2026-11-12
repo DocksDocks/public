@@ -50,7 +50,7 @@ metadata:
     - path: cli/src/engine-native/parseModifiers.ts
       lines: "1-225"
     - path: cli/src/engine-native/harnesses.ts
-      lines: "1-144"
+      lines: "1-138"
     - path: cli/src/engine-native/modes.ts
       lines: "1-196"
     - path: cli/src/engine-native/models.ts

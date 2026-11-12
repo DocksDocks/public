@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { OMP_RETIRED_VALUES } from "../../src/engine-native/ompRemovals";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
 const OMP_SOT = join(REPO_DIR, "SoT", ".omp");
@@ -16,6 +17,15 @@ function ompConfig(): Record<string, unknown> {
     throw new Error("SoT/.omp/config.yml must parse to a mapping");
   }
   return parsed as Record<string, unknown>;
+}
+
+function hasPath(root: unknown, segments: ReadonlyArray<string>): boolean {
+  let node = root;
+  for (const segment of segments) {
+    if (typeof node !== "object" || node === null || !Object.hasOwn(node, segment)) return false;
+    node = (node as Record<string, unknown>)[segment];
+  }
+  return true;
 }
 
 describe("SoT omp tree", () => {
@@ -123,30 +133,19 @@ describe("SoT omp tree", () => {
     });
   });
 
-  // A caller `effort` outranks the role suffix, and `hi` maps to the top of the
-  // model ladder. With the field off, every spawn runs its role's level.
-  it("hides caller task effort so spawns run the role level", () => {
-    expect(ompConfig()["task"]).toHaveProperty("enableEffort", false);
-  });
-
-  // A GPT-6 Sol advisor looped on repeated reads under an Opus 5.5 session.
-  // The owner excludes every GPT model from the advisor role and its chain.
-  it("keeps advisor on Opus 5.5 with no GPT model in its role or retry chain", () => {
+  // The SoT ships only values that differ from omp's defaults, and the owner
+  // removed the advisor. `ompRemovals.ts` prunes each retired key from deployed
+  // files, so the SoT shipping one again would fight that prune on every sync.
+  it("declares no advisor setting and no key the retired-value inventory prunes", () => {
     const config = ompConfig();
-    expect(config["advisor"]).toHaveProperty("enabled", true);
-    expect(config["modelRoles"]).toHaveProperty("advisor", "anthropic/claude-opus-5-5:medium");
+    expect(config).not.toHaveProperty("advisor");
+    expect(config["modelRoles"]).not.toHaveProperty("advisor");
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
-    expect(chains).toHaveProperty("advisor", []);
-  });
-
-  // `-1` is omp's schema default sentinel, which selects reserve-based
-  // compaction: `contextWindow` minus `max(floor(contextWindow * 0.15), 16384)`.
-  // The key must stay present rather than be deleted as a redundant default,
-  // because `ompYaml.ts mergeOmpConfig` is additive: a key absent from the SoT
-  // is returned from the deployed file, so deleting it would strand the kit's
-  // former `231200` pin in every already-deployed `~/.omp/agent/config.yml`.
-  it("keeps the compaction trigger on omp's reserve-based default", () => {
-    expect(ompConfig()["compaction"]).toHaveProperty("thresholdTokens", -1);
+    expect(chains).not.toHaveProperty("advisor");
+    const shipped = OMP_RETIRED_VALUES.map(([path]) => path).filter((path) =>
+      hasPath(config, path.split(".")),
+    );
+    expect(shipped).toEqual([]);
   });
 
   // omp retired `providers.webSearchOrder`. It expands the key in memory into

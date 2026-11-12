@@ -249,18 +249,13 @@ describe("omp session model state", () => {
   });
 
   it("keeps a stored ompSession when a harness selection is written", () => {
-    writeOmpSessionModel(home, {
-      selector: "provider/model-free",
-      thinking: "xhigh",
-      advisorThinking: "medium",
-    });
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "xhigh" });
 
     writeHarnessSelection(home, ["claude"]);
 
     expect(readOmpSessionModel(home)).toEqual({
       selector: "provider/model-free",
       thinking: "xhigh",
-      advisorThinking: "medium",
     });
     expect(readHarnessSelection(home)).toEqual(["claude"]);
   });
@@ -274,7 +269,7 @@ describe("omp session model state", () => {
     expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free", thinking: "low" });
   });
 
-  it("drops a blank legacy level while keeping the valid one on import", () => {
+  it("drops a blank legacy level and the retired advisor level on import", () => {
     writeLegacyState(
       JSON.stringify({
         version: 1,
@@ -282,19 +277,12 @@ describe("omp session model state", () => {
       }),
     );
 
-    expect(readOmpSessionModel(home)).toEqual({
-      selector: "provider/model-free",
-      advisorThinking: "low",
-    });
+    expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free" });
     expect(readHarnessSelection(home)).toBeUndefined();
   });
 
   it("leaves no stale level behind when a level-free model overwrites a levelled one", () => {
-    writeOmpSessionModel(home, {
-      selector: "provider/model-free",
-      thinking: "xhigh",
-      advisorThinking: "medium",
-    });
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "xhigh" });
 
     writeOmpSessionModel(home, { selector: "provider/other-free" });
 
@@ -302,11 +290,7 @@ describe("omp session model state", () => {
   });
 
   it("stores whitespace-only levels as absent", () => {
-    writeOmpSessionModel(home, {
-      selector: "provider/model-free",
-      thinking: "  ",
-      advisorThinking: "\t",
-    });
+    writeOmpSessionModel(home, { selector: "provider/model-free", thinking: "  " });
 
     expect(readOmpSessionModel(home)).toEqual({ selector: "provider/model-free" });
   });

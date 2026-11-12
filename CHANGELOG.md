@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-11-12 - docks-kit 0.22.22: omp advisor removed and config trimmed to non-defaults
+
+### Removed
+
+- The omp advisor is removed. `SoT/.omp/config.yml` no longer carries the
+  `advisor` block, `modelRoles.advisor`, or `retry.fallbackChains.advisor`.
+  The plan-lifecycle verification loop replaces it: acceptance checks, a
+  fresh code review of the diff, and a round limit. omp keeps the advisor off
+  by default. A session that runs `/advisor on` takes its advisor model from
+  the `slow` role. Subagents already ran without an advisor.
+- `docks-kit omp` no longer asks for an advisor thinking level. The
+  free-model overlay still sets `modelRoles.advisor` to the free model at the
+  session level, so `/advisor on` in a free session cannot reach a paid
+  model. It no longer empties an `advisor` fallback chain.
+
+### Changed
+
+- `SoT/.omp/config.yml` now carries only keys whose value differs from the
+  omp 18.19.0 default. These keys equal that default and are removed:
+  `defaultThinkingLevel`, `tier.anthropic`, `task.softRequestBudget`,
+  `task.softRequestBudgetNotice`, `task.batch`, `task.enableEffort`,
+  `task.maxRecursionDepth`, `providers.anthropic.serverSideFallback`,
+  `providers.fetch`, `includeWorkspaceTree`, `commands.enableOpencodeUser`,
+  the `skills` block, `compaction.thresholdTokens`, `textVerbosity`, and
+  `tools.approvalMode`. omp applies the same values, so behavior does not
+  change.
+- The sync merge is additive, so `ompRemovals.ts OMP_RETIRED_VALUES` records
+  each removed key with the value the kit shipped. Sync prunes a deployed key
+  only while it still holds that value, so a user edit survives. The same
+  pass prunes the advisor keys.
+- The `compaction.thresholdTokens` pins are retired. Sync prunes a deployed
+  `-1` and the former `231200` pin, and omp's reserve-based default applies.
+- `codexResets.autoRedeem: "no"` becomes `codexResets.autoRedeem5h: "no"` and
+  `codexResets.autoRedeemWeekly: "no"`. omp 18.19.0 migrates the legacy key in
+  memory to these two keys, so behavior does not change. Sync prunes the
+  deployed legacy key while it holds `"no"`.
+
 ## 2026-11-12 - docks-kit 0.22.21: omp Fable roles on Fable 5.2
 
 ### Changed

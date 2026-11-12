@@ -174,11 +174,13 @@ describe("retired omp config keys", () => {
 
   it("prunes an outright-retired key at a value the kit never shipped", () => {
     const { file, root } = deployConfig(
-      "providers:\n  webSearchOrder:\n    - brave\n  fetch: auto\n",
+      "providers:\n  webSearchOrder:\n    - brave\n  webSearchTimeoutSeconds: 30\n",
     );
 
     expect(syncOmpRemovals(testCtx(root), file, false)).toBe(1);
-    expect(parse(readFileSync(file, "utf8"))).toEqual({ providers: { fetch: "auto" } });
+    expect(parse(readFileSync(file, "utf8"))).toEqual({
+      providers: { webSearchTimeoutSeconds: 30 },
+    });
   });
 
   it("removes a mapping emptied by pruning and keeps one that still holds a key", () => {
@@ -190,6 +192,49 @@ describe("retired omp config keys", () => {
     expect(parse(readFileSync(file, "utf8"))).toEqual({
       statusLine: { compactThinkingLevel: false },
     });
+  });
+
+  it("prunes the shipped advisor block, role, and empty retry chain", () => {
+    const { file, root } = deployConfig(
+      [
+        "advisor:",
+        "  enabled: false",
+        '  syncBacklog: "1"',
+        "modelRoles:",
+        "  advisor: anthropic/claude-opus-5-5:medium",
+        "  default: anthropic/claude-opus-5-5:high",
+        "retry:",
+        "  fallbackChains:",
+        "    advisor: []",
+        "    default:",
+        "      - openai-codex/gpt-6.1-sol:high",
+        "",
+      ].join("\n"),
+    );
+
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(4);
+    expect(parse(readFileSync(file, "utf8"))).toEqual({
+      modelRoles: { default: "anthropic/claude-opus-5-5:high" },
+      retry: { fallbackChains: { default: ["openai-codex/gpt-6.1-sol:high"] } },
+    });
+  });
+
+  it("keeps advisor settings and a non-empty advisor chain the user changed", () => {
+    const source = [
+      "advisor:",
+      '  syncBacklog: "3"',
+      "modelRoles:",
+      "  advisor: anthropic/claude-fable-5-2:medium",
+      "retry:",
+      "  fallbackChains:",
+      "    advisor:",
+      "      - anthropic/claude-opus-5-5:medium",
+      "",
+    ].join("\n");
+    const { file, root } = deployConfig(source);
+
+    expect(syncOmpRemovals(testCtx(root), file, false)).toBe(0);
+    expect(readFileSync(file, "utf8")).toBe(source);
   });
 
   // A comment separated by a blank line belongs to the document and must

@@ -17,18 +17,31 @@ import type { Ctx } from "./index";
 import { backupPrivateFile } from "./ompFileDeploy";
 import { bashPatternKey, bashRuleKey } from "./ompYaml";
 
-type RetiredScalar = string | number | boolean;
+/** A retired leaf value: a scalar, or a sequence the kit shipped as one value. */
+type RetiredValue = string | number | boolean | ReadonlyArray<string>;
 
 /**
  * Keys the kit used to deploy, each paired with the exact value it deployed. A
  * key is pruned only while the deployed value still equals that value, so a
- * user who changed the setting keeps it. Every recorded value except
- * `retry.usageAwareFallback` also equals omp's current default, so pruning those
- * changes no behavior today and lets a later upstream default change take
- * effect. Pruning `retry.usageAwareFallback: true` restores omp's default
- * `false`, which removes the coding-plan reserve prompt.
+ * user who changed the setting keeps it. A key listed twice shipped both
+ * values at different times.
+ *
+ * Most recorded values equal omp's current default, so pruning them changes no
+ * behavior today and lets a later upstream default change take effect. These
+ * entries differ from the default, and pruning them is intended:
+ * - `retry.usageAwareFallback: true` restores omp's default `false`, which
+ *   removes the coding-plan reserve prompt.
+ * - `advisor.enabled: true` and `advisor.syncBacklog: "1"` (defaults `false`
+ *   and `"off"`), `modelRoles.advisor`, and the empty
+ *   `retry.fallbackChains.advisor` chain: the owner removed the advisor. omp
+ *   keeps it off, and an `/advisor on` session runs on the `slow` role.
+ * - `codexResets.autoRedeem: "no"`: omp migrates this legacy key in memory to
+ *   `autoRedeem5h` and `autoRedeemWeekly`, which the SoT now declares with the
+ *   same value.
+ * - `compaction.thresholdTokens: 231200`: an old fixed compaction trigger.
+ *   Pruning it restores omp's reserve-based default `-1`.
  */
-const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredScalar]> = [
+export const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredValue]> = [
   ["symbolPreset", "unicode"],
   ["theme.dark", "titanium"],
   ["statusLine.preset", "default"],
@@ -48,6 +61,30 @@ const OMP_RETIRED_VALUES: ReadonlyArray<readonly [string, RetiredScalar]> = [
   ["autoResume", false],
   ["startup.changelogMode", "summary"],
   ["retry.usageAwareFallback", true],
+  ["defaultThinkingLevel", "high"],
+  ["tier.anthropic", "none"],
+  ["advisor.enabled", true],
+  ["advisor.enabled", false],
+  ["advisor.syncBacklog", "1"],
+  ["task.softRequestBudget", 200],
+  ["task.softRequestBudgetNotice", true],
+  ["task.batch", true],
+  ["task.enableEffort", false],
+  ["task.maxRecursionDepth", 2],
+  ["modelRoles.advisor", "anthropic/claude-opus-5-5:medium"],
+  ["providers.anthropic.serverSideFallback", false],
+  ["providers.fetch", "auto"],
+  ["retry.fallbackChains.advisor", []],
+  ["includeWorkspaceTree", false],
+  ["commands.enableOpencodeUser", false],
+  ["skills.enableClaudeUser", false],
+  ["skills.enableCodexUser", false],
+  ["skills.enableAgentsUser", true],
+  ["compaction.thresholdTokens", -1],
+  ["compaction.thresholdTokens", 231200],
+  ["textVerbosity", "low"],
+  ["codexResets.autoRedeem", "no"],
+  ["tools.approvalMode", "yolo"],
 ];
 
 /**
@@ -352,7 +389,9 @@ export function syncOmpRemovals(ctx: Ctx, configFile: string, alreadyBackedUp: b
       retiredKeys([
         ...OMP_RETIRED_VALUES.map(([path, value]): RetiredEntry => [
           path,
-          (node) => isScalar(node) && node.value === value,
+          Array.isArray(value)
+            ? (node) => isSeq(node) && isDeepStrictEqual(node.toJSON(), value)
+            : (node) => isScalar(node) && node.value === value,
         ]),
         ...OMP_RETIRED_KEYS.map((path): RetiredEntry => [path, () => true]),
       ]),

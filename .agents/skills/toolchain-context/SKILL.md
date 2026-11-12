@@ -24,7 +24,7 @@ metadata:
     - path: cli/src/engine-native/ompSync.ts
       lines: "1-155"
     - path: cli/src/engine-native/sharedTypes.d.ts
-      lines: "1-65"
+      lines: "1-63"
     - path: SoT/toolchain.json
       lines: "1-38"
   updated: "2026-11-07"
