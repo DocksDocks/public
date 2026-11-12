@@ -127,6 +127,13 @@ recurse. The hidden `switch_fable` chain stays empty.
 
 ### Why `advisor` runs Opus 5.5 medium
 
+By owner decision (0.22.22), `advisor.enabled` is `false`. A main session runs
+no advisor. The plan-lifecycle verification loop takes its place: acceptance
+checks, a fresh code review of the diff, and a round limit. Since 2026-11-01,
+33 main sessions had an advisor log, and no subagent session had one, because
+`task.agentAdvisor` is empty and no agent file sets `advisor`. `/advisor on`
+and `omp --advisor` still run the advisor for one session on the role below.
+
 `advisor` runs `anthropic/claude-opus-5-5:medium` with an empty fallback
 chain. On 2026-09-24, with omp 18.3.0, an Opus 5.5 session with the advisor
 on `openai-codex/gpt-6-sol:medium` looped. In one session the advisor made

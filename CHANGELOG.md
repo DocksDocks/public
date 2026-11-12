@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-12 - docks-kit 0.22.22: omp advisor off
+
+### Changed
+
+- `SoT/.omp/config.yml` sets `advisor.enabled: false`, so a main omp session
+  runs no advisor. The plan-lifecycle verification loop replaces it:
+  acceptance checks, a fresh code review of the diff, and a round limit. The
+  `advisor` role stays on `anthropic/claude-opus-5-5:medium`, so `/advisor on`
+  and `omp --advisor` still run it for one session. Subagents already ran
+  without an advisor.
+
 ## 2026-11-12 - docks-kit 0.22.21: omp Fable roles on Fable 5.2
 
 ### Changed

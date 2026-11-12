@@ -14,7 +14,7 @@ tier:
   anthropic: none
 
 advisor:
-  enabled: true
+  enabled: false
   syncBacklog: "1"
 
 github:

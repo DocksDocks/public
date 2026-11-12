@@ -129,11 +129,13 @@ describe("SoT omp tree", () => {
     expect(ompConfig()["task"]).toHaveProperty("enableEffort", false);
   });
 
-  // A GPT-6 Sol advisor looped on repeated reads under an Opus 5.5 session.
-  // The owner excludes every GPT model from the advisor role and its chain.
-  it("keeps advisor on Opus 5.5 with no GPT model in its role or retry chain", () => {
+  // The advisor is off by owner decision; `/advisor on` and `--advisor` still
+  // run it on this role. A GPT-6 Sol advisor looped on repeated reads under an
+  // Opus 5.5 session, so the owner excludes every GPT model from the role and
+  // its chain.
+  it("keeps advisor off, on Opus 5.5, with no GPT model in its role or retry chain", () => {
     const config = ompConfig();
-    expect(config["advisor"]).toHaveProperty("enabled", true);
+    expect(config["advisor"]).toHaveProperty("enabled", false);
     expect(config["modelRoles"]).toHaveProperty("advisor", "anthropic/claude-opus-5-5:medium");
     const chains = (config["retry"] as Record<string, unknown>)["fallbackChains"];
     expect(chains).toHaveProperty("advisor", []);
