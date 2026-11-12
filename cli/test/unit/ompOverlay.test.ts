@@ -5,8 +5,6 @@ import { parse } from "yaml";
 
 import type { OmpSessionModel } from "../../src/engine-native/harnesses";
 import {
-  advisorLevelFor,
-  advisorRecommendation,
   buildOmpArgs,
   ladderCeiling,
   ompChildEnvironment,
@@ -28,7 +26,6 @@ const DEPLOYED_ONLY_KEYS = ["web"];
 
 const ROLE_KEYS = [
   "smol",
-  "advisor",
   "designer",
   "plan",
   "commit",
@@ -41,13 +38,13 @@ const ROLE_KEYS = [
   "switch_fable",
   "astra",
   "reviewer",
+  "advisor",
   "memory",
   "judge",
 ];
 
 const FALLBACK_KEYS = [
   "default",
-  "advisor",
   "task",
   "vision",
   "smol",
@@ -65,7 +62,6 @@ const FALLBACK_KEYS = [
 const LADDER_FULL = ["minimal", "low", "medium", "high", "xhigh"];
 const LADDER_NO_XHIGH = ["minimal", "low", "medium", "high"];
 const LADDER_LOW_HIGH_MAX = ["low", "high", "max"];
-const LADDER_HIGH_MAX = ["high", "max"];
 const LADDER_EMPTY: ReadonlyArray<string> = [];
 
 function fallbackChains(parsed: Record<string, unknown>): Record<string, unknown> {
@@ -77,24 +73,19 @@ function renderedRoles(model: OmpSessionModel): Record<string, string> {
   return parsed["modelRoles"] as Record<string, string>;
 }
 
-const LADDER_MODEL: OmpSessionModel = {
-  selector: FREE_SELECTOR,
-  thinking: "high",
-  advisorThinking: "low",
-};
+const LADDER_MODEL: OmpSessionModel = { selector: FREE_SELECTOR, thinking: "high" };
 const LEVEL_FREE_MODEL: OmpSessionModel = { selector: "provider/ling-free" };
 const OVERLAY_PATH = join("cache", "docks-kit", "omp-free.yml");
 
 describe("omp free-session overlay", () => {
-  it("sets the chat-model roles to one free selector with a cheaper advisor", () => {
+  it("sets every chat-model role, the advisor included, to one free selector and level", () => {
     const parsed = parse(
-      renderFreeOverlay({ selector: FREE_SELECTOR, thinking: "xhigh", advisorThinking: "medium" }),
+      renderFreeOverlay({ selector: FREE_SELECTOR, thinking: "xhigh" }),
     ) as Record<string, unknown>;
     expect(parsed["defaultThinkingLevel"]).toBe("xhigh");
     const roles = parsed["modelRoles"] as Record<string, string>;
     for (const role of ROLE_KEYS) {
-      const level = role === "advisor" ? "medium" : "xhigh";
-      expect(roles[role]).toBe(`${FREE_SELECTOR}:${level}`);
+      expect(roles[role]).toBe(`${FREE_SELECTOR}:xhigh`);
     }
     const task = parsed["task"] as Record<string, unknown>;
     expect(task["maxEffort"]).toBe("xhigh");
@@ -102,13 +93,8 @@ describe("omp free-session overlay", () => {
     for (const key of FALLBACK_KEYS) {
       expect(chains[key]).toEqual([]);
     }
-  });
-
-  it("derives the advisor level from the model own ladder", () => {
-    expect(advisorLevelFor(LADDER_FULL)).toBe("medium");
-    expect(advisorLevelFor(LADDER_LOW_HIGH_MAX)).toBe("low");
-    expect(advisorLevelFor(LADDER_HIGH_MAX)).toBe("high");
-    expect(advisorLevelFor(LADDER_EMPTY)).toBeUndefined();
+    // A free advisor retries through the empty chains keyed by the model.
+    expect("advisor" in chains).toBe(false);
   });
 
   it("resolves the ceiling from the model own ladder without guessing", () => {
@@ -118,20 +104,11 @@ describe("omp free-session overlay", () => {
     expect(ladderCeiling(LADDER_EMPTY)).toBeUndefined();
   });
 
-  it("renders the chosen max level for every non-advisor role", () => {
-    const parsed = parse(
-      renderFreeOverlay({
-        selector: "provider/big-pickle",
-        thinking: "max",
-        advisorThinking: "high",
-      }),
-    ) as Record<string, unknown>;
-    const roles = parsed["modelRoles"] as Record<string, string>;
+  it("renders the chosen max level for every role", () => {
+    const roles = renderedRoles({ selector: "provider/big-pickle", thinking: "max" });
     for (const role of ROLE_KEYS) {
-      expect(roles[role]).toBe(`provider/big-pickle:${role === "advisor" ? "high" : "max"}`);
+      expect(roles[role]).toBe("provider/big-pickle:max");
     }
-    expect(parsed["defaultThinkingLevel"]).toBe("max");
-    expect((parsed["task"] as Record<string, unknown>)["maxEffort"]).toBe("max");
   });
 
   it("renders a level-free model with bare chat selectors and no thinking keys", () => {
@@ -220,19 +197,13 @@ describe("omp free-session overlay", () => {
   });
 
   it("keeps distinct models and levels in separate, repeatable overlay files", () => {
-    const high = { selector: "opencode-zen/muse", thinking: "high", advisorThinking: "low" };
+    const high = { selector: "opencode-zen/muse", thinking: "high" };
     const name = overlayFileName(high);
     expect(name).toMatch(/^omp-free-[A-Za-z0-9._-]+\.yml$/);
     expect(overlayFileName({ ...high })).toBe(name);
     // A running session reloads its overlay when the file changes, so another
     // level for the same model must not share the file.
-    expect(
-      overlayFileName({
-        selector: "opencode-zen/muse",
-        thinking: "xhigh",
-        advisorThinking: "medium",
-      }),
-    ).not.toBe(name);
+    expect(overlayFileName({ selector: "opencode-zen/muse", thinking: "xhigh" })).not.toBe(name);
     // These selectors have the same sanitized spelling but must not overwrite
     // each other's live-session overlay.
     expect(overlayFileName({ selector: "opencode-zen/muse" })).not.toBe(
@@ -246,7 +217,7 @@ describe("omp free-session overlay", () => {
       unknown
     >;
     const overlay = parse(
-      renderFreeOverlay({ selector: FREE_SELECTOR, thinking: "xhigh", advisorThinking: "medium" }),
+      renderFreeOverlay({ selector: FREE_SELECTOR, thinking: "xhigh" }),
     ) as Record<string, unknown>;
     const overlayRoles = Object.keys(overlay["modelRoles"] as Record<string, unknown>);
     const overlayChains = Object.keys(fallbackChains(overlay));
@@ -291,19 +262,6 @@ describe("omp free-session overlay", () => {
       levels: ["low", "high", "max"],
       highest: "max",
     });
-  });
-
-  it("recommends an advisor two steps down the model own ladder", () => {
-    expect(advisorRecommendation(LADDER_FULL, "xhigh")).toBe("medium");
-    expect(advisorRecommendation(LADDER_FULL, "high")).toBe("low");
-  });
-
-  it("clamps the recommendation to the lowest level the model publishes", () => {
-    expect(advisorRecommendation(LADDER_FULL, "low")).toBe("minimal");
-    expect(advisorRecommendation(LADDER_FULL, "minimal")).toBe("minimal");
-    // A sparse ladder counts its own positions, so two steps cannot invent
-    // a level between high and max.
-    expect(advisorRecommendation(["high", "max"], "max")).toBe("high");
   });
 });
 

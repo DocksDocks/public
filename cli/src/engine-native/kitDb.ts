@@ -16,6 +16,8 @@ import { p } from "./exec";
  * because every row can be refetched.
  */
 const MIGRATIONS: ReadonlyArray<string> = [
+  // omp_session.advisor_thinking has had no use since 0.22.22. It stays only
+  // to keep schema 1, which older kits still open; nothing reads or writes it.
   `CREATE TABLE harness_selection (
   harness TEXT PRIMARY KEY CHECK (harness IN ('claude','codex','agents','omp'))
 ) STRICT, WITHOUT ROWID;
@@ -88,7 +90,7 @@ function migrate(db: DatabaseSync): boolean {
 
 interface LegacyState {
   readonly harnesses: ReadonlyArray<string>;
-  readonly session?: { selector: string; thinking: string | null; advisorThinking: string | null };
+  readonly session?: { selector: string; thinking: string | null };
 }
 
 export function isNonBlankString(value: unknown): value is string {
@@ -126,9 +128,6 @@ function parseLegacyState(file: string): LegacyState | undefined {
     session: {
       selector,
       thinking: nonBlankOrNull("thinking" in entry ? entry.thinking : undefined),
-      advisorThinking: nonBlankOrNull(
-        "advisorThinking" in entry ? entry.advisorThinking : undefined,
-      ),
     },
   };
 }
@@ -148,9 +147,10 @@ function importLegacyState(db: DatabaseSync, legacy: string): void {
     );
     for (const harness of state.harnesses) insertHarness.run(harness);
     if (state.session !== undefined) {
-      db.prepare(
-        "INSERT INTO omp_session (id, selector, thinking, advisor_thinking) VALUES (1, ?, ?, ?)",
-      ).run(state.session.selector, state.session.thinking, state.session.advisorThinking);
+      db.prepare("INSERT INTO omp_session (id, selector, thinking) VALUES (1, ?, ?)").run(
+        state.session.selector,
+        state.session.thinking,
+      );
     }
   });
   // An invalid file is renamed too, so no later run parses it again.

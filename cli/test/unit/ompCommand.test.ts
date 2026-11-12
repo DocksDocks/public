@@ -196,20 +196,14 @@ describe("omp command", () => {
       );
       expect(first.exitCode).toBe(0);
       expect(first.stderr).toContain(
-        `Starting omp with ${selector} at high thinking, advisor at low (session only; deployed config unchanged)`,
+        `Starting omp with ${selector} at high thinking (session only; deployed config unchanged)`,
       );
       expect(first.stdout).toBe("");
-      expect(readOmpSessionModel(first.home)).toEqual({
-        selector,
-        thinking: "high",
-        advisorThinking: "low",
-      });
+      expect(readOmpSessionModel(first.home)).toEqual({ selector, thinking: "high" });
 
       const overlayDir = join(first.home, ".cache", "docks-kit");
       const [firstName] = readdirSync(overlayDir);
-      expect(firstName).toBe(
-        overlayFileName({ selector, thinking: "high", advisorThinking: "low" }),
-      );
+      expect(firstName).toBe(overlayFileName({ selector, thinking: "high" }));
       const firstPath = join(overlayDir, firstName!);
       if (process.platform !== "win32") {
         expect(statSync(overlayDir).mode & 0o777).toBe(0o700);
@@ -218,8 +212,8 @@ describe("omp command", () => {
       const firstOverlay = readFileSync(firstPath, "utf8");
       expect(parse(firstOverlay)).toMatchObject({
         defaultThinkingLevel: "high",
-        modelRoles: { default: `${selector}:high`, advisor: `${selector}:low` },
-        retry: { fallbackChains: { default: [], advisor: [] } },
+        modelRoles: { default: `${selector}:high`, advisor: `${selector}:high` },
+        retry: { fallbackChains: { default: [] } },
       });
       const argvLog = join(first.home, ".golden-argv.log");
       expect(readFileSync(argvLog, "utf8").trim().split("\n")).toEqual([
@@ -451,7 +445,6 @@ if (at !== -1 && args[at + 1] === "--json") {
       expect(readOmpSessionModel(first.home)).toEqual({
         selector: "shared/free-model",
         thinking: "high",
-        advisorThinking: "high",
       });
       const argvLog = join(first.home, ".golden-argv.log");
       const [overlayName] = readdirSync(join(first.home, ".cache", "docks-kit"));

@@ -1,7 +1,7 @@
 # omp context and compaction
 
-This topic records why `SoT/.omp/config.yml` does not pin a compaction
-threshold, and what omp's reserve-based default computes on each model lane.
+This topic records why `SoT/.omp/config.yml` ships no compaction threshold,
+and what omp's reserve-based default computes on each model lane.
 
 ## How omp resolves the trigger
 
@@ -62,17 +62,20 @@ No session ran past its window, and omp raised no warning on either lane.
 Under the reserve-based default none of the 75 Anthropic compactions would
 have fired, because no session reached 850,000.
 
-## Why the key ships as -1 rather than being deleted
+## How sync removes the deployed pin
+
+The kit no longer ships `compaction.thresholdTokens`. omp's schema default
+`-1` applies, and that sentinel selects the reserve-based branch.
 
 `ompYaml.ts` `mergeOmpConfig` is additive. Its `mergeMappings, deployed-key
 retention loop` returns every deployed key that the SoT omits to the merged
 output, and the only drop predicate is `dropFallbackWildcard`, which is scoped
-to `retry.fallbackChains`.
+to `retry.fallbackChains`. A key deleted from the SoT therefore stays in every
+already-deployed `~/.omp/agent/config.yml`.
 
-Deleting the key from the SoT would therefore leave the stale `231200` in
-every already-deployed `~/.omp/agent/config.yml` permanently. A present key
-holding the schema default sentinel `-1` overwrites that stale value on the
-next sync.
+`ompRemovals.ts OMP_RETIRED_VALUES` therefore records both values that the kit
+shipped: the former `231200` pin and the later `-1`. Sync prunes the deployed
+key only while it holds one of these values, so a user value survives.
 
 Verify the deployed value after a sync:
 
@@ -80,7 +83,8 @@ Verify the deployed value after a sync:
 omp config get compaction.thresholdTokens
 ```
 
-The command must print `-1`.
+The command must print `-1`, the omp default, unless the user set another
+value.
 
 ## The clamp hazard a fixed pin carries
 

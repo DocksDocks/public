@@ -16,8 +16,8 @@ ask tier is accepted.
 
 omp is the exception: by owner decision (0.22.8, #126), the kit ships no omp
 prompt rule. The kit's `bash.patterns` holds only deny rules and the `trash *`
-allow. Under the kit's `tools.approvalMode: yolo`, omp runs every command
-that no deny matches without a question, in the main session and in
+allow. Under omp's default `tools.approvalMode: yolo`, omp runs every
+command that no deny matches without a question, in the main session and in
 subagents. This includes any `rm` that omp does not deny, `git clean`,
 `git reset --hard`, a force push that no deny matches, and a git command
 that skips the repository's hooks. A prompt rule that the user adds to
@@ -175,8 +175,9 @@ omp has a built-in check for critical commands. For example, it flags:
 - `sudo rm`, also when `sudo` is called by its path.
 
 For a critical command, omp returns a bare safety override before it returns
-a matching prompt rule. Under the kit's `tools.approvalMode: yolo`, omp
-ignores a bare override, so the command runs. This applies in subagents too.
+a matching prompt rule. Under omp's default `tools.approvalMode: yolo`,
+omp ignores a bare override, so the command runs. This applies in subagents
+too.
 Only a deny rule stops a critical command (`omp://approval-mode.md`).
 
 The kit therefore denies every `rm` shape that the check can flag:

@@ -12,7 +12,6 @@ against.
 | `slow` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 136.30 s |
 | `plan` | `anthropic/claude-opus-5-5` | xhigh | 56 | $3.46 | 136.30 s |
 | `task` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 52.85 s |
-| `advisor` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 21.87 s |
 | `designer` | `anthropic/claude-opus-5-5` | high | 54 | $1.82 | 52.85 s |
 | `vision` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 21.87 s |
 | `smol` / `commit` | `openai-codex/gpt-6-luna` | medium | 29 | $0.02 | n/a |
@@ -125,29 +124,21 @@ chains, `retry.fallbackChains.default` would send either stop to
 Chain entries are concrete selectors, not role aliases, so this pair cannot
 recurse. The hidden `switch_fable` chain stays empty.
 
-### Why `advisor` runs Opus 5.5 medium
+### Advisor removed
 
-By owner decision (0.22.22), `advisor.enabled` is `false`. A main session runs
-no advisor. The plan-lifecycle verification loop takes its place: acceptance
-checks, a fresh code review of the diff, and a round limit. Since 2026-11-01,
-33 main sessions had an advisor log, and no subagent session had one, because
-`task.agentAdvisor` is empty and no agent file sets `advisor`. `/advisor on`
-and `omp --advisor` still run the advisor for one session on the role below.
+By owner decision (2026-11-12, 0.22.22), the kit sets no omp advisor.
+`SoT/.omp/config.yml` has no `advisor` block, no `modelRoles.advisor`, and no
+`retry.fallbackChains.advisor`. omp keeps the advisor off by default. The
+plan-lifecycle verification loop takes its place: acceptance checks, a fresh
+code review of the diff, and a round limit. Since 2026-11-01, 33 main
+sessions had an advisor log, and no subagent session had one. A session that
+runs `/advisor on` takes its advisor model from the `slow` role, because no
+`advisor` role is set.
 
-`advisor` runs `anthropic/claude-opus-5-5:medium` with an empty fallback
-chain. On 2026-09-24, with omp 18.3.0, an Opus 5.5 session with the advisor
-on `openai-codex/gpt-6-sol:medium` looped. In one session the advisor made
-1,313 requests for 140 main-agent requests. It issued 1,272 `read` calls on
-248 distinct paths, read one 3-line slice 249 times, and never called
-`advise`. The advisor prompt averaged about 317k tokens, above the 272K
-window omp lists for GPT-6 Sol. With the advisor on Opus 5.5 medium, the
-same kind of session made about one advisor request per main-agent request
-and called `advise` normally. The owner excluded GPT-6 Sol from the advisor
-role and its fallback chain. On 2026-09-29 the owner extended the exclusion to
-every GPT model, including GPT-6.1 Sol and GPT-6 Astra. No GPT model was
-tested as the advisor again, and Astra costs too much for this role. Do not
-put an `openai-codex/gpt-*` selector in `modelRoles.advisor` or
-`retry.fallbackChains.advisor`.
+History: on 2026-09-24, with omp 18.3.0, an advisor on
+`openai-codex/gpt-6-sol:medium` looped and made 1,313 requests for 140
+main-agent requests. The kit then ran the advisor on Opus 5.5 `medium` and
+excluded every GPT model from that role until this removal.
 
 `modelRoles.web` is `web/firecrawl`, and `retry.fallbackChains.web` lists the
 explicit 20-entry provider order that follows it. The two keys replace the
@@ -478,18 +469,18 @@ quick answer.
   `thinking-level: auto`. It resolves Opus 5.5 high. The `:high` suffix on
   `modelRoles.task` is an explicit level, so it outranks the agent's `auto`,
   and the auto classifier does not run for a `task` spawn.
-- `task.enableEffort` is `false`, so the task tool has no `effort` field and
-  every spawn runs the level of its agent's role. When the field is on, a
-  caller can pass `effort: lo`, `med`, or `hi`, and caller effort outranks the
-  role suffix. omp maps it onto the model's own ladder, not onto level names:
-  `lo` selects the lowest level, `med` the lower middle, and `hi` the highest
-  (`resolveTaskEffortLevel` in omp's `packages/tui/src/thinking.ts`,
-  omp 18.8.5). Then omp caps the result at `task.maxEffort`. On the
-  `low, medium, high, xhigh, max` ladder, `hi` gave `xhigh` under the
-  `xhigh` cap, so many `task` spawns ran Opus 5.5 xhigh despite the `:high`
-  role suffix. On 2026-11-05, a fresh `omp -p` run on omp 18.16.0 with the
-  field off had no `effort` field, and its `task` child recorded
-  `resolvedModel: anthropic/claude-opus-5-5:high`.
+- `task.enableEffort` stays at omp's default `false`, so the task tool has no
+  `effort` field and every spawn runs the level of its agent's role. When the
+  field is on, a caller can pass `effort: lo`, `med`, or `hi`, and caller
+  effort outranks the role suffix. omp maps it onto the model's own ladder,
+  not onto level names: `lo` selects the lowest level, `med` the lower middle,
+  and `hi` the highest (`resolveTaskEffortLevel` in omp's
+  `packages/tui/src/thinking.ts`, omp 18.8.5). Then omp caps the result at
+  `task.maxEffort`. On the `low, medium, high, xhigh, max` ladder, `hi` gave
+  `xhigh` under the `xhigh` cap, so many `task` spawns ran Opus 5.5 xhigh
+  despite the `:high` role suffix. On 2026-11-05, a fresh `omp -p` run on omp
+  18.16.0 with the field off had no `effort` field, and its `task` child
+  recorded `resolvedModel: anthropic/claude-opus-5-5:high`.
 - `task.maxEffort` is `xhigh`. With `task.enableEffort` off, the cap applies
   only to a per-call `model` with a `:level` suffix.
 - In the deployed config, `scout` and `sonic` run GPT-6 Luna `medium`. The
@@ -511,10 +502,13 @@ AA's 1M.
 `docks-kit omp [--model <selector>|--pick] [args...]` starts one interactive
 omp session with a configuration overlay that selects a free model. The
 overlay sets the 16 chat-model roles in `ompOverlay.ts ROLE_ORDER` to that
-model and empties the 13 retry fallback chains in `ompOverlay.ts
-FALLBACK_ORDER`. These roles include `memory` and `judge`. The SoT does
-not set them, but omp otherwise uses its built-in priority chain for them,
-and that chain can name a paid model. The overlay also empties the retry
+model and empties the 12 retry fallback chains in `ompOverlay.ts
+FALLBACK_ORDER`. These roles include `memory`, `judge`, and `advisor`. The SoT
+does not set them, but omp otherwise uses its built-in priority chain for
+`memory` and `judge`, and that chain can name a paid model. omp resolves the
+`/advisor on` model from `modelRoles.advisor` before the `slow` role. A
+deployed, user, or project `advisor` role could otherwise send it to a paid
+model. The overlay also empties the retry
 chains keyed by the free model: the bare selector, `<selector>:off`, and
 `<selector>:<level>` for every level in `ompOverlay.ts THINKING_LADDER`. omp
 uses a chain keyed by the model before a role chain, so a project or
@@ -527,16 +521,16 @@ stays in the merged config. A retry of the free model does not reach such a
 chain, because omp uses the empty chain keyed by the free model first.
 The overlay also sets `defaultThinkingLevel` and `task.maxEffort`, except for
 a model that publishes no thinking ladder, where both keys are omitted and the
-deployed values apply.
+deployed or omp default values apply.
 
 The launcher renders a run overlay to
 `~/.cache/docks-kit/omp-free-<model>-<digest>.yml` at mode 0600 and passes it
 through omp's repeatable `--config` flag. Each distinct model-and-level
 combination gets its own file, because omp re-reads a changed overlay during
-a live session, and a second launcher must not change the levels of that
+a live session, and a second launcher must not change the level of that
 session. The name sanitizes the selector for the file system and appends a
-digest of the rendered overlay. The digest covers the selector and both
-levels, so two selectors that differ only in separator characters stay
+digest of the rendered overlay. The digest covers the selector and the
+level, so two selectors that differ only in separator characters stay
 apart. A session launch never reads or writes `~/.omp/agent/config.yml` or
 `models.yml`; only `--fast`, below, edits `config.yml`. It
 never touches the SoT. The next plain `omp` run uses the paid configuration
@@ -612,11 +606,9 @@ Spark 1.3 Free", 1,048,576-token context) at `xhigh`. `xhigh` is the ceiling
 of that model ladder: `minimal, low, medium, high, xhigh`. The paid
 `muse-spark-1.3` sibling also offers `max`. The free variant does not.
 
-Both levels come from the ladder of the chosen model, never from a fixed
-list. The session level is the ceiling of that ladder. The advisor level is
-the highest level at or below `medium`, because the advisor performs quick
-review passes. When every level of a ladder is above `medium`, the advisor
-takes the lowest level, so it never becomes the most expensive role.
+The level comes from the ladder of the chosen model, never from a fixed list.
+Every role, `advisor` included, runs the same level. Under `--model`, that
+level is the ceiling of the ladder.
 
 Free ladders are not uniform. On 2026-09-11 the 26 free models published six
 distinct ladders: 21 include `medium`, 3 stop at `low, high, max` or
@@ -626,7 +618,7 @@ fail when the session starts.
 
 The choice persists per machine in `~/.docks-kit/kit.db` (table
 `omp_session`), next to the harness selection. It survives across sessions. It is never
-committed. `--model <selector>` records one selector and derives both levels
+committed. `--model <selector>` records one selector and derives the level
 from the catalog row. `--pick` opens an interactive wizard.
 
 The picker lists only models the live `omp models --json` catalog reports at
@@ -634,31 +626,24 @@ zero input and output cost with `pricingStatus` `free` or `unknown` (26
 entries on 2026-09-11). A zero-cost row with another status, such as
 `variable` or `included`, is billed outside the token price, so the picker
 leaves it out. The resulting overlay sets the 16 `ROLE_ORDER` roles to the
-chosen free model and empties the 13 `FALLBACK_ORDER` chains and the chains
+chosen free model and empties the 12 `FALLBACK_ORDER` chains and the chains
 keyed by that model. The `web` role, its chain, and each other deployed chain
 keep the deployed values. The
 catalog can advertise a free model that the account cannot call; omp reports
 that provider error unchanged.
 
-After the model, the wizard asks about thinking levels. `ompOverlay.ts
-planEffortChoice` decides which questions apply, because omp accepts a
+After the model, the wizard asks about the thinking level. `ompOverlay.ts
+planEffortChoice` decides whether the question applies, because omp accepts a
 `:level` suffix only for a level the chosen model publishes:
 
 - No ladder: the wizard asks nothing and the overlay omits every level.
 - One level: the wizard states that level and asks nothing.
-- Two or more levels: the wizard asks whether every role uses the same
-  level. Yes takes the highest level the model offers. No asks one level for
-  all roles except the advisor, then one level for the advisor.
+- Two or more levels: the wizard asks one question, the thinking level for
+  every role. It lists the levels of the model from the highest down, so
+  `Enter` keeps the highest level.
 
-The advisor question leads with a recommendation from `ompOverlay.ts
-advisorRecommendation`: two steps down the model own ladder, clamped to the
-lowest level that model publishes. The recommendation is the first row
-because `Prompt.Select` starts on the first entry and accepts no initial
-index, so `Enter` takes it. The full ladder follows in ladder order. A
-recommendation equal to the chosen level is omitted rather than duplicated.
-
-A session whose advisor differs from the other roles reports both on the
-launch line.
+The launch line names the selector and the level, or the model default level
+for a model without a ladder. It reports no separate advisor level.
 
 An omp login is required. The kit owns no login flow. Every launch reads the
 live free catalog of each candidate profile. A plain launch checks the
@@ -683,9 +668,9 @@ stops the launcher before omp starts.
 
 When the catalog renames the free variant, change only the default selector
 constant. Until then, a plain launch on that default stops with an error. A
-ladder change needs no code change. Under `--model` both levels are derived
+ladder change needs no code change. Under `--model` the level is derived
 from the catalog row of the chosen model, and under `--pick` the user chooses
-them from the ladder that same row publishes. Refresh the recorded default
+it from the ladder that same row publishes. Refresh the recorded default
 and the ladder counts in these docs in the same commit.
 
 ## OpenAI fast mode (`docks-kit omp --fast`)
@@ -706,8 +691,8 @@ The four review agents inherit the live tier of the main session
 and on standard processing when it is `none`. A running session keeps the tier
 it started with, so its reviewers do not follow a later toggle.
 
-`--fast` never changes the Anthropic tier, and sync sets the deployed
-`tier.anthropic` to the SoT value `none`, so each session starts with it. In omp
+`--fast` never changes the Anthropic tier. The SoT leaves `tier.anthropic` at
+omp's default `none`, so each session starts with it. In omp
 18.16.0, `/fast on` in a session whose current
 model is Anthropic sets `anthropic: priority` for that session. The reviewers
 then inherit it, so their Opus 5.5 fallback also runs fast. omp has no

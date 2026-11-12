@@ -47,8 +47,6 @@ export interface OmpSessionModel {
   // Session ceiling; absent when the model publishes no ladder, so no
   // invented level ever reaches a selector that omp must resolve.
   readonly thinking?: string;
-  // Advisor level; absent when the model publishes no ladder.
-  readonly advisorThinking?: string;
 }
 
 /**
