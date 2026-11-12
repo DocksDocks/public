@@ -17,8 +17,8 @@ against.
 | `vision` | `anthropic/claude-opus-5-5` | medium | 51 | $1.34 | 21.87 s |
 | `smol` / `commit` | `openai-codex/gpt-6-luna` | medium | 29 | $0.02 | n/a |
 | `tiny` | `openai-codex/gpt-6-luna` | low | 21 | $0.0045 | 2.18 s |
-| `fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
-| `switch_fable` | `anthropic/claude-fable-5-1` | medium | 49 | $2.98 | 8.00 s |
+| `fable` | `anthropic/claude-fable-5-2` | medium | 56 (v5.0.1) | $3.80 (v5.0.1) | 11.23 s (v5.0.1) |
+| `switch_fable` | `anthropic/claude-fable-5-2` | medium | 56 (v5.0.1) | $3.80 (v5.0.1) | 11.23 s (v5.0.1) |
 | `astra` | `openai-codex/gpt-6-astra` | xhigh | 52 | $2.31 | 126.90 s |
 | `reviewer` | `openai-codex/gpt-6.1-terra` | high | 42 (v5.0.1) | $0.26 (v5.0.1) | 10.91 s (v5.0.1) |
 | `web` | `web/firecrawl` | n/a | n/a | n/a | n/a |
@@ -27,10 +27,11 @@ The table reports the measured Artificial Analysis figures for each assigned
 model and level. It states no motive that the config or omp's own
 documentation does not establish. AA has not measured output speed or latency
 for GPT-6 Luna medium, so that row carries `n/a` for TTFT. AA measures no web
-search provider, so the `web` row carries no figures. The `reviewer` row comes
-from a later capture at Intelligence Index v5.0.1. The 2026-09-29 capture
-predates GPT-6.1 Terra. Compare that row only with other v5.0.1 figures (see
-GPT-6.1 Terra below). A review benchmark chose the model of that role
+search provider, so the `web` row carries no figures. The `reviewer`, `fable`,
+and `switch_fable` rows come from later captures at Intelligence Index v5.0.1.
+The 2026-09-29 capture predates GPT-6.1 Terra and Fable 5.2. Compare those
+rows only with other v5.0.1 figures (see GPT-6.1 Terra and Claude Fable 5.2
+below). A review benchmark chose the model of the `reviewer` role
 (DocksDocks/public#130), not these figures. The tier of that role follows the
 main session (DocksDocks/public#134).
 
@@ -116,7 +117,7 @@ missed two pre-registered bounds: escaped difference up to 3.26 (bound 2) and
 recall difference down to -0.07 (bound -0.05). Both intervals include 0, and
 the user judged the difference as noise.
 
-`retry.fallbackChains.astra` holds `anthropic/claude-fable-5-1:medium`.
+`retry.fallbackChains.astra` holds `anthropic/claude-fable-5-2:medium`.
 `retry.fallbackChains.fable` holds `openai-codex/gpt-6-astra:xhigh`.
 Each deliberate cycle stop falls to the other vendor. Without these explicit
 chains, `retry.fallbackChains.default` would send either stop to
@@ -253,6 +254,34 @@ role level. The block also set `defaultLevel: high` for a bare
 selector, so no kit role depends on that default. Runs on
 `anthropic/claude-opus-5-5:high` and `:max` after the prune answered with
 exit 0.
+
+### Claude Fable 5.2 (Anthropic) - `anthropic/claude-fable-5-2`
+
+Source: `https://artificialanalysis.ai`, read on 2026-11-12 at Intelligence
+Index v5.0.1, from the metric table of
+`/models/comparisons/<level-slug>-vs-gpt-5-6-sol-high`. AA serves `max` under
+the bare model slug. These figures use another index version than the rest of
+this snapshot, so they do not compare with the v4.3.2 rows above. Compare them
+with GPT-6.1 Terra below.
+
+| Level | Index | Cost/task | Tokens/task | Index tokens | Speed t/s | TTFT s | TB 4.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| max | 65 | $26.54 | 274k | 275M | 98 | 262.29 | 60% |
+| xhigh | 62 | $14.83 | 162k | 144M | 102 | 85.87 | 62% |
+| high | 62 | $9.08 | 98k | 85M | 97 | 27.98 | 60% |
+| medium | 56 | $3.80 | 43k | 41M | 93 | 11.23 | 55% |
+| low | 54 | $3.10 | 36k | 35M | 97 | 8.42 | 55% |
+
+Price: $8.00 in, $40.00 out, $0.20 cache hit per 1M. The omp catalog lists
+the same prices, a $10.00 cache write, a 1M context, and 128K maximum output.
+All AA levels run with default fallback. On 2026-11-12, omp 18.19.0 listed
+`claude-fable-5-2` at low, medium, high, xhigh, and max, and an
+`omp -p --mode json --model anthropic/claude-fable-5-2:medium` run recorded
+`claude-fable-5-2` as the serving model.
+
+`fable` and `switch_fable` moved from Fable 5.1 to Fable 5.2 at the same
+level, `medium`. The Fable 5.1 table below stays as the previous-generation
+baseline at v4.3.2.
 
 ### Claude Fable 5.1 (Anthropic) - `anthropic/claude-fable-5-1`
 

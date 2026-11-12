@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-12 - docks-kit 0.22.21: omp Fable roles on Fable 5.2
+
+### Changed
+
+- The omp `fable` and `switch_fable` roles move from
+  `anthropic/claude-fable-5-1:medium` to `anthropic/claude-fable-5-2:medium`.
+  `retry.fallbackChains.astra` follows to the same selector, and
+  `modelTags.fable` now reads `Fable 5.2`.
+- `cli/docs/omp-models.md` adds the Artificial Analysis capture for Fable 5.2,
+  read on 2026-11-12 at Intelligence Index v5.0.1. Fable 5.2 medium scores 56
+  at $3.80 per task and an 11.23 s time to first answer token. The Fable 5.1
+  table stays as the v4.3.2 baseline.
+
 ## 2026-11-07 - docks-kit 0.22.20: omp folder locks and dry-run locks
 
 ### Fixed

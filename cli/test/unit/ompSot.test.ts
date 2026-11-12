@@ -67,13 +67,13 @@ describe("SoT omp tree", () => {
     const config = ompConfig();
     expect(config["cycleOrder"]).toEqual(["smol", "default", "slow", "fable", "astra"]);
     expect(config["modelRoles"]).toHaveProperty("astra", "openai-codex/gpt-6-astra:xhigh");
-    expect(config["modelRoles"]).toHaveProperty("fable", "anthropic/claude-fable-5-1:medium");
+    expect(config["modelRoles"]).toHaveProperty("fable", "anthropic/claude-fable-5-2:medium");
     expect(config["modelRoles"]).toHaveProperty(
       "switch_fable",
-      "anthropic/claude-fable-5-1:medium",
+      "anthropic/claude-fable-5-2:medium",
     );
     expect(config["modelTags"]).toHaveProperty(["astra", "name"], "GPT-6 Astra");
-    expect(config["modelTags"]).toHaveProperty(["fable", "name"], "Fable 5.1");
+    expect(config["modelTags"]).toHaveProperty(["fable", "name"], "Fable 5.2");
     expect(config["modelTags"]).toHaveProperty(["switch_fable", "hidden"], true);
   });
 
@@ -84,7 +84,7 @@ describe("SoT omp tree", () => {
     const chains = retry["fallbackChains"] as Record<string, ReadonlyArray<string>>;
     expect(chains["default"]).toEqual(["openai-codex/gpt-6.1-sol:high"]);
     expect(chains["vision"]).toEqual(["openai-codex/gpt-6.1-sol:medium"]);
-    expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-1:medium"]);
+    expect(chains["astra"]).toEqual(["anthropic/claude-fable-5-2:medium"]);
     expect(chains["fable"]).toEqual(["openai-codex/gpt-6-astra:xhigh"]);
     expect(chains["switch_fable"]).toEqual([]);
     expect(chains["task"]).toEqual(["openai-codex/gpt-6.1-sol:high"]);
