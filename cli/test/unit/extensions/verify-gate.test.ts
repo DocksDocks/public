@@ -592,8 +592,10 @@ describe("verify-gate extension", () => {
     );
     const checkCommand = await coreCheckCommand();
     const command = [VERIFIED, VERIFIED, UNVERIFIED].join(" && ");
-    // A Windows runner starts processes up to six times slower (cli/test/lib/spawnTimeout.ts).
-    const deadlineMs = process.platform === "win32" ? 10_000 : 5_000;
+    // The core stops each git call after 5000 ms (GIT_TIMEOUT_MS), so the check deadline stays below it: the deadline,
+    // not the git timeout, then ends the held third call on every platform. 4000 ms leaves the setup of the first two
+    // calls and the start of the third ample time, also on a slow Windows runner.
+    const deadlineMs = 4000;
     const started = Date.now();
     await withEnv(stubEnv, () =>
       expect(
