@@ -7,7 +7,15 @@
  * rows drive the pi-intercom install and the kit plugin link: the kit links
  * its directory unless the kit plugin entry already resolves to it.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -385,6 +393,30 @@ describe("omp plugin inventory", () => {
         messageLines(output, `omp marketplace registry ${registry} cannot be read`),
       ).toHaveLength(1);
     });
+
+    it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+      "warns and does not fall back to the legacy registry when the active registry cannot be read",
+      async () => {
+        const root = makeRoot();
+        const dataRoot = useXdgDataRoot(root);
+        writeRegistry(dataRoot, ["docks"]);
+        writeRegistry(join(root, ".omp"), ["docks"]);
+        respondWithInventory(inventory(root, [DOCKS_USER_ROW]));
+        const output: Array<string> = [];
+        // No search permission on the folder: the registry exists, but its read fails with EACCES.
+        chmodSync(dataRoot, 0o000);
+        try {
+          await syncOmpPlugins(makeCtx(root, { output }));
+        } finally {
+          chmodSync(dataRoot, 0o700);
+        }
+
+        expect(ompCommands()).toEqual(["plugin list --json", UNINSTALL_DOCKS]);
+        expect(
+          messageLines(output, `omp marketplace registry ${join(dataRoot, "marketplaces.json")}`),
+        ).toHaveLength(1);
+      },
+    );
 
     it("removes no marketplace after a failed uninstall", async () => {
       const root = makeRoot();

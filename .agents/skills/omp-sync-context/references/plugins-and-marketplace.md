@@ -30,7 +30,9 @@ only when no active registry exists:
 the active registry (`<data root>/marketplaces.json`) lists `docks`, or no
 active registry exists and the legacy registry (`<config root>/marketplaces.json`)
 lists it. A legacy entry beside an existing active registry is stale and starts
-no command. `ompPlugins.ts registryListsDocks` reads both files.
+no command. `ompPlugins.ts docksRegistryState` reads both files. Only a missing
+file counts as no registry: a registry that exists but cannot be read or parsed
+gives a warning that names it, and no removal runs.
 omp `marketplace.md` says that removing a marketplace "does not uninstall
 plugins already cached and registered", so the uninstalls run first.
 </constraint>

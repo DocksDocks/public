@@ -167,13 +167,14 @@ type RegistryState =
   | { readonly kind: "listed" | "absent" }
   | { readonly kind: "unreadable"; readonly file: string };
 
-function registryState(registryFile: string): RegistryState {
-  if (!existsSync(registryFile)) return { kind: "absent" };
-
+function registryState(registryFile: string): RegistryState | { readonly kind: "missing" } {
   let registryText: string;
   try {
     registryText = readFileSync(registryFile, "utf8");
-  } catch {
+  } catch (error) {
+    // Only a missing path is no registry; a denied or failed read can hide the entry.
+    const code = typeof error === "object" && error !== null && "code" in error ? error.code : "";
+    if (code === "ENOENT" || code === "ENOTDIR") return { kind: "missing" };
     return { kind: "unreadable", file: registryFile };
   }
   const registry = parseJson(registryText);
@@ -199,10 +200,11 @@ function registryState(registryFile: string): RegistryState {
  * registry it is stale.
  */
 function docksRegistryState(paths: OmpPaths): RegistryState {
-  const activeRegistry = p(paths.dataRoot, "marketplaces.json");
-  if (existsSync(activeRegistry)) return registryState(activeRegistry);
+  const active = registryState(p(paths.dataRoot, "marketplaces.json"));
+  if (active.kind !== "missing") return active;
   if (paths.dataRoot === paths.configRoot) return { kind: "absent" };
-  return registryState(p(paths.configRoot, "marketplaces.json"));
+  const legacy = registryState(p(paths.configRoot, "marketplaces.json"));
+  return legacy.kind === "missing" ? { kind: "absent" } : legacy;
 }
 
 /** The warning for a registry that can hold the `docks` entry but cannot be read. */
