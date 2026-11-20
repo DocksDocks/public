@@ -32,9 +32,9 @@ Per-folder conventions live in nested `AGENTS.md` nodes. An agent can load only 
 | `SoT/toolchain.json` | Toolchain floors manifest (verified pins consumed by EngineNative; optional `upstream` source read by `docks-kit toolchain outdated`) |
 | `SoT/.omp/` | Kit-owned omp SoT: `AGENTS.md`, `config.yml`, `models.yml`, `mcp.json`, `intercom.json`, and the kit plugin source `plugin/` |
 | `install.sh` / `install.ps1` | POSIX and Windows global installers. Each installer stops on a host outside the support matrix before it downloads anything. |
-| `.github/workflows/release-cli.yml` | `cli-v*` release: four binaries (Linux x64 and arm64, macOS arm64, Windows x64), plus `SHA256SUMS` and npm publish |
+| `.github/workflows/release-cli.yml` | `cli-v*` release: four binaries (Linux x64 and arm64, macOS arm64, Windows x64), plus `SHA256SUMS`, the bundle's source map `docks-kit.js.map`, and npm publish |
 | `README.md` | Front door |
-| `package.json` / `bun.lock` | npm package: `bin` = `cli/src/main.ts`; bundles `cli/` with the generated in-memory SoT payload |
+| `package.json` / `bun.lock` | npm package: `bin` = `cli/dist/docks-kit.js`, a minified bundle of the CLI and the generated in-memory SoT payload that `prepack` builds (`bun run build:bundle`); `cli/src` ships too, for the checkout launchers |
 | `docs/PLAN.md` | Plan pointer and project plan rules. The plan record is a GitHub issue; no plan markdown is tracked. `docs/AGENTS.md` routes to it. |
 | `AGENTS.md` | This file — tool-agnostic instructions |
 

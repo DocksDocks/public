@@ -44,6 +44,14 @@ gate scores the skills in the same process. These changes come from plan #198.
 
 ### Changed
 
+- The npm package runs a minified JavaScript bundle of the CLI,
+  `cli/dist/docks-kit.js`, instead of the TypeScript source (#212). It starts
+  about 2.5 times faster (a median of 64 against 162 ms for `--version` on
+  Linux). The build minifies whitespace and syntax but not identifiers, so a
+  stack trace keeps its names. The bundle's source map is attached to the
+  GitHub release as `docks-kit.js.map`, matched by its debug id, and is not
+  shipped in the package. `docks-kit update` of a package install chains the
+  sync through the new bundle.
 - The cores of the kit plugin's verify-gate and context-tree extensions are
   TypeScript: `verify-gate-core.ts` and `context-tree-core.ts` replace the
   `.mjs` files (#206). They behave the same, except that the verify-gate reads

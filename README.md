@@ -156,13 +156,16 @@ Details: `docks-kit docs platforms`.
 
 Tagging `cli-v*` builds four standalone binaries: `docks-kit-linux-x64`,
 `docks-kit-linux-arm64`, `docks-kit-darwin-arm64`, and
-`docks-kit-windows-x64.exe`. The workflow attaches them plus `SHA256SUMS` to the GitHub
-release. npm publishes the exact package tarball through trusted publishing
-with OIDC provenance.
+`docks-kit-windows-x64.exe`. The workflow attaches them plus `SHA256SUMS` and the
+bundle's source map `docks-kit.js.map` to the GitHub release. npm publishes the
+exact package tarball through trusted publishing with OIDC provenance.
 Published binaries, checksums, and release notes are available on
 [GitHub Releases](https://github.com/DocksDocks/public/releases).
-Each `docks-kit` npm release bundles the CLI + generated payload, so releases
-are versioned config snapshots without shipping the authoring `SoT/` tree.
+Each `docks-kit` npm release runs one minified JavaScript bundle of the CLI and
+its generated payload (`cli/dist/docks-kit.js`), so releases are versioned config
+snapshots without shipping the authoring `SoT/` tree. The package does not ship
+the source map; the bundle's last line `//# debugId=<hex>` matches the map of
+the same release.
 
 ## Deeper docs
 

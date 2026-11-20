@@ -26,8 +26,11 @@ docks-kit sync
 bunx docks-kit toolchain check
 ```
 
-The npm package bundles the CLI and its generated in-memory payload — releases
-are versioned config snapshots without publishing the authoring `SoT/` tree.
+The npm package runs one minified JavaScript bundle of the CLI and its generated
+in-memory payload (`cli/dist/docks-kit.js`) — releases are versioned config
+snapshots without publishing the authoring `SoT/` tree. Identifiers stay
+unminified, so a stack trace keeps its names; the source map is a GitHub
+release asset (`docks-kit.js.map`), matched by the bundle's `//# debugId=` line.
 Kit-home resolution remains available for checkout/package update behavior and
 display paths, but sync reads do not depend on it.
 

@@ -272,8 +272,8 @@ jobs:
 
       # The suites spawn a bundle of the CLI so Bun transpiles it once instead
       # of once per child. This step runs the same cases against the
-      # TypeScript entry, which is the form the npm package ships, so a defect
-      # the bundler hides cannot pass unseen. It is the cheapest lane, and the
+      # TypeScript entry, which the checkout launchers run, so a defect the
+      # bundler hides cannot pass unseen. It is the cheapest lane, and the
       # two forms must agree on every case.
       - name: Dry-run golden regression (source entry)
         env:
