@@ -2,6 +2,7 @@ import { Command, Flag } from "effect/cli";
 import { Console, Effect } from "effect";
 import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { bail, compiled } from "../engine";
 import { kitHome } from "../kitHome";
 import { DEPENDENCIES, defaultProbeExecutor, resolvePath } from "../engine-native/deps";
@@ -46,9 +47,10 @@ type PackageBinEntry =
 
 /** The file that the installed package's `bin` names. The chained sync runs
  * it, not a fixed path, because `@latest` can be a release that predates the
- * bundle and still names `cli/src/main.ts`. */
+ * bundle and still names `cli/src/main.ts`. The host's `join` builds the
+ * spawned path, so a Windows home gets one separator style. */
 const packageBinEntry = (home: string): PackageBinEntry => {
-  const manifestPath = p(home, "package.json");
+  const manifestPath = join(home, "package.json");
   let doc: unknown;
   try {
     doc = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -68,7 +70,7 @@ const packageBinEntry = (home: string): PackageBinEntry => {
       diagnostic: `global package update completed, but ${manifestPath} names no docks-kit bin`,
     };
   }
-  const entry = p(home, named);
+  const entry = join(home, named);
   return existsSync(entry)
     ? { ok: true, entry }
     : {
@@ -303,7 +305,7 @@ export const updateCheckout = (home: string, skipSync: boolean, spawn: UpdateSpa
         : "Syncing to deliver plugin and config updates...",
     );
     // The source, also when the checkout holds a stale ignored bundle.
-    return yield* chainSync(spawn, [p(home, "cli/src/main.ts"), "sync"]);
+    return yield* chainSync(spawn, [join(home, "cli", "src", "main.ts"), "sync"]);
   });
 
 export const updatePackage = (home: string, skipSync: boolean, spawn: UpdateSpawn = spawnHost) =>

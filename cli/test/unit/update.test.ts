@@ -10,7 +10,7 @@ import {
   updateCheckout,
   updatePackage,
 } from "../../src/commands/update";
-import { p, spawnHost } from "../../src/engine-native/exec";
+import { spawnHost } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -316,7 +316,7 @@ describe("chained sync entry", () => {
     );
     expect(calls.at(-1)).toEqual({
       command: process.execPath,
-      args: [p(home, "cli/src/main.ts"), "sync"],
+      args: [join(home, "cli", "src", "main.ts"), "sync"],
     });
   });
 
@@ -332,7 +332,7 @@ describe("chained sync entry", () => {
     );
     expect(calls.at(-1)).toEqual({
       command: process.execPath,
-      args: [p(home, "cli/src/main.ts"), "sync"],
+      args: [join(home, "cli", "src", "main.ts"), "sync"],
     });
   });
 
@@ -346,7 +346,7 @@ describe("chained sync entry", () => {
     expect(calls[0]).toEqual({ command: "bun", args: ["add", "-g", "docks-kit@latest"] });
     expect(calls.at(-1)).toEqual({
       command: process.execPath,
-      args: [p(installed.home, "cli/dist/docks-kit.js"), "sync"],
+      args: [join(installed.home, "cli", "dist", "docks-kit.js"), "sync"],
     });
   });
 
@@ -356,7 +356,7 @@ describe("chained sync entry", () => {
     await runPackageUpdate(installed, calls);
     expect(calls.at(-1)).toEqual({
       command: process.execPath,
-      args: [p(installed.home, "cli/src/main.ts"), "sync"],
+      args: [join(installed.home, "cli", "src", "main.ts"), "sync"],
     });
   });
 
@@ -366,7 +366,7 @@ describe("chained sync entry", () => {
     await runPackageUpdate(installed, calls);
     expect(calls.at(-1)).toEqual({
       command: process.execPath,
-      args: [p(installed.home, "cli/dist/docks-kit.js"), "sync"],
+      args: [join(installed.home, "cli", "dist", "docks-kit.js"), "sync"],
     });
   });
 
@@ -375,13 +375,13 @@ describe("chained sync entry", () => {
       name: "a bin file that does not exist",
       bin: { "docks-kit": "cli/dist/docks-kit.js" },
       message: (home: string) =>
-        `global package update completed, but the docks-kit bin ${p(home, "cli/dist/docks-kit.js")} named by ${p(home, "package.json")} does not exist`,
+        `global package update completed, but the docks-kit bin ${join(home, "cli", "dist", "docks-kit.js")} named by ${join(home, "package.json")} does not exist`,
     },
     {
       name: "a manifest without a docks-kit bin",
       bin: { other: "cli/dist/docks-kit.js" },
       message: (home: string) =>
-        `global package update completed, but ${p(home, "package.json")} names no docks-kit bin`,
+        `global package update completed, but ${join(home, "package.json")} names no docks-kit bin`,
     },
   ])("fails without a chained sync for $name", async ({ bin, message }) => {
     const installed = bunGlobalPackage(bin, ["cli/src/main.ts"]);
