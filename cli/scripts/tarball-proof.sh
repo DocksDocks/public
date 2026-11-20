@@ -130,8 +130,9 @@ fi
 tar -xf "$built_dir.tar" -C "$built_dir"
 rm -f "$built_dir.tar"
 ( cd "$built_dir" && bun install --frozen-lockfile )
-( cd "$built_dir" && bun build cli/src/main.ts --target=bun --minify-whitespace --minify-syntax \
-  --sourcemap=external --outdir "$built_dir/cli/dist" --entry-naming docks-kit.js )
+# The tag's own build script holds the build flags, so they live in one place; it resolves the repository from its own
+# location and writes "$built_dir/cli/dist".
+( cd "$built_dir" && bun cli/scripts/build-bundle.ts )
 if ! difference="$(cmp -- "$lists/packed-bundle.js" "$built_dir/$BUNDLE" 2>&1)"; then
   echo "::error::packed $BUNDLE differs from the bundle built at ${RELEASE_TAG}: $difference"
   exit 1
