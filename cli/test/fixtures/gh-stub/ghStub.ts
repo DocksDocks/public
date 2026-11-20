@@ -160,12 +160,20 @@ function nodeIds(list: Variable, field: string): Array<string> {
   return ids;
 }
 
+function labelObject(name: string): GqlObject {
+  return { id: labelNodeId(name), name };
+}
+
 function labels(names: ReadonlyArray<string>): Array<GqlValue> {
-  return names.map((name) => ({ id: labelNodeId(name), name }));
+  return names.map(labelObject);
 }
 
 function assignees(logins: ReadonlyArray<string> | undefined): Array<GqlValue> {
   return (logins ?? []).map((login) => ({ id: userNodeId(login), login }));
+}
+
+function repositoryObject(nameWithOwner: string): GqlObject {
+  return { __typename: "Repository", nameWithOwner };
 }
 
 function select(
@@ -258,6 +266,7 @@ function connectionPage(
       hasNextPage: end < nodes.length,
       endCursor: pageNodes.length > 0 ? `${prefix}:${end}` : (cursor ?? null),
     },
+    totalCount: nodes.length,
   };
 }
 
@@ -312,24 +321,14 @@ function graphqlArguments(text: string): Map<string, string> {
   return parsed;
 }
 
-type Selection = {
-  readonly alias: string;
-  readonly args: Map<string, string>;
-  readonly fields: string;
-};
-
-// Each `<field>(...)` of a query, with its alias, its arguments, and the text of its selection set ('' if it has none).
-function graphqlSelections(query: string, field: string): Array<Selection> {
-  const selections: Array<Selection> = [];
-  const pattern = new RegExp(`(?:(\\w+)\\s*:\\s*)?${field}\\s*\\(([^)]*)\\)(\\s*\\{)?`, "g");
-  for (const match of query.matchAll(pattern)) {
-    selections.push({
-      alias: match[1] ?? field,
-      args: graphqlArguments(match[2] ?? ""),
-      fields: match[3] ? selectionSetAt(query, match.index + match[0].length) : "",
-    });
-  }
-  return selections;
+// Each `<field>(...)` of a query, with its alias and its arguments. The fake gh counts them to refuse queries that it
+// does not model and reads the issue number before it answers the query.
+function graphqlSelections(query: string, field: string): Array<FieldSelection> {
+  const pattern = new RegExp(`(?:(\\w+)\\s*:\\s*)?${field}\\s*\\(([^)]*)\\)`, "g");
+  return [...query.matchAll(pattern)].map((match) => ({
+    alias: match[1] ?? field,
+    args: graphqlArguments(match[2] ?? ""),
+  }));
 }
 
 // The text of a selection set from `start`, the index after its opening brace, to its matching closing brace.
@@ -342,6 +341,14 @@ function selectionSetAt(text: string, start: number): string {
   return text.slice(start);
 }
 
+// The selection set of the one operation in `query`: the text inside the braces after the optional `query` or
+// `mutation` keyword, operation name, and variable definitions.
+function operationSelection(query: string): string {
+  const header = /^\s*(?:(?:query|mutation)\b\s*\w*\s*(?:\([^)]*\))?\s*)?\{/.exec(query);
+  if (!header) die(`fake gh cannot read the GraphQL operation: ${query}`);
+  return selectionSetAt(query, header[0].length);
+}
+
 type SelectionField = {
   readonly key: string;
   readonly name: string;
@@ -349,11 +356,16 @@ type SelectionField = {
   readonly nested: string | null;
 };
 
+// The object types of each abstract type that a query names in an inline fragment, as GitHub's schema lists them.
+const ABSTRACT_TYPES: Readonly<Record<string, ReadonlyArray<string>>> = {
+  Actor: ["Bot", "EnterpriseUserAccount", "Mannequin", "Organization", "User"],
+};
+
 // The fields that a selection set names at its own level, in query order. Each field has its response key (its alias,
 // or else its name), its name, its arguments, and the text of its nested selection set (null if it has none). An
-// inline fragment `... on <type>{...}` adds its fields only when <type> is `typename`, as GitHub applies only the
-// fragments that match the object. Commas are white space in GraphQL. Like `graphqlSelections`, this reads arguments up
-// to the first `)`.
+// inline fragment `... on <type>{...}` adds its fields only when `typename` is <type> or one of its object types, as
+// GitHub applies only the fragments that match the object. Commas are white space in GraphQL. Like
+// `graphqlSelections`, this reads arguments up to the first `)`.
 function selectionFields(selection: string, typename: string | undefined): Array<SelectionField> {
   const fields: Array<SelectionField> = [];
   let index = 0;
@@ -381,7 +393,8 @@ function selectionFields(selection: string, typename: string | undefined): Array
       if (!type || selection[index] !== "{")
         die(`fake gh reads only inline fragments '... on <type>{...}': ${selection}`);
       const set = readSet();
-      if (type === typename) fields.push(...selectionFields(set, typename));
+      if (type === typename || (typename !== undefined && ABSTRACT_TYPES[type]?.includes(typename)))
+        fields.push(...selectionFields(set, typename));
       continue;
     }
     const key = readName();
@@ -405,10 +418,12 @@ function selectionFields(selection: string, typename: string | undefined): Array
 }
 
 // `object` as GitHub returns it for a selection set: only the fields that the set names at its own level, each under
-// its response key, and each object field only with the fields of its nested set. For `{landed: mergedAt}` GitHub
-// returns `landed` with the value of `mergedAt`, and no `mergedAt`. A fixture field that the query does not select must
-// not reach the helper, or a test passes for a query that GitHub would answer without that field. A stored function
-// gives the value of a field that reads its arguments, such as a connection; it gets the response key and arguments.
+// its response key, and each object field only with the fields of its nested set, at every level. For
+// `{landed: mergedAt}` GitHub returns `landed` with the value of `mergedAt`, and no `mergedAt`. A fixture field that
+// the query does not select must not reach the helper, or a test passes for a query that GitHub would answer without
+// that field. A stored function gives the value of a field that reads its arguments, such as a connection; it gets the
+// response key and arguments. A selected field that the object does not store is a field that the fake gh does not
+// model, so the fake gh refuses it.
 function selectFields(object: GqlObject, selection: string): GqlObject {
   // GitHub merges the selections of one response key, and refuses a key that names two different fields. The merged
   // field reads the arguments of its first selection; the fake gh does not compare the arguments.
@@ -426,8 +441,8 @@ function selectFields(object: GqlObject, selection: string): GqlObject {
   }
   const selected: GqlObject = {};
   for (const [key, { name, args: fieldArgs, sets }] of keys) {
-    // The caller adds the fields that the fixture object does not store.
-    if (!Object.hasOwn(object, name)) continue;
+    if (!Object.hasOwn(object, name))
+      die(`fake gh does not model field '${name}' of ${typename ?? "this object"}`);
     const stored = object[name];
     const resolved = typeof stored === "function" ? stored({ alias: key, args: fieldArgs }) : stored;
     selected[key] = selectValue(resolved, name, sets.filter(Boolean).join(" "));
@@ -558,61 +573,168 @@ function failGraphql(data: GqlObject, errors: ReadonlyArray<StubGraphqlErrorEntr
   process.exit(1);
 }
 
-// The issue fields that a mutation payload can select, rendered as the issue stores them.
-const STORED_SCALARS = [
-  "number",
-  "title",
-  "body",
-  "state",
-  "stateReason",
-  "url",
-  "createdAt",
-  "updatedAt",
-] as const satisfies ReadonlyArray<keyof StubIssue>;
+const PAGE_ARGUMENTS = ["first", "after"];
 
-type MutationField = {
-  readonly alias: string;
-  readonly name: string;
-  readonly input: Variable;
-  readonly selection: string;
-};
+// The repository that a pull request reference names, or else this repository.
+function referenceRepo(reference: StubReference): string {
+  const { repository } = reference;
+  if (typeof repository === "string") return repository;
+  return (
+    repository?.nameWithOwner ??
+    (repository?.owner?.login && repository?.name
+      ? `${repository.owner.login}/${repository.name}`
+      : state.repo.nameWithOwner)
+  );
+}
 
-// A mutation payload shows the issue as stored right after its own field ran, limited to what the field selects.
-function mutationPayload(
-  field: MutationField,
-  object: string,
+// A pull request, for a closer, an associated pull request, or Repository.pullRequest, with every field that the fake
+// gh can return. `selectFields` then keeps the fields that the query selects. The nested repository has its type, so
+// that `__typename` and `... on Repository{...}` read it as on GitHub.
+function pullRequestObject(reference: StubReference): GqlObject {
+  const repo = referenceRepo(reference);
+  const pullRequest = (state.prs ?? []).find(
+    (entry) => entry.number === reference.number && entry.repository === repo,
+  );
+  const prState =
+    pullRequest?.state ??
+    reference.state ??
+    (pullRequest?.mergedAt || reference.mergedAt ? "MERGED" : "OPEN");
+  return {
+    __typename: "PullRequest",
+    number: reference.number,
+    url: pullRequest?.url ?? reference.url ?? `https://github.com/${repo}/pull/${reference.number}`,
+    body: pullRequest?.body ?? reference.body ?? null,
+    state: prState,
+    merged: prState === "MERGED",
+    mergedAt: pullRequest?.mergedAt ?? reference.mergedAt ?? null,
+    baseRefName: pullRequest?.baseRefName ?? reference.baseRefName ?? null,
+    repository: repositoryObject(repo),
+  };
+}
+
+// A commit, for a closer or Repository.object. Its associatedPullRequests connection pages with the arguments of the
+// field that selects it, and `selectFields` gives each page the fields that this field selects.
+function commitObject(oid: Variable, variables: VariableRecord): GqlObject {
+  return {
+    __typename: "Commit",
+    oid,
+    associatedPullRequests: (selection) => {
+      const commit = (state.commits ?? []).find(
+        (entry) =>
+          entry.oid === oid &&
+          (entry.repository ?? state.repo.nameWithOwner) === state.repo.nameWithOwner,
+      );
+      if (!commit) die(`commit not found: ${state.repo.nameWithOwner}@${String(oid)}`);
+      return graphqlPage(
+        (commit.associatedPullRequests ?? []).map((reference) => pullRequestObject(reference)),
+        selection,
+        variables,
+        PAGE_ARGUMENTS,
+      );
+    },
+  };
+}
+
+// Issue.timelineItems for the item types that the helper reads: the labeled events as a connection, and the latest
+// close (`last:1`) as at most one ClosedEvent. Each connection reads its nodes with its own selection set, so two
+// aliased connections can select different fields of the same close.
+function timelineItems(
   issue: StubIssue,
+  selection: FieldSelection,
   variables: VariableRecord,
-): GqlObject {
-  const payload: GqlObject = { clientMutationId: null };
-  const opened = new RegExp(`\\b${object}\\s*\\{`).exec(field.selection);
-  if (!opened) return payload;
-  const selection = field.selection.slice(opened.index);
-  const stored: GqlObject = {};
-  for (const name of STORED_SCALARS) {
-    if (new RegExp(`\\b${name}\\b`).test(selection)) stored[name] = issue[name];
+): GqlValue {
+  const types = selection.args.get("itemTypes");
+  if (types === "[LABELED_EVENT]" || types === "LABELED_EVENT") {
+    const events = (issue.events ?? [])
+      .filter((event) => event.event === "labeled")
+      .map(
+        (event): GqlObject => ({
+          __typename: "LabeledEvent",
+          label: event.label ? labelObject(event.label.name) : null,
+        }),
+      );
+    return graphqlPage(events, selection, variables, [...PAGE_ARGUMENTS, "itemTypes"]);
   }
-  for (const page of graphqlSelections(selection, "labels")) {
-    stored[page.alias] = graphqlPage(labels(issue.labels), page, variables, ["first", "after"]);
+  if (types !== "[CLOSED_EVENT]" && types !== "CLOSED_EVENT")
+    die(`unsupported timeline item types: ${types ?? "(missing)"}`);
+  for (const argument of selection.args.keys()) {
+    if (!["last", "itemTypes"].includes(argument)) die(`Unknown GraphQL argument: "${argument}"`);
   }
-  for (const connection of ["assignees", "assignedActors"]) {
-    for (const page of graphqlSelections(selection, connection)) {
-      stored[page.alias] = graphqlPage(assignees(issue.assignees), page, variables, [
-        "first",
-        "after",
-      ]);
-    }
+  const last = graphqlValue(selection.args.get("last") ?? "1", variables);
+  if (last !== 1) die("latest closure must request last:1");
+  const latest = (issue.timelineItems ?? [])
+    .filter((event) => event.__typename === "ClosedEvent" || Object.hasOwn(event, "closer"))
+    .at(-1);
+  if (!latest) return { nodes: [] };
+  const stored = latest.closer;
+  let closer: GqlValue = stored;
+  if (stored?.__typename === "PullRequest") closer = pullRequestObject(stored);
+  else if (stored?.__typename === "Commit") closer = commitObject(stored.oid, variables);
+  // GitHub stamps every close; a fixture close without a time reads as the issue's last update.
+  return {
+    nodes: [
+      { __typename: "ClosedEvent", createdAt: latest.createdAt ?? issue.updatedAt, closer },
+    ],
+  };
+}
+
+// Issue.parent: the issue whose sub-issues hold this one, or null. A fixture `foreignParent` ({ number,
+// nameWithOwner }) stands for a parent in another repository.
+function parentObject(issue: StubIssue): GqlObject | null {
+  if (issue.foreignParent) {
+    return {
+      number: issue.foreignParent.number,
+      repository: repositoryObject(issue.foreignParent.nameWithOwner),
+    };
   }
-  for (const page of graphqlSelections(selection, "comments")) {
-    const comments = (issue.comments ?? []).map((comment) => commentJson(comment, issue));
-    stored[page.alias] = graphqlPage(comments, page, variables, ["first", "after"]);
-  }
-  payload[object] = stored;
-  return payload;
+  const linked = state.issues.find((entry) => (entry.subIssues ?? []).includes(issue.number));
+  return linked
+    ? { number: linked.number, repository: repositoryObject(state.repo.nameWithOwner) }
+    : null;
+}
+
+// An issue with every field that the fake gh can return, as stored now. `selectFields` then keeps the fields that the
+// query selects, and each connection pages with the arguments of the field that selects it.
+function issueObject(issue: StubIssue, variables: VariableRecord): GqlObject {
+  const page =
+    (nodes: ReadonlyArray<GqlValue>) =>
+    (selection: FieldSelection): GqlValue =>
+      graphqlPage(nodes, selection, variables, PAGE_ARGUMENTS);
+  const actors = (issue.assignees ?? []).map(
+    (login): GqlObject => ({ __typename: "User", id: userNodeId(login), login }),
+  );
+  return {
+    __typename: "Issue",
+    id: issueNodeId(issue),
+    number: issue.number,
+    title: issue.title,
+    body: issue.body,
+    state: issue.state,
+    stateReason: issue.stateReason,
+    url: issue.url,
+    createdAt: issue.createdAt,
+    updatedAt: issue.updatedAt,
+    labels: page(labels(issue.labels)),
+    assignees: page(actors),
+    assignedActors: page(actors),
+    comments: page((issue.comments ?? []).map((comment) => commentJson(comment, issue))),
+    subIssues: (selection) =>
+      page((issue.subIssues ?? []).map((number) => issueObject(issueByNumber(number), variables)))(
+        selection,
+      ),
+    parent: () => parentObject(issue),
+    timelineItems: (selection) => timelineItems(issue, selection, variables),
+  };
+}
+
+// A mutation payload, limited to what its field selects. `selectValue` reads every selected field before the next
+// mutation field runs, so the payload shows the issue as stored right after its own field ran.
+function mutationPayload(field: SelectionField, payload: GqlObject): GqlValue {
+  return selectValue({ clientMutationId: null, ...payload }, field.name, field.nested ?? "");
 }
 
 function requireInput(
-  field: MutationField,
+  field: SelectionField,
   input: VariableRecord,
   keys: ReadonlyArray<string>,
 ): void {
@@ -638,21 +760,9 @@ function respondMutation(query: string, variables: VariableRecord): never {
     "addComment",
     "addAssigneesToAssignable",
   ];
-  const pattern = new RegExp(
-    String.raw`(?:(\w+)\s*:\s*)?\b(${mutationNames.join("|")})\s*\(([^)]*)\)`,
-    "g",
-  );
-  const matches = [...query.matchAll(pattern)];
-  if (matches.length === 0) die(`unsupported GraphQL mutation: ${query}`);
-  const fields: Array<MutationField> = matches.map((match, index) => {
-    const name = match[2] ?? "";
-    return {
-      alias: match[1] ?? name,
-      name,
-      input: graphqlValue(graphqlArguments(match[3] ?? "").get("input") ?? "null", variables),
-      selection: query.slice(match.index + match[0].length, matches[index + 1]?.index ?? query.length),
-    };
-  });
+  const fields = selectionFields(operationSelection(query), undefined);
+  if (fields.length === 0 || fields.some((field) => !mutationNames.includes(field.name)))
+    die(`unsupported GraphQL mutation: ${query}`);
   if (
     state.labelRemovalErrorOnce &&
     fields.some((field) => field.name === "removeLabelsFromLabelable")
@@ -665,7 +775,7 @@ function respondMutation(query: string, variables: VariableRecord): never {
   const data: GqlObject = {};
   const errors: Array<StubGraphqlErrorEntry> = [];
   for (const field of fields) {
-    const { input } = field;
+    const input = graphqlValue(field.args.get("input") ?? "null", variables);
     if (!input || typeof input !== "object" || Array.isArray(input))
       die(`${field.name} requires an input object`);
     if (field.name === "updateIssue") {
@@ -685,7 +795,7 @@ function respondMutation(query: string, variables: VariableRecord): never {
         ];
       }
       touch(issue);
-      data[field.alias] = mutationPayload(field, "issue", issue, variables);
+      data[field.key] = mutationPayload(field, { issue: issueObject(issue, variables) });
       continue;
     }
     if (field.name === "reopenIssue") {
@@ -693,8 +803,8 @@ function respondMutation(query: string, variables: VariableRecord): never {
       const issue = issueByNodeId(input["issueId"]);
       // GitHub refuses every state change of an issue that it left closed with reason REOPENED (#90).
       if (issue.state === "CLOSED" && issue.stateReason === "REOPENED") {
-        data[field.alias] = null;
-        errors.push({ path: [field.alias], message: "Could not reopen the issue." });
+        data[field.key] = null;
+        errors.push({ path: [field.key], message: "Could not reopen the issue." });
         continue;
       }
       if (issue.state === "CLOSED") {
@@ -703,7 +813,7 @@ function respondMutation(query: string, variables: VariableRecord): never {
         issue.stateReason = "REOPENED";
         touch(issue);
       }
-      data[field.alias] = mutationPayload(field, "issue", issue, variables);
+      data[field.key] = mutationPayload(field, { issue: issueObject(issue, variables) });
       continue;
     }
     if (field.name === "addComment") {
@@ -722,12 +832,10 @@ function respondMutation(query: string, variables: VariableRecord): never {
       };
       issue.comments ??= [];
       issue.comments.push(comment);
-      data[field.alias] = {
-        ...mutationPayload(field, "subject", issue, variables),
-        ...(/\bcommentEdge\s*\{/.test(field.selection) && {
-          commentEdge: { node: commentJson(comment, issue) },
-        }),
-      };
+      data[field.key] = mutationPayload(field, {
+        subject: issueObject(issue, variables),
+        commentEdge: { node: commentJson(comment, issue) },
+      });
       continue;
     }
     if (field.name === "addAssigneesToAssignable") {
@@ -736,7 +844,7 @@ function respondMutation(query: string, variables: VariableRecord): never {
       const logins = nodeIds(input["assigneeIds"], "assigneeIds").map(loginByNodeId);
       issue.assignees = [...new Set([...(issue.assignees ?? []), ...logins])];
       touch(issue);
-      data[field.alias] = mutationPayload(field, "assignable", issue, variables);
+      data[field.key] = mutationPayload(field, { assignable: issueObject(issue, variables) });
       continue;
     }
     const issue = issueByNodeId(input["labelableId"]);
@@ -751,7 +859,7 @@ function respondMutation(query: string, variables: VariableRecord): never {
       issue.labels = issue.labels.filter((label) => !names.some((name) => same(name, label)));
     }
     touch(issue);
-    data[field.alias] = mutationPayload(field, "labelable", issue, variables);
+    data[field.key] = mutationPayload(field, { labelable: issueObject(issue, variables) });
   }
   // `afterMutationOnce` holds an issue number and a change, in the form of a scheduled change, that lands right after
   // one write request, such as a label that someone adds before the helper reads the plan again.
@@ -796,13 +904,17 @@ function apiCommentJson(comment: StubComment, issue: StubIssue): GqlObject {
   };
 }
 
+// `gh issue view --json` prints each comment with gh's own comment fields (cli/cli api/queries_comments.go), of which
+// the fake gh models these; GraphQL-only fields such as `fullDatabaseId` stay out.
 function issueJson(issue: StubIssue): Record<string, unknown> & { labels: Array<GqlValue> } {
   return {
     ...issue,
     id: issueNodeId(issue),
     labels: labels(issue.labels),
     assignees: assignees(issue.assignees),
-    comments: (issue.comments ?? []).map((comment) => commentJson(comment, issue)),
+    comments: (issue.comments ?? []).map((comment) =>
+      select(commentJson(comment, issue), "id,body,author,createdAt,url"),
+    ),
   };
 }
 
@@ -937,288 +1049,128 @@ if (group === "api" && command === "graphql") {
     : /\bissues\s*\(/.test(query)
       ? "list"
       : "page";
-  const referenceRepo = (reference: StubReference): string => {
-    const { repository } = reference;
-    if (typeof repository === "string") return repository;
-    return (
-      repository?.nameWithOwner ??
-      (repository?.owner?.login && repository?.name
-        ? `${repository.owner.login}/${repository.name}`
-        : state.repo.nameWithOwner)
-    );
-  };
-  // A pull request, for a closer, an associated pull request, or Repository.pullRequest, with every field that the fake
-  // gh can return. `selectFields` then keeps the fields that the query selects. The nested repository has its type, so
-  // that `__typename` and `... on Repository{...}` read it as on GitHub.
-  const pullRequestObject = (reference: StubReference): GqlObject => {
-    const repo = referenceRepo(reference);
-    const pullRequest = (state.prs ?? []).find(
-      (entry) => entry.number === reference.number && entry.repository === repo,
-    );
-    const prState =
-      pullRequest?.state ??
-      reference.state ??
-      (pullRequest?.mergedAt || reference.mergedAt ? "MERGED" : "OPEN");
-    return {
-      __typename: "PullRequest",
-      number: reference.number,
-      url:
-        pullRequest?.url ?? reference.url ?? `https://github.com/${repo}/pull/${reference.number}`,
-      body: pullRequest?.body ?? reference.body ?? null,
-      state: prState,
-      merged: prState === "MERGED",
-      mergedAt: pullRequest?.mergedAt ?? reference.mergedAt ?? null,
-      baseRefName: pullRequest?.baseRefName ?? reference.baseRefName ?? null,
-      repository: { __typename: "Repository", nameWithOwner: repo },
-    };
-  };
-  // A commit, for a closer or Repository.object. Its associatedPullRequests connection pages with the arguments of the
-  // field that selects it, and `selectFields` gives each page the fields that this field selects.
-  const commitObject = (oid: Variable): GqlObject => ({
-    __typename: "Commit",
-    oid,
-    associatedPullRequests: (selection) => {
-      const commit = (state.commits ?? []).find(
-        (entry) =>
-          entry.oid === oid &&
-          (entry.repository ?? state.repo.nameWithOwner) === state.repo.nameWithOwner,
-      );
-      if (!commit) die(`commit not found: ${state.repo.nameWithOwner}@${String(oid)}`);
-      return graphqlPage(
-        (commit.associatedPullRequests ?? []).map((reference) => pullRequestObject(reference)),
-        selection,
-        variables,
-        ["first", "after"],
-      );
-    },
-  });
-  const repository: GqlObject = {
-    nameWithOwner: state.repo.nameWithOwner,
-    visibility: state.repo.visibility,
-  };
-  if (query.includes("defaultBranchRef")) {
-    const defaultBranch =
-      state.repositoryDefaults?.[state.repo.nameWithOwner] ?? state.repo.defaultBranchRef?.name;
-    repository["defaultBranchRef"] = defaultBranch ? { name: defaultBranch } : null;
-  }
-
   const issueSelection = graphqlSelections(query, "issue");
   const issuesSelection = graphqlSelections(query, "issues");
   const objectSelection = graphqlSelections(query, "object");
-  const labelSelections = graphqlSelections(query, "label");
   if (issueSelection.length > 1 || issuesSelection.length > 1 || objectSelection.length > 1)
     die("graphql selects multiple issues or objects");
   const [selectedIssue] = issueSelection;
-  const [selectedObject] = objectSelection;
-  const [selectedIssues] = issuesSelection;
   if (selectedIssue) {
-    const requestedNumber = graphqlValue(selectedIssue.args.get("number"), variables);
-    const issue = issueByNumber(Number(requestedNumber));
+    const issue = issueByNumber(Number(graphqlValue(selectedIssue.args.get("number"), variables)));
     // `readError` fails every GraphQL read that selects the issue, as a read that GitHub refuses.
     if (issue.readError) die(issue.readError);
     if (stage === "snapshot") observeIssue(issue);
     readIssue(issue);
-    const payload: GqlObject = {
-      number: issue.number,
-      title: issue.title,
-      body: issue.body,
-      state: issue.state,
-      stateReason: issue.stateReason,
-      url: issue.url,
-      createdAt: issue.createdAt,
-      updatedAt: issue.updatedAt,
-    };
-    for (const selection of graphqlSelections(query, "assignedActors")) {
-      payload[selection.alias] = graphqlPage(assignees(issue.assignees), selection, variables, [
-        "first",
-        "after",
-      ]);
-    }
-    for (const selection of graphqlSelections(query, "labels")) {
-      payload[selection.alias] = graphqlPage(labels(issue.labels), selection, variables, [
-        "first",
-        "after",
-      ]);
-    }
-    for (const selection of graphqlSelections(query, "comments")) {
-      payload[selection.alias] = graphqlPage(
-        (issue.comments ?? []).map((comment) => commentJson(comment, issue)),
-        selection,
-        variables,
-        ["first", "after"],
-      );
-    }
-    // Issue.subIssues: each sub-issue with the fields that the query selects, and its labels as a connection.
-    for (const selection of graphqlSelections(query, "subIssues")) {
-      const children = (issue.subIssues ?? []).map(issueByNumber).map(
-        (subIssue): GqlObject => ({
-          __typename: "Issue",
-          number: subIssue.number,
-          title: subIssue.title,
-          state: subIssue.state,
-          stateReason: subIssue.stateReason,
-          labels: (field) =>
-            graphqlPage(labels(subIssue.labels), field, variables, ["first", "after"]),
-        }),
-      );
-      payload[selection.alias] = selectFields(
-        graphqlPage(children, selection, variables, ["first", "after"]),
-        selection.fields,
-      );
-    }
-    // Issue.parent: the issue whose sub-issues hold this one, or null. A fixture `foreignParent` ({ number,
-    // nameWithOwner }) stands for a parent in another repository.
-    if (/\bparent\s*\{/.test(selectedIssue.fields)) {
-      const linked = state.issues.find((entry) => (entry.subIssues ?? []).includes(issue.number));
-      const parent: GqlObject | undefined = issue.foreignParent
-        ? {
-            number: issue.foreignParent.number,
-            repository: { nameWithOwner: issue.foreignParent.nameWithOwner },
-          }
-        : linked && {
-            number: linked.number,
-            repository: { nameWithOwner: state.repo.nameWithOwner },
-          };
-      Object.assign(payload, selectFields({ parent: parent ?? null }, selectedIssue.fields));
-    }
-    for (const selection of graphqlSelections(query, "timelineItems")) {
-      const types = selection.args.get("itemTypes");
-      if (types === "[LABELED_EVENT]" || types === "LABELED_EVENT") {
-        const events = (issue.events ?? [])
-          .filter((event) => event.event === "labeled")
-          .map((event): GqlObject => ({ label: event.label }));
-        payload[selection.alias] = graphqlPage(events, selection, variables, [
-          "first",
-          "after",
-          "itemTypes",
-        ]);
-      } else if (types === "[CLOSED_EVENT]" || types === "CLOSED_EVENT") {
-        for (const argument of selection.args.keys()) {
-          if (!["last", "itemTypes"].includes(argument))
-            die(`Unknown GraphQL argument: "${argument}"`);
-        }
-        const last = graphqlValue(selection.args.get("last") ?? "1", variables);
-        if (last !== 1) die("latest closure must request last:1");
-        const latest = (issue.timelineItems ?? [])
-          .filter((event) => event.__typename === "ClosedEvent" || Object.hasOwn(event, "closer"))
-          .at(-1);
-        const stored = latest?.closer;
-        let closer: GqlValue = stored;
-        if (stored?.__typename === "PullRequest") closer = pullRequestObject(stored);
-        else if (stored?.__typename === "Commit") closer = commitObject(stored.oid);
-        // GitHub stamps every close; a fixture close without a time reads as the issue's last update.
-        const event: GqlObject = {
-          __typename: "ClosedEvent",
-          createdAt: latest?.createdAt ?? issue.updatedAt,
-          closer,
-        };
-        // Each connection reads its nodes with its own selection set, so two aliased connections can select different
-        // fields of the same close.
-        payload[selection.alias] = selectFields(
-          { nodes: latest ? [event] : [] },
-          selection.fields,
-        );
-      } else die(`unsupported timeline item types: ${types ?? "(missing)"}`);
-    }
-    repository["issue"] = payload;
-  } else if (selectedObject) {
-    const oid = graphqlValue(selectedObject.args.get("expression"), variables);
-    repository[selectedObject.alias] = selectFields(commitObject(oid), selectedObject.fields);
-  } else if (selectedIssues) {
-    // Repository.issues: `labels` keeps issues that carry any named label; `states` and `orderBy` as on GitHub.
-    const argument = (name: string, fallback: string): Variable =>
-      graphqlValue(selectedIssues.args.get(name) ?? fallback, variables);
-    const wanted = listArgument(argument("labels", "[]"), "labels").map((name) =>
-      String(name).toLowerCase(),
-    );
-    const states = listArgument(argument("states", "[OPEN,CLOSED]"), "states");
-    const order = argument("orderBy", "{field:CREATED_AT,direction:ASC}");
-    const orderField = member(order, "field");
-    if (orderField !== "CREATED_AT") die(`unsupported issue order: ${String(orderField)}`);
-    const direction = member(order, "direction") === "DESC" ? -1 : 1;
-    const labelPages = graphqlSelections(query, "labels");
-    const matched = state.issues
-      .filter(
-        (issue) =>
-          wanted.length === 0 ||
-          issue.labels.some((label) => wanted.includes(label.toLowerCase())),
-      )
-      .filter((issue) => states.includes(issue.state.toUpperCase()))
-      .sort(
-        (a, b) =>
-          direction *
-          (Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.number - b.number),
-      )
-      .map((issue) => {
-        const node: GqlObject = {
-          number: issue.number,
-          title: issue.title,
-          state: issue.state,
-          stateReason: issue.stateReason,
-        };
-        for (const page of labelPages) {
-          node[page.alias] = graphqlPage(labels(issue.labels), page, variables, ["first", "after"]);
-        }
-        return node;
-      });
-    repository[selectedIssues.alias] = graphqlPage(matched, selectedIssues, variables, [
-      "first",
-      "after",
-      "labels",
-      "states",
-      "orderBy",
-    ]);
   } else if (
-    labelSelections.length === 0 &&
+    objectSelection.length === 0 &&
+    issuesSelection.length === 0 &&
+    graphqlSelections(query, "label").length === 0 &&
     graphqlSelections(query, "repository").length !== 1
   ) {
     die("graphql query selects no repository");
   }
-  for (const selection of labelSelections) {
-    for (const argument of selection.args.keys()) {
-      if (argument !== "name") die(`Unknown GraphQL argument: "${argument}"`);
-    }
-    const name = graphqlValue(selection.args.get("name"), variables);
-    const stored = Object.keys(state.labels).find(
-      (label) => label.toLowerCase() === (typeof name === "string" ? name.toLowerCase() : name),
-    );
-    repository[selection.alias] = stored ? { name: stored, id: labelNodeId(stored) } : null;
-  }
-  // Repository.pullRequest: a merged pull request still lists the issues that it closes (checked on #95).
-  for (const selection of graphqlSelections(query, "pullRequest")) {
-    for (const argument of selection.args.keys()) {
-      if (argument !== "number") die(`Unknown GraphQL argument: "${argument}"`);
-    }
-    const number = graphqlValue(selection.args.get("number"), variables);
-    const pullRequest = (state.prs ?? []).find(
-      (entry) => entry.number === number && entry.repository === state.repo.nameWithOwner,
-    );
-    if (!pullRequest) {
-      failGraphql({ repository: { ...repository, [selection.alias]: null } }, [
-        {
+  const errors: Array<StubGraphqlErrorEntry> = [];
+  const defaultBranch =
+    state.repositoryDefaults?.[state.repo.nameWithOwner] ?? state.repo.defaultBranchRef?.name;
+  // The repository with every field that the fake gh can return. `selectFields` then keeps the fields that the query
+  // selects, at every level, and each field that reads arguments resolves with the arguments of the field that
+  // selects it.
+  const repository: GqlObject = {
+    __typename: "Repository",
+    nameWithOwner: state.repo.nameWithOwner,
+    visibility: state.repo.visibility,
+    defaultBranchRef: defaultBranch ? { name: defaultBranch } : null,
+    issue: (selection) =>
+      issueObject(
+        issueByNumber(Number(graphqlValue(selection.args.get("number"), variables))),
+        variables,
+      ),
+    object: (selection) =>
+      commitObject(graphqlValue(selection.args.get("expression"), variables), variables),
+    // Repository.issues: `labels` keeps issues that carry any named label; `states` and `orderBy` as on GitHub.
+    issues: (selection) => {
+      const argument = (name: string, fallback: string): Variable =>
+        graphqlValue(selection.args.get(name) ?? fallback, variables);
+      const wanted = listArgument(argument("labels", "[]"), "labels").map((name) =>
+        String(name).toLowerCase(),
+      );
+      const states = listArgument(argument("states", "[OPEN,CLOSED]"), "states");
+      const order = argument("orderBy", "{field:CREATED_AT,direction:ASC}");
+      const orderField = member(order, "field");
+      if (orderField !== "CREATED_AT") die(`unsupported issue order: ${String(orderField)}`);
+      const direction = member(order, "direction") === "DESC" ? -1 : 1;
+      const matched = state.issues
+        .filter(
+          (issue) =>
+            wanted.length === 0 ||
+            issue.labels.some((label) => wanted.includes(label.toLowerCase())),
+        )
+        .filter((issue) => states.includes(issue.state.toUpperCase()))
+        .sort(
+          (a, b) =>
+            direction *
+            (Date.parse(a.createdAt) - Date.parse(b.createdAt) || a.number - b.number),
+        )
+        .map((issue) => issueObject(issue, variables));
+      return graphqlPage(matched, selection, variables, [
+        ...PAGE_ARGUMENTS,
+        "labels",
+        "states",
+        "orderBy",
+      ]);
+    },
+    label: (selection) => {
+      for (const argument of selection.args.keys()) {
+        if (argument !== "name") die(`Unknown GraphQL argument: "${argument}"`);
+      }
+      const name = graphqlValue(selection.args.get("name"), variables);
+      const stored = Object.keys(state.labels).find(
+        (label) => label.toLowerCase() === (typeof name === "string" ? name.toLowerCase() : name),
+      );
+      return stored ? labelObject(stored) : null;
+    },
+    // Repository.pullRequest: a merged pull request still lists the issues that it closes (checked on #95).
+    pullRequest: (selection) => {
+      for (const argument of selection.args.keys()) {
+        if (argument !== "number") die(`Unknown GraphQL argument: "${argument}"`);
+      }
+      const number = graphqlValue(selection.args.get("number"), variables);
+      const pullRequest = (state.prs ?? []).find(
+        (entry) => entry.number === number && entry.repository === state.repo.nameWithOwner,
+      );
+      if (!pullRequest) {
+        errors.push({
           type: "NOT_FOUND",
           path: ["repository", selection.alias],
           message: `Could not resolve to a PullRequest with the number of ${String(number)}.`,
-        },
-      ]);
-    }
-    const node = selectFields(pullRequestObject({ number: pullRequest.number }), selection.fields);
-    for (const page of graphqlSelections(selection.fields, "closingIssuesReferences")) {
+        });
+        return null;
+      }
       const references = (pullRequest.closingIssuesReferences ?? []).map(
         (closedNumber): GqlObject => ({
+          __typename: "Issue",
           number: closedNumber,
-          repository: { nameWithOwner: state.repo.nameWithOwner },
+          repository: repositoryObject(state.repo.nameWithOwner),
         }),
       );
-      node[page.alias] = graphqlPage(references, page, variables, ["first", "after"]);
-    }
-    repository[selection.alias] = node;
-  }
-  const viewer: GqlObject = {
-    login: state.viewerLogin ?? "",
-    id: state.viewerLogin ? userNodeId(state.viewerLogin) : null,
+      return {
+        ...pullRequestObject({ number: pullRequest.number }),
+        closingIssuesReferences: (page) =>
+          graphqlPage(references, page, variables, PAGE_ARGUMENTS),
+      };
+    },
   };
-  respondGraphql({ ...(query.includes("viewer") && { viewer }), repository }, stage);
+  const root: GqlObject = {
+    viewer: {
+      __typename: "User",
+      login: state.viewerLogin ?? "",
+      id: state.viewerLogin ? userNodeId(state.viewerLogin) : null,
+    },
+    repository: () => repository,
+  };
+  const data = selectFields(root, operationSelection(query));
+  if (errors.length) failGraphql(data, errors);
+  respondGraphql(data, stage);
 }
 
 if (group === "api" && command === "user") {

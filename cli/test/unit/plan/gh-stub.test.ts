@@ -103,6 +103,58 @@ function associatedPullRequests(context: PlanCliContext, fields: string): PlanRe
   return graphql(context, query, { oid: OID });
 }
 
+const ISSUE = 1;
+const ISSUE_TITLE = "Selected fields";
+const ISSUE_AT = "2026-08-20T20:00:00Z";
+
+// An open plan issue that stores every field that the fake gh can return: a label, an assignee, a comment, and a
+// labeled event.
+function seedIssue({ updateState }: PlanCliContext): void {
+  updateState((state) => {
+    state.issues.push({
+      number: ISSUE,
+      title: ISSUE_TITLE,
+      body: "Plan body",
+      state: "OPEN",
+      stateReason: null,
+      labels: ["plan"],
+      assignees: ["plan-agent"],
+      url: `https://github.com/${REPO}/issues/${ISSUE}`,
+      createdAt: ISSUE_AT,
+      updatedAt: ISSUE_AT,
+      comments: [{ id: 1, body: "A comment", author: "plan-agent", createdAt: ISSUE_AT }],
+      events: [{ event: "labeled", label: { name: "plan" } }],
+    });
+    state.nextIssue = ISSUE + 1;
+  });
+}
+
+// Repository.issue for the seeded issue with the selection set `fields`.
+function issueFields(context: PlanCliContext, fields: string): PlanResult {
+  const query = `query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){issue(number:$number){${fields}}}}`;
+  return graphql(context, query, { number: ISSUE });
+}
+
+// A GraphQL mutation on the seeded issue, with its node id in `$issue` and the comment text in `$body`.
+function mutation(context: PlanCliContext, fields: string): PlanResult {
+  return gh(context, [
+    "api",
+    "graphql",
+    "-f",
+    `query=mutation($issue:ID!,$body:String!){${fields}}`,
+    "-f",
+    `issue=I_${ISSUE}`,
+    "-f",
+    "body=Noted.",
+  ]);
+}
+
+// The `data` object of a successful GraphQL response.
+function responseData(result: PlanResult): unknown {
+  expect(result.status, result.stderr).toBe(0);
+  return at(JSON.parse(result.stdout), "data");
+}
+
 describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("the fake gh", () => {
   it(
     "returns only the selected fields of Repository.pullRequest",
@@ -280,6 +332,123 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("the fake gh", () => {
       const result = pullRequest(context, "number: url number");
       expect(result.status).toBe(1);
       expect(result.stderr).toBe("Field 'number' has a field conflict: url or number?\n");
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of an issue, its repository, and the viewer",
+    () => {
+      const context = planCliContext();
+      seedIssue(context);
+      // The issue selects neither `body` nor its other scalars, the repository no scalar, and the viewer no `id`.
+      const query = `query($owner:String!,$name:String!,$number:Int!){viewer{login} repository(owner:$owner,name:$name){issue(number:$number){number title}}}`;
+      expect(responseData(graphql(context, query, { number: ISSUE }))).toStrictEqual({
+        viewer: { login: "plan-agent" },
+        repository: { issue: { number: ISSUE, title: ISSUE_TITLE } },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of each issue connection",
+    () => {
+      const context = planCliContext();
+      seedIssue(context);
+      // Each connection selects one field of its nodes and no pageInfo; two more select only pageInfo or totalCount.
+      const fields = [
+        "labels(first:100){nodes{name}}",
+        "assignedActors(first:100){nodes{... on Actor{login}}}",
+        "comments(first:100){nodes{body}}",
+        "history:timelineItems(first:100,itemTypes:[LABELED_EVENT]){nodes{... on LabeledEvent{label{name}}}}",
+        "pages:labels(first:100){pageInfo{hasNextPage}}",
+        "count:comments(first:100){totalCount}",
+      ].join(" ");
+      expect(at(responseRepository(issueFields(context, fields)), "issue")).toStrictEqual({
+        labels: { nodes: [{ name: "plan" }] },
+        assignedActors: { nodes: [{ login: "plan-agent" }] },
+        comments: { nodes: [{ body: "A comment" }] },
+        history: { nodes: [{ label: { name: "plan" } }] },
+        pages: { pageInfo: { hasNextPage: false } },
+        count: { totalCount: 1 },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of a plan list row and its labels",
+    () => {
+      const context = planCliContext();
+      seedIssue(context);
+      const query = `query($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues(first:100,labels:["plan"],states:[OPEN]){nodes{number labels(first:100){nodes{name}}}}}}`;
+      expect(responseRepository(graphql(context, query))).toStrictEqual({
+        issues: { nodes: [{ number: ISSUE, labels: { nodes: [{ name: "plan" }] } }] },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of a repository label",
+    () => {
+      const context = planCliContext();
+      const query = `query($owner:String!,$name:String!){repository(owner:$owner,name:$name){label(name:"plan"){name}}}`;
+      expect(responseRepository(graphql(context, query))).toStrictEqual({
+        label: { name: "plan" },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of the issues that a pull request closes",
+    () => {
+      const context = planCliContext();
+      seedPullRequest(context);
+      const repository = responseRepository(
+        pullRequest(context, "closingIssuesReferences(first:100){nodes{number}}"),
+      );
+      expect(at(repository, "pullRequest")).toStrictEqual({
+        closingIssuesReferences: { nodes: [{ number: 1 }] },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the selected fields of a mutation payload",
+    () => {
+      const context = planCliContext();
+      seedIssue(context);
+      // The comment `body` inside the issue's connection does not select the issue's own `body`, and no field selects
+      // `clientMutationId`.
+      const fields = [
+        "updateIssue(input:{id:$issue}){issue{comments(first:100){nodes{body}}}}",
+        "addComment(input:{subjectId:$issue,body:$body}){commentEdge{node{body}}}",
+        'addLabelsToLabelable(input:{labelableId:$issue,labelIds:["LA_cGxhbg"]}){labelable{... on Issue{labels(first:100){nodes{name}}}}}',
+      ].join(" ");
+      expect(responseData(mutation(context, fields))).toStrictEqual({
+        updateIssue: { issue: { comments: { nodes: [{ body: "A comment" }] } } },
+        addComment: { commentEdge: { node: { body: "Noted." } } },
+        addLabelsToLabelable: { labelable: { labels: { nodes: [{ name: "plan" }] } } },
+      });
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "returns only the comment fields that `gh issue view --json comments` prints",
+    () => {
+      const context = planCliContext();
+      seedIssue(context);
+      const result = gh(context, ["issue", "view", String(ISSUE), "--json", "comments"]);
+      expect(result.status, result.stderr).toBe(0);
+      const comments = at(JSON.parse(result.stdout), "comments");
+      expect(Array.isArray(comments) ? comments.map(Object.keys) : comments).toStrictEqual([
+        ["id", "body", "author", "createdAt", "url"],
+      ]);
     },
     SPAWN_TIMEOUT_MS,
   );
