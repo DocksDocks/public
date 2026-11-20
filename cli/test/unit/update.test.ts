@@ -5,10 +5,11 @@ import {
   resolveGlobalPackageHome,
   samePackageHome,
   updateBunCommand,
+  updateSyncArgs,
 } from "../../src/commands/update";
-import { spawnHost } from "../../src/engine-native/exec";
+import { p, spawnHost } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -219,6 +220,34 @@ describe("package update target", () => {
     },
   ] as const)("classifies $name as $manager", ({ home, environment, host, manager }) => {
     expect(packageManagerForHome(home, environment, host)).toBe(manager);
+  });
+});
+
+// The kind of update picks the entry, never a file test: a checkout can hold a
+// stale ignored bundle, and a package always ships a fresh one.
+describe("chained sync entry", () => {
+  it("runs the TypeScript source for a checkout update", () => {
+    expect(updateSyncArgs("/kit", "checkout")).toEqual([p("/kit", "cli/src/main.ts"), "sync"]);
+  });
+
+  it("runs the installed bundle for a package update", () => {
+    expect(updateSyncArgs("/g/node_modules/docks-kit", "package")).toEqual([
+      p("/g/node_modules/docks-kit", "cli/dist/docks-kit.js"),
+      "sync",
+    ]);
+  });
+
+  it("runs the source for a checkout that holds a stale bundle", () => {
+    const home = mkdtempSync(join(tmpdir(), "docks-update-stale-"));
+    try {
+      mkdirSync(join(home, "cli", "src"), { recursive: true });
+      mkdirSync(join(home, "cli", "dist"), { recursive: true });
+      writeFileSync(join(home, "cli", "src", "main.ts"), "");
+      writeFileSync(join(home, "cli", "dist", "docks-kit.js"), "#!/usr/bin/env bun\n");
+      expect(updateSyncArgs(home, "checkout")).toEqual([p(home, "cli/src/main.ts"), "sync"]);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 

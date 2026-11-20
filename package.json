@@ -14,10 +14,11 @@
     "url": "git+https://github.com/DocksDocks/public.git"
   },
   "bin": {
-    "docks-kit": "cli/src/main.ts"
+    "docks-kit": "cli/dist/docks-kit.js"
   },
   "files": [
     "cli/src",
+    "cli/dist/docks-kit.js",
     "cli/docs",
     "cli/tsconfig.json",
     "docks-kit",
@@ -28,10 +29,11 @@
   "scripts": {
     "typecheck": "bun check --no-script -b -p cli",
     "build:binaries": "bash cli/build-binaries.sh",
+    "build:bundle": "bun cli/scripts/build-bundle.ts",
     "smoke:native": "bun cli/scripts/native-smoke.ts",
     "smoke:package": "bun cli/scripts/package-smoke.ts",
     "check:generated": "bun cli/scripts/generate-sot-payload.ts --check",
-    "prepack": "bun run check:generated",
+    "prepack": "bun run check:generated && bun run build:bundle",
     "golden:dryrun": "bun cli/test/golden-dryrun.ts",
     "golden:mutation": "bun cli/test/golden-mutation.ts",
     "test:unit": "vitest run",

@@ -28,7 +28,20 @@ const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1);
   });
 
-export const updateSyncArgs = (home: string): Array<string> => [p(home, "cli/src/main.ts"), "sync"];
+/** How the kit was installed, which fixes the entry of the chained sync. */
+export type UpdateKind = "checkout" | "package";
+
+/** A checkout runs its TypeScript source, also when it holds a stale ignored
+ * bundle; a package runs the bundle that its `bin` names. */
+const SYNC_ENTRY: Record<UpdateKind, string> = {
+  checkout: "cli/src/main.ts",
+  package: "cli/dist/docks-kit.js",
+};
+
+export const updateSyncArgs = (home: string, kind: UpdateKind): Array<string> => [
+  p(home, SYNC_ENTRY[kind]),
+  "sync",
+];
 
 const readPackageVersion = (home: string): string => {
   try {
@@ -248,7 +261,7 @@ const updateCheckout = (home: string, skipSync: boolean) =>
         ? "Kit updated - running sync with the new version..."
         : "Syncing to deliver plugin and config updates...",
     );
-    return yield* chainSync(process.execPath, updateSyncArgs(home));
+    return yield* chainSync(process.execPath, updateSyncArgs(home, "checkout"));
   });
 
 const updatePackage = (home: string, skipSync: boolean) =>
@@ -294,7 +307,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
         ? "Syncing to deliver plugin and config updates..."
         : "Kit updated - running sync with the new version...",
     );
-    return yield* chainSync(process.execPath, updateSyncArgs(updated.home));
+    return yield* chainSync(process.execPath, updateSyncArgs(updated.home, "package"));
   });
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>
