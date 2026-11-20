@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, relative, sep } from "node:path";
-import { findSkillFiles, skillsDir } from "./frontmatter.ts";
+import { findSkillFiles, skillsDir } from "../../src/skills/frontmatter.ts";
 
 /**
  * The trigger collision check of DocksDocks/docks (`tests/skill-trigger-collision.mjs`),

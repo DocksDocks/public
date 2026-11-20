@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import config from "./pluginContent/config.json" with { type: "json" };
+import config from "../src/skills/config.json" with { type: "json" };
 import { checkContentHashes, writeContentHashes } from "./pluginContent/contentHash.ts";
 
 /**

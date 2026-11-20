@@ -2,8 +2,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import config from "../../../scripts/pluginContent/config.json" with { type: "json" };
-import { skillCandidateDirs } from "../../../scripts/pluginContent/frontmatter.ts";
+import config from "../../../src/skills/config.json" with { type: "json" };
+import { skillCandidateDirs } from "../../../src/skills/frontmatter.ts";
 import { checkDurableAnchors, checkReferences } from "../../../scripts/pluginContent/references.ts";
 import {
   checkReportSection,
@@ -12,7 +12,7 @@ import {
   checkSkillLayout,
   checkTransformGuard,
   scoreSkills,
-} from "../../../scripts/pluginContent/skills.ts";
+} from "../../../src/skills/kitGate.ts";
 import { checkTriggerCollisions } from "../../../scripts/pluginContent/triggers.ts";
 
 /**

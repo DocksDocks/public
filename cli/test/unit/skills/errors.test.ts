@@ -7,6 +7,7 @@ import {
   SKILLS_HOST_SUPPORTED,
   bodyLines,
   expectFileError,
+  expectRuntimeRun,
   failed,
   passed,
   run,
@@ -152,7 +153,8 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)("skill guard walk", { timeout: SPAWN_TIM
   });
 });
 
-// Decision 1a (2): the runtime's own stderr for an invalid package.json in the working folder or a parent folder.
+// Decision 1a (2): the runtime's own stderr for an invalid package.json in the working folder or a parent folder. Bun
+// writes it when its event loop reaches it, so the cases check that it occurs once and pin no order.
 describe.skipIf(!SKILLS_HOST_SUPPORTED)(
   "skill runtime stderr",
   { timeout: SPAWN_TIMEOUT_MS },
@@ -162,9 +164,9 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)(
         git: false,
         files: { "package.json": "{ no json\n", "skills/probe/SKILL.md": CLEAN },
       });
-      const stderr = runtimeStderr(fx);
-      expectRun(run("score", ["--per-file", "skills"], fx), 0, ["probe 9"], stderr);
-      expectRun(run("guard", ["skills"], fx), 0, [...CLEAN_LINES, passed(1, 0)], stderr);
+      const runtime = runtimeStderr(fx);
+      expectRuntimeRun(run("score", ["--per-file", "skills"], fx), 0, ["probe 9"], runtime);
+      expectRuntimeRun(run("guard", ["skills"], fx), 0, [...CLEAN_LINES, passed(1, 0)], runtime);
     });
 
     it("an invalid package.json in a parent folder", () => {
@@ -172,13 +174,14 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)(
         git: false,
         files: { "package.json": "{ no json\n", "work/skills/probe/SKILL.md": CLEAN },
       });
-      const stderr = runtimeStderr(fx, "work");
-      expectRun(run("score", ["skills"], fx, "work"), 0, ["9"], stderr);
-      expectRun(
+      const runtime = runtimeStderr(fx, "work");
+      expectRuntimeRun(run("score", ["skills"], fx, "work"), 0, ["9"], runtime);
+      expectRuntimeRun(
         run("guard", ["skills/missing"], fx, "work"),
         1,
         [failed(1, 0, 0)],
-        `${stderr}FAIL: not a directory: skills/missing\n`,
+        runtime,
+        "FAIL: not a directory: skills/missing\n",
       );
     });
   },

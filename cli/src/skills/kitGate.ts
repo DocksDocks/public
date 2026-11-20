@@ -1,9 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import config from "./config.json" with { type: "json" };
 import {
-  bodyAfterFrontmatter,
   extractFrontmatter,
   findSkillByName,
   findSkillFiles,
@@ -14,8 +12,8 @@ import {
   parseFrontmatter,
   skillCandidateDirs,
   skillsDir,
-  splitLines,
-} from "./frontmatter.ts";
+} from "./frontmatter";
+import { bodyAfterFrontmatter, scoreSkill, splitLines } from "./rubric";
 
 /**
  * The skill checks of the DocksDocks/docks gate, ported to the kit plugin:
@@ -42,9 +40,6 @@ const MAX_BODY_LINES = 500;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const NAME_PATTERN = /^[a-z0-9-]+$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
-
-/** The shipped scorer, relative to the skills folder. */
-const SCORER = join("write-skill", "scripts", "skill-guard.mjs");
 
 const shown = (repoRoot: string, file: string): string =>
   relative(repoRoot, file).split(sep).join("/") || file;
@@ -380,39 +375,26 @@ export function scoreFloorFailures(input: ScoreFloorInput): Array<string> {
 }
 
 /**
- * Run the shipped scorer `write-skill/scripts/skill-guard.mjs score --per-file`
- * with Bun on the skills folder, and apply the score floor. The scorer skips a
- * folder without a SKILL.md, so the names on disk come from the folders. An
- * upstream skill counts in the total but skips the per-file floor.
+ * Score each skill folder with the rubric of `docks-kit skill score`, and apply
+ * the score floor. The rubric skips a folder without a SKILL.md, so the names
+ * on disk come from the folders. An upstream skill counts in the total but
+ * skips the per-file floor. `nowMillis` dates the freshness point.
  */
-export function scoreSkills(repoRoot: string, floor: number = config.floors.skills): ScoreResult {
-  const root = skillsDir(repoRoot);
-  const scorer = join(root, SCORER);
-  const command = `bun ${shown(repoRoot, scorer)} score --per-file ${shown(repoRoot, root)}`;
-  const run = spawnSync("bun", [scorer, "score", "--per-file", root], { encoding: "utf8" });
-  if (run.error !== undefined || run.status !== 0) {
-    const detail = `${run.stdout ?? ""}${run.stderr ?? ""}`.trim();
-    return {
-      rows: [],
-      failures: [
-        `the skill scorer exited ${String(run.status)}${run.error === undefined ? "" : ` (${run.error.message})`}, so no score set to check (${command})${detail === "" ? "" : `: ${detail}`}`,
-      ],
-    };
+export function scoreSkills(
+  repoRoot: string,
+  floor: number = config.floors.skills,
+  nowMillis: number = Date.now(),
+): ScoreResult {
+  const candidates = skillCandidateDirs(skillsDir(repoRoot));
+  const rows: Array<ScoreRow> = [];
+  const exempt = new Set<string>();
+  for (const { name, file } of candidates) {
+    if (!existsSync(file)) continue;
+    // Node's readFileSync with an encoding decodes the bytes as Buffer#toString does, a byte-order mark included.
+    const content = readFileSync(file).toString("utf8");
+    rows.push({ name, score: scoreSkill(content, nowMillis) });
+    if (/^upstream:/m.test(content)) exempt.add(name);
   }
-  const rows = run.stdout
-    .trim()
-    .split("\n")
-    .filter((line) => line !== "")
-    .map((line) => {
-      const [name = "", score = ""] = line.split(" ");
-      return { name, score: Number.parseInt(score, 10) };
-    });
-  const candidates = skillCandidateDirs(root);
-  const exempt = new Set(
-    candidates
-      .filter(({ file }) => existsSync(file) && /^upstream:/m.test(readFileSync(file, "utf8")))
-      .map(({ name }) => name),
-  );
   const failures = scoreFloorFailures({
     kind: "skill",
     rows,

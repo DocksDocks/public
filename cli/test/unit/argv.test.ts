@@ -23,6 +23,7 @@ const REGISTERED_SUBCOMMANDS = [
   "tidy",
   "plan",
   "agent-docs",
+  "skill",
 ] as const;
 
 describe("argument validation", () => {
@@ -324,8 +325,9 @@ describe("registered subcommands", () => {
   it.each(REGISTERED_SUBCOMMANDS)("resolves every registered subcommand: %s", (name) => {
     expect(COMMANDS.map((command) => command.name)).toEqual(REGISTERED_SUBCOMMANDS);
     expect(subcommandName([name])).toBe(name);
-    // Every word after `plan` or `agent-docs` reaches its dispatcher unparsed, so its own usage line answers `--help`.
-    const raw = name === "plan" || name === "agent-docs";
+    // Every word after `plan`, `agent-docs`, or `skill` reaches its dispatcher unparsed, so its own usage line answers
+    // `--help`.
+    const raw = name === "plan" || name === "agent-docs" || name === "skill";
     const args = raw ? [name, "--", "--help"] : [name, "--help"];
     expect(prepareArgv([name, "--help"])).toEqual({ kind: "accept", args });
   });
@@ -348,5 +350,13 @@ describe("registered subcommands", () => {
     expect(prepareArgv(["--verbose", "agent-docs", "pr-template", "detect"]).kind).not.toBe(
       "accept",
     );
+  });
+
+  it("checks a flag before skill and passes each later word to the skill dispatcher", () => {
+    expect(prepareArgv(["skill", "guard", "--strict", "--per-file", ".agents/skills"])).toEqual({
+      kind: "accept",
+      args: ["skill", "--", "guard", "--strict", "--per-file", ".agents/skills"],
+    });
+    expect(prepareArgv(["--verbose", "skill", "score"]).kind).not.toBe("accept");
   });
 });

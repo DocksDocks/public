@@ -34,9 +34,36 @@ export function runWords(words: ReadonlyArray<string>, fx: Fixture): SkillResult
   return runRaw(words, { cwd: fx.dir, env: fx.env });
 }
 
-/** The stderr that the entry's runtime writes in the fixture folder before any command code runs (see entry.ts). */
+/** The stderr that the entry's runtime writes in the fixture folder on its own, apart from the command (see entry.ts). */
 export function runtimeStderr(fx: Fixture, sub = ""): string {
   return entryRuntimeStderr({ cwd: join(fx.dir, sub), env: fx.env });
+}
+
+/**
+ * A run whose runtime writes its own stderr (decision 1a (2)): status and stdout exactly; stderr holds `runtime`
+ * exactly once, and without it equals `stderr` exactly. Bun writes its text when its event loop reaches it, before or
+ * after the command's own writes, so the check pins no order. With no runtime text (`mjs`), stderr equals `stderr`.
+ */
+export function expectRuntimeRun(
+  result: SkillResult,
+  status: number,
+  lines: ReadonlyArray<string>,
+  runtime: string,
+  stderr = "",
+): void {
+  expect({ status: result.status, stdout: result.stdout }).toEqual({
+    status,
+    stdout: output(lines),
+  });
+  if (runtime === "") {
+    expect(result.stderr).toBe(stderr);
+    return;
+  }
+  const parts = result.stderr.split(runtime);
+  expect(parts.length - 1, `runtime stderr occurrences in ${JSON.stringify(result.stderr)}`).toBe(
+    1,
+  );
+  expect(parts.join("")).toBe(stderr);
 }
 
 /**

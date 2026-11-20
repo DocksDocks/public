@@ -114,9 +114,10 @@ export function fileErrorStderr(message: string): FileErrorStderr {
 }
 
 /**
- * The stderr that the runtime of the entry writes in `options.cwd` before any command code runs (decision 1a (2)):
- * for `docks-kit`, what `bun -e 0` writes there, such as Bun's parse error for an invalid `package.json` in that
- * folder or a parent folder; Node reads no `package.json` for a `.mjs` script, so nothing for `mjs`.
+ * The stderr that the runtime of the entry writes in `options.cwd` on its own, at a point that its event loop picks
+ * (decision 1a (2)): for `docks-kit`, what `bun -e 0` writes there, such as Bun's parse error for an invalid
+ * `package.json` in that folder or a parent folder; Node reads no `package.json` for a `.mjs` script, so nothing for
+ * `mjs`.
  */
 export function runtimeStderr(options: RunOptions): string {
   if (SKILL_GUARD_ENTRY === "mjs") return "";
