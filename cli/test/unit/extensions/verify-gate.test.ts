@@ -16,6 +16,7 @@ import {
   captureOutput,
   extensionHandler,
   gitStub,
+  removeFolder,
   tempDir,
   withEnv,
 } from "../../lib/extensions/harness";
@@ -39,7 +40,7 @@ process.env["XDG_STATE_HOME"] = SUITE_STATE;
 afterAll(() => {
   if (PREVIOUS_STATE_HOME === undefined) delete process.env["XDG_STATE_HOME"];
   else process.env["XDG_STATE_HOME"] = PREVIOUS_STATE_HOME;
-  fs.rmSync(SUITE_STATE, { recursive: true, force: true });
+  removeFolder(SUITE_STATE);
 });
 
 // Windows has no POSIX file modes: a file there reports the mode bits that its read-only flag gives.
@@ -176,6 +177,13 @@ function processExists(pid: number): boolean {
     return true;
   } catch (error) {
     return !(error instanceof Error && "code" in error && error.code === "ESRCH");
+  }
+}
+
+// Poll for up to 2 s until the process with this id no longer runs: a kill takes a moment to land.
+async function waitForExit(pid: number): Promise<void> {
+  for (const end = Date.now() + 2000; processExists(pid) && Date.now() < end;) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 }
 
@@ -601,7 +609,9 @@ describe("verify-gate extension", () => {
       expect(
         checkCommand({
           command,
-          cwd: state,
+          // The git calls run in the temporary folder itself, which no case removes: Windows keeps the working
+          // folder of a killed process busy for a moment.
+          cwd: os.tmpdir(),
           sessionId: "s1",
           env: { XDG_STATE_HOME: state, DOCKS_VERIFY_GATE: "enforce" },
           deadlineMs,
@@ -614,13 +624,13 @@ describe("verify-gate extension", () => {
     const text = fs.readFileSync(progress, "utf8");
     const pid = Number(/^done\ndone\nstart (\d+)\n$/u.exec(text)?.[1]);
     expect(text).toBe(`done\ndone\nstart ${pid}\n`);
-    onTestFinished(() => {
+    // If the wait below fails, this hook stops the held call and waits for it before the folders go.
+    onTestFinished(async () => {
       if (processExists(pid)) process.kill(pid);
+      await waitForExit(pid);
     });
-    // The deadline kills the held call; the poll gives the kill time to land.
-    for (const end = Date.now() + 2000; processExists(pid) && Date.now() < end;) {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
+    // The deadline kills the held call; the wait gives the kill time to land.
+    await waitForExit(pid);
     expect(processExists(pid), `the held git call ${pid} still runs`).toBe(false);
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });

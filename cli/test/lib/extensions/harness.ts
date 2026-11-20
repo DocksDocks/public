@@ -64,12 +64,21 @@ export async function extensionHandler<Result>(
 }
 
 /**
+ * Remove a test folder and all that it holds. Windows can keep a folder or an executable busy for a
+ * moment after a process that ran in it ends, so the removal retries on EBUSY, EMFILE, ENFILE,
+ * ENOTEMPTY, and EPERM (https://nodejs.org/api/fs.html#fsrmsyncpath-options).
+ */
+export function removeFolder(dir: string): void {
+  fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+}
+
+/**
  * A new folder below the temporary folder, with symbolic links and Windows short names resolved,
  * removed after the case. git prints its folders in that form.
  */
 export function tempDir(prefix: string): string {
   const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
-  onTestFinished(() => fs.rmSync(dir, { recursive: true, force: true }));
+  onTestFinished(() => removeFolder(dir));
   return dir;
 }
 
