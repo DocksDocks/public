@@ -12,11 +12,10 @@ import { afterAll, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import {
   EXTENSIONS_DIR,
-  GIT_SCRIPT_SKIP,
   type Handler,
   captureOutput,
   extensionHandler,
-  realGit,
+  gitStub,
   tempDir,
   withEnv,
 } from "../../lib/extensions/harness";
@@ -42,9 +41,6 @@ afterAll(() => {
   else process.env["XDG_STATE_HOME"] = PREVIOUS_STATE_HOME;
   fs.rmSync(SUITE_STATE, { recursive: true, force: true });
 });
-
-// The git file that the PATH of the test process names first.
-const REAL_GIT = realGit();
 
 // Windows has no POSIX file modes: a file there reports the mode bits that its read-only flag gives.
 const POSIX_MODES = process.platform !== "win32";
@@ -560,21 +556,31 @@ describe("verify-gate extension", () => {
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });
 
-  it("a check that runs past its deadline rejects, stops its git calls, and writes no state", async (context) => {
-    context.skip(process.platform === "win32", GIT_SCRIPT_SKIP);
+  it("a check that runs past its deadline rejects, stops its git calls, and writes no state", async () => {
     const state = tempFolder("deadline");
-    const bin = tempFolder("deadline-bin");
-    const finished = path.join(bin, "finished.txt");
-    // Each git call takes 400 ms, so each call is quick, but three commits take longer than the deadline.
-    fs.writeFileSync(
-      path.join(bin, "git"),
-      `#!/bin/sh\nsleep 0.4\necho done >> '${finished}'\nexec '${REAL_GIT}' "$@"\n`,
-      { mode: 0o755 },
+    const stub = tempFolder("deadline-git");
+    const calls = path.join(stub, "calls.txt");
+    const finished = path.join(stub, "finished.txt");
+    // The first two git calls end at once. The third one holds until GIT_STUB_HOLD_UNTIL, well after the
+    // deadline, and then it would end and count a denial, unless the deadline stops it.
+    const stubEnv = gitStub(
+      stub,
+      [
+        'const fs = require("node:fs");',
+        `fs.appendFileSync(${JSON.stringify(calls)}, "call\\n");`,
+        `if (fs.readFileSync(${JSON.stringify(calls)}, "utf8").split("\\n").filter(Boolean).length >= 3) {`,
+        "  const wait = Number(process.env.GIT_STUB_HOLD_UNTIL) - Date.now();",
+        "  if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);",
+        "}",
+        `fs.appendFileSync(${JSON.stringify(finished)}, "done\\n");`,
+        "runGit();",
+      ].join("\n"),
     );
     const checkCommand = await coreCheckCommand();
     const command = [VERIFIED, VERIFIED, UNVERIFIED].join(" && ");
     const started = Date.now();
-    await withEnv({ PATH: `${bin}${path.delimiter}${process.env["PATH"]}` }, () =>
+    const holdUntil = started + 1500;
+    await withEnv({ ...stubEnv, GIT_STUB_HOLD_UNTIL: String(holdUntil) }, () =>
       expect(
         checkCommand({
           command,
@@ -588,9 +594,8 @@ describe("verify-gate extension", () => {
     expect(Date.now() - started < 1300, `the check rejected after ${Date.now() - started} ms`).toBe(
       true,
     );
-    // The third git call ends after the deadline unless the deadline stops it, and then it would count a denial.
-    // A real wait: the fake git is another process, so only the wall clock lets its third call end.
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    // A real wait: the fake git is another process, so only the wall clock passes its hold.
+    await new Promise((resolve) => setTimeout(resolve, Math.max(0, holdUntil + 500 - Date.now())));
     expect(fs.readFileSync(finished, "utf8")).toBe("done\ndone\n");
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });

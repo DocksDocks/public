@@ -7,6 +7,7 @@
  * handler with omp events. The adapters do not import @oh-my-pi packages, so
  * they load outside omp.
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -72,21 +73,59 @@ export function tempDir(prefix: string): string {
   return dir;
 }
 
-/** The git file that the PATH of the test process names first. */
-export function realGit(): string | undefined {
-  const name = process.platform === "win32" ? "git.exe" : "git";
-  return (process.env["PATH"] ?? "")
+const GIT_NAME = process.platform === "win32" ? "git.exe" : "git";
+
+// The git file that the PATH of the test process names first.
+function realGit(): string {
+  const file = (process.env["PATH"] ?? "")
     .split(path.delimiter)
-    .map((dir) => path.join(dir, name))
-    .find((file) => fs.existsSync(file));
+    .map((dir) => path.join(dir, GIT_NAME))
+    .find((candidate) => fs.existsSync(candidate));
+  if (file === undefined) throw new Error(`no ${GIT_NAME} on PATH`);
+  return file;
 }
 
 /**
- * The skip reason of a case that puts a shell script named `git` first on PATH. The cores start git
- * without a shell, and Windows then runs only a `git.exe` or `git.com`, never a script.
+ * The variables that put a stand-in for git first on PATH. The cores start git without a shell,
+ * and Windows then runs only an executable, so the stand-in is the Node executable that `node` on
+ * PATH names (the suites can run under Bun), linked or copied into `<dir>/bin` under the name of
+ * git. `NODE_OPTIONS` makes that Node run `script` as CommonJS before it would load a main module.
+ * The script sees `gitArgs`, the arguments of the git call (Node takes the first one as its main
+ * module and resolves it to an absolute path), and ends with `runGit()`, which runs the real git
+ * with those arguments and the stdio of the call, and exits with its status.
  */
-export const GIT_SCRIPT_SKIP =
-  "Windows starts only a git.exe or git.com from PATH without a shell, so a script cannot stand in for git";
+export function gitStub(dir: string, script: string): Readonly<Record<string, string>> {
+  const node = execFileSync("node", ["-p", "process.execPath"], { encoding: "utf8" }).trim();
+  const bin = path.join(dir, "bin");
+  fs.mkdirSync(bin, { recursive: true });
+  const stub = path.join(bin, GIT_NAME);
+  try {
+    fs.linkSync(node, stub);
+  } catch {
+    // Another file system, or a node file of another user: a copy works where a link does not.
+    fs.copyFileSync(node, stub);
+  }
+  const preload = path.join(dir, "git-stub.cjs");
+  fs.writeFileSync(
+    preload,
+    [
+      'const { spawnSync } = require("node:child_process");',
+      'const path = require("node:path");',
+      "const gitArgs = [path.basename(process.argv[1]), ...process.argv.slice(2)];",
+      "const runGit = () => {",
+      `  const result = spawnSync(${JSON.stringify(realGit())}, gitArgs, { stdio: "inherit" });`,
+      "  process.exit(result.status ?? 1);",
+      "};",
+      script,
+      "",
+    ].join("\n"),
+  );
+  return {
+    PATH: `${bin}${path.delimiter}${process.env["PATH"] ?? ""}`,
+    // A quoted value keeps a space in the path; Node reads a backslash in it as an escape, as JSON writes it.
+    NODE_OPTIONS: `--require ${JSON.stringify(preload)}`,
+  };
+}
 
 /**
  * Set the environment that omp gives the extension for one call, and put the

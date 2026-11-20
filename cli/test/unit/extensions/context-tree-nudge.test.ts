@@ -7,14 +7,13 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   EXTENSIONS_DIR,
-  GIT_SCRIPT_SKIP,
   captureOutput,
   extensionHandler,
-  realGit,
+  gitStub,
   tempDir,
   withEnv,
 } from "../../lib/extensions/harness";
@@ -344,40 +343,32 @@ describe("context-tree-nudge extension", () => {
     expect(nudgeNodes(result)).toStrictEqual([`${slashed(dirs.second)}/pkg`]);
   });
 
-  it("the files of one folder start one git call for that folder in one event", async (context) => {
-    context.skip(process.platform === "win32", GIT_SCRIPT_SKIP);
+  it("the files of one folder start one git call for that folder in one event", async () => {
     const dirs = fixture();
-    const bin = path.join(dirs.root, "bin");
     const calls = path.join(dirs.root, "git-calls.txt");
-    fs.mkdirSync(bin);
-    fs.writeFileSync(
-      path.join(bin, "git"),
-      `#!/bin/sh\npwd >> '${calls}'\nexec '${realGit()}' "$@"\n`,
-      {
-        mode: 0o755,
-      },
+    // Each git call writes the folder that it runs in.
+    const stubEnv = gitStub(
+      path.join(dirs.root, "git-stub"),
+      `require("node:fs").appendFileSync(${JSON.stringify(calls)}, process.cwd() + "\\n");\nrunGit();`,
     );
-    const pathBefore = process.env["PATH"];
-    process.env["PATH"] = `${bin}${path.delimiter}${pathBefore}`;
-    onTestFinished(() => {
-      process.env["PATH"] = pathBefore;
-    });
-    const result = await runNudge(dirs, {
-      cwd: dirs.main,
-      toolName: "edit",
-      details: {
-        perFileResults: [
-          {
-            path: path.join(dirs.main, "sub/a.txt"),
-            sourcePath: path.join(dirs.main, "sub/a.txt"),
-            op: "update",
-          },
-          { path: path.join(dirs.main, "sub/new.txt"), op: "create" },
-          { path: path.join(dirs.main, "sub/deep/b.txt"), op: "update" },
-          { path: path.join(dirs.main, "sub/deep/c.txt"), op: "create" },
-        ],
-      },
-    });
+    const result = await withEnv(stubEnv, () =>
+      runNudge(dirs, {
+        cwd: dirs.main,
+        toolName: "edit",
+        details: {
+          perFileResults: [
+            {
+              path: path.join(dirs.main, "sub/a.txt"),
+              sourcePath: path.join(dirs.main, "sub/a.txt"),
+              op: "update",
+            },
+            { path: path.join(dirs.main, "sub/new.txt"), op: "create" },
+            { path: path.join(dirs.main, "sub/deep/b.txt"), op: "update" },
+            { path: path.join(dirs.main, "sub/deep/c.txt"), op: "create" },
+          ],
+        },
+      }),
+    );
     expect(nudgeNodes(result)).toStrictEqual(["sub"]);
     // One call for each folder of a file, and one for the session folder.
     const folders = fs.readFileSync(calls, "utf8").split("\n").filter(Boolean).sort();
