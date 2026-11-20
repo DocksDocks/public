@@ -108,9 +108,10 @@ worktree and an upstream; `git pull --ff-only`, then re-runs
 `bun install --frozen-lockfile` when the pull changed `bun.lock` or
 `package.json`); a kit home under `node_modules` is a global package
 (`bun add -g` / `npm install -g docks-kit@latest`). The chained sync is a
-plain flag-less `docks-kit sync`. It refreshes plugin marketplaces and
-installed plugins even when the kit is already current. Pass `--no-sync`, then
-run `docks-kit sync --skip-plugin-refresh` to skip the refresh-only work.
+plain flag-less `docks-kit sync`. It also refreshes plugins, even when the kit
+is already current: it moves `pi-intercom` to its pinned version. Pass
+`--no-sync`, then run `docks-kit sync --skip-plugin-refresh` to keep a present
+`pi-intercom` at its installed version.
 A compiled binary inside a checkout updates the checkout; on the next invocation
 the launcher bypasses that now-stale binary and uses updated source until rebuilt.
 Every `docks-kit sync` except `--dry-run` also does a best-effort behind-upstream

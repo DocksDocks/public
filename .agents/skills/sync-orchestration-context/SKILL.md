@@ -30,7 +30,7 @@ metadata:
     - path: cli/src/engine-native/index.ts
       lines: "1-66"
     - path: cli/src/engine-native/engineCtx.ts
-      lines: "1-63"
+      lines: "1-60"
     - path: cli/src/engine-native/syncDispatch.ts
       lines: "1-224"
     - path: cli/src/engine-native/kitLock.ts
@@ -46,16 +46,14 @@ metadata:
     - path: cli/src/engine-native/modes.ts
       lines: "1-67"
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-155"
+      lines: "1-146"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-417"
-    - path: cli/src/engine-native/ompMarketplace.ts
-      lines: "1-140"
+      lines: "1-379"
     - path: cli/src/engine-native/bun.ts
       lines: "1-120"
     - path: cli/src/engine-native/toolchain.ts
       lines: "1-253"
-  updated: "2026-11-19"
+  updated: "2026-11-20"
 ---
 
 # Sync Engine Orchestration
@@ -270,8 +268,9 @@ each writer of such a folder also takes `<folder>/.docks-kit-sync-lock.db`
 
 - Sync has no removal flag. The omp retired-key passes run on every sync
   (see `omp-sync-context`).
-- `--skip-plugin-refresh` skips the refresh-only omp marketplace and plugin
-  calls; a missing plugin still installs.
+- `--skip-plugin-refresh` only keeps a present `pi-intercom` at its installed
+  version; a missing `pi-intercom` still installs. The retirement of the former
+  `docks` marketplace plugins and the kit plugin link run in every real sync.
 - `ompSync` starts with the memoized Bun bootstrap (`bun.ts bunBootstrap`).
 
 ## Gotchas

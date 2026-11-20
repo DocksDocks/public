@@ -128,14 +128,15 @@ What omp's settings catalog establishes about these roles:
 model for every reviewer. `task.agentServiceTierOverrides` sets the same four
 agents to `inherit`, so they take the live tier of the main session for each
 provider. "OpenAI fast mode" below describes how that tier changes. The bundled
-`reviewer` and `security-reviewer` agents ship with omp, and the
-`plan-lifecycle` plugin ships `code-reviewer` and `plan-reviewer`.
+`reviewer` and `security-reviewer` agents ship with omp, and the kit plugin
+`docks-kit-omp` ships `code-reviewer` and `plan-reviewer`.
 `retry.fallbackChains.reviewer` holds `anthropic/claude-opus-5-5:high`, and
 `retry.fallbackChains.task` holds `openai-codex/gpt-6.2-sol:high`; both are
 cross-vendor fallbacks.
 
 The review benchmark of DocksDocks/public#130 ran on 2026-11-05. It used 24
-held-out cases of the DocksDocks/docks `review-benchmark` skill, 2 runs each.
+held-out cases of the `review-benchmark` skill, 2 runs each. The cases came
+from DocksDocks/docks, the source repository of that skill at the time.
 It compared `gpt-6.1-sol` and `gpt-6.1-terra` at `high`, each on the `default`
 and `priority` tiers. The user set the effort `high`; the benchmark chose the
 model. `gpt-6.1-terra` on `default` let the fewest known defects escape (34.90

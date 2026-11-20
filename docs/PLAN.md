@@ -7,14 +7,15 @@ one child plan (a sub-issue) per pull request. GitHub owns its title, assignee,
 labels, timestamps, and completion state.
 Do not track plan bodies as repository files.
 
-Read `skills/plan-manager/references/plan-contract.md` inside the
-installed `plan-lifecycle` plugin for the v5 contract and helper commands.
-Resolve this reference from the installed plugin, not a marketplace checkout.
+Read `skill://plan-manager/references/plan-contract.md` for the v5 contract and
+helper commands. The docks-kit kit plugin `docks-kit-omp` ships it from
+`SoT/.omp/plugin/skills/plan-manager/`, and `docks-kit sync` links that plugin.
 
 Use `plan-workspace` to maintain workspace routing, main-context `plan-manager`
 to run the lifecycle, and internal `plan-reviewer` for plan review.
 The two read-only wrappers are `plan-reviewer` and `code-reviewer`.
-If the plugin is missing, report that prerequisite. Do not invent a local copy.
+If the kit plugin is not synced, report that prerequisite. Do not invent a
+local copy.
 
 `docs/plans/finished/` is frozen pre-GitHub history, not lifecycle input.
 An optional `docs/PLAN-QUEUE.md` is a human note only. No helper reads it.
@@ -40,5 +41,5 @@ These rules apply in this repository in addition to the contract.
    artifact is the pull-request diff, and the plan issue points at it.
 6. The `## Landing changes` section of the root `AGENTS.md` says which changes
    need a pull request.
-7. Plugin-internal work, such as skills, commands, and agents, belongs in the
-   repository of that plugin, not here.
+7. Kit plugin content, such as skills, agents, extensions, rules, and
+   commands, belongs in `SoT/.omp/plugin/` of this repository.

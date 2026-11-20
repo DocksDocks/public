@@ -25,83 +25,51 @@ retired in 0.22.8), config.yml keys whose deployed value still equals the value 
 ship, `providers.webSearchOrder` at any value, and the retired
 `providers.anthropic.modelOverrides.claude-opus-5-5` block in models.yml while
 it still matches the shipped block.
-Directories are mode 0700 and files mode 0600. Then the `docks` marketplace is
-registered, `docks@docks` and `plan-lifecycle@docks` are installed or upgraded
-through `omp plugin`, and `pi-intercom` is installed at its
-`SoT/toolchain.json` pin. Inventory comes from `omp plugin list --json`, where a
-marketplace row counts as installed only when its `scope` is `user`, so a repeat
-run is a no-op and a project-only row still installs. When just the legacy
-config-root registry lists `docks`, omp copies it forward itself: the sync runs
-`marketplace update`, or the read-only `marketplace list` under
-`--skip-plugin-refresh`, which keeps installs but fetches nothing. After a
-plugin operation, the sync reads the inventory again and prints one line that
-names each plugin with its version change, for example
-`omp plugins synced: docks@docks 0.21.1 -> 0.22.0, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+Directories are mode 0700 and files mode 0600. Then the plugin pass reads the
+inventory from `omp plugin list --json`, retires the former marketplace
+plugins, installs `pi-intercom` at its `SoT/toolchain.json` pin, and links the
+kit plugin `docks-kit-omp`.
 
-omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
-session then loses the plugin agents of that folder. A test on omp 18.16.0
-showed that `/reload-plugins` brings the agents back, and that `skill://`
-resolves to the new folder (#139). The omp marketplace docs still ask for a
-restart for hooks, extension modules, and non-MCP tools. For each marketplace
-upgrade that changed the version, the sync prints a warning, for example
-`omp plugin docks@docks 0.21.1 -> 0.22.0: running omp sessions lose its plugin agents until they run /reload-plugins and read its skills again through skill:// (restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools).`
-The next step then says
-`Run /reload-plugins in each running omp session, then read each plugin skill again through skill://. Restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.`
-A version-changing upgrade does not set the restart trigger. Each other plugin
-operation sets it: an install, a reinstall at the same version, an npm install,
-or a link. A changed kit plugin file or omp config file also sets it. The
-restart next step `Restart omp to load any refreshed plugins, skills, or tools.`
-then prints next to the upgrade rule.
+The kit plugin now ships the docks and plan-lifecycle skills, the
+`code-reviewer` and `plan-reviewer` agents, and the `verify-gate` and
+`context-tree-nudge` extensions. So sync installs no plugin from the `docks`
+marketplace. Each real sync retires the former marketplace plugins:
 
-The sync also writes one event file for each such upgrade into the upgrade log
-`~/.cache/docks-kit/omp-plugin-upgrades/` (folder 0700, files 0600). The file
-name is `<finishedAt ms>-<random>.json`, and the file holds
-`{"version":1,"id":"<id>","before":"<v>","after":"<v>","finishedAt":"<ISO time>"}`.
-`finishedAt` is the time just after the upgrade command returned. Each sync
-writes only new files, through a temporary name and a rename, so concurrent
-syncs keep all events. Then it removes the oldest files beyond the newest 100.
+- For each of `docks@docks` and `plan-lifecycle@docks` with a `scope: "user"`
+  inventory row, it runs `omp plugin uninstall --scope user <id>`.
+- For each `scope: "project"` row of these ids, it changes nothing in that
+  project and warns
+  `omp plugin <id> is installed at project scope and docks-kit no longer ships it; run from that project: omp plugin uninstall --scope project <id>`.
+- When no user uninstall failed, it runs `omp plugin marketplace remove docks`
+  if the active registry (`<data root>/marketplaces.json`) lists `docks`, or
+  if no active registry exists and the legacy config-root registry lists it.
+  omp copies the legacy registry forward only when no active registry exists,
+  so a legacy entry beside an active registry is stale and starts no command.
+- A failed uninstall or removal goes to the failure ledger with the manual
+  command, for example
+  `omp plugin operation failed for docks@docks: <detail>; run manually: omp plugin uninstall --scope user docks@docks`.
+- When the inventory cannot be read, the sync warns
+  `omp plugin inventory unavailable — retirement of the docks marketplace plugins skipped until the next sync; pi-intercom and the kit plugin take the full refresh path`.
+- The sync removes the folder `~/.cache/docks-kit/omp-plugin-upgrades/` of the
+  retired plugin upgrade log when it exists.
 
-If the inventory read after the operations fails, the sync cannot see the new
-versions. It then warns
-`omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed`.
-Each upgrade of a present marketplace plugin then counts as a change. It gets
-the warning and an event with the after version `unknown`, for example
-`docks@docks 0.21.1 -> unknown`.
+`--skip-plugin-refresh` does not skip the retirement or the kit plugin link. It
+only keeps a present `pi-intercom` at its installed version. A repeat run after
+a successful retirement runs no uninstall and no removal.
 
-A failed write or prune of the upgrade log does not fail the sync, because it
-is not a harness CLI operation. A failed write warns
-`omp plugin upgrade log not written: <error> — running omp sessions get no reminder for these upgrades; give each of them the advice above`.
-The summary line, the upgrade warnings, and the next steps stay. A failed prune
-keeps the new events and warns
-`omp plugin upgrade log not pruned: <error> — it can keep more than 100 event files`.
+After a plugin operation, the sync prints one line that names each operation,
+for example
+`omp plugins synced: docks@docks uninstalled, plan-lifecycle@docks uninstalled, docks marketplace removed, pi-intercom 0.14.0 (new), docks-kit-omp linked`.
+Each uninstall sets the restart next step
+`Restart omp to load any refreshed plugins, skills, or tools.`, because the
+retired plugins ship extensions, and omp loads extensions only at startup. An
+npm install, a link, and a changed kit plugin file or omp config file also set
+it.
 
-The kit plugin extension `pluginUpgrades.ts` reads the upgrade log. In each
-tool result of a main omp session, it takes the events that finished after
-its omp process started. It adds one reminder for the events that the session
-did not get before. The reminder names each plugin with its version change. It
-says that the plugin agents of the session may fail. It tells the agent to ask
-the user to run `/reload-plugins`. It then tells the agent to read each plugin
-skill again through `skill://` before it runs a skill script. It asks for a
-restart instead when an upgraded plugin ships hooks, extension modules, or
-non-MCP tools. A folder or file that the extension cannot read gives no
-reminder for that tool result. The next tool result reads it again.
-These limits apply:
-
-- omp imports extension modules only at startup. An omp process that started
-  before a sync deployed `pluginUpgrades.ts` did not load it. Its sessions get
-  no reminder, also for the upgrades of that sync.
-- An upgrade that `docks-kit sync` did not run gives no reminder, for example
-  `omp plugin upgrade` by hand.
-- The warning, the next step, and the reminder assume that the session loaded
-  the user-scope install. omp keeps an old cache folder that a known project
-  registry still uses. So a session on a project-scope install keeps its
-  folder. For this reason, the reminder says "may".
-- An omp process that started during the upgrade can get a reminder that it
-  does not need. A reload or a restart is harmless.
-- The log keeps the newest 100 events. A session that stays idle through more
-  than 100 later upgrades loses the oldest ones.
-
-A dry run invokes no omp subcommand and writes no upgrade event.
+A dry run invokes no omp subcommand. It prints
+`[dry-run] omp plugin uninstall --scope user docks@docks` and the same line
+for `plan-lifecycle@docks`, and
+`[dry-run] omp plugin marketplace remove docks` when a registry lists `docks`.
 
 Paths mirror upstream `dirs.ts` `DirResolver`, resolved from the environment
 plus directory probes, so a dry run still runs no omp subcommand. The agent
@@ -120,6 +88,7 @@ into `<agent directory>/intercom`. Otherwise it goes into
 ## Additive by default
 
 Sync has no removal flag. A key, plugin, or file that only the user added
-stays. Two passes remove kit content on every sync: the `ompRemovals.ts`
-retired-key inventory above, and the kit plugin pass, which removes stale
-files from the kit-owned `~/.docks-kit/omp-plugin`.
+stays. Three passes remove kit content on every sync: the `ompRemovals.ts`
+retired-key inventory above, the kit plugin pass, which removes stale files
+from the kit-owned `~/.docks-kit/omp-plugin`, and the retirement of the former
+marketplace plugins above, which earlier kit versions installed.

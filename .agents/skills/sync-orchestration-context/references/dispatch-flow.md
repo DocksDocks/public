@@ -95,5 +95,6 @@ mode table. `toolchain-context` owns the toolchain operations.
 
 | Step | Pre-check |
 |------|-----------|
-| omp docks marketplace add | Marketplace neither registered nor adoptable from the omp registry (`ompMarketplace.ts syncMarketplace`). |
-| omp marketplace plugin install | Plugin absent from the `omp plugin list --json` inventory; a present plugin gets `plugin upgrade` instead, or nothing under `--skip-plugin-refresh` (`ompPlugins.ts syncPlugins`). |
+| omp retired marketplace plugin uninstall | A `scope: "user"` row of `docks@docks` or `plan-lifecycle@docks` in the `omp plugin list --json` inventory; a project-scope row only warns, and an unreadable inventory skips the retirement (`ompPlugins.ts retireMarketplacePlugins`). |
+| omp docks marketplace remove | No user uninstall failed, and the active registry lists `docks`, or no active registry exists and the legacy registry lists it (`ompPlugins.ts registryListsDocks`). |
+| omp npm plugin install | `pi-intercom` absent or at a version other than the pin; a present `pi-intercom` gets nothing under `--skip-plugin-refresh` (`ompPlugins.ts syncPlugins`). |

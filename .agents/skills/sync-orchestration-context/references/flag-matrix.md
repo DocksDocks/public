@@ -22,9 +22,9 @@ options (verify: `grep -n 'case "--' cli/src/engine-native/parseArgs.ts`).
 |------|-------------|----------|-------|
 | `--dry-run` | `ctx.dryRun` | every step | Preview only. Also skips the sync lock and the folder locks. |
 | `--verbose` | `ctx.verbose` | `index.ts runEngineNative` logger | Also prints no-op confirmations. The public `sync` command also accepts `-v`. |
-| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | `ompMarketplace.ts syncMarketplace`, `ompPlugins.ts syncPlugins` | Installs missing omp plugins but skips refresh-only calls. No command passes it automatically: `commands/update.ts updateSyncArgs` chains a flag-less sync. |
+| `--skip-plugin-refresh` | `ctx.skipPluginRefresh` | `ompPlugins.ts syncPlugins` | Installs a missing `pi-intercom` but keeps a present one at its installed version. The retirement of the former `docks` marketplace plugins and the kit plugin link still run. No command passes it automatically: `commands/update.ts updateSyncArgs` chains a flag-less sync. |
 
-(verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "lists the global flags in sync help and no sync target"` and `bunx vitest run cli/test/unit/ompPluginInventory.test.ts -t "skips every refresh of present plugins under --skip-plugin-refresh"`)
+(verify: `bunx vitest run cli/test/unit/engine-di.test.ts -t "lists the global flags in sync help and no sync target"` and `bunx vitest run cli/test/unit/ompPluginInventory.test.ts -t "skips the pi-intercom refresh under --skip-plugin-refresh"`)
 
 Every sync runs the omp pipeline. `omp-sync-context` owns the merge, removal,
 and plugin rules. Sync has no removal flag: the omp retired-key passes run on

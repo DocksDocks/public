@@ -1,18 +1,16 @@
 ---
 name: omp-sync-context
-description: "Use when changing the docks-kit omp harness: the omp sync pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), marketplace and plugin passes (ompMarketplace.ts, ompPlugins.ts, ompKitPlugin.ts, ompChild.ts), the session model in kit.db (ompSession.ts, kitDb.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries, the omp folder locks and the omp child environment (ompWriteFolders, spawnOmp, omp --fast), and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
+description: "Use when changing the docks-kit omp harness: the omp sync pipeline (ompSync.ts, syncDispatch.ts engineSync), omp paths (ompPaths.ts), deploy, YAML merge, and retired-key prune of config.yml and models.yml (ompFileDeploy.ts, ompYaml.ts, ompRemovals.ts), the plugin pass and the docks marketplace retirement (ompPlugins.ts, ompKitPlugin.ts, ompChild.ts), the session model in kit.db (ompSession.ts, kitDb.ts), or the docks-kit omp free-session launcher (commands/omp.ts, ompOverlay.ts). Covers dry-run and --skip-plugin-refresh boundaries, the omp folder locks and the omp child environment (ompWriteFolders, spawnOmp, omp --fast), and private file modes. Not for cross-cutting sync flags (use sync-orchestration-context) or tool pins (use toolchain-context)."
 user-invocable: false
 metadata:
   pattern: tool-wrapper
   source_files:
     - path: cli/src/engine-native/ompSync.ts
-      lines: "1-155"
+      lines: "1-146"
     - path: cli/src/engine-native/ompFileDeploy.ts
       lines: "1-116"
-    - path: cli/src/engine-native/ompMarketplace.ts
-      lines: "1-140"
     - path: cli/src/engine-native/ompPlugins.ts
-      lines: "1-417"
+      lines: "1-379"
     - path: cli/src/engine-native/ompKitPlugin.ts
       lines: "1-99"
     - path: cli/src/engine-native/ompRemovals.ts
@@ -39,7 +37,7 @@ metadata:
       lines: "1-63"
     - path: cli/src/engine-native/ompChild.ts
       lines: "1-26"
-  updated: "2026-11-19"
+  updated: "2026-11-20"
 ---
 
 # omp Sync Context
@@ -51,7 +49,7 @@ Pointers here name concepts, not coordinates — if a path or symbol moved, trus
 
 <constraint>
 Do not run any `omp` subcommand when `ctx.dryRun` is true.
-`omp plugin marketplace add --dry-run` still changes the marketplace registry.
+Do not pass omp's own `--dry-run` option as a preview.
 Print the planned action without invoking omp.
 </constraint>
 
@@ -77,14 +75,13 @@ that value in a profile session. While an override is active, XDG is disabled.
 The agent directory never moves under XDG; only `dataRoot` does, on Linux and
 macOS, and only when the probed omp directory already exists.
 Deploy `AGENTS.md`, `config.yml`, `models.yml`, and `mcp.json` to `agentDir`, and read
-`marketplaces.json` from `dataRoot`.
+the active `marketplaces.json` from `dataRoot`.
 Resolution stays env plus `existsSync` so a dry run runs no omp subcommand.
 </constraint>
 
-Plugin identity, the marketplace registry states, the probe guard, and
-failure reporting are constraints too. Read
-`references/plugins-and-marketplace.md` before you change `ompMarketplace.ts`
-or `ompPlugins.ts`.
+Plugin identity, the marketplace registry states of the retirement, the probe
+guard, and failure reporting are constraints too. Read
+`references/plugins-and-marketplace.md` before you change `ompPlugins.ts`.
 
 Verify path resolution:
 `bunx vitest run cli/test/unit/ompPaths.test.ts -t "disables XDG while a PI_CODING_AGENT_DIR override is active"`
@@ -97,7 +94,7 @@ and `bunx vitest run cli/test/unit/ompPaths.test.ts -t "prefers OMP_PROFILE even
 - Change omp path resolution in `ompPaths.ts` — `ompPaths`.
 - Change omp deployment file modes, backups, or restart triggers.
 - Change the retired-entry prune in `ompRemovals.ts` — `syncOmpRemovals` or `syncOmpModelRemovals`.
-- Change omp marketplace registration or plugin reconciliation.
+- Change omp plugin reconciliation or the retirement of the former `docks` marketplace plugins.
 - Change `readOmpSessionModel` or `writeOmpSessionModel` in `ompSession.ts`.
 - Change the free-session run overlay in `ompOverlay.ts` or the launcher in `cli/src/commands/omp.ts`.
 - Change the omp pipeline call in `syncDispatch.ts` — `engineSync`.
@@ -228,7 +225,7 @@ resolved intercom directory, and the `ompPaths` `dataRoot`.
   and passes the result into `ompSync`. `ompSync` writes only into these
   locked folders. A second resolution could pick a `$XDG_DATA_HOME/omp`
   folder that another sync created after the locks.
-- Every `omp` command of the marketplace and plugin passes starts through
+- Every `omp` command of the plugin pass starts through
   `ompChild.ts spawnOmp`. When the locked data root is the config root, the
   child gets no `XDG_DATA_HOME`, so the omp resolver keeps the locked root.
   When the locked data root is the XDG root, the child keeps the environment
@@ -242,8 +239,8 @@ resolved intercom directory, and the `ompPaths` `dataRoot`.
 - The data root is locked also when it is missing. The lock step then creates
   it under the locks of its ancestors in the set. With an overridden
   `agentDir`, an empty `<home>/<PI_CONFIG_DIR|.omp>` folder can appear.
-- `~/.docks-kit/omp-plugin` and the plugin upgrade log stay under the home, so
-  the home lock covers them.
+- `~/.docks-kit/omp-plugin` and the retired upgrade-log folder that each sync
+  removes stay under the home, so the home lock covers them.
 - `commands/omp.ts toggleFastUnderLocks` checks `<agentDir>/config.yml` before
   any lock (`ompFastMode.ts requireDeployedConfig`). A missing file exits 2,
   and the run creates no omp folder. Otherwise it runs `docks-kit omp --fast`
@@ -284,7 +281,7 @@ and `bunx vitest run cli/test/unit/ompKitPlugin.test.ts -t "removes stale files 
 ## References
 
 - `references/yaml-merge.md` - YAML merge contract and the retired-entry prune.
-- `references/plugins-and-marketplace.md` - plugin and marketplace constraints, inventory contract, dry-run and refresh rules.
+- `references/plugins-and-marketplace.md` - plugin constraints, the retirement of the former marketplace plugins, inventory contract, dry-run and refresh rules.
 - `references/state-and-launcher.md` - kit.db state store, session model, and the free-session launcher.
 
 ## Change Checklist
@@ -293,9 +290,9 @@ and `bunx vitest run cli/test/unit/ompKitPlugin.test.ts -t "removes stale files 
 2. Preserve both deployment roots.
 3. Preserve explicit chmod calls after writes.
 4. Preserve recursive mapping merge and wildcard pruning.
-5. Verify marketplace identity through `id`.
+5. Verify retired marketplace plugin identity through `id` and `scope`.
 6. Verify npm identity through `name` and `version`.
 7. Keep every omp subprocess behind the dry-run boundary.
-8. Test missing and present plugin paths for refresh skipping.
+8. Test missing and present `pi-intercom` paths for refresh skipping.
 9. Keep sync free of prompts and kit.db writes.
 10. Use durable module, function, and semantic anchors in tests or notes.
