@@ -51,7 +51,10 @@ export const argumentBytes = Effect.fn("plan.argumentBytes")(function* (
   args: ReadonlyArray<string>,
 ) {
   const files = yield* PlanFiles;
-  const commandLine = yield* files.readBytes(procFile("cmdline"));
+  // A /proc entry that exists but cannot be read (a sandbox can deny it) counts as no /proc.
+  const commandLine = yield* files
+    .readBytes(procFile("cmdline"))
+    .pipe(Effect.catchTag("FileError", () => Effect.undefined));
   const lost = PATHS_ARE_BYTES && args.some((arg) => arg.includes("\uFFFD"));
   if (commandLine === undefined) {
     const recovered: Recovered<ReadonlyArray<string>> = lost
@@ -82,7 +85,9 @@ export const argumentBytes = Effect.fn("plan.argumentBytes")(function* (
  */
 export const workingFolderBytes = Effect.fn("plan.workingFolderBytes")(function* () {
   const files = yield* PlanFiles;
-  const target = yield* files.linkTarget(procFile("cwd"));
+  const target = yield* files
+    .linkTarget(procFile("cwd"))
+    .pipe(Effect.catchTag("FileError", () => Effect.undefined));
   if (target !== undefined) {
     const recovered: Recovered<string> = { ok: true, value: target.toString("latin1") };
     return recovered;

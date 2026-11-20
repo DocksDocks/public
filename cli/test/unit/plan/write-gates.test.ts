@@ -323,4 +323,28 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
     },
     SPAWN_TIMEOUT_MS,
   );
+
+  // A /proc whose entries exist but cannot be read (as under a sandbox that denies them) counts as no /proc:
+  // `self/cwd` is a regular file, so readlink fails with EINVAL, and `self/cmdline` is a folder, so the read
+  // fails with EISDIR.
+  it(
+    "an unreadable /proc counts as no /proc: export in a U+FFFD working folder uses pwd -P",
+    (context) => {
+      context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
+      const { scratch, createPlan } = planCliContext();
+      const plan = createPlan("unreadable /proc");
+      const badProc = join(scratch, "bad-proc");
+      mkdirSync(join(badProc, "self", "cmdline"), { recursive: true });
+      writeFileSync(join(badProc, "self", "cwd"), "");
+      const result = planScript(
+        scratch,
+        `mkdir 'u-\uFFFD' && cd 'u-\uFFFD' && git init -q && PLAN_CLI_PROC_ROOT='${badProc}' docks-kit plan export ${plan}`,
+      );
+      expect(result.status, result.stderr.toString("utf8")).toBe(0);
+      const written = join(scratch, "u-\uFFFD", ".git", "docks-review", `plan-${plan}.md`);
+      expect(result.stdout.toString("utf8")).toBe(`${written}\n`);
+      expect(existsSync(written), "the plan file in the working folder").toBe(true);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
 });

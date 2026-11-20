@@ -1172,10 +1172,7 @@ export const runPlan = Effect.fn("plan.run")(function* (args: ReadonlyArray<stri
   const [command, ...rest] = args;
   if (command === "base-blob")
     return yield* baseBlob(rest).pipe(
-      Effect.catchTags({
-        FileError: (error) => printErrorLine(error.message).pipe(Effect.as(2)),
-        SpawnError: (error) => printErrorLine(error.message).pipe(Effect.as(2)),
-      }),
+      Effect.catchTag("SpawnError", (error) => printErrorLine(error.message).pipe(Effect.as(2))),
     );
   if (command === "checkout-state") return yield* checkoutState(rest);
   const run =
