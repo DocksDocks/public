@@ -27,6 +27,7 @@ import {
 } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { homedir } from "node:os";
+import { ompPaths } from "../../../../cli/src/engine-native/ompPaths.ts";
 import { dirname, join, resolve, sep } from "node:path";
 import type { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -370,12 +371,17 @@ function mtimeOf(file: string): number | null {
   return existsSync(file) ? statSync(file).mtimeMs : null;
 }
 
-/** The real omp roots that can hold the registry: the config root, and the XDG data root when one is set. */
+/**
+ * The real omp roots that can hold the registry: the base config root, the XDG data root when one is set,
+ * and the config and data roots of the active omp profile, which the kit resolves the same way (`ompPaths`).
+ */
 function realRegistryRoots(): string[] {
   const roots = [join(homedir(), process.env["PI_CONFIG_DIR"] || ".omp")];
   const dataHome = process.env["XDG_DATA_HOME"];
   if (dataHome) roots.push(join(dataHome, "omp"));
-  return roots;
+  const active = ompPaths({ home: homedir(), env: process.env, platform: process.platform });
+  roots.push(active.configRoot, active.dataRoot);
+  return [...new Set(roots)];
 }
 
 interface RealState {

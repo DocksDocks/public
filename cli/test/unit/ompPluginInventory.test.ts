@@ -371,6 +371,21 @@ describe("omp plugin inventory", () => {
       expect(ctx.nextStepTriggers.ompRestart).toBe(false);
     });
 
+    it("warns and removes no marketplace when the active registry cannot be parsed", async () => {
+      const root = makeRoot();
+      const registry = join(root, ".omp", "marketplaces.json");
+      writeFileSync(registry, '{ "docks": ');
+      respondWithInventory(inventory(root, [DOCKS_USER_ROW]));
+      const output: Array<string> = [];
+
+      await syncOmpPlugins(makeCtx(root, { output }));
+
+      expect(ompCommands()).toEqual(["plugin list --json", UNINSTALL_DOCKS]);
+      expect(
+        messageLines(output, `omp marketplace registry ${registry} cannot be read`),
+      ).toHaveLength(1);
+    });
+
     it("removes no marketplace after a failed uninstall", async () => {
       const root = makeRoot();
       writeRegistry(join(root, ".omp"), ["docks"]);

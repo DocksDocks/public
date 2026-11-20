@@ -159,25 +159,35 @@ function realPath(path: string): string | undefined {
 
 // ----------------------------------------------------------- retirement ----
 
-function registryHasDocks(registryFile: string): boolean {
-  if (!existsSync(registryFile)) return false;
+/**
+ * What a registry file says about the `docks` marketplace. `unreadable` names a
+ * file that exists but cannot be read or parsed: it can still hold the entry.
+ */
+type RegistryState =
+  | { readonly kind: "listed" | "absent" }
+  | { readonly kind: "unreadable"; readonly file: string };
+
+function registryState(registryFile: string): RegistryState {
+  if (!existsSync(registryFile)) return { kind: "absent" };
 
   let registryText: string;
   try {
     registryText = readFileSync(registryFile, "utf8");
   } catch {
-    return false;
+    return { kind: "unreadable", file: registryFile };
   }
   const registry = parseJson(registryText);
-  if (registry === undefined) return false;
-  if (isObject(registry) && Object.hasOwn(registry, RETIRED_MARKETPLACE)) return true;
+  if (registry === undefined) return { kind: "unreadable", file: registryFile };
+  if (isObject(registry) && Object.hasOwn(registry, RETIRED_MARKETPLACE)) return { kind: "listed" };
 
   const entries = Array.isArray(registry)
     ? registry
     : isObject(registry) && Array.isArray(registry["marketplaces"])
       ? registry["marketplaces"]
       : [];
-  return entries.some((entry) => isObject(entry) && entry["name"] === RETIRED_MARKETPLACE);
+  return entries.some((entry) => isObject(entry) && entry["name"] === RETIRED_MARKETPLACE)
+    ? { kind: "listed" }
+    : { kind: "absent" };
 }
 
 /**
@@ -188,13 +198,16 @@ function registryHasDocks(registryFile: string): boolean {
  * entry counts only when no active registry exists; beside an active
  * registry it is stale.
  */
-function registryListsDocks(paths: OmpPaths): boolean {
+function docksRegistryState(paths: OmpPaths): RegistryState {
   const activeRegistry = p(paths.dataRoot, "marketplaces.json");
-  if (existsSync(activeRegistry)) return registryHasDocks(activeRegistry);
-  return (
-    paths.dataRoot !== paths.configRoot &&
-    registryHasDocks(p(paths.configRoot, "marketplaces.json"))
-  );
+  if (existsSync(activeRegistry)) return registryState(activeRegistry);
+  if (paths.dataRoot === paths.configRoot) return { kind: "absent" };
+  return registryState(p(paths.configRoot, "marketplaces.json"));
+}
+
+/** The warning for a registry that can hold the `docks` entry but cannot be read. */
+function unreadableRegistryWarning(file: string): string {
+  return `omp marketplace registry ${file} cannot be read or parsed — the docks marketplace is not removed; repair the file, then run docks-kit sync again`;
 }
 
 /**
@@ -246,7 +259,11 @@ async function retireMarketplacePlugins(
   }
 
   // A failed uninstall keeps the marketplace, so the manual command still resolves the id.
-  if (!uninstallFailed && registryListsDocks(paths)) {
+  if (uninstallFailed) return operations;
+  const registry = docksRegistryState(paths);
+  if (registry.kind === "unreadable") {
+    warn(unreadableRegistryWarning(registry.file));
+  } else if (registry.kind === "listed") {
     const args = ["plugin", "marketplace", "remove", RETIRED_MARKETPLACE];
     if (await runPluginCommand(ctx, paths, RETIRED_MARKETPLACE_LABEL, args)) {
       operations.push({ kind: "marketplaceRemove" });
@@ -273,7 +290,7 @@ export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
     ctx.services.deps.warnMissing(
       "git",
       ctx.services.logger,
-      "plugin marketplaces are git repos — omp plugin refresh skipped; re-run sync after installing",
+      "omp plugin pass skipped; re-run sync after installing",
     );
     return 0;
   }
@@ -285,7 +302,10 @@ export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
     for (const pluginId of RETIRED_PLUGIN_IDS) {
       echo(`[dry-run] omp plugin uninstall --scope user ${pluginId}`);
     }
-    if (registryListsDocks(paths)) {
+    const registry = docksRegistryState(paths);
+    if (registry.kind === "unreadable") {
+      warn(unreadableRegistryWarning(registry.file));
+    } else if (registry.kind === "listed") {
       echo(`[dry-run] omp plugin marketplace remove ${RETIRED_MARKETPLACE}`);
     }
     if (piIntercomPin === "") {

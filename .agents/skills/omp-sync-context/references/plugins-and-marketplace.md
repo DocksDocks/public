@@ -90,11 +90,11 @@ Run the link also under `--skip-plugin-refresh` and when the inventory is unavai
 Remove the folder `<kit cache>/omp-plugin-upgrades` of the retired upgrade log
 in each real sync when it exists.
 
-When at least one plugin operation succeeds, call `omp plugin list --json` one
-more time and print one summary line that names each operation:
+When at least one plugin operation succeeds, print one summary line that names each operation:
 `omp plugins synced: docks@docks uninstalled, plan-lifecycle@docks uninstalled, docks marketplace removed, pi-intercom <version> (new), docks-kit-omp linked`.
+Call `omp plugin list --json` one more time only after a pi-intercom install, because only that item shows a version.
 An id without a version means the second inventory did not give one.
-Do not read the inventory again when no operation ran, in a dry run, or when omp or git is missing.
+Do not read the inventory again after only uninstalls, a marketplace removal, or a link, in a dry run, or when omp or git is missing.
 Each uninstall sets `ompRestart`, because the retired plugins ship extensions.
 `ompKitPlugin.ts syncKitPlugin` adds `(docks-kit-omp <old> -> <new>)` to its line
 when the deployed `package.json` had a different version.

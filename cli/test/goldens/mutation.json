@@ -1091,7 +1091,7 @@
       "argvLog": "",
       "command": ["sync"],
       "exitCode": 0,
-      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (plugin marketplaces are git repos — omp plugin refresh skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 0 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
+      "output": "\u001b[1;32m[ok]\u001b[0m omp AGENTS.md synced\n\u001b[1;32m[ok]\u001b[0m omp mcp.json synced\n\u001b[1;32m[ok]\u001b[0m omp config.yml installed\n\u001b[1;32m[ok]\u001b[0m omp models.yml installed\n\u001b[1;32m[ok]\u001b[0m omp intercom configuration synced\n\u001b[1;32m[ok]\u001b[0m omp kit plugin files synced\n\u001b[1;33m[warn]\u001b[0m git not installed — sudo apt install -y git (or your distro's package manager) (omp plugin pass skipped; re-run sync after installing)\n\n--- Sync complete ---\nRepo:     <REPO>\nomp:      <HOME>/.omp/agent\nomp plugins: 0 installed\n\nRestart omp to load any refreshed plugins, skills, or tools.\n",
       "tree": {
         ".bashrc": "sha256:5461960202d63cb2b4eb32e0c26c061954d832f1cc33d4016d071b49584ceabb",
         ".cache/": "dir",
