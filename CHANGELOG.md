@@ -1,13 +1,17 @@
 # Changelog
 
-## Unreleased - docks-kit 0.26.0: docks-kit plan and agent-docs commands
+## Unreleased - docks-kit 0.26.0: docks-kit plan, agent-docs, and skill commands
 
 The plan helper of the `plan-manager` skill is now a docks-kit command,
 written in TypeScript with Effect (#203). The skills call `docks-kit plan`
 instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
 `agent-first-setup`, and `claude-md-migration` skills are now the
 `docks-kit agent-docs` command (#204); the skills call it instead of
-`node <skill-dir>/scripts/<helper>.mjs`. These changes come from plan #198.
+`node <skill-dir>/scripts/<helper>.mjs`. The SKILL.md validator and the
+16-point rubric of the `write-skill` skill are now the `docks-kit skill`
+command (#205); the `write-skill` and `skill-maintenance` skills call it
+instead of `node <write-skill-dir>/scripts/skill-guard.mjs`, and the kit
+gate scores the skills in the same process. These changes come from plan #198.
 
 ### Added
 
@@ -26,8 +30,17 @@ instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
   `usage: docks-kit agent-docs pr-template detect | gate`, and that a failure
   which stopped a script with a Node stack trace prints
   `agent-docs: <message>` and exits 1. When docks-kit runs under Bun, Bun
-  prints its own parse error on stderr before the helper output in a folder
-  that holds, or sits below a folder that holds, an invalid `package.json`.
+  also prints its own parse error on stderr, at a point that its event loop
+  picks, in a folder that holds, or sits below a folder that holds, an invalid
+  `package.json`.
+- `docks-kit skill guard [--strict] <skill-dir|skills-root>...` and
+  `docks-kit skill score [--per-file] [skills-root]`. They print the same
+  bytes with the same exit codes as `skill-guard.mjs validate` and
+  `skill-guard.mjs score`, except that the usage lines name
+  `docks-kit skill guard`, that `score` without a root reads `.agents/skills`
+  instead of `plugins/docks/skills`, and that a file error which stopped the
+  script with a Node stack trace prints the one line
+  `docks-kit skill: <message>` and exits 1.
 
 ### Removed
 
@@ -41,6 +54,9 @@ instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
   `claude-md-migration/scripts/bridge-check.mjs`, `agent-docs.mjs`, and
   `verify-skill.mjs`, with their three shared-copy groups. The skills need
   docks-kit 0.26.0 or later; `docks-kit update` installs it.
+- `write-skill/scripts/skill-guard.mjs`. The `write-skill` and
+  `skill-maintenance` skills need docks-kit 0.26.0 or later;
+  `docks-kit update` installs it.
 
 ### Fixed
 

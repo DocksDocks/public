@@ -1,6 +1,6 @@
 /**
- * The file service of `docks-kit skill`. Each method mirrors one `fs` call of the former
- * `write-skill/scripts/skill-guard.mjs`, with the same symlink handling. A failed call carries the Node error message,
+ * The file service of `docks-kit skill`. Each method mirrors one `fs` call of the former skill-guard script of
+ * write-skill, with the same symlink handling. A failed call carries the Node error message,
  * which names the error code and the path. The command entry provides `SkillFiles.layer`.
  */
 import fs from "node:fs";

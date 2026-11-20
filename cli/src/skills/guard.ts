@@ -1,6 +1,7 @@
 /**
- * The portable SKILL.md validator of `docks-kit skill guard`, ported from `write-skill/scripts/skill-guard.mjs`: the
- * frontmatter and structure rules, pure over the file text, and the walk that finds each SKILL.md below a skills root.
+ * The portable SKILL.md validator of `docks-kit skill guard`, ported from the former skill-guard script of
+ * write-skill: the frontmatter and structure rules, pure over the file text, and the walk that finds each SKILL.md
+ * below a skills root.
  * The kit-only rules (report section, shared copies, transform guard, score floors) live in `kitGate.ts`.
  */
 import { basename, join } from "node:path";

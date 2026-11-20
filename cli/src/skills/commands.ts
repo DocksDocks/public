@@ -1,7 +1,8 @@
 /**
- * The dispatcher of `docks-kit skill guard|score`, which replaces `write-skill/scripts/skill-guard.mjs validate|score`.
- * Each command prints what the script printed and returns its exit status. A file error that the script did not catch
- * (it ended with a stack trace and exit 1) prints `docks-kit skill: <Node error message>` and returns 1.
+ * The dispatcher of `docks-kit skill guard|score`, which replaced the `validate|score` modes of the former skill-guard
+ * script of write-skill. Each command prints what the script printed and returns its exit status. A file error that
+ * the script did not catch (it ended with a stack trace and exit 1) prints `docks-kit skill: <Node error message>` and
+ * returns 1.
  */
 import { dirname, join } from "node:path";
 

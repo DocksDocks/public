@@ -10,7 +10,6 @@ import { type Fixture, output } from "../agentDocs/harness";
 import {
   type SkillCommand,
   type SkillResult,
-  fileErrorStderr,
   runRaw,
   runSkill,
   runtimeStderr as entryRuntimeStderr,
@@ -42,7 +41,8 @@ export function runtimeStderr(fx: Fixture, sub = ""): string {
 /**
  * A run whose runtime writes its own stderr (decision 1a (2)): status and stdout exactly; stderr holds `runtime`
  * exactly once, and without it equals `stderr` exactly. Bun writes its text when its event loop reaches it, before or
- * after the command's own writes, so the check pins no order. With no runtime text (`mjs`), stderr equals `stderr`.
+ * after the command's own writes, so the check pins no order. With no runtime text (a compiled binary), stderr equals
+ * `stderr`.
  */
 export function expectRuntimeRun(
   result: SkillResult,
@@ -67,21 +67,19 @@ export function expectRuntimeRun(
 }
 
 /**
- * A file error that the script does not catch (decision 1a (1)): stdout and status exactly, and stderr exactly for
- * `docks-kit` or holding the error code for `mjs`.
+ * A file error that the former script did not catch (decision 1a (1)): status 1, stdout exactly, and stderr exactly
+ * the one line `docks-kit skill: <Node error message>`.
  */
 export function expectFileError(
   result: SkillResult,
   lines: ReadonlyArray<string>,
   message: string,
 ): void {
-  const stderr = fileErrorStderr(message);
-  expect({ status: result.status, stdout: result.stdout }).toEqual({
+  expect({ status: result.status, stdout: result.stdout, stderr: result.stderr }).toEqual({
     status: 1,
     stdout: output(lines),
+    stderr: `docks-kit skill: ${message}\n`,
   });
-  if (stderr.kind === "exact") expect(result.stderr).toBe(stderr.text);
-  else expect(result.stderr).toContain(stderr.text);
 }
 
 /** `YYYY-MM-DD` of the UTC day `days` days before today: the rubric and the validator count age in UTC days. */

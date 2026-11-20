@@ -1,7 +1,7 @@
 /**
  * The 16-point docks skill rubric, the one source of the skill score: `docks-kit skill score`, the score line of
  * `docks-kit skill guard`, and the score floor of the kit gate all call `scoreSkill`. It reads the raw text of a
- * SKILL.md line by line, as the former `write-skill/scripts/skill-guard.mjs` did, so the description is the raw first
+ * SKILL.md line by line, as the former skill-guard script of write-skill did, so the description is the raw first
  * `description:` line, not the YAML value. The line readers below also serve the validator and the agent scorer.
  */
 

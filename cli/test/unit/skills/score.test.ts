@@ -1,7 +1,6 @@
 import { describe, it } from "vitest";
 
 import { expectRun, fixture } from "../../lib/agentDocs/harness";
-import { DEFAULT_SCORE_ROOT } from "../../lib/skills/entry";
 import {
   RECENT,
   SKILLS_HOST_SUPPORTED,
@@ -47,7 +46,7 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)("skill score", { timeout: SPAWN_TIMEOUT_
     expectRun(run("score", ["skills"], fx), 0, ["12"]);
   });
 
-  it("without a root reads the default folder of the entry and not the other tree (docks author-tooling.mjs:571)", () => {
+  it("without a root reads .agents/skills and not the former plugins/docks/skills default (docks author-tooling.mjs:571)", () => {
     const fx = fixture({
       git: false,
       files: {
@@ -59,14 +58,8 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)("skill score", { timeout: SPAWN_TIMEOUT_
         ),
       },
     });
-    const rows =
-      DEFAULT_SCORE_ROOT === "plugins/docks/skills"
-        ? ["plugin-one 6", "plugin-two 6"]
-        : ["project-one 4"];
-    expectRun(run("score", ["--per-file"], fx), 0, rows);
-    expectRun(run("score", [], fx), 0, [
-      DEFAULT_SCORE_ROOT === "plugins/docks/skills" ? "12" : "4",
-    ]);
+    expectRun(run("score", ["--per-file"], fx), 0, ["project-one 4"]);
+    expectRun(run("score", [], fx), 0, ["4"]);
   });
 
   it("an empty root prints no row and a total of 0", () => {
