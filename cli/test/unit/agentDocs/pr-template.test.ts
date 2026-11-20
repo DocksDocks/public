@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   AGENT_DOCS_HOST_SUPPORTED,
+  CASE_INSENSITIVE_SKIP,
+  CASE_SENSITIVE_NAMES,
   IS_ROOT,
   PR_ERROR,
   expectRun,
@@ -21,7 +23,9 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
   "pr-template detect",
   { timeout: SPAWN_TIMEOUT_MS },
   () => {
-    it("names each usable and unusable entry, by folder and then by byte order of the name", () => {
+    // `.github/PULL_REQUEST_TEMPLATE` and `.github/pull_request_template` differ only in letter case.
+    it("names each usable and unusable entry, by folder and then by byte order of the name", (context) => {
+      context.skip(!CASE_SENSITIVE_NAMES, CASE_INSENSITIVE_SKIP);
       const fx = fixture({
         files: {
           "pull_request_template.md": "## Checklist\n",

@@ -9,6 +9,7 @@
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -39,6 +40,22 @@ export const AGENT_DOCS_HOST_SUPPORTED = process.platform !== "win32";
 
 /** A mode-0 file or folder blocks nobody when the tests run as root. */
 export const IS_ROOT = process.getuid?.() === 0;
+
+/**
+ * Whether the file system of the fixture folders keeps names that differ only in letter case apart. The default
+ * macOS file system does not, so a fixture that holds such a pair cannot exist there.
+ */
+export const CASE_SENSITIVE_NAMES = ((): boolean => {
+  const probe = mkdtempSync(join(tmpdir(), "agent-docs-case-"));
+  try {
+    writeFileSync(join(probe, "a"), "");
+    return !existsSync(join(probe, "A"));
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+})();
+export const CASE_INSENSITIVE_SKIP =
+  "the file system does not keep names that differ only in letter case apart";
 
 /**
  * Variables that would point git at another repository: a git hook exports
