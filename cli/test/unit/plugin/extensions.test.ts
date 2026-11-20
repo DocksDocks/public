@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import config from "../../../scripts/pluginContent/config.json" with { type: "json" };
+import config from "../../../src/skills/config.json" with { type: "json" };
 import { checkExtensions } from "../../../scripts/pluginContent/extensions.ts";
 
 /**

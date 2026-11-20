@@ -1,25 +1,25 @@
 ---
 name: write-skill
-description: "Use when authoring a new skill for the docks-kit kit plugin skill tree or a kit that follows docks conventions. Guides the `Use when…` description, body size and `references/` split, constraint blocks, BAD/GOOD pairs, baseline and trigger checks, and the bundled `skill-guard.mjs` scorer and validators. Not for refreshing an existing skill after source changes (use skill-maintenance) or measured benchmarks and description optimization (follow the agentskills.io guides)."
+description: "Use when authoring a new skill for the docks-kit kit plugin skill tree or a kit that follows docks conventions. Guides the `Use when…` description, body size and `references/` split, constraint blocks, BAD/GOOD pairs, baseline and trigger checks, and the `docks-kit skill` scorer and validator. Not for refreshing an existing skill after source changes (use skill-maintenance) or measured benchmarks and description optimization (follow the agentskills.io guides)."
 user-invocable: true
 metadata:
   pattern: meta-skill
   updated: "2026-11-20"
-  content_hash: "b257c9c86f488fe70a501f37dd2226e58dff953509651fa8353ac49656c996ae"
+  content_hash: "067152176fe4d5f3aeba44030f410840224da7e37aafc0a879296b150c835f61"
 ---
 
 # Write a Skill (docks conventions)
 
 The description is the only thing your agent sees when deciding which skill to load. Get it wrong and the skill never fires. Get it right and the body content barely matters.
 
-This skill encodes docks' specific authoring conventions — the 16-point scorer rubric in the bundled `scripts/skill-guard.mjs` (the single source the kit CI also scores with), the structural checks that `bun run check` runs in the docks-kit repository (`cli/scripts/pluginContent/`), the body sweet spot, the `<constraint>` block reward, the references/ extraction rule. Anthropic's `skill-creator` and Matt Pocock's former `write-a-skill` (MIT, framing inspiration) are both generic; this one is docks-shaped.
+This skill encodes docks' specific authoring conventions — the 16-point scorer rubric of `docks-kit skill score` (the single source the kit CI also scores with; the `docks-kit skill` command of the kit CLI provides it and needs docks-kit 0.26.0 or later, and `docks-kit update` installs it), the structural checks that `bun run check` runs in the docks-kit repository (`cli/src/skills/` and `cli/scripts/pluginContent/`), the body sweet spot, the `<constraint>` block reward, the references/ extraction rule. Anthropic's `skill-creator` and Matt Pocock's former `write-a-skill` (MIT, framing inspiration) are both generic; this one is docks-shaped.
 
 <constraint>
-Description-first. The description is surfaced in the skill listing every session — it loads always, the body loads only on invocation. Spend disproportionate effort here. CSO rules: (1) starts with `Use when …` (2 pts), (2) ≤500 chars (2 pts; > 1000 = 0 pts; the guard hard-caps at 1024), (3) names the categories of user intent the skill serves and says what the skill does as well as when, with concrete nouns (commands, file types, error text) where they help, rather than abstract capability prose, (4) zero slop words (`comprehensive`, `robust`, `elegant`, `seamless` — each occurrence costs 1 pt, max −2). Do not grow a keyword list one missed query at a time: each added token fixes one query and widens the match surface for every near-miss. When a query misses, name the intent category it belongs to, then re-run the whole trigger check (see "Behavioral checks"). The description is done when the trigger check passes and `node <write-skill-dir>/scripts/skill-guard.mjs score --per-file <skills-root> | grep <name>` (the bundled scorer the kit CI also uses) gives its points.
+Description-first. The description is surfaced in the skill listing every session — it loads always, the body loads only on invocation. Spend disproportionate effort here. CSO rules: (1) starts with `Use when …` (2 pts), (2) ≤500 chars (2 pts; > 1000 = 0 pts; the guard hard-caps at 1024), (3) names the categories of user intent the skill serves and says what the skill does as well as when, with concrete nouns (commands, file types, error text) where they help, rather than abstract capability prose, (4) zero slop words (`comprehensive`, `robust`, `elegant`, `seamless` — each occurrence costs 1 pt, max −2). Do not grow a keyword list one missed query at a time: each added token fixes one query and widens the match surface for every near-miss. When a query misses, name the intent category it belongs to, then re-run the whole trigger check (see "Behavioral checks"). The description is done when the trigger check passes and `docks-kit skill score --per-file <skills-root> | grep <name>` (the rubric the kit CI also uses) gives its points.
 </constraint>
 
 <constraint>
-Body sweet spot: 80–310 lines (the bundled `skill-guard.mjs` scorer awards 2 pts here). Under 80 lines is allowed but loses the 2 pts. Over 310 is also allowed (`skill-guard.mjs` fails past 500) but the agentskills.io specification asks for a body under 5000 tokens and 500 lines, and 5000 tokens is about 310 lines. Every line past that costs context on each activation. When the body crosses ~310 lines, move detail into `references/<topic>.md` files (30–150 lines each) and leave a one-line pointer in the body. Pattern: see `react-component-patterns/SKILL.md` and its `references/` folder.
+Body sweet spot: 80–310 lines (the `docks-kit skill score` rubric awards 2 pts here). Under 80 lines is allowed but loses the 2 pts. Over 310 is also allowed (`docks-kit skill guard` fails past 500) but the agentskills.io specification asks for a body under 5000 tokens and 500 lines, and 5000 tokens is about 310 lines. Every line past that costs context on each activation. When the body crosses ~310 lines, move detail into `references/<topic>.md` files (30–150 lines each) and leave a one-line pointer in the body. Pattern: see `react-component-patterns/SKILL.md` and its `references/` folder.
 </constraint>
 
 <constraint>
@@ -70,7 +70,7 @@ metadata:
 | 8 | Code fence with language tag | 1 | ` ```ts `, ` ```bash `, etc. — not bare ` ``` ` |
 | 9 | Body 80–310 lines | 2 | sweet spot; either side loses the 2 pts |
 
-**Per-file floor:** `floors.skills` in `cli/scripts/pluginContent/config.json` of the docks-kit repository (verify: `node -p "require('./cli/scripts/pluginContent/config.json').floors.skills"`). CI fails any skill below that floor. Aim for 14+ on new skills — leaves headroom when CSO rules tighten.
+**Per-file floor:** `floors.skills` in `cli/src/skills/config.json` of the docks-kit repository (verify: `node -p "require('./cli/src/skills/config.json').floors.skills"`). CI fails any skill below that floor. Aim for 14+ on new skills — leaves headroom when CSO rules tighten.
 
 ## The authoring loop
 
@@ -80,12 +80,12 @@ metadata:
 3. **Draft the body** in `SKILL.md`. Target 80–310 lines. Aim each section at a gap from step 0. Include at least: one `<constraint>`, one BAD/GOOD pair, one table, one fenced code block with a language tag. Pick prescriptiveness per "Degrees of freedom" below.
 4. **Baseline check.** Re-run the step 0 prompts with the skill and compare (see "Behavioral checks"). A gap that stays open means the body does not reach it; fix the body, not the prompt.
 5. **Trigger check.** Run the query set against the description (see "Behavioral checks").
-6. **Score check.** `node <write-skill-dir>/scripts/skill-guard.mjs score --per-file <skills-root> | grep <name>` — the bundled scorer the kit CI also scores with (one rubric, no mirror). Validate one skill: `node …/skill-guard.mjs validate <skill-dir>`. If < 14, find the missing point in the rubric.
-7. **Structural check.** In the docks-kit repository: `bunx vitest run cli/test/unit/plugin/skills.test.ts` (frontmatter rules + the reference checks: broken `references/` links, orphan reference files, the long-reference TOC rule below); `bun run check` runs the same tests. Elsewhere: `node skill-guard.mjs validate --strict` covers the portable subset. Failures are non-negotiable — fix them.
+6. **Score check.** `docks-kit skill score --per-file <skills-root> | grep <name>` — the rubric the kit CI also scores with (one rubric, no mirror; without a root it reads `.agents/skills`). Validate one skill: `docks-kit skill guard <skill-dir>`. If < 14, find the missing point in the rubric.
+7. **Structural check.** In the docks-kit repository: `bunx vitest run cli/test/unit/plugin/skills.test.ts` (frontmatter rules + the reference checks: broken `references/` links, orphan reference files, the long-reference TOC rule below); `bun run check` runs the same tests. Elsewhere: `docks-kit skill guard --strict <skill-dir>` covers the portable subset. Failures are non-negotiable — fix them.
 8. **Docs check.** Run the self-check in `references/durable-anchors.md` on the body and every reference. If the skill writes docs, check rows A–C of "Durable docs and agent-first output" below against the docs it emits; if it writes into a user repo, check row D too.
 9. **Targeted checks while iterating.** In the docks-kit repository, run the plugin content tests after each meaningful change: `bunx vitest run cli/test/unit/plugin`. Do not rerun unrelated gates during the edit loop.
 10. **Full CI once.** Run `bun run check` in the docks-kit repository at the final pre-commit/release gate, or earlier only when shared/repo-wide files changed. It must be green before commit.
-11. **Stop when the behavioral checks pass.** Ship when the baseline check shows the step 0 gaps closed and the trigger check passes. The score is a minimum, not the goal: meet the per-file skills floor (`floors.skills` in `cli/scripts/pluginContent/config.json` of the docks-kit repository), but do not add tables or constraint blocks only to gain points, because a format proxy does not tell you whether the agent behaves better.
+11. **Stop when the behavioral checks pass.** Ship when the baseline check shows the step 0 gaps closed and the trigger check passes. The score is a minimum, not the goal: meet the per-file skills floor (`floors.skills` in `cli/src/skills/config.json` of the docks-kit repository), but do not add tables or constraint blocks only to gain points, because a format proxy does not tell you whether the agent behaves better.
 
 ## Behavioral checks
 
@@ -152,7 +152,7 @@ Reference file sweet spot: 30–150 lines. Past 150, split again. Any reference 
 | `scripts/<tool>` | Every invocation would re-derive the same helper — the smell: three test runs each wrote the same `create_docx.py` | Execution is token-free; only stdout enters context |
 | `assets/<file>` | Output needs a template or binary copied, never read (HTML shells, fonts, dashboard masters) | Zero until copied |
 
-State intent explicitly: "Run `scripts/x.py`" (execute) vs "Read `scripts/x.py`" (load as reference). Neither directory is covered by `content_hash` (it hashes SKILL.md + references/ only) — bump `metadata.updated` manually when they change. This skill eats its own cooking: `scripts/skill-guard.mjs` here is the bundled portable validator AND the single source of the scorer rubric the kit CI uses.
+State intent explicitly: "Run `scripts/x.py`" (execute) vs "Read `scripts/x.py`" (load as reference). Neither directory is covered by `content_hash` (it hashes SKILL.md + references/ only) — bump `metadata.updated` manually when they change. This skill ships no script: the portable validator and the scorer rubric that the kit CI uses are the `docks-kit skill guard` and `docks-kit skill score` commands of the kit CLI.
 
 ## Constraint block discipline
 
@@ -211,7 +211,7 @@ A failed row is a defect in the skill, not in one output: fix the template or th
 
 ## Transforming skills (split / migrate / rewrite existing content)
 
-A skill that MOVES, SPLITS, or REWRITES existing files can drop content with no error. Before authoring one, read [`references/data-preservation.md`](references/data-preservation.md): inventory → per-section approval table → two-phase write → read-back verification. Two non-negotiables, copied **inline** into the skill (never cross-linked): a preservation `<constraint>` near the top (the agent reads it before any step) and a `## Verification` block doing per-section presence + a net-shrink tripwire — NOT a byte-percentage floor, which is backwards for a split. In the docks-kit repository, the transform check of `bun run check` enforces both on the curated transformer list (`transformingSkills` in `cli/scripts/pluginContent/config.json`).
+A skill that MOVES, SPLITS, or REWRITES existing files can drop content with no error. Before authoring one, read [`references/data-preservation.md`](references/data-preservation.md): inventory → per-section approval table → two-phase write → read-back verification. Two non-negotiables, copied **inline** into the skill (never cross-linked): a preservation `<constraint>` near the top (the agent reads it before any step) and a `## Verification` block doing per-section presence + a net-shrink tripwire — NOT a byte-percentage floor, which is backwards for a split. In the docks-kit repository, the transform check of `bun run check` enforces both on the curated transformer list (`transformingSkills` in `cli/src/skills/config.json`).
 
 ## When this skill does NOT apply
 

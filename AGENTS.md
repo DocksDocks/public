@@ -88,7 +88,7 @@ Project-skill authoring rules (scope, canonical layout, vendored `unslop`, citat
 ## Kit plugin content
 
 `SoT/.omp/plugin/` holds skills at `skills/<name>/SKILL.md`, task agents at `agents/<name>.md`, and the extensions that `package.json` `omp.extensions` names. It ships the 32 docks and plan-lifecycle skills, the `workspace-hygiene` skill, the `code-reviewer` and `plan-reviewer` agents, the `hygiene`, `verify-gate`, and `context-tree-nudge` extensions, the trigger rules in `rules/`, and the `/cleanup` command. A skill reports a problem in DocksDocks/public. `bun run check` checks this content with four tests in `cli/test/unit/plugin/`: `skills.test.ts` (layout and name, frontmatter, report section, shared copies, references, durable anchors, transform guard, trigger collisions, score floor), `contentHash.test.ts`, `agents.test.ts` (agent rules, score floor), and `extensions.test.ts` (each entry imports and has a default function export).
-After a skill edit, run `bun cli/scripts/skill-content-hash.ts --write` to refresh its `metadata.content_hash` and `metadata.updated`; `--check` names each stale skill. The check code and its data (floors, report section, shared-copy groups, transform list) are in `cli/scripts/pluginContent/`.
+After a skill edit, run `bun cli/scripts/skill-content-hash.ts --write` to refresh its `metadata.content_hash` and `metadata.updated`; `--check` names each stale skill. The skill checks, the 16-point rubric, and the check data in `config.json` (floors, report section, shared-copy groups, transform list) are in `cli/src/skills/`, which `docks-kit skill guard` and `docks-kit skill score` also use; the agent, reference, trigger, extension, and content-hash checks are in `cli/scripts/pluginContent/`.
 
 ## Plans
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import config from "../../../scripts/pluginContent/config.json" with { type: "json" };
+import config from "../../../src/skills/config.json" with { type: "json" };
 import {
   checkContentHashes,
   hashSkill,

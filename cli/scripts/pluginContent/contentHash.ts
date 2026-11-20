@@ -8,7 +8,7 @@ import {
   mappingField,
   parseFrontmatter,
   skillDirs,
-} from "./frontmatter.ts";
+} from "../../src/skills/frontmatter.ts";
 
 /**
  * The skill content hash of DocksDocks/docks (`scripts/skills/content-hash.mjs`),

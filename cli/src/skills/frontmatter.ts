@@ -80,50 +80,6 @@ export const mappingField = (
   return isMapping(field) ? field : undefined;
 };
 
-/** The lines of a file, without the empty item after a final newline. */
-export function splitLines(content: string): Array<string> {
-  return (content.endsWith("\n") ? content.slice(0, -1) : content).split("\n");
-}
-
-export const countLines = (lines: ReadonlyArray<string>, pattern: RegExp): number =>
-  lines.reduce((count, line) => (pattern.test(line) ? count + 1 : count), 0);
-
-export const anyLine = (lines: ReadonlyArray<string>, pattern: RegExp): boolean =>
-  lines.some((line) => pattern.test(line));
-
-/**
- * The lines after the second `---` line. Only the first two `---` lines are
- * fences, so a `---` line in the body counts as body.
- */
-export function bodyAfterFrontmatter(lines: ReadonlyArray<string>): Array<string> {
-  let fences = 0;
-  const out: Array<string> = [];
-  for (const line of lines) {
-    if (line === "---" && fences < 2) {
-      fences += 1;
-      continue;
-    }
-    if (fences === 2) out.push(line);
-  }
-  return out;
-}
-
-const SLOP_PATTERN = /\b(comprehensive|robust|elegant|seamless)\b/i;
-
-/** The prose lines with a banned word. Fenced code and inline code do not count. */
-export function slopCount(lines: ReadonlyArray<string>): number {
-  let inFence = false;
-  const prose: Array<string> = [];
-  for (const line of lines) {
-    if (/^```/.test(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (!inFence) prose.push(line.replace(/`[^`]*`/g, ""));
-  }
-  return countLines(prose, SLOP_PATTERN);
-}
-
 /** The frontmatter block of a markdown file, or null when it has none. */
 export const frontmatterBlock = (text: string): string | null =>
   /^---\n([\s\S]*?)\n---(?:\n|$)/u.exec(text)?.[1] ?? null;

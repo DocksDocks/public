@@ -8,7 +8,7 @@ import {
   scoreAgent,
   scoreAgents,
 } from "../../../scripts/pluginContent/agents.ts";
-import config from "../../../scripts/pluginContent/config.json" with { type: "json" };
+import config from "../../../src/skills/config.json" with { type: "json" };
 
 /**
  * The docks agent checks (`gateAgentFiles` of `scripts/ci.mjs`,

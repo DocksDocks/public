@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: reviewer
   updated: "2026-11-20"
-  content_hash: "d8a69c2c7674022f20d0c96599d22e9701261349ed5f48c57070a47b1a15805a"
+  content_hash: "b118adeb8b3dd9bff91fe8d05191ddd11be522d00b93cab5c19082d93becce1c"
 ---
 
 # Skill Maintenance
@@ -205,11 +205,12 @@ Use the narrowest available command:
 ```bash
 # if the project ships a skill validator/loader-check, run it
 
-# if the docks-kit kit plugin is installed, write-skill bundles a portable validator —
+# with docks-kit 0.26.0 or later (`docks-kit update` installs it), the
+# `docks-kit skill guard` command of the kit CLI is a portable validator —
 # frontmatter guard (fences, name, 1024-char cap on the parsed description
 # value, block scalars too, unquoted '#', no YAML alias/anchor/tag)
-# + 16-pt score, no kit tooling needed (--strict for kit conventions):
-node skill://write-skill/scripts/skill-guard.mjs validate .agents/skills
+# + 16-pt score, no project tooling needed (--strict for kit conventions):
+docks-kit skill guard .agents/skills
 
 # full YAML check: the parser command in references/REFERENCES.md
 # (Validation Without Project Scripts)
@@ -223,8 +224,8 @@ omp skill list --json
 find .agents/skills .claude/skills -name SKILL.md -maxdepth 3 -print 2>/dev/null
 ```
 
-If the bundled validator is absent (the docks-kit kit plugin is not installed), fall back to the
-generic checks — never hard-depend on it.
+If the `docks-kit skill` command is absent (docks-kit is not installed, or it is older than 0.26.0),
+fall back to the generic checks — never hard-depend on it.
 
 ## References
 

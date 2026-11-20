@@ -32,6 +32,9 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log(
       "  docks-kit agent-docs <helper> <command> [...] agent-doc checks (agent-first-setup helpers)",
     );
+    yield* Console.log(
+      "  docks-kit skill guard|score [...]          SKILL.md validator and rubric score (write-skill helpers)",
+    );
     yield* Console.log("");
     yield* Console.log(
       "Run 'docks-kit --help' for full option listings (also: --wizard, --completions).",

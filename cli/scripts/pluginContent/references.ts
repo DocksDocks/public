@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { findSkillFiles, pluginDir, skillsDir } from "./frontmatter.ts";
+import { findSkillFiles, pluginDir, skillsDir } from "../../src/skills/frontmatter.ts";
 
 /**
  * The reference checks of the DocksDocks/docks gate, ported to the kit plugin:

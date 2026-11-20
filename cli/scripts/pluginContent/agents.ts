@@ -1,17 +1,15 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
-import config from "./config.json" with { type: "json" };
+import config from "../../src/skills/config.json" with { type: "json" };
+import { agentsDir, frontmatterBlock, frontmatterKeys } from "../../src/skills/frontmatter.ts";
+import { type ScoreResult, scoreFloorFailures } from "../../src/skills/kitGate.ts";
 import {
-  agentsDir,
   anyLine,
   bodyAfterFrontmatter,
   countLines,
-  frontmatterBlock,
-  frontmatterKeys,
   slopCount,
   splitLines,
-} from "./frontmatter.ts";
-import { type ScoreResult, scoreFloorFailures } from "./skills.ts";
+} from "../../src/skills/rubric.ts";
 
 /**
  * The agent checks of the DocksDocks/docks gate, ported to the kit plugin: the

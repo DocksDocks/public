@@ -8,6 +8,7 @@ import { scratchCommand } from "./commands/scratch";
 import { tidyCommand } from "./commands/tidy";
 import { planCommand } from "./commands/plan";
 import { agentDocsCommand } from "./commands/agentDocs";
+import { skillCommand } from "./commands/skill";
 import {
   buildSurfaces,
   normalizeArgv,
@@ -36,6 +37,7 @@ export const COMMANDS = [
   tidyCommand,
   planCommand,
   agentDocsCommand,
+  skillCommand,
 ] as const;
 
 const SURFACES: ArgvSurfaces = buildSurfaces(COMMANDS, GlobalFlag.BuiltIns);
@@ -50,10 +52,10 @@ const reject = (message: string): ArgvOutcome => ({
 export const subcommandName = (args: ReadonlyArray<string>): string | undefined =>
   scanSubcommandName(args, SURFACES);
 
-// `docks-kit plan` and `docks-kit agent-docs` pass every later word to their dispatcher, which parses them as the
-// former scripts did, so a `--` after the command word keeps Effect from reading them as flags or adding its own
-// refusal.
-const RAW_PASSTHROUGH: ReadonlySet<string> = new Set(["plan", "agent-docs"]);
+// `docks-kit plan`, `docks-kit agent-docs`, and `docks-kit skill` pass every later word to their dispatcher, which
+// parses them as the former scripts did, so a `--` after the command word keeps Effect from reading them as flags or
+// adding its own refusal.
+const RAW_PASSTHROUGH: ReadonlySet<string> = new Set(["plan", "agent-docs", "skill"]);
 
 const spliceRawBoundary = (args: ReadonlyArray<string>, word: string): ReadonlyArray<string> => {
   const index = args.findIndex(

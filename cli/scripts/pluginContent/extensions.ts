@@ -1,8 +1,8 @@
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import config from "./config.json" with { type: "json" };
-import { pluginDir } from "./frontmatter.ts";
+import config from "../../src/skills/config.json" with { type: "json" };
+import { pluginDir } from "../../src/skills/frontmatter.ts";
 
 /**
  * The extension load check of the DocksDocks/docks gate (`scripts/ci.mjs
