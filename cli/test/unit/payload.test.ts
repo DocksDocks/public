@@ -95,6 +95,26 @@ describe("generated SoT payload", () => {
     }
   });
 
+  it("writes payload text that holds an Effect directive without the directive", async () => {
+    const root = copyGeneratorRoot();
+    try {
+      // Joined at run time: the Effect language service would read the literal directive here too.
+      const directive = ["@effect", "diagnostics"].join("-");
+      const text = `Use \`// ${directive}-next-line floatingEffect:off\` only with a reason.\n`;
+      writeFileSync(join(root, "SoT", ".omp", "plugin", "rules", "directive.md"), text);
+      expect(generate(root).status).toBe(0);
+      const modulePath = join(root, "cli", "src", "generated", "sotPayload.ts");
+      expect(readFileSync(modulePath, "utf8")).not.toContain(directive);
+      // The module is generated into a temporary root at run time, so no static import can name it.
+      const generated = (await import(modulePath)) as {
+        GENERATED_PAYLOAD_TEXT: Record<string, string>;
+      };
+      expect(generated.GENERATED_PAYLOAD_TEXT["SoT/.omp/plugin/rules/directive.md"]).toBe(text);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([
     ["docks-kit", /BUN_PIN="[^"]+"/, 'BUN_PIN="0.0.0"'],
     ["docks-kit", /BUN_FLOOR="[^"]+"/, 'BUN_FLOOR="0.0.0"'],

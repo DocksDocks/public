@@ -123,8 +123,16 @@ function packageVersion(root: string): string {
 function generatedModule(root: string): string {
   const paths = payloadSourcePaths(root);
   const texts = paths.map((path) => payloadFileText(root, path));
+  // The Effect language service reads an `@effect-diagnostics` directive even inside a
+  // string, so its `@` is written as the escape `\u0040`; the string value does not change.
   const textEntries = paths
-    .map((path, index) => `  ${JSON.stringify(path)}: ${JSON.stringify(texts[index])}`)
+    .map((path, index) => {
+      const literal = JSON.stringify(texts[index]).replaceAll(
+        "@effect-diagnostics",
+        "\\u0040effect-diagnostics",
+      );
+      return `  ${JSON.stringify(path)}: ${literal}`;
+    })
     .join(",\n");
   const pathEntries = paths.map((path) => `  ${JSON.stringify(path)}`).join(",\n");
 

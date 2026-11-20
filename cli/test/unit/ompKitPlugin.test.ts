@@ -79,7 +79,18 @@ describe("omp kit plugin files", () => {
     expect(manifest.omp.extensions).toEqual([
       "./extensions/hygiene.ts",
       "./extensions/pluginUpgrades.ts",
+      "./extensions/verify-gate.ts",
+      "./extensions/context-tree-nudge.ts",
     ]);
+    // Each extension entry imports its core by a relative path, so the core must deploy beside it.
+    for (const file of ["verify-gate-core.mjs", "context-tree-core.mjs"]) {
+      expect(existsSync(join(pluginDir, "extensions", file))).toBe(true);
+    }
+    for (const agent of ["code-reviewer", "plan-reviewer"]) {
+      expect(readFileSync(join(pluginDir, "agents", `${agent}.md`), "utf8")).toContain(
+        `name: ${agent}`,
+      );
+    }
     expect(readFileSync(join(pluginDir, "extensions", "hygiene.ts"), "utf8")).toBe(
       payloadText("SoT/.omp/plugin/extensions/hygiene.ts"),
     );
