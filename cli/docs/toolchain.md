@@ -36,7 +36,7 @@ Every kit-driven package install from npm, GitHub releases, or
 floating `@latest` (the npm-worm / Shai-Hulud attack surface). That includes
 the release workflow (actions pinned to commit SHAs, exact bun/npm versions).
 The kit installs no omp marketplace plugin: the kit plugin ships from this
-repository, and sync retires the former `docks` marketplace plugins (see
+repository, and sync tries to retire the user-scope installs of the former `docks` marketplace plugins (see
 `sync-layers`). Any new install surface, a new marketplace or plugin source
 included, needs a manifest pin first.
 

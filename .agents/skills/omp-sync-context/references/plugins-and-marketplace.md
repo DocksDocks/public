@@ -5,9 +5,10 @@ Part of `omp-sync-context`. Read the SKILL.md constraints first.
 The kit plugin `docks-kit-omp` ships the docks and plan-lifecycle skills, the
 `code-reviewer` and `plan-reviewer` agents, and the `verify-gate` and
 `context-tree-nudge` extensions. So sync installs no marketplace plugin. The
-plugin pass retires the former `docks@docks` and `plan-lifecycle@docks`
-plugins and the `docks` marketplace, installs `pi-intercom`, and links the kit
-plugin.
+plugin pass tries to retire the former `docks@docks` and `plan-lifecycle@docks`
+plugins (user-scope uninstall; a project-scope install only gets a warning)
+and the `docks` marketplace, with the conditions below, installs
+`pi-intercom`, and links the kit plugin.
 
 ## Plugin And Marketplace Constraints
 

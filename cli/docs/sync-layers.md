@@ -26,14 +26,16 @@ ship, `providers.webSearchOrder` at any value, and the retired
 `providers.anthropic.modelOverrides.claude-opus-5-5` block in models.yml while
 it still matches the shipped block.
 Directories are mode 0700 and files mode 0600. Then the plugin pass reads the
-inventory from `omp plugin list --json`, retires the former marketplace
-plugins, installs `pi-intercom` at its `SoT/toolchain.json` pin, and links the
-kit plugin `docks-kit-omp`.
+inventory from `omp plugin list --json`, tries to retire the former marketplace
+plugins (user-scope installs only; see below), installs `pi-intercom` at its
+`SoT/toolchain.json` pin, and links the kit plugin `docks-kit-omp`.
 
 The kit plugin now ships the docks and plan-lifecycle skills, the
 `code-reviewer` and `plan-reviewer` agents, and the `verify-gate` and
 `context-tree-nudge` extensions. So sync installs no plugin from the `docks`
-marketplace. Each real sync retires the former marketplace plugins:
+marketplace. Each real sync tries to retire the former marketplace plugins.
+When the inventory cannot be read, it warns and skips this step; a later sync
+tries again. Otherwise:
 
 - For each of `docks@docks` and `plan-lifecycle@docks` with a `scope: "user"`
   inventory row, it runs `omp plugin uninstall --scope user <id>`.
