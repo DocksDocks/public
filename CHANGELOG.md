@@ -29,6 +29,14 @@ instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
   prints its own parse error on stderr before the helper output in a folder
   that holds, or sits below a folder that holds, an invalid `package.json`.
 
+### Changed
+
+- The cores of the kit plugin's verify-gate and context-tree extensions are
+  TypeScript: `verify-gate-core.ts` and `context-tree-core.ts` replace the
+  `.mjs` files (#206). They behave the same, except that the verify-gate reads
+  a hand-edited denial count that is not a number as a number, and as 0 when
+  that is no finite number, so the denial file always holds a number.
+
 ### Removed
 
 - `plan-manager/scripts/plan.mjs`, `plan-manager/scripts/base-blob.sh`,
