@@ -1,6 +1,6 @@
 // omp extension: the context-tree nudge. After a file edit that did not fail, it adds a
 // message that names each context-tree node that holds an edited file. The node rules live in
-// `context-tree-core.mjs`; this file only takes the edited paths from the omp event and turns
+// `context-tree-core.ts`; this file only takes the edited paths from the omp event and turns
 // the answer of the core into an omp result.
 //
 // The edited paths come from the `details` of the tool result:
@@ -12,7 +12,7 @@
 // The handler catches each error and adds nothing, because a nudge must not stop the work of
 // the agent.
 import path from 'node:path';
-import { nudgeText } from './context-tree-core.mjs';
+import { nudgeText } from './context-tree-core.ts';
 
 // The local structural types below name only the omp extension API parts that this module
 // uses. The module does not import @oh-my-pi packages: they do not resolve outside omp.

@@ -81,7 +81,7 @@ describe("omp kit plugin files", () => {
       "./extensions/context-tree-nudge.ts",
     ]);
     // Each extension entry imports its core by a relative path, so the core must deploy beside it.
-    for (const file of ["verify-gate-core.mjs", "context-tree-core.mjs"]) {
+    for (const file of ["verify-gate-core.ts", "context-tree-core.ts"]) {
       expect(existsSync(join(pluginDir, "extensions", file))).toBe(true);
     }
     for (const agent of ["code-reviewer", "plan-reviewer"]) {

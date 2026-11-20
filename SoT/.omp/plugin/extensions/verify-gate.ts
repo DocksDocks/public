@@ -1,6 +1,6 @@
 // omp extension: the verify-gate. Before each call of the bash tool, it checks that each
 // `git commit` in the command carries a `Verified:` trailer. The rules live in
-// `verify-gate-core.mjs`; this file only turns the omp event into a call of the core and the
+// `verify-gate-core.ts`; this file only turns the omp event into a call of the core and the
 // answer of the core into an omp result. The gate sees only commits that run through the
 // bash tool (also through `xd://bash` and `eval` `tool.bash`).
 //
@@ -10,7 +10,7 @@
 // also allows the command. The handler prints nothing, because output of the omp process goes to
 // the user's terminal.
 import path from 'node:path';
-import { checkCommand } from './verify-gate-core.mjs';
+import { checkCommand } from './verify-gate-core.ts';
 
 // The local structural types below name only the omp extension API parts that this module
 // uses. The module does not import @oh-my-pi packages: they do not resolve outside omp.

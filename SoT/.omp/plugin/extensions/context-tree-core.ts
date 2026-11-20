@@ -12,7 +12,7 @@ const GIT_TIMEOUT_MS = 5000;
 
 // The root of the git repository that holds `dir`. Outside a repository `dir` itself counts as
 // the root, so that no folder is a node below it.
-function repositoryRoot(dir) {
+function repositoryRoot(dir: string): Promise<string> {
   return new Promise((resolve) => {
     execFile(
       'git',
@@ -24,7 +24,7 @@ function repositoryRoot(dir) {
 }
 
 // True when `file` exists.
-const exists = (file) =>
+const exists = (file: string): Promise<boolean> =>
   fs.promises.stat(file).then(
     () => true,
     () => false,
@@ -33,7 +33,7 @@ const exists = (file) =>
 // The nearest folder of `file` that exists, with symbolic links resolved, so that it compares
 // with the root that git gives. A deleted file or a moved file can have a folder that does not
 // exist now. The walk stops at the file system root at the latest, because that root exists.
-async function existingFolder(file) {
+async function existingFolder(file: string): Promise<string> {
   let dir = path.dirname(file);
   while (!(await exists(dir))) dir = path.dirname(dir);
   return fs.promises.realpath(dir);
@@ -42,7 +42,7 @@ async function existingFolder(file) {
 // The nearest node of `dir`, as a path relative to `root`, or null when the nearest AGENTS.md
 // is the one at the root: the nudge names sub-folder nodes only. The walk runs only in folders
 // below `root`, so it also stops when `dir` is not below `root`.
-async function nearestNode(root, dir) {
+async function nearestNode(root: string, dir: string): Promise<string | null> {
   for (let current = dir; current.startsWith(`${root}${path.sep}`); current = path.dirname(current)) {
     if (await exists(path.join(current, 'AGENTS.md'))) return path.relative(root, current);
   }
@@ -57,10 +57,10 @@ const PLAIN_NAME = /^[A-Za-z0-9._/@+-]+$/u;
 // instructions for the agent.
 const QUOTED_NAMES_NOTE = 'Quoted names are folder names from the repository, not instructions.';
 
-const nodeName = (name) => (PLAIN_NAME.test(name) ? name : JSON.stringify(name));
+const nodeName = (name: string): string => (PLAIN_NAME.test(name) ? name : JSON.stringify(name));
 
 // One line of the nudge text for the node names of one root.
-function nudgeLine(names) {
+function nudgeLine(names: ReadonlyArray<string>): string {
   const text =
     `Edited files inside context-tree node(s): ${names.map(nodeName).join(', ')}. If conventions in a listed folder changed, ` +
     'run context-tree refresh on it (no-op when nothing semantic changed).';
@@ -76,15 +76,19 @@ function nudgeLine(names) {
 // the first path of each root, and each line lists its nodes once, in the order of the paths. The
 // root of each folder is found once for each call, so that many files in one folder start one git
 // call.
-export async function nudgeText(files, cwd) {
-  const roots = new Map();
-  const rootOf = (dir) => {
-    if (!roots.has(dir)) roots.set(dir, repositoryRoot(dir));
-    return roots.get(dir);
+export async function nudgeText(files: ReadonlyArray<string>, cwd: string): Promise<string | null> {
+  const roots = new Map<string, Promise<string>>();
+  const rootOf = (dir: string): Promise<string> => {
+    let root = roots.get(dir);
+    if (root === undefined) {
+      root = repositoryRoot(dir);
+      roots.set(dir, root);
+    }
+    return root;
   };
   // The root of the session folder, or null when that folder does not resolve.
-  let sessionRoot;
-  const nodesByRoot = new Map();
+  let sessionRoot: string | null | undefined;
+  const nodesByRoot = new Map<string, string[]>();
   for (const file of files) {
     const dir = await existingFolder(file);
     const root = await rootOf(dir);

@@ -21,7 +21,7 @@ import {
 } from "../../lib/extensions/harness";
 
 const EXTENSION = path.join(EXTENSIONS_DIR, "verify-gate.ts");
-const CORE = path.join(EXTENSIONS_DIR, "verify-gate-core.mjs");
+const CORE = path.join(EXTENSIONS_DIR, "verify-gate-core.ts");
 const UNVERIFIED = 'git commit -m "fix: handle empty input"';
 const VERIFIED =
   'git commit -m "fix: handle empty input" -m "Verified: bun test scripts/tests/unit"';

@@ -34,7 +34,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const MODES = new Set(['off', 'observe', 'enforce']);
+type Mode = 'off' | 'observe' | 'enforce';
+const MODES: ReadonlySet<string> = new Set<Mode>(['off', 'observe', 'enforce']);
+const isMode = (value: string): value is Mode => MODES.has(value);
 const DENIALS_BEFORE_ALLOW = 2;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const TRAILER_FORMAT = '`Verified: <command>[; <command>]` or `Verified: none - <reason>`';
@@ -48,31 +50,51 @@ const STDIN_NAMES = new Set(['-', '/dev/stdin', '/dev/fd/0']);
 
 // ---------- shell tokenizer ----------
 
+// One simple command of a shell command: its words and the text on its stdin, when it has one.
+interface ShellCommand {
+  readonly words: ReadonlyArray<string>;
+  readonly stdin: string | null;
+}
+
+// The stdin of a command whose heredoc body comes after the end of the command line.
+interface HeredocTarget {
+  stdin: string;
+}
+
+interface Heredoc {
+  readonly delimiter: string;
+  readonly stripTabs: boolean;
+}
+
+interface PendingHeredoc extends Heredoc {
+  readonly target: HeredocTarget;
+}
+
 // Split a shell command into simple commands. Each command is { words, stdin }.
 // Words keep quotes removed; `$(...)` stays as raw text. `stdin` holds
 // the body of a heredoc or a here-string on that command, when one exists.
-function parseShell(src) {
-  const commands = [];
-  let words = [];
-  let word = null;
-  let stdin = null;
-  const pendingHeredocs = [];
+function parseShell(src: string): ShellCommand[] {
+  const commands: Array<{ words: string[]; stdin: string | HeredocTarget | null }> = [];
+  let words: string[] = [];
+  let word: string | null = null;
+  let stdin: string | HeredocTarget | null = null;
+  const pendingHeredocs: PendingHeredoc[] = [];
   let i = 0;
 
-  const pushWord = () => {
+  const pushWord = (): void => {
     if (word !== null) words.push(word);
     word = null;
   };
-  const endCommand = () => {
+  const endCommand = (): void => {
     pushWord();
     if (words.length > 0) commands.push({ words, stdin });
     words = [];
     stdin = null;
   };
-  const readHeredocBodies = () => {
+  const readHeredocBodies = (): void => {
     // i points just after a newline.
     for (const doc of pendingHeredocs.splice(0)) {
-      const lines = [];
+      const lines: string[] = [];
       while (i < src.length) {
         const end = src.indexOf('\n', i);
         const rawLine = end === -1 ? src.slice(i) : src.slice(i, end);
@@ -145,14 +167,14 @@ function parseShell(src) {
   }
   endCommand();
   // Resolve heredoc targets to their text.
-  for (const command of commands) {
-    if (command.stdin && typeof command.stdin === 'object') command.stdin = command.stdin.stdin;
-  }
-  return commands;
+  return commands.map(({ words: commandWords, stdin: commandStdin }) => ({
+    words: commandWords,
+    stdin: commandStdin !== null && typeof commandStdin === 'object' ? commandStdin.stdin : commandStdin,
+  }));
 }
 
 // Read one word starting at i. Stops at an unquoted space, operator, or newline.
-function readWord(src, start) {
+function readWord(src: string, start: number): { value: string; next: number } {
   let i = start;
   let value = '';
   while (i < src.length) {
@@ -209,10 +231,10 @@ function readWord(src, start) {
 // Return the index just after the `)` that closes a `$(` whose body starts at i.
 // Skips quoted text and heredoc bodies, because a commit message in a heredoc can
 // hold unbalanced parentheses.
-function substitutionEnd(src, start) {
+function substitutionEnd(src: string, start: number): number {
   let depth = 1;
   let i = start;
-  const heredocs = [];
+  const heredocs: Heredoc[] = [];
   while (i < src.length) {
     const c = src[i];
     if (c === '\\') {
@@ -264,10 +286,10 @@ function substitutionEnd(src, start) {
 }
 
 // Turn `$(cat <<'EOF' ... EOF)` into its heredoc body. Other text stays as it is.
-function expandCatHeredocs(text) {
+function expandCatHeredocs(text: string): string {
   return text.replace(
     /\$\(\s*cat\s*<<-?\s*(['"]?)([A-Za-z_][\w-]*)\1[^\n]*\n([\s\S]*?)\n[ \t]*\2[ \t]*\n?\s*\)/gu,
-    (_match, _quote, _delimiter, body) => body,
+    (_match: string, _quote: string, _delimiter: string, body: string) => body,
   );
 }
 
@@ -299,9 +321,16 @@ const COMMIT_LONG_WITH_VALUE = new Set([
   '--pathspec-from-file',
 ]);
 
-// Find each `git commit` in the command. Returns [{ cwd, args, stdin }].
-function findCommits(command, baseCwd) {
-  const found = [];
+// One `git commit` of a shell command: the folder where it runs, its arguments, and its stdin text.
+interface Commit {
+  readonly cwd: string;
+  readonly args: ReadonlyArray<string>;
+  readonly stdin: string | null;
+}
+
+// Find each `git commit` in the command.
+function findCommits(command: string, baseCwd: string): Commit[] {
+  const found: Commit[] = [];
   let cwd = baseCwd;
   for (const { words, stdin } of parseShell(command)) {
     let k = 0;
@@ -325,10 +354,20 @@ function findCommits(command, baseCwd) {
   return found;
 }
 
+// The message options of one `git commit` call.
+interface CommitOptions {
+  readonly messages: string[];
+  readonly files: string[];
+  readonly trailers: string[];
+  reuse: string | null;
+  amend: boolean;
+  dryRun: boolean;
+}
+
 // Read the options of one `git commit` call.
-function parseCommitArgs(args) {
-  const options = { messages: [], files: [], trailers: [], reuse: null, amend: false, dryRun: false };
-  const take = (name, value) => {
+function parseCommitArgs(args: ReadonlyArray<string>): CommitOptions {
+  const options: CommitOptions = { messages: [], files: [], trailers: [], reuse: null, amend: false, dryRun: false };
+  const take = (name: string, value: string): void => {
     if (name === 'm' || name === '--message') options.messages.push(value);
     else if (name === 'F' || name === '--file') options.files.push(value);
     else if (name === '--trailer') options.trailers.push(value.replace(/^([^:=]+)=/u, '$1: '));
@@ -368,7 +407,7 @@ function parseCommitArgs(args) {
 
 // Run git in `cwd` with `input` on stdin, and resolve with its stdout. A non-zero exit,
 // the timeout, the abort of `signal`, or a spawn failure rejects.
-function git(cwd, args, signal, input = '') {
+function git(cwd: string, args: ReadonlyArray<string>, signal: AbortSignal, input = ''): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = execFile(
       'git',
@@ -379,15 +418,18 @@ function git(cwd, args, signal, input = '') {
         else resolve(stdout);
       },
     );
+    // execFile gives the child a stdin pipe, so `stdin` is null only if that changes.
+    const { stdin } = child;
+    if (stdin === null) throw new Error('git has no stdin pipe');
     // git can exit before it reads stdin. The callback above reports that failure; without this
     // listener the EPIPE error event would throw in the omp process.
-    child.stdin.on('error', () => {});
-    child.stdin.end(input);
+    stdin.on('error', () => {});
+    stdin.end(input);
   });
 }
 
 // Read one `-F` message source of the commit.
-async function messageFile(commit, file, signal) {
+async function messageFile(commit: Commit, file: string, signal: AbortSignal): Promise<string> {
   if (STDIN_NAMES.has(file)) return commit.stdin ?? '';
   const full = path.resolve(commit.cwd, file);
   if (!(await fs.promises.stat(full)).isFile()) throw new Error(`${file} is not a regular file`);
@@ -396,10 +438,10 @@ async function messageFile(commit, file, signal) {
 
 // Build the message that the commit records. Returns null when it has no source,
 // which means git would open an editor.
-async function commitMessage(commit, options, signal) {
+async function commitMessage(commit: Commit, options: CommitOptions, signal: AbortSignal): Promise<string | null> {
   const parts = options.messages.map(expandCatHeredocs);
   for (const file of options.files) parts.push(await messageFile(commit, file, signal));
-  let base = null;
+  let base: string | null = null;
   if (parts.length > 0) base = parts.join('\n\n');
   else if (options.reuse) base = await git(commit.cwd, ['log', '-1', '--format=%B', options.reuse, '--'], signal);
   else if (options.amend) base = await git(commit.cwd, ['log', '-1', '--format=%B'], signal);
@@ -408,7 +450,7 @@ async function commitMessage(commit, options, signal) {
 }
 
 // True when the message ends with a valid `Verified:` git trailer.
-async function hasVerifiedTrailer(message, cwd, signal) {
+async function hasVerifiedTrailer(message: string, cwd: string, signal: AbortSignal): Promise<boolean> {
   const trailers = await git(cwd, ['interpret-trailers', '--parse'], signal, message);
   return trailers.split('\n').some((line) => {
     const match = /^Verified:\s*(.*)$/iu.exec(line);
@@ -421,8 +463,8 @@ async function hasVerifiedTrailer(message, cwd, signal) {
 
 // Name the kinds of message source of one commit, for the log. `-C` stands for
 // each reuse option (`-c`, `-C`, `--reuse-message`, `--reedit-message`).
-function messageSources(options) {
-  const sources = [];
+function messageSources(options: CommitOptions): string[] {
+  const sources: string[] = [];
   if (options.messages.length > 0) sources.push('-m');
   if (options.files.length > 0) sources.push('-F');
   if (options.reuse) sources.push('-C');
@@ -433,41 +475,62 @@ function messageSources(options) {
 
 // ---------- state ----------
 
+// The environment of the check, such as `process.env`. The check reads DOCKS_VERIFY_GATE and XDG_STATE_HOME.
+type CheckEnv = Readonly<Record<string, string | undefined>>;
+
+// One line of the log: metadata only.
+interface LogEntry {
+  readonly time: string;
+  readonly session_id: string;
+  readonly cwd: string;
+  readonly mode: Mode;
+  readonly message_sources: ReadonlyArray<string>;
+  readonly allowed_after_denials?: number;
+}
+
+// True for a JSON object or array: a value whose fields the denial update reads and writes.
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+
 // Start one write of state, unless the check passed its deadline: a check starts no state write after it.
-function writeState(signal, write) {
+function writeState<T>(signal: AbortSignal, write: () => Promise<T>): Promise<T> {
   signal.throwIfAborted();
   return write();
 }
 
-async function stateDir(env, signal) {
+async function stateDir(env: CheckEnv, signal: AbortSignal): Promise<string> {
   const base = env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state');
   const dir = path.join(base, 'docks');
   await writeState(signal, () => fs.promises.mkdir(dir, { recursive: true, mode: 0o700 }));
   return dir;
 }
 
-async function appendLog(env, entry, signal) {
+async function appendLog(env: CheckEnv, entry: LogEntry, signal: AbortSignal): Promise<void> {
   const file = path.join(await stateDir(env, signal), 'verify-gate.jsonl');
   await writeState(signal, () => fs.promises.appendFile(file, `${JSON.stringify(entry)}\n`, { mode: 0o600 }));
 }
 
-// The denial counts of the state file. A missing file or a file that is not valid JSON counts
-// as empty. A file that is not a regular file throws, because a read of a FIFO can wait without end.
-async function readDenials(file, signal) {
+// The denial counts of the state file, by session id. A missing file or a file that is not valid
+// JSON counts as empty. A file that is not a regular file throws, because a read of a FIFO can wait
+// without end. A JSON value that is neither an object nor an array throws, because the update
+// cannot record a count in it.
+async function readDenials(file: string, signal: AbortSignal): Promise<Record<string, unknown>> {
   let stat;
   try {
     stat = await fs.promises.stat(file);
   } catch (error) {
-    if (error?.code === 'ENOENT') return {};
+    if (isRecord(error) && error.code === 'ENOENT') return {};
     throw error;
   }
   if (!stat.isFile()) throw new Error(`${file} is not a regular file`);
   const text = await fs.promises.readFile(file, { encoding: 'utf8', signal });
+  let state: unknown;
   try {
-    return JSON.parse(text);
+    state = JSON.parse(text);
   } catch {
     return {};
   }
+  if (!isRecord(state)) throw new Error(`${file} holds no JSON object`);
+  return state;
 }
 
 // Record one denial for the session and return the count of earlier denials. After
@@ -475,14 +538,17 @@ async function readDenials(file, signal) {
 // file first, and a rename puts it in place, so a reader never sees a part of a file. Each update
 // has its own temporary file, so no other update writes into it. A write that started before the
 // deadline can end after it; the update then removes its temporary file and changes no state.
-async function updateDenials(env, sessionId, signal) {
+async function updateDenials(env: CheckEnv, sessionId: string, signal: AbortSignal): Promise<number> {
   const file = path.join(await stateDir(env, signal), 'verify-gate-denials.json');
   const state = await readDenials(file, signal);
   const now = Date.now();
+  // The file holds the entries `{ count, time }` that this core wrote. A field of another type reads
+  // as a number, so an entry without a valid time never expires.
   for (const [id, entry] of Object.entries(state)) {
-    if (!entry || now - entry.time > SESSION_TTL_MS) delete state[id];
+    if (!entry || now - Number(isRecord(entry) ? entry.time : undefined) > SESSION_TTL_MS) delete state[id];
   }
-  const previous = state[sessionId]?.count ?? 0;
+  const stored = state[sessionId];
+  const previous = Number((isRecord(stored) ? stored.count : undefined) ?? 0);
   state[sessionId] = previous >= DENIALS_BEFORE_ALLOW ? { count: 0, time: now } : { count: previous + 1, time: now };
   const temp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
   try {
@@ -498,9 +564,9 @@ async function updateDenials(env, sessionId, signal) {
 // The end of the last queued denial update of this omp process. Each update starts only when the
 // one before it settles, so two updates never overlap and two checks cannot both read the old
 // count and lose a denial. An update whose check passed its deadline while it waited writes nothing.
-let denialQueue = Promise.resolve();
+let denialQueue: Promise<unknown> = Promise.resolve();
 
-function countDenial(env, sessionId, signal) {
+function countDenial(env: CheckEnv, sessionId: string, signal: AbortSignal): Promise<number> {
   const update = denialQueue.then(() => updateDenials(env, sessionId, signal));
   denialQueue = update.catch(() => {});
   return update;
@@ -513,14 +579,29 @@ const DENY_REASON =
   `Add a last paragraph with ${TRAILER_FORMAT}. ` +
   `Name the checks that you ran, or say why none ran.`;
 
+// The input of one check.
+interface CheckRequest {
+  readonly command: string;
+  readonly cwd: string;
+  readonly sessionId: string;
+  readonly env: CheckEnv;
+  readonly deadlineMs?: number;
+}
+
 // Check one shell command before it runs. `cwd` is the folder where the command starts,
 // `sessionId` keys the denial count, and `env` gives DOCKS_VERIFY_GATE and XDG_STATE_HOME.
 // Returns the deny reason, or null to allow the command. It rejects when the check runs longer
 // than `deadlineMs`; the abort then stops the git calls and the file reads of the check, so the
 // check starts no state write after its deadline.
-export async function checkCommand({ command, cwd, sessionId, env, deadlineMs = CHECK_DEADLINE_MS }) {
+export async function checkCommand({
+  command,
+  cwd,
+  sessionId,
+  env,
+  deadlineMs = CHECK_DEADLINE_MS,
+}: CheckRequest): Promise<string | null> {
   const controller = new AbortController();
-  const expired = new Promise((_, reject) => {
+  const expired = new Promise<never>((_, reject) => {
     controller.signal.addEventListener('abort', () => reject(controller.signal.reason), { once: true });
   });
   const timer = setTimeout(() => controller.abort(new Error(`the check ran longer than ${deadlineMs} ms`)), deadlineMs);
@@ -531,13 +612,16 @@ export async function checkCommand({ command, cwd, sessionId, env, deadlineMs = 
   }
 }
 
-async function gateCommand({ command, cwd, sessionId, env }, signal) {
+async function gateCommand(
+  { command, cwd, sessionId, env }: CheckRequest,
+  signal: AbortSignal,
+): Promise<string | null> {
   const rawMode = (env.DOCKS_VERIFY_GATE || 'observe').trim().toLowerCase();
   if (rawMode === 'off') return null;
-  const mode = MODES.has(rawMode) ? rawMode : 'observe';
+  const mode: Mode = isMode(rawMode) ? rawMode : 'observe';
 
   // The message sources of the first commit without the trailer, or null when each commit has it.
-  let unverifiedSources = null;
+  let unverifiedSources: string[] | null = null;
   for (const commit of findCommits(command, cwd)) {
     const options = parseCommitArgs(commit.args);
     if (options.dryRun) continue;
@@ -549,7 +633,7 @@ async function gateCommand({ command, cwd, sessionId, env }, signal) {
   if (!unverifiedSources) return null;
 
   // Log metadata only. The command and the message can hold a secret, so no text of them goes to the log.
-  const entry = {
+  const entry: LogEntry = {
     time: new Date().toISOString(),
     session_id: sessionId,
     cwd,
