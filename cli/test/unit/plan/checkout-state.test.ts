@@ -164,7 +164,6 @@ function rawPath(dir: string, name: string): Buffer {
 }
 
 const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
-const NON_UTF8_REFUSAL = "checkout-state: a path is not UTF-8 text\n";
 
 // Whether the file system of `root` holds a name that is not UTF-8 (APFS, for example, refuses one).
 function holdsNonUtf8Names(root: string): boolean {
@@ -185,10 +184,22 @@ function runScript(root: string, cwd: string, script: string): SpawnSyncReturns<
   });
 }
 
-function expectNonUtf8Refusal(result: SpawnSyncReturns<Buffer>, name: string): void {
-  expect(result.status, `${name}: ${result.stderr.toString("utf8")}`).toBe(1);
-  expect(result.stdout.toString("latin1"), `${name}: no output`).toBe("");
-  expect(result.stderr.toString("utf8"), name).toBe(NON_UTF8_REFUSAL);
+function blobOf(text: string): string {
+  const result = spawnSync("git", ["hash-object", "--stdin"], {
+    env: GIT_ENV,
+    input: text,
+    encoding: "utf8",
+  });
+  expect(result.status, result.stderr).toBe(0);
+  return result.stdout.trim();
+}
+
+// The listing text of `lines`, sorted by bytes; each character of a line is one byte.
+function listingOf(lines: ReadonlyArray<string>): string {
+  return [...lines]
+    .sort()
+    .map((line) => `${line}\n`)
+    .join("");
 }
 
 describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
@@ -508,13 +519,14 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
     SPAWN_TIMEOUT_MS,
   );
 
-  // git takes a folder as UTF-8 text on its command line, so a folder that the helper must give git is refused, as a
-  // path with a tab is, and is never a git failure of a garbled path.
+  // git takes a folder on its command line as text, so the helper reaches a folder whose path is not UTF-8 through
+  // a link with an ASCII name, and lists it as checkout-state.sh did.
   it(
-    "a submodule, a checkout, or an argument whose path is not UTF-8 stops the helper with status 1",
+    "a submodule, a checkout, or an argument whose path is not UTF-8 is listed by its bytes",
     (context) => {
       const { root, repo } = dirtyRepo();
       context.skip(!holdsNonUtf8Names(root), NON_UTF8_SKIP);
+      const before = linesOf(listing(repo));
       const source = newRepo(root, "module");
       put(source, "x.txt", "x\n");
       commitAll(source, "module base");
@@ -526,22 +538,57 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
         input: bytes(`160000 ${head}\tm-\xff\n`),
       });
       expect(added.status, added.stderr.toString("utf8")).toBe(0);
-      expectNonUtf8Refusal(
-        runScript(root, repo, "docks-kit plan checkout-state ."),
-        "a submodule path",
+      const withModule = runScript(root, repo, "docks-kit plan checkout-state .");
+      expect(withModule.status, withModule.stderr.toString("utf8")).toBe(0);
+      expect(withModule.stdout.toString("latin1")).toBe(
+        listingOf([...before, `m-\xff\tsubmodule\t${head}`, `m-\xff/x.txt\t${blobOf("x\n")}`]),
       );
 
       const outer = newRoot();
+      const expected = listingOf([`a.txt\t${blobOf("a\n")}`]);
       const script = [
         "dir=$(printf 'r-\\377')",
         'mkdir "$dir" && cd "$dir" && git init -q -b main && echo a > a.txt',
         "docks-kit plan checkout-state .",
       ].join("\n");
-      expectNonUtf8Refusal(runScript(outer, outer, script), "a checkout in a folder");
-      expectNonUtf8Refusal(
-        runScript(outer, outer, `docks-kit plan checkout-state "$(printf 'r-\\377')"`),
-        "an argument",
+      const inFolder = runScript(outer, outer, script);
+      expect(inFolder.status, inFolder.stderr.toString("utf8")).toBe(0);
+      expect(inFolder.stdout.toString("latin1"), "a checkout in the folder").toBe(expected);
+      const argument = runScript(
+        outer,
+        outer,
+        `docks-kit plan checkout-state "$(printf 'r-\\377')"`,
       );
+      expect(argument.status, argument.stderr.toString("utf8")).toBe(0);
+      expect(argument.stdout.toString("latin1"), "the folder as an argument").toBe(expected);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "a checkout, a submodule, and an argument with a literal U+FFFD are listed as any other name",
+    () => {
+      const root = newRoot();
+      const repo = newRepo(root, "r-\uFFFD");
+      put(repo, "a.txt", "a\n");
+      const mod = join(repo, "m-\uFFFD");
+      mkdirSync(mod);
+      git(mod, "init", "-q", "-b", "main");
+      put(mod, "x.txt", "x\n");
+      commitAll(mod, "module base");
+      git(repo, "-c", "advice.addEmbeddedRepo=false", "add", "-A");
+      git(repo, "commit", "-q", "-m", "base");
+      const expected = [
+        `a.txt\t${blobOf("a\n")}`,
+        `m-\uFFFD\tsubmodule\t${git(mod, "rev-parse", "HEAD").trim()}`,
+        `m-\uFFFD/x.txt\t${blobOf("x\n")}`,
+      ]
+        .map((line) => `${line}\n`)
+        .join("");
+      expect(listing(repo), "the folder as an argument").toBe(expected);
+      const here = runPlanCommand(["checkout-state", "."], { cwd: repo, env: GIT_ENV });
+      expect(here.status, here.stderr).toBe(0);
+      expect(here.stdout, "the working folder").toBe(expected);
     },
     SPAWN_TIMEOUT_MS,
   );

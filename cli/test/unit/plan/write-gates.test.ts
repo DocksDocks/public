@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -15,7 +15,31 @@ import {
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
-const NON_UTF8_REFUSAL = "the docks-review folder path is not UTF-8 text\n";
+
+// `<dir>/<name>`, where each character of `name` is one byte, so that `\xff` is the byte 0xff, which is no UTF-8.
+function rawPath(dir: string, name: string): Buffer {
+  return Buffer.concat([Buffer.from(`${dir}/`, "utf8"), Buffer.from(name, "latin1")]);
+}
+
+// Runs a bash script in `scratch` with `docks-kit` and the gh stub of the case on PATH, and keeps the raw bytes of
+// its output. A script can name a path that is not UTF-8, which an argv or a working folder of Node cannot.
+function planScript(scratch: string, script: string): SpawnSyncReturns<Buffer> {
+  const shim = docksKitShimEnv(scratch);
+  return spawnSync("bash", ["-c", script], {
+    cwd: scratch,
+    env: {
+      ...process.env,
+      PATH: `${GH_STUB_DIR}${delimiter}${shim["PATH"] ?? ""}`,
+      GH_STUB_STATE: join(scratch, "gh-state.json"),
+      XDG_STATE_HOME: join(scratch, "state"),
+    },
+  });
+}
+
+// Exports the plan, prints the path that export printed, and edits the plan from that path.
+function exportAndEdit(plan: number): string {
+  return `f=$(docks-kit plan export ${plan}) && printf '%s\\n' "$f" && docks-kit plan edit ${plan} --file "$f" >/dev/null`;
+}
 
 describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
   it(
@@ -155,14 +179,15 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
     SPAWN_TIMEOUT_MS,
   );
 
-  // git prints a path as bytes, and Node decodes a working folder with U+FFFD in place of a byte that is not UTF-8.
-  // A path with U+FFFD names another folder, which export would create and write.
+  // git prints the docks-review path as bytes, and the working folder is read as bytes, so export writes the folder
+  // of those bytes and prints them; the printed path then reaches edit as an argument with the same bytes. A path
+  // with U+FFFD in place of the byte would name another folder.
   it(
-    "export writes nothing when the docks-review folder path is not UTF-8 text",
+    "export writes and prints a docks-review folder whose path is not UTF-8, and edit reads that path",
     (context) => {
-      const { scratch, run, createPlan } = planCliContext();
+      const { scratch, createPlan } = planCliContext();
       const plan = createPlan("a path that is not UTF-8");
-      const gitHome = Buffer.concat([Buffer.from(`${scratch}/`), Buffer.from("g-\xff", "latin1")]);
+      const gitHome = rawPath(scratch, "g-\xff");
       try {
         mkdirSync(gitHome);
       } catch {
@@ -175,39 +200,42 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
         join(scratch, ".git"),
         Buffer.concat([Buffer.from("gitdir: "), gitDir, Buffer.from("\n")]),
       );
-      const absolute = run("export", String(plan));
-      expect(absolute.status, absolute.stderr).toBe(1);
-      expect(absolute.stdout).toBe("");
-      expect(absolute.stderr).toBe(NON_UTF8_REFUSAL);
-      expect(existsSync(join(scratch, "g-\uFFFD")), "no folder of the decoded git path").toBe(
-        false,
+      const absolute = planScript(scratch, exportAndEdit(plan));
+      expect(absolute.status, absolute.stderr.toString("utf8")).toBe(0);
+      expect(absolute.stdout).toStrictEqual(
+        rawPath(scratch, `g-\xff/repo.git/docks-review/plan-${plan}.md\n`),
       );
+      expect(existsSync(join(scratch, "g-\uFFFD")), "no folder of a decoded git path").toBe(false);
 
       // In a checkout folder with the byte, git prints the relative path `.git/docks-review`, which resolves from
       // the working folder.
-      const shim = docksKitShimEnv(scratch);
-      const relative = spawnSync(
-        "bash",
-        [
-          "-c",
-          `dir=$(printf 'w-\\377') && mkdir "$dir" && cd "$dir" && git init -q && docks-kit plan export ${plan}`,
-        ],
-        {
-          cwd: scratch,
-          env: {
-            ...process.env,
-            PATH: `${GH_STUB_DIR}${delimiter}${shim["PATH"] ?? ""}`,
-            GH_STUB_STATE: join(scratch, "gh-state.json"),
-            XDG_STATE_HOME: join(scratch, "state"),
-          },
-          encoding: "utf8",
-        },
+      const relative = planScript(
+        scratch,
+        `dir=$(printf 'w-\\377') && mkdir "$dir" && cd "$dir" && git init -q && ${exportAndEdit(plan)}`,
       );
-      expect(relative.status, relative.stderr).toBe(1);
-      expect(relative.stdout).toBe("");
-      expect(relative.stderr).toBe(NON_UTF8_REFUSAL);
-      expect(existsSync(join(scratch, "w-\uFFFD")), "no folder of the decoded working folder").toBe(
+      expect(relative.status, relative.stderr.toString("utf8")).toBe(0);
+      expect(relative.stdout).toStrictEqual(
+        rawPath(scratch, `w-\xff/.git/docks-review/plan-${plan}.md\n`),
+      );
+      expect(existsSync(join(scratch, "w-\uFFFD")), "no folder of a decoded working folder").toBe(
         false,
+      );
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "export and edit in a working folder with a literal U+FFFD behave as in any other folder",
+    () => {
+      const { scratch, createPlan } = planCliContext();
+      const plan = createPlan("a literal U+FFFD");
+      const result = planScript(
+        scratch,
+        `mkdir 'w-\uFFFD' && cd 'w-\uFFFD' && git init -q && ${exportAndEdit(plan)}`,
+      );
+      expect(result.status, result.stderr.toString("utf8")).toBe(0);
+      expect(result.stdout.toString("utf8")).toBe(
+        `${scratch}/w-\uFFFD/.git/docks-review/plan-${plan}.md\n`,
       );
     },
     SPAWN_TIMEOUT_MS,

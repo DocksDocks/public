@@ -76,6 +76,7 @@ import {
   type ParsedPlan,
   type Step,
 } from "./records";
+import { argumentBytes, asBytes } from "./bytes";
 import { reviewDirectory } from "./repository";
 import {
   archiveKind,
@@ -121,9 +122,12 @@ const REOPEN_SETTLE_MS = 10_000;
 const CHILD_TERMINAL_STATUSES: ReadonlySet<string> = new Set(["finished", "retired", "duplicate"]);
 const USAGE =
   "usage: docks-kit plan <new|show|export|edit|status|step|list|archive|retire|reopen> ...";
+const FILE_OPTION: ReadonlySet<string> = new Set(["--file"]);
+// The provenance file of an export is the plan file with this suffix.
+const ORIGIN_SUFFIX = Buffer.from(".origin");
 
 /** Write domain output to stdout as is. */
-const writeOut = (text: string): Effect.Effect<void> =>
+const writeOut = (text: string | Uint8Array): Effect.Effect<void> =>
   Effect.sync(() => {
     process.stdout.write(text);
   });
@@ -219,23 +223,28 @@ function describeCloser(closer: Closer | null | undefined): string {
 const exportPlan = Effect.fn("plan.export")(function* (args: ReadonlyArray<string>) {
   if (args.length !== 1) return yield* refuse("export requires one issue");
   const { issue } = yield* readPlanIssue(args[0]);
+  // A byte string, one character per byte, so a folder whose path is not UTF-8 keeps its bytes.
   const directory = yield* reviewDirectory();
   const files = yield* PlanFiles;
-  yield* files.ensurePrivateDirectory(directory);
+  yield* files.ensurePrivateDirectory(Buffer.from(directory, "latin1"));
   const destination = path.join(directory, `plan-${issue.number}.md`);
-  const origin = `${destination}.origin`;
-  yield* files.writeFile(destination, issue.body, 0o600);
-  yield* files.writeFile(origin, `${bodyDigest(issue.body)}\n`, 0o600);
-  yield* files.chmod(destination, 0o600);
-  yield* files.chmod(origin, 0o600);
-  yield* printLine(destination);
+  const destinationBytes = Buffer.from(destination, "latin1");
+  const originBytes = Buffer.from(`${destination}.origin`, "latin1");
+  yield* files.writeFile(destinationBytes, issue.body, 0o600);
+  yield* files.writeFile(originBytes, `${bodyDigest(issue.body)}\n`, 0o600);
+  yield* files.chmod(destinationBytes, 0o600);
+  yield* files.chmod(originBytes, 0o600);
+  yield* writeOut(Buffer.from(`${destination}\n`, "latin1"));
 });
 
-/** The recorded digest of `<planFile>.origin`, or undefined when the file does not exist. */
-const readOrigin = Effect.fn("plan.readOrigin")(function* (planFile: string) {
+/**
+ * The recorded digest of `<planFile>.origin`, or undefined when the file does not exist. `planFile` is the text of
+ * the path for messages, and `planBytes` its bytes.
+ */
+const readOrigin = Effect.fn("plan.readOrigin")(function* (planFile: string, planBytes: Buffer) {
   const source = `${planFile}.origin`;
   const files = yield* PlanFiles;
-  const read = yield* Effect.result(files.readFile(source));
+  const read = yield* Effect.result(files.readFile(Buffer.concat([planBytes, ORIGIN_SUFFIX])));
   if (read._tag === "Failure") {
     if (read.failure.code === "ENOENT") return undefined;
     return yield* refuse(`unreadable export provenance: ${source}`);
@@ -443,15 +452,24 @@ function refuseFrozenChanges(
 
 const editPlan = Effect.fn("plan.edit")(function* (args: ReadonlyArray<string>) {
   const [value, ...flags] = args;
-  const file = (yield* attempt(() => parseOptions(flags, new Set(["--file"])))).values.get(
-    "--file",
-  );
+  const file = (yield* attempt(() => parseOptions(flags, FILE_OPTION))).values.get("--file");
   if (!file) return yield* refuse("edit requires an issue and --file");
+  // The bytes of the path from the command line; `file` is its text for messages. When the command line gives no
+  // bytes, the text is the path, as under plan.mjs.
+  const flagBytes = yield* argumentBytes(flags);
+  const fileBytes = Buffer.from(
+    flagBytes === undefined
+      ? asBytes(file)
+      : ((yield* attempt(() => parseOptions(flagBytes, FILE_OPTION))).values.get("--file") ??
+          asBytes(file)),
+    "latin1",
+  );
+  const originBytes = Buffer.concat([fileBytes, ORIGIN_SUFFIX]);
   const { issue, parsed, status } = yield* readPlanIssue(value, true, {
     history: true,
     comments: true,
   });
-  const origin = yield* readOrigin(file);
+  const origin = yield* readOrigin(file, fileBytes);
   if (!origin)
     return yield* refuse(
       `missing export provenance: ${file}.origin does not exist; run \`docks-kit plan export ${issue.number}\` and re-apply the edit`,
@@ -462,7 +480,7 @@ const editPlan = Effect.fn("plan.edit")(function* (args: ReadonlyArray<string>) 
     );
   const files = yield* PlanFiles;
   const started = workStarted(issue, status);
-  const source = yield* files.readFile(file);
+  const source = yield* files.readFile(fileBytes);
   const { body } = yield* attempt(() =>
     normalizePlan(source, { marker: writeMarker(issue, status) }),
   );
@@ -476,11 +494,11 @@ const editPlan = Effect.fn("plan.edit")(function* (args: ReadonlyArray<string>) 
     seenIds.add(row.id);
   }
   if (started) yield* attempt(() => refuseFrozenChanges(issue, parsed, incoming));
-  yield* files.writeFile(file, body);
+  yield* files.writeFile(fileBytes, body);
   yield* writeIssueIfUnchanged(issue, { body });
   // Refresh provenance only after the remote write, so a failed write can be retried with the same file (#78).
-  yield* files.writeFile(`${file}.origin`, `${bodyDigest(body)}\n`, 0o600);
-  yield* files.chmod(`${file}.origin`, 0o600);
+  yield* files.writeFile(originBytes, `${bodyDigest(body)}\n`, 0o600);
+  yield* files.chmod(originBytes, 0o600);
   const changes = changedLines(issue.body, body);
   yield* printLine(headerStrip(issue, status));
   yield* printLine(`changed: ${changes.length} line(s)`);
@@ -1156,7 +1174,10 @@ export const runPlan = Effect.fn("plan.run")(function* (args: ReadonlyArray<stri
   const [command, ...rest] = args;
   if (command === "base-blob")
     return yield* baseBlob(rest).pipe(
-      Effect.catchTag("SpawnError", (error) => printErrorLine(error.message).pipe(Effect.as(2))),
+      Effect.catchTags({
+        FileError: (error) => printErrorLine(error.message).pipe(Effect.as(2)),
+        SpawnError: (error) => printErrorLine(error.message).pipe(Effect.as(2)),
+      }),
     );
   if (command === "checkout-state") return yield* checkoutState(rest);
   const run =

@@ -7,6 +7,8 @@ import fs from "node:fs";
 
 import { Context, Duration, Effect, Layer, Predicate } from "effect";
 
+import { engineHome } from "../engine-native/ompSession";
+import { createScratchDir, scratchRoot } from "../engine-native/scratch";
 import { FileError, SpawnError, type RepositoryInfo } from "./types";
 
 // plan.mjs reads gh output up to this size; a larger output is a refusal, not a cut.
@@ -30,20 +32,8 @@ export interface ProcessResult {
   readonly error: { readonly code: string | undefined; readonly message: string } | undefined;
 }
 
-/**
- * The text of `latin1` output (one character per byte) when its bytes are UTF-8, or undefined when they are not.
- * A path that is not UTF-8 cannot pass on a command line or to a Node path API as text without a lost byte.
- */
-export const utf8Text = (bytes: string): string | undefined => {
-  const text = Buffer.from(bytes, "latin1").toString("utf8");
-  return Buffer.from(text, "utf8").toString("latin1") === bytes ? text : undefined;
-};
-
-/**
- * The character that Node puts in an argument or in `process.cwd()` in place of a byte that is not UTF-8. Such a
- * string names another file; a real U+FFFD in a name looks the same, so both fail closed.
- */
-export const LOST_BYTE = "\uFFFD";
+/** A file path as text, or as raw bytes for a path that is not UTF-8. */
+export type FilePath = string | Buffer;
 
 const errorCode = (error: unknown): string | undefined => {
   const code = Predicate.hasProperty(error, "code") ? error.code : undefined;
@@ -138,6 +128,17 @@ function checkoutEntry(path: Buffer): CheckoutEntry {
   return stats.isDirectory() ? { kind: "directory" } : { kind: "special" };
 }
 
+/** A file read whose missing file gives undefined. */
+const unlessMissing = <A>(operation: () => A): Effect.Effect<A | undefined, FileError> =>
+  fileOperation(() => {
+    try {
+      return operation();
+    } catch (error) {
+      if (errorCode(error) === "ENOENT") return undefined;
+      throw error;
+    }
+  });
+
 /** File access. A failure carries the Node error message and code. */
 export class PlanFiles extends Context.Service<
   PlanFiles,
@@ -146,16 +147,26 @@ export class PlanFiles extends Context.Service<
      * What the path holds on disk; the bytes of a link target are latin1 characters. Only a failed link read fails.
      */
     readonly entry: (path: Buffer) => Effect.Effect<CheckoutEntry, FileError>;
+    /** The bytes of a file, or undefined when it does not exist. */
+    readonly readBytes: (path: string) => Effect.Effect<Buffer | undefined, FileError>;
+    /** The target bytes of a symbolic link, or undefined when the link does not exist. */
+    readonly linkTarget: (path: string) => Effect.Effect<Buffer | undefined, FileError>;
+    /** Create the symbolic link `path` to `target`. */
+    readonly symlink: (target: Buffer, path: string) => Effect.Effect<void, FileError>;
+    /** Create a private folder under the kit scratch root and return its path. */
+    readonly scratchFolder: (label: string) => Effect.Effect<string, FileError>;
+    /** Remove a folder and what it holds, without following a link in it. */
+    readonly removeFolder: (path: string) => Effect.Effect<void, FileError>;
     /** Create the directory and its parents, and set its mode to 0700. */
-    readonly ensurePrivateDirectory: (path: string) => Effect.Effect<void, FileError>;
+    readonly ensurePrivateDirectory: (path: FilePath) => Effect.Effect<void, FileError>;
     /** Write a UTF-8 file; `mode` applies when the write creates it. */
     readonly writeFile: (
-      path: string,
+      path: FilePath,
       data: string,
       mode?: number,
     ) => Effect.Effect<void, FileError>;
-    readonly chmod: (path: string, mode: number) => Effect.Effect<void, FileError>;
-    readonly readFile: (path: string) => Effect.Effect<string, FileError>;
+    readonly chmod: (path: FilePath, mode: number) => Effect.Effect<void, FileError>;
+    readonly readFile: (path: FilePath) => Effect.Effect<string, FileError>;
     /** Create a new file that must not exist yet, write it, and close it. */
     readonly createExclusive: (
       path: string,
@@ -171,6 +182,13 @@ export class PlanFiles extends Context.Service<
     Effect.sync(() =>
       PlanFiles.of({
         entry: (path) => fileOperation(() => checkoutEntry(path)),
+        readBytes: (path) => unlessMissing(() => fs.readFileSync(path)),
+        linkTarget: (path) => unlessMissing(() => fs.readlinkSync(path, { encoding: "buffer" })),
+        symlink: (target, path) => fileOperation(() => fs.symlinkSync(target, path)),
+        scratchFolder: (label) =>
+          fileOperation(() => createScratchDir(scratchRoot(engineHome()), label)),
+        removeFolder: (path) =>
+          fileOperation(() => fs.rmSync(path, { recursive: true, force: true })),
         ensurePrivateDirectory: (path) =>
           fileOperation(() => {
             fs.mkdirSync(path, { recursive: true, mode: 0o700 });

@@ -295,6 +295,16 @@ function rawPath(dir: string, name: string): Buffer {
   return Buffer.concat([Buffer.from(`${dir}/`, "utf8"), bytes(name)]);
 }
 
+function blobOf(text: string): string {
+  const result = spawnSync("git", ["hash-object", "--stdin"], {
+    env: GIT_ENV,
+    input: text,
+    encoding: "utf8",
+  });
+  expect(result.status, result.stderr).toBe(0);
+  return result.stdout.trim();
+}
+
 const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
 
 // Names with the byte 0xff, which is no UTF-8 text. AGENTS.md links to `rules-\xff.md`, and `rules-\uFFFD.md` (the
@@ -586,22 +596,65 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("base instructions", () => {
     SPAWN_TIMEOUT_MS,
   );
 
-  // An argument reaches the helper as UTF-8 text, so a byte that is not UTF-8 is lost before the helper starts. The
-  // helper cannot tell which file was meant, and a lost byte is a failure, never an absent file.
+  // The helper reads its arguments as bytes, so a byte that is not UTF-8 and a literal U+FFFD name different files.
   it(
-    "a path argument that is not UTF-8 gives base-blob status 2 and a message",
+    "a path argument that is not UTF-8 gives base-blob the blob of the file of those bytes",
     (context) => {
       const fixture = rawRepo();
       context.skip(fixture === undefined, NON_UTF8_SKIP);
       if (fixture === undefined) return;
-      const result = sh(
+      for (const [argument, text] of [
+        ["rules-\\377.md", RAW_RULES],
+        ["docs-\\377/REVIEW.md", RAW_REVIEW],
+        ["rules-\uFFFD.md", PLAIN_RULES],
+      ] as const) {
+        const result = sh(
+          fixture.repo,
+          `docks-kit plan base-blob '${fixture.base}' "$(printf '${argument}')"`,
+          fixture.env,
+        );
+        expect(result.status, `${argument}: ${result.stderr}`).toBe(0);
+        expect(result.stdout, argument).toBe(`${blobOf(text)}\n`);
+      }
+      // A branch name that is not UTF-8 reaches git on stdin; a name that is no object fails with status 2.
+      writeFileSync(rawPath(fixture.repo, ".git/refs/heads/b-\xff"), `${fixture.base}\n`);
+      const branch = sh(
         fixture.repo,
-        `docks-kit plan base-blob '${fixture.base}' "$(printf 'rules-\\377.md')"`,
+        `docks-kit plan base-blob "$(printf 'b-\\377')" AGENTS.md`,
         fixture.env,
       );
-      expect(result.status, result.stderr).toBe(2);
-      expect(result.stdout).toBe("");
-      expect(result.stderr).toBe("base-blob: an argument is not UTF-8 text\n");
+      expect(branch.status, branch.stderr).toBe(0);
+      expect(branch.stdout).toBe(`${blobOf(RAW_RULES)}\n`);
+      const missing = spawnSync(
+        "bash",
+        ["-c", `docks-kit plan base-blob "$(printf 'n-\\377')" AGENTS.md`],
+        { cwd: fixture.repo, env: { ...GIT_ENV, ...fixture.env } },
+      );
+      expect(missing.status, missing.stderr.toString("utf8")).toBe(2);
+      expect(missing.stdout.toString("latin1")).toBe("");
+      expect(missing.stderr.toString("latin1")).toBe("base-blob: n-\xff^{tree} missing\n");
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "a path with a literal U+FFFD is read as any other path",
+    () => {
+      const { repo, env } = newRepo();
+      put(repo, "rules-\uFFFD.md", PLAIN_RULES);
+      put(repo, "u-\uFFFD/REVIEW.md", RAW_REVIEW);
+      link(repo, "AGENTS.md", "rules-\uFFFD.md");
+      git(repo, "add", "-A");
+      const base = commitBase(repo);
+      for (const [file, text] of [
+        ["rules-\uFFFD.md", PLAIN_RULES],
+        ["AGENTS.md", PLAIN_RULES],
+        ["u-\uFFFD/REVIEW.md", RAW_REVIEW],
+      ] as const) {
+        const read = sh(repo, baseRead(base, file), env);
+        expect(read.status, `${file}: ${read.stderr}`).toBe(0);
+        expect(read.stdout, file).toBe(text);
+      }
     },
     SPAWN_TIMEOUT_MS,
   );
