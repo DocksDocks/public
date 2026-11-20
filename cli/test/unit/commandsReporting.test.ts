@@ -5,6 +5,7 @@ import { delimiter, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { p } from "../../src/engine-native/exec";
+import { GENERATED_PACKAGE_VERSION } from "../../src/generated/sotPayload";
 import { BUN_RUNTIME, cliEntry } from "../lib/cliEntry";
 import { childEnv, cleanupTemporaryDirs, makeStubDir } from "../lib/goldenResources";
 import { SPAWN_TIMEOUT_MS } from "../lib/spawnTimeout";
@@ -97,6 +98,8 @@ describe("command reporting", () => {
 
       const version = runCli(["--version", "-v"], home);
       expect(version.status, version.stderr).toBe(0);
+      // The launchers compare this output with the bare package version.
+      expect(version.stdout).toBe(`${GENERATED_PACKAGE_VERSION}\n`);
       expect(version.stdout).toBe(runCli(["--version"], home).stdout);
 
       const help = runCli(["--help", "-h"], home);

@@ -28,7 +28,7 @@
       "command": ["--version"],
       "exitCode": 0,
       "fixture": "home-fresh",
-      "output": "<VERSION>\n\n"
+      "output": "<VERSION>\n"
     },
     "cli=public fixture=home-fresh cmd=docs": {
       "command": ["docs"],

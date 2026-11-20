@@ -40,11 +40,11 @@ const root = Command.make("docks-kit", {}, () =>
 );
 
 // v4's default formatter renders `name vversion`, but the `docks-kit` launcher
-// compares `--version` against the bare `package.json` version. The trailing
-// newline reproduces the characterized byte-for-byte output of the v3 CLI.
+// compares `--version` against the bare `package.json` version. The CLI output
+// presenter prints the result with `Console.log`, which adds the one newline.
 const bareVersionFormatter: CliOutput.Formatter = {
   ...CliOutput.defaultFormatter(),
-  formatVersion: (_name, version) => `${version}\n`,
+  formatVersion: (_name, version) => version,
 };
 
 // Harness-private raw channel:
