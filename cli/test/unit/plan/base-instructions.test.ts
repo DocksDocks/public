@@ -2,8 +2,9 @@
  * The shipped shell that reads instruction files from the merge base: the
  * base-instructions block of plan-manager phase 6 and the base read of
  * code-review. Both read each file through the base-blob helper, and both must
- * give a symlink the text of its target in the base tree. `entry.ts` selects
- * the snippet text and the helper that it calls.
+ * give a symlink the text of its target in the base tree. The snippets come
+ * from the live skill files and call `docks-kit plan base-blob` through a
+ * `docks-kit` shim on PATH.
  */
 import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import {
@@ -21,8 +22,7 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { PLAN_CLI_ENTRY, skillSnippet, snippetEnv } from "../../lib/plan/entry";
-import { PLAN_CLI_HOST_SUPPORTED } from "../../lib/plan/harness";
+import { PLAN_CLI_HOST_SUPPORTED, docksKitShimEnv } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 type Env = Readonly<Record<string, string>>;
@@ -70,7 +70,7 @@ function link(repo: string, file: string, target: string): void {
   symlinkSync(target, join(repo, file));
 }
 
-/** A scratch root, its repository, and the variables that the selected snippets need. */
+/** A scratch root, its repository, and the variables that the snippets need. */
 type Repo = {
   readonly root: string;
   readonly repo: string;
@@ -101,7 +101,7 @@ function newRepo(): { readonly root: string; readonly repo: string; readonly env
   const repo = join(root, "repo");
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
-  return { root, repo, env: snippetEnv(root) };
+  return { root, repo, env: docksKitShimEnv(root) };
 }
 
 function commitBase(repo: string): string {
@@ -334,52 +334,64 @@ function dropObject(repo: string, spec: string): void {
   rmSync(join(repo, ".git", "objects", oid.slice(0, 2), oid.slice(2)));
 }
 
-/** Where the snippets look for the helper. */
-type Helper = { readonly skillDir?: string; readonly env?: Env };
+const SKILLS_DIR = join(
+  import.meta.dirname,
+  "..",
+  "..",
+  "..",
+  "..",
+  "SoT",
+  ".omp",
+  "plugin",
+  "skills",
+);
+
+/** The one bash block of the `SKILL.md` of `skill` that contains `marker`. */
+function skillSnippet(skill: string, marker: string): string {
+  const file = join(SKILLS_DIR, skill, "SKILL.md");
+  const blocks = [...readFileSync(file, "utf8").matchAll(/^```bash\n([\s\S]*?)^```$/gm)].map(
+    ([, code]) => code ?? "",
+  );
+  const found = blocks.filter((code) => code.includes(marker));
+  expect(found, `${file} has one bash block with ${marker}`).toHaveLength(1);
+  return found[0] ?? "";
+}
 
 /**
- * A helper that cannot start. In the `plan.mjs` mode the skill folder has no
- * `scripts/base-blob.sh`, so `sh` cannot open the script; in the `docks-kit`
- * mode no PATH folder holds a `docks-kit`, so the shell cannot find the command.
+ * PATH without a folder that holds a `docks-kit`, so the shell cannot find the
+ * base-blob helper.
  */
-function missingHelper(root: string): Helper {
-  if (PLAN_CLI_ENTRY === "plan.mjs") return { skillDir: join(root, "skill-without-scripts") };
+function missingHelperEnv(): Env {
   const path = (process.env["PATH"] ?? "")
     .split(delimiter)
     .filter((folder) => folder !== "" && !existsSync(join(folder, "docks-kit")));
-  return { env: { PATH: path.join(delimiter) } };
+  return { PATH: path.join(delimiter) };
 }
 
-// Runs the plan-manager base-instructions block in `repo` for round 1 with the selected helper.
+// Runs the plan-manager base-instructions block in `repo` for round 1.
 function buildFolder(
   { root, repo, base, env }: Repo,
   extraEnv: Env = {},
-  helper: Helper = {},
 ): { readonly result: SpawnSyncReturns<string>; readonly folder: string } {
-  const snippet = skillSnippet("plan-manager");
-  const block = snippet.text
-    .replace('prev="<previous-reviewed-head or empty>"', 'prev=""')
-    .replaceAll("<skill-dir>", helper.skillDir ?? snippet.skillDir);
+  const block = skillSnippet("plan-manager", '-base-instructions"').replace(
+    'prev="<previous-reviewed-head or empty>"',
+    'prev=""',
+  );
   expect(block.includes('prev=""'), "the block sets prev").toBe(true);
   const scratch = join(root, "scratch");
   const result = sh(repo, `scratch='${scratch}'\nbase='${base}'\n${block}`, {
     ...env,
-    ...helper.env,
     ...extraEnv,
   });
   return { result, folder: join(scratch, "code-review-<n>-round-<k>-base-instructions") };
 }
 
-// The code-review base read of `file` at the fixed point `base` with the selected helper.
-function baseRead(base: string, file: string, helper: Helper = {}): string {
-  const snippet = skillSnippet("code-review");
-  const script = snippet.text
+// The code-review base read of `file` at the fixed point `base`.
+function baseRead(base: string, file: string): string {
+  const script = skillSnippet("code-review", "git merge-base <fixed-point> HEAD")
     .replace("<fixed-point>", base)
-    .replaceAll("<path>", file)
-    .replaceAll("<skill-dir>", helper.skillDir ?? snippet.skillDir);
-  expect(script, "the snippet names a fixed point, a path, and the skill folder").not.toMatch(
-    /<[a-z-]+>/,
-  );
+    .replaceAll("<path>", file);
+  expect(script, "the snippet names a fixed point and a path").not.toMatch(/<[a-z-]+>/);
   return script;
 }
 
@@ -493,14 +505,14 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("base instructions", () => {
     "a missing base-blob helper stops both reads with a status other than 0 and 1",
     () => {
       const fixture = instructionRepo();
-      const missing = missingHelper(fixture.root);
-      const { result, folder } = buildFolder(fixture, {}, missing);
+      const missing = missingHelperEnv();
+      const { result, folder } = buildFolder(fixture, missing);
       expect(result.status, "the block fails").not.toBe(0);
       expect(result.stderr).toMatch(/base instructions: a read failed/);
       expect(existsSync(join(folder, "MANIFEST")), "no MANIFEST").toBe(false);
-      const read = sh(fixture.repo, baseRead(fixture.base, "AGENTS.md", missing), {
+      const read = sh(fixture.repo, baseRead(fixture.base, "AGENTS.md"), {
         ...fixture.env,
-        ...missing.env,
+        ...missing,
       });
       expect([0, 1], `status ${read.status}`).not.toContain(read.status);
       expect(read.stdout).toBe("");

@@ -6,7 +6,7 @@ disable-model-invocation: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "9b53505f77a44338164b444776b171ff060b2c4423fba8f6257c5cb8f98c95cd"
+  content_hash: "18b487bb2e820c3909815d79f43bbd3cf176dbf3aaa9b9bf81b782957a8e0739"
 ---
 
 # Yolo
@@ -27,7 +27,7 @@ same installed docks-kit kit plugin (`docks-kit-omp`):
   Delegated decisions section owns each question that the grant of this run
   answers in them.
 
-Run the helper as `node skill://plan-manager/scripts/plan.mjs` from the target
+Run the helper as `docks-kit plan` from the target
 repository root. If these files are missing, stop and name the missing
 docks-kit kit plugin.
 

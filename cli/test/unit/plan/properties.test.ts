@@ -1,9 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { type ParsedPlan, planRecords } from "../../lib/plan/entry";
-
-const { normalizePlan, parsePlan, parseReviewComment } = await planRecords();
+import { type ParsedPlan, normalizePlan, parsePlan } from "../../../src/plan/records";
+import { parseReviewComment } from "../../../src/plan/reviews";
 
 // Property tests for the pure parsers of the plan helper (docks #133, D3). fast-check prints the seed and the
 // shrunk counterexample of a failing run; pass that seed to fc.assert to replay it. With 2000 runs, the

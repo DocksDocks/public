@@ -2,8 +2,8 @@
  * The checkout-state helper of plan-manager, which the practice Delegated work
  * runs before and after a dispatch. Two listings of the session checkout must
  * differ in the line of each path that changed on disk, and in no other line,
- * also when the checkout was dirty before the dispatch. `entry.ts` selects the
- * helper: `sh checkout-state.sh` or `docks-kit plan checkout-state`.
+ * also when the checkout was dirty before the dispatch. The helper is
+ * `docks-kit plan checkout-state`.
  */
 import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import {
@@ -19,8 +19,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { COMMAND_WORD, PLAN_CLI_ENTRY, checkoutHelperInvocation } from "../../lib/plan/entry";
-import { PLAN_CLI_HOST_SUPPORTED } from "../../lib/plan/harness";
+import { PLAN_CLI_HOST_SUPPORTED, runPlanCommand } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 type Env = Readonly<Record<string, string>>;
@@ -45,10 +44,7 @@ const GIT_ENV: Env = {
 };
 
 // The usage line names the helper (decision 5a).
-const USAGE =
-  PLAN_CLI_ENTRY === "plan.mjs"
-    ? "usage: sh checkout-state.sh <checkout>"
-    : `usage: ${COMMAND_WORD} checkout-state <checkout>`;
+const USAGE = "usage: docks-kit plan checkout-state <checkout>";
 
 function git(cwd: string, ...args: ReadonlyArray<string>): string {
   const result = spawnSync("git", args, { cwd, env: GIT_ENV, encoding: "utf8" });
@@ -99,11 +95,7 @@ function dirtyRepo(): { readonly root: string; readonly repo: string } {
 }
 
 function runHelper(args: ReadonlyArray<string>, env: Env = {}): SpawnSyncReturns<string> {
-  const invocation = checkoutHelperInvocation("checkout-state", args);
-  return spawnSync(invocation.file, invocation.args, {
-    env: { ...GIT_ENV, ...invocation.env, ...env },
-    encoding: "utf8",
-  });
+  return runPlanCommand(["checkout-state", ...args], { env: { ...GIT_ENV, ...env } });
 }
 
 function run(dir: string, env: Env = {}): SpawnSyncReturns<string> {

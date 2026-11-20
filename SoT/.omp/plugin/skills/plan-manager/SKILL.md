@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "d9b120999666b33ea8678e983b352a67507174f41dc1547508429d984773f76b"
+  content_hash: "6d73fa7c850b60ac1f20a8d4f9fc46c63f210af128011ff29b9e988983745629"
 ---
 
 # Plan Manager
@@ -42,11 +42,10 @@ skill except the merge and production cleanup questions.
 
 ## Resolve the helper
 
-`plan.mjs` ships in the installed plugin at
-`skill://plan-manager/scripts/plan.mjs`. Run it as
-`node skill://plan-manager/scripts/plan.mjs <command>` from the target
-repository root. Never copy it into the project or recreate it when the plugin
-is unavailable.
+The helper is the `docks-kit plan` command of the kit CLI. Run it as
+`docks-kit plan <command>` from the target repository root. It needs docks-kit
+0.26.0 or later; `docks-kit update` installs it. Never copy a helper into the
+project or recreate it when the command is unavailable.
 Use the contract's command and refusal lists for arguments and recovery.
 
 ## Six phases
@@ -162,13 +161,12 @@ root and in each parent folder of a changed path. The changed paths are the
 paths of the full diff and, in a later round, also the paths of the delta diff.
 A file that the branch added and a repair then deleted is in the delta diff
 only. Set `prev` to the previous round's reviewed head, or leave it empty in
-round 1. Put the folder of this skill, which holds `scripts/plan.mjs`, in place
-of `<skill-dir>`. Its `scripts/base-blob.sh` reads each file. A symlink, also a
-folder link on the path, gives the text of its target in the merge-base tree,
-under the path of the link. A path is absent when it is missing or names a
+round 1. The `docks-kit plan base-blob` command reads each file. A symlink,
+also a folder link on the path, gives the text of its target in the merge-base
+tree, under the path of the link. A path is absent when it is missing or names a
 folder, or when a link on it has a target outside the tree or more than 40
 links away. The folder's `MANIFEST` lists each checked path as `copied <path>`
-or `absent <path>`. When git or the script fails, the block writes no
+or `absent <path>`. When git or the command fails, the block writes no
 `MANIFEST`, prints an error, and exits with a non-zero status. Then do not
 dispatch the round; a failed read is not an absent file:
 
@@ -190,7 +188,7 @@ rm -rf "$inst" && mkdir -p "$inst" && (
     done
   done | sort -zu |
   while IFS= read -r -d '' file; do
-    oid=$(sh "<skill-dir>/scripts/base-blob.sh" "$base" "$file")
+    oid=$(docks-kit plan base-blob "$base" "$file")
     case $? in
       0) copy="$inst/$file"
         mkdir -p "${copy%/*}" && git cat-file blob "$oid" > "$copy" || exit 1

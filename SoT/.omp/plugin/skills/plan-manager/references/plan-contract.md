@@ -2,7 +2,7 @@
 This is the canonical contract inside the installed docks-kit kit plugin (`docks-kit-omp`).
 Agents use its lifecycle skills and this reference. The helper normalizes
 records and protects ownership, concurrent edits, step state, and archive proof.
-Run its helper as `node skill://plan-manager/scripts/plan.mjs` from the target repository root.
+Run its helper as `docks-kit plan` from the target repository root.
 ## Contents
 
 - [Record and mode](#record-and-mode)
@@ -415,7 +415,8 @@ then applies to each of them.
 
 ## Helper commands and output
 
-Run `node <installed-helper> <command>`. `<n>` is an issue number, optionally
+Run `docks-kit plan <command>`. The command needs docks-kit 0.26.0 or later, and
+`docks-kit update` installs it. `<n>` is an issue number, optionally
 prefixed with `#`. The header strip is `#<n> · <status> · <title> · <url>`.
 
 | Command | Result on stdout |
@@ -503,9 +504,9 @@ Refusals exit 1. These stderr strings are exact, with angle brackets replaced:
 plan #<n> is owned by <login>
 plan issue changed remotely; re-read and retry
 plan issue body differs after edit
-missing export provenance: <path>.origin does not exist; run `plan.mjs export <n>` and re-apply the edit
+missing export provenance: <path>.origin does not exist; run `docks-kit plan export <n>` and re-apply the edit
 unreadable export provenance: <path>.origin
-stale export: <path> was exported from a superseded body; run `plan.mjs export <n>` and re-apply the edit
+stale export: <path> was exported from a superseded body; run `docks-kit plan export <n>` and re-apply the edit
 step state is frozen once work starts: <detail>
 plan #<n> is closed; status applies to open plans
 illegal plan status transition: <from> -> <to>

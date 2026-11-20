@@ -31,7 +31,7 @@ These rules apply in this repository in addition to the contract.
 2. A `plan`-labelled issue is a record, not an invitation. Only the manager
    run that owns the plan moves it.
 3. Topic labels such as `security` are project-owned. Attach them with
-   `plan.mjs new --label <name>`.
+   `docks-kit plan new --label <name>`.
 4. A plan body uses repository-relative paths. Acceptance commands run from
    the repository root, with no `cd` to an absolute path. Name another
    repository as `OWNER/REPO`, and write a closing keyword for it as

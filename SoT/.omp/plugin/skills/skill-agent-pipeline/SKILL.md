@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "5e52e014546210f82003126d4e5dea92424b443cbbb765862cdfaa570ebf76a1"
+  content_hash: "a99cd1fa9dff6110a42035f30b7a04ea7805efdc93d38ec87f4d7d42cb77e909"
 ---
 
 # Skills & Agents Pipeline
@@ -21,7 +21,7 @@ One agent format: omp task agents. Phases 4a/4b/5 draft each logical agent as `.
 </constraint>
 
 <constraint>
-Intent controls the plan handoff, not Plan Mode. Hand the full skills/agents report to `plan-manager`, which files it as a plan issue with `plan.mjs new --title <t> --goal <g>`. Route label and workspace setup to `plan-workspace`; the unified `plan-manager` owns canonical-plan creation, fresh review, lifecycle, implementation/delegation, verification, and finish/archive. An audit-only or plan-only request stops after the reviewed report. A bootstrap, refresh, or implementation request continues directly into Phase 7 after the manager records the reviewed start checkpoint; no additional user lifecycle command is required.
+Intent controls the plan handoff, not Plan Mode. Hand the full skills/agents report to `plan-manager`, which files it as a plan issue with `docks-kit plan new --title <t> --goal <g>`. Route label and workspace setup to `plan-workspace`; the unified `plan-manager` owns canonical-plan creation, fresh review, lifecycle, implementation/delegation, verification, and finish/archive. An audit-only or plan-only request stops after the reviewed report. A bootstrap, refresh, or implementation request continues directly into Phase 7 after the manager records the reviewed start checkpoint; no additional user lifecycle command is required.
 </constraint>
 
 Prerequisite: the docks-kit kit plugin (`docks-kit-omp`) must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing docks-kit kit plugin, and do not create or mutate a plan.
@@ -64,7 +64,7 @@ Run in order. Each phase reads its reference, then hands its output to `plan-man
 
 1. Anchor the date once (`date "+%Y-%m-%d"`) and record scope (a path argument, or the whole project).
 2. **Phase 0** (inline): count `.agents/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.omp/agents/*.md`, and legacy `.claude/agents/*.md` (omp does not load them; each one routes to `agent-first-setup` `convert-agent`); note whether a local `skill-maintenance` exists and whether the plugin skill `skill-maintenance` is available (a stale local copy is flagged for REMOVAL in Phase 2a, not regenerated); write the counts + today under `### Phase 0: State` in `## Research`.
-3. Ask `plan-manager` to create the canonical issue with `plan.mjs new --title <t> --goal <g>` and own every lifecycle write. In a repository without a GitHub remote, use `docs/skills-audit-<YYYYMMDD>.md` as an untracked fallback. Run Phases 1→2a→2c→2b→3. **Phase 2c is mandatory and always runs** — it audits every existing skill and agent claim against current source (git history and `metadata.updated` are never accuracy evidence; its prompt-style sub-check uses git history only to find where a rule came from); write its table even when all-clean, never skip. After 2c, **reconcile**: amend the `### Phase 2a` block in place to escalate each non-CLEAN skill to REFRESH/REWRITE (`→ escalated by 2c: …`), and route each non-CLEAN agent to the Phase 5 regenerate list — so the handoff reads one delta.
+3. Ask `plan-manager` to create the canonical issue with `docks-kit plan new --title <t> --goal <g>` and own every lifecycle write. In a repository without a GitHub remote, use `docs/skills-audit-<YYYYMMDD>.md` as an untracked fallback. Run Phases 1→2a→2c→2b→3. **Phase 2c is mandatory and always runs** — it audits every existing skill and agent claim against current source (git history and `metadata.updated` are never accuracy evidence; its prompt-style sub-check uses git history only to find where a rule came from); write its table even when all-clean, never skip. After 2c, **reconcile**: amend the `### Phase 2a` block in place to escalate each non-CLEAN skill to REFRESH/REWRITE (`→ escalated by 2c: …`), and route each non-CLEAN agent to the Phase 5 regenerate list — so the handoff reads one delta.
 4. **Agent track:** run Phases 4a→4b→5 — they draft each agent as `.omp/agents/<name>.md`.
 5. Run Phase 6 (verifier). It validates skills and the omp agent files, plus cross-layer integrity, and grades any behavioral check of a drafted or refreshed skill (quoted evidence, no partial credit).
 6. Before starting each phase, confirm the prior `### Phase` subheading is present. If a phase found nothing, write "no changes" under its subheading — never silently skip.
@@ -78,7 +78,7 @@ The plan issue holds the whole run — inter-phase memory and the implementation
 GitHub issue #<n> labeled plan, plan:drafting (created and managed by plan-manager)
 ```
 
-Hand phase output to `plan-manager` as you go — never hold all of it in context and dump it at the end. Downstream phases read the issue with `plan.mjs show <issue> --body` and locate prior output by grepping for the `### Phase` subheadings above. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
+Hand phase output to `plan-manager` as you go — never hold all of it in context and dump it at the end. Downstream phases read the issue with `docks-kit plan show <issue> --body` and locate prior output by grepping for the `### Phase` subheadings above. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
 
 ## Skill description quality (Phase 2a / 3)
 

@@ -285,28 +285,26 @@ Follow this practice for each subagent that the run dispatches, in every phase.
    work changes it by design.
 3. Before a dispatch, or before a group of dispatches that run at the same
    time, write the listing of the session checkout. Use one `<label>` per
-   group. `<checkout>` is the absolute path of the session checkout, and
-   `<skill-dir>` is the folder of the `plan-manager` skill. The script
-   [`../scripts/checkout-state.sh`](../scripts/checkout-state.sh) prints one
+   group. `<checkout>` is the absolute path of the session checkout. The
+   command `docks-kit plan checkout-state <checkout>` prints one
    line per tracked or untracked path with the raw state on disk, so a dirty
    checkout or a filter does not hide a change. It does not list ignored files.
 
    ```sh
    checkout='<checkout>'
-   skill_dir='<skill-dir>'
    dir=$(git -C "$checkout" rev-parse --path-format=absolute --git-path docks-review) &&
      mkdir -p -m 0700 "$dir" &&
      state="$dir/checkout-state-<n>-<label>" &&
-     { sh "$skill_dir/scripts/checkout-state.sh" "$checkout" > "$state.txt.part" &&
+     { docks-kit plan checkout-state "$checkout" > "$state.txt.part" &&
        mv "$state.txt.part" "$state.txt" ||
        { rm -f "$state.txt.part"; false; }; }
    ```
 
-   The listing gets its name only when the script exits with status 0. When a
-   setup command or the script fails, the block removes the `.part` file,
-   writes no listing, and exits with a status other than 0; follow item 8. A
-   shell that does not keep variables between commands needs `checkout`,
-   `skill_dir`, `dir`, and `state` again, with the same values, before each
+   The listing gets its name only when the command exits with status 0. When a
+   setup command or `docks-kit plan checkout-state` fails, the block removes the
+   `.part` file, writes no listing, and exits with a status other than 0; follow
+   item 8. A shell that does not keep variables between commands needs
+   `checkout`, `dir`, and `state` again, with the same values, before each
    later block.
 4. After each agent of the group returns, write the listing again and compare
    it with the first listing of the group. Each changed line names a path that
@@ -315,11 +313,11 @@ Follow this practice for each subagent that the run dispatches, in every phase.
    subagent reported: a path outside the worktree is a stray edit, also when
    the listing did not change. The block writes the new listing to its own
    `.part` file, gives it the name `checkout-state-<n>-<label>.now` only when
-   the script exits with status 0, and compares the two files byte for byte.
+   the command exits with status 0, and compares the two files byte for byte.
    An empty listing stays empty, so two equal listings give no diff.
 
    ```sh
-   if sh "$skill_dir/scripts/checkout-state.sh" "$checkout" > "$state.now.part" &&
+   if docks-kit plan checkout-state "$checkout" > "$state.now.part" &&
      mv "$state.now.part" "$state.now"; then
      diff "$state.txt" "$state.now"
    else
@@ -329,7 +327,7 @@ Follow this practice for each subagent that the run dispatches, in every phase.
    ```
 
    Status 0 means no change, and status 1 with diff lines means a change. When
-   the script or `mv` fails, the block removes the `.part` file, runs no
+   the command or `mv` fails, the block removes the `.part` file, runs no
    `diff`, and exits with status 1; follow item 8. Status 2 means that `diff`
    could not read a file; also follow item 8. After you report the changes as
    item 6 says, remove the `.now` file with `rm -f "$state.now"`.
@@ -420,8 +418,8 @@ lists each child; run `show <c>` for each child to find the one that this run
 works on.
 
 When the review scratch folder of the session checkout holds complete listing
-files of this plan, `checkout-state-<n>-*.txt`, set `checkout`, `skill_dir`,
-and `dir` as Delegated work item 3 says. For each file, set `state` to its path
+files of this plan, `checkout-state-<n>-*.txt`, set `checkout` and `dir` as
+Delegated work item 3 says. For each file, set `state` to its path
 without `.txt`, and run the block of Delegated work item 4. Ignore each `.part`
 file and each `.now` file: they are not baselines. Report each changed path
 and leave it, as Delegated work says. Keep each listing, and compare it again

@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "8f4fc60ea6549c0d5e10f3cfbe4595eeb0fc9d19156d807e041aa5750316e617"
+  content_hash: "8388bf888844dd2b70f35bd782fbd41ba53352d4ca1dbd2f79b38d0c0961f470"
 ---
 
 # Refactor (sequential pipeline)
@@ -67,7 +67,7 @@ Phase 3 uses Phase 2a's SAFE tier to skip files about to be deleted. Phase 4 mer
 ## How to run each phase
 
 1. Anchor the date once (`date "+%Y-%m-%d"`), record scope (a path, or the whole project).
-2. Ask `plan-manager` to create the canonical plan issue with `plan.mjs new --title <t> --goal <g>` and own every lifecycle write. If no GitHub-backed plan lifecycle is available, stop and report; never write a tracked or untracked plan file. Write a `### Environment` block (date, branch, short git status) at the top of `## Research`.
+2. Ask `plan-manager` to create the canonical plan issue with `docks-kit plan new --title <t> --goal <g>` and own every lifecycle write. If no GitHub-backed plan lifecycle is available, stop and report; never write a tracked or untracked plan file. Write a `### Environment` block (date, branch, short git status) at the top of `## Research`.
 3. For each read-only row (1 → 5), in order: read `references/<phase>.md`, perform it, write under the row's subheading, confirm the subheading landed before the next phase. If a phase finds nothing, write "no findings" — never silently skip.
 4. At the HANDOFF, follow the request intent below. Resume at Phase 7 after the manager sets the plan `ongoing`; no user lifecycle command is required.
 
@@ -78,7 +78,7 @@ GitHub issue #<n> labeled plan, created with plan:drafting;
 plan-manager owns every later phase transition.
 ```
 
-Hand phase output to `plan-manager` as you go — do not hold all of it in context and dump it at the end. Downstream phases and a resumed run read the issue with `plan.mjs show <issue> --body` and locate prior output by grepping the `### Phase` subheadings. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
+Hand phase output to `plan-manager` as you go — do not hold all of it in context and dump it at the end. Downstream phases and a resumed run read the issue with `docks-kit plan show <issue> --body` and locate prior output by grepping the `### Phase` subheadings. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
 
 ## Review handoff (replaces Plan Mode)
 

@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "92516b02004725e62bb434266055dfb4dc1c1d7978b0c69042e04cc3203af990"
+  content_hash: "cd10c3ca3ee67cc9677591e61ac929ec4498d19c5a86d678078aee402753ae64"
 ---
 
 # Code Review
@@ -59,10 +59,10 @@ Confirm what you're reviewing:
 
 ```bash
 base=$(git merge-base <fixed-point> HEAD)
-oid=$(sh "<skill-dir>/scripts/base-blob.sh" "$base" "<path>") && git cat-file blob "$oid"
+oid=$(docks-kit plan base-blob "$base" "<path>") && git cat-file blob "$oid"
 ```
 
-`<skill-dir>` is the folder that holds this `SKILL.md`. Its `scripts/base-blob.sh` prints the blob id of the path at the merge base. A symlink, also a folder link on the path, gives the text of its target in the merge-base tree, because `git show` of a link prints only the target path. Status 1 means that the path has no base rule: the path does not exist at the merge base or names a folder, or a link on the path has a target that is missing, outside the merge-base tree, or more than 40 links away. Any other non-zero status is a failure of git or of the script. Then stop and report the error, because a failed read is not an absent file. When the diff changes an instruction file, keep the base rule, and review the changed lines as changed text. A change that makes a rule weaker is a finding: name the scenario that the weaker rule lets through. Without a fixed point, read the working tree.
+`docks-kit plan base-blob` prints the blob id of the path at the merge base. A symlink, also a folder link on the path, gives the text of its target in the merge-base tree, because `git show` of a link prints only the target path. Status 1 means that the path has no base rule: the path does not exist at the merge base or names a folder, or a link on the path has a target that is missing, outside the merge-base tree, or more than 40 links away. Any other non-zero status is a failure of git or of the command. Then stop and report the error, because a failed read is not an absent file. When the diff changes an instruction file, keep the base rule, and review the changed lines as changed text. A change that makes a rule weaker is a finding: name the scenario that the weaker rule lets through. Without a fixed point, read the working tree.
 
 **Triggered checks:** a `REVIEW.md` can hold a section `## Triggered checks` with one table, `| Id | Trigger | Check | Source |`. `Id` is `T<number>`. `Trigger` is a condition that a reader can see in a diff, such as a path glob, a changed symbol kind, or an added call. `Check` says what to verify. `Source` lists the issues or pull requests that produced the row. Apply only the rows whose trigger matches the diff, and skip every other row. Cite the row id in each finding that a row supports, as `check: T<n>` in the finding text. A row adds a check; the buckets and the evidence rules still apply.
 
@@ -143,7 +143,7 @@ When the trigger above fires, run the review on two axes and report them side-by
 The Standards axis always applies the **Fowler smell baseline** in `references/maintainability.md`, even when the repo documents no standards. A documented repo standard overrides the baseline, and each smell is a judgement call ("possible Feature Envy"), never a hard violation.
 
 **Axis 2 — Spec.** Does the diff faithfully implement what was asked? Source priority:
-1. The plan issue named by the branch or commit message — read its body with `plan.mjs show <issue> --body`, then use its `## Goal` and `## Steps`.
+1. The plan issue named by the branch or commit message — read its body with `docks-kit plan show <issue> --body`, then use its `## Goal` and `## Steps`.
 2. A `Closes #N` / `#N` reference in a commit message or PR body — fetch the referenced issue when the repository has GitHub.
 3. A PRD/spec path passed by the user as the explicit spec source.
 4. A `specs/` / `docs/<feature>.md` file matching the branch name.

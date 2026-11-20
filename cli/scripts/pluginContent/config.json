@@ -32,10 +32,6 @@
     {
       "canonical": "SoT/.omp/plugin/skills/agent-first-setup/references/agents-md-template.md",
       "copies": ["SoT/.omp/plugin/skills/claude-md-migration/references/agents-md-template.md"]
-    },
-    {
-      "canonical": "SoT/.omp/plugin/skills/plan-manager/scripts/base-blob.sh",
-      "copies": ["SoT/.omp/plugin/skills/code-review/scripts/base-blob.sh"]
     }
   ],
   "transformingSkills": [

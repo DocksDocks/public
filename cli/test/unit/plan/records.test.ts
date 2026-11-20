@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { planRecords } from "../../lib/plan/entry";
+import { normalizePlan } from "../../../src/plan/records";
 import {
   PLAN_CLI_HOST_SUPPORTED,
   body,
@@ -11,8 +11,6 @@ import {
   refuse,
 } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
-
-const { normalizePlan } = await planRecords();
 
 const FIRST_ROW =
   "| 1 | fix_parser | Fix parser | src/parser.mjs | - | local | planned | Records round-trip |";

@@ -49,7 +49,7 @@ Check all before dispatching:
 - `plan-manager` owns the plan issue and its declared scope, which is the union
   of the Steps `Files` cells.
 - Immediately before dispatch, `plan-manager` re-reads the issue with
-  `plan.mjs show <issue> --body` and confirms its Steps `Files` union still
+  `docks-kit plan show <issue> --body` and confirms its Steps `Files` union still
   matches the assigned work. A change requires re-planning.
 - Immediately before dispatch, record `<base>` = `git rev-parse HEAD`.
 
@@ -64,7 +64,7 @@ contain:
 
 1. The canonical plan issue number, the union of its Steps `Files` cells, and
    the Steps `Id` values the executor must complete. The executor reads the
-   record with `plan.mjs show <issue> --body`; do not inline a second copy.
+   record with `docks-kit plan show <issue> --body`; do not inline a second copy.
 2. An executor preamble: *before the first edit, read the root `AGENTS.md` and
    every `AGENTS.md` in a directory on the path to each file in the Steps
    `Files` union; follow the plan step by step; run every verification command

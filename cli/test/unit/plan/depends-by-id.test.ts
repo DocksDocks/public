@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planRecords } from "../../lib/plan/entry";
+import { normalizePlan } from "../../../src/plan/records";
 import {
   PLAN_CLI_HOST_SUPPORTED,
   body,
@@ -8,8 +8,6 @@ import {
   planCliContext,
 } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
-
-const { normalizePlan } = await planRecords();
 
 // The display `1, a` holds a comma, so normalization keeps the Depends entry `fix_parser` as an id. Each consumer
 // of Depends must resolve that id to its step.

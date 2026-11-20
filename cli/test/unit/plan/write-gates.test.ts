@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { COMMAND_WORD } from "../../lib/plan/entry";
 import {
   PLAN_CLI_HOST_SUPPORTED,
   body,
@@ -99,7 +98,7 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       writeFileSync(missingFile, issue(provenance).body);
       refuse(
         run("edit", String(provenance), "--file", missingFile),
-        `missing export provenance: ${missingFile}.origin does not exist; run \`${COMMAND_WORD} export ${provenance}\` and re-apply the edit`,
+        `missing export provenance: ${missingFile}.origin does not exist; run \`docks-kit plan export ${provenance}\` and re-apply the edit`,
       );
       const staleFile = exported(provenance);
       updateIssue(provenance, (entry) => {
@@ -107,7 +106,7 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       });
       refuse(
         run("edit", String(provenance), "--file", staleFile),
-        `stale export: ${staleFile} was exported from a superseded body; run \`${COMMAND_WORD} export ${provenance}\` and re-apply the edit`,
+        `stale export: ${staleFile} was exported from a superseded body; run \`docks-kit plan export ${provenance}\` and re-apply the edit`,
       );
       expect(issue(provenance).body).toMatch(/Remote task/);
       const unreadableFile = exported(provenance);

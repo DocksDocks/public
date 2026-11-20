@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "d49ca8965b3a3a35239520f7d5900628c67a527aa43875c2fbdc617c5681bf99"
+  content_hash: "6b77bb01e390253768bb5fe6d5c34f0c33bb5feeaa35ce5c195393102f3cf4ae"
 ---
 
 # Plans Workspace
@@ -33,9 +33,10 @@ goals the user restates; derive no content from legacy files.
 Resolve the repository root and name the target with
 `gh repo view --json nameWithOwner,visibility,defaultBranchRef`.
 Stop before writing if the target is unresolved. Audit may report that fact.
-Run `plan.mjs` as `node skill://plan-manager/scripts/plan.mjs`.
-It is plugin payload, not a missing project file. Never vendor or recreate it.
-Report its resolved path or that the plugin is unavailable.
+Run the plan helper as `docks-kit plan`.
+It is a command of the kit CLI, not a missing project file. Never vendor or
+recreate it. Report the resolved `docks-kit` path or that the command is
+unavailable.
 
 ## Classify
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type ReviewVerdict, planRecords } from "../../lib/plan/entry";
+import { type ReviewKind, type Verdict, parseReviewComment } from "../../../src/plan/reviews";
 import {
   PLAN_CLI_HOST_SUPPORTED,
   body,
@@ -10,9 +10,7 @@ import {
 } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
-const { parseReviewComment } = await planRecords();
-
-type ReviewCase = readonly [string, ReviewVerdict | undefined];
+type ReviewCase = readonly [string, { kind: ReviewKind; verdict: Verdict } | undefined];
 
 // The manager's response to round k follows the review blocks of round k+1 in one comment (E5).
 const QUOTED = [

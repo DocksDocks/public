@@ -4,12 +4,14 @@
  *
  * Each case gets its own scratch git repository, fake gh state, and
  * XDG_STATE_HOME, so cases share no issue numbers, labels, or exports and
- * Vitest can run the suites in parallel. `entry.ts` selects the plan
- * implementation that `run` spawns.
+ * Vitest can run the suites in parallel. `run` spawns `docks-kit plan`
+ * through the CLI test entry.
  */
 import { type SpawnSyncReturns, spawnSync } from "node:child_process";
 import {
+  chmodSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -26,17 +28,51 @@ import type {
   StubReference,
   StubState,
 } from "../../fixtures/gh-stub/state.ts";
-import { planInvocation } from "./entry.ts";
+import { BUN_RUNTIME, cliEntry } from "../cliEntry";
+
+/**
+ * `docks-kit plan` skips its waits when this variable is `1`, and appends each
+ * skipped timeout in milliseconds to the file that `PLAN_CLI_WAIT_LOG` names.
+ */
+const SKIP_WAITS_ENV = "PLAN_CLI_SKIP_WAITS";
 
 export const GH_STUB_DIR = resolve(import.meta.dirname, "..", "..", "fixtures", "gh-stub");
 export const GH_STUB = join(GH_STUB_DIR, "gh");
 
 /**
- * The fake gh is a script with a `#!/usr/bin/env bun` line, and `plan.mjs`
- * starts `gh` without a shell. Windows starts neither, so the suites that
- * spawn a plan command run on Linux and macOS only.
+ * The fake gh is a script with a `#!/usr/bin/env bun` line, and
+ * `docks-kit plan` starts `gh` without a shell. Windows does not start such a
+ * script, so the suites that spawn a plan command run on Linux and macOS only.
  */
 export const PLAN_CLI_HOST_SUPPORTED = process.platform !== "win32";
+
+export type PlanResult = SpawnSyncReturns<string>;
+
+/** Run `docks-kit plan <args>` through the CLI test entry. */
+export function runPlanCommand(
+  args: ReadonlyArray<string>,
+  options: { readonly cwd?: string; readonly env?: NodeJS.ProcessEnv } = {},
+): PlanResult {
+  return spawnSync(BUN_RUNTIME, [cliEntry(), "plan", ...args], {
+    encoding: "utf8",
+    ...options,
+  });
+}
+
+/**
+ * PATH with a folder that holds a `docks-kit` shim first, for the shell
+ * snippets of the skills. The shim runs the CLI test entry; `root` is a
+ * scratch folder of the case.
+ */
+export function docksKitShimEnv(root: string): Readonly<Record<string, string>> {
+  const bin = join(root, "bin");
+  mkdirSync(bin, { recursive: true });
+  const shim = join(bin, "docks-kit");
+  const quote = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`;
+  writeFileSync(shim, `#!/bin/sh\nexec ${quote(BUN_RUNTIME)} ${quote(cliEntry())} "$@"\n`);
+  chmodSync(shim, 0o755);
+  return { PATH: `${bin}${delimiter}${process.env["PATH"] ?? ""}` };
+}
 
 // The state a repository reaches after its first `new`: every plan label exists as the fake gh
 // `label create` stores it. A case that depends on label metadata replaces this map itself.
@@ -44,8 +80,6 @@ const PLAN_LABELS = ["plan", "plan:drafting", "plan:planned", "plan:ongoing", "p
 // A partial pull request merges at MERGED_AT, and GitHub records its close 2 s later, as it did for #89.
 const MERGED_AT = "2026-08-21T00:00:00Z";
 const CLOSED_AT = "2026-08-21T00:00:02Z";
-
-export type PlanResult = SpawnSyncReturns<string>;
 
 export function expectSuccess(result: PlanResult, label: string): void {
   expect(result.status, `${label}: ${result.stderr}`).toBe(0);
@@ -240,11 +274,9 @@ export function planCliContext(): PlanCliContext {
   };
 
   function spawnPlan(args: ReadonlyArray<string>, skipWaits: boolean): PlanResult {
-    const invocation = planInvocation(args, { skipWaits });
-    return spawnSync(invocation.file, invocation.args, {
+    return runPlanCommand(args, {
       cwd: scratch,
-      encoding: "utf8",
-      env: { ...childEnv, ...invocation.env },
+      env: skipWaits ? { ...childEnv, [SKIP_WAITS_ENV]: "1" } : childEnv,
     });
   }
 

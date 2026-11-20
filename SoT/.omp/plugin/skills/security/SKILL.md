@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "9fc8fba06ca2ee56b9eabb8b5e03a89568b06b85f7745d099f27e5ed788f7be1"
+  content_hash: "f1af22cd250ef47f1eaa0892fa813fc89e2efe4b1f4b630419ab4e1b2c7f284e"
 ---
 
 # Security Audit (sequential pipeline)
@@ -62,7 +62,7 @@ Phases 2a–2c are independent lenses over the same Phase 1 map; run them sequen
 ## How to run each phase
 
 1. Anchor the date once (`date "+%Y-%m-%d"`) and record scope (a path argument, or the whole project).
-2. Ask `plan-manager` to create the canonical audit issue with `plan.mjs new --title <t> --goal <g>` and own every later lifecycle write. If no GitHub-backed plan lifecycle is available, stop and report; never write a plan file. Write a `### Environment` block (date, branch, short git status) at the top of `## Research`.
+2. Ask `plan-manager` to create the canonical audit issue with `docks-kit plan new --title <t> --goal <g>` and own every later lifecycle write. If no GitHub-backed plan lifecycle is available, stop and report; never write a plan file. Write a `### Environment` block (date, branch, short git status) at the top of `## Research`.
 3. For each pipeline row, in order:
    - Read `references/<phase>.md`.
    - Perform that analysis against the scope, using Phase 1's map as the starting point for phases 2–3.
@@ -79,7 +79,7 @@ GitHub issue #<n> labeled plan, created with plan:drafting;
 plan-manager owns every later phase transition.
 ```
 
-Hand phase output to `plan-manager` as you go — do not hold all of it in context and dump it at the end. The subheadings above are the contract; downstream phases and a resumed run read the issue with `plan.mjs show <issue> --body` and locate prior output by grepping the `### Phase` subheadings. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
+Hand phase output to `plan-manager` as you go — do not hold all of it in context and dump it at the end. The subheadings above are the contract; downstream phases and a resumed run read the issue with `docks-kit plan show <issue> --body` and locate prior output by grepping the `### Phase` subheadings. Never add a new `##` heading: the helper rejects any `##` heading outside its fixed sections.
 
 ## Finding quality (applies to every phase)
 
