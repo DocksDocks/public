@@ -102,6 +102,28 @@ Full reference: `docks-kit docs flags`.
   omp plugin `docks-kit-omp` exposes these as tools, reminds the agent of
   what it created, and runs the sweep at most once per 12 hours.
 
+## Kit plugin
+
+Sync writes the kit plugin `docks-kit-omp` to `~/.docks-kit/omp-plugin` and
+links it into omp. The kit plugin content comes from `SoT/.omp/plugin/`:
+
+- **Skills** — the 32 docks and plan-lifecycle skills, for example
+  `plan-manager`, `plan-workspace`, `code-review`, `security`, and
+  `refactor`, plus the `workspace-hygiene` skill.
+- **Agents** — the `code-reviewer` and `plan-reviewer` task agents.
+- **Extensions** — `verify-gate` checks that each `git commit` carries a
+  `Verified:` trailer, `context-tree-nudge` names the context-tree node of
+  each edited file, and `hygiene` gives the agent cleanup tools and
+  reminders.
+- **Rules and commands** — six trigger rules that teach the safe form of a
+  risky command, and the `/cleanup` command.
+
+The kit plugin replaces the former `docks` and `plan-lifecycle` plugins of
+the `docks` marketplace. `docks-kit sync` uninstalls them at user scope,
+warns with the manual command for a project-scope install, and then removes
+the `docks` marketplace. Report a problem with a skill, an agent, or the kit
+in [DocksDocks/public](https://github.com/DocksDocks/public/issues).
+
 ## Repository map
 
 | Path | Purpose |

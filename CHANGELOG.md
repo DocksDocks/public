@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-11-20 - docks-kit 0.25.0: docks skills in the kit plugin, marketplace retirement
+
+The kit plugin `docks-kit-omp` now ships the content of the former `docks`
+and `plan-lifecycle` marketplace plugins (#200). `docks-kit sync` retires
+those plugins and the `docks` marketplace (#200). The plugin payload comes
+from a folder walk, and sync writes each plugin file atomically (#199).
+`bun run check` checks the plugin content (#201). The skills report a
+problem in DocksDocks/public (#202). These changes come from plan #198.
+
+### Removed
+
+- The marketplace plugins. Sync no longer installs `docks@docks` or
+  `plan-lifecycle@docks` from the `docks` marketplace, and it no longer adds
+  that marketplace (#200).
+- The plugin upgrade log, its folder `~/.cache/docks-kit/omp-plugin-upgrades/`,
+  the `pluginUpgrades.ts` extension, and the `/reload-plugins` upgrade advice
+  (#200). Each real sync removes the folder when it exists.
+
+### Changed
+
+- The kit plugin ships the 32 docks and plan-lifecycle skills, the
+  `code-reviewer` and `plan-reviewer` agents, and the `verify-gate` and
+  `context-tree-nudge` extensions (#200). They join the `workspace-hygiene`
+  skill, the `hygiene` extension, the trigger rules, and the `/cleanup`
+  command, so the kit plugin holds 33 skills.
+- Each real sync retires the former marketplace plugins (#200). It runs
+  `omp plugin uninstall --scope user <id>` for each user-scope row of
+  `docks@docks` and `plan-lifecycle@docks`. For a project-scope row, it warns
+  with the command `omp plugin uninstall --scope project <id>`, to run from
+  that project, and it changes nothing in that project. When no uninstall
+  failed and a registry lists `docks`, it runs
+  `omp plugin marketplace remove docks`. A registry that sync cannot read
+  gives a warning, and sync then removes no marketplace. A failed command
+  goes to the failure ledger, and sync exits 1. `--skip-plugin-refresh` does
+  not skip the retirement. A dry run prints the uninstall and remove lines.
+- The payload generator takes every file under `SoT/.omp/plugin/` from a
+  folder walk, so a new plugin file needs no list edit (#199). A payload file
+  that is not valid UTF-8 stops the generator with its path.
+- Sync writes each changed plugin file through a temporary file and a
+  rename (#199). A session that reads a skill file during a sync sees the
+  old file or the new file.
+- A dry run prints one plugin line,
+  `[dry-run] sync embedded:SoT/.omp/plugin/ -> <plugin dir>`, instead of one
+  line for each file (#199).
+- `bun run check` runs the plugin content checks in `cli/test/unit/plugin/`
+  (#201): the skill layout, frontmatter, report section, shared copies,
+  references, durable anchors, transform guard, trigger collisions, and
+  score floor; the agent rules and score floor; and an import check for each
+  extension. `contentHash.test.ts` checks the `metadata.content_hash` of each
+  skill. After a skill edit, run
+  `bun cli/scripts/skill-content-hash.ts --write` to refresh it.
+- The report section of each skill and the `report-skill-issue` skill name
+  DocksDocks/public as the report target (#202). A report gives the
+  docks-kit version (`docks-kit --version`), and the release tags have the
+  form `cli-v<version>`. The skills name the docks-kit kit plugin instead of
+  the `docks` and `plan-lifecycle` plugins.
+
+### Notes for an upgrade
+
+- The skill alias namespace changes from `docks/*` to `docks-kit-omp/*`. A
+  setting or a habit that names `docks/<skill>` stops matching. Use
+  `docks-kit-omp/<skill>`.
+- omp ranks a linked plugin above a marketplace plugin: a linked plugin
+  ranks 90, and a marketplace plugin ranks 70. If a project-scope install of
+  `docks@docks` or `plan-lifecycle@docks` stays, the kit plugin wins each
+  name that both provide.
+- `omp plugin disable plan-lifecycle` no longer applies. To turn off one
+  skill or extension of the kit plugin, use the omp settings
+  `skills.ignoredSkills` and `disabledExtensions`.
+
 ## 2026-11-20 - docks-kit 0.24.0: omp-only sync and omp 19.0.0 tools
 
 docks-kit now manages omp only. `docks-kit sync` syncs omp. Sync writes no
