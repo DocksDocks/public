@@ -560,19 +560,20 @@ describe("verify-gate extension", () => {
     const state = tempFolder("deadline");
     const stub = tempFolder("deadline-git");
     const calls = path.join(stub, "calls.txt");
-    const finished = path.join(stub, "finished.txt");
-    // The first two git calls end at once. The third one holds until GIT_STUB_HOLD_UNTIL, well after the
-    // deadline, and then it would end and count a denial, unless the deadline stops it.
+    const progress = path.join(stub, "progress.txt");
+    // The first two git calls end at once. The third one writes `start`, then holds until GIT_STUB_HOLD_UNTIL,
+    // well after the deadline, and then it would end and count a denial, unless the deadline stops it.
     const stubEnv = gitStub(
       stub,
       [
         'const fs = require("node:fs");',
         `fs.appendFileSync(${JSON.stringify(calls)}, "call\\n");`,
         `if (fs.readFileSync(${JSON.stringify(calls)}, "utf8").split("\\n").filter(Boolean).length >= 3) {`,
+        `  fs.appendFileSync(${JSON.stringify(progress)}, "start\\n");`,
         "  const wait = Number(process.env.GIT_STUB_HOLD_UNTIL) - Date.now();",
         "  if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);",
         "}",
-        `fs.appendFileSync(${JSON.stringify(finished)}, "done\\n");`,
+        `fs.appendFileSync(${JSON.stringify(progress)}, "done\\n");`,
         "runGit();",
       ].join("\n"),
     );
@@ -596,7 +597,8 @@ describe("verify-gate extension", () => {
     );
     // A real wait: the fake git is another process, so only the wall clock passes its hold.
     await new Promise((resolve) => setTimeout(resolve, Math.max(0, holdUntil + 500 - Date.now())));
-    expect(fs.readFileSync(finished, "utf8")).toBe("done\ndone\n");
+    // The third call started before the deadline and never wrote `done`: the deadline stopped a running git.
+    expect(fs.readFileSync(progress, "utf8")).toBe("done\ndone\nstart\n");
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });
 
