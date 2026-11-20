@@ -23,9 +23,7 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
   "pr-template detect",
   { timeout: SPAWN_TIMEOUT_MS },
   () => {
-    // `.github/PULL_REQUEST_TEMPLATE` and `.github/pull_request_template` differ only in letter case.
-    it("names each usable and unusable entry, by folder and then by byte order of the name", (context) => {
-      context.skip(!CASE_SENSITIVE_NAMES, CASE_INSENSITIVE_SKIP);
+    it("names each usable and unusable entry, by folder and then by byte order of the name", () => {
       const fx = fixture({
         files: {
           "pull_request_template.md": "## Checklist\n",
@@ -36,7 +34,7 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
         links: {
           PULL_REQUEST_TEMPLATE: "docs/PULL_REQUEST_TEMPLATE",
           "docs/pull_request_template.txt": "../tpl.txt",
-          ".github/pull_request_template": "missing.md",
+          ".github/pull_request_template.txt": "missing.md",
         },
         dirs: [".github/PULL_REQUEST_TEMPLATE", ".github/pull_request_template.md"],
       });
@@ -46,11 +44,25 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
         "pull-request template: docs/PULL_REQUEST_TEMPLATE (folder)",
         "pull-request template: docs/pull_request_template.txt (symlink to file)",
         "pull-request template: unusable .github/PULL_REQUEST_TEMPLATE (folder without a .md or .txt file)",
-        "pull-request template: unusable .github/pull_request_template (broken symlink)",
         "pull-request template: unusable .github/pull_request_template.md (folder with a file name)",
+        "pull-request template: unusable .github/pull_request_template.txt (broken symlink)",
       ];
       expectRun(run("pr-template", ["detect"], fx), 0, lines);
       expectRun(run("pr-template", ["detect"], fx, "docs"), 0, lines);
+    });
+
+    // Two names that differ only in letter case cannot both exist where the file system ignores case.
+    it("orders names that differ only in letter case by byte order", (context) => {
+      context.skip(!CASE_SENSITIVE_NAMES, CASE_INSENSITIVE_SKIP);
+      const fx = fixture({
+        links: { ".github/pull_request_template": "missing.md" },
+        dirs: [".github/PULL_REQUEST_TEMPLATE"],
+      });
+      expectRun(run("pr-template", ["detect"], fx), 0, [
+        "pull-request template: unusable .github/PULL_REQUEST_TEMPLATE (folder without a .md or .txt file)",
+        "pull-request template: unusable .github/pull_request_template (broken symlink)",
+        "pull-request template: none",
+      ]);
     });
 
     it("prints none when no usable entry exists, also after an unusable one", () => {
