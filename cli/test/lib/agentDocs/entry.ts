@@ -28,8 +28,12 @@ export type HelperResult = {
   readonly stderr: string;
 };
 
-// A fatal decoder throws on a byte that is not UTF-8, so equal strings mean equal bytes.
-const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true });
+// A fatal decoder throws on a byte that is not UTF-8, and `ignoreBOM` keeps a leading byte-order mark in the text
+// (the default strips it), so equal strings mean equal bytes.
+const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+/** The text of output bytes; it throws on a byte that is not UTF-8. */
+export const outputText = (bytes: Uint8Array): string => STRICT_UTF8.decode(bytes);
 
 /** Run `docks-kit agent-docs <helper> <args>`. */
 export function runHelper(
@@ -44,8 +48,8 @@ export function runHelper(
   if (result.error !== undefined) throw result.error;
   return {
     status: result.status,
-    stdout: STRICT_UTF8.decode(result.stdout),
-    stderr: STRICT_UTF8.decode(result.stderr),
+    stdout: outputText(result.stdout),
+    stderr: outputText(result.stderr),
   };
 }
 
@@ -60,5 +64,5 @@ export function runtimeStderr(options: {
 }): string {
   const result = spawnSync(BUN_RUNTIME, ["-e", "0"], { cwd: options.cwd, env: options.env });
   if (result.error !== undefined) throw result.error;
-  return STRICT_UTF8.decode(result.stderr);
+  return outputText(result.stderr);
 }
