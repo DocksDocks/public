@@ -454,14 +454,12 @@ const editPlan = Effect.fn("plan.edit")(function* (args: ReadonlyArray<string>) 
   const [value, ...flags] = args;
   const file = (yield* attempt(() => parseOptions(flags, FILE_OPTION))).values.get("--file");
   if (!file) return yield* refuse("edit requires an issue and --file");
-  // The bytes of the path from the command line; `file` is its text for messages. When the command line gives no
-  // bytes, the text is the path, as under plan.mjs.
+  // The bytes of the path from the command line; `file` is its text for messages.
   const flagBytes = yield* argumentBytes(flags);
+  if (!flagBytes.ok) return yield* refuse(flagBytes.cause);
   const fileBytes = Buffer.from(
-    flagBytes === undefined
-      ? asBytes(file)
-      : ((yield* attempt(() => parseOptions(flagBytes, FILE_OPTION))).values.get("--file") ??
-          asBytes(file)),
+    (yield* attempt(() => parseOptions(flagBytes.value, FILE_OPTION))).values.get("--file") ??
+      asBytes(file),
     "latin1",
   );
   const originBytes = Buffer.concat([fileBytes, ORIGIN_SUFFIX]);

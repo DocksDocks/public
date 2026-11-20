@@ -9,7 +9,7 @@ import { Effect } from "effect";
 
 import { workingFolderBytes } from "./bytes";
 import { PlanFiles, PlanProcess } from "./services";
-import { GitError } from "./types";
+import { GitError, PlanRefusal } from "./types";
 
 /**
  * `git rev-parse --git-path docks-review`, resolved from the working directory, as a byte string (one character per
@@ -34,7 +34,11 @@ export const reviewDirectory = Effect.fn("plan.reviewDirectory")(function* () {
   // ASCII white space only: a trim of all white space would also cut the byte 0xa0 that ends a UTF-8 character.
   const gitPath = result.stdout.replace(/^[\t\n\v\f\r ]+|[\t\n\v\f\r ]+$/g, "");
   if (!gitPath) return yield* new GitError({ message: "git rev-parse failed: empty git path" });
-  return path.resolve(yield* workingFolderBytes(), gitPath);
+  // An absolute path from git does not need the working folder.
+  if (path.isAbsolute(gitPath)) return path.resolve(gitPath);
+  const working = yield* workingFolderBytes();
+  if (!working.ok) return yield* new PlanRefusal({ message: working.cause });
+  return path.resolve(working.value, gitPath);
 });
 
 /** `$XDG_STATE_HOME/docks/plan` (default `~/.local/state/docks/plan`), created with mode 0700. */

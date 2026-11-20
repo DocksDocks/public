@@ -5,7 +5,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   GH_STUB_DIR,
+  PATHS_ARE_BYTES,
   PLAN_CLI_HOST_SUPPORTED,
+  UNICODE_PATHS_SKIP,
   body,
   docksKitShimEnv,
   expectSuccess,
@@ -237,6 +239,43 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       expect(result.stdout.toString("utf8")).toBe(
         `${scratch}/w-\uFFFD/.git/docks-review/plan-${plan}.md\n`,
       );
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // PLAN_CLI_PROC_ROOT (a test hook) names an empty folder, as on a Linux without a mounted /proc.
+  it(
+    "without /proc, export in a U+FFFD working folder and edit of a U+FFFD path refuse, and ASCII paths work",
+    (context) => {
+      context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
+      const { scratch, createPlan } = planCliContext();
+      const plan = createPlan("no /proc");
+      const noProc = join(scratch, "no-proc");
+      mkdirSync(noProc);
+      const withoutProc = `PLAN_CLI_PROC_ROOT='${noProc}' docks-kit plan`;
+      const lost = planScript(
+        scratch,
+        `mkdir 'w-\uFFFD' && cd 'w-\uFFFD' && git init -q && ${withoutProc} export ${plan}`,
+      );
+      expect(lost.status, lost.stderr.toString("utf8")).toBe(1);
+      expect(lost.stdout.toString("utf8")).toBe("");
+      expect(lost.stderr.toString("utf8")).toBe(
+        "the bytes of the working folder cannot be recovered without /proc\n",
+      );
+      expect(existsSync(join(scratch, "w-\uFFFD", ".git", "docks-review")), "no folder").toBe(
+        false,
+      );
+      const edit = planScript(scratch, `${withoutProc} edit ${plan} --file 'x-\uFFFD.md'`);
+      expect(edit.status, edit.stderr.toString("utf8")).toBe(1);
+      expect(edit.stderr.toString("utf8")).toBe(
+        "the bytes of an argument cannot be recovered without /proc\n",
+      );
+      const ascii = planScript(
+        scratch,
+        `f=$(${withoutProc} export ${plan}) && printf '%s\\n' "$f" && ${withoutProc} edit ${plan} --file "$f" >/dev/null`,
+      );
+      expect(ascii.status, ascii.stderr.toString("utf8")).toBe(0);
+      expect(ascii.stdout.toString("utf8")).toBe(`${scratch}/.git/docks-review/plan-${plan}.md\n`);
     },
     SPAWN_TIMEOUT_MS,
   );

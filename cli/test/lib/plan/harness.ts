@@ -46,6 +46,14 @@ export const GH_STUB = join(GH_STUB_DIR, "gh");
  */
 export const PLAN_CLI_HOST_SUPPORTED = process.platform !== "win32";
 
+/**
+ * Whether a path of this host is bytes that need not be UTF-8, which the runtime decodes with U+FFFD in place of a
+ * byte that is not UTF-8. macOS paths and Windows arguments are Unicode, so their runtime strings are exact.
+ */
+export const PATHS_ARE_BYTES = process.platform !== "darwin" && process.platform !== "win32";
+export const UNICODE_PATHS_SKIP =
+  "the paths of this host are Unicode, so no byte of a path is lost";
+
 export type PlanResult = SpawnSyncReturns<string>;
 
 /** Run `docks-kit plan <args>` through the CLI test entry. */

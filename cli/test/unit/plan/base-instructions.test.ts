@@ -22,7 +22,12 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { PLAN_CLI_HOST_SUPPORTED, docksKitShimEnv } from "../../lib/plan/harness";
+import {
+  PATHS_ARE_BYTES,
+  PLAN_CLI_HOST_SUPPORTED,
+  UNICODE_PATHS_SKIP,
+  docksKitShimEnv,
+} from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 type Env = Readonly<Record<string, string>>;
@@ -655,6 +660,42 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("base instructions", () => {
         expect(read.status, `${file}: ${read.stderr}`).toBe(0);
         expect(read.stdout, file).toBe(text);
       }
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // PLAN_CLI_PROC_ROOT (a test hook) names an empty folder, as on a Linux without a mounted /proc. git inherits the
+  // working folder itself, so only an argument with a U+FFFD needs bytes that are lost.
+  it(
+    "without /proc, a U+FFFD argument gives base-blob status 2, and other paths still work",
+    (context) => {
+      context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
+      const { root, repo, env } = newRepo();
+      put(repo, "rules-\uFFFD.md", PLAIN_RULES);
+      put(repo, "AGENTS.md", RAW_REVIEW);
+      git(repo, "add", "-A");
+      const base = commitBase(repo);
+      const noProc = join(root, "no-proc");
+      mkdirSync(noProc);
+      const procEnv = { ...env, PLAN_CLI_PROC_ROOT: noProc };
+      const lost = sh(repo, `docks-kit plan base-blob '${base}' 'rules-\uFFFD.md'`, procEnv);
+      expect(lost.status, lost.stderr).toBe(2);
+      expect(lost.stdout).toBe("");
+      expect(lost.stderr).toBe(
+        "base-blob: the bytes of an argument cannot be recovered without /proc\n",
+      );
+      const ascii = sh(repo, `docks-kit plan base-blob '${base}' AGENTS.md`, procEnv);
+      expect(ascii.status, ascii.stderr).toBe(0);
+      expect(ascii.stdout).toBe(`${blobOf(RAW_REVIEW)}\n`);
+      const folder = join(root, "w-\uFFFD");
+      mkdirSync(folder);
+      git(folder, "init", "-q", "-b", "main");
+      put(folder, "AGENTS.md", RAW_REVIEW);
+      git(folder, "add", "-A");
+      const folderBase = commitBase(folder);
+      const inFolder = sh(folder, `docks-kit plan base-blob '${folderBase}' AGENTS.md`, procEnv);
+      expect(inFolder.status, inFolder.stderr).toBe(0);
+      expect(inFolder.stdout, "a working folder with a U+FFFD").toBe(`${blobOf(RAW_REVIEW)}\n`);
     },
     SPAWN_TIMEOUT_MS,
   );

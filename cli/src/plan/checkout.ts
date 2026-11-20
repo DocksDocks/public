@@ -14,8 +14,6 @@ import type { FileError, SpawnError } from "./types";
 
 const BASE_BLOB_USAGE = "usage: docks-kit plan base-blob <commit> <path>";
 const CHECKOUT_STATE_USAGE = "usage: docks-kit plan checkout-state <checkout>";
-const BASE_BLOB_LOST_BYTE = "base-blob: the command line lost a byte of an argument";
-const CHECKOUT_STATE_LOST_BYTE = "checkout-state: the command line lost a byte of <checkout>";
 // The walk follows at most 40 links, as git and Linux do. This also ends a loop.
 const MAX_LINKS = 40;
 const OBJECT_ID = /^[0-9a-f]{40,64}$/;
@@ -96,7 +94,7 @@ const treeEntry = Effect.fn("plan.treeEntry")(function* (tree: string, name: str
  * from the folder that holds the link, and `..` goes to the parent of the real folder that the walk has reached.
  * Exit 1: absent (a missing path, a folder, a submodule, a file with more path parts after it, a link with an empty,
  * absolute, or outside target, or more than 40 links). Exit 2: a git failure, wrong arguments, or an argument whose
- * bytes the command line lost.
+ * bytes cannot be recovered (a U+FFFD without /proc, see `bytes.ts`).
  */
 export const baseBlob = Effect.fn("plan.baseBlob")(function* (args: ReadonlyArray<string>) {
   if (args.length !== 2 || !args[0]) {
@@ -104,11 +102,11 @@ export const baseBlob = Effect.fn("plan.baseBlob")(function* (args: ReadonlyArra
     return 2;
   }
   const bytes = yield* argumentBytes(args);
-  if (bytes === undefined) {
-    yield* printError(BASE_BLOB_LOST_BYTE);
+  if (!bytes.ok) {
+    yield* printError(`base-blob: ${bytes.cause}`);
     return 2;
   }
-  const [commit = "", target = ""] = bytes;
+  const [commit = "", target = ""] = bytes.value;
   // The root, resolved at the first lookup, then the object id of each folder that the walk has entered; `..` drops
   // the last one.
   let root: string | undefined;
@@ -176,9 +174,9 @@ interface GitFolders {
 }
 
 /**
- * A path that git takes on its command line for the folder `bytes`: the folder itself when its bytes are UTF-8,
- * otherwise a link with an ASCII name, in the scratch folder of the run, whose target holds the bytes (from the
- * working folder, when they are relative). git runs in the real folder, so a path that it prints keeps its bytes.
+ * A path that git takes on its command line for the absolute folder `bytes`: the folder itself when its bytes are
+ * UTF-8, otherwise a link with an ASCII name, in the scratch folder of the run, whose target holds the bytes. git
+ * runs in the real folder, so a path that it prints keeps its bytes.
  */
 const gitFolder = Effect.fn("plan.gitFolder")(function* (folders: GitFolders, bytes: string) {
   const text = utf8Text(bytes);
@@ -188,8 +186,7 @@ const gitFolder = Effect.fn("plan.gitFolder")(function* (folders: GitFolders, by
   folders.folder = folder;
   const link = path.join(folder, String(folders.links));
   folders.links += 1;
-  const target = bytes.startsWith("/") ? bytes : `${yield* workingFolderBytes()}/${bytes}`;
-  yield* files.symlink(Buffer.from(target, "latin1"), link);
+  yield* files.symlink(Buffer.from(bytes, "latin1"), link);
   return link;
 });
 
@@ -287,14 +284,25 @@ const checkoutListing: (
 /** The listing of the checkout that holds the argument `checkout`; the links of the run go away at its end. */
 const listCheckout = Effect.fn("plan.listCheckout")(function* (checkout: string) {
   const bytes = yield* argumentBytes([checkout]);
-  if (bytes === undefined) {
-    yield* printError(CHECKOUT_STATE_LOST_BYTE);
+  if (!bytes.ok) {
+    yield* printError(`checkout-state: ${bytes.cause}`);
     return 1 as const;
+  }
+  let folderBytes = bytes.value[0] ?? "";
+  // A relative path that is UTF-8 goes to git as it is, and git resolves it from the working folder that it inherits;
+  // other bytes reach git through a link, whose target must be absolute.
+  if (utf8Text(folderBytes) === undefined && !path.isAbsolute(folderBytes)) {
+    const working = yield* workingFolderBytes();
+    if (!working.ok) {
+      yield* printError(`checkout-state: ${working.cause}`);
+      return 1 as const;
+    }
+    folderBytes = `${working.value}/${folderBytes}`;
   }
   return yield* Effect.acquireUseRelease(
     Effect.sync((): GitFolders => ({ folder: undefined, links: 0 })),
     (folders) =>
-      gitFolder(folders, bytes[0] ?? "").pipe(
+      gitFolder(folders, folderBytes).pipe(
         Effect.flatMap((folder) => checkoutListing(folder, folders)),
       ),
     ({ folder }) =>
@@ -307,8 +315,9 @@ const listCheckout = Effect.fn("plan.listCheckout")(function* (checkout: string)
  * that holds `<checkout>`, one sorted line per path, and return 0. Lines: `<path>\t<blob id>[\tx]` for a regular file
  * (raw bytes, `x` when executable), `<path>\tlink\t<target>`, `<path>\tsubmodule\t<head>` followed by the lines of the
  * submodule under `<path>/`, `<path>\tmissing`, and `<path>\tspecial`. Paths keep their bytes, also when they are not
- * UTF-8. Exit 1: a path with a tab or a newline, a link target with a newline, or a `<checkout>` whose bytes the
- * command line lost. Exit 2: a failed command or wrong arguments. A failure prints nothing on stdout.
+ * UTF-8. Exit 1: a path with a tab or a newline, a link target with a newline, or a `<checkout>` whose bytes cannot
+ * be recovered (a U+FFFD without /proc, see `bytes.ts`). Exit 2: a failed command or wrong arguments. A failure
+ * prints nothing on stdout.
  */
 export const checkoutState = Effect.fn("plan.checkoutState")(function* (
   args: ReadonlyArray<string>,

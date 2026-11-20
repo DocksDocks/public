@@ -20,7 +20,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { PLAN_CLI_HOST_SUPPORTED, docksKitShimEnv, runPlanCommand } from "../../lib/plan/harness";
+import {
+  PATHS_ARE_BYTES,
+  PLAN_CLI_HOST_SUPPORTED,
+  UNICODE_PATHS_SKIP,
+  docksKitShimEnv,
+  runPlanCommand,
+} from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 type Env = Readonly<Record<string, string>>;
@@ -589,6 +595,38 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
       const here = runPlanCommand(["checkout-state", "."], { cwd: repo, env: GIT_ENV });
       expect(here.status, here.stderr).toBe(0);
       expect(here.stdout, "the working folder").toBe(expected);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // PLAN_CLI_PROC_ROOT (a test hook) names an empty folder, as on a Linux without a mounted /proc. git inherits the
+  // working folder itself, so only an argument with a U+FFFD needs bytes that are lost.
+  it(
+    "without /proc, a U+FFFD argument gives checkout-state status 1, and other paths still work",
+    (context) => {
+      context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
+      const root = newRoot();
+      const noProc = join(root, "no-proc");
+      mkdirSync(noProc);
+      const procEnv = { PLAN_CLI_PROC_ROOT: noProc };
+      const repo = newRepo(root, "r-\uFFFD");
+      put(repo, "a.txt", "a\n");
+      const expected = `a.txt\t${blobOf("a\n")}\n`;
+      const lost = run(repo, procEnv);
+      expect(lost.status, lost.stderr).toBe(1);
+      expect(lost.stdout).toBe("");
+      expect(lost.stderr).toBe(
+        "checkout-state: the bytes of an argument cannot be recovered without /proc\n",
+      );
+      const here = runPlanCommand(["checkout-state", "."], {
+        cwd: repo,
+        env: { ...GIT_ENV, ...procEnv },
+      });
+      expect(here.status, here.stderr).toBe(0);
+      expect(here.stdout, "a working folder with a U+FFFD").toBe(expected);
+      const plain = newRepo(root, "plain");
+      put(plain, "a.txt", "a\n");
+      expect(run(plain, procEnv).stdout, "an ASCII argument").toBe(expected);
     },
     SPAWN_TIMEOUT_MS,
   );
