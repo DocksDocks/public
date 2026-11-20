@@ -95,3 +95,19 @@ export function runHelper(
     stderr: STRICT_UTF8.decode(result.stderr),
   };
 }
+
+/**
+ * The stderr that the runtime of the selected entry writes before any helper code runs in `options.cwd`: none for
+ * `mjs`; for `docks-kit`, what `bun -e 0` writes there, such as Bun's parse error for an invalid `package.json` in
+ * that folder or a parent folder. A compiled binary writes no such text. (`bun -e ''` prints Bun's help instead of
+ * running a program, so the probe runs the expression `0`.)
+ */
+export function runtimeStderr(options: {
+  readonly cwd: string;
+  readonly env: NodeJS.ProcessEnv;
+}): string {
+  if (AGENT_DOCS_ENTRY === "mjs") return "";
+  const result = spawnSync(BUN_RUNTIME, ["-e", "0"], { cwd: options.cwd, env: options.env });
+  if (result.error !== undefined) throw result.error;
+  return STRICT_UTF8.decode(result.stderr);
+}

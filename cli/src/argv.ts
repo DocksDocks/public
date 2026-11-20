@@ -7,6 +7,7 @@ import { ompCommand } from "./commands/omp";
 import { scratchCommand } from "./commands/scratch";
 import { tidyCommand } from "./commands/tidy";
 import { planCommand } from "./commands/plan";
+import { agentDocsCommand } from "./commands/agentDocs";
 import {
   buildSurfaces,
   normalizeArgv,
@@ -34,6 +35,7 @@ export const COMMANDS = [
   scratchCommand,
   tidyCommand,
   planCommand,
+  agentDocsCommand,
 ] as const;
 
 const SURFACES: ArgvSurfaces = buildSurfaces(COMMANDS, GlobalFlag.BuiltIns);
@@ -48,11 +50,14 @@ const reject = (message: string): ArgvOutcome => ({
 export const subcommandName = (args: ReadonlyArray<string>): string | undefined =>
   scanSubcommandName(args, SURFACES);
 
-// `docks-kit plan` passes every later word to the plan dispatcher, which parses them as plan.mjs did, so a `--`
-// after the `plan` word keeps Effect from reading them as flags or adding its own refusal.
-const splicePlanBoundary = (args: ReadonlyArray<string>): ReadonlyArray<string> => {
+// `docks-kit plan` and `docks-kit agent-docs` pass every later word to their dispatcher, which parses them as the
+// former scripts did, so a `--` after the command word keeps Effect from reading them as flags or adding its own
+// refusal.
+const RAW_PASSTHROUGH: ReadonlySet<string> = new Set(["plan", "agent-docs"]);
+
+const spliceRawBoundary = (args: ReadonlyArray<string>, word: string): ReadonlyArray<string> => {
   const index = args.findIndex(
-    (token, at) => token === "plan" && subcommandName(args.slice(0, at + 1)) === "plan",
+    (token, at) => token === word && subcommandName(args.slice(0, at + 1)) === word,
   );
   return [...args.slice(0, index + 1), "--", ...args.slice(index + 1)];
 };
@@ -60,7 +65,7 @@ const splicePlanBoundary = (args: ReadonlyArray<string>): ReadonlyArray<string> 
 const passthroughBoundary = (args: ReadonlyArray<string>): ReadonlyArray<string> => {
   const word = subcommandName(args);
   if (word === "omp") return spliceOmpBoundary(args, SURFACES);
-  return word === "plan" ? splicePlanBoundary(args) : args;
+  return word !== undefined && RAW_PASSTHROUGH.has(word) ? spliceRawBoundary(args, word) : args;
 };
 
 /** Validate the argument list, then hand back the arguments Effect 4 should parse. */

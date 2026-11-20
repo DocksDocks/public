@@ -15,6 +15,7 @@ import {
   fixture,
   routed,
   run,
+  runtimeStderr,
 } from "../../lib/agentDocs/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
@@ -101,10 +102,14 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
         '{"name":"p","omp":null}\n',
         "{ no json\n",
       ]) {
-        expectRun(run("bridge-check", ["audit"], fixture({ files: { "package.json": text } })), 0, [
-          ...audit(),
-          NO_PLUGIN,
-        ]);
+        const fx = fixture({ files: { "package.json": text } });
+        // Bun reports an invalid package.json of the working folder itself before the docks-kit entry runs.
+        expectRun(
+          run("bridge-check", ["audit"], fx),
+          0,
+          [...audit(), NO_PLUGIN],
+          runtimeStderr(fx),
+        );
       }
     });
 

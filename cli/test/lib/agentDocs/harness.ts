@@ -23,7 +23,13 @@ import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { expect, onTestFinished } from "vitest";
 
-import { type Helper, type HelperResult, runHelper, usageLine } from "./entry";
+import {
+  type Helper,
+  type HelperResult,
+  runHelper,
+  runtimeStderr as entryRuntimeStderr,
+  usageLine,
+} from "./entry";
 
 /**
  * The fixtures need symlinks, a FIFO, and POSIX modes, and the helpers report
@@ -120,6 +126,11 @@ export function run(
   sub = "",
 ): HelperResult {
   return runHelper(helper, args, { cwd: join(fx.dir, sub), env: fx.env });
+}
+
+/** The stderr that the entry's runtime writes in the fixture folder before any helper code runs (see entry.ts). */
+export function runtimeStderr(fx: Fixture, sub = ""): string {
+  return entryRuntimeStderr({ cwd: join(fx.dir, sub), env: fx.env });
 }
 
 /** The stdout of a run that prints `lines`: each line ends with a newline. */

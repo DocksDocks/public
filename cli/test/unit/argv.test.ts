@@ -22,6 +22,7 @@ const REGISTERED_SUBCOMMANDS = [
   "scratch",
   "tidy",
   "plan",
+  "agent-docs",
 ] as const;
 
 describe("argument validation", () => {
@@ -323,8 +324,9 @@ describe("registered subcommands", () => {
   it.each(REGISTERED_SUBCOMMANDS)("resolves every registered subcommand: %s", (name) => {
     expect(COMMANDS.map((command) => command.name)).toEqual(REGISTERED_SUBCOMMANDS);
     expect(subcommandName([name])).toBe(name);
-    // Every word after `plan` reaches the plan dispatcher unparsed, so its own usage line answers `--help`.
-    const args = name === "plan" ? [name, "--", "--help"] : [name, "--help"];
+    // Every word after `plan` or `agent-docs` reaches its dispatcher unparsed, so its own usage line answers `--help`.
+    const raw = name === "plan" || name === "agent-docs";
+    const args = raw ? [name, "--", "--help"] : [name, "--help"];
     expect(prepareArgv([name, "--help"])).toEqual({ kind: "accept", args });
   });
 
@@ -334,5 +336,17 @@ describe("registered subcommands", () => {
       args: ["plan", "--", "show", "198", "--body"],
     });
     expect(prepareArgv(["--verbose", "plan", "list"]).kind).not.toBe("accept");
+  });
+
+  it("checks a flag before agent-docs and passes each later word to the agent-docs dispatcher", () => {
+    expect(
+      prepareArgv(["agent-docs", "bridge-check", "verify", "--expect", "docs/AGENTS.md"]),
+    ).toEqual({
+      kind: "accept",
+      args: ["agent-docs", "--", "bridge-check", "verify", "--expect", "docs/AGENTS.md"],
+    });
+    expect(prepareArgv(["--verbose", "agent-docs", "pr-template", "detect"]).kind).not.toBe(
+      "accept",
+    );
   });
 });
