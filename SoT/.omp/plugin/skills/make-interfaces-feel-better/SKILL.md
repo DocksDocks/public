@@ -15,7 +15,7 @@ metadata:
       - "2026-08-25: SKILL.md description and icons.md route accessibility semantics, keyboard, and ARIA work to accessibility"
       - "2026-08-25: SKILL.md and surfaces.md distinguish WCAG 2.2 Target Size (Minimum) AA 24×24px from 44×44px touch and 40×40px dense-desktop usability heuristics"
       - "2026-08-25: animations.md, surfaces.md, and typography.md add Contents tables required by docks reference hygiene"
-  content_hash: "8ac9d3686c4741c0f4135ce775b7326c98dec5635fc5ea29a0d73721cabc94e5"
+  content_hash: "a56580be280065fcc77b6b5cd86b8d0c4edfeac34e4c1f9d8c152b09c5ac8c03"
 ---
 
 # Details that make interfaces feel better
@@ -202,4 +202,4 @@ When there are no findings, omit the findings table, state "No actionable interf
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

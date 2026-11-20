@@ -1,6 +1,6 @@
 # install.ps1 - global docks-kit install for Windows.
 # Recommended invocation (download-then-run):
-#   Invoke-WebRequest https://raw.githubusercontent.com/DocksDocks/public/main/install.ps1 -OutFile "$env:TEMP\docks-kit-install.ps1"
+#   Invoke-WebRequest https://raw.githubusercontent.com/DocksDocks/docks-kit/main/install.ps1 -OutFile "$env:TEMP\docks-kit-install.ps1"
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\docks-kit-install.ps1"
 #   Remove-Item "$env:TEMP\docks-kit-install.ps1"
 # Installs Bun when absent, then runs `bun add -g docks-kit@latest`. The CLI

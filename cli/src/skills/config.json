@@ -4,7 +4,7 @@
     "skills": 10,
     "agents": 14
   },
-  "reportSection": "## Report a problem with this skill\n\nWhen this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.\n",
+  "reportSection": "## Report a problem with this skill\n\nWhen this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.\n",
   "sharedFiles": [
     {
       "canonical": "SoT/.omp/plugin/skills/plan-workspace/references/pull-request-template.md",

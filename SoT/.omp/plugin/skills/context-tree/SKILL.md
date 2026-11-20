@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: meta-skill
   updated: "2026-11-20"
-  content_hash: "9e495920b396f75aa2254ea646deafc2f90abe43e00147b8cd4f354d8f4df3db"
+  content_hash: "32c45cd94305f95ce56e05295dcb4352f5008845faef4bc851b6531d823b6e85"
 ---
 
 # Context Tree — per-folder AGENTS.md
@@ -175,4 +175,4 @@ Any `LOST SECTION` / `NET SHRINK` line ⇒ restore root from `"$SOURCE_BEFORE"`,
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

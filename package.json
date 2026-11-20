@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DocksDocks/public.git"
+    "url": "git+https://github.com/DocksDocks/docks-kit.git"
   },
   "bin": {
     "docks-kit": "cli/dist/docks-kit.js"

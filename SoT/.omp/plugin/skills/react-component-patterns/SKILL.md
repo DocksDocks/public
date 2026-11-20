@@ -10,7 +10,7 @@ paths:
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "f98b9f0d1e4bd749f0cac59ef27ca3eae66f176832255591fba161d1da869976"
+  content_hash: "78913b03e650651e4a0419221e503c66519405b4429ddd0d090d4ff025a84d5a"
 ---
 
 # React Component Patterns
@@ -119,4 +119,4 @@ This is the single home of the derived-state example. The full anti-pattern → 
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

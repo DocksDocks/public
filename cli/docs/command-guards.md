@@ -10,7 +10,7 @@ The policy keeps only deny rules. Where omp's critical-command check acts,
 the form is denied. omp also denies a `$` or a backtick after `git push`,
 because the agent can always write the ref literally.
 
-By owner decision (0.22.8, #126), the kit ships no omp
+By owner decision (0.22.8, DocksDocks/public#126), the kit ships no omp
 prompt rule. The kit's `bash.patterns` holds only deny rules and the `trash *`
 allow. Under omp's default `tools.approvalMode: yolo`, omp runs every
 command that no deny matches without a question, in the main session and in

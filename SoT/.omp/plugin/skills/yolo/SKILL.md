@@ -6,7 +6,7 @@ disable-model-invocation: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "18b487bb2e820c3909815d79f43bbd3cf176dbf3aaa9b9bf81b782957a8e0739"
+  content_hash: "dfb708c9766b5e4629b7490b182e88e7950a76a570c392fcb8897df1a3b48d53"
 ---
 
 # Yolo
@@ -298,4 +298,4 @@ GOOD: Fix the cause, or record the baseline failure and block, as the contract's
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

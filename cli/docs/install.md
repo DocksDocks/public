@@ -6,8 +6,8 @@ Hosts outside this matrix fail before a launcher can fall back to Bun source.
 ## 1. Repo checkout (development / current users)
 
 ```
-git clone https://github.com/DocksDocks/public.git ~/projects/public
-cd ~/projects/public
+git clone https://github.com/DocksDocks/docks-kit.git ~/projects/docks-kit
+cd ~/projects/docks-kit
 ./docks-kit sync
 ```
 
@@ -16,6 +16,20 @@ launcher prefers a compiled binary in `cli/dist/` only when its reported
 version matches `package.json`. It then falls back to Bun-from-source and
 auto-installs Bun plus `node_modules` when needed. Each launcher reports and
 bypasses an ignored stale build.
+
+### Move a checkout of DocksDocks/public
+
+The kit moved from DocksDocks/public to DocksDocks/docks-kit. To move a
+checkout of DocksDocks/public, run these commands from the checkout's root:
+
+```
+git remote set-url origin https://github.com/DocksDocks/docks-kit.git
+./docks-kit update        # Linux and macOS
+.\docks-kit.ps1 update    # Windows
+```
+
+The update pulls from DocksDocks/docks-kit and syncs. A global npm install
+needs nothing.
 
 ## 2. Global via Bun
 
@@ -52,7 +66,7 @@ a copy that lags behind the pinned release.
 ## 3. curl installer (POSIX)
 
 ```
-tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/public/main/install.sh -o "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; (exit "$rc")
+tmp="$(mktemp)" && curl -fsSL https://raw.githubusercontent.com/DocksDocks/docks-kit/main/install.sh -o "$tmp" && bash "$tmp"; rc=$?; rm -f "$tmp"; (exit "$rc")
 ```
 
 Download-then-run, never `curl | bash` — stream truncation has bitten this
@@ -64,7 +78,7 @@ installer below.
 ## 4. PowerShell installer (Windows)
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/DocksDocks/public/main/install.ps1 -OutFile "$env:TEMP\docks-kit-install.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/DocksDocks/docks-kit/main/install.ps1 -OutFile "$env:TEMP\docks-kit-install.ps1"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\docks-kit-install.ps1"
 Remove-Item "$env:TEMP\docks-kit-install.ps1"
 ```

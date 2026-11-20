@@ -3,15 +3,15 @@
 ## Unreleased - docks-kit 0.26.0: docks-kit plan, agent-docs, and skill commands
 
 The plan helper of the `plan-manager` skill is now a docks-kit command,
-written in TypeScript with Effect (#203). The skills call `docks-kit plan`
+written in TypeScript with Effect (DocksDocks/public#203). The skills call `docks-kit plan`
 instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
 `agent-first-setup`, and `claude-md-migration` skills are now the
-`docks-kit agent-docs` command (#204); the skills call it instead of
+`docks-kit agent-docs` command (DocksDocks/public#204); the skills call it instead of
 `node <skill-dir>/scripts/<helper>.mjs`. The SKILL.md validator and the
 16-point rubric of the `write-skill` skill are now the `docks-kit skill`
-command (#205); the `write-skill` and `skill-maintenance` skills call it
+command (DocksDocks/public#205); the `write-skill` and `skill-maintenance` skills call it
 instead of `node <write-skill-dir>/scripts/skill-guard.mjs`, and the kit
-gate scores the skills in the same process. These changes come from plan #198.
+gate scores the skills in the same process. These changes come from plan DocksDocks/public#198.
 
 ### Added
 
@@ -45,7 +45,7 @@ gate scores the skills in the same process. These changes come from plan #198.
 ### Changed
 
 - The npm package runs a minified JavaScript bundle of the CLI,
-  `cli/dist/docks-kit.js`, instead of the TypeScript source (#212). It starts
+  `cli/dist/docks-kit.js`, instead of the TypeScript source (DocksDocks/public#212). It starts
   about 2.5 times faster (a median of 64 against 162 ms for `--version` on
   Linux). The build minifies whitespace and syntax but not identifiers, so a
   stack trace keeps its names. The bundle's source map is attached to the
@@ -54,9 +54,15 @@ gate scores the skills in the same process. These changes come from plan #198.
   sync through the new bundle.
 - The cores of the kit plugin's verify-gate and context-tree extensions are
   TypeScript: `verify-gate-core.ts` and `context-tree-core.ts` replace the
-  `.mjs` files (#206). They behave the same, except that the verify-gate reads
+  `.mjs` files (DocksDocks/public#206). They behave the same, except that the verify-gate reads
   a hand-edited denial count that is not a number as a number, and as 0 when
   that is no finite number, so the denial file always holds a number.
+- The kit's home is DocksDocks/docks-kit (DocksDocks/public#213). The skills
+  report a problem there, and `package.json`, the installers, README, and
+  `cli/docs/install.md` name it. To move a checkout of DocksDocks/public, run
+  `git remote set-url origin https://github.com/DocksDocks/docks-kit.git` from
+  its root, then `./docks-kit update` on Linux and macOS or
+  `.\docks-kit.ps1 update` on Windows. A global npm install needs nothing.
 
 ### Removed
 
@@ -78,7 +84,7 @@ gate scores the skills in the same process. These changes come from plan #198.
 
 - `docks-kit --version` prints the version and one newline. Before, it printed
   an empty second line.
-- The context-tree nudge names nodes on Windows (#206). git prints the
+- The context-tree nudge names nodes on Windows (DocksDocks/public#206). git prints the
   repository root with `/` separators there, so the nudge compared it with no
   native folder path and named no node. The nudge now writes each node name
   with `/` separators on every platform, and on Windows a name that starts with
@@ -87,31 +93,31 @@ gate scores the skills in the same process. These changes come from plan #198.
 ## 2026-11-20 - docks-kit 0.25.0: docks skills in the kit plugin, marketplace retirement
 
 The kit plugin `docks-kit-omp` now ships the content of the former `docks`
-and `plan-lifecycle` marketplace plugins (#200). `docks-kit sync` uninstalls
+and `plan-lifecycle` marketplace plugins (DocksDocks/public#200). `docks-kit sync` uninstalls
 their user-scope installs and, when no uninstall failed, removes the `docks` marketplace; it only
 warns about a project-scope install, and it skips a step whose inventory or
-registry it cannot read (#200). The plugin payload comes
-from a folder walk, and sync writes each plugin file atomically (#199).
-`bun run check` checks the plugin content (#201). The skills report a
-problem in DocksDocks/public (#202). These changes come from plan #198.
+registry it cannot read (DocksDocks/public#200). The plugin payload comes
+from a folder walk, and sync writes each plugin file atomically (DocksDocks/public#199).
+`bun run check` checks the plugin content (DocksDocks/public#201). The skills report a
+problem in DocksDocks/public (DocksDocks/public#202). These changes come from plan DocksDocks/public#198.
 
 ### Removed
 
 - The marketplace plugins. Sync no longer installs `docks@docks` or
   `plan-lifecycle@docks` from the `docks` marketplace, and it no longer adds
-  that marketplace (#200).
+  that marketplace (DocksDocks/public#200).
 - The plugin upgrade log, its folder `~/.cache/docks-kit/omp-plugin-upgrades/`,
   the `pluginUpgrades.ts` extension, and the `/reload-plugins` upgrade advice
-  (#200). Each real sync removes the folder when it exists.
+  (DocksDocks/public#200). Each real sync removes the folder when it exists.
 
 ### Changed
 
 - The kit plugin ships the 32 docks and plan-lifecycle skills, the
   `code-reviewer` and `plan-reviewer` agents, and the `verify-gate` and
-  `context-tree-nudge` extensions (#200). They join the `workspace-hygiene`
+  `context-tree-nudge` extensions (DocksDocks/public#200). They join the `workspace-hygiene`
   skill, the `hygiene` extension, the trigger rules, and the `/cleanup`
   command, so the kit plugin holds 33 skills.
-- Each real sync tries to retire the former marketplace plugins (#200). When
+- Each real sync tries to retire the former marketplace plugins (DocksDocks/public#200). When
   it can read the omp plugin inventory, it runs
   `omp plugin uninstall --scope user <id>` for each user-scope row of
   `docks@docks` and `plan-lifecycle@docks`. For a project-scope row, it warns
@@ -125,23 +131,23 @@ problem in DocksDocks/public (#202). These changes come from plan #198.
   When the inventory cannot be read, sync warns and skips the retirement, and
   a later sync tries again.
 - The payload generator takes every file under `SoT/.omp/plugin/` from a
-  folder walk, so a new plugin file needs no list edit (#199). A payload file
+  folder walk, so a new plugin file needs no list edit (DocksDocks/public#199). A payload file
   that is not valid UTF-8 stops the generator with its path.
 - Sync writes each changed plugin file through a temporary file and a
-  rename (#199). A session that reads a skill file during a sync sees the
+  rename (DocksDocks/public#199). A session that reads a skill file during a sync sees the
   old file or the new file.
 - A dry run prints one plugin line,
   `[dry-run] sync embedded:SoT/.omp/plugin/ -> <plugin dir>`, instead of one
-  line for each file (#199).
+  line for each file (DocksDocks/public#199).
 - `bun run check` runs the plugin content checks in `cli/test/unit/plugin/`
-  (#201): the skill layout, frontmatter, report section, shared copies,
+  (DocksDocks/public#201): the skill layout, frontmatter, report section, shared copies,
   references, durable anchors, transform guard, trigger collisions, and
   score floor; the agent rules and score floor; and an import check for each
   extension. `contentHash.test.ts` checks the `metadata.content_hash` of each
   skill. After a skill edit, run
   `bun cli/scripts/skill-content-hash.ts --write` to refresh it.
 - The report section of each skill and the `report-skill-issue` skill name
-  DocksDocks/public as the report target (#202). A report gives the
+  DocksDocks/public as the report target (DocksDocks/public#202). A report gives the
   docks-kit version (`docks-kit --version`), and the release tags have the
   form `cli-v<version>`. The skills name the docks-kit kit plugin instead of
   the `docks` and `plan-lifecycle` plugins.
@@ -166,7 +172,7 @@ docks-kit now manages omp only. `docks-kit sync` syncs omp. Sync writes no
 `PI_CONFIG_DIR`, `PI_CODING_AGENT_DIR`, and `XDG_DATA_HOME`, so an override
 that points into one of those folders makes omp's files go there. Sync also
 writes the kit plugin to `~/.docks-kit/omp-plugin`. This version completes
-the sync part of plan #179 (#183). It also changes the omp settings (#184):
+the sync part of plan DocksDocks/public#179 (DocksDocks/public#183). It also changes the omp settings (DocksDocks/public#184):
 it turns on two omp 19.0.0 tools and returns 18 kit overrides to the omp
 defaults.
 
@@ -216,12 +222,12 @@ defaults.
 - Sync no longer repairs or removes the `~/.claude/skills/<name>` links. The
   0.23.0 entry named these links as the one exception in its list of files
   that stay on your machine. That exception ends with this version.
-- `SoT/.omp/config.yml` turns on two omp 19.0.0 tools (#184): `ast_grep`
+- `SoT/.omp/config.yml` turns on two omp 19.0.0 tools (DocksDocks/public#184): `ast_grep`
   (`astGrep.enabled: true`), and `checkpoint` with `rewind`
   (`checkpoint.enabled: true`). `rewind` restores the conversation only. It
   does not restore files, git state, artifacts, or processes, and a new rule
   line in `SoT/.omp/AGENTS.md` says so.
-- 18 kit overrides return to the omp 19.0.0 defaults (#184):
+- 18 kit overrides return to the omp 19.0.0 defaults (DocksDocks/public#184):
   `task.maxConcurrency`, `task.maxEffort`, `task.maxRuntimeMs`,
   `task.agentIdleTtlMs`, `task.enableLsp`, `task.eager`,
   `task.showResolvedModelBadge`, `find.enabled`,
@@ -277,11 +283,11 @@ do not use.
 
 ## 2026-11-19 - docks-kit 0.23.0: Codex and Claude Code removal, omp trigger-rule fix
 
-docks-kit moves to managing omp only (plan #179). 0.23.0 is the first part of
+docks-kit moves to managing omp only (plan DocksDocks/public#179). 0.23.0 is the first part of
 that change. It removes Codex and Claude Code support, moves omp to 19.0.0, and
 fixes the omp trigger rules that froze sessions. The 0.22.29 changes below were
 not published on their own; they ship in 0.23.0. A later version makes `sync`
-omp-only (#183) and changes the omp settings (#184).
+omp-only (DocksDocks/public#183) and changes the omp settings (DocksDocks/public#184).
 
 ### Removed
 
@@ -371,7 +377,7 @@ Claude Code:
 ### Fixed
 
 - The omp trigger rules no longer freeze an omp session while a large tool
-  call streams (plan #187). omp 19.0.0 tests every rule condition on the
+  call streams (plan DocksDocks/public#187). omp 19.0.0 tests every rule condition on the
   tool-call buffer at each streamed delta, on its main thread. Each condition
   started with a lookbehind that walked back over the whole buffer from every
   position. On a 20 KB bash command or eval cell with many `\"` escapes, one
@@ -477,7 +483,7 @@ Claude Code:
   `openai-codex/gpt-6.2-sol:medium`. The `astra` role and the Fable retry chain
   move from GPT-6 Astra to `openai-codex/gpt-6.2-astra:xhigh`, and the switcher
   tag reads `GPT-6.2 Astra`. The `reviewer` role stays on GPT-6.1 Terra `high`,
-  because the review benchmark of #130 chose that model, and omp 18.22.2 lists
+  because the review benchmark of DocksDocks/public#130 chose that model, and omp 18.22.2 lists
   no GPT-6.2 Terra.
 - The Astra ladder override in `SoT/.omp/models.yml` moves from the
   `gpt-6-astra` key to `gpt-6.2-astra`. Sync prunes the deployed
@@ -506,7 +512,7 @@ Claude Code:
   delegated decision and each write that relies on the grant. A grant never
   answers the Mode, a non-local effect, the merge, a destructive action,
   secrets, production, a temporary workaround, or a fact that only the user
-  holds (#172).
+  holds (DocksDocks/public#172).
 - The rules also say that a settled plan Mode covers the routine
   plan-lifecycle writes in the resolved repository: the plan issue, plan
   edits, review comments, and each other issue or comment that the
@@ -713,7 +719,7 @@ Claude Code:
 
 ### Fixed
 
-These fixes close #163.
+These fixes close DocksDocks/public#163.
 
 - A writing `docks-kit sync omp` now holds `.docks-kit-sync-lock.db` in the
   omp agent folder, the omp intercom folder, and the omp data root. Two homes
@@ -746,7 +752,7 @@ These fixes close #163.
 
 ### Fixed
 
-These fixes close #159.
+These fixes close DocksDocks/public#159.
 
 - `docks-kit tidy --apply` now holds an SQLite lock,
   `~/.cache/docks-kit/tidy-lock.db`. The lock is a `BEGIN IMMEDIATE`
@@ -805,7 +811,7 @@ These fixes close #159.
 ### Fixed
 
 - On Windows, the omp hygiene extension no longer throws at session start
-  when another omp process deletes or holds a sweep claim file (#157). A new
+  when another omp process deletes or holds a sweep claim file (DocksDocks/public#157). A new
   open of a file whose delete is pending fails with EPERM. A delete of a file
   that another process holds without delete sharing fails with EBUSY. The
   extension now treats these codes as contention, as the `docks-kit tidy`
@@ -838,7 +844,7 @@ These fixes close #159.
 ### Fixed
 
 - `docks-kit omp --fast` now keeps a symlinked `~/.omp/agent/config.yml` a
-  link and writes the toggled tier into the file that the link names (#150).
+  link and writes the toggled tier into the file that the link names (DocksDocks/public#150).
   Before, it replaced the link with a regular file.
 - When `sync omp` prunes retired entries from `config.yml` or `models.yml`, it
   now writes the file atomically with mode 0600 and backs it up to `.bak`
@@ -872,7 +878,7 @@ These fixes close #159.
 ### Fixed
 
 - A documentation audit found about 100 claims that no longer matched the
-  code, the SoT, or the tests (#147). The corrections cover the root
+  code, the SoT, or the tests (DocksDocks/public#147). The corrections cover the root
   `AGENTS.md`, `CLAUDE.md`, and `README.md`, `docs/PLAN.md`,
   `cli/src/engine-native/DESIGN.md`, the `docks-kit docs` topics and their
   summaries, the kit-mechanic skills and their references, and the Claude Code
@@ -896,7 +902,7 @@ These fixes close #159.
 ### Fixed
 
 - The omp hygiene extension no longer applies a `cd`, `pushd`, `export`, or
-  `unset` that may not run to the commands after it (#143, #145). Before,
+  `unset` that may not run to the commands after it (DocksDocks/public#143, DocksDocks/public#145). Before,
   `true || cd /a; git worktree add wt` recorded `/a/wt`, and
   `true || export DOCKER_HOST=ssh://dev; docker compose -p app up -d` gave a
   cleanup command for the `ssh://dev` daemon, where another project with the
@@ -930,7 +936,7 @@ These fixes close #159.
   `docker run -d` command starts, also when omp adds a notice after the
   command output. omp adds `Wall time: N seconds` to each command that runs
   1 s or longer. Before, a slow `docker run -d` got only the generic note
-  (#142).
+  (DocksDocks/public#142).
 - The extension now reads a container ID only from output that the
   `docker run -d` command owns. The `mktemp` and `docks-kit scratch new` paths
   already use this rule. Before, the extension could take an ID that another
@@ -962,7 +968,7 @@ These fixes close #159.
 ### Changed
 
 - A test on omp 18.16.0 asked if `/reload-plugins` repairs a running session
-  after an upgrade removed its plugin folder (#139). After the upgrade, the
+  after an upgrade removed its plugin folder (DocksDocks/public#139). After the upgrade, the
   session lost the plugin agent, but `skill://` resolved the skill to the new
   folder. After `/reload-plugins`, the agent and the skill both gave the new
   version.
@@ -989,7 +995,7 @@ These fixes close #159.
 
 - omp deletes the previous plugin folder on `omp plugin upgrade`. A running omp
   session then loses the plugin agents and skill script paths of that folder
-  (#129). For each marketplace upgrade that changes the version,
+  (DocksDocks/public#129). For each marketplace upgrade that changes the version,
   `docks-kit sync omp` now prints a warning that names the plugin and the
   version change. The next step asks the user to restart running omp sessions.
 - Sync writes one event file for each such upgrade into
@@ -1032,7 +1038,7 @@ These fixes close #159.
   `tier.anthropic` to the SoT value `none`. `/fast on` in an Opus session sets the
   Anthropic tier to `priority` for that session, and the reviewers inherit it.
   Use `docks-kit omp --fast` and a new session to keep Anthropic models normal.
-- The user chose this setting (#134). In the #130 benchmark, Terra `high` on
+- The user chose this setting (DocksDocks/public#134). In the DocksDocks/public#130 benchmark, Terra `high` on
   the fast tier let 35.15 known defects per 50 escape, against 34.90 on the
   normal tier. A fast review took a median of 35.7 s, against 69.3 s.
 - Restart open omp sessions after `docks-kit sync omp`.
@@ -1050,7 +1056,7 @@ These fixes close #159.
 - The reviewer fallback changes from `anthropic/claude-opus-5-5:xhigh` to
   `anthropic/claude-opus-5-5:high`.
 - The user set the effort `high`. A review benchmark chose the model and the
-  tier (#130): 24 held-out review cases, 2 runs each, `gpt-6.1-sol` and
+  tier (DocksDocks/public#130): 24 held-out review cases, 2 runs each, `gpt-6.1-sol` and
   `gpt-6.1-terra` at `high` on both tiers. Terra on the `default` tier let the
   fewest known defects escape. No other setting stayed within the
   pre-registered bounds. A Terra review took a median of 69.3 s, against
@@ -1099,7 +1105,7 @@ These fixes close #159.
   `origin main` or `origin master`. A force push to `main` in another
   spelling, such as `git push origin main --force` or
   `git push --force-with-lease origin main`, now runs.
-- This fixes #126. A read such as `git config --get core.hooksPath` no longer
+- This fixes DocksDocks/public#126. A read such as `git config --get core.hooksPath` no longer
   asks. A command whose argument text names git and the hooks key, such as
   `gh issue create --title`, no longer asks either.
 - `docks-kit sync omp` removes the 492 former kit prompt rules from
@@ -1154,7 +1160,7 @@ These fixes close #159.
 ### Changed
 
 - omp no longer stops on an approval prompt for a `git push` with a `$`
-  variable or a backtick substitution (#120). An example is
+  variable or a backtick substitution (DocksDocks/public#120). An example is
   `B=$(git branch --show-current) && git push -u origin "$B"`. omp now denies
   that command. The agent reads the refusal, writes the ref literally, and
   pushes without a question. The deployed omp instructions name
@@ -1207,7 +1213,7 @@ These fixes close #159.
 ### Fixed
 
 - `docks-kit sync claude` no longer waits without a limit for
-  `rust-analyzer --version` (#114). On the GitHub macOS 26 arm64 runner image,
+  `rust-analyzer --version` (DocksDocks/public#114). On the GitHub macOS 26 arm64 runner image,
   that command took 20 s, and a rustup proxy can wait on a download. Each
   `<tool> --version` probe, except the Bun and omp probes, now stops after
   60 s, and the tool version then reads as unknown. When the rust-analyzer
@@ -1219,7 +1225,7 @@ These fixes close #159.
 
 ### Fixed
 
-- omp asks before a git command that skips the repository's hooks (#111).
+- omp asks before a git command that skips the repository's hooks (DocksDocks/public#111).
   Before, an agent ran `git push --no-verify` past a failing pre-push hook
   without a prompt. The new `bash.patterns` prompt rules cover each unique
   prefix of `--no-verify` in `git push`, `git commit`, `git merge`,
@@ -1238,7 +1244,7 @@ These fixes close #159.
 
 - The deployed omp global instructions (`SoT/.omp/AGENTS.md`) tell the agent
   to write each `git push` ref as literal text, not as a `$` variable or a
-  backtick substitution (#108). To delete several remote branches, the agent
+  backtick substitution (DocksDocks/public#108). To delete several remote branches, the agent
   lists them in one `git push origin --delete` command. Before, an agent that
   deleted branches in a loop with `git push origin --delete $b` got an
   approval prompt on each run. The omp guard asks for every `git push` word
@@ -1251,7 +1257,7 @@ These fixes close #159.
 ### Removed
 
 - docks-kit no longer supports macOS x64 (Intel Macs) or Windows arm64
-  (#105). No release download used their binaries. A release now builds
+  (DocksDocks/public#105). No release download used their binaries. A release now builds
   four binaries, `docks-kit-linux-x64`, `docks-kit-linux-arm64`,
   `docks-kit-darwin-arm64`, and `docks-kit-windows-x64.exe`, plus
   `SHA256SUMS`. The engine gate (exit 2) and both launchers (exit 1) stop a
@@ -1263,7 +1269,7 @@ These fixes close #159.
   install the package, and stop a host outside the support matrix with
   exit 1. Before, such a host installed the package and failed only at its
   first sync.
-- `docks-kit harnesses` opens a new checklist picker (#104). Enter or Space
+- `docks-kit harnesses` opens a new checklist picker (DocksDocks/public#104). Enter or Space
   ticks the harness under the cursor, a Save row stores the selection, a hint
   line names the keys, and Escape leaves the selection unchanged. The picker
   fits the terminal width, uses ASCII on an old Windows console, and drops
@@ -1279,7 +1285,7 @@ These fixes close #159.
   `docks-kit scratch remove <path>` before the trash rule, which now covers
   every other path. `gio trash` refuses a path on a `tmpfs` `/tmp`, so an
   agent that followed the trash rule failed on each temporary file there
-  (#93). The creation rule also names temporary files: put them in a scratch
+  (DocksDocks/public#93). The creation rule also names temporary files: put them in a scratch
   directory, never in `/tmp`. The `workspace-hygiene` skill, the
   `scratch_new` and `scratch_remove` tool descriptions, the extension
   reminder, `docks-kit docs command-guards`, the README, and the
@@ -1293,7 +1299,7 @@ These fixes close #159.
   command under `env` with an option other than `-u NAME` also records
   nothing. The extension cannot know the directory or the Docker daemon of
   these commands.
-- `docks-kit omp` now enforces the free session at launch (#53). It rejects a
+- `docks-kit omp` now enforces the free session at launch (DocksDocks/public#53). It rejects a
   forwarded `--config`, `--model`, `--smol`, `--slow`, `--plan`, `--models`,
   `--provider`, `--prewalk-into`, or `--plan-yolo-into` with exit 2. It
   starts `omp launch` with an explicit `--model`, so a forwarded subcommand
@@ -1304,13 +1310,13 @@ These fixes close #159.
   model. The catalog check covers each profile that the launch can select.
   Run `omp` directly for an omp subcommand or a paid model.
 - The `docks-kit-omp` extension records no Docker stack or container after a
-  command that changes the daemon variables in a way it cannot follow (#100).
+  command that changes the daemon variables in a way it cannot follow (DocksDocks/public#100).
   Such commands include `unset "$name"`, `export -n`, `export "$v=..."`,
   `declare`, `source`, and `eval`. Before, the cleanup command of a later
   `docker compose up -d` could name the wrong daemon. A literal
   `unset DOCKER_HOST` or `unset -v DOCKER_HOST` still records the stack.
 - On Windows, `docks-kit tidy` reports that another run holds the lock when
-  the lock file is in the delete-pending state (#101). Before, the run
+  the lock file is in the delete-pending state (DocksDocks/public#101). Before, the run
   stopped with `EPERM`. Windows refuses a new file with the name of a deleted
   file while a handle to that file is open. Other errors still stop the run.
 
@@ -2198,7 +2204,7 @@ Every runtime code fix has a regression test.
 
 ## 2026-09-08 — Refactor pass: dead code, duplication, and module boundaries in `cli/src`
 
-- Removed dead code found by the repository-wide refactor audit (plan #32):
+- Removed dead code found by the repository-wide refactor audit (plan DocksDocks/public#32):
   unused effort type aliases in `cli/src/efforts.ts`, the unused
   `toolchainManifest` reader in `cli/src/manifests.ts`, an unused
   `commandExists` import in `ompSync.ts`, the `writeFileIfChanged` alias, and
@@ -2639,7 +2645,7 @@ Note: `sync.sh` rsyncs hooks without `--delete`, so a previously-synced `~/.clau
 
 Deeper research (prompted by "the disables don't work") found the `disable-claudeai-connectors.sh` hook is **non-functional**: it patches `disabledMcpServers`, which gates only `.mcp.json`/`claude mcp add` servers — claude.ai cloud connectors are fetched from the account at startup and consult no local config. The actual fix is `ENABLE_CLAUDEAI_MCP_SERVERS=false` as a **shell** env var (the official method); it's inert only in the settings.json `env` block, which the kit had conflated with "broken".
 
-- **lib/claude.sh**: new `claude::sync_connector_env` (wired into `claude::sync`) idempotently appends `export ENABLE_CLAUDEAI_MCP_SERVERS=false` to the user's shell rc (`~/.zshrc` for zsh, `~/.bashrc` for bash, `~/.profile` otherwise), multi-platform and bash-3.2-safe. Verifies-if-present across common rc files before adding; never clobbers an existing value (set `=true` to keep connectors). Surgical — disables only claude.ai connectors (MCP source #5); plugin/project/user servers (supabase, n8n, `.mcp.json`) are untouched. Respects `--dry-run`. Validated: syntax, idempotency, dry-run no-write, non-clobber, and the `sync.sh --claude --dry-run` wire-in.
+- **lib/claude.sh**: new `claude::sync_connector_env` (wired into `claude::sync`) idempotently appends `export ENABLE_CLAUDEAI_MCP_SERVERS=false` to the user's shell rc (`~/.zshrc` for zsh, `~/.bashrc` for bash, `~/.profile` otherwise), multi-platform and bash-3.2-safe. Verifies-if-present across common rc files before adding; never clobbers an existing value (set `=true` to keep connectors). Surgical — disables only claude.ai connectors (MCP source no. 5); plugin/project/user servers (supabase, n8n, `.mcp.json`) are untouched. Respects `--dry-run`. Validated: syntax, idempotency, dry-run no-write, non-clobber, and the `sync.sh --claude --dry-run` wire-in.
 - **CLAUDE.md**: corrected the Hooks bullet and the Open Concern — the env-var shell export is the working fix; the `disabledMcpServers` hook is documented as non-functional and slated for removal; `--strict-mcp-config` recorded as the all-or-nothing fallback.
 
 Hook deletion (script + SessionStart entry) deferred until the env-var fix is confirmed clearing `/mcp` on a real account.

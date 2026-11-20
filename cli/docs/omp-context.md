@@ -124,7 +124,7 @@ keys carries a kit value that differs from the default omp already applies.
 
 ## omp 19.0.0 tools and returned overrides
 
-The owner made these decisions on 2026-11-19 (#184). They apply from 0.24.0.
+The owner made these decisions on 2026-11-19 (DocksDocks/public#184). They apply from 0.24.0.
 
 ### Tools that the kit turns on
 

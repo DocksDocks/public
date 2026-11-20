@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: micro-skill
   updated: "2026-11-20"
-  content_hash: "b8d0d6de74511183695cd42113b945ac97367bbf87d6b5da03f64d021ee98c79"
+  content_hash: "c1dc115666456be1147acd12c69ec28df729d51161f578a462feb7eb35a33200"
 ---
 
 # Zoom Out
@@ -96,4 +96,4 @@ Pattern adapted from Matt Pocock's `zoom-out` skill (MIT; since removed upstream
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

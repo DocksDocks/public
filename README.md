@@ -11,8 +11,8 @@ Supported harness: **Oh My Pi (`omp`)**.
 ## Quick start
 
 ```bash
-git clone https://github.com/DocksDocks/public.git ~/projects/public
-cd ~/projects/public
+git clone https://github.com/DocksDocks/docks-kit.git ~/projects/docks-kit
+cd ~/projects/docks-kit
 ./docks-kit sync            # deploy the omp SoT
 ./docks-kit sync --dry-run  # preview the sync without a write
 ./docks-kit toolchain       # doctor view: verified-version floors for external tools
@@ -39,6 +39,20 @@ Source and global installs require Bun. An npm-global install needs npm.
 upstream installer when Bun is absent: by the POSIX launcher and installer, and
 by sync's Bun bootstrap, which a release binary can also run. The Windows
 launcher and installer use Invoke-WebRequest.
+
+### Move a checkout of DocksDocks/public
+
+The kit moved from DocksDocks/public to DocksDocks/docks-kit. To move a
+checkout of DocksDocks/public, run these commands from the checkout's root:
+
+```
+git remote set-url origin https://github.com/DocksDocks/docks-kit.git
+./docks-kit update        # Linux and macOS
+.\docks-kit.ps1 update    # Windows
+```
+
+The update pulls from DocksDocks/docks-kit and syncs. A global npm install
+needs nothing.
 
 ## CLI
 
@@ -125,7 +139,7 @@ marketplace when no uninstall failed and it can read the marketplace registry.
 It only warns about a project-scope install, with the manual command. When a
 read fails, sync warns and skips that step, and a later sync tries again.
 Report a problem with a skill, an agent, or the kit in
-[DocksDocks/public](https://github.com/DocksDocks/public/issues).
+[DocksDocks/docks-kit](https://github.com/DocksDocks/docks-kit/issues).
 
 ## Repository map
 
@@ -160,7 +174,7 @@ Tagging `cli-v*` builds four standalone binaries: `docks-kit-linux-x64`,
 bundle's source map `docks-kit.js.map` to the GitHub release. npm publishes the
 exact package tarball through trusted publishing with OIDC provenance.
 Published binaries, checksums, and release notes are available on
-[GitHub Releases](https://github.com/DocksDocks/public/releases).
+[GitHub Releases](https://github.com/DocksDocks/docks-kit/releases).
 Each `docks-kit` npm release runs one minified JavaScript bundle of the CLI and
 its generated payload (`cli/dist/docks-kit.js`), so releases are versioned config
 snapshots without shipping the authoring `SoT/` tree. The package does not ship

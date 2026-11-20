@@ -523,7 +523,7 @@ At `high`, Sol produces about 19% more tokens per second than Terra. At
 `xhigh`, the gain is about 24%. Sol also has the lower TTFT and end-to-end
 time at both levels.
 
-The `reviewer` role stays on GPT-6.1 Terra `high`. The #130 benchmark chose
+The `reviewer` role stays on GPT-6.1 Terra `high`. The DocksDocks/public#130 benchmark chose
 Terra by escaped defects, not by speed. omp 18.22.2 lists no GPT-6.2 Terra. A
 move of the reviewer to GPT-6.2 Sol needs a new benchmark.
 

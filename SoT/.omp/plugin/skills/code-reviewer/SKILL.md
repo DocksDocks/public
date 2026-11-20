@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "8e7bd2cc199b53e96fb15654477fa39d5809b0c90109f6ce83c276a2b53aaf03"
+  content_hash: "39c98d1504b9616fdedf77fed3dcb2e2c3ad656aa1169225bb96616e9b22482b"
 ---
 
 # Code Reviewer
@@ -254,4 +254,4 @@ GOOD: - [LOW] Bug - lib/args.mjs:22 - Unreached: split() breaks a quoted value t
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks-kit repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
