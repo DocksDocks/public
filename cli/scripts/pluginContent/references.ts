@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { findSkillFiles, pluginDir, skillsDir } from "./frontmatter.ts";
 
 /**
@@ -94,13 +94,25 @@ export function checkReferences(repoRoot: string): Array<string> {
   return failures;
 }
 
-/** Each markdown file below `dir`. The walk skips symbolic links, `.git`, and `node_modules`. */
-function markdownFiles(dir: string, out: Array<string> = []): Array<string> {
+/** Folder names that the docks anchor guard skipped, and the kit build output folders. */
+const SKIPPED_NAMES: ReadonlyArray<string> = [
+  ".git",
+  "node_modules",
+  "target",
+  ".claude",
+  ".codex",
+];
+const SKIPPED_PATHS: ReadonlyArray<string> = ["cli/dist", "cli/dist-test"];
+
+/** Each markdown file below `root`. The walk skips symbolic links and the skipped folders. */
+function markdownFiles(root: string, dir: string = root, out: Array<string> = []): Array<string> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.isSymbolicLink()) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name !== ".git" && entry.name !== "node_modules") markdownFiles(full, out);
+      const skipped =
+        SKIPPED_NAMES.includes(entry.name) || SKIPPED_PATHS.includes(shown(root, full));
+      if (!skipped) markdownFiles(root, full, out);
     } else if (entry.name.endsWith(".md")) out.push(full);
   }
   return out;
@@ -109,11 +121,12 @@ function markdownFiles(dir: string, out: Array<string> = []): Array<string> {
 const ANCHOR = /[A-Za-z0-9_./-]+\.[a-z]{1,5}:\d+/gi;
 
 /**
- * Shipped markdown text does not carry a live `path:line` anchor: an anchor
- * whose path resolves to a file in this repository goes stale on the next edit
- * above that line. A fictional path, such as `src/api/users.ts:87`, does not
- * resolve and passes. An existing path outside the repository is an external
- * reference and passes too.
+ * Long-lived text does not carry a live `path:line` anchor: an anchor whose
+ * path resolves to a file in this repository goes stale on the next edit above
+ * that line. The scope is each markdown file of the kit plugin and each
+ * `AGENTS.md` node of the repository. A fictional path, such as
+ * `src/api/users.ts:87`, does not resolve and passes. An existing path outside
+ * the repository is an external reference and passes too.
  */
 export function checkDurableAnchors(repoRoot: string): Array<string> {
   const root = resolve(repoRoot);
@@ -122,7 +135,10 @@ export function checkDurableAnchors(repoRoot: string): Array<string> {
     return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
   };
   const failures: Array<string> = [];
-  for (const file of markdownFiles(pluginDir(root)).sort()) {
+  const plugin = pluginDir(root);
+  const inScope = (file: string): boolean =>
+    basename(file) === "AGENTS.md" || !relative(plugin, file).startsWith("..");
+  for (const file of markdownFiles(root).filter(inScope).sort()) {
     const lines = readFileSync(file, "utf8").split("\n");
     for (const [index, line] of lines.entries()) {
       for (const hit of line.match(ANCHOR) ?? []) {

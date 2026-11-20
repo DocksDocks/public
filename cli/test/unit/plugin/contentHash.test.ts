@@ -77,12 +77,15 @@ describe("kit plugin skill content hash", () => {
     expect(checkContentHashes(skills)).toEqual([
       { name: "accessibility", reason: "content changed" },
     ]);
-    expect(writeContentHashes(skills, "2030-05-06")).toEqual(["accessibility"]);
+    expect(writeContentHashes(skills, "2030-05-06")).toEqual({
+      written: ["accessibility"],
+      failures: [],
+    });
     const written = readFileSync(file, "utf8");
     expect(written).toContain('  updated: "2030-05-06"');
     expect(written).toContain(`  content_hash: "${hashSkill(join(skills, "accessibility"))}"`);
     expect(checkContentHashes(skills)).toEqual([]);
-    expect(writeContentHashes(skills, "2030-05-07")).toEqual([]);
+    expect(writeContentHashes(skills, "2030-05-07")).toEqual({ written: [], failures: [] });
   });
 
   it("finds a skill without a stored hash", () => {
@@ -123,6 +126,61 @@ describe("skill-content-hash script", () => {
     const fresh = runScript("--check", "--root", skills);
     expect(fresh.stderr).toBe("");
     expect(fresh.status).toBe(0);
+  });
+
+  /** The metadata block of the live accessibility skill, which a test replaces. */
+  const METADATA_BLOCK = /^metadata:\n(?: {2}.*\n)+/m;
+
+  it("refuses a flow mapping metadata and leaves the file unchanged", () => {
+    const skills = copySkills();
+    const file = join(skills, "accessibility", "SKILL.md");
+    edit(file, (text) =>
+      text
+        .replace(METADATA_BLOCK, 'metadata: { pattern: tool-wrapper, updated: "2026-01-01" }\n')
+        .replace("# ", "# Changed "),
+    );
+    const before = readFileSync(file, "utf8");
+    const write = runScript("--write", "--root", skills);
+    expect(write.status).toBe(1);
+    expect(write.stderr).toContain(
+      "accessibility: metadata is not a block mapping; edit it by hand",
+    );
+    expect(readFileSync(file, "utf8")).toBe(before);
+  });
+
+  it("writes only the direct children of metadata", () => {
+    const skills = copySkills();
+    const file = join(skills, "accessibility", "SKILL.md");
+    edit(file, (text) =>
+      text
+        .replace(
+          "  pattern: tool-wrapper\n",
+          '  pattern: tool-wrapper\n  source:\n    updated: "1999-01-01"\n',
+        )
+        .replace("# ", "# Changed "),
+    );
+    const write = runScript("--write", "--root", skills);
+    expect(write.status).toBe(0);
+    const written = readFileSync(file, "utf8");
+    expect(written).toContain('  source:\n    updated: "1999-01-01"\n');
+    expect(written).not.toContain('  updated: "2026-10-23"');
+    expect(written).toMatch(/^ {2}updated: "\d{4}-\d{2}-\d{2}"$/m);
+    expect(runScript("--check", "--root", skills).status).toBe(0);
+  });
+
+  it("adds a metadata block to a skill that has none", () => {
+    const skills = copySkills();
+    const file = join(skills, "accessibility", "SKILL.md");
+    edit(file, (text) => text.replace(METADATA_BLOCK, ""));
+    const write = runScript("--write", "--root", skills);
+    expect(write.status).toBe(0);
+    expect(write.stdout).toContain("wrote accessibility");
+    expect(readFileSync(file, "utf8")).toMatch(
+      /^metadata:\n {2}updated: "\d{4}-\d{2}-\d{2}"\n {2}content_hash: "[0-9a-f]{64}"\n---\n/m,
+    );
+    const check = runScript("--check", "--root", skills);
+    expect(check.stderr).toBe("");
+    expect(check.status).toBe(0);
   });
 
   it("exits 2 on a bad argument or a missing root", () => {

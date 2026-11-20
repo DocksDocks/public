@@ -266,6 +266,19 @@ describe("kit plugin skills: references", () => {
     edit(root, skillFile("accessibility"), (text) => `${text}\nSee AGENTS.md:42.\n`);
     expectFailure(checkDurableAnchors(root), skillFile("accessibility"), "`AGENTS.md:42`");
   });
+
+  it("fails an anchor in an AGENTS.md node and skips the folders the guard skips", () => {
+    const root = copyFixture();
+    plant(root, "cli/src/main.ts", "export {};\n");
+    for (const skipped of ["node_modules/pkg", ".git", "cli/dist", "cli/dist-test"]) {
+      plant(root, `${skipped}/AGENTS.md`, "See cli/src/main.ts:42.\n");
+    }
+    expect(checkDurableAnchors(root)).toEqual([]);
+    plant(root, "cli/AGENTS.md", "# CLI\n\nSee cli/src/main.ts:42.\n");
+    expect(checkDurableAnchors(root)).toEqual([
+      "cli/AGENTS.md:3: live line anchor `cli/src/main.ts:42`",
+    ]);
+  });
 });
 
 describe("kit plugin skills: transform guard", () => {

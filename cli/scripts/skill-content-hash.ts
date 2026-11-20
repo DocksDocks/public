@@ -48,7 +48,9 @@ if (modes[0] === "--check") {
   }
   console.log(`content hashes in sync: ${root}`);
 } else {
-  const written = writeContentHashes(root);
+  const { written, failures } = writeContentHashes(root);
   for (const name of written) console.log(`wrote ${name}`);
   console.log(`${written.length} skill(s) refreshed: ${root}`);
+  for (const failure of failures) console.error(failure);
+  if (failures.length > 0) process.exit(1);
 }

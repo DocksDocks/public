@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { skillDirs } from "./frontmatter.ts";
+import { extractFrontmatter, mappingField, parseFrontmatter, skillDirs } from "./frontmatter.ts";
 
 /**
  * The skill content hash of DocksDocks/docks (`scripts/skills/content-hash.mjs`),
@@ -67,11 +67,9 @@ function strippedSkillText(content: string): string {
   return kept.map((line) => `${line}\n`).join("");
 }
 
-/** The content hash of the skill in `dir`. */
-export function hashSkill(dir: string): string {
-  const file = join(dir, "SKILL.md");
-  if (!existsSync(file)) throw new Error(`${file} not found`);
-  let assembled = strippedSkillText(readFileSync(file, "utf8"));
+/** The content hash of the skill in `dir`, with `skillText` as its SKILL.md text. */
+function hashSkillText(dir: string, skillText: string): string {
+  let assembled = strippedSkillText(skillText);
   const referencesDir = join(dir, "references");
   if (existsSync(referencesDir) && statSync(referencesDir).isDirectory()) {
     for (const name of readdirSync(referencesDir)
@@ -82,6 +80,13 @@ export function hashSkill(dir: string): string {
     }
   }
   return createHash("sha256").update(normalize(assembled), "utf8").digest("hex");
+}
+
+/** The content hash of the skill in `dir`. */
+export function hashSkill(dir: string): string {
+  const file = join(dir, "SKILL.md");
+  if (!existsSync(file)) throw new Error(`${file} not found`);
+  return hashSkillText(dir, readFileSync(file, "utf8"));
 }
 
 /** The stored `content_hash` value of the skill in `dir`, or "" when it has none. */
@@ -104,74 +109,132 @@ export function checkContentHashes(skillsRoot: string): Array<StaleSkill> {
   return stale;
 }
 
+type Edited =
+  | { readonly ok: true; readonly text: string }
+  | { readonly ok: false; readonly error: string };
+
+const NOT_BLOCK = "metadata is not a block mapping; edit it by hand";
+
+/** The leading spaces and tabs of a line. */
+const indentOf = (line: string): string => /^[ \t]*/.exec(line)?.[0] ?? "";
+
 /**
- * Write `hash` and the date `today` into the `metadata` block of the SKILL.md
- * in `dir`. The hash leaves out `updated:`, so the date is set here, where the
- * meaning changed: the stored date and the stored hash then describe the same
- * edit. A SKILL.md without a `metadata:` block does not change.
+ * Set `metadata.updated` and `metadata.content_hash` in the frontmatter of
+ * `content`. The edit changes only direct children of a block-style
+ * `metadata:` mapping, at the exact indent of its first child, and adds a
+ * missing child after the last line of the block. Without a `metadata:` key,
+ * it adds the block before the closing `---`. It refuses each other shape,
+ * such as a flow mapping, because a line edit of it can make invalid YAML.
  */
-function writeHash(dir: string, hash: string, today: string): void {
-  const file = join(dir, "SKILL.md");
-  const lines = readFileSync(file, "utf8").split("\n");
-  const updatedLine = `  updated: "${today}"`;
-  const hashLine = `  content_hash: "${hash}"`;
-  const out: Array<string> = [];
-  let inFrontmatter = false;
-  let inMetadata = false;
-  let hashDone = false;
+function withHash(content: string, hash: string, today: string): Edited {
+  const lines = content.split("\n");
+  if (lines[0] !== "---")
+    return { ok: false, error: "SKILL.md has no frontmatter; edit it by hand" };
+  const close = lines.indexOf("---", 1);
+  if (close === -1) return { ok: false, error: "frontmatter fence is not closed; edit it by hand" };
+  const updated = `updated: "${today}"`;
+  const contentHash = `content_hash: "${hash}"`;
+  const start = lines.findIndex(
+    (line, index) => index > 0 && index < close && /^metadata:/.test(line),
+  );
+  if (start === -1) {
+    const block = ["metadata:", `  ${updated}`, `  ${contentHash}`];
+    return {
+      ok: true,
+      text: [...lines.slice(0, close), ...block, ...lines.slice(close)].join("\n"),
+    };
+  }
+  const value = lines[start]!.slice("metadata:".length).trim();
+  if (value !== "" && !value.startsWith("#")) return { ok: false, error: NOT_BLOCK };
+  // The block runs to the next line at column 0 or to the closing fence.
+  let end = start + 1;
+  while (end < close && (lines[end]!.trim() === "" || /^[ \t]/.test(lines[end]!))) end += 1;
+  const entries = lines
+    .slice(start + 1, end)
+    .map((line, offset) => ({ line, index: start + 1 + offset }))
+    .filter(({ line }) => line.trim() !== "" && !line.trim().startsWith("#"));
+  const indent = entries.length === 0 ? "  " : indentOf(entries[0]!.line);
+  if (indent.includes("\t")) return { ok: false, error: NOT_BLOCK };
+  const out = [...lines];
   let dateDone = false;
-  const closeMetadata = (): void => {
-    if (!dateDone) out.push(updatedLine);
-    if (!hashDone) out.push(hashLine);
-    dateDone = true;
-    hashDone = true;
-  };
-  for (const [index, line] of lines.entries()) {
-    if (index === 0 && line === "---") {
-      inFrontmatter = true;
-      out.push(line);
-    } else if (inFrontmatter && line === "---") {
-      if (inMetadata) closeMetadata();
-      inFrontmatter = false;
-      inMetadata = false;
-      out.push(line);
-    } else if (inFrontmatter && /^metadata:/.test(line)) {
-      inMetadata = true;
-      out.push(line);
-    } else if (inFrontmatter && inMetadata && /^[ \t]*updated:/.test(line)) {
-      out.push(updatedLine);
+  let hashDone = false;
+  for (const { line, index } of entries) {
+    const own = indentOf(line);
+    if (own.length < indent.length || own.includes("\t")) return { ok: false, error: NOT_BLOCK };
+    if (own.length > indent.length) continue;
+    const entry = line.slice(indent.length);
+    if (!/^[^\s#:-][^:]*:(?:[ \t]|$)/.test(entry)) return { ok: false, error: NOT_BLOCK };
+    if (/^updated:/.test(entry)) {
+      out[index] = `${indent}${updated}`;
       dateDone = true;
-    } else if (inFrontmatter && inMetadata && /^[ \t]*content_hash:/.test(line)) {
-      out.push(hashLine);
+    } else if (/^content_hash:/.test(entry)) {
+      out[index] = `${indent}${contentHash}`;
       hashDone = true;
-    } else if (inFrontmatter && inMetadata && /^[^ \t]/.test(line)) {
-      closeMetadata();
-      inMetadata = false;
-      out.push(line);
-    } else {
-      out.push(line);
     }
   }
-  writeFileSync(file, out.join("\n"));
+  const added = [
+    ...(dateDone ? [] : [`${indent}${updated}`]),
+    ...(hashDone ? [] : [`${indent}${contentHash}`]),
+  ];
+  const after = (entries.at(-1)?.index ?? start) + 1;
+  out.splice(after, 0, ...added);
+  return { ok: true, text: out.join("\n") };
+}
+
+export interface WriteResult {
+  /** The names of the refreshed skills. */
+  readonly written: ReadonlyArray<string>;
+  /** One `<skill>: <problem>` message per skill that the write refused or could not refresh. */
+  readonly failures: ReadonlyArray<string>;
+}
+
+/**
+ * Write a fresh `metadata.content_hash` and the date `today` into the SKILL.md
+ * in `dir`, or return the problem. The hash leaves out `updated:`, so the date
+ * is set here, where the meaning changed: the stored date and the stored hash
+ * then describe the same edit. A new `metadata:` line is part of the hashed
+ * text, so the hash comes from the edited text. After the write, the file is
+ * read again; when the stored hash still differs, the original text goes back.
+ */
+function writeHash(dir: string, today: string): string | null {
+  const file = join(dir, "SKILL.md");
+  const original = readFileSync(file, "utf8");
+  const draft = withHash(original, "0".repeat(64), today);
+  if (!draft.ok) return draft.error;
+  const fresh = hashSkillText(dir, draft.text);
+  const edited = withHash(original, fresh, today);
+  if (!edited.ok) return edited.error;
+  writeFileSync(file, edited.text);
+  const extracted = extractFrontmatter(readFileSync(file, "utf8"));
+  const parsed = extracted.ok ? parseFrontmatter(extracted.text) : undefined;
+  const metadata = parsed?.ok === true ? mappingField(parsed.value, "metadata") : undefined;
+  if (
+    metadata?.["content_hash"] === fresh &&
+    storedHash(dir) === fresh &&
+    hashSkill(dir) === fresh
+  ) {
+    return null;
+  }
+  writeFileSync(file, original);
+  return "the stored hash does not match after the write; the file is unchanged; edit it by hand";
 }
 
 /**
  * Refresh `metadata.content_hash` and `metadata.updated` of each skill below
- * `skillsRoot` whose stored hash differs from its content. Returns the names
- * of the written skills. Upstream skills are skipped.
+ * `skillsRoot` whose stored hash differs from its content. Upstream skills are
+ * skipped.
  */
 export function writeContentHashes(
   skillsRoot: string,
   today: string = new Date().toISOString().slice(0, 10),
-): Array<string> {
+): WriteResult {
   const written: Array<string> = [];
+  const failures: Array<string> = [];
   for (const { name, dir } of skillDirs(skillsRoot)) {
-    if (isUpstream(dir)) continue;
-    const fresh = hashSkill(dir);
-    if (storedHash(dir) !== fresh) {
-      writeHash(dir, fresh, today);
-      written.push(name);
-    }
+    if (isUpstream(dir) || storedHash(dir) === hashSkill(dir)) continue;
+    const problem = writeHash(dir, today);
+    if (problem === null) written.push(name);
+    else failures.push(`${name}: ${problem}`);
   }
-  return written;
+  return { written, failures };
 }
