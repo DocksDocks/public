@@ -1,0 +1,49 @@
+{
+  "pluginDir": "SoT/.omp/plugin",
+  "floors": {
+    "skills": 10,
+    "agents": 14
+  },
+  "reportSection": "## Report a problem with this skill\n\nWhen this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.\n",
+  "sharedFiles": [
+    {
+      "canonical": "SoT/.omp/plugin/skills/plan-workspace/references/pull-request-template.md",
+      "copies": ["SoT/.omp/plugin/skills/agent-first-setup/references/pull-request-template.md"]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/plan-workspace/references/verify-skill-template.md",
+      "copies": ["SoT/.omp/plugin/skills/agent-first-setup/references/verify-skill-template.md"]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/plan-workspace/scripts/pr-template.mjs",
+      "copies": ["SoT/.omp/plugin/skills/agent-first-setup/scripts/pr-template.mjs"]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/plan-workspace/scripts/verify-skill.mjs",
+      "copies": [
+        "SoT/.omp/plugin/skills/agent-first-setup/scripts/verify-skill.mjs",
+        "SoT/.omp/plugin/skills/claude-md-migration/scripts/verify-skill.mjs"
+      ]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/agent-first-setup/scripts/agent-docs.mjs",
+      "copies": ["SoT/.omp/plugin/skills/claude-md-migration/scripts/agent-docs.mjs"]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/agent-first-setup/references/agents-md-template.md",
+      "copies": ["SoT/.omp/plugin/skills/claude-md-migration/references/agents-md-template.md"]
+    },
+    {
+      "canonical": "SoT/.omp/plugin/skills/plan-manager/scripts/base-blob.sh",
+      "copies": ["SoT/.omp/plugin/skills/code-review/scripts/base-blob.sh"]
+    }
+  ],
+  "transformingSkills": [
+    "context-tree",
+    "claude-md-migration",
+    "skill-agent-pipeline",
+    "skill-maintenance",
+    "refactor",
+    "plan-workspace"
+  ]
+}
