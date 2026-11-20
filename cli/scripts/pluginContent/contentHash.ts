@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { extractFrontmatter, mappingField, parseFrontmatter, skillDirs } from "./frontmatter.ts";
+import { isDeepStrictEqual } from "node:util";
+import {
+  extractFrontmatter,
+  type FrontmatterMapping,
+  mappingField,
+  parseFrontmatter,
+  skillDirs,
+} from "./frontmatter.ts";
 
 /**
  * The skill content hash of DocksDocks/docks (`scripts/skills/content-hash.mjs`),
@@ -122,9 +129,10 @@ const indentOf = (line: string): string => /^[ \t]*/.exec(line)?.[0] ?? "";
  * Set `metadata.updated` and `metadata.content_hash` in the frontmatter of
  * `content`. The edit changes only direct children of a block-style
  * `metadata:` mapping, at the exact indent of its first child, and adds a
- * missing child after the last line of the block. Without a `metadata:` key,
- * it adds the block before the closing `---`. It refuses each other shape,
- * such as a flow mapping, because a line edit of it can make invalid YAML.
+ * missing child after the last non-blank line of the block. Without a
+ * `metadata:` key, it adds the block before the closing `---`. It refuses each
+ * other shape, such as a flow mapping or a direct child that starts a block
+ * scalar, because a line edit of it can make invalid YAML or change a value.
  */
 function withHash(content: string, hash: string, today: string): Edited {
   const lines = content.split("\n");
@@ -149,10 +157,11 @@ function withHash(content: string, hash: string, today: string): Edited {
   // The block runs to the next line at column 0 or to the closing fence.
   let end = start + 1;
   while (end < close && (lines[end]!.trim() === "" || /^[ \t]/.test(lines[end]!))) end += 1;
-  const entries = lines
+  const blockLines = lines
     .slice(start + 1, end)
     .map((line, offset) => ({ line, index: start + 1 + offset }))
-    .filter(({ line }) => line.trim() !== "" && !line.trim().startsWith("#"));
+    .filter(({ line }) => line.trim() !== "");
+  const entries = blockLines.filter(({ line }) => !line.trim().startsWith("#"));
   const indent = entries.length === 0 ? "  " : indentOf(entries[0]!.line);
   if (indent.includes("\t")) return { ok: false, error: NOT_BLOCK };
   const out = [...lines];
@@ -162,12 +171,15 @@ function withHash(content: string, hash: string, today: string): Edited {
     const own = indentOf(line);
     if (own.length < indent.length || own.includes("\t")) return { ok: false, error: NOT_BLOCK };
     if (own.length > indent.length) continue;
-    const entry = line.slice(indent.length);
-    if (!/^[^\s#:-][^:]*:(?:[ \t]|$)/.test(entry)) return { ok: false, error: NOT_BLOCK };
-    if (/^updated:/.test(entry)) {
+    const entry = /^([^\s#:-][^:]*):(?:[ \t]+(.*))?$/.exec(line.slice(indent.length));
+    if (entry === null) return { ok: false, error: NOT_BLOCK };
+    // A block scalar (`|` or `>`, after an optional anchor or tag) owns the
+    // lines below it, so a line edit next to it can change its value.
+    if (/^(?:[&!]\S*[ \t]+)*[|>]/.test(entry[2] ?? "")) return { ok: false, error: NOT_BLOCK };
+    if (entry[1] === "updated") {
       out[index] = `${indent}${updated}`;
       dateDone = true;
-    } else if (/^content_hash:/.test(entry)) {
+    } else if (entry[1] === "content_hash") {
       out[index] = `${indent}${contentHash}`;
       hashDone = true;
     }
@@ -176,7 +188,7 @@ function withHash(content: string, hash: string, today: string): Edited {
     ...(dateDone ? [] : [`${indent}${updated}`]),
     ...(hashDone ? [] : [`${indent}${contentHash}`]),
   ];
-  const after = (entries.at(-1)?.index ?? start) + 1;
+  const after = (blockLines.at(-1)?.index ?? start) + 1;
   out.splice(after, 0, ...added);
   return { ok: true, text: out.join("\n") };
 }
@@ -188,28 +200,56 @@ export interface WriteResult {
   readonly failures: ReadonlyArray<string>;
 }
 
+/** The parsed frontmatter of a SKILL.md text, or null when it does not parse. */
+function parsedFrontmatter(text: string): FrontmatterMapping | null {
+  const extracted = extractFrontmatter(text);
+  const parsed = extracted.ok ? parseFrontmatter(extracted.text) : undefined;
+  return parsed?.ok === true ? parsed.value : null;
+}
+
+/**
+ * The frontmatter without `metadata.updated` and `metadata.content_hash`. A
+ * `metadata` value that is then empty or null counts as absent, because the
+ * write adds the block to a skill without one.
+ */
+function otherValues(frontmatter: FrontmatterMapping): FrontmatterMapping {
+  const { metadata, ...rest } = frontmatter;
+  if (metadata === null || metadata === undefined) return rest;
+  const block = mappingField(frontmatter, "metadata");
+  if (block === undefined) return frontmatter;
+  const { updated: _updated, content_hash: _contentHash, ...others } = block;
+  return Object.keys(others).length === 0 ? rest : { ...rest, metadata: others };
+}
+
 /**
  * Write a fresh `metadata.content_hash` and the date `today` into the SKILL.md
  * in `dir`, or return the problem. The hash leaves out `updated:`, so the date
  * is set here, where the meaning changed: the stored date and the stored hash
  * then describe the same edit. A new `metadata:` line is part of the hashed
  * text, so the hash comes from the edited text. After the write, the file is
- * read again; when the stored hash still differs, the original text goes back.
+ * read and parsed again. When a frontmatter value other than these two
+ * changed, or the stored hash still differs, the original text goes back.
  */
 function writeHash(dir: string, today: string): string | null {
   const file = join(dir, "SKILL.md");
   const original = readFileSync(file, "utf8");
+  const before = parsedFrontmatter(original);
+  if (before === null) return "the frontmatter is not valid YAML; edit it by hand";
   const draft = withHash(original, "0".repeat(64), today);
   if (!draft.ok) return draft.error;
   const fresh = hashSkillText(dir, draft.text);
   const edited = withHash(original, fresh, today);
   if (!edited.ok) return edited.error;
   writeFileSync(file, edited.text);
-  const extracted = extractFrontmatter(readFileSync(file, "utf8"));
-  const parsed = extracted.ok ? parseFrontmatter(extracted.text) : undefined;
-  const metadata = parsed?.ok === true ? mappingField(parsed.value, "metadata") : undefined;
+  const after = parsedFrontmatter(readFileSync(file, "utf8"));
+  if (after === null || !isDeepStrictEqual(otherValues(after), otherValues(before))) {
+    writeFileSync(file, original);
+    return "the hash write would change other frontmatter values; edit it by hand";
+  }
+  const metadata = mappingField(after, "metadata");
   if (
-    metadata?.["content_hash"] === fresh &&
+    metadata?.["updated"] === today &&
+    metadata["content_hash"] === fresh &&
     storedHash(dir) === fresh &&
     hashSkill(dir) === fresh
   ) {

@@ -59,7 +59,14 @@ export function parseFrontmatter(text: string): Parsed {
   if (doc.errors.length > 0) {
     return { ok: false, error: doc.errors.map((error) => error.message).join("; ") };
   }
-  const value: unknown = doc.toJS();
+  let value: unknown;
+  try {
+    // `toJS` throws on a value that the parse step accepts, such as an alias
+    // to an anchor that does not exist.
+    value = doc.toJS();
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
   if (!isMapping(value)) return { ok: false, error: "frontmatter must be a YAML mapping/object" };
   return { ok: true, value };
 }

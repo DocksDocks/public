@@ -3,6 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:f
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import config from "../../../scripts/pluginContent/config.json" with { type: "json" };
 import {
   checkContentHashes,
@@ -181,6 +182,80 @@ describe("skill-content-hash script", () => {
     const check = runScript("--check", "--root", skills);
     expect(check.stderr).toBe("");
     expect(check.status).toBe(0);
+  });
+
+  /** The parsed frontmatter of `text` without `metadata.updated` and `metadata.content_hash`. */
+  function otherValues(text: string): unknown {
+    const value: unknown = parse(/^---\n([\s\S]*?)\n---\n/.exec(text)?.[1] ?? "");
+    if (typeof value !== "object" || value === null) return value;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, field]: [string, unknown]) =>
+        key === "metadata" && typeof field === "object" && field !== null
+          ? [
+              key,
+              Object.fromEntries(
+                Object.entries(field).filter(
+                  ([child]) => !["updated", "content_hash"].includes(child),
+                ),
+              ),
+            ]
+          : [key, field],
+      ),
+    );
+  }
+
+  /** Replace the accessibility metadata with `metadata`, write, and return the result. */
+  function writeWithMetadata(metadata: string) {
+    const skills = copySkills();
+    const file = join(skills, "accessibility", "SKILL.md");
+    edit(file, (text) => text.replace(METADATA_BLOCK, metadata));
+    const before = readFileSync(file, "utf8");
+    const write = runScript("--write", "--root", skills);
+    return { skills, before, after: readFileSync(file, "utf8"), write };
+  }
+
+  it("refuses a direct metadata child that starts a block scalar", () => {
+    const { before, after, write } = writeWithMetadata(
+      "metadata:\n  pattern: tool-wrapper\n  note: |\n    keep\n    # important\n",
+    );
+    expect(write.status).toBe(1);
+    expect(write.stderr).toContain(
+      "accessibility: metadata is not a block mapping; edit it by hand",
+    );
+    expect(after).toBe(before);
+  });
+
+  it("keeps a nested block scalar that ends with a comment-like line", () => {
+    const { skills, before, after, write } = writeWithMetadata(
+      "metadata:\n  pattern: tool-wrapper\n  source:\n    note: |\n      keep\n      # important\n",
+    );
+    expect(write.status).toBe(0);
+    expect(otherValues(after)).toEqual(otherValues(before));
+    expect(otherValues(after)).toMatchObject({
+      metadata: { source: { note: "keep\n# important\n" } },
+    });
+    expect(runScript("--check", "--root", skills).status).toBe(0);
+  });
+
+  it("keeps a multi-line plain value", () => {
+    const { skills, before, after, write } = writeWithMetadata(
+      "metadata:\n  pattern: tool-wrapper\n  note: first part\n    second part\n",
+    );
+    expect(write.status).toBe(0);
+    expect(otherValues(after)).toEqual(otherValues(before));
+    expect(otherValues(after)).toMatchObject({ metadata: { note: "first part second part" } });
+    expect(runScript("--check", "--root", skills).status).toBe(0);
+  });
+
+  it("refuses a write that would change another frontmatter value", () => {
+    const { before, after, write } = writeWithMetadata(
+      'metadata:\n  pattern: tool-wrapper\n  updated: &day "2026-10-23"\n  released: *day\n',
+    );
+    expect(write.status).toBe(1);
+    expect(write.stderr).toContain(
+      "accessibility: the hash write would change other frontmatter values; edit it by hand",
+    );
+    expect(after).toBe(before);
   });
 
   it("exits 2 on a bad argument or a missing root", () => {
