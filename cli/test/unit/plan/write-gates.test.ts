@@ -1,15 +1,21 @@
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { delimiter, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  GH_STUB_DIR,
   PLAN_CLI_HOST_SUPPORTED,
   body,
+  docksKitShimEnv,
   expectSuccess,
   planCliContext,
   refuse,
 } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
+
+const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
+const NON_UTF8_REFUSAL = "the docks-review folder path is not UTF-8 text\n";
 
 describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
   it(
@@ -145,6 +151,64 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
         "retry with the same export",
       );
       expect(issue(retried).body, "the retry writes the edited body").toMatch(/Smoke passed\./);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // git prints a path as bytes, and Node decodes a working folder with U+FFFD in place of a byte that is not UTF-8.
+  // A path with U+FFFD names another folder, which export would create and write.
+  it(
+    "export writes nothing when the docks-review folder path is not UTF-8 text",
+    (context) => {
+      const { scratch, run, createPlan } = planCliContext();
+      const plan = createPlan("a path that is not UTF-8");
+      const gitHome = Buffer.concat([Buffer.from(`${scratch}/`), Buffer.from("g-\xff", "latin1")]);
+      try {
+        mkdirSync(gitHome);
+      } catch {
+        context.skip(NON_UTF8_SKIP);
+      }
+      // The gitfile .git names the moved git folder, so git prints the absolute docks-review path with the byte.
+      const gitDir = Buffer.concat([gitHome, Buffer.from("/repo.git")]);
+      renameSync(join(scratch, ".git"), gitDir);
+      writeFileSync(
+        join(scratch, ".git"),
+        Buffer.concat([Buffer.from("gitdir: "), gitDir, Buffer.from("\n")]),
+      );
+      const absolute = run("export", String(plan));
+      expect(absolute.status, absolute.stderr).toBe(1);
+      expect(absolute.stdout).toBe("");
+      expect(absolute.stderr).toBe(NON_UTF8_REFUSAL);
+      expect(existsSync(join(scratch, "g-\uFFFD")), "no folder of the decoded git path").toBe(
+        false,
+      );
+
+      // In a checkout folder with the byte, git prints the relative path `.git/docks-review`, which resolves from
+      // the working folder.
+      const shim = docksKitShimEnv(scratch);
+      const relative = spawnSync(
+        "bash",
+        [
+          "-c",
+          `dir=$(printf 'w-\\377') && mkdir "$dir" && cd "$dir" && git init -q && docks-kit plan export ${plan}`,
+        ],
+        {
+          cwd: scratch,
+          env: {
+            ...process.env,
+            PATH: `${GH_STUB_DIR}${delimiter}${shim["PATH"] ?? ""}`,
+            GH_STUB_STATE: join(scratch, "gh-state.json"),
+            XDG_STATE_HOME: join(scratch, "state"),
+          },
+          encoding: "utf8",
+        },
+      );
+      expect(relative.status, relative.stderr).toBe(1);
+      expect(relative.stdout).toBe("");
+      expect(relative.stderr).toBe(NON_UTF8_REFUSAL);
+      expect(existsSync(join(scratch, "w-\uFFFD")), "no folder of the decoded working folder").toBe(
+        false,
+      );
     },
     SPAWN_TIMEOUT_MS,
   );

@@ -30,6 +30,21 @@ export interface ProcessResult {
   readonly error: { readonly code: string | undefined; readonly message: string } | undefined;
 }
 
+/**
+ * The text of `latin1` output (one character per byte) when its bytes are UTF-8, or undefined when they are not.
+ * A path that is not UTF-8 cannot pass on a command line or to a Node path API as text without a lost byte.
+ */
+export const utf8Text = (bytes: string): string | undefined => {
+  const text = Buffer.from(bytes, "latin1").toString("utf8");
+  return Buffer.from(text, "utf8").toString("latin1") === bytes ? text : undefined;
+};
+
+/**
+ * The character that Node puts in an argument or in `process.cwd()` in place of a byte that is not UTF-8. Such a
+ * string names another file; a real U+FFFD in a name looks the same, so both fail closed.
+ */
+export const LOST_BYTE = "\uFFFD";
+
 const errorCode = (error: unknown): string | undefined => {
   const code = Predicate.hasProperty(error, "code") ? error.code : undefined;
   return Predicate.isString(code) ? code : undefined;

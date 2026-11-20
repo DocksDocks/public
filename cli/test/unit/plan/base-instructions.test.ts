@@ -285,6 +285,49 @@ function newlineRepo(): Repo {
   return { root, repo, base, env };
 }
 
+// The bytes of `text`, one byte per character, so that `\xff` is the byte 0xff, which is no UTF-8 text.
+function bytes(text: string): Buffer {
+  return Buffer.from(text, "latin1");
+}
+
+// `<dir>/<name>` with the raw bytes of `name`.
+function rawPath(dir: string, name: string): Buffer {
+  return Buffer.concat([Buffer.from(`${dir}/`, "utf8"), bytes(name)]);
+}
+
+const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
+
+// Names with the byte 0xff, which is no UTF-8 text. AGENTS.md links to `rules-\xff.md`, and `rules-\uFFFD.md` (the
+// name that a lossy decode gives) holds other rules, so a read that decodes the target reads the wrong file.
+// CLAUDE.md links to REVIEW.md in the folder `docs-\xff`. The working tree adds a root file.
+const RAW_RULES = "# Rules of a name that is not UTF-8\n";
+const RAW_REVIEW = "# Review rules in a folder that is not UTF-8\n";
+const RAW_EXPECTED = new Map<string, string | null>([
+  ["AGENTS.md", RAW_RULES],
+  ["CLAUDE.md", RAW_REVIEW],
+  ["REVIEW.md", null],
+]);
+
+// The repository, or undefined when the file system rejects a name that is not UTF-8 (APFS, for example).
+function rawRepo(): Repo | undefined {
+  const { root, repo, env } = newRepo();
+  try {
+    writeFileSync(rawPath(root, "probe-\xff"), "");
+  } catch {
+    return undefined;
+  }
+  writeFileSync(rawPath(repo, "rules-\xff.md"), RAW_RULES);
+  put(repo, "rules-\uFFFD.md", PLAIN_RULES);
+  mkdirSync(rawPath(repo, "docs-\xff"));
+  writeFileSync(rawPath(repo, "docs-\xff/REVIEW.md"), RAW_REVIEW);
+  symlinkSync(bytes("rules-\xff.md"), join(repo, "AGENTS.md"));
+  symlinkSync(bytes("docs-\xff/REVIEW.md"), join(repo, "CLAUDE.md"));
+  git(repo, "add", "-A");
+  const base = commitBase(repo);
+  put(repo, "x.mjs", "export const x = 1;\n");
+  return { root, repo, base, env };
+}
+
 type Fixture = {
   readonly name: string;
   readonly make: () => Repo;
@@ -516,6 +559,49 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("base instructions", () => {
       });
       expect([0, 1], `status ${read.status}`).not.toContain(read.status);
       expect(read.stdout).toBe("");
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "both reads follow a link whose target name is not UTF-8 to the file of those bytes",
+    (context) => {
+      const fixture = rawRepo();
+      context.skip(fixture === undefined, NON_UTF8_SKIP);
+      if (fixture === undefined) return;
+      const { result, folder } = buildFolder(fixture);
+      expect(result.status, result.stderr).toBe(0);
+      const manifest = [...RAW_EXPECTED]
+        .map(([file, text]) => `${text === null ? "absent" : "copied"} ${file}\n`)
+        .join("");
+      expect(readFileSync(join(folder, "MANIFEST"), "utf8")).toBe(manifest);
+      for (const [file, text] of RAW_EXPECTED) {
+        if (text !== null)
+          expect(readFileSync(join(folder, file), "utf8"), `${file} in the folder`).toBe(text);
+        const read = sh(fixture.repo, baseRead(fixture.base, file), fixture.env);
+        expect(read.status, `${file}: ${read.stderr}`).toBe(text === null ? 1 : 0);
+        expect(read.stdout, `${file} gives the base text of its target`).toBe(text ?? "");
+      }
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // An argument reaches the helper as UTF-8 text, so a byte that is not UTF-8 is lost before the helper starts. The
+  // helper cannot tell which file was meant, and a lost byte is a failure, never an absent file.
+  it(
+    "a path argument that is not UTF-8 gives base-blob status 2 and a message",
+    (context) => {
+      const fixture = rawRepo();
+      context.skip(fixture === undefined, NON_UTF8_SKIP);
+      if (fixture === undefined) return;
+      const result = sh(
+        fixture.repo,
+        `docks-kit plan base-blob '${fixture.base}' "$(printf 'rules-\\377.md')"`,
+        fixture.env,
+      );
+      expect(result.status, result.stderr).toBe(2);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toBe("base-blob: an argument is not UTF-8 text\n");
     },
     SPAWN_TIMEOUT_MS,
   );

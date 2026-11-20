@@ -11,6 +11,7 @@ import {
   mkdirSync,
   mkdtempSync,
   realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -19,7 +20,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 
-import { PLAN_CLI_HOST_SUPPORTED, runPlanCommand } from "../../lib/plan/harness";
+import { PLAN_CLI_HOST_SUPPORTED, docksKitShimEnv, runPlanCommand } from "../../lib/plan/harness";
 import { SPAWN_TIMEOUT_MS } from "../../lib/spawnTimeout";
 
 type Env = Readonly<Record<string, string>>;
@@ -150,6 +151,44 @@ function submoduleRepo(): { readonly root: string; readonly repo: string; readon
   git(repo, "commit", "-q", "-m", "add mod");
   put(mod, "y.txt", "y of the user\n");
   return { root, repo, mod };
+}
+
+// The bytes of `text`, one byte per character, so that `\xff` is the byte 0xff, which is no UTF-8 text.
+function bytes(text: string): Buffer {
+  return Buffer.from(text, "latin1");
+}
+
+// `<dir>/<name>` with the raw bytes of `name`.
+function rawPath(dir: string, name: string): Buffer {
+  return Buffer.concat([Buffer.from(`${dir}/`, "utf8"), bytes(name)]);
+}
+
+const NON_UTF8_SKIP = "the file system rejects a file name that is not UTF-8";
+const NON_UTF8_REFUSAL = "checkout-state: a path is not UTF-8 text\n";
+
+// Whether the file system of `root` holds a name that is not UTF-8 (APFS, for example, refuses one).
+function holdsNonUtf8Names(root: string): boolean {
+  try {
+    writeFileSync(rawPath(root, "probe-\xff"), "");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Runs a bash script in `cwd` with `docks-kit` on PATH, and keeps the raw bytes of its output. A script can name a
+// path that is not UTF-8, which an argv or a working folder of Node cannot.
+function runScript(root: string, cwd: string, script: string): SpawnSyncReturns<Buffer> {
+  return spawnSync("bash", ["-c", script], {
+    cwd,
+    env: { ...GIT_ENV, ...docksKitShimEnv(root) },
+  });
+}
+
+function expectNonUtf8Refusal(result: SpawnSyncReturns<Buffer>, name: string): void {
+  expect(result.status, `${name}: ${result.stderr.toString("utf8")}`).toBe(1);
+  expect(result.stdout.toString("latin1"), `${name}: no output`).toBe("");
+  expect(result.stderr.toString("utf8"), name).toBe(NON_UTF8_REFUSAL);
 }
 
 describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
@@ -443,6 +482,66 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("checkout state", () => {
       const { repo } = dirtyRepo();
       writeFileSync(join(repo, ".git", "index"), "not an index");
       expectFails(run(repo), "a broken index");
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "a file name and a link target that are not UTF-8 keep their bytes",
+    (context) => {
+      const root = newRoot();
+      context.skip(!holdsNonUtf8Names(root), NON_UTF8_SKIP);
+      const repo = newRepo(root);
+      writeFileSync(rawPath(repo, "n-\xff.txt"), "raw\n");
+      symlinkSync(bytes("t-\xff"), rawPath(repo, "l-\xff"));
+      commitAll(repo, "base");
+      const blob = spawnSync("git", ["hash-object", "--stdin"], {
+        cwd: repo,
+        env: GIT_ENV,
+        input: "raw\n",
+        encoding: "utf8",
+      }).stdout.trim();
+      const result = runScript(root, repo, "docks-kit plan checkout-state .");
+      expect(result.status, result.stderr.toString("utf8")).toBe(0);
+      expect(result.stdout.toString("latin1")).toBe(`l-\xff\tlink\tt-\xff\nn-\xff.txt\t${blob}\n`);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  // git takes a folder as UTF-8 text on its command line, so a folder that the helper must give git is refused, as a
+  // path with a tab is, and is never a git failure of a garbled path.
+  it(
+    "a submodule, a checkout, or an argument whose path is not UTF-8 stops the helper with status 1",
+    (context) => {
+      const { root, repo } = dirtyRepo();
+      context.skip(!holdsNonUtf8Names(root), NON_UTF8_SKIP);
+      const source = newRepo(root, "module");
+      put(source, "x.txt", "x\n");
+      commitAll(source, "module base");
+      const head = git(source, "rev-parse", "HEAD").trim();
+      renameSync(source, rawPath(repo, "m-\xff"));
+      const added = spawnSync("git", ["update-index", "--add", "--index-info"], {
+        cwd: repo,
+        env: GIT_ENV,
+        input: bytes(`160000 ${head}\tm-\xff\n`),
+      });
+      expect(added.status, added.stderr.toString("utf8")).toBe(0);
+      expectNonUtf8Refusal(
+        runScript(root, repo, "docks-kit plan checkout-state ."),
+        "a submodule path",
+      );
+
+      const outer = newRoot();
+      const script = [
+        "dir=$(printf 'r-\\377')",
+        'mkdir "$dir" && cd "$dir" && git init -q -b main && echo a > a.txt',
+        "docks-kit plan checkout-state .",
+      ].join("\n");
+      expectNonUtf8Refusal(runScript(outer, outer, script), "a checkout in a folder");
+      expectNonUtf8Refusal(
+        runScript(outer, outer, `docks-kit plan checkout-state "$(printf 'r-\\377')"`),
+        "an argument",
+      );
     },
     SPAWN_TIMEOUT_MS,
   );
