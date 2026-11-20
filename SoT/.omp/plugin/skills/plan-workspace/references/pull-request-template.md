@@ -24,11 +24,13 @@ The detection answers two questions apart:
   path, also an unusable one: a broken symlink, a folder with a file name, or
   an empty template folder. This answer guards each write.
 
-`<skill-dir>` is the folder of the skill that holds this reference. Run the
-detection from any folder inside the repository:
+The `docks-kit agent-docs pr-template` command of the kit CLI runs the
+detection and the gate below. It needs docks-kit 0.26.0 or later;
+`docks-kit update` installs it. Run the detection from any folder inside the
+repository:
 
 ```bash
-node <skill-dir>/scripts/pr-template.mjs detect
+docks-kit agent-docs pr-template detect
 ```
 
 It prints one `pull-request template: <path> (<kind>)` line for each usable
@@ -47,7 +49,7 @@ edit an existing entry, and never write through a symlink. Right before the
 write, run this gate:
 
 ```bash
-node <skill-dir>/scripts/pr-template.mjs gate
+docks-kit agent-docs pr-template gate
 ```
 
 It prints exactly one line: `target occupied: write nothing`, `target free`,

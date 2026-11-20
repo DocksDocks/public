@@ -720,7 +720,7 @@ Add the items in this order:
    such as `.md` or `.txt`, in any letter case, or a `PULL_REQUEST_TEMPLATE/`
    folder that holds several templates
    (<https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/about-issue-and-pull-request-templates>).
-   Find it with `node skill://plan-workspace/scripts/pr-template.mjs detect`;
+   Find it with `docks-kit agent-docs pr-template detect`;
    the `references/pull-request-template.md` of the installed
    `plan-workspace` skill
    describes the lines. Take items only from an entry that the command

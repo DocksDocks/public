@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "e19960f5e0f840d14a0312778558162662838269b454b153c1f2922faf1ad1a7"
+  content_hash: "582924d95ddcc5fa0ef45e3e0e1ebe13b2645d75d689290e9bd7734c8ed95ed7"
 ---
 
 # CLAUDE.md Migration
@@ -41,7 +41,7 @@ Scope: this skill writes only `AGENTS.md` files, and deletes only legacy `CLAUDE
 </constraint>
 
 <constraint>
-Detection is read-only. Before any write, inspect with `read`, `find`, `grep`, and read-only shell commands (`test`, `ls`, `git status`, `git rev-parse`, `git ls-files`, and the `audit` and `verify` commands of `scripts/bridge-check.mjs`). Write, `git mv`, and `git rm` come only after the approval gate of Step 4.
+Detection is read-only. Before any write, inspect with `read`, `find`, `grep`, and read-only shell commands (`test`, `ls`, `git status`, `git rev-parse`, `git ls-files`, and the `audit` and `verify` commands of `docks-kit agent-docs bridge-check`). Write, `git mv`, and `git rm` come only after the approval gate of Step 4.
 </constraint>
 
 <constraint>
@@ -73,10 +73,10 @@ The migration of legacy files runs in both layouts.
 
 ### Step 2 — Audit (read-only)
 
-`<skill-dir>` is the folder that holds this `SKILL.md`. Run the audit from any folder in the project:
+The audit, the write gate of Step 5, and the verification of Step 6 are helpers of the `docks-kit agent-docs` command of the kit CLI. It needs docks-kit 0.26.0 or later; `docks-kit update` installs it. Run the audit from any folder in the project:
 
 ```bash
-node <skill-dir>/scripts/bridge-check.mjs audit
+docks-kit agent-docs bridge-check audit
 ```
 
 The audit prints these lines:
@@ -166,7 +166,7 @@ Apply the approved rows in this order. Write every destination before you delete
    Continue only when the last line is `backup: <folder>`. On `backup failed: <path>`, report the line and the error above it, make no change to the project, and stop. To restore, copy the files back from `$b`. The per-section check of Step 6 reads the legacy files from `$b`.
 1. **Write gate**: immediately before each write of an `AGENTS.md` (a create or an append), run the gate from the project root with the path of that file:
    ```bash
-   node <skill-dir>/scripts/verify-skill.mjs write-gate <dir>/AGENTS.md
+   docks-kit agent-docs verify-skill write-gate <dir>/AGENTS.md
    ```
    The gate prints a `target occupied: <path> ...` line for a symlink, a path with a `..` segment, and a path whose folder resolves outside the project. For each `target occupied:` line, write nothing more, delete no legacy file, report the line, and stop. Write only when the gate prints nothing and exits 0.
 2. **Root `AGENTS.md`**: if it exists, append the approved sections under a `## Migrated from CLAUDE.md` heading; never overwrite it. If it is missing, create it with the approved sections. If no legacy file gives it a section (only stubs and links), create it from `references/agents-md-template.md` and follow the fill rules of the template; leave the `## Context tree` rows to `context-tree`.
@@ -182,7 +182,7 @@ Apply the approved rows in this order. Write every destination before you delete
 Run the verification and the git status check. Add one `--expect <path>` pair for each nested `AGENTS.md` that Step 5 wrote:
 
 ```bash
-node <skill-dir>/scripts/bridge-check.mjs verify --expect <dir>/AGENTS.md
+docks-kit agent-docs bridge-check verify --expect <dir>/AGENTS.md
 git status --short
 ```
 

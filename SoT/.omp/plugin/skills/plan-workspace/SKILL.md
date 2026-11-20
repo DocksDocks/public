@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "6b77bb01e390253768bb5fe6d5c34f0c33bb5feeaa35ce5c195393102f3cf4ae"
+  content_hash: "1253e64b6057668a44dfd15e1d94a58966098fcf96d76629d8cd23d3edcc524d"
 ---
 
 # Plans Workspace
@@ -41,14 +41,15 @@ unavailable.
 ## Classify
 
 Inspect the standard, routing nodes, root Plans section, pull-request template,
-and project `verify` skill. `<skill-dir>` is the folder
-that holds this `SKILL.md`. Detect the template with
-`node <skill-dir>/scripts/pr-template.mjs detect`; its lines are described in
+and project `verify` skill. The `docks-kit agent-docs` command of the kit CLI
+checks the template and the skill. It needs docks-kit 0.26.0 or later;
+`docks-kit update` installs it. Detect the template with
+`docks-kit agent-docs pr-template detect`; its lines are described in
 [`references/pull-request-template.md`](references/pull-request-template.md).
 A missing or unusable template is a report item, not drift: name each
 `unusable` line. A detection error is not a missing template: report the error.
 Detect the skill from the repository root with
-`node <skill-dir>/scripts/verify-skill.mjs detect`; its lines are described in
+`docks-kit agent-docs verify-skill detect`; its lines are described in
 [`references/verify-skill-template.md`](references/verify-skill-template.md).
 A missing skill and a `verify unverified:` line are report items, not drift.
 Report an `ERROR` line as a failed check.
@@ -101,7 +102,7 @@ For audit, that report is final.
    `pull-request template: none`, fill in the check command that the root
    instruction file names, print the draft with each `unusable` line, and ask.
    When the user accepts, run its write gate
-   (`node <skill-dir>/scripts/pr-template.mjs gate`), and write
+   (`docks-kit agent-docs pr-template gate`), and write
    `.github/pull_request_template.md` only on `target free`. On
    `target occupied`, report the entry that occupies the path and write
    nothing; the user resolves it. Never write through a symlink.
@@ -109,7 +110,7 @@ For audit, that report is final.
    [`references/verify-skill-template.md`](references/verify-skill-template.md).
    `plan-manager` runs the end-to-end Acceptance rows of a plan through its
    flows. Run its Create or re-verify section, which runs
-   `node <skill-dir>/scripts/verify-skill.mjs detect` first. That section
+   `docks-kit agent-docs verify-skill detect` first. That section
    changes nothing on a verified skill, asks before each write, and writes
    nothing when the repository has no runnable surface.
 
@@ -165,13 +166,13 @@ grep -c 'Pointers here name concepts' docs/AGENTS.md   # 1 or more
 find . \( -name .git -o -name node_modules -o -path ./docs/plans/finished \) -prune -o \( -name CLAUDE.md -o -name CLAUDE.local.md \) -print   # no output
 ```
 
-Run `node <skill-dir>/scripts/pr-template.mjs detect`
+Run `docks-kit agent-docs pr-template detect`
 ([`references/pull-request-template.md`](references/pull-request-template.md)).
 It prints a usable template, or `pull-request template: none` only when the
 user declined the offer or an unusable entry occupies the target. Report an
 `ERROR` line as a failed check.
 
-Run `node <skill-dir>/scripts/verify-skill.mjs detect`
+Run `docks-kit agent-docs verify-skill detect`
 ([`references/verify-skill-template.md`](references/verify-skill-template.md)).
 A complete run prints `verify skill: present` and no `verify unverified:` or
 `ERROR` line. Report each other result with its cause:

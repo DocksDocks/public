@@ -58,7 +58,7 @@ prose or skill text alone needs no such row. The contract's Steps, acceptance,
 and effects states the rule.
 
 When the plan has such a row, run
-`node skill://plan-workspace/scripts/verify-skill.mjs detect` from the
+`docks-kit agent-docs verify-skill detect` from the
 repository root. The `references/verify-skill-template.md` of the installed
 `plan-workspace` skill describes
 the lines. Record the output in Research.

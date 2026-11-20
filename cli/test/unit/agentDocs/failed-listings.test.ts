@@ -29,7 +29,7 @@ describe.skipIf(!AGENT_DOCS_HOST_SUPPORTED)(
   "failed listings and unreadable files",
   { timeout: SPAWN_TIMEOUT_MS },
   () => {
-    it("a corrupt git index prints ERROR lines in both entry scripts", () => {
+    it("a corrupt git index prints ERROR lines in agent-first and bridge-check", () => {
       const fx = fixture({ ...BASE, files: { ...BASE_FILES, "CLAUDE.md": "rules\n" } });
       writeFileSync(join(fx.dir, ".git/index"), "not an index\n");
       // Each failed `git ls-files` prints git's message and the status it stopped with.

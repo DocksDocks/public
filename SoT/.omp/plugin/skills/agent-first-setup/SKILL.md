@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "0fa6495bae86708bb591b7672a5093e5d34126d088ac7f10f06dec113c8c2634"
+  content_hash: "eb8a5e48db1a7126dc393b36c28b25cd0a5c8252e0a18eaa2f967c5309bd9de4"
 ---
 
 # Agent-First Setup
@@ -60,10 +60,10 @@ Ask every question with the omp `ask` tool. This includes approval gates, owner 
 
 ### Step 0 — Resolve root and detect state (read-only)
 
-`<skill-dir>` is the folder that holds this `SKILL.md`. Its `scripts/` folder holds the read-only checks of Step 0, Step 2a, and Step 3. Run the detection from any folder inside the repository:
+The read-only checks and the write gates of this skill are helpers of the `docks-kit agent-docs` command of the kit CLI. It needs docks-kit 0.26.0 or later; `docks-kit update` installs it. Run the detection from any folder inside the repository:
 
 ```bash
-node <skill-dir>/scripts/agent-first-check.mjs detect
+docks-kit agent-docs agent-first detect
 ```
 
 The first line is the repository root (the current folder outside git). Run every later command from that root. Record the state; do not write. The command only reads, and it prints these lines:
@@ -97,7 +97,7 @@ If Step 0 shows root `AGENTS.md` present, no `legacy:` or `personal:` line, no l
   3. After approval, run the write gate of Step 2b with the path, and check that no entry is at `AGENTS.md`. Write only when the gate prints nothing and exits 0, and `test -e AGENTS.md || test -L AGENTS.md` fails. Otherwise report the line or the entry, write nothing, and stop.
 
      ```bash
-     node <skill-dir>/scripts/verify-skill.mjs write-gate AGENTS.md
+     docks-kit agent-docs verify-skill write-gate AGENTS.md
      ```
 
   4. Write `AGENTS.md`. Never write through a symlink.
@@ -123,14 +123,14 @@ The `.claude/` folder at the root is the Claude Code configuration. omp still re
 2. For each `legacy agents:` line, run the conversion. It only reads, prints the omp agent text on stdout, and writes no file:
 
    ```bash
-   node <skill-dir>/scripts/agent-first-check.mjs convert-agent <path>
+   docks-kit agent-docs agent-first convert-agent <path>
    ```
 
 3. Build one proposal table, one row for each entry, with the action of the rules below. Print the table, each converted agent text, and each refused agent with its frontmatter and its `ERROR` line. Then ask for approval in one `ask` call. The user can approve, skip, or change each row; a skipped row stays in place.
 4. After approval, run the actions in this order: skills, agents, then the empty folder. Immediately before each skill move and each `.omp/agents` write, run the write gate with the destination path, and check that no entry is at that path:
 
    ```bash
-   node <skill-dir>/scripts/verify-skill.mjs write-gate <destination>
+   docks-kit agent-docs verify-skill write-gate <destination>
    test -e <destination> || test -L <destination>
    ```
 
@@ -159,7 +159,7 @@ In `audit` mode, run steps 1 to 3 without the question, and record the table. Wr
 
 ### Step 2b — Create the project `verify` skill
 
-A project `verify` skill tells an agent how to run the real product the way a user or another program does. This skill owns this write. Follow the Create or re-verify section of [references/verify-skill-template.md](references/verify-skill-template.md). It runs `node <skill-dir>/scripts/verify-skill.mjs detect` again first, because Step 2a can move a skill into `.agents/skills`. Its write gate and entry gate are `verify-skill.mjs write-gate <path>...` and `entry-gate` in the same folder. Ask each question of that section with the `ask` tool (see "Asking the user"). If the tool is not available, end the turn and report Step 2b as blocked.
+A project `verify` skill tells an agent how to run the real product the way a user or another program does. This skill owns this write. Follow the Create or re-verify section of [references/verify-skill-template.md](references/verify-skill-template.md). It runs `docks-kit agent-docs verify-skill detect` again first, because Step 2a can move a skill into `.agents/skills`. Its write gate and entry gate are `docks-kit agent-docs verify-skill write-gate <path>...` and `docks-kit agent-docs verify-skill entry-gate`. Ask each question of that section with the `ask` tool (see "Asking the user"). If the tool is not available, end the turn and report Step 2b as blocked.
 
 - When the section stops without a write, record its reason for the report, for example "no runnable surface" or an occupied `.agents/skills/verify`, and go to Step 2c.
 - Step 2b is complete only when the section leaves the skill verified: each command ran and showed its expected result, and the skill holds no `not observed:` entry. A failed command stays in the report with its output.
@@ -168,14 +168,14 @@ In `audit` mode, use the Step 0 output and run only step 4 and step 5 of that se
 
 ### Step 2c — Offer the pull-request template
 
-This skill owns this write, behind its own approval gate. Follow [references/pull-request-template.md](references/pull-request-template.md). Offer the template only when Step 0 printed `pull-request template: none`, and list each `unusable` line with it. On a usable template, make no change; on an `ERROR` line, report the error and write nothing. Fill in the check command from the root `AGENTS.md` (or `Checks pass` when it names none), print the draft and the path `.github/pull_request_template.md`, and ask with the `ask` tool. After approval, run the write gate of the reference, `node <skill-dir>/scripts/pr-template.mjs gate`, and write only on `target free`. On `target occupied`, report the entry that occupies the path and write nothing; the user resolves it. Never write through a symlink. Tell the user that GitHub uses the template only after it is on the default branch. In `audit` mode, record the Step 0 lines only.
+This skill owns this write, behind its own approval gate. Follow [references/pull-request-template.md](references/pull-request-template.md). Offer the template only when Step 0 printed `pull-request template: none`, and list each `unusable` line with it. On a usable template, make no change; on an `ERROR` line, report the error and write nothing. Fill in the check command from the root `AGENTS.md` (or `Checks pass` when it names none), print the draft and the path `.github/pull_request_template.md`, and ask with the `ask` tool. After approval, run the write gate of the reference, `docks-kit agent-docs pr-template gate`, and write only on `target free`. On `target occupied`, report the entry that occupies the path and write nothing; the user resolves it. Never write through a symlink. Tell the user that GitHub uses the template only after it is on the default branch. In `audit` mode, record the Step 0 lines only.
 
 ### Step 3 — Agent-first check (read-only)
 
 Run the check from the repository root. It only reads; it writes no file.
 
 ```bash
-node <skill-dir>/scripts/agent-first-check.mjs check
+docks-kit agent-docs agent-first check
 ```
 
 Every line it prints is `FAIL` (a contract break), `FINDING` (a risk or cleanup item a human must judge), or `ERROR` (a check that could not run; report its message, never as a pass). Each line starts with its kind and its check id, for example `FAIL C2 node not routed from root: api/AGENTS.md`. The lines come in the order C1 to C10. No output means every check passed. After an `ERROR` line, the command exits with status 2 and the cause is on stderr; the other lines still count. A check prints `ERROR C<n> cannot read <file>` for a file that it cannot read, and `ERROR C<n> file listing failed (see the message above)` for a file listing that fails. Outside git, the check walks the folder itself and skips each `.git`, `node_modules`, and `vendor` folder.

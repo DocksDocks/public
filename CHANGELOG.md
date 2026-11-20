@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased - docks-kit 0.26.0: docks-kit plan command
+## Unreleased - docks-kit 0.26.0: docks-kit plan and agent-docs commands
 
 The plan helper of the `plan-manager` skill is now a docks-kit command,
 written in TypeScript with Effect (#203). The skills call `docks-kit plan`
-instead of `node .../plan.mjs`. These changes come from plan #198.
+instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
+`agent-first-setup`, and `claude-md-migration` skills are now the
+`docks-kit agent-docs` command (#204); the skills call it instead of
+`node <skill-dir>/scripts/<helper>.mjs`. These changes come from plan #198.
 
 ### Added
 
@@ -15,6 +18,16 @@ instead of `node .../plan.mjs`. These changes come from plan #198.
 - `docks-kit plan base-blob <commit> <path>` and
   `docks-kit plan checkout-state <checkout>` replace the former shell helpers,
   with the same output and exit codes.
+- `docks-kit agent-docs <pr-template|verify-skill|agent-first|bridge-check> <command> [args]`.
+  It takes the same arguments as the former `pr-template.mjs`,
+  `verify-skill.mjs`, `agent-first-check.mjs`, and `bridge-check.mjs` and
+  prints the same bytes with the same exit codes, except that a usage line
+  names `docks-kit agent-docs <helper>`, for example
+  `usage: docks-kit agent-docs pr-template detect | gate`, and that a failure
+  which stopped a script with a Node stack trace prints
+  `agent-docs: <message>` and exits 1. When docks-kit runs under Bun, Bun
+  prints its own parse error on stderr before the helper output in a folder
+  that holds, or sits below a folder that holds, an invalid `package.json`.
 
 ### Removed
 
@@ -22,6 +35,12 @@ instead of `node .../plan.mjs`. These changes come from plan #198.
   `plan-manager/scripts/checkout-state.sh`, and the copy of `base-blob.sh` in
   `code-review/scripts/`. The skills need docks-kit 0.26.0 or later;
   `docks-kit update` installs it.
+- `plan-workspace/scripts/pr-template.mjs` and `verify-skill.mjs`;
+  `agent-first-setup/scripts/agent-first-check.mjs`, `agent-docs.mjs`,
+  `pr-template.mjs`, and `verify-skill.mjs`; and
+  `claude-md-migration/scripts/bridge-check.mjs`, `agent-docs.mjs`, and
+  `verify-skill.mjs`, with their three shared-copy groups. The skills need
+  docks-kit 0.26.0 or later; `docks-kit update` installs it.
 
 ### Fixed
 

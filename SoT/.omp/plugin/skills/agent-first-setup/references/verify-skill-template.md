@@ -23,10 +23,10 @@ The skill lives at `.agents/skills/verify/SKILL.md`, where omp finds project ski
 
 ## Detect
 
-`<skill-dir>` is the folder of the skill that holds this reference. Run this command from the repository root. It only reads files:
+The `docks-kit agent-docs verify-skill` command of the kit CLI runs the detection and the gates below. It needs docks-kit 0.26.0 or later; `docks-kit update` installs it. Run this command from the repository root. It only reads files:
 
 ```bash
-node <skill-dir>/scripts/verify-skill.mjs detect
+docks-kit agent-docs verify-skill detect
 ```
 
 It prints `verify skill: present` or `verify skill: missing`, and one `verify unverified: <n>:<line>` line for each line of the skill that holds `not observed:`. When it cannot read the skill, it prints `ERROR verify skill check failed: cannot read .agents/skills/verify/SKILL.md` and exits with status 2.
@@ -47,7 +47,7 @@ A plan step that runs these steps has the approval that the plan recorded for th
 Right before each write of these steps, run the write gate with each path that the step writes. Write only when the gate prints nothing and exits 0. A gate that prints a line or exits with a status other than 0 blocks the write: report the line or the status, write nothing, and stop.
 
 ```bash
-node <skill-dir>/scripts/verify-skill.mjs write-gate <path>...
+docks-kit agent-docs verify-skill write-gate <path>...
 ```
 
 The gate refuses a path that is a symlink, and a path that holds a `..` segment. It also refuses a path whose nearest existing folder cannot be entered, or resolves outside the repository through symlinks.
@@ -62,8 +62,8 @@ The gate refuses a path that is a symlink, and a path that holds a `..` segment.
 8. After approval, run the write gate with `.agents/skills/verify/SKILL.md`, and run this entry gate right before the write. Write only when both gates print nothing and exit 0. A gate that prints a line, for example a `target occupied` line, or exits with a status other than 0 blocks the write: report the line or the status, write nothing, and stop. The entry gate checks that a new skill overwrites nothing. It prints `target occupied: .agents/skills/verify exists` when an entry is there, a dangling symlink included:
 
    ```bash
-   node <skill-dir>/scripts/verify-skill.mjs write-gate .agents/skills/verify/SKILL.md
-   node <skill-dir>/scripts/verify-skill.mjs entry-gate
+   docks-kit agent-docs verify-skill write-gate .agents/skills/verify/SKILL.md
+   docks-kit agent-docs verify-skill entry-gate
    ```
 
    Write `.agents/skills/verify/SKILL.md`.
