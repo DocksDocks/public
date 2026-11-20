@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PAYLOAD_PATHS, inventoryAuthoringPaths } from "../../scripts/generate-sot-payload";
+import { inventoryAuthoringPaths, payloadSourcePaths } from "../../scripts/generate-sot-payload";
 import { payloadDisplayPath } from "../../src/payload";
 
 const REPO_DIR = resolve(import.meta.dirname, "..", "..", "..");
@@ -30,9 +30,15 @@ function check(root: string) {
   });
 }
 
+function generate(root: string) {
+  return spawnSync(process.execPath, [GENERATOR, "--source-root", root], { encoding: "utf8" });
+}
+
 describe("generated SoT payload", () => {
   it("embeds every live SoT file in the payload", () => {
-    const expected = PAYLOAD_PATHS.filter((path) => path.startsWith("SoT/")).sort();
+    const expected = payloadSourcePaths(REPO_DIR)
+      .filter((path) => path.startsWith("SoT/"))
+      .sort();
     expect(inventoryAuthoringPaths(REPO_DIR)).toEqual(expected);
   });
 
@@ -50,6 +56,40 @@ describe("generated SoT payload", () => {
       expect(result.stderr).toContain(
         "generated payload is stale: cli/src/generated/sotPayload.ts",
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("adds a new plugin file to the payload with no list edit", () => {
+    const root = copyGeneratorRoot();
+    try {
+      const path = join(root, "SoT", ".omp", "plugin", "skills", "probe", "SKILL.md");
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, "# probe\n");
+      const stale = check(root);
+      expect(stale.status).toBe(1);
+      expect(stale.stderr).toContain("generated payload is stale: cli/src/generated/sotPayload.ts");
+
+      expect(generate(root).status).toBe(0);
+      const module = readFileSync(join(root, "cli", "src", "generated", "sotPayload.ts"), "utf8");
+      expect(module).toContain('"SoT/.omp/plugin/skills/probe/SKILL.md": "# probe\\n"');
+      const paths = module.slice(module.indexOf("GENERATED_PAYLOAD_PATHS"));
+      expect(paths).toContain('"SoT/.omp/plugin/skills/probe/SKILL.md"');
+      expect(check(root).status).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a plugin file that is not valid UTF-8", () => {
+    const root = copyGeneratorRoot();
+    try {
+      const path = join(root, "SoT", ".omp", "plugin", "rules", "binary.md");
+      writeFileSync(path, Buffer.from([0x23, 0x20, 0xff, 0x0a]));
+      const result = check(root);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("SoT/.omp/plugin/rules/binary.md is not valid UTF-8");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

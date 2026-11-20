@@ -105,6 +105,6 @@ Re-derive before you rely on a value: `grep -nE "^const [A-Z_]+(_MS|_BYTES|_LIMI
 
 ## Shipping an edit
 
-- `hygiene.ts` is part of the generated SoT payload (`cli/scripts/generate-sot-payload.ts` `PAYLOAD_PATHS`). Follow the payload rule in the root `AGENTS.md` "Regenerate the payload" bullet under `## Engineering rules` (verify: `grep -n "Regenerate the payload" AGENTS.md`). `bun run check:generated`, which `bun run check` also runs, fails until you regenerate (verify: `grep -n '"check":' package.json`).
+- `hygiene.ts` is part of the generated SoT payload: `cli/scripts/generate-sot-payload.ts` `payloadSourcePaths` takes every file under `SoT/.omp/plugin/`. Follow the payload rule in the root `AGENTS.md` "Regenerate the payload" bullet under `## Engineering rules` (verify: `grep -n "Regenerate the payload" AGENTS.md`). `bun run check:generated`, which `bun run check` also runs, fails until you regenerate (verify: `grep -n '"check":' package.json`).
 - Sync deploys the plugin; that path belongs to `omp-sync-context` (`ompKitPlugin.ts syncKitPlugin`, `ompPlugins.ts syncPlugins`).
 - The run-time cleanup rules for agents live in `SoT/.omp/plugin/skills/workspace-hygiene/SKILL.md`, `SoT/.omp/plugin/commands/cleanup.md`, and the trigger rule files in `SoT/.omp/plugin/rules/` (`temp-and-background.md`, `worktree-location.md`, `remote-cleanup.md`).
