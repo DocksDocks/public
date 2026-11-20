@@ -62,20 +62,31 @@ export async function extensionHandler<Result>(
   return handler;
 }
 
-/** A new folder below the temporary folder, with symbolic links resolved, removed after the case. */
+/**
+ * A new folder below the temporary folder, with symbolic links and Windows short names resolved,
+ * removed after the case. git prints its folders in that form.
+ */
 export function tempDir(prefix: string): string {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
   onTestFinished(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
 
 /** The git file that the PATH of the test process names first. */
 export function realGit(): string | undefined {
+  const name = process.platform === "win32" ? "git.exe" : "git";
   return (process.env["PATH"] ?? "")
     .split(path.delimiter)
-    .map((dir) => path.join(dir, "git"))
+    .map((dir) => path.join(dir, name))
     .find((file) => fs.existsSync(file));
 }
+
+/**
+ * The skip reason of a case that puts a shell script named `git` first on PATH. The cores start git
+ * without a shell, and Windows then runs only a `git.exe` or `git.com`, never a script.
+ */
+export const GIT_SCRIPT_SKIP =
+  "Windows starts only a git.exe or git.com from PATH without a shell, so a script cannot stand in for git";
 
 /**
  * Set the environment that omp gives the extension for one call, and put the

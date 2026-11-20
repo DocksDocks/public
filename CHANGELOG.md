@@ -54,6 +54,11 @@ instead of `node .../plan.mjs`. The agent-doc checks of the `plan-workspace`,
 
 - `docks-kit --version` prints the version and one newline. Before, it printed
   an empty second line.
+- The context-tree nudge names nodes on Windows (#206). git prints the
+  repository root with `/` separators there, so the nudge compared it with no
+  native folder path and named no node. The nudge now writes each node name
+  with `/` separators on every platform, and on Windows a name that starts with
+  a drive prefix such as `C:/` stays a plain name.
 
 ## 2026-11-20 - docks-kit 0.25.0: docks skills in the kit plugin, marketplace retirement
 

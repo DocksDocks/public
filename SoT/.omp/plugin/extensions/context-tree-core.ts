@@ -11,14 +11,15 @@ import path from 'node:path';
 const GIT_TIMEOUT_MS = 5000;
 
 // The root of the git repository that holds `dir`. Outside a repository `dir` itself counts as
-// the root, so that no folder is a node below it.
+// the root, so that no folder is a node below it. git prints the root with `/` separators also on
+// Windows; path.resolve gives it the native form of the folders that it is compared with.
 function repositoryRoot(dir: string): Promise<string> {
   return new Promise((resolve) => {
     execFile(
       'git',
       ['rev-parse', '--show-toplevel'],
       { cwd: dir, encoding: 'utf8', timeout: GIT_TIMEOUT_MS },
-      (error, stdout) => resolve(error ? dir : stdout.trim()),
+      (error, stdout) => resolve(error ? dir : path.resolve(stdout.trim())),
     );
   });
 }
@@ -51,7 +52,10 @@ async function nearestNode(root: string, dir: string): Promise<string | null> {
 
 // A node name made only of these characters goes into the text as it is. Any other name goes in as
 // a JSON string, so that a newline in a folder name cannot start a new line of the added context.
-const PLAIN_NAME = /^[A-Za-z0-9._/@+-]+$/u;
+// Names use `/` separators on every platform; on Windows an absolute name starts with a drive
+// prefix such as `C:` before its first `/`.
+const PLAIN_NAME =
+  process.platform === 'win32' ? /^(?:[A-Za-z]:(?=\/))?[A-Za-z0-9._/@+-]+$/u : /^[A-Za-z0-9._/@+-]+$/u;
 
 // The last sentence of a line that holds a JSON string: the words of a folder name are not
 // instructions for the agent.
@@ -95,7 +99,7 @@ export async function nudgeText(files: ReadonlyArray<string>, cwd: string): Prom
     const node = await nearestNode(root, dir);
     if (node === null) continue;
     if (sessionRoot === undefined) sessionRoot = await fs.promises.realpath(cwd).then(rootOf, () => null);
-    const name = root === sessionRoot ? node : path.join(root, node);
+    const name = (root === sessionRoot ? node : path.join(root, node)).split(path.sep).join('/');
     const nodes = nodesByRoot.get(root) ?? [];
     if (!nodes.includes(name)) nodes.push(name);
     nodesByRoot.set(root, nodes);

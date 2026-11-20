@@ -12,6 +12,7 @@ import { afterAll, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import {
   EXTENSIONS_DIR,
+  GIT_SCRIPT_SKIP,
   type Handler,
   captureOutput,
   extensionHandler,
@@ -31,7 +32,9 @@ const DENY_REASON =
 
 // Each test gives its calls their own state folder. This folder holds XDG_STATE_HOME for the whole run, so a call
 // without its own folder cannot write into the real user log.
-const SUITE_STATE = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "verify-gate-suite-")));
+const SUITE_STATE = fs.realpathSync.native(
+  fs.mkdtempSync(path.join(os.tmpdir(), "verify-gate-suite-")),
+);
 const PREVIOUS_STATE_HOME = process.env["XDG_STATE_HOME"];
 process.env["XDG_STATE_HOME"] = SUITE_STATE;
 afterAll(() => {
@@ -42,6 +45,11 @@ afterAll(() => {
 
 // The git file that the PATH of the test process names first.
 const REAL_GIT = realGit();
+
+// Windows has no POSIX file modes: a file there reports the mode bits that its read-only flag gives.
+const POSIX_MODES = process.platform !== "win32";
+
+const FIFO_SKIP = "Windows has no FIFO in its file system, so the fixture cannot exist there";
 
 type GateResult = { readonly block: true; readonly reason: string } | undefined;
 
@@ -236,8 +244,10 @@ describe("verify-gate extension", () => {
     expect(line?.session_id).toBe("s1");
     expect(line?.cwd).toBe(cwd);
     expect(new Date(line?.time ?? "").toISOString()).toBe(line?.time);
-    expect(fs.statSync(path.join(state, "docks")).mode & 0o777).toBe(0o700);
-    expect(fs.statSync(path.join(state, "docks", "verify-gate.jsonl")).mode & 0o777).toBe(0o600);
+    if (POSIX_MODES) {
+      expect(fs.statSync(path.join(state, "docks")).mode & 0o777).toBe(0o700);
+      expect(fs.statSync(path.join(state, "docks", "verify-gate.jsonl")).mode & 0o777).toBe(0o600);
+    }
   });
 
   it("enforce mode denies twice in a session, then allows and logs the third commit", async () => {
@@ -531,7 +541,8 @@ describe("verify-gate extension", () => {
     }
   });
 
-  it("a -F path that is not a regular file allows the command at once and prints nothing", async () => {
+  it("a -F path that is not a regular file allows the command at once and prints nothing", async (context) => {
+    context.skip(process.platform === "win32", FIFO_SKIP);
     const state = tempFolder("fifo");
     const cwd = tempFolder("fifo-cwd");
     const fifo = path.join(cwd, "message.fifo");
@@ -549,7 +560,8 @@ describe("verify-gate extension", () => {
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });
 
-  it("a check that runs past its deadline rejects, stops its git calls, and writes no state", async () => {
+  it("a check that runs past its deadline rejects, stops its git calls, and writes no state", async (context) => {
+    context.skip(process.platform === "win32", GIT_SCRIPT_SKIP);
     const state = tempFolder("deadline");
     const bin = tempFolder("deadline-bin");
     const finished = path.join(bin, "finished.txt");
@@ -624,7 +636,8 @@ describe("verify-gate extension", () => {
     expect(new Set(writes.names).size, "each update must write its own temporary file").toBe(2);
   });
 
-  it("a denial file that is not a regular file allows the command in enforce mode at once", async () => {
+  it("a denial file that is not a regular file allows the command in enforce mode at once", async (context) => {
+    context.skip(process.platform === "win32", FIFO_SKIP);
     const state = tempFolder("denial-fifo");
     const denials = path.join(state, "docks", "verify-gate-denials.json");
     fs.mkdirSync(path.dirname(denials), { recursive: true });
@@ -690,7 +703,7 @@ describe("verify-gate extension", () => {
     expect(Object.keys(saved).sort()).toStrictEqual(["recent", "s1"]);
     expect(saved["s1"]?.count).toBe(1);
     expect(saved["recent"]).toStrictEqual({ count: 1, time: now - 6 * day });
-    expect(fs.statSync(denials).mode & 0o777).toBe(0o600);
+    if (POSIX_MODES) expect(fs.statSync(denials).mode & 0o777).toBe(0o600);
   });
 
   it("a denial file that is not valid JSON counts as empty", async () => {
