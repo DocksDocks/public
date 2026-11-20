@@ -3,9 +3,10 @@
 ## 2026-11-20 - docks-kit 0.25.0: docks skills in the kit plugin, marketplace retirement
 
 The kit plugin `docks-kit-omp` now ships the content of the former `docks`
-and `plan-lifecycle` marketplace plugins (#200). When it can read the omp
-plugin inventory, `docks-kit sync` retires those plugins and the `docks`
-marketplace (#200). The plugin payload comes
+and `plan-lifecycle` marketplace plugins (#200). `docks-kit sync` uninstalls
+their user-scope installs and, when no uninstall failed, removes the `docks` marketplace; it only
+warns about a project-scope install, and it skips a step whose inventory or
+registry it cannot read (#200). The plugin payload comes
 from a folder walk, and sync writes each plugin file atomically (#199).
 `bun run check` checks the plugin content (#201). The skills report a
 problem in DocksDocks/public (#202). These changes come from plan #198.
@@ -26,8 +27,8 @@ problem in DocksDocks/public (#202). These changes come from plan #198.
   `context-tree-nudge` extensions (#200). They join the `workspace-hygiene`
   skill, the `hygiene` extension, the trigger rules, and the `/cleanup`
   command, so the kit plugin holds 33 skills.
-- Each real sync retires the former marketplace plugins (#200). When it can
-  read the omp plugin inventory, it runs
+- Each real sync tries to retire the former marketplace plugins (#200). When
+  it can read the omp plugin inventory, it runs
   `omp plugin uninstall --scope user <id>` for each user-scope row of
   `docks@docks` and `plan-lifecycle@docks`. For a project-scope row, it warns
   with the command `omp plugin uninstall --scope project <id>`, to run from
