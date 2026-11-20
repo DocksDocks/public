@@ -61,8 +61,9 @@ gate scores the skills in the same process. These changes come from plan DocksDo
   report a problem there, and `package.json`, the installers, README, and
   `cli/docs/install.md` name it. To move a checkout of DocksDocks/public, run
   `git remote set-url origin https://github.com/DocksDocks/docks-kit.git` from
-  its root, then `./docks-kit update` on Linux and macOS or
-  `.\docks-kit.ps1 update` on Windows. A global npm install needs nothing.
+  its root, then `./docks-kit update` and `./docks-kit sync` on Linux and macOS
+  or `.\docks-kit.ps1 update` and `.\docks-kit.ps1 sync` on Windows. A global
+  npm install needs nothing.
 
 ### Removed
 

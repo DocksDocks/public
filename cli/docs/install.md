@@ -26,10 +26,13 @@ checkout of DocksDocks/public, run these commands from the checkout's root:
 git remote set-url origin https://github.com/DocksDocks/docks-kit.git
 ./docks-kit update        # Linux and macOS
 .\docks-kit.ps1 update    # Windows
+./docks-kit sync          # Linux and macOS
+.\docks-kit.ps1 sync      # Windows
 ```
 
-The update pulls from DocksDocks/docks-kit and syncs. A global npm install
-needs nothing.
+The update pulls from DocksDocks/docks-kit. The sync then deploys the skills
+with their new report target: a launcher that runs a fresh compiled binary
+skips the sync that the update chains. A global npm install needs nothing.
 
 ## 2. Global via Bun
 
