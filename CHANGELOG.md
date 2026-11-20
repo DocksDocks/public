@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased - docks-kit 0.26.0: docks-kit plan command
+
+The plan helper of the `plan-manager` skill is now a docks-kit command,
+written in TypeScript with Effect (#203). The skills call `docks-kit plan`
+instead of `node .../plan.mjs`. These changes come from plan #198.
+
+### Added
+
+- `docks-kit plan <new|show|export|edit|status|step|list|archive|retire|reopen>`.
+  It takes the same arguments as the former `plan.mjs` and prints the same
+  bytes, except that a line which names the helper says `docks-kit plan`, for
+  example `run docks-kit plan export <n>`.
+- `docks-kit plan base-blob <commit> <path>` and
+  `docks-kit plan checkout-state <checkout>` replace the former shell helpers,
+  with the same output and exit codes.
+
+### Removed
+
+- `plan-manager/scripts/plan.mjs`, `plan-manager/scripts/base-blob.sh`,
+  `plan-manager/scripts/checkout-state.sh`, and the copy of `base-blob.sh` in
+  `code-review/scripts/`. The skills need docks-kit 0.26.0 or later;
+  `docks-kit update` installs it.
+
+### Fixed
+
+- `docks-kit --version` prints the version and one newline. Before, it printed
+  an empty second line.
+
 ## 2026-11-20 - docks-kit 0.25.0: docks skills in the kit plugin, marketplace retirement
 
 The kit plugin `docks-kit-omp` now ships the content of the former `docks`
