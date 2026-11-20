@@ -7,7 +7,7 @@
  * handler with omp events. The adapters do not import @oh-my-pi packages, so
  * they load outside omp.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -75,6 +75,9 @@ export function tempDir(prefix: string): string {
 
 const GIT_NAME = process.platform === "win32" ? "git.exe" : "git";
 
+// One word for a POSIX shell, in single quotes.
+const shellQuote = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`;
+
 // The git file that the PATH of the test process names first.
 function realGit(): string {
   const file = (process.env["PATH"] ?? "")
@@ -88,22 +91,33 @@ function realGit(): string {
 /**
  * The variables that put a stand-in for git first on PATH. The cores start git without a shell,
  * and Windows then runs only an executable, so the stand-in is the Node executable that `node` on
- * PATH names (the suites can run under Bun), linked or copied into `<dir>/bin` under the name of
- * git. `NODE_OPTIONS` makes that Node run `script` as CommonJS before it would load a main module.
- * The script sees `gitArgs`, the arguments of the git call (Node takes the first one as its main
- * module and resolves it to an absolute path), and ends with `runGit()`, which runs the real git
- * with those arguments and the stdio of the call, and exits with its status.
+ * PATH names (the suites can run under Bun), placed in `<dir>/bin` under the name of git. On Windows
+ * it is a hard link or a copy. Elsewhere it is a symbolic link, because a Node built with a shared
+ * libnode (macOS) finds that library next to its real file only; if that link does not start, a
+ * shell script that starts the real Node takes its place. `NODE_OPTIONS` makes that Node run
+ * `script` as CommonJS before it would load a main module. The script sees `gitArgs`, the
+ * arguments of the git call (Node takes the first one as its main module and resolves it to an
+ * absolute path), and ends with `runGit()`, which runs the real git with those arguments and the
+ * stdio of the call, and exits with its status.
  */
 export function gitStub(dir: string, script: string): Readonly<Record<string, string>> {
   const node = execFileSync("node", ["-p", "process.execPath"], { encoding: "utf8" }).trim();
   const bin = path.join(dir, "bin");
   fs.mkdirSync(bin, { recursive: true });
   const stub = path.join(bin, GIT_NAME);
-  try {
-    fs.linkSync(node, stub);
-  } catch {
-    // Another file system, or a node file of another user: a copy works where a link does not.
-    fs.copyFileSync(node, stub);
+  if (process.platform === "win32") {
+    try {
+      fs.linkSync(node, stub);
+    } catch {
+      // Another volume: a copy works where a hard link does not.
+      fs.copyFileSync(node, stub);
+    }
+  } else {
+    fs.symlinkSync(node, stub);
+    if (spawnSync(stub, ["-e", "0"]).status !== 0) {
+      fs.unlinkSync(stub);
+      fs.writeFileSync(stub, `#!/bin/sh\nexec ${shellQuote(node)} "$@"\n`, { mode: 0o755 });
+    }
   }
   const preload = path.join(dir, "git-stub.cjs");
   fs.writeFileSync(
