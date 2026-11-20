@@ -68,16 +68,18 @@ describe.skipIf(!SKILLS_HOST_SUPPORTED)("skill score", { timeout: SPAWN_TIMEOUT_
     expectRun(run("score", ["skills"], fx), 0, ["0"]);
   });
 
+  // `Zeta` sorts before `alpha` in code-unit order (upper case first) and after it in a locale order; the names differ in
+  // more than letter case, so the fixture exists on a file system that ignores case.
   it("sorts the rows by folder name in code-unit order, not by the name field", () => {
     const fx = fixture({
       git: false,
       files: {
         "skills/beta/SKILL.md": flatSkill("zeta"),
-        "skills/Alpha/SKILL.md": flatSkill("alpha"),
+        "skills/Zeta/SKILL.md": flatSkill("alpha"),
         "skills/alpha/SKILL.md": flatSkill("alpha"),
       },
     });
-    expectRun(run("score", ["--per-file", "skills"], fx), 0, ["Alpha 6", "alpha 6", "beta 6"]);
+    expectRun(run("score", ["--per-file", "skills"], fx), 0, ["Zeta 6", "alpha 6", "beta 6"]);
   });
 });
 
