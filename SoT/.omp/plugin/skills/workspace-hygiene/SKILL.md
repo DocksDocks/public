@@ -1,6 +1,11 @@
 ---
 name: workspace-hygiene
 description: Use when a task creates or ends with worktrees, temporary files or directories, servers, watchers, test runners, containers, clusters, tunnels, scheduled jobs, global installs, or remote test resources, or when disk or memory fills up. Says where to create each resource and how to remove it. Not for git history cleanup or dead-code removal.
+user-invocable: false
+metadata:
+  pattern: tool-wrapper
+  updated: "2026-11-20"
+  content_hash: "2f36463ae3f30e6211ba4ab5b10b0bc37fc4cc1cb63d8dcd11d671325a068b0b"
 ---
 
 # Workspace hygiene
@@ -51,7 +56,12 @@ For each resource, write its path, id, port, or remote name.
 
 ## Find what you cannot see
 
-Run the `tidy_report` tool, or run `docks-kit tidy --report`.
+Run the `tidy_report` tool, or run the report from a shell:
+
+```bash
+docks-kit tidy --report
+```
+
 Act only on the items that this task created.
 Report the other items to the user.
 
@@ -66,3 +76,7 @@ The sweep removes merged idle worktrees and their containers.
 It stops orphaned processes in agent directories.
 It removes scratch directories that are idle for 7 days.
 Do not rely on the sweep for a resource that the task can remove itself.
+
+## Report a problem with this skill
+
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
