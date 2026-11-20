@@ -243,9 +243,10 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
     SPAWN_TIMEOUT_MS,
   );
 
-  // PLAN_CLI_PROC_ROOT (a test hook) names an empty folder, as on a Linux without a mounted /proc.
+  // PLAN_CLI_PROC_ROOT (a test hook) names an empty folder, as on a Linux without a mounted /proc. The working
+  // folder then comes from `pwd -P`, which inherits it; an argument has no source of its bytes and fails closed.
   it(
-    "without /proc, export in a U+FFFD working folder and edit of a U+FFFD path refuse, and ASCII paths work",
+    "without /proc, export in a U+FFFD working folder works, and edit of a U+FFFD path or a failed pwd refuses",
     (context) => {
       context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
       const { scratch, createPlan } = planCliContext();
@@ -253,18 +254,32 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       const noProc = join(scratch, "no-proc");
       mkdirSync(noProc);
       const withoutProc = `PLAN_CLI_PROC_ROOT='${noProc}' docks-kit plan`;
-      const lost = planScript(
+      const literal = planScript(
         scratch,
-        `mkdir 'w-\uFFFD' && cd 'w-\uFFFD' && git init -q && ${withoutProc} export ${plan}`,
+        `mkdir 'u-\uFFFD' && cd 'u-\uFFFD' && git init -q && ${withoutProc} export ${plan}`,
       );
-      expect(lost.status, lost.stderr.toString("utf8")).toBe(1);
-      expect(lost.stdout.toString("utf8")).toBe("");
-      expect(lost.stderr.toString("utf8")).toBe(
-        "the bytes of the working folder cannot be recovered without /proc\n",
+      expect(literal.status, literal.stderr.toString("utf8")).toBe(0);
+      const written = join(scratch, "u-\uFFFD", ".git", "docks-review", `plan-${plan}.md`);
+      expect(literal.stdout.toString("utf8")).toBe(`${written}\n`);
+      expect(existsSync(written), "the plan file in the working folder").toBe(true);
+
+      // A `pwd` that fails leaves no source of the bytes.
+      const failingBin = join(scratch, "failing-pwd");
+      mkdirSync(failingBin);
+      writeFileSync(join(failingBin, "pwd"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+      const failed = planScript(
+        scratch,
+        `mkdir 'v-\uFFFD' && cd 'v-\uFFFD' && git init -q && PATH='${failingBin}':"$PATH" ${withoutProc} export ${plan}`,
       );
-      expect(existsSync(join(scratch, "w-\uFFFD", ".git", "docks-review")), "no folder").toBe(
+      expect(failed.status, failed.stderr.toString("utf8")).toBe(1);
+      expect(failed.stdout.toString("utf8")).toBe("");
+      expect(failed.stderr.toString("utf8")).toBe(
+        "the bytes of the working folder cannot be recovered without /proc or pwd -P\n",
+      );
+      expect(existsSync(join(scratch, "v-\uFFFD", ".git", "docks-review")), "no folder").toBe(
         false,
       );
+
       const edit = planScript(scratch, `${withoutProc} edit ${plan} --file 'x-\uFFFD.md'`);
       expect(edit.status, edit.stderr.toString("utf8")).toBe(1);
       expect(edit.stderr.toString("utf8")).toBe(
@@ -276,6 +291,35 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       );
       expect(ascii.status, ascii.stderr.toString("utf8")).toBe(0);
       expect(ascii.stdout.toString("utf8")).toBe(`${scratch}/.git/docks-review/plan-${plan}.md\n`);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  it(
+    "without /proc, export in a working folder that is not UTF-8 writes and prints that folder",
+    (context) => {
+      context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
+      const { scratch, createPlan } = planCliContext();
+      const plan = createPlan("no /proc, not UTF-8");
+      try {
+        mkdirSync(rawPath(scratch, "probe-\xff"));
+      } catch {
+        context.skip(NON_UTF8_SKIP);
+      }
+      const noProc = join(scratch, "no-proc");
+      mkdirSync(noProc);
+      const result = planScript(
+        scratch,
+        `dir=$(printf 'w-\\377') && mkdir "$dir" && cd "$dir" && git init -q && PLAN_CLI_PROC_ROOT='${noProc}' docks-kit plan export ${plan}`,
+      );
+      expect(result.status, result.stderr.toString("utf8")).toBe(0);
+      expect(result.stdout).toStrictEqual(
+        rawPath(scratch, `w-\xff/.git/docks-review/plan-${plan}.md\n`),
+      );
+      expect(existsSync(rawPath(scratch, `w-\xff/.git/docks-review/plan-${plan}.md`))).toBe(true);
+      expect(existsSync(join(scratch, "w-\uFFFD")), "no folder of a decoded working folder").toBe(
+        false,
+      );
     },
     SPAWN_TIMEOUT_MS,
   );

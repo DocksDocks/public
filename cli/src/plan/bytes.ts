@@ -3,13 +3,14 @@
  * that is not UTF-8 stays itself. The runtime decodes its arguments and `process.cwd()` as UTF-8 and puts U+FFFD in
  * place of each byte that is not UTF-8, which cannot be told from a literal U+FFFD. On Linux, `/proc/self/cmdline`
  * and `/proc/self/cwd` give the bytes. macOS paths and Windows arguments are Unicode, so there the runtime strings are
- * exact. On another system without those files, a string with a U+FFFD has unknown bytes, and its use fails closed.
+ * exact. On another system without those files, `pwd -P` gives the working folder, which it inherits; an argument
+ * with a U+FFFD has no other source of its bytes, and its use fails closed.
  */
 import path from "node:path";
 
 import { Effect } from "effect";
 
-import { PlanFiles } from "./services";
+import { PlanFiles, PlanProcess } from "./services";
 
 /** The bytes, or why they cannot be known. */
 export type Recovered<A> =
@@ -19,8 +20,8 @@ export type Recovered<A> =
 const ARGUMENT_WITHOUT_PROC = "the bytes of an argument cannot be recovered without /proc";
 const ARGUMENT_UNMATCHED =
   "the bytes of an argument cannot be recovered: /proc/self/cmdline does not match the arguments";
-const WORKING_FOLDER_WITHOUT_PROC =
-  "the bytes of the working folder cannot be recovered without /proc";
+const WORKING_FOLDER_LOST =
+  "the bytes of the working folder cannot be recovered without /proc or pwd -P";
 
 // Whether a path of this system is bytes that need not be UTF-8.
 const PATHS_ARE_BYTES = process.platform !== "darwin" && process.platform !== "win32";
@@ -74,16 +75,31 @@ export const argumentBytes = Effect.fn("plan.argumentBytes")(function* (
   return recovered;
 });
 
-/** The bytes of the working folder of this process. */
+/**
+ * The bytes of the working folder of this process: from `/proc/self/cwd`, else from the runtime string when it holds
+ * no U+FFFD or the system paths are Unicode, else from the `pwd -P` utility, whose output is the physical working
+ * folder that it inherits, read as bytes, without its one trailing newline.
+ */
 export const workingFolderBytes = Effect.fn("plan.workingFolderBytes")(function* () {
   const files = yield* PlanFiles;
   const target = yield* files.linkTarget(procFile("cwd"));
+  if (target !== undefined) {
+    const recovered: Recovered<string> = { ok: true, value: target.toString("latin1") };
+    return recovered;
+  }
   const cwd = process.cwd();
-  const recovered: Recovered<string> =
-    target !== undefined
-      ? { ok: true, value: target.toString("latin1") }
-      : PATHS_ARE_BYTES && cwd.includes("\uFFFD")
-        ? { ok: false, cause: WORKING_FOLDER_WITHOUT_PROC }
-        : { ok: true, value: asBytes(cwd) };
+  if (!PATHS_ARE_BYTES || !cwd.includes("\uFFFD")) {
+    const recovered: Recovered<string> = { ok: true, value: asBytes(cwd) };
+    return recovered;
+  }
+  const processes = yield* PlanProcess;
+  const printed = yield* processes
+    .run("pwd", ["-P"], { encoding: "latin1" })
+    .pipe(Effect.catchTag("SpawnError", () => Effect.undefined));
+  const folder =
+    printed?.error === undefined && printed?.status === 0 ? printed.stdout.replace(/\n$/, "") : "";
+  const recovered: Recovered<string> = folder.startsWith("/")
+    ? { ok: true, value: folder }
+    : { ok: false, cause: WORKING_FOLDER_LOST };
   return recovered;
 });
