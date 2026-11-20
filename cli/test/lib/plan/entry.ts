@@ -10,7 +10,7 @@
  * 2. The checkout helpers: `sh base-blob.sh` and `sh checkout-state.sh`, or
  *    `docks-kit plan base-blob` and `docks-kit plan checkout-state`.
  * 3. The skill snippets of the base-instructions tests: the bash blocks of the
- *    skill files, which call `sh <skill-dir>/scripts/base-blob.sh`, or the
+ *    skill files at commit b169640, which call `sh <skill-dir>/scripts/base-blob.sh`, or the
  *    planned new form in `snippets/`, which calls `docks-kit plan base-blob`
  *    through a `docks-kit` shim on PATH.
  * 4. The pure modules: the exports of `plan.mjs`, or `cli/src/plan/records.ts`
@@ -19,6 +19,7 @@
  * Step `callers` of #203 removes this selector, the `plan.mjs` mode, the shell
  * mode, and the snippet fixtures.
  */
+import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { delimiter, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -111,32 +112,59 @@ const SNIPPETS: Record<SkillSnippet, { readonly skill: string; readonly marker: 
   "code-review": { skill: CODE_REVIEW_DIR, marker: "git merge-base <fixed-point> HEAD" },
 };
 
-/** The one bash block of `file` that contains `marker`. */
-export function bashBlock(file: string, marker: string): string {
-  const blocks = [...readFileSync(file, "utf8").matchAll(/^```bash\n([\s\S]*?)^```$/gm)].map(
-    ([, code]) => code ?? "",
-  );
+/**
+ * The commit whose skill files still call `sh <skill-dir>/scripts/base-blob.sh`
+ * (docks-kit 0.25.0). The live skill files use the `docks-kit plan` form.
+ */
+export const SNIPPET_BASELINE_COMMIT = "b169640";
+
+/** The one bash block of `text` that contains `marker`; `source` names the text in an error. */
+export function bashBlock(text: string, source: string, marker: string): string {
+  const blocks = [...text.matchAll(/^```bash\n([\s\S]*?)^```$/gm)].map(([, code]) => code ?? "");
   const found = blocks.filter((code) => code.includes(marker));
   const [block] = found;
   if (found.length !== 1 || block === undefined) {
-    throw new Error(`${file} has ${found.length} bash blocks with ${marker}; expected 1`);
+    throw new Error(`${source} has ${found.length} bash blocks with ${marker}; expected 1`);
   }
   return block;
 }
 
+/** The text of `SKILL.md` of the skill `kind` at `SNIPPET_BASELINE_COMMIT`. */
+function baselineSkillText(kind: SkillSnippet): { readonly text: string; readonly source: string } {
+  const source = `${SNIPPET_BASELINE_COMMIT}:SoT/.omp/plugin/skills/${kind}/SKILL.md`;
+  const shown = spawnSync("git", ["show", source], {
+    cwd: REPO_DIR,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (shown.error !== undefined || shown.status !== 0) {
+    const detail = shown.error?.message ?? shown.stderr.trim();
+    throw new Error(
+      `${PLAN_CLI_ENTRY_ENV}=plan.mjs reads the base-instructions snippets from commit ` +
+        `${SNIPPET_BASELINE_COMMIT}, and git cannot read ${source} in ${REPO_DIR} (${detail}). ` +
+        `Fetch that commit (a shallow clone lacks it), or run with ${PLAN_CLI_ENTRY_ENV}=docks-kit.`,
+    );
+  }
+  return { text: shown.stdout, source };
+}
+
 /**
  * The shell text of a skill snippet, with its placeholders. In the `plan.mjs`
- * mode it comes from the skill file; in the `docks-kit` mode from the planned
- * text in `snippets/`. `skillDir` is the folder that replaces `<skill-dir>`.
+ * mode it comes from the skill file at `SNIPPET_BASELINE_COMMIT`; in the
+ * `docks-kit` mode from the planned text in `snippets/`. `skillDir` is the
+ * folder that replaces `<skill-dir>`.
  */
 export function skillSnippet(kind: SkillSnippet): {
   readonly text: string;
   readonly skillDir: string;
 } {
   const { skill, marker } = SNIPPETS[kind];
-  const file =
-    PLAN_CLI_ENTRY === "plan.mjs" ? join(skill, "SKILL.md") : join(SNIPPETS_DIR, `${kind}.md`);
-  return { text: bashBlock(file, marker), skillDir: skill };
+  if (PLAN_CLI_ENTRY === "plan.mjs") {
+    const { text, source } = baselineSkillText(kind);
+    return { text: bashBlock(text, source, marker), skillDir: skill };
+  }
+  const fixture = join(SNIPPETS_DIR, `${kind}.md`);
+  return { text: bashBlock(readFileSync(fixture, "utf8"), fixture, marker), skillDir: skill };
 }
 
 /**

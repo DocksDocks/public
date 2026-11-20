@@ -21,6 +21,7 @@ const REGISTERED_SUBCOMMANDS = [
   "omp",
   "scratch",
   "tidy",
+  "plan",
 ] as const;
 
 describe("argument validation", () => {
@@ -322,6 +323,16 @@ describe("registered subcommands", () => {
   it.each(REGISTERED_SUBCOMMANDS)("resolves every registered subcommand: %s", (name) => {
     expect(COMMANDS.map((command) => command.name)).toEqual(REGISTERED_SUBCOMMANDS);
     expect(subcommandName([name])).toBe(name);
-    expect(prepareArgv([name, "--help"])).toEqual({ kind: "accept", args: [name, "--help"] });
+    // Every word after `plan` reaches the plan dispatcher unparsed, so its own usage line answers `--help`.
+    const args = name === "plan" ? [name, "--", "--help"] : [name, "--help"];
+    expect(prepareArgv([name, "--help"])).toEqual({ kind: "accept", args });
+  });
+
+  it("checks a flag before plan and passes each later word to the plan dispatcher", () => {
+    expect(prepareArgv(["plan", "show", "198", "--body"])).toEqual({
+      kind: "accept",
+      args: ["plan", "--", "show", "198", "--body"],
+    });
+    expect(prepareArgv(["--verbose", "plan", "list"]).kind).not.toBe("accept");
   });
 });

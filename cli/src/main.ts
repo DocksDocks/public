@@ -26,6 +26,9 @@ const root = Command.make("docks-kit", {}, () =>
     yield* Console.log(
       "  docks-kit tidy [--apply] [--repo <path>] [--report] remove safe agent leftovers",
     );
+    yield* Console.log(
+      "  docks-kit plan <command> [...]            GitHub-issue plan records (plan-manager helper)",
+    );
     yield* Console.log("");
     yield* Console.log(
       "Run 'docks-kit --help' for full option listings (also: --wizard, --completions).",
