@@ -702,6 +702,45 @@ describe("verify-gate extension", () => {
     expect(Object.keys(readDenials(denials))).toStrictEqual(["s1"]);
   });
 
+  it('a denial count that is not a number reads as a number: "1" counts as 1, "x" and null count as 0, and the file then holds a number', async () => {
+    const state = tempFolder("count-type");
+    const denials = path.join(state, "docks", "verify-gate-denials.json");
+    fs.mkdirSync(path.dirname(denials), { recursive: true });
+    const now = Date.now();
+    fs.writeFileSync(
+      denials,
+      JSON.stringify({
+        one: { count: "1", time: now },
+        x: { count: "x", time: now },
+        empty: { count: null, time: now },
+      }),
+    );
+    const checkCommand = await coreCheckCommand();
+    const check = (sessionId: string): Promise<string | null> =>
+      checkCommand({
+        command: UNVERIFIED,
+        cwd: state,
+        sessionId,
+        env: { XDG_STATE_HOME: state, DOCKS_VERIFY_GATE: "enforce" },
+      });
+    const savedCount = (sessionId: string): unknown => readDenials(denials)[sessionId]?.count;
+    // "1" is one earlier denial: this commit is the second denial, and the next commit is allowed.
+    expect(await check("one")).toBe(DENY_REASON);
+    expect(savedCount("one")).toBe(2);
+    expect(await check("one")).toBe(null);
+    expect(savedCount("one")).toBe(0);
+    // "x" and null are no earlier denial: this commit is the first denial.
+    for (const session of ["x", "empty"]) {
+      expect(await check(session), session).toBe(DENY_REASON);
+      expect(savedCount(session), session).toBe(1);
+    }
+    expect(await check("x")).toBe(DENY_REASON);
+    expect(savedCount("x")).toBe(2);
+    expect(await check("x")).toBe(null);
+    expect(savedCount("x")).toBe(0);
+    expect(logLines(state).map((line) => line.allowed_after_denials)).toStrictEqual([2, 2]);
+  });
+
   it("the Verified key has any case, and an empty value or an empty none reason does not count", async () => {
     const state = tempFolder("trailer-rules");
     const gate = (trailer: string, session: string): Promise<GateResult> =>

@@ -542,13 +542,15 @@ async function updateDenials(env: CheckEnv, sessionId: string, signal: AbortSign
   const file = path.join(await stateDir(env, signal), 'verify-gate-denials.json');
   const state = await readDenials(file, signal);
   const now = Date.now();
-  // The file holds the entries `{ count, time }` that this core wrote. A field of another type reads
-  // as a number, so an entry without a valid time never expires.
+  // The file holds the entries `{ count, time }` that this core wrote. A time of another type reads
+  // as a number, so an entry without a valid time never expires. A count of another type reads as a
+  // number, and as 0 when that is no finite number, so each count that the update writes is finite.
   for (const [id, entry] of Object.entries(state)) {
     if (!entry || now - Number(isRecord(entry) ? entry.time : undefined) > SESSION_TTL_MS) delete state[id];
   }
   const stored = state[sessionId];
-  const previous = Number((isRecord(stored) ? stored.count : undefined) ?? 0);
+  const storedCount = Number(isRecord(stored) ? stored.count : 0);
+  const previous = Number.isFinite(storedCount) ? storedCount : 0;
   state[sessionId] = previous >= DENIALS_BEFORE_ALLOW ? { count: 0, time: now } : { count: previous + 1, time: now };
   const temp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
   try {
