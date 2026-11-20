@@ -12,10 +12,10 @@ name: release-cli
 # GITHUB_REF and GITHUB_SHA, not from what the build checked out, so a checkout
 # override would mint an attestation naming a ref that did not produce the
 # bytes. The dispatch path instead proves that every packaged file is
-# byte-identical to the tag's tree, which makes the attested ref and the
-# published content agree. It also proves that the binaries' build inputs (the
-# lockfile, the build script, and the pinned Bun setup) match the tag before
-# any of them runs.
+# byte-identical to the tag's tree, and the packed bundle to a build of that
+# tree, which makes the attested ref and the published content agree. It also
+# proves that the release build inputs (the lockfile, the build and proof
+# scripts, and the pinned Bun setup) match the tag before any of them runs.
 #
 # The dispatch path exists because a tag is burned on first push: it can never
 # be recreated, and re-running a failed run replays the workflow bytes from the
@@ -79,27 +79,34 @@ jobs:
       # would resolve a same-named branch ahead of the tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # A dispatch builds the binaries from the branch, so the lockfile, the
-      # build script, and the pinned Bun setup must match the tag before the
-      # job installs or compiles anything. A tag push checks out the tag, so
-      # only the tree can drift there.
-      - name: Prove the binary build inputs are the tag's content
+      # A dispatch builds the release from the branch, so the lockfile, the
+      # build and proof scripts, and the pinned Bun setup must match the tag
+      # before the job installs or compiles anything. A tag push checks out
+      # the tag, so only the tree can drift there.
+      - name: Prove the release build inputs are the tag's content
         env:
           RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           set -euo pipefail
           git fetch --no-tags --depth=1 origin "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
-          build_inputs=(bun.lock cli/build-binaries.sh .github/actions/setup-bun-cache/action.yml)
+          build_inputs=(
+            bun.lock
+            cli/build-binaries.sh
+            cli/scripts/build-bundle.ts
+            cli/scripts/release-build.sh
+            cli/scripts/tarball-proof.sh
+            .github/actions/setup-bun-cache/action.yml
+          )
 
           status="$(git status --porcelain -- "${build_inputs[@]}")"
           if [[ -n "$status" ]]; then
-            echo "::error::working tree differs from HEAD across binary build inputs"
+            echo "::error::working tree differs from HEAD across release build inputs"
             printf '%s\n' "$status"
             exit 1
           fi
 
           if ! git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${build_inputs[@]}"; then
-            echo "::error::binary build inputs differ from ${RELEASE_TAG}"
+            echo "::error::release build inputs differ from ${RELEASE_TAG}"
             git diff --name-status "refs/tags/${RELEASE_TAG}" HEAD -- "${build_inputs[@]}"
             exit 1
           fi
@@ -127,30 +134,18 @@ jobs:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run test:ci
 
-      - name: Build binaries (all four targets)
+      # Builds the bundle and its map, the four binaries with SHA256SUMS, and
+      # the tarball, then fails unless cli/dist holds exactly those files with
+      # one debug id across the map, the bundle, and the packed bundle.
+      - name: Build, pack, and check the release files
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
-        run: bun run build:binaries
-
-      - name: Pack npm tarball
-        env:
-          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
-        run: bun pm pack --destination cli/dist
-
-      - name: Verify exact npm tarball
-        env:
           RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
-        run: |
-          expected="cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
-          shopt -s nullglob
-          tarballs=(cli/dist/*.tgz)
-          if [[ "${#tarballs[@]}" -ne 1 || "${tarballs[0]}" != "$expected" ]]; then
-            echo "::error::expected exactly one tarball at '$expected'"
-            exit 1
-          fi
+        run: bash cli/scripts/release-build.sh "$RELEASE_VERSION"
 
       - name: Prove the packed tarball is the tag's content
         env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
           RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
           RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
         run: |
@@ -161,86 +156,10 @@ jobs:
           # branch, so `npm publish --provenance` would otherwise attest that
           # branch; a tag push checks out the tag, so only the tree can drift.
           # Both failures publish the wrong bytes under a correct-looking
-          # attestation, so this runs unconditionally.
+          # attestation, so this runs unconditionally. The proof reads the
+          # tag locally, so fetch it first.
           git fetch --no-tags --depth=1 origin "+refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
-
-          # Declared roots are package.json `files` plus what npm packs anyway:
-          # the manifest, and LICENCE in either spelling. Every declared root is
-          # compared even when absent from this checkout, because dropping an
-          # absent root would hide a branch that deleted a whole packaged
-          # directory: the tarball would omit it too. A pathspec matching nothing
-          # in either tree is simply quiet.
-          # Both lists are produced by an ordinary command into a file, never by
-          # process substitution: `mapfile < <(producer)` discards the producer's
-          # exit status even under strict mode, so a producer that prints some
-          # valid lines and then fails would silently shorten the comparison.
-          lists="$(mktemp -d)"
-          if ! bun -p '["package.json", "LICENSE", "LICENCE", ...require("./package.json").files].join("\n")' > "$lists/roots"; then
-            echo "::error::could not read the packaged roots from package.json"
-            exit 1
-          fi
-          mapfile -t roots < "$lists/roots"
-          if [[ "${#roots[@]}" -lt 4 ]]; then
-            echo "::error::package.json declares no files array to compare"
-            exit 1
-          fi
-
-          # 1. The tree must match HEAD across those roots, which is what catches
-          #    a deletion or edit that git tracks.
-          status="$(git status --porcelain -- "${roots[@]}")"
-          if [[ -n "$status" ]]; then
-            echo "::error::working tree differs from HEAD across packaged roots"
-            printf '%s\n' "$status"
-            exit 1
-          fi
-
-          # 2. HEAD must match the tag across those roots, which is what catches a
-          #    dispatch branch that committed drift the tarball would inherit.
-          if ! git diff --quiet "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"; then
-            echo "::error::packaged content differs from ${RELEASE_TAG}"
-            git diff --name-status "refs/tags/${RELEASE_TAG}" HEAD -- "${roots[@]}"
-            exit 1
-          fi
-
-          # 3. The tarball's own files must equal the tag's. Checks 1 and 2 are
-          #    blind to paths git ignores, and `bun pm pack` packs an ignored file
-          #    that sits under a declared root, so a stray editor backup or tool
-          #    output inside `cli/src` ships while `git status` and `git diff` stay
-          #    quiet. Rebuilding the same member list from the tag turns "the roots
-          #    agree" into "these files hold these bytes", and `git archive` fails
-          #    outright when a packed path does not exist at the tag.
-          tgz="cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
-          if [[ ! -f "$tgz" ]]; then
-            echo "::error::no tarball to compare at '$tgz'"
-            exit 1
-          fi
-          packed_dir="$(mktemp -d)"
-          tagged_dir="$(mktemp -d)"
-          tar -xzf "$tgz" --strip-components=1 -C "$packed_dir"
-          if ! ( cd "$packed_dir" && find . -type f -printf '%P\n' ) > "$lists/members"; then
-            echo "::error::could not list the unpacked tarball"
-            exit 1
-          fi
-          LC_ALL=C sort -o "$lists/members" "$lists/members"
-          mapfile -t members < "$lists/members"
-          if [[ "${#members[@]}" -eq 0 ]]; then
-            echo "::error::tarball '$tgz' unpacked to no files"
-            exit 1
-          fi
-          if ! git archive --format=tar "refs/tags/${RELEASE_TAG}" -- "${members[@]}" \
-            > "$packed_dir.tar" 2> "$packed_dir.err"; then
-            echo "::error::a packed file does not exist at ${RELEASE_TAG}"
-            cat "$packed_dir.err"
-            exit 1
-          fi
-          tar -xf "$packed_dir.tar" -C "$tagged_dir"
-          if ! diff -r "$packed_dir" "$tagged_dir"; then
-            echo "::error::tarball bytes differ from ${RELEASE_TAG}"
-            exit 1
-          fi
-
-          printf 'content of every packed file matches %s: %d files\n' \
-            "$RELEASE_TAG" "${#members[@]}" >> "$GITHUB_STEP_SUMMARY"
+          bash cli/scripts/tarball-proof.sh "$RELEASE_TAG" "cli/dist/docks-kit-${RELEASE_VERSION}.tgz"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -257,6 +176,7 @@ jobs:
             cli/dist/docks-kit-darwin-arm64
             cli/dist/docks-kit-windows-x64.exe
             cli/dist/SHA256SUMS
+            cli/dist/docks-kit.js.map
             cli/dist/docks-kit-${{ needs.resolve.outputs.release_version }}.tgz
 
       # Runs last on purpose: the smoke installs the tarball at the given path
@@ -308,7 +228,7 @@ jobs:
             echo "::error::could not list existing assets for $RELEASE_TAG"
             exit 1
           fi
-          for asset in docks-kit-linux-x64 docks-kit-linux-arm64 docks-kit-darwin-arm64 docks-kit-windows-x64.exe SHA256SUMS; do
+          for asset in docks-kit-linux-x64 docks-kit-linux-arm64 docks-kit-darwin-arm64 docks-kit-windows-x64.exe SHA256SUMS docks-kit.js.map; do
             if grep -Fxq "$asset" "$present"; then
               echo "asset already published, leaving untouched: $asset"
               continue
