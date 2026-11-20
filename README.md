@@ -119,10 +119,12 @@ links it into omp. The kit plugin content comes from `SoT/.omp/plugin/`:
   risky command, and the `/cleanup` command.
 
 The kit plugin replaces the former `docks` and `plan-lifecycle` plugins of
-the `docks` marketplace. `docks-kit sync` uninstalls them at user scope,
-warns with the manual command for a project-scope install, and then removes
-the `docks` marketplace. Report a problem with a skill, an agent, or the kit
-in [DocksDocks/public](https://github.com/DocksDocks/public/issues).
+the `docks` marketplace. When `docks-kit sync` can read the omp plugin
+inventory, it uninstalls them at user scope, warns with the manual command for
+a project-scope install, and then removes the `docks` marketplace. When the
+inventory cannot be read, sync warns and skips this step, and a later sync
+tries again. Report a problem with a skill, an agent, or the kit in
+[DocksDocks/public](https://github.com/DocksDocks/public/issues).
 
 ## Repository map
 

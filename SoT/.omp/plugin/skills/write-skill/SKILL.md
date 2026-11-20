@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: meta-skill
   updated: "2026-11-20"
-  content_hash: "9421f399b9944b097cfd322b5e21e4b9a76eaa8a1e522dabf71ac230e8e07d6d"
+  content_hash: "b257c9c86f488fe70a501f37dd2226e58dff953509651fa8353ac49656c996ae"
 ---
 
 # Write a Skill (docks conventions)
@@ -15,7 +15,7 @@ The description is the only thing your agent sees when deciding which skill to l
 This skill encodes docks' specific authoring conventions — the 16-point scorer rubric in the bundled `scripts/skill-guard.mjs` (the single source the kit CI also scores with), the structural checks that `bun run check` runs in the docks-kit repository (`cli/scripts/pluginContent/`), the body sweet spot, the `<constraint>` block reward, the references/ extraction rule. Anthropic's `skill-creator` and Matt Pocock's former `write-a-skill` (MIT, framing inspiration) are both generic; this one is docks-shaped.
 
 <constraint>
-Description-first. The description is surfaced in the skill listing every session — it loads always, the body loads only on invocation. Spend disproportionate effort here. CSO rules: (1) starts with `Use when …` (2 pts), (2) ≤500 chars (2 pts; > 1000 = 0 pts; the guard hard-caps at 1024), (3) names the categories of user intent the skill serves and says what the skill does as well as when, with concrete nouns (commands, file types, error text) where they help, rather than abstract capability prose, (4) zero slop words (`comprehensive`, `robust`, `elegant`, `seamless` — each occurrence costs 1 pt, max −2). Do not grow a keyword list one missed query at a time: each added token fixes one query and widens the match surface for every near-miss. When a query misses, name the intent category it belongs to, then re-run the whole trigger check (see "Behavioral checks"). The description is done when the trigger check passes and `node <write-skill-dir>/scripts/skill-guard.mjs score --per-file | grep <name>` (the bundled scorer the kit CI also uses) gives its points.
+Description-first. The description is surfaced in the skill listing every session — it loads always, the body loads only on invocation. Spend disproportionate effort here. CSO rules: (1) starts with `Use when …` (2 pts), (2) ≤500 chars (2 pts; > 1000 = 0 pts; the guard hard-caps at 1024), (3) names the categories of user intent the skill serves and says what the skill does as well as when, with concrete nouns (commands, file types, error text) where they help, rather than abstract capability prose, (4) zero slop words (`comprehensive`, `robust`, `elegant`, `seamless` — each occurrence costs 1 pt, max −2). Do not grow a keyword list one missed query at a time: each added token fixes one query and widens the match surface for every near-miss. When a query misses, name the intent category it belongs to, then re-run the whole trigger check (see "Behavioral checks"). The description is done when the trigger check passes and `node <write-skill-dir>/scripts/skill-guard.mjs score --per-file <skills-root> | grep <name>` (the bundled scorer the kit CI also uses) gives its points.
 </constraint>
 
 <constraint>
