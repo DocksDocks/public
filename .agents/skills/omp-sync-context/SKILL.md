@@ -14,7 +14,7 @@ metadata:
     - path: cli/src/engine-native/ompPlugins.ts
       lines: "1-417"
     - path: cli/src/engine-native/ompKitPlugin.ts
-      lines: "1-108"
+      lines: "1-99"
     - path: cli/src/engine-native/ompRemovals.ts
       lines: "1-385"
     - path: cli/src/engine-native/failures.ts

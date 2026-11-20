@@ -148,20 +148,36 @@ describe("omp kit plugin files", () => {
     );
   });
 
-  it("previews each file in a dry run and writes nothing", () => {
+  it.skipIf(process.platform === "win32")(
+    "replaces a changed file with a new file, not in place, and keeps mode 0600",
+    () => {
+      const ctx = testCtx();
+      const pluginDir = kitPluginDir(ctx.home);
+      const target = join(pluginDir, "extensions", "hygiene.ts");
+      mkdirSync(join(pluginDir, "extensions"), { recursive: true });
+      writeFileSync(target, "old\n", { mode: 0o600 });
+      const before = statSync(target).ino;
+
+      syncKitPlugin(ctx);
+
+      expect(readFileSync(target, "utf8")).toBe(
+        payloadText("SoT/.omp/plugin/extensions/hygiene.ts"),
+      );
+      expect(statSync(target).ino).not.toBe(before);
+      expect(statSync(target).mode & 0o777).toBe(0o600);
+    },
+  );
+
+  it("previews the plugin folder in one dry-run line and writes nothing", () => {
     const stdout: Array<string> = [];
     const ctx = testCtx(true, stdout);
     syncKitPlugin(ctx);
 
     const pluginDir = kitPluginDir(ctx.home);
     const lines = stdout.join("").split("\n");
-    expect(lines).toContain(
-      `[dry-run] cp embedded:SoT/.omp/plugin/package.json -> ${pluginDir}/package.json`,
-    );
-    expect(lines).toContain(
-      `[dry-run] cp embedded:SoT/.omp/plugin/extensions/hygiene.ts -> ${pluginDir}/extensions/hygiene.ts`,
-    );
-    expect(lines.filter((line) => line.startsWith("[dry-run] cp "))).toHaveLength(11);
+    expect(lines.filter((line) => line.startsWith("[dry-run] "))).toEqual([
+      `[dry-run] sync embedded:SoT/.omp/plugin/ -> ${pluginDir}`,
+    ]);
     expect(existsSync(pluginDir)).toBe(false);
   });
 });

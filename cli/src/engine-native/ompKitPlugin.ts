@@ -6,19 +6,11 @@
  * the payload no longer lists. Split from ompSync.ts; the orchestration still
  * lives there.
  */
-import {
-  chmodSync,
-  existsSync,
-  lstatSync,
-  readFileSync,
-  readdirSync,
-  rmdirSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, rmdirSync, unlinkSync } from "node:fs";
 
 import { GENERATED_PACKAGE_VERSION } from "../generated/sotPayload";
-import { payloadBytes, payloadDisplayPath, payloadPaths } from "../payload";
+import { payloadBytes, payloadPaths } from "../payload";
+import { replaceFile } from "./atomicWrite";
 import { p } from "./exec";
 import type { Ctx } from "./index";
 import { isObject, parseJson } from "./jq";
@@ -69,9 +61,8 @@ export function syncKitPlugin(ctx: Ctx): void {
   }));
 
   if (ctx.dryRun) {
-    for (const { source, target } of files) {
-      echo(`[dry-run] cp ${payloadDisplayPath(source)} -> ${target}`);
-    }
+    // One line for the folder: a line per file would grow with each plugin file.
+    echo(`[dry-run] sync embedded:${SOURCE_PREFIX} -> ${pluginDir}`);
     return;
   }
 
@@ -87,8 +78,8 @@ export function syncKitPlugin(ctx: Ctx): void {
     }
     ensureDirectory(target.slice(0, target.lastIndexOf("/")));
     if (existsSync(target) && readFileSync(target).equals(content)) continue;
-    writeFileSync(target, content, { mode: 0o600 });
-    chmodSync(target, 0o600);
+    // A rename, so a session that reads the file during a sync sees the old or the new file.
+    replaceFile(target, content, { mode: 0o600 });
     changed = true;
   }
   if (existsSync(pluginDir)) {
