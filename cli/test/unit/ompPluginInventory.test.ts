@@ -389,9 +389,11 @@ describe("omp plugin inventory", () => {
       await syncOmpPlugins(makeCtx(root, { output }));
 
       expect(ompCommands()).toEqual(["plugin list --json", UNINSTALL_DOCKS]);
-      expect(
-        messageLines(output, `omp marketplace registry ${registry} cannot be read`),
-      ).toHaveLength(1);
+      // The engine joins its paths with `/` on every host, so the message names that form.
+      const named = `${root}/.omp/marketplaces.json`;
+      expect(messageLines(output, `omp marketplace registry ${named} cannot be read`)).toHaveLength(
+        1,
+      );
     });
 
     it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
