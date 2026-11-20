@@ -328,7 +328,7 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
   // `self/cwd` is a regular file, so readlink fails with EINVAL, and `self/cmdline` is a folder, so the read
   // fails with EISDIR.
   it(
-    "an unreadable /proc counts as no /proc: export in a U+FFFD working folder uses pwd -P",
+    "an unreadable /proc counts as no /proc: export uses pwd -P, and edit reads its argument as without /proc",
     (context) => {
       context.skip(!PATHS_ARE_BYTES, UNICODE_PATHS_SKIP);
       const { scratch, createPlan } = planCliContext();
@@ -344,6 +344,19 @@ describe.skipIf(!PLAN_CLI_HOST_SUPPORTED)("plan write gates", () => {
       const written = join(scratch, "u-\uFFFD", ".git", "docks-review", `plan-${plan}.md`);
       expect(result.stdout.toString("utf8")).toBe(`${written}\n`);
       expect(existsSync(written), "the plan file in the working folder").toBe(true);
+
+      // `edit` reads its argument through `self/cmdline`: an ASCII path works, a U+FFFD path fails closed.
+      const withBadProc = `PLAN_CLI_PROC_ROOT='${badProc}' docks-kit plan`;
+      const ascii = planScript(
+        scratch,
+        `f=$(${withBadProc} export ${plan}) && ${withBadProc} edit ${plan} --file "$f"`,
+      );
+      expect(ascii.status, ascii.stderr.toString("utf8")).toBe(0);
+      const lost = planScript(scratch, `${withBadProc} edit ${plan} --file 'x-\uFFFD.md'`);
+      expect(lost.status, lost.stderr.toString("utf8")).toBe(1);
+      expect(lost.stderr.toString("utf8")).toBe(
+        "the bytes of an argument cannot be recovered without /proc\n",
+      );
     },
     SPAWN_TIMEOUT_MS,
   );
