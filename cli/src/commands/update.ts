@@ -1,5 +1,6 @@
 import { Command, Flag } from "effect/cli";
 import { Console, Effect } from "effect";
+import type { SpawnSyncOptions, SpawnSyncReturns } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { bail, compiled } from "../engine";
 import { kitHome } from "../kitHome";
@@ -12,8 +13,19 @@ const noSync = Flag.Boolean("no-sync").pipe(
   Flag.withDefault(false),
 );
 
-const git = (home: string, args: Array<string>): { ok: boolean; out: string } => {
-  const res = spawnHost("git", ["-C", home, ...args]);
+/** The host spawn of an update. Tests pass a recorder to observe the children. */
+type UpdateSpawn = (
+  command: string,
+  args: ReadonlyArray<string>,
+  overrides?: SpawnSyncOptions,
+) => SpawnSyncReturns<string>;
+
+const git = (
+  spawn: UpdateSpawn,
+  home: string,
+  args: Array<string>,
+): { ok: boolean; out: string } => {
+  const res = spawn("git", ["-C", home, ...args]);
   return {
     ok: res.error === undefined && res.status === 0,
     out: `${res.stdout ?? ""}${res.stderr ?? ""}`.trim(),
@@ -22,26 +34,48 @@ const git = (home: string, args: Array<string>): { ok: boolean; out: string } =>
 
 /** Spawn the freshly-updated code — the running process still has the old
  * version loaded, so the chained sync must be a new process. */
-const chainSync = (argv0: string, args: Array<string>): Effect.Effect<void> =>
+const chainSync = (spawn: UpdateSpawn, args: Array<string>): Effect.Effect<void> =>
   Effect.sync(() => {
-    const res = spawnHost(argv0, args, { stdio: "inherit" });
+    const res = spawn(process.execPath, args, { stdio: "inherit" });
     if (res.error !== undefined || res.status !== 0) process.exit(res.status ?? 1);
   });
 
-/** How the kit was installed, which fixes the entry of the chained sync. */
-export type UpdateKind = "checkout" | "package";
+type PackageBinEntry =
+  | { readonly ok: true; readonly entry: string }
+  | { readonly ok: false; readonly diagnostic: string };
 
-/** A checkout runs its TypeScript source, also when it holds a stale ignored
- * bundle; a package runs the bundle that its `bin` names. */
-const SYNC_ENTRY: Record<UpdateKind, string> = {
-  checkout: "cli/src/main.ts",
-  package: "cli/dist/docks-kit.js",
+/** The file that the installed package's `bin` names. The chained sync runs
+ * it, not a fixed path, because `@latest` can be a release that predates the
+ * bundle and still names `cli/src/main.ts`. */
+const packageBinEntry = (home: string): PackageBinEntry => {
+  const manifestPath = p(home, "package.json");
+  let doc: unknown;
+  try {
+    doc = JSON.parse(readFileSync(manifestPath, "utf8"));
+  } catch {
+    doc = undefined;
+  }
+  const bin = doc !== null && typeof doc === "object" && "bin" in doc ? doc.bin : undefined;
+  const named =
+    typeof bin === "string"
+      ? bin
+      : bin !== null && typeof bin === "object" && "docks-kit" in bin
+        ? bin["docks-kit"]
+        : undefined;
+  if (typeof named !== "string" || named === "") {
+    return {
+      ok: false,
+      diagnostic: `global package update completed, but ${manifestPath} names no docks-kit bin`,
+    };
+  }
+  const entry = p(home, named);
+  return existsSync(entry)
+    ? { ok: true, entry }
+    : {
+        ok: false,
+        diagnostic: `global package update completed, but the docks-kit bin ${entry} named by ${manifestPath} does not exist`,
+      };
 };
-
-export const updateSyncArgs = (home: string, kind: UpdateKind): Array<string> => [
-  p(home, SYNC_ENTRY[kind]),
-  "sync",
-];
 
 const readPackageVersion = (home: string): string => {
   try {
@@ -63,14 +97,16 @@ interface PackageRootCapture {
 
 type CapturePackageRoot = (command: string, args: ReadonlyArray<string>) => PackageRootCapture;
 
-const capturePackageRoot: CapturePackageRoot = (command, args) => {
-  const res = spawnHost(command, args);
-  return {
-    status: res.status,
-    stdout: res.stdout ?? "",
-    ...(res.error === undefined ? {} : { error: res.error }),
+const capturePackageRoot =
+  (spawn: UpdateSpawn): CapturePackageRoot =>
+  (command, args) => {
+    const res = spawn(command, args);
+    return {
+      status: res.status,
+      stdout: res.stdout ?? "",
+      ...(res.error === undefined ? {} : { error: res.error }),
+    };
   };
-};
 
 /**
  * The comparison key of a host path. Windows reports paths with backslashes
@@ -113,7 +149,7 @@ export type GlobalPackageHome =
 
 export const resolveGlobalPackageHome = (
   manager: PackageManager,
-  capture: CapturePackageRoot = capturePackageRoot,
+  capture: CapturePackageRoot = capturePackageRoot(spawnHost),
 ): GlobalPackageHome => {
   const commandArgs = manager === "bun" ? ["pm", "-g", "ls"] : ["root", "-g"];
   const result = capture(manager, commandArgs);
@@ -192,43 +228,48 @@ export const updateBunCommand = async (
     : { ok: true, command: resolved };
 };
 
-const updateCheckout = (home: string, skipSync: boolean) =>
+export const updateCheckout = (home: string, skipSync: boolean, spawn: UpdateSpawn = spawnHost) =>
   Effect.gen(function* () {
-    if (spawnHost("git", ["--version"], { stdio: "ignore" }).status !== 0) {
+    if (spawn("git", ["--version"], { stdio: "ignore" }).status !== 0) {
       return yield* bail("git not found - cannot update the kit checkout");
     }
-    const dirty = git(home, ["status", "--porcelain"]);
+    const dirty = git(spawn, home, ["status", "--porcelain"]);
     if (!dirty.ok) return yield* bail(`git status failed in ${home}: ${dirty.out}`);
     if (dirty.out !== "") {
       return yield* bail(
         `kit checkout ${home} has local changes - commit or stash them, then re-run docks-kit update`,
       );
     }
-    const upstream = git(home, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+    const upstream = git(spawn, home, [
+      "rev-parse",
+      "--abbrev-ref",
+      "--symbolic-full-name",
+      "@{u}",
+    ]);
     if (!upstream.ok) {
       return yield* bail(
         "current branch has no upstream - set one (git branch --set-upstream-to) or update manually",
       );
     }
-    const before = git(home, ["rev-parse", "HEAD"]).out;
-    const pull = git(home, ["pull", "--ff-only"]);
+    const before = git(spawn, home, ["rev-parse", "HEAD"]).out;
+    const pull = git(spawn, home, ["pull", "--ff-only"]);
     if (!pull.ok) return yield* bail(`git pull --ff-only failed (diverged history?):\n${pull.out}`);
-    const after = git(home, ["rev-parse", "HEAD"]).out;
+    const after = git(spawn, home, ["rev-parse", "HEAD"]).out;
 
     // A current kit still syncs: the sync repairs drift of the deployed files
     // and plugins, for example a pi-intercom install that left its pin.
     const changed = before !== after;
     if (changed) {
-      const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out;
+      const count = git(spawn, home, ["rev-list", "--count", `${before}..${after}`]).out;
       yield* Console.log(
         `Updated ${before.slice(0, 7)}..${after.slice(0, 7)} (${count} commit(s) from ${upstream.out}).`,
       );
 
-      const touched = git(home, ["diff", "--name-only", before, after]).out.split("\n");
+      const touched = git(spawn, home, ["diff", "--name-only", before, after]).out.split("\n");
       if (touched.includes("bun.lock") || touched.includes("package.json")) {
         const bun = yield* Effect.promise(() => updateBunCommand(compiled, process.execPath, home));
         if (!bun.ok) return yield* bail(bun.diagnostic, 1);
-        const res = spawnHost(bun.command, ["install", "--frozen-lockfile"], {
+        const res = spawn(bun.command, ["install", "--frozen-lockfile"], {
           cwd: home,
           stdio: "inherit",
         });
@@ -261,16 +302,17 @@ const updateCheckout = (home: string, skipSync: boolean) =>
         ? "Kit updated - running sync with the new version..."
         : "Syncing to deliver plugin and config updates...",
     );
-    return yield* chainSync(process.execPath, updateSyncArgs(home, "checkout"));
+    // The source, also when the checkout holds a stale ignored bundle.
+    return yield* chainSync(spawn, [p(home, "cli/src/main.ts"), "sync"]);
   });
 
-const updatePackage = (home: string, skipSync: boolean) =>
+export const updatePackage = (home: string, skipSync: boolean, spawn: UpdateSpawn = spawnHost) =>
   Effect.gen(function* () {
     const manager = packageManagerForHome(home);
     const beforeVersion = readPackageVersion(home);
     const updateArgs =
       manager === "bun" ? ["add", "-g", "docks-kit@latest"] : ["install", "-g", "docks-kit@latest"];
-    const res = spawnHost(manager, updateArgs, { stdio: "inherit" });
+    const res = spawn(manager, updateArgs, { stdio: "inherit" });
     if (res.error !== undefined || res.status !== 0) {
       return yield* bail(
         `global package update failed (${manager === "bun" ? "bun add -g" : "npm install -g"} docks-kit@latest)`,
@@ -278,7 +320,7 @@ const updatePackage = (home: string, skipSync: boolean) =>
       );
     }
 
-    const updated = resolveGlobalPackageHome(manager);
+    const updated = resolveGlobalPackageHome(manager, capturePackageRoot(spawn));
     if (!updated.ok) {
       return yield* bail(
         `global package update completed, but the updated package root could not be resolved: ${updated.diagnostic}`,
@@ -302,12 +344,14 @@ const updatePackage = (home: string, skipSync: boolean) =>
       return yield* Console.log(
         result.alreadyCurrent ? "Run: docks-kit sync" : "Kit updated. Run: docks-kit sync",
       );
+    const bin = packageBinEntry(updated.home);
+    if (!bin.ok) return yield* bail(bin.diagnostic, 1);
     yield* Console.log(
       result.alreadyCurrent
         ? "Syncing to deliver plugin and config updates..."
         : "Kit updated - running sync with the new version...",
     );
-    return yield* chainSync(process.execPath, updateSyncArgs(updated.home, "package"));
+    return yield* chainSync(spawn, [bin.entry, "sync"]);
   });
 
 export const updateCommand = Command.make("update", { noSync }, (config) =>

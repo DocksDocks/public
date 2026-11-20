@@ -1,11 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Effect } from "effect";
+import type { SpawnSyncReturns } from "node:child_process";
 import {
   packageManagerForHome,
   packageUpdateResult,
   resolveGlobalPackageHome,
   samePackageHome,
   updateBunCommand,
-  updateSyncArgs,
+  updateCheckout,
+  updatePackage,
 } from "../../src/commands/update";
 import { p, spawnHost } from "../../src/engine-native/exec";
 import { hostOs } from "../../src/engine-native/os";
@@ -223,31 +226,176 @@ describe("package update target", () => {
   });
 });
 
-// The kind of update picks the entry, never a file test: a checkout can hold a
-// stale ignored bundle, and a package always ships a fresh one.
+interface RecordedSpawn {
+  readonly command: string;
+  readonly args: ReadonlyArray<string>;
+}
+
+/** A spawn that records each call and answers with the scripted stdout. */
+const recordingSpawn =
+  (
+    calls: Array<RecordedSpawn>,
+    stdoutFor: (command: string, args: ReadonlyArray<string>) => string,
+  ) =>
+  (command: string, args: ReadonlyArray<string>): SpawnSyncReturns<string> => {
+    calls.push({ command, args: [...args] });
+    return {
+      pid: 1,
+      output: [],
+      stdout: stdoutFor(command, args),
+      stderr: "",
+      status: 0,
+      signal: null,
+    };
+  };
+
+/** A clean checkout on a branch with an upstream, already at the latest commit. */
+const currentCheckoutStdout = (_command: string, args: ReadonlyArray<string>): string => {
+  if (args.includes("@{u}")) return "origin/main";
+  if (args.at(-1) === "HEAD") return "0123456789abcdef0123456789abcdef01234567";
+  return "";
+};
+
+const roots: Array<string> = [];
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+const scratchRoot = (label: string): string => {
+  const root = mkdtempSync(join(tmpdir(), `docks-update-${label}-`));
+  roots.push(root);
+  return root;
+};
+
+/** A Bun global install whose package.json declares `bin`, with the named files present. */
+const bunGlobalPackage = (
+  bin: unknown,
+  files: ReadonlyArray<string>,
+): { readonly globalDir: string; readonly home: string } => {
+  const globalDir = join(scratchRoot("package"), ".bun", "install", "global");
+  const home = join(globalDir, "node_modules", "docks-kit");
+  mkdirSync(home, { recursive: true });
+  writeFileSync(
+    join(home, "package.json"),
+    `${JSON.stringify({ name: "docks-kit", version: "0.26.0", bin }, null, 2)}\n`,
+  );
+  for (const file of files) {
+    mkdirSync(join(home, file, ".."), { recursive: true });
+    writeFileSync(join(home, file), "#!/usr/bin/env bun\n");
+  }
+  return { globalDir, home };
+};
+
+const runPackageUpdate = async (
+  installed: { readonly globalDir: string; readonly home: string },
+  calls: Array<RecordedSpawn>,
+): Promise<void> =>
+  Effect.runPromise(
+    updatePackage(
+      installed.home,
+      false,
+      recordingSpawn(calls, (command, args) =>
+        command === "bun" && args.join(" ") === "pm -g ls"
+          ? `${installed.globalDir} node_modules\n`
+          : "",
+      ),
+    ),
+  );
+
+// The chained sync runs the entry of the code that the update just installed:
+// a checkout's TypeScript source, or the file the installed package's `bin`
+// names, so an @latest that predates the bundle still syncs.
 describe("chained sync entry", () => {
-  it("runs the TypeScript source for a checkout update", () => {
-    expect(updateSyncArgs("/kit", "checkout")).toEqual([p("/kit", "cli/src/main.ts"), "sync"]);
+  it("runs the TypeScript source for a checkout update", async () => {
+    const home = scratchRoot("checkout");
+    const calls: Array<RecordedSpawn> = [];
+    await Effect.runPromise(
+      updateCheckout(home, false, recordingSpawn(calls, currentCheckoutStdout)),
+    );
+    expect(calls.at(-1)).toEqual({
+      command: process.execPath,
+      args: [p(home, "cli/src/main.ts"), "sync"],
+    });
   });
 
-  it("runs the installed bundle for a package update", () => {
-    expect(updateSyncArgs("/g/node_modules/docks-kit", "package")).toEqual([
-      p("/g/node_modules/docks-kit", "cli/dist/docks-kit.js"),
-      "sync",
+  it("runs the source for a checkout that holds a stale bundle", async () => {
+    const home = scratchRoot("stale");
+    mkdirSync(join(home, "cli", "src"), { recursive: true });
+    mkdirSync(join(home, "cli", "dist"), { recursive: true });
+    writeFileSync(join(home, "cli", "src", "main.ts"), "");
+    writeFileSync(join(home, "cli", "dist", "docks-kit.js"), "#!/usr/bin/env bun\n");
+    const calls: Array<RecordedSpawn> = [];
+    await Effect.runPromise(
+      updateCheckout(home, false, recordingSpawn(calls, currentCheckoutStdout)),
+    );
+    expect(calls.at(-1)).toEqual({
+      command: process.execPath,
+      args: [p(home, "cli/src/main.ts"), "sync"],
+    });
+  });
+
+  it("runs the bundle that the installed package's bin names", async () => {
+    const installed = bunGlobalPackage({ "docks-kit": "cli/dist/docks-kit.js" }, [
+      "cli/dist/docks-kit.js",
+      "cli/src/main.ts",
     ]);
+    const calls: Array<RecordedSpawn> = [];
+    await runPackageUpdate(installed, calls);
+    expect(calls[0]).toEqual({ command: "bun", args: ["add", "-g", "docks-kit@latest"] });
+    expect(calls.at(-1)).toEqual({
+      command: process.execPath,
+      args: [p(installed.home, "cli/dist/docks-kit.js"), "sync"],
+    });
   });
 
-  it("runs the source for a checkout that holds a stale bundle", () => {
-    const home = mkdtempSync(join(tmpdir(), "docks-update-stale-"));
-    try {
-      mkdirSync(join(home, "cli", "src"), { recursive: true });
-      mkdirSync(join(home, "cli", "dist"), { recursive: true });
-      writeFileSync(join(home, "cli", "src", "main.ts"), "");
-      writeFileSync(join(home, "cli", "dist", "docks-kit.js"), "#!/usr/bin/env bun\n");
-      expect(updateSyncArgs(home, "checkout")).toEqual([p(home, "cli/src/main.ts"), "sync"]);
-    } finally {
-      rmSync(home, { recursive: true, force: true });
-    }
+  it("runs the source when the installed package's bin still names it", async () => {
+    const installed = bunGlobalPackage({ "docks-kit": "cli/src/main.ts" }, ["cli/src/main.ts"]);
+    const calls: Array<RecordedSpawn> = [];
+    await runPackageUpdate(installed, calls);
+    expect(calls.at(-1)).toEqual({
+      command: process.execPath,
+      args: [p(installed.home, "cli/src/main.ts"), "sync"],
+    });
+  });
+
+  it("reads a string bin", async () => {
+    const installed = bunGlobalPackage("cli/dist/docks-kit.js", ["cli/dist/docks-kit.js"]);
+    const calls: Array<RecordedSpawn> = [];
+    await runPackageUpdate(installed, calls);
+    expect(calls.at(-1)).toEqual({
+      command: process.execPath,
+      args: [p(installed.home, "cli/dist/docks-kit.js"), "sync"],
+    });
+  });
+
+  it.each([
+    {
+      name: "a bin file that does not exist",
+      bin: { "docks-kit": "cli/dist/docks-kit.js" },
+      message: (home: string) =>
+        `global package update completed, but the docks-kit bin ${p(home, "cli/dist/docks-kit.js")} named by ${p(home, "package.json")} does not exist`,
+    },
+    {
+      name: "a manifest without a docks-kit bin",
+      bin: { other: "cli/dist/docks-kit.js" },
+      message: (home: string) =>
+        `global package update completed, but ${p(home, "package.json")} names no docks-kit bin`,
+    },
+  ])("fails without a chained sync for $name", async ({ bin, message }) => {
+    const installed = bunGlobalPackage(bin, ["cli/src/main.ts"]);
+    const errors: Array<string> = [];
+    vi.spyOn(console, "error").mockImplementation((...args: Array<unknown>) => {
+      errors.push(args.map(String).join(" "));
+    });
+    vi.spyOn(process, "exit").mockImplementation((code) => {
+      throw new Error(`process.exit(${String(code)})`);
+    });
+    const calls: Array<RecordedSpawn> = [];
+    await expect(runPackageUpdate(installed, calls)).rejects.toThrow("process.exit(1)");
+    expect(errors).toEqual([message(installed.home)]);
+    expect(calls.some((call) => call.args.at(-1) === "sync")).toBe(false);
   });
 });
 
