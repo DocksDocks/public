@@ -20,9 +20,25 @@ const REPO_DIR = resolve(import.meta.dirname, "..", "..");
 const PACKED_BUNDLE = `package/${BUNDLE_PATH}`;
 const PACKED_STRAY_OUTPUT = /^package\/cli\/src\/.*\.js(\.map)?$/;
 const START_TIME_RUNS = 10;
-// Measured on Linux x64 with Bun 1.4.4: 66 ms for the bundle against 168 ms
-// for the TypeScript source, so half the source keeps a wide margin.
+// Measured on Linux x64 with Bun 1.4.4: 60 ms for the bundle, 162 ms for the
+// TypeScript source, and 4 ms for `bun -e 0`, so half the source's own start
+// keeps a wide margin.
 const START_TIME_MAX_RATIO = 0.5;
+
+/** Median start times in milliseconds of the bundle, the source, and `bun -e 0`. */
+export interface StartTimeMedians {
+  readonly bundle: number;
+  readonly source: number;
+  readonly bun: number;
+}
+
+/** Whether the bundle's own start, above Bun's start, is at most half the
+ * source's. Subtracting Bun's start keeps a scheduling delay that hits every
+ * process alike out of the ratio. */
+export function startTimeWithinLimit(medians: StartTimeMedians): boolean {
+  return medians.bundle - medians.bun <= START_TIME_MAX_RATIO * (medians.source - medians.bun);
+}
+
 const UNRELATED_FOLDER_COMMANDS: ReadonlyArray<ReadonlyArray<string>> = [
   ["--version"],
   ["--help"],
@@ -335,11 +351,12 @@ function timedRun(
   return elapsed;
 }
 
-// The runs alternate, so a slow phase of the host affects both forms alike.
+// The runs alternate, so a slow phase of the host affects every form alike.
 function assertStartTime(consumerDir: string, binaryPath: string): void {
   const sourceEntry = join(consumerDir, "node_modules", "docks-kit", "cli", "src", "main.ts");
   const bundleSamples: Array<number> = [];
   const sourceSamples: Array<number> = [];
+  const bunSamples: Array<number> = [];
   for (let run = 0; run < START_TIME_RUNS; run++) {
     bundleSamples.push(timedRun("installed bin --version", binaryPath, ["--version"], consumerDir));
     sourceSamples.push(
@@ -350,19 +367,25 @@ function assertStartTime(consumerDir: string, binaryPath: string): void {
         consumerDir,
       ),
     );
+    bunSamples.push(timedRun("bun -e 0", process.execPath, ["-e", "0"], consumerDir));
   }
-  const bundleMedian = median(bundleSamples);
-  const sourceMedian = median(sourceSamples);
-  const limit = sourceMedian * START_TIME_MAX_RATIO;
+  const medians: StartTimeMedians = {
+    bundle: median(bundleSamples),
+    source: median(sourceSamples),
+    bun: median(bunSamples),
+  };
+  const limit = medians.bun + START_TIME_MAX_RATIO * (medians.source - medians.bun);
   console.log(
-    `[package-smoke] start time, median of ${START_TIME_RUNS} --version runs: bundle ${bundleMedian.toFixed(1)} ms, ` +
-      `source ${sourceMedian.toFixed(1)} ms (limit ${limit.toFixed(1)} ms)`,
+    `[package-smoke] start time, median of ${START_TIME_RUNS} runs: bundle --version ${medians.bundle.toFixed(1)} ms, ` +
+      `source --version ${medians.source.toFixed(1)} ms, bun -e 0 ${medians.bun.toFixed(1)} ms ` +
+      `(bundle limit ${limit.toFixed(1)} ms)`,
   );
-  if (bundleMedian > limit) {
+  if (!startTimeWithinLimit(medians)) {
     fail(
-      `assertion "the bundle starts in at most half the time of the source" failed: observed ` +
-        `${bundleMedian.toFixed(1)} ms against ${sourceMedian.toFixed(1)} ms. Repair: check that bin runs ` +
-        `${BUNDLE_PATH} and that the build still bundles the dependencies.`,
+      `assertion "the bundle's start above Bun's is at most half the source's" failed: observed ` +
+        `${medians.bundle.toFixed(1)} ms against ${medians.source.toFixed(1)} ms, with Bun's start at ` +
+        `${medians.bun.toFixed(1)} ms. Repair: check that bin runs ${BUNDLE_PATH} and that the build still ` +
+        `bundles the dependencies.`,
     );
   }
 }
@@ -422,9 +445,11 @@ function main(): void {
   console.log("[package-smoke] clean-room consumer install passed");
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`[package-smoke] ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+if (import.meta.main) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`[package-smoke] ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }
