@@ -1,6 +1,6 @@
 /**
  * The `omp` child processes of a sync. Every `omp` command that the
- * marketplace and plugin passes run starts through `spawnOmp`, so each child
+ * plugin pass runs starts through `spawnOmp`, so each child
  * writes into the data root that the sync locked.
  */
 import { spawnProcess, type AsyncProcessOptions, type AsyncProcessResult } from "./exec";

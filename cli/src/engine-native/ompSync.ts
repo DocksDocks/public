@@ -8,9 +8,10 @@
  * subcommand runs under ctx.dryRun.
  *
  * Split: file deploy lives in `ompFileDeploy.ts`, the kit plugin files in
- * `ompKitPlugin.ts`, the marketplace pass in `ompMarketplace.ts`, the plugin
- * pass in `ompPlugins.ts`, and the retired-key prune in `ompRemovals.ts`.
- * This module keeps the orchestration plus the summary surface.
+ * `ompKitPlugin.ts`, the plugin pass (with the retirement of the docks
+ * marketplace plugins) in `ompPlugins.ts`, and the retired-key prune in
+ * `ompRemovals.ts`. This module keeps the orchestration plus the summary
+ * surface.
  */
 import { isAbsolute, resolve } from "node:path";
 
@@ -22,7 +23,6 @@ import { ompPaths, type OmpPaths } from "./ompPaths";
 import { mergeOmpConfig, mergeOmpModels } from "./ompYaml";
 import { ensureDirectory, syncMergedYaml, syncWholeFile } from "./ompFileDeploy";
 import { syncKitPlugin } from "./ompKitPlugin";
-import { syncMarketplace } from "./ompMarketplace";
 import { syncPlugins } from "./ompPlugins";
 import { syncOmpModelRemovals, syncOmpRemovals } from "./ompRemovals";
 
@@ -107,7 +107,6 @@ export async function ompSync(ctx: Ctx, folders: OmpWriteFolders): Promise<OmpSt
   // The plugin pass links this directory, so the files must exist first.
   syncKitPlugin(ctx);
 
-  await syncMarketplace(ctx, paths);
   const pluginsInstalled = await syncPlugins(ctx, paths);
 
   // omp adopts `$XDG_DATA_HOME/omp` once it exists. When another sync created
@@ -137,17 +136,9 @@ export function ompSummary(ctx: Ctx, state: OmpState): void {
   if (!ctx.dryRun) echo(`omp plugins: ${state.pluginsInstalled} installed`);
 }
 
-/**
- * The omp next steps. The upgrade rule and the restart advice are independent,
- * because a sync can upgrade a plugin and also change a file that needs a restart.
- */
+/** The omp next steps. */
 export function ompNextSteps(ctx: Ctx): Array<string> {
   const steps: Array<string> = [];
-  if (ctx.nextStepTriggers.ompPluginUpgraded) {
-    steps.push(
-      "Run /reload-plugins in each running omp session, then read each plugin skill again through skill://. Restart omp instead when an upgraded plugin ships hooks, extension modules, or non-MCP tools.",
-    );
-  }
   if (ctx.verbose || ctx.nextStepTriggers.ompRestart) {
     steps.push("Restart omp to load any refreshed plugins, skills, or tools.");
   }

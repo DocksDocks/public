@@ -22,8 +22,6 @@ export interface Ctx {
   /** Per-run next-step triggers (Output Policy): advice prints only when its trigger changed or --verbose. */
   readonly nextStepTriggers: {
     ompRestart: boolean;
-    /** A marketplace plugin upgrade changed a version, so running omp sessions lost its folder. */
-    ompPluginUpgraded: boolean;
   };
   /** Harness-CLI operations that failed this run; a non-empty list fails the sync. */
   readonly failures: Array<string>;
@@ -56,7 +54,6 @@ export function makeCtx(services: EngineServices, options: CtxOptions): Ctx {
     services,
     nextStepTriggers: {
       ompRestart: false,
-      ompPluginUpgraded: false,
     },
     failures: [],
   };

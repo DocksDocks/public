@@ -202,8 +202,8 @@ const updateCheckout = (home: string, skipSync: boolean) =>
     if (!pull.ok) return yield* bail(`git pull --ff-only failed (diverged history?):\n${pull.out}`);
     const after = git(home, ["rev-parse", "HEAD"]).out;
 
-    // A current kit still syncs: the plugin passes deliver marketplace and
-    // plugin updates that move independently of the kit's own version.
+    // A current kit still syncs: the sync repairs drift of the deployed files
+    // and plugins, for example a pi-intercom install that left its pin.
     const changed = before !== after;
     if (changed) {
       const count = git(home, ["rev-list", "--count", `${before}..${after}`]).out;
@@ -312,6 +312,6 @@ export const updateCommand = Command.make("update", { noSync }, (config) =>
   }),
 ).pipe(
   Command.withDescription(
-    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest), then chains a flag-less sync that also refreshes plugin marketplaces and plugins, even when the kit was already current (--no-sync to skip).",
+    "Self-update the kit: autodetects the install (git checkout -> ff-only pull; bun/npm global -> @latest), then chains a flag-less sync that also refreshes plugins, even when the kit was already current (--no-sync to skip).",
   ),
 );

@@ -1,21 +1,17 @@
 /**
- * EngineNative omp plugin pass: marketplace-plugin install/upgrade, the
- * pinned pi-intercom npm plugin, and the link of the kit plugin that
- * `ompKitPlugin.ts syncKitPlugin` writes. Split from ompSync.ts; the
+ * EngineNative omp plugin pass: the retirement of the docks marketplace
+ * plugins, the pinned pi-intercom npm plugin, and the link of the kit plugin
+ * that `ompKitPlugin.ts syncKitPlugin` writes. Split from ompSync.ts; the
  * orchestration still lives there.
  *
- * omp deletes the previous plugin folder on `omp plugin upgrade`, so a running
- * omp session loses the plugin agents and skill script paths of that folder.
- * For each version change, the pass warns and writes one event file into the
- * upgrade log. When the versions cannot be read after the upgrade, each
- * upgrade counts as a change to the version `unknown`. A failed log write
- * gives a warning, not a sync failure. The kit plugin extension
- * `pluginUpgrades.ts` reads that log.
+ * The kit plugin now ships the content of the retired `docks@docks` and
+ * `plan-lifecycle@docks` marketplace plugins. Each real sync uninstalls their
+ * user-scope installs, warns about their project-scope installs, and then
+ * removes the `docks` marketplace. A second sync after a successful
+ * retirement runs no omp mutation for it.
  */
-import { randomBytes } from "node:crypto";
-import { chmodSync, mkdirSync, readdirSync, realpathSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 
-import { removeStaleTemporaries, replaceFile } from "./atomicWrite";
 import { p, processFailureSummary } from "./exec";
 import { recordFailure } from "./failures";
 import type { Ctx } from "./index";
@@ -26,14 +22,12 @@ import type { OmpPaths } from "./ompPaths";
 import { kitCacheDir } from "./scratch";
 import { field } from "./toolchain";
 
-const MARKETPLACE_PLUGIN_IDS = ["docks@docks", "plan-lifecycle@docks"] as const;
-
-/** The upgrade log keeps this number of the newest event files. */
-const UPGRADE_EVENTS_KEPT = 100;
-/** An event file name: the `finishedAt` time in milliseconds, a random part, and `.json`. */
-const UPGRADE_EVENT_FILE = /^(\d+)-[0-9a-f]+\.json$/;
-/** The version of an upgrade event when the inventory read did not give it. */
-const UNKNOWN_VERSION = "unknown";
+/** The marketplace plugins whose content the kit plugin now ships. */
+const RETIRED_PLUGIN_IDS = ["docks@docks", "plan-lifecycle@docks"] as const;
+/** The marketplace of the retired plugins. */
+const RETIRED_MARKETPLACE = "docks";
+/** The label of the marketplace in progress, failure, and summary texts. */
+const RETIRED_MARKETPLACE_LABEL = `${RETIRED_MARKETPLACE} marketplace`;
 
 // -------------------------------------------------------------- plugins ----
 
@@ -43,51 +37,38 @@ interface InstalledNpmPlugin {
   readonly path: string | undefined;
 }
 
-interface InstalledPlugins {
-  /** Each user-scope marketplace plugin id, with its version when the row reports one. */
-  readonly marketplace: Map<string, string | undefined>;
-  readonly npm: Map<string, InstalledNpmPlugin>;
+/** The install scopes of omp marketplace plugins. */
+type MarketplaceScope = "user" | "project";
+
+interface InstalledMarketplacePlugin {
+  /** The composite id `<plugin>@<marketplace>`. */
+  readonly id: string;
+  readonly scope: MarketplaceScope;
 }
 
-/** The fields of an install or upgrade that the sync summary line needs. */
-interface VersionedOperation {
-  readonly id: string;
-  /**
-   * Whether the inventory listed the plugin before the operation, or
-   * undefined when that inventory could not be read.
-   */
-  readonly present: boolean | undefined;
-  readonly before: string | undefined;
+interface InstalledPlugins {
+  /** One row for each scope that holds a marketplace plugin. */
+  readonly marketplace: ReadonlyArray<InstalledMarketplacePlugin>;
+  readonly npm: Map<string, InstalledNpmPlugin>;
 }
 
 /** One successful plugin operation, named in the sync summary line. */
 type PluginOperation =
-  | (VersionedOperation & {
-      readonly kind: "marketplace";
-      /** The time in milliseconds just after the omp command returned. */
-      readonly finishedAt: number;
-    })
-  | (VersionedOperation & { readonly kind: "npm" })
-  | { readonly kind: "link"; readonly id: string };
+  | {
+      readonly kind: "npm";
+      readonly id: string;
+      /**
+       * Whether the inventory listed the plugin before the operation, or
+       * undefined when that inventory could not be read.
+       */
+      readonly present: boolean | undefined;
+      readonly before: string | undefined;
+    }
+  | { readonly kind: "link"; readonly id: string }
+  | { readonly kind: "uninstall"; readonly id: string }
+  | { readonly kind: "marketplaceRemove" };
 
-/** One marketplace plugin upgrade that changed the installed version or can have changed it. */
-interface PluginUpgrade {
-  readonly id: string;
-  readonly before: string;
-  readonly after: string;
-  readonly finishedAt: number;
-}
-
-/** The version of the first entry that reports one; a marketplace row has no top-level version. */
-function marketplaceEntryVersion(entries: unknown): string | undefined {
-  if (!Array.isArray(entries)) return undefined;
-  for (const entry of entries) {
-    if (isObject(entry) && typeof entry["version"] === "string") return entry["version"];
-  }
-  return undefined;
-}
-
-async function installedPluginIdsFromCli(paths: OmpPaths): Promise<InstalledPlugins | undefined> {
+async function installedPluginsFromCli(paths: OmpPaths): Promise<InstalledPlugins | undefined> {
   const result = await spawnOmp(paths, ["plugin", "list", "--json"], ["ignore", "pipe", "ignore"]);
   if (result.error !== undefined || result.exitCode !== 0) return undefined;
 
@@ -102,15 +83,15 @@ async function installedPluginIdsFromCli(paths: OmpPaths): Promise<InstalledPlug
   }
 
   // `omp plugin list --json` reports marketplace rows as
-  // `{ id: "<plugin>@<marketplace>", scope, entries: [...] }` - the composite id
-  // is already the token `omp plugin install/upgrade` takes. omp emits one row
-  // per scope holding the plugin, so a match found only in a `project` row
-  // means the user scope is empty and `upgrade --scope user` would fail; only a
-  // `user` row counts as installed for this pipeline.
-  const marketplace = new Map<string, string | undefined>();
+  // `{ id: "<plugin>@<marketplace>", scope, entries: [...] }`. The composite
+  // id is the token that `omp plugin uninstall` takes. omp emits one row for
+  // each scope that holds the plugin.
+  const marketplace: Array<InstalledMarketplacePlugin> = [];
   for (const row of value["marketplace"]) {
-    if (!isObject(row) || typeof row["id"] !== "string" || row["scope"] !== "user") continue;
-    marketplace.set(row["id"], marketplaceEntryVersion(row["entries"]));
+    if (!isObject(row) || typeof row["id"] !== "string") continue;
+    const scope = row["scope"];
+    if (scope !== "user" && scope !== "project") continue;
+    marketplace.push({ id: row["id"], scope });
   }
 
   const npm = new Map<string, InstalledNpmPlugin>();
@@ -124,23 +105,29 @@ async function installedPluginIdsFromCli(paths: OmpPaths): Promise<InstalledPlug
 }
 
 /**
- * Names one operation with its version change. `after` is the inventory read
+ * Names one operation. For an npm operation, `after` is the inventory read
  * after all operations; when it does not give a version, only the id remains.
  */
 function describeOperation(
   operation: PluginOperation,
   after: InstalledPlugins | undefined,
 ): string {
-  if (operation.kind === "link") return `${operation.id} linked`;
-  const version =
-    operation.kind === "marketplace"
-      ? after?.marketplace.get(operation.id)
-      : after?.npm.get(operation.id)?.version;
-  if (version === undefined) return operation.id;
-  if (operation.present === false) return `${operation.id} ${version} (new)`;
-  if (operation.before === undefined) return `${operation.id} ${version}`;
-  if (operation.before === version) return `${operation.id} ${version} (current)`;
-  return `${operation.id} ${operation.before} -> ${version}`;
+  switch (operation.kind) {
+    case "link":
+      return `${operation.id} linked`;
+    case "uninstall":
+      return `${operation.id} uninstalled`;
+    case "marketplaceRemove":
+      return `${RETIRED_MARKETPLACE_LABEL} removed`;
+    case "npm": {
+      const version = after?.npm.get(operation.id)?.version;
+      if (version === undefined) return operation.id;
+      if (operation.present === false) return `${operation.id} ${version} (new)`;
+      if (operation.before === undefined) return `${operation.id} ${version}`;
+      if (operation.before === version) return `${operation.id} ${version} (current)`;
+      return `${operation.id} ${operation.before} -> ${version}`;
+    }
+  }
 }
 
 async function runPluginCommand(
@@ -170,103 +157,115 @@ function realPath(path: string): string | undefined {
   }
 }
 
-/**
- * The marketplace upgrades that changed the version or can have changed it.
- * `after` is the inventory read after all operations. When that read failed,
- * each upgrade of a present plugin counts as a change to `unknown`.
- */
-function versionChanges(
-  operations: ReadonlyArray<PluginOperation>,
-  after: InstalledPlugins | undefined,
-): Array<PluginUpgrade> {
-  const upgrades: Array<PluginUpgrade> = [];
-  for (const operation of operations) {
-    // Only `omp plugin upgrade` removes a folder, and only a present plugin gets that command.
-    if (operation.kind !== "marketplace" || operation.present !== true) continue;
-    const { id, before, finishedAt } = operation;
-    if (after === undefined) {
-      upgrades.push({ id, before: before ?? UNKNOWN_VERSION, after: UNKNOWN_VERSION, finishedAt });
-      continue;
-    }
-    const version = after.marketplace.get(id);
-    if (before === undefined || version === undefined || version === before) continue;
-    upgrades.push({ id, before, after: version, finishedAt });
+// ----------------------------------------------------------- retirement ----
+
+function registryHasDocks(registryFile: string): boolean {
+  if (!existsSync(registryFile)) return false;
+
+  let registryText: string;
+  try {
+    registryText = readFileSync(registryFile, "utf8");
+  } catch {
+    return false;
   }
-  return upgrades;
+  const registry = parseJson(registryText);
+  if (registry === undefined) return false;
+  if (isObject(registry) && Object.hasOwn(registry, RETIRED_MARKETPLACE)) return true;
+
+  const entries = Array.isArray(registry)
+    ? registry
+    : isObject(registry) && Array.isArray(registry["marketplaces"])
+      ? registry["marketplaces"]
+      : [];
+  return entries.some((entry) => isObject(entry) && entry["name"] === RETIRED_MARKETPLACE);
 }
 
 /**
- * Removes the oldest event files beyond the newest UPGRADE_EVENTS_KEPT, and
- * the temporary files that killed event writes left.
+ * Whether omp knows the `docks` marketplace. omp reads the active registry
+ * `<data root>/marketplaces.json`. Upstream `getMarketplacesRegistryPath`
+ * copies a legacy `<config root>/marketplaces.json` forward only when it
+ * resolves an XDG data root that has no active registry yet. So a legacy
+ * entry counts only when no active registry exists; beside an active
+ * registry it is stale.
  */
-function pruneUpgradeLog(dir: string): void {
-  removeStaleTemporaries(
-    dir,
-    (target) => target.kind === "name" && UPGRADE_EVENT_FILE.test(target.name),
+function registryListsDocks(paths: OmpPaths): boolean {
+  const activeRegistry = p(paths.dataRoot, "marketplaces.json");
+  if (existsSync(activeRegistry)) return registryHasDocks(activeRegistry);
+  return (
+    paths.dataRoot !== paths.configRoot &&
+    registryHasDocks(p(paths.configRoot, "marketplaces.json"))
   );
-  const events = readdirSync(dir).flatMap((name) => {
-    const match = UPGRADE_EVENT_FILE.exec(name);
-    return match === null ? [] : [{ name, finishedAt: Number(match[1]) }];
-  });
-  events.sort((a, b) => a.finishedAt - b.finishedAt || (a.name < b.name ? -1 : 1));
-  for (const event of events.slice(0, Math.max(0, events.length - UPGRADE_EVENTS_KEPT))) {
-    try {
-      unlinkSync(p(dir, event.name));
-    } catch (error) {
-      // A concurrent sync removed the same file first.
-      const code = typeof error === "object" && error !== null && "code" in error ? error.code : "";
-      if (code !== "ENOENT") throw error;
-    }
+}
+
+/**
+ * Removes the folder of the retired plugin upgrade log, which only the
+ * marketplace plugin upgrades wrote. The kit owns the folder.
+ */
+function removeUpgradeLog(ctx: Ctx): void {
+  const dir = p(kitCacheDir(ctx.home), "omp-plugin-upgrades");
+  if (!existsSync(dir)) return;
+  try {
+    rmSync(dir, { recursive: true, force: true });
+    ctx.services.logger.verbose(`removed the retired omp plugin upgrade log ${dir}`);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    ctx.services.logger.warn(`retired omp plugin upgrade log not removed: ${detail}`);
   }
 }
 
 /**
- * Writes one new event file for each upgrade, then prunes the log. A writer
- * creates only its own files, so concurrent syncs keep the events of each other.
- * Returns a warning when a step fails. It does not throw, because the
- * upgrades are already done and the sync must still give its upgrade advice.
+ * Uninstalls each user-scope install of a retired plugin and warns about each
+ * project-scope install, which belongs to that project. Then removes the
+ * `docks` marketplace when no uninstall failed and omp knows the marketplace.
+ * Returns the successful operations.
  */
-function recordUpgrades(home: string, upgrades: ReadonlyArray<PluginUpgrade>): string | undefined {
-  // The kit plugin extension `pluginUpgrades.ts` reads the same folder.
-  const dir = p(kitCacheDir(home), "omp-plugin-upgrades");
-  try {
-    mkdirSync(dir, { recursive: true, mode: 0o700 });
-    chmodSync(dir, 0o700);
-    for (const upgrade of upgrades) {
-      const event = {
-        version: 1,
-        id: upgrade.id,
-        before: upgrade.before,
-        after: upgrade.after,
-        finishedAt: new Date(upgrade.finishedAt).toISOString(),
-      };
-      const name = `${upgrade.finishedAt}-${randomBytes(8).toString("hex")}.json`;
-      // replaceFile writes a temporary name in the same folder and renames it into place.
-      replaceFile(p(dir, name), `${JSON.stringify(event)}\n`, { mode: 0o600 });
+async function retireMarketplacePlugins(
+  ctx: Ctx,
+  paths: OmpPaths,
+  installed: InstalledPlugins,
+): Promise<Array<PluginOperation>> {
+  const { warn } = ctx.services.logger;
+  const operations: Array<PluginOperation> = [];
+  let uninstallFailed = false;
+
+  for (const pluginId of RETIRED_PLUGIN_IDS) {
+    const rows = installed.marketplace.filter((row) => row.id === pluginId);
+    if (rows.some((row) => row.scope === "project")) {
+      warn(
+        `omp plugin ${pluginId} is installed at project scope and docks-kit no longer ships it; run from that project: omp plugin uninstall --scope project ${pluginId}`,
+      );
     }
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `omp plugin upgrade log not written: ${detail} — running omp sessions get no reminder for these upgrades; give each of them the advice above`;
+    if (!rows.some((row) => row.scope === "user")) continue;
+
+    const args = ["plugin", "uninstall", "--scope", "user", pluginId];
+    if (await runPluginCommand(ctx, paths, pluginId, args)) {
+      operations.push({ kind: "uninstall", id: pluginId });
+    } else {
+      uninstallFailed = true;
+    }
   }
-  try {
-    pruneUpgradeLog(dir);
-  } catch (error) {
-    // The events are written, so the sessions still get their reminders.
-    const detail = error instanceof Error ? error.message : String(error);
-    return `omp plugin upgrade log not pruned: ${detail} — it can keep more than ${UPGRADE_EVENTS_KEPT} event files`;
+
+  // A failed uninstall keeps the marketplace, so the manual command still resolves the id.
+  if (!uninstallFailed && registryListsDocks(paths)) {
+    const args = ["plugin", "marketplace", "remove", RETIRED_MARKETPLACE];
+    if (await runPluginCommand(ctx, paths, RETIRED_MARKETPLACE_LABEL, args)) {
+      operations.push({ kind: "marketplaceRemove" });
+    }
   }
-  return undefined;
+  return operations;
 }
 
 /** Run the plugin pass. `paths` are the omp paths that the sync locked. */
 export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
   const { change, clearProgress, echo, progress, verbose, warn } = ctx.services.logger;
 
+  if (!ctx.dryRun) removeUpgradeLog(ctx);
+
   if (ctx.services.deps.probe("omp").state === "missing") {
     ctx.services.deps.warnMissing(
       "omp",
       ctx.services.logger,
-      "deployed omp config only — marketplace and plugin passes skipped; re-run sync after installing",
+      "deployed omp config only — plugin pass skipped; re-run sync after installing",
     );
     return 0;
   }
@@ -279,10 +278,15 @@ export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
     return 0;
   }
 
+  const piIntercomPin = field("pi-intercom", "verified");
+
   if (ctx.dryRun) {
-    const piIntercomPin = field("pi-intercom", "verified");
-    for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
-      echo(`[dry-run] omp plugin install --scope user ${pluginId}`);
+    // A dry run reads no inventory, so it previews the uninstall of each retired id.
+    for (const pluginId of RETIRED_PLUGIN_IDS) {
+      echo(`[dry-run] omp plugin uninstall --scope user ${pluginId}`);
+    }
+    if (registryListsDocks(paths)) {
+      echo(`[dry-run] omp plugin marketplace remove ${RETIRED_MARKETPLACE}`);
     }
     if (piIntercomPin === "") {
       warn(
@@ -295,47 +299,24 @@ export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
     return 0;
   }
 
-  const piIntercomPin = field("pi-intercom", "verified");
-
   progress("Checking installed omp plugins...");
-  const installed = await installedPluginIdsFromCli(paths);
+  const installed = await installedPluginsFromCli(paths);
   clearProgress();
+
+  const operations: Array<PluginOperation> = [];
   if (installed === undefined) {
-    warn("omp plugin inventory unavailable — falling back to the full refresh path");
+    warn(
+      "omp plugin inventory unavailable — retirement of the docks marketplace plugins skipped until the next sync; pi-intercom and the kit plugin take the full refresh path",
+    );
+  } else {
+    operations.push(...(await retireMarketplacePlugins(ctx, paths, installed)));
   }
 
   let pluginsInstalled =
     installed === undefined
       ? 0
-      : MARKETPLACE_PLUGIN_IDS.filter((pluginId) => installed.marketplace.has(pluginId)).length +
-        (piIntercomPin !== "" && installed.npm.has("pi-intercom") ? 1 : 0) +
+      : (piIntercomPin !== "" && installed.npm.has("pi-intercom") ? 1 : 0) +
         (installed.npm.has(KIT_PLUGIN_NAME) ? 1 : 0);
-  const operations: Array<PluginOperation> = [];
-
-  for (const pluginId of MARKETPLACE_PLUGIN_IDS) {
-    const present = installed?.marketplace.has(pluginId) === true;
-    if (present && ctx.skipPluginRefresh === true) {
-      verbose(`omp plugin ${pluginId} already installed; refresh-only update skipped`);
-      continue;
-    }
-
-    const args = present
-      ? ["plugin", "upgrade", "--scope", "user", pluginId]
-      : ["plugin", "install", "--scope", "user", pluginId];
-    const succeeded = await runPluginCommand(ctx, paths, pluginId, args);
-    // The operation boundary: an omp process that started later loaded the new folder.
-    const finishedAt = Date.now();
-    if (succeeded) {
-      operations.push({
-        kind: "marketplace",
-        id: pluginId,
-        present: installed === undefined ? undefined : present,
-        before: installed?.marketplace.get(pluginId),
-        finishedAt,
-      });
-      if (!present) pluginsInstalled++;
-    }
-  }
 
   if (piIntercomPin === "") {
     warn("pi-intercom install skipped because SoT/toolchain.json has no verified pi-intercom pin");
@@ -374,44 +355,25 @@ export async function syncPlugins(ctx: Ctx, paths: OmpPaths): Promise<number> {
     if (installed?.npm.has(KIT_PLUGIN_NAME) !== true) pluginsInstalled++;
   }
 
-  if (operations.length > 0) {
-    // A second inventory read gives the versions that the operations left.
-    progress("Reading omp plugin versions...");
-    const after = await installedPluginIdsFromCli(paths);
-    clearProgress();
-    const items = operations.map((operation) => describeOperation(operation, after));
-    change(`omp plugins synced: ${items.join(", ")}`);
-    const upgrades = versionChanges(operations, after);
-    // /reload-plugins repairs the plugin agents and skills of a running session
-    // after a version-changing upgrade. The upgrade warning and next step name
-    // the cases that still need a restart: hooks, extension modules, and
-    // non-MCP tools. Each other operation (an install, a reinstall at the same
-    // version, an npm install, or a link) still needs a restart.
-    const upgradedIds = new Set(upgrades.map((upgrade) => upgrade.id));
-    if (
-      operations.some(
-        (operation) => operation.kind !== "marketplace" || !upgradedIds.has(operation.id),
-      )
-    ) {
-      ctx.nextStepTriggers.ompRestart = true;
-    }
-    if (after === undefined && upgrades.length > 0) {
-      warn(
-        "omp plugin versions could not be read after the upgrade — each upgraded plugin counts as changed",
-      );
-    }
-    for (const upgrade of upgrades) {
-      warn(
-        `omp plugin ${upgrade.id} ${upgrade.before} -> ${upgrade.after}: running omp sessions lose its plugin agents until they run /reload-plugins and read its skills again through skill:// (restart omp instead when the plugin ships hooks, extension modules, or non-MCP tools).`,
-      );
-    }
-    if (upgrades.length > 0) {
-      ctx.nextStepTriggers.ompPluginUpgraded = true;
-      const logFailure = recordUpgrades(ctx.home, upgrades);
-      if (logFailure !== undefined) warn(logFailure);
-    }
-  } else {
+  if (operations.length === 0) {
     verbose("omp plugins already in sync");
+    return pluginsInstalled;
+  }
+
+  // Only an npm operation names a version, so only then a second inventory
+  // read gives the versions that the operations left.
+  let after: InstalledPlugins | undefined;
+  if (operations.some((operation) => operation.kind === "npm")) {
+    progress("Reading omp plugin versions...");
+    after = await installedPluginsFromCli(paths);
+    clearProgress();
+  }
+  const items = operations.map((operation) => describeOperation(operation, after));
+  change(`omp plugins synced: ${items.join(", ")}`);
+  // An install, a link, or an uninstall changes the plugins that omp loads.
+  // A marketplace removal alone changes no loaded plugin.
+  if (operations.some((operation) => operation.kind !== "marketplaceRemove")) {
+    ctx.nextStepTriggers.ompRestart = true;
   }
   return pluginsInstalled;
 }

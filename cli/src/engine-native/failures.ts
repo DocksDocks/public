@@ -1,6 +1,6 @@
 /**
- * Failure ledger for harness-CLI operations. A kit-managed marketplace or
- * plugin command that exits non-zero is recorded here so engineSync can list
+ * Failure ledger for harness-CLI operations. A kit-managed plugin or
+ * marketplace command that exits non-zero is recorded here so engineSync can list
  * it and exit non-zero instead of reporting a clean sync.
  */
 import type { Ctx } from "./index";

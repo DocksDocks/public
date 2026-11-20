@@ -71,7 +71,6 @@ function testCtx(root: string, dryRun = false, stdout: Array<string> = []): Ctx 
     skipPluginRefresh: false,
     nextStepTriggers: {
       ompRestart: false,
-      ompPluginUpgraded: false,
     },
     services,
     failures: [],

@@ -3,11 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "docks-kit integration for omp: workspace hygiene tools, reminders, the automatic tidy sweep, plugin upgrade reminders, the docks skills, the plan-lifecycle skills and reviewer agents, and the verify-gate and context-tree extensions",
+  "description": "docks-kit integration for omp: workspace hygiene tools, reminders, the automatic tidy sweep, the docks skills, the plan-lifecycle skills and reviewer agents, and the verify-gate and context-tree extensions",
   "omp": {
     "extensions": [
       "./extensions/hygiene.ts",
-      "./extensions/pluginUpgrades.ts",
       "./extensions/verify-gate.ts",
       "./extensions/context-tree-nudge.ts"
     ]

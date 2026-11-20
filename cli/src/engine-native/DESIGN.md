@@ -39,8 +39,7 @@ shell engine was removed after the `bash-engine-final` tag.
   the whole files, merges `config.yml` and runs the retired-key removals on
   the merged result, merges `models.yml` and runs its removals, writes the
   intercom configuration, materializes the kit plugin, and only then runs the
-  marketplace and plugin passes, because the plugin pass links the kit plugin
-  directory.
+  plugin pass, because the plugin pass links the kit plugin directory.
 - **One pipeline.** Sync runs only the omp pipeline, which is serial.
   `syncConcurrency.ts` `runBounded` stays for the parallel probes of `tidy`
   and the tidy report.
@@ -119,9 +118,9 @@ pipeline settles, also on dry-run. When the pipeline rejects, `syncDispatch.ts`
 `engineSync` skips the block and prints only the `--- Failures ---` ledger.
 The block starts with a `Repo:` line and adds the `omp:` and `omp plugins:`
 inventory lines. Dry-run leaves out the `omp plugins:` line. Next-step advice
-lines print only when their trigger changed this run (an omp plugin upgraded
-→ `/reload-plugins` line; omp files changed → restart line) or under
-`--verbose`.
+lines print only when their trigger changed this run (an omp plugin operation,
+such as the uninstall of a retired marketplace plugin, or a changed omp file →
+restart line) or under `--verbose`.
 
 ### Platform seam
 
@@ -178,7 +177,7 @@ active logger binding.
 | `syncConcurrency.ts` | input-ordered bounded pool (`runBounded`) for the tidy probes                                                                                                                                                                                                                                               |
 | `../payload.ts`      | generated text payload reads and presentation-only source labels                                                                                                                                                                                                                                            |
 | `bun.ts`             | per-run memoized Bun resolution/bootstrap shared by the omp pipeline and direct toolchain ensure                                                                                                                                                                                                            |
-| `ompSync.ts`         | omp pipeline orchestration and summary; `ompFileDeploy.ts`, `ompMarketplace.ts`, `ompPlugins.ts`, and `ompRemovals.ts` own the file, marketplace, plugin, and retired-key passes; `ompPaths.ts` resolves roots; `ompYaml.ts` merges YAML                                                                    |
+| `ompSync.ts`         | omp pipeline orchestration and summary; `ompFileDeploy.ts`, `ompPlugins.ts`, and `ompRemovals.ts` own the file, plugin (with the marketplace-plugin retirement), and retired-key passes; `ompPaths.ts` resolves roots; `ompYaml.ts` merges YAML                                                             |
 | `toolchain.ts`       | tool presence/version probes, verified-version floor reporting, report table                                                                                                                                                                                                                                |
 | `modes.ts`           | direct `toolchain` mode                                                                                                                                                                                                                                                                                     |
 | `jq.ts`              | the `Json` value type, object narrowing, jq-compatible codepoint ordering, and a parse that yields `undefined` instead of throwing                                                                                                                                                                          |

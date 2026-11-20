@@ -101,7 +101,6 @@ function rig(platformId: NodeJS.Platform, state: ProbeState, dryRun = false): Te
     bunRuntime: undefined,
     nextStepTriggers: {
       ompRestart: false,
-      ompPluginUpgraded: false,
     },
     failures: [],
   };
