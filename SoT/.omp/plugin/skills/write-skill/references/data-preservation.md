@@ -2,7 +2,7 @@
 
 Read this when authoring or editing a skill that **moves, splits, migrates, or rewrites existing content** (root → nodes, `CLAUDE.md` → `AGENTS.md`, `SKILL.md` → `references/`, code refactors). These skills can drop content with no error. The discipline below is the kit standard.
 
-This file is **author-facing** — you read it while writing a skill, inside the docks repo. The runtime check (the bash in Template C) is **copied into each skill's own body or `references/`**, never linked from here at runtime. Duplication across skills is acceptable; a cross-skill link is a dangling pointer (agentskills.io: "keep file references one level deep").
+This file is **author-facing** — you read it while writing a skill, inside the docks-kit repository. The runtime check (the bash in Template C) is **copied into each skill's own body or `references/`**, never linked from here at runtime. Duplication across skills is acceptable; a cross-skill link is a dangling pointer (agentskills.io: "keep file references one level deep").
 
 ## Why a byte-percentage floor is the WRONG primary check
 
@@ -79,4 +79,4 @@ awk -v b="$before" -v a="$after" 'BEGIN{ if (a < b) print "NET SHRINK — invest
 
 ## What a CI lint can and cannot check
 
-`scripts/skills/transform-guard.mjs` validates **this repo's committed skill files** — it flags a docks SKILL.md that describes a transform but omits a preservation constraint + `## Verification` block. It is a *structure* lint. It canNOT check consumer runtime data loss: `scripts/` is author-side-only and never ships, and the skill runs in the consumer's repo where these scripts don't exist. That is exactly why the runtime check lives **inline in the skill body**, not in a shipped script.
+The transform check in `cli/scripts/pluginContent/` of the docks-kit repository (`bun run check` runs it) validates **that repository's committed skill files** — it flags a kit plugin SKILL.md that describes a transform but omits a preservation constraint + `## Verification` block. It is a *structure* lint. It canNOT check consumer runtime data loss: `cli/scripts/` is author-side-only and never ships, and the skill runs in the consumer's repo where these scripts don't exist. That is exactly why the runtime check lives **inline in the skill body**, not in a shipped script.

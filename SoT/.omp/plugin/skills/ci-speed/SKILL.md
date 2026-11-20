@@ -4,8 +4,8 @@ description: "Use when CI or test runs are slow or costly: GitHub Actions queue 
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-11-17"
-  content_hash: "beee07a4e4b05b211066c459f119316c3d5912a31ef62f1c33b35326b7c722b6"
+  updated: "2026-11-20"
+  content_hash: "b4bf6a53eacd316936a1a6137072e49fbcea2fc827e75bfd4706e2da0972a642"
 ---
 
 # CI Speed
@@ -241,4 +241,4 @@ Ideas restated, no text copied: enesgules `optimise-github-actions` (https://git
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

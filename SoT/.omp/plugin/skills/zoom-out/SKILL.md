@@ -4,8 +4,8 @@ description: "Use when tunneling in code-level detail and you need a system-leve
 user-invocable: true
 metadata:
   pattern: micro-skill
-  updated: "2026-10-23"
-  content_hash: "887fe22d0fc356ee1dd1cf426422dbebd2226fbb0d814ee29025502fff0fef2a"
+  updated: "2026-11-20"
+  content_hash: "b8d0d6de74511183695cd42113b945ac97367bbf87d6b5da03f64d021ee98c79"
 ---
 
 # Zoom Out
@@ -96,4 +96,4 @@ Pattern adapted from Matt Pocock's `zoom-out` skill (MIT; since removed upstream
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

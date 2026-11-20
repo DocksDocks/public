@@ -159,7 +159,7 @@ Choice: name the flag `--since`, as the other commands do. Rejected: `--from`, b
 ## Engineering standards
 
 Load each matching docks skill when the runtime has it. A runtime can show it as
-`docks:<name>` or as `<name>`. Read each matching skill during Research, before
+`docks-kit-omp:<name>` or as `<name>`. Read each matching skill during Research, before
 you write Steps. Under `### Engineering standards` in Research, record which
 skill each step applies. When a standard defines completion, put it in that
 step's `Done when`. Apply each step's skills again while you implement that
@@ -168,7 +168,7 @@ review says.
 
 Apply `code-clarity` to every step that changes code, tests, comments, or error
 messages, together with the other matching skills. Record it for each such
-step, and check its rules again in the self-review. When docks is not
+step, and check its rules again in the self-review. When the docks skills are not
 installed, the rules at the end of this section replace the docks skills,
 `code-clarity` included.
 
@@ -193,7 +193,7 @@ installed, the rules at the end of this section replace the docks skills,
 Do not start `security`, `refactor`, or `skill-agent-pipeline`. Each one opens
 its own plan. Put that work into the Steps of this plan.
 
-When docks is not installed, apply these rules:
+When the docks skills are not installed, apply these rules:
 
 - Write a test only for behavior that a consumer sees: results, boundaries,
   errors, and transitions.
@@ -209,8 +209,8 @@ When docks is not installed, apply these rules:
 ## Red baseline
 
 The main context owns the red baseline of each step that adds new behavior
-specified by inputs and outputs (the `tdd-workflow` row above), also when docks
-is not installed. A subagent can write the spec tests.
+specified by inputs and outputs (the `tdd-workflow` row above), also when the docks skills
+are not installed. A subagent can write the spec tests.
 
 1. Write the spec tests before the production code of the step.
 2. Run them. Each new test must fail because the behavior is missing: on an
@@ -360,9 +360,9 @@ diff as one self-review per lens of the code-review panel: `correctness`,
 one after another when the runtime cannot. Give each one the full candidate
 diff and its lens scope from the `code-reviewer` skill of this plugin.
 
-- With docks installed, run each self-review with the docks `code-review`
+- With the docks skills installed, run each self-review with the docks `code-review`
   skill, and apply `code-clarity` in each.
-- Without docks, apply the lens reference of this plugin's `code-reviewer`
+- Without the docks skills, apply the lens reference of this plugin's `code-reviewer`
   skill in each self-review: `correctness.md`, `spec-and-tests.md`, and
   `text-and-safety.md` in `../../code-reviewer/references/`. Apply the rules at
   the end of Engineering standards in each.

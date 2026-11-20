@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "b42ef18caa259900af30e5d5c75f847e499a5b1e9418f0e8cd3444ee7ac5f3f1"
+  content_hash: "f629c5155b7afa320005c0e72a215c2dd55dd945cba37b50250ab4305b2b0986"
 ---
 
 # Fix Workflow
@@ -120,7 +120,7 @@ For each finding, fill in this template before writing any code:
 
 Normalize upstream findings into these fields before planning. For a `security` finding, map `location` plus `evidence` to **Files/Before**, `remediation` to **After**, `CWE` plus `exploitation` to **Why/Blast radius**, and derive **Test strategy/Revert trigger** from the exploitation path and its narrowest deterministic signal. For a `code-review` line (`SEVERITY / category / locator / defect / fix`), map `locator` plus `defect` to **Files/Before**, `fix` to **After**, `SEVERITY` plus `category` and `defect` to **Why/Blast radius**, and derive **Test strategy/Revert trigger** from the defect's observable behavior.
 
-Route any fix with non-local effects through the `plan-manager` skill (from the `plan-lifecycle` plugin); do not treat the local fix table as approval to bypass that lifecycle.
+Route any fix with non-local effects through the `plan-manager` skill (from the docks-kit kit plugin); do not treat the local fix table as approval to bypass that lifecycle.
 Show the user the table grouped by tier. If the plan contains any Tier 2/3 fix, ask for approval with the omp `ask` tool. Put all open questions for this plan in one form; `ask` takes one form per call. Do not call `edit` or `write` until the user approves. An error, a cancel, or a timeout result is not approval: write nothing and end the turn. Silence is not consent; an ambiguous answer means show the table again. A plain-text "Approve? yes/no" in the reply is wrong when `ask` is available. If `ask` is not available or returns an error (for example, in a headless subagent or a print-mode run), put the table and the open questions in your final answer and end the turn. Do not invent a tool call. A Tier-1-only plan may proceed directly.
 
 **For finding-type-specific test strategies and revert triggers**, load the matching reference file from the routing table above.
@@ -198,4 +198,4 @@ After all approved fixes land, run the full verification sweep (tests + lint + t
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

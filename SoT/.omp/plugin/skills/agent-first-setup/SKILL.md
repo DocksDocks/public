@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "1b0737973cbb366bab1c41158aeaa6138099c4265f8f92c87278c33c0f07b931"
+  content_hash: "0fa6495bae86708bb591b7672a5093e5d34126d088ac7f10f06dec113c8c2634"
 ---
 
 # Agent-First Setup
@@ -111,7 +111,7 @@ In `audit` mode, run only the read-only detection and audit steps of `claude-md-
 
 - No nested node exists → load `context-tree` and run `init`. It decides which folders earn a node; a small repo can correctly get none.
 - Nodes exist → run `context-tree audit`. If it reports drift and the user asks to fix it, run `context-tree refresh` through that skill's own handoff.
-- `context-tree` names its own prerequisites (the `plan-lifecycle` plugin). If it stops on one, report that blocker and continue to Step 2a.
+- `context-tree` names its own prerequisites (the docks-kit kit plugin). If it stops on one, report that blocker and continue to Step 2a.
 
 In `audit` mode, run `context-tree audit` only.
 
@@ -276,4 +276,4 @@ GOOD — STOP at the BROKEN line; the report shows the step that failed.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

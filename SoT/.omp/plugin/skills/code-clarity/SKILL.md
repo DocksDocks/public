@@ -4,8 +4,8 @@ description: "Use when code is hard to understand without narration; improving n
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-10-23"
-  content_hash: "1e0bd7d6d6e2c5e7bd59e09b9c672a842f11ec8a1120cb944af4418ec34b8297"
+  updated: "2026-11-20"
+  content_hash: "8b873ef500ce24430e5c0361928d2458e029831ad9633e799870880d23e27351"
 ---
 
 # Code Clarity
@@ -195,4 +195,4 @@ shorter files, more abstractions, or a higher raw test count.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

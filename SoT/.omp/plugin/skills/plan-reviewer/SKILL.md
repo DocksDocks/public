@@ -4,8 +4,8 @@ description: "Use when plan-manager needs a read-only pre-implementation review 
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-11-17"
-  content_hash: "b5d7e298f768694a9d7f6c0dd409cae7a965ab5a77914d3263d1d7b61dd3408d"
+  updated: "2026-11-20"
+  content_hash: "964de8ef12c3d55418668cc19bc65a7cf787442f312eef7a3cbb10c4c4ae3b1e"
 ---
 
 # Plan Reviewer
@@ -173,4 +173,4 @@ and external state are unchanged.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

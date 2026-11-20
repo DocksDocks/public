@@ -74,9 +74,9 @@ Look for:
 - Stale comments, comments that narrate mechanics in place of reasons, and
   names that mislead.
 
-## With docks installed
+## With the docks skills installed
 
-When the docks plugin is installed, also read
+When the docks skills are installed, also read
 `skill://code-review/references/security.md` and
 `skill://code-review/references/maintainability.md` of the `code-review` skill,
 and the `code-clarity` skill (`skill://code-clarity`). Use their patterns and

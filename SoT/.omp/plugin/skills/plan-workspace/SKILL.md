@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "bd74c38385c14f9e9328c1c088d9db25a61f030e117d7b9f04a31f4ecd482081"
+  content_hash: "d49ca8965b3a3a35239520f7d5900628c67a527aa43875c2fbdc617c5681bf99"
 ---
 
 # Plans Workspace
@@ -135,7 +135,7 @@ Migration and refresh delete a legacy `docs/CLAUDE.md` only when it holds only
 ## Plans
 
 Read `docs/PLAN.md` before plan work; `docs/AGENTS.md` holds the docs-folder
-rules. The installed `plan-lifecycle` plugin's
+rules. The installed docks-kit kit plugin's
 `plan-manager/references/plan-contract.md` is the canonical contract.
 Use `plan-workspace` for setup, main-context `plan-manager` for the six phases,
 and read-only `plan-reviewer` and `code-reviewer` wrappers for review.
@@ -200,4 +200,4 @@ GOOD: Preserve the file and use only the user's restated title and goal.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

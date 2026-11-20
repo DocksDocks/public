@@ -11,8 +11,8 @@ paths:
   - "**/*.py"
 metadata:
   pattern: tool-wrapper
-  updated: "2026-10-23"
-  content_hash: "064d110536a72180f3440b9f466e6328c22ed5a1418acf29a7c6137c6c94e615"
+  updated: "2026-11-20"
+  content_hash: "31a0bcfebe81c5a91b8f972be93858789007105f12c263886af2328095c4002e"
 ---
 
 # Type-Safety Discipline
@@ -311,4 +311,4 @@ Maintenance twin: this three-case gate is restated in `references/typescript-cla
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

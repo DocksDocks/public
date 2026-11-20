@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: meta-skill
   updated: "2026-11-20"
-  content_hash: "db2ce7fe8b1fb3bc16ffb87c7fc749f95d56a9ee4d3278c014f9044f9dfcd109"
+  content_hash: "9e495920b396f75aa2254ea646deafc2f90abe43e00147b8cd4f354d8f4df3db"
 ---
 
 # Context Tree — per-folder AGENTS.md
@@ -28,7 +28,7 @@ A *context tree* is a repo where each major folder carries its own `AGENTS.md` (
 **Intent gate — NOT Plan Mode.** `audit`, `--dry-run`, and an explicit preview/proposal request are read-only and end after the report. An explicit `init`, `refresh`, or "fix the audit findings" request renders the node list and the per-section relocation table; when a canonical plan is warranted, the unified `plan-manager` creates and freshly reviews it first. Then the approval gate applies: print the tables, then ask for approval with the omp `ask` tool. An error, empty, or default result is not approval: print the question, write nothing, and end the turn. Batch all open questions for the gate into one call. A plain-text "Approve? yes/no" in the reply is wrong when the `ask` tool is available. If the session has no `ask` tool (headless or print-mode runs), print the question as the final message and end the turn; do not invent a tool call. Do not write until the user answers; silence is not consent; an ambiguous answer re-shows the tables. After approval, write Phase A. Before Phase B prunes root, show the exact lines to remove and ask again, as a separate question, for the second confirmation. No lifecycle command beyond these two approvals is required. Unclassified sections stay in root; only an explicit user mark makes a row `DROP`.
 </constraint>
 
-Prerequisite: `plan-lifecycle` must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing `plan-lifecycle` plugin, and do not create or mutate a plan.
+Prerequisite: the docks-kit kit plugin (`docks-kit-omp`) must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing docks-kit kit plugin, and do not create or mutate a plan.
 
 <constraint>
 **No content loss when relocating — per-section, NOT byte-percentage.** A split *adds* scaffolding (node headings, breadcrumbs, `## tree` metadata), so output is normally ≥100% of input — a byte-% floor is the wrong primary check (a lost section hides under added bytes). Instead: (1) inventory every source `^#{1,3}` section before writing; (2) the relocation table accounts for EACH section → a destination or an explicit user `DROP` (unclassified → KEEP in root); (3) relocate verbatim (reformat OK, reword NOT); (4) two-phase write — nodes first + the node check (every AGENTS.md non-empty, ≤500 lines, no CLAUDE.md written), then re-read the source preimage and prune root LAST; (5) the `## Verification` block confirms every source section survives downstream + flags any net shrink. On a miss: stop, restore, locate it — do NOT report success. Full algorithm: [`references/data-preservation.md`](references/data-preservation.md).
@@ -175,4 +175,4 @@ Any `LOST SECTION` / `NET SHRINK` line ⇒ restore root from `"$SOURCE_BEFORE"`,
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

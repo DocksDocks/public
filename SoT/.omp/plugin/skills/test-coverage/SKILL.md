@@ -4,8 +4,8 @@ description: Use when writing tests for code that ALREADY EXISTS — adding cove
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-11-17"
-  content_hash: "78a6fa7a01bf8181a2f5666d5dd112115cd85801a852501eb0dd20585783697b"
+  updated: "2026-11-20"
+  content_hash: "c6070b8802a33fa1f0cd291aadc64890531a1bf0fff213955453a20a57bd2d0a"
 ---
 
 # Test Coverage Generation
@@ -177,4 +177,4 @@ The skills share the lint-loop 3-strike rule and the discipline of running tests
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

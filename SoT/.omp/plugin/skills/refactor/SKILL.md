@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "76f7fc4b6ba7c8f530cade7b8e9ac793c7997f40a1a60b2aadfe40b0ac8b3f7f"
+  content_hash: "8f4fc60ea6549c0d5e10f3cfbe4595eeb0fc9d19156d807e041aa5750316e617"
 ---
 
 # Refactor (sequential pipeline)
@@ -20,7 +20,7 @@ Single-agent sequential **by default**. Execute the phases IN ORDER, in THIS con
 Phases 1–5 are READ-ONLY analysis. If the user asked only for an assessment or plan, the reviewed plan is the deliverable and the run stops after reporting it. If the user asked to refactor or implement, hand the plan to `plan-manager` for the six manager lifecycle phases — decide, draft, research, plan review, implement, and code review — which are separate from this skill's internal phases. The manager owns the canonical GitHub issue, lifecycle transitions, delegation, verification, and archive; continue into Phases 7–8 without requiring another user-issued lifecycle command. Stop only for a real unresolved user decision or persisted blocker.
 </constraint>
 
-Prerequisite: `plan-lifecycle` must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing `plan-lifecycle` plugin, and do not create or mutate a plan.
+Prerequisite: the docks-kit kit plugin (`docks-kit-omp`) must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing docks-kit kit plugin, and do not create or mutate a plan.
 
 <constraint>
 Implementation discipline (Phases 7–8). ONE refactoring at a time — never batch before testing. Run tests after each change; on failure REVERT immediately (`git restore`, or `git restore --staged` + `git restore` for a re-staged `git rm`) and log `REVERTED: <reason>` — do not try to "fix" it. Delete files with `git rm` only (never raw `rm`). Do not touch code beyond the planned change.
@@ -48,7 +48,7 @@ Reuse before abstraction. In Phase 1, inventory existing modules, exports, regis
 
 ## Pipeline
 
-Run in order. Each phase reads its reference, then hands its output to `plan-manager` for the plan issue under the exact subheading in the section shown. The plan helper accepts only its fixed `##` sections (see `skills/plan-manager/references/plan-contract.md` inside the installed `plan-lifecycle` plugin), so every phase writes a `###` subheading inside `## Research` or `## Verification Results`. The subheading is the resume anchor — keep it verbatim.
+Run in order. Each phase reads its reference, then hands its output to `plan-manager` for the plan issue under the exact subheading in the section shown. The plan helper accepts only its fixed `##` sections (see `skills/plan-manager/references/plan-contract.md` inside the installed docks-kit kit plugin), so every phase writes a `###` subheading inside `## Research` or `## Verification Results`. The subheading is the resume anchor — keep it verbatim.
 
 | # | Phase | Reference | Output section → subheading |
 |---|---|---|---|
@@ -155,4 +155,4 @@ Old-against-new check: when characterization tests cover little of a changed uni
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

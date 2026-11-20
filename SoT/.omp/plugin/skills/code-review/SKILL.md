@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "eba6cec63e3ea3d4d3fa9cad5857084c8c3ae4fa65885eefc2c98264ad1ea4bc"
+  content_hash: "92516b02004725e62bb434266055dfb4dc1c1d7978b0c69042e04cc3203af990"
 ---
 
 # Code Review
@@ -225,4 +225,4 @@ MEDIUM · Maintainability · src/api/orders.ts:45-62
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

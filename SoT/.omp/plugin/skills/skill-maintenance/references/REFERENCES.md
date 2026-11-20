@@ -99,7 +99,7 @@ Use this algorithm to avoid timestamp churn:
 
 ## Local `skill-maintenance` Decision Table
 
-| Local content | Docks plugin available | Decision |
+| Local content | docks-kit kit plugin available | Decision |
 |---|---|---|
 | Generic rules only | yes | Propose removal; delete only after user approval |
 | Generic plus stale rules | yes | Propose removal; note stale rules |
@@ -126,7 +126,7 @@ omp skill list --json
 ```
 
 If the project has Node dependencies and the `yaml` package installed, parse
-frontmatter with the same family of parser used by Docks:
+frontmatter with the same family of parser used by the docks-kit content checks:
 
 ```bash
 node -e 'const fs=require("fs"); const {parseDocument}=require("yaml"); const s=fs.readFileSync(process.argv[1],"utf8"); const m=s.match(/^---\n([\s\S]*?)\n---/); const d=parseDocument(m?.[1]||""); if(d.errors.length){console.error(d.errors.map(e=>e.message).join("\n")); process.exit(1)} console.log("frontmatter ok")' .agents/skills/example/SKILL.md

@@ -4,8 +4,8 @@ description: Use when the user asks for TDD, test-first, "write the test first t
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-11-17"
-  content_hash: "878ee307a3ff69679e7616a0385c25d90026814657408ed09172dcf7d2eff25c"
+  updated: "2026-11-20"
+  content_hash: "09215e60df3fdfb4ea3cf86ec9f832ec68b68e995e2133ed98a43eda23004ad8"
 ---
 
 # Test-Driven Development Workflow
@@ -158,4 +158,4 @@ Skip Phase 2 and you cannot distinguish "test passes because feature works" from
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

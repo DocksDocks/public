@@ -4,8 +4,8 @@ description: "Use when working with colors, Tailwind classes, CSS variables, dar
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-10-23"
-  content_hash: "3c341f36e34da1d5c1d065b2caab992a96916ad6531f6c24b2cb12c606019161"
+  updated: "2026-11-20"
+  content_hash: "c51f97242b8a497846b2ba230efc7a9a55e00a0afc8103184c8b44bce7faf449"
 ---
 
 # Design Tokenization
@@ -180,4 +180,4 @@ Four-step procedure. Don't skip the audit — proposing token names without seei
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

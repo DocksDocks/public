@@ -4,8 +4,8 @@ description: Use when designing a module / service / class with multiple concern
 user-invocable: false
 metadata:
   pattern: tool-wrapper
-  updated: "2026-11-19"
-  content_hash: "1ff65329940dd2de2701947964aac7a26948603d3288ebd3bf9e1eae2d60c446"
+  updated: "2026-11-20"
+  content_hash: "dfeafb3147cb6ff22a4bf8e4605552e66aa706a9c85c3f03fda6d1539fda440d"
 ---
 
 # SOLID — Single Responsibility, Open/Closed, Liskov, Interface Segregation, Dependency Inversion
@@ -156,4 +156,4 @@ In codebases without a DI container, **function arguments are the abstraction**.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

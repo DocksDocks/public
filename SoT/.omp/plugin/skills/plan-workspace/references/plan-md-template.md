@@ -4,7 +4,7 @@ Copy the terminal fenced block to `docs/PLAN.md` and route `docs/AGENTS.md` to
 it. Do not create `docs/CLAUDE.md`.
 Do not copy the contract into a consuming repository. It stays at
 `skills/plan-manager/references/plan-contract.md` inside the
-installed `plan-lifecycle` plugin.
+installed docks-kit kit plugin (`docks-kit-omp`).
 
 ```markdown
 # Plans
@@ -17,8 +17,8 @@ labels, timestamps, and completion state.
 Do not track plan bodies as repository files.
 
 Read `skills/plan-manager/references/plan-contract.md` inside the
-installed `plan-lifecycle` plugin for the v5 contract and helper commands.
-Resolve this reference from the installed plugin, not a marketplace checkout.
+installed docks-kit kit plugin for the v5 contract and helper commands.
+Resolve this reference from the installed plugin, not a checkout of its source repository.
 
 Use `plan-workspace` to maintain workspace routing, main-context `plan-manager`
 to run the lifecycle, and internal `plan-reviewer` for plan review.

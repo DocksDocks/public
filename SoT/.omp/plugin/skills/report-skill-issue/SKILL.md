@@ -1,19 +1,19 @@
 ---
 name: report-skill-issue
-description: "Use when reporting a problem with a docks or plan-lifecycle skill, reviewer agent, omp extension, or script: a wrong, outdated, or unsafe instruction, or a shipped script that fails. Drafts a redacted, reproducible issue for DocksDocks/docks and files it with gh only after the user approves the exact text. Not for fixing the skill in place (use write-skill or skill-maintenance) or bugs in the user's own code (use fix-workflow). A security problem never becomes a public issue."
+description: "Use when reporting a problem with a skill, reviewer agent, omp extension, or script of the docks-kit kit plugin: a wrong, outdated, or unsafe instruction, or a shipped script that fails. Drafts a redacted, reproducible issue for DocksDocks/public and files it with gh only after the user approves the exact text. Not for fixing the skill in place (use write-skill or skill-maintenance) or bugs in the user's own code (use fix-workflow). A security problem never becomes a public issue."
 user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "5f04b653e8c8262268be2917f01cc9e5631e53738f067b171cbeffd6dc596326"
+  content_hash: "760645e58cfd2bd3216f181eb341a13c80cf7589de7919bc746a2b1983142203"
 ---
 
 # Report a Skill Issue
 
-The docks and plan-lifecycle plugins come from the public GitHub repository DocksDocks/docks. When one of their skills, reviewer agents, omp extensions, or scripts gives a wrong, outdated, or unsafe instruction, or a shipped script fails, this skill turns what you saw into one issue there. A useful report lets a maintainer reproduce the problem without access to the user's project. It identifies the exact skill text, quotes the instruction, and shows what happened. It contains nothing private, because anyone can read it.
+The docks-kit kit plugin (`docks-kit-omp`) comes from the public GitHub repository DocksDocks/public. It holds the docks and plan-lifecycle skills, the reviewer agents, and the omp extensions. When one of its skills, reviewer agents, omp extensions, or scripts gives a wrong, outdated, or unsafe instruction, or a shipped script fails, this skill turns what you saw into one issue there. A useful report lets a maintainer reproduce the problem without access to the user's project. It identifies the exact skill text, quotes the instruction, and shows what happened. It contains nothing private, because anyone can read it.
 
 <constraint>
-DocksDocks/docks is a public repository. Anyone can read its issues and comments, and search engines index them. File no issue and post no comment until the user has read and approved the exact title and body that you will send. Show the draft, ask for approval, and end your turn. Do not run `gh issue create` or `gh issue comment` in the turn that shows the draft. If the user changes the draft, show the new text and get approval again. An approval that the user gave before they saw the final text does not count. In a run where you cannot ask the user (a headless run, a scheduled job, or a subagent with no way to reach the user), print the draft and the prefilled URL as your final message and stop. The URL files nothing by itself: the user reads the draft and files it from the form. Give no prefilled URL for a security problem. File nothing in that run.
+DocksDocks/public is a public repository. Anyone can read its issues and comments, and search engines index them. File no issue and post no comment until the user has read and approved the exact title and body that you will send. Show the draft, ask for approval, and end your turn. Do not run `gh issue create` or `gh issue comment` in the turn that shows the draft. If the user changes the draft, show the new text and get approval again. An approval that the user gave before they saw the final text does not count. In a run where you cannot ask the user (a headless run, a scheduled job, or a subagent with no way to reach the user), print the draft and the prefilled URL as your final message and stop. The URL files nothing by itself: the user reads the draft and files it from the form. Give no prefilled URL for a security problem. File nothing in that run.
 </constraint>
 
 <constraint>
@@ -22,7 +22,7 @@ Keep private data out of the title and the body. Leave out secret values and tok
 
 ## Scope
 
-Report problems in what ships with the docks or plan-lifecycle plugins: skills, reviewer agents, omp extensions, and scripts. A shipped skill sits at `<plugin-root>/skills/<skill>/SKILL.md`, and a shipped omp extension sits in `<plugin-root>/extensions/`. The plugin root holds `package.json`, and its `name` is `docks` or `plan-lifecycle`.
+Report problems in what ships with the docks-kit kit plugin: skills, reviewer agents, omp extensions, and scripts. A shipped skill sits at `<plugin-root>/skills/<skill>/SKILL.md`, and a shipped omp extension sits in `<plugin-root>/extensions/`. The plugin root holds `package.json`, and its `name` is `docks-kit-omp`.
 
 | The problem is in | Do this |
 |---|---|
@@ -31,7 +31,7 @@ Report problems in what ships with the docks or plan-lifecycle plugins: skills, 
 | The user's own project code | Not a skill problem; use `fix-workflow` |
 | Your own run: you skipped a step, changed a command, or acted on an assumption that the skill does not state | Not a report; correct the run and tell the user |
 | A skill from another source: another plugin, a project-local skill in `.agents/skills/` or `.claude/skills/`, or a personal skill | Not a DocksDocks report; tell the user which source owns it |
-| The skill text in a checkout of DocksDocks/docks that you were asked to change | Edit it with `write-skill` or `skill-maintenance`; no issue |
+| The skill text in a checkout of DocksDocks/public that you were asked to change | Edit it with `write-skill` or `skill-maintenance`; no issue |
 
 ## Workflow
 
@@ -50,14 +50,14 @@ If the quoted text does not say what the user reports, or says the opposite, do 
 
 ### 2. Identify the exact skill text
 
-Read the copy of the skill that the runtime loaded for the run. Do not read it from a checkout of DocksDocks/docks or from another copy. Their text and version can differ, and a report that quotes the wrong copy blames the wrong text. Most runtimes show the path or base directory of a skill when they load it. If the problem happened in an earlier session, use the copy that the session loaded when its log shows it. Otherwise, use the installed copy and say so in the draft.
+Read the copy of the skill that the runtime loaded for the run. Do not read it from a checkout of DocksDocks/public or from another copy. Their text and version can differ, and a report that quotes the wrong copy blames the wrong text. Most runtimes show the path or base directory of a skill when they load it. If the problem happened in an earlier session, use the copy that the session loaded when its log shows it. Otherwise, use the installed copy and say so in the draft.
 
 In that copy, the plugin root is the folder that holds `skills/<skill>/SKILL.md`. For an agent, omp extension, or script, it is the folder that holds `package.json`. Collect these facts. Write `unknown` for any fact that you cannot read; never guess a version or a hash.
 
 | Fact | Where to read it |
 |---|---|
 | `<plugin>:<skill>` | `name` in the plugin root's `package.json`, and `name` in the skill's frontmatter. For an agent, omp extension, or script, use its path relative to the plugin root |
-| Plugin version | `version` in the plugin root's `package.json`. In a checkout of the marketplace, the plugin's entry in `.omp-plugin/marketplace.json` holds the same `version` |
+| docks-kit version | `version` in the plugin root's `package.json`. Sync writes the docks-kit version there, so it equals the output of `docks-kit --version`. If the two differ, give both in the draft |
 | Skill metadata | `metadata.updated` and the first 12 characters of `metadata.content_hash` in the skill's frontmatter |
 | omp version | The output of `omp --version` |
 | Model | The model name, if the runtime shows it |
@@ -66,24 +66,25 @@ In that copy, the plugin root is the folder that holds `skills/<skill>/SKILL.md`
 # Run in the plugin root.
 grep -m1 '"name"' package.json
 grep -m1 '"version"' package.json
+docks-kit --version
 grep -E '^  (updated|content_hash):' skills/<skill>/SKILL.md
 ```
 
-The version and the hash tell the maintainer which text you read. Release tags have the form `<plugin>--v<version>` (`gh release list --repo DocksDocks/docks` lists them). If the user's version is older than the latest release, say so in the draft.
+The version and the hash tell the maintainer which text you read. Release tags have the form `cli-v<version>` (`gh release list --repo DocksDocks/public` lists them). If the user's version is older than the latest release, say so in the draft.
 
 ### 3. Search for an existing report
 
 Search open and closed issues with the skill name and two or three words from the symptom. Use only public words, because the query goes to GitHub.
 
 ```bash
-gh issue list --repo DocksDocks/docks --state all --search "<skill name> <key words>"
-gh issue view <n> --repo DocksDocks/docks --comments
+gh issue list --repo DocksDocks/public --state all --search "<skill name> <key words>"
+gh issue view <n> --repo DocksDocks/public --comments
 ```
 
 | Search result | Action |
 |---|---|
 | An open issue describes the same problem | Draft a comment that adds only new facts: another version, another runtime, or a new reproduction |
-| A closed issue fixed it in a later plugin version | File nothing; tell the user to update the plugin |
+| A closed issue fixed it in a later docks-kit version | File nothing; tell the user to update docks-kit (`docks-kit update`) |
 | A closed issue matches, and the problem is still in the latest version | Draft a new issue that links the closed one |
 | No match | Draft a new issue |
 
@@ -103,15 +104,15 @@ Write the host and the repository out in the argument, so that neither `GH_REPO`
 
 - Leave out the owner and the name of every remote.
 - Leave out the project's issue and pull request titles and its branch names.
-- Write its issue and pull request numbers without `#` in prose, for example "issue 123 in a private repository". In a DocksDocks/docks issue, `#123` links to DocksDocks/docks#123, a different issue. GitHub does not link `#123` inside code spans and fenced blocks, so a number there can keep its `#`. Still remove private owners, repository names, titles, and branch names from quoted output, and put a placeholder such as `<private-repo>` in their place.
+- Write its issue and pull request numbers without `#` in prose, for example "issue 123 in a private repository". In a DocksDocks/public issue, `#123` links to DocksDocks/public#123, a different issue. GitHub does not link `#123` inside code spans and fenced blocks, so a number there can keep its `#`. Still remove private owners, repository names, titles, and branch names from quoted output, and put a placeholder such as `<private-repo>` in their place.
 
-Look up every other repository that the draft names in the same way. It keeps its name only when the lookup prints `PUBLIC`. A repository on another host, or a failed lookup, counts as private. Without gh, every repository other than DocksDocks/docks counts as private.
+Look up every other repository that the draft names in the same way. It keeps its name only when the lookup prints `PUBLIC`. A repository on another host, or a failed lookup, counts as private. Without gh, every repository other than DocksDocks/public counts as private.
 
 ### 5. Get approval
 
 Show the user, as the final message of your turn:
 
-- the target: a new issue in DocksDocks/docks, or a comment on issue #n there;
+- the target: a new issue in DocksDocks/public, or a comment on issue #n there;
 - the exact title and body;
 - the command that you will run, and the GitHub account that it files under (`gh auth status` shows it).
 
@@ -125,32 +126,32 @@ Write the approved title and body, unchanged, to two new temporary files. Run th
 title=$(mktemp)
 body=$(mktemp)
 # Write the approved title to "$title" and the approved body to "$body" with your file tool, then:
-gh issue create --repo DocksDocks/docks --title "$(cat "$title")" --body-file "$body"
+gh issue create --repo DocksDocks/public --title "$(cat "$title")" --body-file "$body"
 # Or, for a comment on an existing issue:
-gh issue comment <n> --repo DocksDocks/docks --body-file "$body"
+gh issue comment <n> --repo DocksDocks/public --body-file "$body"
 rm -- "$title" "$body"
 ```
 
 If your shell does not keep variables between commands, use the paths that `mktemp` printed. Read the title from its file. Use `--body-file`, not `--body`. The shell can change backticks, `$`, and quotes in inline text, so gh could file a title or body that differs from the approved text. Bash does not expand the output of `$(cat "$title")` again, so the title arrives unchanged. Do not add labels or assignees; the maintainer triages the issue.
 
-If a filed issue or comment names a private repository or holds other private data, edit it to remove that text. GitHub keeps every earlier revision, and anyone who can read the issue can open it. No API call deletes a revision. Tell the user to delete the old revision in the web UI: open "edited" at the top of the text, choose the revision, and then choose "Delete revision from history". The author of the text and users with write access to DocksDocks/docks can delete a revision.
+If a filed issue or comment names a private repository or holds other private data, edit it to remove that text. GitHub keeps every earlier revision, and anyone who can read the issue can open it. No API call deletes a revision. Tell the user to delete the old revision in the web UI: open "edited" at the top of the text, choose the revision, and then choose "Delete revision from history". The author of the text and users with write access to DocksDocks/public can delete a revision.
 
 ### Without gh, or without a way to ask
 
 Give a prefilled link when gh is missing or not logged in, or when the run cannot ask the user. Do not install gh, and do not ask for a token. The link opens the new-issue form with the text filled in:
 
-`https://github.com/DocksDocks/docks/issues/new?title=<url-encoded title>&body=<url-encoded body>`
+`https://github.com/DocksDocks/public/issues/new?title=<url-encoded title>&body=<url-encoded body>`
 
 Build the link with a script, not by hand, so that it holds the exact title and body that you show. Write the title and the body to two temporary files as in stage 6, run one of these commands, and then remove both files. Each command strips one trailing newline from the title.
 
 ```bash
 # Node
-node -e 'const fs = require("fs"); const [t, f] = process.argv.slice(1); const title = fs.readFileSync(t, "utf8").replace(/\r?\n$/, ""); console.log("https://github.com/DocksDocks/docks/issues/new?title=" + encodeURIComponent(title) + "&body=" + encodeURIComponent(fs.readFileSync(f, "utf8")))' "$title" "$body"
+node -e 'const fs = require("fs"); const [t, f] = process.argv.slice(1); const title = fs.readFileSync(t, "utf8").replace(/\r?\n$/, ""); console.log("https://github.com/DocksDocks/public/issues/new?title=" + encodeURIComponent(title) + "&body=" + encodeURIComponent(fs.readFileSync(f, "utf8")))' "$title" "$body"
 # Python
-python3 -c 'import sys, urllib.parse as p; t, f = sys.argv[1:]; t = open(t, encoding="utf-8").read(); t = t[:-1] if t.endswith("\n") else t; print("https://github.com/DocksDocks/docks/issues/new?title=" + p.quote(t, safe="") + "&body=" + p.quote(open(f, encoding="utf-8").read(), safe=""))' "$title" "$body"
+python3 -c 'import sys, urllib.parse as p; t, f = sys.argv[1:]; t = open(t, encoding="utf-8").read(); t = t[:-1] if t.endswith("\n") else t; print("https://github.com/DocksDocks/public/issues/new?title=" + p.quote(t, safe="") + "&body=" + p.quote(open(f, encoding="utf-8").read(), safe=""))' "$title" "$body"
 ```
 
-If the full URL is longer than about 6,000 characters, give the title and the body as text instead, for the user to paste at `https://github.com/DocksDocks/docks/issues/new`. For a comment on an existing issue, give the text and the issue URL, `https://github.com/DocksDocks/docks/issues/<n>`. Show the draft and the link in the same message. The user files the issue from the form.
+If the full URL is longer than about 6,000 characters, give the title and the body as text instead, for the user to paste at `https://github.com/DocksDocks/public/issues/new`. For a comment on an existing issue, give the text and the issue URL, `https://github.com/DocksDocks/public/issues/<n>`. Show the draft and the link in the same message. The user files the issue from the form.
 
 ## Security problems
 
@@ -159,7 +160,7 @@ A skill, agent, omp extension, or script that exposes secrets, runs unsafe comma
 1. Tell the user to rotate every credential that was exposed, now.
 2. Draft the report with every section of the template below, and put "Private security report" above the title. A private report needs the same facts as a public one.
 3. Give the draft to the user, to send privately to the repository owner (the DocksDocks account on GitHub). A private channel is not an issue, a comment, a discussion, or a pull request. Give no prefilled issue URL.
-4. If the repository accepts private vulnerability reports, the user can send the draft there instead. `gh api repos/DocksDocks/docks/private-vulnerability-reporting` prints `{"enabled":true}` when it does; the form is in the repository's Security tab.
+4. If the repository accepts private vulnerability reports, the user can send the draft there instead. `gh api repos/DocksDocks/public/private-vulnerability-reporting` prints `{"enabled":true}` when it does; the form is in the repository's Security tab.
 
 ## Template
 
@@ -175,7 +176,7 @@ Title: <plugin>:<skill>: <symptom in one line>
 ## Skill
 
 - Skill: `<plugin>:<skill>` (or the agent, omp extension, or script path relative to the plugin root)
-- Plugin version: <x.y.z or unknown>
+- docks-kit version: <x.y.z or unknown>
 - Skill metadata: updated <YYYY-MM-DD>, content_hash <first 12 characters>
 - omp: <version or unknown>
 - Model: <model name or unknown>
@@ -211,7 +212,7 @@ Under "<heading>":
 
 ```text
 BAD title:   plan-manager is broken
-GOOD title:  plan-lifecycle:plan-manager: reopen right after a partial merge can leave the plan issue closed with reason REOPENED
+GOOD title:  docks-kit-omp:plan-manager: reopen right after a partial merge can leave the plan issue closed with reason REOPENED
 
 BAD body:    Seen in acme-corp/billing-api issue #123 (plan "Invoice export for Contoso").
 GOOD body:   Seen in a plan issue in a private repository.
@@ -219,7 +220,7 @@ GOOD body:   Seen in a plan issue in a private repository.
 BAD body:    gh failed with token ghp_1a2b... for jdoe on build-01.corp.internal
 GOOD body:   gh failed with an authentication error (token from GH_TOKEN).
 
-BAD action:  a public issue "docks:<skill>: prints the GH_TOKEN value to the log", value redacted
+BAD action:  a public issue "docks-kit-omp:<skill>: prints the GH_TOKEN value to the log", value redacted
 GOOD action: no public issue; a private draft for the repository owner, and advice to rotate the token
 ```
 
@@ -233,9 +234,9 @@ The good title names the plugin, the skill, and one observable symptom, so a mai
 | Full command output carries paths, hostnames, and user names | Trim to the failing lines; make paths relative to the project or the plugin root |
 | The search query carries private words | Search with the skill name and words from the instruction only |
 | A branch name from a private project: `gh issue develop` names a branch after its issue title, so the name carries a private title | Leave the branch name out |
-| A `#123` in prose from a private project: in a DocksDocks/docks issue, it links to DocksDocks/docks#123 | Write "issue 123" without `#`; a number in quoted output can keep its `#`, but private names there become placeholders |
+| A `#123` in prose from a private project: in a DocksDocks/public issue, it links to DocksDocks/public#123 | Write "issue 123" without `#`; a number in quoted output can keep its `#`, but private names there become placeholders |
 | A paraphrase in "What the skill says" | Quote the instruction exactly, with its heading |
-| A quote from a checkout of DocksDocks/docks or from a newer copy | Quote the copy that the runtime loaded; a checkout can already hold the fix |
+| A quote from a checkout of DocksDocks/public or from a newer copy | Quote the copy that the runtime loaded; a checkout can already hold the fix |
 | The quoted text says the opposite of the claim | Draft no defect report; tell the user what the skill says |
 | Two problems in one issue | One problem per issue, each with its own approval |
 | The reproduction needs the user's private project | Reduce it to a generic project, or describe the minimal setup |
@@ -291,4 +292,4 @@ The scans find only patterns and the names that you give them. They do not find 
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

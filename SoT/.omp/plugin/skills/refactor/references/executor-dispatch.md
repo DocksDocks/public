@@ -45,7 +45,7 @@ Check all before dispatching:
   omp captures the run against the main tree as it is at dispatch, so a clean
   tree makes the dispatch commit the exact base of the patch.
 - The canonical plan is ongoing and its latest trusted plan review passed.
-  Read `skills/plan-manager/references/plan-contract.md` inside the installed `plan-lifecycle` plugin.
+  Read `skills/plan-manager/references/plan-contract.md` inside the installed docks-kit kit plugin.
 - `plan-manager` owns the plan issue and its declared scope, which is the union
   of the Steps `Files` cells.
 - Immediately before dispatch, `plan-manager` re-reads the issue with

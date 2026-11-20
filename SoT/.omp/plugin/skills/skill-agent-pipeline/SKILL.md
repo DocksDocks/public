@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "74757ec9025bb39eac5c2c9152246f8a5b4017702aeb6935abc73bc42a4241f7"
+  content_hash: "5e52e014546210f82003126d4e5dea92424b443cbbb765862cdfaa570ebf76a1"
 ---
 
 # Skills & Agents Pipeline
@@ -24,7 +24,7 @@ One agent format: omp task agents. Phases 4a/4b/5 draft each logical agent as `.
 Intent controls the plan handoff, not Plan Mode. Hand the full skills/agents report to `plan-manager`, which files it as a plan issue with `plan.mjs new --title <t> --goal <g>`. Route label and workspace setup to `plan-workspace`; the unified `plan-manager` owns canonical-plan creation, fresh review, lifecycle, implementation/delegation, verification, and finish/archive. An audit-only or plan-only request stops after the reviewed report. A bootstrap, refresh, or implementation request continues directly into Phase 7 after the manager records the reviewed start checkpoint; no additional user lifecycle command is required.
 </constraint>
 
-Prerequisite: `plan-lifecycle` must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing `plan-lifecycle` plugin, and do not create or mutate a plan.
+Prerequisite: the docks-kit kit plugin (`docks-kit-omp`) must be installed. If `plan-workspace` or `plan-manager` is unavailable, STOP, name the missing docks-kit kit plugin, and do not create or mutate a plan.
 
 ## When to use
 
@@ -45,7 +45,7 @@ Prerequisite: `plan-lifecycle` must be installed. If `plan-workspace` or `plan-m
 
 ## Pipeline
 
-Run in order. Each phase reads its reference, then hands its output to `plan-manager` under the exact subheading shown. The plan helper accepts only its fixed `##` sections (see `skills/plan-manager/references/plan-contract.md` inside the installed `plan-lifecycle` plugin) and rejects any other `##` heading. So every phase writes a `###` subheading inside `## Research`, and each block inside a phase uses `####` or lower. Phases 0–6 are an assessment before any change, so all of their output is research. The Skills Plan and the Agents Plan also go in `## Research`: they hold full drafted file bodies, and the contract's `## Steps` holds only its one-row-per-task table, so `plan-manager` writes Steps rows that point at the drafts. Phase 6 checks drafts, not landed files, so `## Verification Results` stays for Phase 7 evidence. Phase 0 is inline (no reference). The subheading is the resume anchor — keep it verbatim.
+Run in order. Each phase reads its reference, then hands its output to `plan-manager` under the exact subheading shown. The plan helper accepts only its fixed `##` sections (see `skills/plan-manager/references/plan-contract.md` inside the installed docks-kit kit plugin) and rejects any other `##` heading. So every phase writes a `###` subheading inside `## Research`, and each block inside a phase uses `####` or lower. Phases 0–6 are an assessment before any change, so all of their output is research. The Skills Plan and the Agents Plan also go in `## Research`: they hold full drafted file bodies, and the contract's `## Steps` holds only its one-row-per-task table, so `plan-manager` writes Steps rows that point at the drafts. Phase 6 checks drafts, not landed files, so `## Verification Results` stays for Phase 7 evidence. Phase 0 is inline (no reference). The subheading is the resume anchor — keep it verbatim.
 
 | # | Phase | Reference | Output section → subheading |
 |---|---|---|---|
@@ -150,4 +150,4 @@ Any `LOST SECTION` / `NET SHRINK` line ⇒ restore from `/tmp/skill.before`, loc
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

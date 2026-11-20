@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "c4faa83f7892fd0a6d873290052c23cc075b8706a926b0a7dc25537ebccf1d9b"
+  content_hash: "f1bdeb97b54d99495cb3747c18cedf9ab0a87ce59f4bbbd9752db3def52ea88d"
 ---
 
 # Commit & PR Discipline
@@ -148,8 +148,8 @@ Verified: bun test src/session; bun run lint
 - Put the trailer in the last paragraph, alone or with other `Token: value` trailers. Git reads no trailers from a paragraph that also holds a `Closes #482` line, so put that line in a paragraph above. A `Verified:` subject line is not a trailer either. `git interpret-trailers --parse` shows the trailers that git reads.
 - A squash merge writes one new message from the pull request, as the repository settings choose. That message can drop the trailers of the branch commits. Put the `Verified:` line in the pull-request description too, and check that the squash message keeps it.
 
-The docks plugin ships the `verify-gate` omp extension. It checks each `git commit` that runs through the bash tool, before
-the command runs. A commit that another tool makes does not pass through the gate. After an upgrade of docks, restart omp:
+The docks-kit kit plugin (`docks-kit-omp`) ships the `verify-gate` omp extension. It checks each `git commit` that runs through the bash tool, before
+the command runs. A commit that another tool makes does not pass through the gate. After an upgrade of docks-kit, restart omp:
 omp loads extensions only when a session starts.
 The `DOCKS_VERIFY_GATE` environment variable of omp selects its mode. The gate checks each `bash` command that holds a
 `git commit`. A command whose commits all carry the trailer writes nothing. A `git commit --dry-run` counts as no commit.
@@ -300,4 +300,4 @@ git diff @{upstream}.. --stat       # size sanity: is this one reviewable unit?
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

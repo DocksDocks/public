@@ -54,8 +54,8 @@ Look for:
 - A test that depends on order, time, network, locale, or machine paths, and
   so fails on another machine.
 
-## With docks installed
+## With the docks skills installed
 
-When the docks plugin is installed, you may load the `test-coverage` skill
+When the docks skills are installed, you may load the `test-coverage` skill
 (`skill://test-coverage`) for test patterns. Keep the output format of this
 skill.

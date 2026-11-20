@@ -142,7 +142,7 @@ Output per node: `claims checked | confirmed | broken-ref | stale-snippet | fict
 
 ## No-op refresh (nudge safety)
 
-The docks `context-tree-nudge` omp extension nudges the agent (via added context) to run `refresh <folder>` after every edit inside a node — it never invokes refresh itself. `refresh` MUST therefore be a no-op when nothing semantic changed, or the nudge-refresh cycle write-loops. Reuse the `skill-maintenance` update-only-when-meaning-changed pattern:
+The `context-tree-nudge` omp extension of the docks-kit kit plugin nudges the agent (via added context) to run `refresh <folder>` after every edit inside a node — it never invokes refresh itself. `refresh` MUST therefore be a no-op when nothing semantic changed, or the nudge-refresh cycle write-loops. Reuse the `skill-maintenance` update-only-when-meaning-changed pattern:
 
 ```bash
 # only rewrite when the derived content actually differs from disk

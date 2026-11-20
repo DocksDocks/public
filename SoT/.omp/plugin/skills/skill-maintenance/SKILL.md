@@ -5,7 +5,7 @@ user-invocable: false
 metadata:
   pattern: reviewer
   updated: "2026-11-20"
-  content_hash: "9b78ca84e5340601f0a5017139b72897473350f9d584606bb487015e2095b303"
+  content_hash: "d8a69c2c7674022f20d0c96599d22e9701261349ed5f48c57070a47b1a15805a"
 ---
 
 # Skill Maintenance
@@ -30,7 +30,7 @@ contain `: `, `#`, brackets, quotes, or code-like punctuation.
 
 <constraint>
 Project-local `skill-maintenance` copies are disposable only after inspection.
-If the installed docks plugin already provides `skill-maintenance`, compare the
+If the installed docks-kit kit plugin (`docks-kit-omp`) already provides `skill-maintenance`, compare the
 local skill for project-specific rules. Propose removal only when it adds no
 local behavior, and wait for explicit user approval before deleting files.
 </constraint>
@@ -129,7 +129,7 @@ description: "Use when editing routes: checkout, account, webhook, or fixing esl
 | History narrative (incident, PR, or session story) | Search for incident IDs, PR numbers, dates, "this caught" stories | Keep the rule, drop the story. Keep the source references of a review rule, because Review-Rule Pruning reads them |
 | Enumerated trigger list in the description | Check whether the description grew one missed query at a time | Name categories of intent; confirm with the write-skill trigger check |
 | One-incident rule (a single stumble made permanent) | Ask whether the rule still prevents a repeat failure in current use | Generalize it or delete it; removal is a hypothesis, so re-run a baseline check. For a review rule, use Review-Rule Pruning |
-| Local maintenance skill exists | Compare to Docks plugin skill | Keep only if it adds project-specific rules |
+| Local maintenance skill exists | Compare to the docks-kit kit plugin skill | Keep only if it adds project-specific rules |
 
 The four prompt-style rows above are spot checks for a skill already being
 maintained. For a sweep across the whole skill set, use skill-agent-pipeline's
@@ -183,7 +183,7 @@ already exists:
 
 1. Read its `SKILL.md` and references.
 2. Classify each rule as generic maintenance, project-specific, or stale.
-3. If every rule is generic or stale and the docks `skill-maintenance` is available,
+3. If every rule is generic or stale and the `skill-maintenance` of the docks-kit kit plugin is available,
    propose deleting the local copy.
 4. If project-specific rules exist, either keep the local skill or move those
    rules into a project-specific skill such as `project-skill-maintenance`.
@@ -205,7 +205,7 @@ Use the narrowest available command:
 ```bash
 # if the project ships a skill validator/loader-check, run it
 
-# if the docks plugin is installed, write-skill bundles a portable validator —
+# if the docks-kit kit plugin is installed, write-skill bundles a portable validator —
 # frontmatter guard (fences, name, 1024-char cap on the parsed description
 # value, block scalars too, unquoted '#', no YAML alias/anchor/tag)
 # + 16-pt score, no kit tooling needed (--strict for kit conventions):
@@ -223,7 +223,7 @@ omp skill list --json
 find .agents/skills .claude/skills -name SKILL.md -maxdepth 3 -print 2>/dev/null
 ```
 
-If the bundled validator is absent (docks not installed), fall back to the
+If the bundled validator is absent (the docks-kit kit plugin is not installed), fall back to the
 generic checks — never hard-depend on it.
 
 ## References
@@ -237,4 +237,4 @@ comparison.
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

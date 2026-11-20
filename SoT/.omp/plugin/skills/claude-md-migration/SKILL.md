@@ -5,7 +5,7 @@ user-invocable: true
 metadata:
   pattern: tool-wrapper
   updated: "2026-11-20"
-  content_hash: "914c5883cca86fd4adf689127dd016813a2e8e3d96a126080bc76db7a52bc414"
+  content_hash: "e19960f5e0f840d14a0312778558162662838269b454b153c1f2922faf1ad1a7"
 ---
 
 # CLAUDE.md Migration
@@ -246,4 +246,4 @@ Then do the per-section presence check: every `^#{1,3}` section of each non-stub
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

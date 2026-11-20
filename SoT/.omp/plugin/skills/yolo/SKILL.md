@@ -6,7 +6,7 @@ disable-model-invocation: true
 metadata:
   pattern: pipeline
   updated: "2026-11-20"
-  content_hash: "9ff996f6afe40c671015589155027edaa74f48c31e3a03fb8a4ad8f00086ba3b"
+  content_hash: "9b53505f77a44338164b444776b171ff060b2c4423fba8f6257c5cb8f98c95cd"
 ---
 
 # Yolo
@@ -16,7 +16,7 @@ user invokes this skill, and that invocation answers every routine lifecycle
 question before the merge. Ask the user once, after the pull request exists.
 
 Read these files from this skill's directory before you start. They are in the
-same installed `plan-lifecycle` plugin:
+same installed docks-kit kit plugin (`docks-kit-omp`):
 
 - `../plan-manager/SKILL.md` owns the six phases.
 - `../plan-manager/references/plan-contract.md` owns the rules. Its Yolo runs
@@ -29,7 +29,7 @@ same installed `plan-lifecycle` plugin:
 
 Run the helper as `node skill://plan-manager/scripts/plan.mjs` from the target
 repository root. If these files are missing, stop and name the missing
-`plan-lifecycle` plugin.
+docks-kit kit plugin.
 
 <constraint>
 Start only when the user's own message invokes yolo: `/skill:yolo` or a
@@ -298,4 +298,4 @@ GOOD: Fix the cause, or record the baseline failure and block, as the contract's
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

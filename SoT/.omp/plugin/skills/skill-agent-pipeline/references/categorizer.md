@@ -41,5 +41,5 @@ Write this subheading inside `## Research`. Use `####` or lower for every block 
 |---|---|
 | Proposing agent-role changes here | Phase 4 owns roles; mixing scopes corrupts the Phase 3 builder's `source_files` |
 | Accepting a description with generic terms | Re-count project identifiers; <5 → rewrite before approval |
-| Creating generic local `skill-maintenance` while Docks already ships one | Use the plugin skill `skill-maintenance`; keep local only for project-specific rules |
+| Creating generic local `skill-maintenance` while the docks-kit kit plugin already ships one | Use the plugin skill `skill-maintenance`; keep local only for project-specific rules |
 | Treating a fresh `metadata.updated` or matching `content_hash` as "accurate" | They prove change, not correctness — Phase 2c re-verifies every claim regardless of date or hash |

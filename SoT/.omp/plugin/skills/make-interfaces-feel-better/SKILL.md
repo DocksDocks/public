@@ -4,7 +4,7 @@ description: "Use when building or reviewing UI components; fixing positioning t
 user-invocable: true
 metadata:
   pattern: upstream-adapted
-  updated: "2026-10-23"
+  updated: "2026-11-20"
   upstream:
     source: https://github.com/jakubkrehel/make-interfaces-feel-better
     license: MIT
@@ -15,7 +15,7 @@ metadata:
       - "2026-08-25: SKILL.md description and icons.md route accessibility semantics, keyboard, and ARIA work to accessibility"
       - "2026-08-25: SKILL.md and surfaces.md distinguish WCAG 2.2 Target Size (Minimum) AA 24×24px from 44×44px touch and 40×40px dense-desktop usability heuristics"
       - "2026-08-25: animations.md, surfaces.md, and typography.md add Contents tables required by docks reference hygiene"
-  content_hash: "aff027c6dc1155504e6119e8c1ed271b57ac3bd68a6ccd1cada55f7db08ba894"
+  content_hash: "8ac9d3686c4741c0f4135ce775b7326c98dec5635fc5ea29a0d73721cabc94e5"
 ---
 
 # Details that make interfaces feel better
@@ -202,4 +202,4 @@ When there are no findings, omit the findings table, state "No actionable interf
 
 ## Report a problem with this skill
 
-When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/docks repository. Use the docks `report-skill-issue` skill for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and its plugin version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.
+When this skill gives a wrong, outdated, or unsafe instruction, or a script that it ships fails, report the problem in the public DocksDocks/public repository. Use the `report-skill-issue` skill of the docks-kit kit plugin for the report. If that skill is not installed, do not file anything: give the user a draft instead. The draft names this skill and the docks-kit version, quotes the instruction, and states what happened and what you expected. Leave out secrets and private names.

@@ -89,9 +89,9 @@ A defect that meets the finding bar and fits this lens counts even when no list 
 - A message that does not match the condition that triggers it, or that names a
   flag, command, or file that does not exist.
 
-## With docks installed
+## With the docks skills installed
 
-When the docks plugin is installed, also read
+When the docks skills are installed, also read
 `skill://code-review/references/perf.md` of the `code-review` skill. Use its
 patterns and its severity questions. Keep the output format and the severity
 caps of this skill.

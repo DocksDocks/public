@@ -1,5 +1,5 @@
 # Plan contract v5
-This is the canonical contract inside the installed `plan-lifecycle` plugin.
+This is the canonical contract inside the installed docks-kit kit plugin (`docks-kit-omp`).
 Agents use its lifecycle skills and this reference. The helper normalizes
 records and protects ownership, concurrent edits, step state, and archive proof.
 Run its helper as `node skill://plan-manager/scripts/plan.mjs` from the target repository root.
