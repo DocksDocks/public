@@ -168,6 +168,17 @@ function expectDenied(result: GateResult): void {
   expect(result).toStrictEqual({ block: true, reason: DENY_REASON });
 }
 
+// True while a process with this id runs. Signal 0 tests for a process on every platform, Windows too:
+// it throws ESRCH when no such process exists (https://nodejs.org/api/process.html#signal-events).
+function processExists(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return !(error instanceof Error && "code" in error && error.code === "ESRCH");
+  }
+}
+
 // A read that waits for a writer of the FIFO would keep the test process alive. A writer that opens and closes
 // the FIFO ends such a read; without a reader the open fails, and nothing waits.
 function releaseFifoAfterCase(fifo: string): void {
@@ -561,17 +572,19 @@ describe("verify-gate extension", () => {
     const stub = tempFolder("deadline-git");
     const calls = path.join(stub, "calls.txt");
     const progress = path.join(stub, "progress.txt");
-    // The first two git calls end at once. The third one writes `start`, then holds until GIT_STUB_HOLD_UNTIL,
-    // well after the deadline, and then it would end and count a denial, unless the deadline stops it.
+    // The first two git calls end at once. The third one writes `start <pid>` and then holds until a kill
+    // stops it; it never runs git. Only the deadline ends the check, so the time that the first calls take
+    // cannot decide the case, as long as it stays below the deadline.
     const stubEnv = gitStub(
       stub,
       [
         'const fs = require("node:fs");',
         `fs.appendFileSync(${JSON.stringify(calls)}, "call\\n");`,
         `if (fs.readFileSync(${JSON.stringify(calls)}, "utf8").split("\\n").filter(Boolean).length >= 3) {`,
-        `  fs.appendFileSync(${JSON.stringify(progress)}, "start\\n");`,
-        "  const wait = Number(process.env.GIT_STUB_HOLD_UNTIL) - Date.now();",
-        "  if (wait > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, wait);",
+        `  fs.appendFileSync(${JSON.stringify(progress)}, \`start \${process.pid}\\n\`);`,
+        "  // A held call that no kill stops ends after two minutes, so that a failed case leaves no process.",
+        "  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 120000);",
+        "  process.exit(1);",
         "}",
         `fs.appendFileSync(${JSON.stringify(progress)}, "done\\n");`,
         "runGit();",
@@ -579,26 +592,34 @@ describe("verify-gate extension", () => {
     );
     const checkCommand = await coreCheckCommand();
     const command = [VERIFIED, VERIFIED, UNVERIFIED].join(" && ");
+    // A Windows runner starts processes up to six times slower (cli/test/lib/spawnTimeout.ts).
+    const deadlineMs = process.platform === "win32" ? 10_000 : 5_000;
     const started = Date.now();
-    const holdUntil = started + 1500;
-    await withEnv({ ...stubEnv, GIT_STUB_HOLD_UNTIL: String(holdUntil) }, () =>
+    await withEnv(stubEnv, () =>
       expect(
         checkCommand({
           command,
           cwd: state,
           sessionId: "s1",
           env: { XDG_STATE_HOME: state, DOCKS_VERIFY_GATE: "enforce" },
-          deadlineMs: 1000,
+          deadlineMs,
         }),
-      ).rejects.toThrow(/the check ran longer than 1000 ms/u),
+      ).rejects.toThrow(new RegExp(`the check ran longer than ${deadlineMs} ms`, "u")),
     );
-    expect(Date.now() - started < 1300, `the check rejected after ${Date.now() - started} ms`).toBe(
-      true,
-    );
-    // A real wait: the fake git is another process, so only the wall clock passes its hold.
-    await new Promise((resolve) => setTimeout(resolve, Math.max(0, holdUntil + 500 - Date.now())));
-    // The third call started before the deadline and never wrote `done`: the deadline stopped a running git.
-    expect(fs.readFileSync(progress, "utf8")).toBe("done\ndone\nstart\n");
+    const elapsed = Date.now() - started;
+    expect(elapsed < deadlineMs + 1000, `the check rejected after ${elapsed} ms`).toBe(true);
+    // The third call started and never wrote `done`.
+    const text = fs.readFileSync(progress, "utf8");
+    const pid = Number(/^done\ndone\nstart (\d+)\n$/u.exec(text)?.[1]);
+    expect(text).toBe(`done\ndone\nstart ${pid}\n`);
+    onTestFinished(() => {
+      if (processExists(pid)) process.kill(pid);
+    });
+    // The deadline kills the held call; the poll gives the kill time to land.
+    for (const end = Date.now() + 2000; processExists(pid) && Date.now() < end;) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(processExists(pid), `the held git call ${pid} still runs`).toBe(false);
     expect(fs.existsSync(path.join(state, "docks"))).toBe(false);
   });
 
@@ -620,11 +641,12 @@ describe("verify-gate extension", () => {
         deadlineMs,
       });
     // The first check passes its deadline during its write. The second check waits in the chain after it.
-    const first = check(300);
-    const second = check(600);
+    // Both deadlines leave the first check ample time to reach its write, which the stub then holds.
+    const first = check(2000);
+    const second = check(3000);
     await held;
-    await expect(first).rejects.toThrow(/the check ran longer than 300 ms/u);
-    await expect(second).rejects.toThrow(/the check ran longer than 600 ms/u);
+    await expect(first).rejects.toThrow(/the check ran longer than 2000 ms/u);
+    await expect(second).rejects.toThrow(/the check ran longer than 3000 ms/u);
     expect(writes.names.length, "the second update must not start while the first one writes").toBe(
       1,
     );
