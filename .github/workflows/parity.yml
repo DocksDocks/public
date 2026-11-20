@@ -119,7 +119,6 @@ jobs:
         run: bun run test:unit
 
       - name: Clean-room package install smoke
-        if: matrix.os == 'ubuntu-24.04'
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run smoke:package
@@ -169,9 +168,10 @@ jobs:
     permissions:
       contents: read
     runs-on: windows-2025 # pinned label, never *-latest
-    # Measured run p90: 47 s (10 warm PR #154 runs).
-    # 3 x (47 s + 21 s cold setup) = 204 s, rounded up.
-    timeout-minutes: 4
+    # Measured run p90: 47 s (10 warm PR #154 runs), before the global-install
+    # step, which packs, builds the bundle, and installs (not yet measured,
+    # 40 s assumed): 3 x (87 s + 21 s cold setup) = 324 s, rounded up.
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -196,6 +196,35 @@ jobs:
         env:
           BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
         run: bun run smoke:native
+
+      # install.ps1 installs the CLI with `bun add -g` and runs the Bun shim
+      # $BUN_INSTALL\bin\docks-kit.exe, which runs the bundle that bin names.
+      # An isolated BUN_INSTALL keeps the runner's own Bun install untouched.
+      - name: Global install runs the bundle
+        shell: pwsh
+        env:
+          BUN_INSTALL_CACHE_DIR: ${{ runner.temp }}/bun-install-cache
+        run: |
+          $pack = Join-Path $env:RUNNER_TEMP 'docks-kit-pack'
+          New-Item -ItemType Directory -Force -Path $pack | Out-Null
+          bun pm pack --destination $pack
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = (Get-Content -Raw -LiteralPath package.json | ConvertFrom-Json).version
+          $env:BUN_INSTALL = Join-Path $env:RUNNER_TEMP 'docks-kit-bun-install'
+          bun add -g (Join-Path $pack "docks-kit-$version.tgz")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $shim = Join-Path $env:BUN_INSTALL 'bin\docks-kit.exe'
+          if (-not (Test-Path -LiteralPath $shim -PathType Leaf)) { throw "no Bun shim at $shim" }
+          $unrelated = Join-Path $env:RUNNER_TEMP 'docks-kit-unrelated'
+          New-Item -ItemType Directory -Force -Path $unrelated | Out-Null
+          Set-Location -LiteralPath $unrelated
+          $reported = (& $shim --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($reported -ne $version) { throw "docks-kit.exe --version printed '$reported', expected '$version'" }
+          Write-Output "docks-kit.exe --version: $reported"
+          & $shim sync --dry-run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Output "docks-kit.exe sync --dry-run: exit 0"
 
   # Gate for the split Windows lane. It keeps the check name
   # `portable (windows-2025)` of the former single Windows job, and it fails
